@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/venv/
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vercel/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# OS
+.DS_Store
+*.swp
+*.swo
+
+# IDE
+.idea/
+.vscode/
+
+# PDFs and test files
+*.pdf
+*.PDF
+*.xlsx
+*.html
+
+# Extra
+**/__pycache__/
+Screenshot*
+WhatsApp*
+*.jpeg
+arab swim logo*

@@ -1,0 +1,16 @@
+django>=4.2,<5.0
+djangorestframework>=3.14
+django-cors-headers>=4.0
+djangorestframework-simplejwt>=5.3
+Pillow>=10.0
+pandas>=2.0
+openpyxl>=3.1
+pdfplumber>=0.10
+numpy>=1.24
+beautifulsoup4>=4.12
+thefuzz>=0.22
+python-Levenshtein>=0.25
+gunicorn>=21.2
+whitenoise>=6.5
+psycopg2-binary>=2.9
+dj-database-url>=2.1

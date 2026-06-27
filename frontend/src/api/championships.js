@@ -1,0 +1,15 @@
+import api from './client'
+
+export const getChampionships = (params) => api.get('/championships/', { params })
+export const getChampionship = (id) => api.get(`/championships/${id}/`)
+export const createChampionship = (data) => api.post('/championships/', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const updateChampionship = (id, data) => api.patch(`/championships/${id}/`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const deleteChampionship = (id) => api.delete(`/championships/${id}/`)
+export const getChampionshipResults = (id, params) => api.get(`/championships/${id}/results/`, { params })
+export const getChampionshipStats = (id) => api.get(`/championships/${id}/stats/`)
+export const addChampionshipResult = (id, data) => api.post(`/championships/${id}/results/`, data)
+export const uploadPdf = (id, formData) => api.post(`/championships/${id}/upload-pdf/`, formData)
+export const importExcel = (id, formData) => api.post(`/championships/${id}/import-excel/`, formData)
+export const getClassificationCategories = () => api.get('/classification-categories/')
+export const getClassifications = (category) => api.get('/classifications/', { params: category ? { category } : {} })
+export const getSubClassifications = (classification) => api.get('/sub-classifications/', { params: { classification } })

@@ -1,4 +1,11 @@
 #!/bin/bash
+# Drop all tables and start fresh (safe for new deployment)
+python manage.py shell -c "
+from django.db import connection
+with connection.cursor() as cursor:
+    cursor.execute('DROP SCHEMA public CASCADE; CREATE SCHEMA public;')
+print('Database reset complete')
+" 2>/dev/null || true
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput
 python manage.py seed_countries

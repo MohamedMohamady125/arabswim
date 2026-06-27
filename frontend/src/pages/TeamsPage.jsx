@@ -14,7 +14,7 @@ export default function TeamsPage() {
   const [countryFilter, setCountryFilter] = useState('')
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data))
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function TeamsPage() {
     getTeams(params).then(res => {
       const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
       setTeams(data)
-    })
+    }).catch(() => {})
   }, [search, countryFilter])
 
   const handleDelete = async (id, name) => {
@@ -34,24 +34,24 @@ export default function TeamsPage() {
   const columns = [
     {
       key: 'logo', label: '',
-      render: (_, t) => (
+      render: (row) => (
         <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
-          {t.logo ? <img src={t.logo} alt="" className="w-full h-full object-cover" /> : <span className="text-gray-400 text-lg">🏊</span>}
+          {row.logo ? <img src={row.logo} alt="" className="w-full h-full object-cover" /> : <span className="text-gray-400 text-lg">🏊</span>}
         </div>
       )
     },
     { key: 'name', label: 'Team Name' },
     {
       key: 'country', label: 'Country',
-      render: (_, t) => t.country_detail ? (
-        <CountryFlag code={t.country_detail.code} flagUrl={t.country_detail.flag_url} name={t.country_detail.name} />
+      render: (row) => row.country_detail ? (
+        <CountryFlag code={row.country_detail.code} flagUrl={row.country_detail.flag_url} name={row.country_detail.name} />
       ) : '-'
     },
-    { key: 'founded_year', label: 'Founded', render: (v) => v || '-' },
-    { key: 'swimmers_count', label: 'Swimmers', render: (v) => v || 0 },
+    { key: 'founded_year', label: 'Founded', render: (row) => row.founded_year || '-' },
+    { key: 'swimmers_count', label: 'Swimmers', render: (row) => row.swimmers_count || 0 },
     {
       key: 'is_national_team', label: 'Type',
-      render: (v) => v ? (
+      render: (row) => row.is_national_team ? (
         <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">National</span>
       ) : (
         <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs font-medium">Club</span>
@@ -59,11 +59,11 @@ export default function TeamsPage() {
     },
     {
       key: 'actions', label: '',
-      render: (_, t) => (
+      render: (row) => (
         <div className="flex gap-2">
-          <button onClick={(e) => { e.stopPropagation(); navigate(`/teams/${t.id}/edit`) }}
+          <button onClick={(e) => { e.stopPropagation(); navigate(`/teams/${row.id}/edit`) }}
             className="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
-          <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id, t.name) }}
+          <button onClick={(e) => { e.stopPropagation(); handleDelete(row.id, row.name) }}
             className="text-red-600 hover:text-red-800 text-sm">Delete</button>
         </div>
       )

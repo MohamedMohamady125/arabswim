@@ -26,7 +26,7 @@ export default function SwimmersPage() {
   const [merging, setMerging] = useState(false)
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data))
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
   }, [])
 
   const fetchSwimmers = () => {
@@ -34,7 +34,7 @@ export default function SwimmersPage() {
     getSwimmers(params).then(res => {
       const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
       setSwimmers(data)
-    })
+    }).catch(() => {})
   }
 
   useEffect(fetchSwimmers, [page, search, filterNationality, filterSex])

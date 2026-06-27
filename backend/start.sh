@@ -3,6 +3,7 @@ python manage.py migrate --noinput
 python manage.py collectstatic --noinput
 python manage.py seed_countries
 python manage.py seed_events
+python manage.py seed_classifications
 python manage.py fix_names
 
 # Create admin user if not exists

@@ -231,6 +231,10 @@ def parse(text):
         if not current_event:
             continue
 
+        # Skip split time lines (e.g. "28.54  1:02.80  1:41.80  2:19.05")
+        if _is_split_line(stripped):
+            continue
+
         # Check for DQ/NS/DNF lines
         dq_match = DQ_LINE.match(stripped)
         if dq_match:
@@ -255,6 +259,10 @@ def parse(text):
         # Try to parse as result line
         result = _parse_result_line(stripped, current_event, comma_order)
         if result:
+            # Sanity check: reject times that are impossibly fast for the event distance
+            # This catches interleaved two-column PDF results from adjacent events
+            if not _time_plausible(result.time_centiseconds, current_event.distance):
+                continue
             current_event.results.append(result)
 
     return meet
@@ -264,6 +272,49 @@ def _should_skip(line):
     """Check if a line should be skipped (headers, footers, column labels)."""
     for pattern in SKIP_PATTERNS:
         if pattern.search(line):
+            return True
+    return False
+
+
+def _time_plausible(time_cs, distance):
+    """Check if a time is plausible for a given distance.
+    Rejects impossibly fast times that come from interleaved PDF columns."""
+    if distance <= 0 or time_cs <= 0:
+        return True
+    # Minimum possible times (centiseconds) — generous but catches column interleaving
+    min_times = {
+        200: 10000,    # 1:40.00 — WR is ~1:51, age group ~2:00+
+        400: 22000,    # 3:40.00 — WR is ~3:40
+        800: 45000,    # 7:30.00 — WR is ~7:32
+        1500: 85000,   # 14:10.00 — WR is ~14:06
+    }
+    for dist_threshold, min_time in sorted(min_times.items()):
+        if distance >= dist_threshold and time_cs < min_time:
+            return False
+    return True
+
+
+def _is_split_line(line):
+    """Detect split time lines like '28.54   1:02.80   1:41.80   2:19.05'.
+    These have multiple times but no rank, name, age, or team."""
+    stripped = line.strip()
+    if not stripped:
+        return False
+    # Count time patterns in the line
+    times = TIME_PATTERN.findall(stripped)
+    if len(times) >= 2:
+        # Multiple times = almost certainly a split line
+        # Remove all times and see what's left
+        remaining = TIME_PATTERN.sub('', stripped).strip()
+        # Split lines have only whitespace/punctuation between times
+        # Real result lines have names, ages, teams
+        if not remaining or all(c in ' \t.,-+()rR' for c in remaining):
+            return True
+    # Single time on a line with no alphabetic characters (just numbers/spaces) = split
+    if len(times) == 1:
+        remaining = TIME_PATTERN.sub('', stripped).strip()
+        # If what remains is only digits, spaces, or reaction times (+0.XX)
+        if remaining and not any(c.isalpha() for c in remaining):
             return True
     return False
 

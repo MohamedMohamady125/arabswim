@@ -16,7 +16,7 @@ export default function RecordsPage() {
     if (filterType) params.record_type = filterType
     getRecords(params).then(res => {
       setRecords(res.data.results)
-      setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous })
+      setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous }).catch(() => {})
     })
   }, [page, filterType])
 

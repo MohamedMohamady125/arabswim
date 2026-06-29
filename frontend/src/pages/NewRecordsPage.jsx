@@ -13,7 +13,7 @@ export default function NewRecordsPage() {
     const params = { is_new: 'true' }
     if (filterType) params.record_type = filterType
     if (searchName) params.search = searchName
-    getRecords(params).then(res => setRecords(res.data.results || res.data))
+    getRecords(params).then(res => setRecords(res.data.results || res.data)).catch(() => {})
   }, [filterType, searchName])
 
   const columns = [

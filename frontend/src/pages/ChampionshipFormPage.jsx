@@ -16,19 +16,19 @@ export default function ChampionshipFormPage() {
   const [form, setForm] = useState({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', classification_category: '', classification: '', sub_classification: '' })
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data))
-    getClassificationCategories().then(res => setCategories(res.data))
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
+    getClassificationCategories().then(res => setCategories(res.data)).catch(() => {})
     if (isEdit) {
       getChampionship(id).then(res => {
         const c = res.data
-        setForm({ name: c.name, date: c.date, end_date: c.end_date || '', pool: c.pool, country: c.country, location: c.location || '', classification_category: c.classification_category || '', classification: c.classification || '', sub_classification: c.sub_classification || '' })
+        setForm({ name: c.name, date: c.date, end_date: c.end_date || '', pool: c.pool, country: c.country, location: c.location || '', classification_category: c.classification_category || '', classification: c.classification || '', sub_classification: c.sub_classification || '' }).catch(() => {})
       })
     }
   }, [id, isEdit])
 
   useEffect(() => {
     if (form.classification_category) {
-      getClassifications(form.classification_category).then(res => setClassifications(res.data))
+      getClassifications(form.classification_category).then(res => setClassifications(res.data)).catch(() => {})
     } else {
       setClassifications([])
     }
@@ -36,7 +36,7 @@ export default function ChampionshipFormPage() {
 
   useEffect(() => {
     if (form.classification) {
-      getSubClassifications(form.classification).then(res => setSubClassifications(res.data))
+      getSubClassifications(form.classification).then(res => setSubClassifications(res.data)).catch(() => {})
     } else {
       setSubClassifications([])
     }

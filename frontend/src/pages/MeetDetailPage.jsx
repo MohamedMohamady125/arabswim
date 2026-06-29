@@ -13,8 +13,8 @@ export default function MeetDetailPage() {
   const [loadingResults, setLoadingResults] = useState(false)
 
   useEffect(() => {
-    getChampionship(id).then(res => setMeet(res.data))
-    getChampionshipStats(id).then(res => setStats(res.data))
+    getChampionship(id).then(res => setMeet(res.data)).catch(() => {})
+    getChampionshipStats(id).then(res => setStats(res.data)).catch(() => {})
   }, [id])
 
   const handleEventClick = async (event) => {

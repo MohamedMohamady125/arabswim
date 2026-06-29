@@ -32,13 +32,13 @@ export default function ImportPage() {
   })
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data))
-    getClassifications().then(res => setClassifications(res.data))
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
+    getClassifications().then(res => setClassifications(res.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
     if (champForm.classification) {
-      getSubClassifications(champForm.classification).then(res => setSubClassifications(res.data))
+      getSubClassifications(champForm.classification).then(res => setSubClassifications(res.data)).catch(() => {})
     } else {
       setSubClassifications([])
     }

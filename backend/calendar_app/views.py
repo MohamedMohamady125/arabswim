@@ -27,7 +27,7 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
             return Response({'error': 'month and year required'}, status=400)
         month, year = int(month), int(year)
         events = CalendarEvent.objects.filter(date__month=month, date__year=year)
-        swimmers = Swimmer.objects.filter(date_of_birth__month=month).select_related('nationality')
+        swimmers = Swimmer.objects.filter(date_of_birth__isnull=False, date_of_birth__month=month).select_related('nationality')
         birthdays = []
         for s in swimmers:
             birthdays.append({

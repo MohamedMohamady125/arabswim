@@ -12,13 +12,13 @@ export default function MedalsPage() {
   const [view, setView] = useState('summary')
 
   useEffect(() => {
-    getChampionships({ page_size: 100 }).then(res => setChampionships(res.data.results || res.data))
+    getChampionships({ page_size: 100 }).then(res => setChampionships(res.data.results || res.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
     const params = selectedChampionship ? { championship: selectedChampionship } : {}
-    getMedalSummary(params).then(res => setSummary(res.data))
-    getMedals(params).then(res => setMedals(res.data.results || res.data))
+    getMedalSummary(params).then(res => setSummary(res.data)).catch(() => {})
+    getMedals(params).then(res => setMedals(res.data.results || res.data)).catch(() => {})
   }, [selectedChampionship])
 
   const summaryColumns = [

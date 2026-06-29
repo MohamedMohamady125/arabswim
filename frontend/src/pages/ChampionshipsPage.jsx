@@ -15,13 +15,13 @@ export default function ChampionshipsPage() {
   const [filters, setFilters] = useState({ search: '', pool: '', country: '' })
   const navigate = useNavigate()
 
-  useEffect(() => { getCountries().then(res => setCountries(res.data)) }, [])
+  useEffect(() => { getCountries().then(res => setCountries(res.data)) }, []).catch(() => {})
 
   useEffect(() => {
     const params = { page, search: filters.search || undefined, pool: filters.pool || undefined, country: filters.country || undefined }
     getChampionships(params).then(res => {
       setChampionships(res.data.results)
-      setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous })
+      setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous }).catch(() => {})
     })
   }, [page, filters])
 

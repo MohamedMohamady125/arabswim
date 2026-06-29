@@ -18,7 +18,7 @@ export default function SwimmerFormPage() {
   const [nicknameInput, setNicknameInput] = useState('')
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data))
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
     if (isEdit) {
       getSwimmer(id).then(res => {
         const s = res.data
@@ -27,7 +27,7 @@ export default function SwimmerFormPage() {
           sex: s.sex, club: s.club || '', email: s.email || '', phone: s.phone || '',
           nicknames: s.nicknames?.map(n => n.nickname) || [],
           photo: s.photo,
-        })
+        }).catch(() => {})
       })
     }
   }, [id, isEdit])

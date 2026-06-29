@@ -70,6 +70,27 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             self.pagination_class.page_size = int(page_size)
         return qs
 
+    def destroy(self, request, *args, **kwargs):
+        championship = self.get_object()
+        # Get swimmers who have results ONLY in this championship
+        from swimmers.models import Swimmer
+        from django.db.models import Count, Q
+        swimmer_ids = list(
+            championship.results.values_list('swimmer_id', flat=True).distinct()
+        )
+        # Delete the championship (cascades to results, medals, calendar_events, imports)
+        response = super().destroy(request, *args, **kwargs)
+        # Clean up orphan swimmers (no results left in any championship)
+        if swimmer_ids:
+            orphans = Swimmer.objects.filter(
+                id__in=swimmer_ids
+            ).annotate(
+                result_count=Count('results')
+            ).filter(result_count=0)
+            orphan_count = orphans.count()
+            orphans.delete()
+        return response
+
     @action(detail=True, methods=['post'], url_path='upload-pdf')
     def upload_pdf(self, request, pk=None):
         championship = self.get_object()

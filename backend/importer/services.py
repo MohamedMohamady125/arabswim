@@ -363,13 +363,15 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             parsed_name = result_data['swimmer_name']
             name_upper = parsed_name.upper()
 
+            relay_gender = result_data.get('gender', '') or event_data.get('gender', 'M') or 'M'
+            relay_key = f"{name_upper}_{relay_gender}"
+
             if is_relay or result_data.get('is_relay', False):
-                # Relay: create a placeholder swimmer for the team name
-                if name_upper not in swimmer_map:
-                    # Try to find existing placeholder
-                    existing_placeholder = Swimmer.objects.filter(name__iexact=parsed_name).first()
+                if relay_key not in swimmer_map:
+                    # Try to find existing placeholder with matching sex
+                    existing_placeholder = Swimmer.objects.filter(name__iexact=parsed_name, sex=relay_gender).first()
                     if existing_placeholder:
-                        swimmer_map[name_upper] = existing_placeholder
+                        swimmer_map[relay_key] = existing_placeholder
                     else:
                         # Resolve nationality for the team
                         nationality = None
@@ -381,12 +383,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         if not nationality:
                             nationality = Country.objects.first()
 
-                        swimmer_map[name_upper] = Swimmer.objects.create(
+                        swimmer_map[relay_key] = Swimmer.objects.create(
                             name=parsed_name,
                             date_of_birth=None,
                             birth_year=None,
                             nationality=nationality,
-                            sex=result_data.get('gender', 'M') or 'M',
+                            sex=relay_gender,
                             club=parsed_name,
                         )
                         created_swimmers += 1
@@ -423,7 +425,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             swimmer_map[name_upper] = _create_swimmer(result_data, meet_country)
                             created_swimmers += 1
 
-            swimmer = swimmer_map.get(name_upper)
+            lookup_key = relay_key if (is_relay or result_data.get('is_relay', False)) else name_upper
+            swimmer = swimmer_map.get(lookup_key)
             if not swimmer:
                 skipped_results += 1
                 skipped_details.append({

@@ -58,12 +58,12 @@ export default function CalendarPage() {
     getCalendarEvents({ month, year: calYear }).then(res => {
       const data = res.data.results || res.data
       setCalendarEvents(data)
-      setSummary(prev => ({ ...prev, total_events: data.length }).catch(() => {}))
-    })
+      setSummary(prev => ({ ...prev, total_events: data.length }))
+    }).catch(() => {})
     getSwimmerBirthdays(month).then(res => {
       setBirthdays(res.data)
-      setSummary(prev => ({ ...prev, birthdays_count: res.data.length }).catch(() => {}))
-    })
+      setSummary(prev => ({ ...prev, birthdays_count: res.data.length }))
+    }).catch(() => {})
   }, [month, calYear, showAddEvent])
 
   const daysInMonth = currentDate.daysInMonth()

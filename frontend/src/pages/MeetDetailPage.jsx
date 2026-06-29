@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getChampionship, getChampionshipResults, getChampionshipStats } from '../api/championships'
 import CountryFlag from '../components/common/CountryFlag'
@@ -11,6 +11,7 @@ export default function MeetDetailPage() {
   const [results, setResults] = useState([])
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [loadingResults, setLoadingResults] = useState(false)
+  const [expandedRelay, setExpandedRelay] = useState(null)
 
   useEffect(() => {
     getChampionship(id).then(res => setMeet(res.data)).catch(() => {})
@@ -231,31 +232,55 @@ export default function MeetDetailPage() {
                     <tbody className="divide-y">
                       {results.map((r, i) => {
                         const isBest = i === 0
+                        const isRelay = selectedEvent?.event_name?.toLowerCase().includes('relay')
+                        const isExpanded = expandedRelay === r.id
+                        const swimmers = r.relay_swimmers || []
                         return (
-                          <tr
-                            key={r.id}
-                            className={`hover:bg-gray-50 cursor-pointer ${isBest ? 'bg-amber-50' : ''}`}
-                            onClick={() => navigate(`/swimmers/${r.swimmer_detail?.id || r.swimmer}`)}
-                          >
-                            <td className="px-4 py-2 text-sm">
-                              {i === 0 && <span className="text-amber-500 font-bold">🥇</span>}
-                              {i === 1 && <span className="text-gray-400 font-bold">🥈</span>}
-                              {i === 2 && <span className="text-orange-400 font-bold">🥉</span>}
-                              {i > 2 && <span className="text-gray-500">{i + 1}</span>}
-                            </td>
-                            <td className="px-4 py-2 text-sm font-medium">{r.swimmer_detail?.name}</td>
-                            <td className="px-4 py-2 text-sm">
-                              <CountryFlag
-                                code={r.swimmer_detail?.nationality_detail?.code}
-                                flagUrl={r.swimmer_detail?.nationality_detail?.flag_url}
-                                name={r.swimmer_detail?.nationality_detail?.name}
-                              />
-                            </td>
-                            <td className="px-4 py-2 text-sm text-gray-500">{r.team || '-'}</td>
-                            <td className="px-4 py-2 text-sm font-mono font-semibold">{r.formatted_time}</td>
-                            <td className="px-4 py-2 text-sm">{r.fina_points || '-'}</td>
-                            <td className="px-4 py-2 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
-                          </tr>
+                          <React.Fragment key={r.id}>
+                            <tr
+                              className={`hover:bg-gray-50 cursor-pointer ${isBest ? 'bg-amber-50' : ''}`}
+                              onClick={() => {
+                                if (isRelay && swimmers.length > 0) {
+                                  setExpandedRelay(isExpanded ? null : r.id)
+                                } else {
+                                  navigate(`/swimmers/${r.swimmer_detail?.id || r.swimmer}`)
+                                }
+                              }}
+                            >
+                              <td className="px-4 py-2 text-sm">
+                                {i === 0 && <span className="text-amber-500 font-bold">🥇</span>}
+                                {i === 1 && <span className="text-gray-400 font-bold">🥈</span>}
+                                {i === 2 && <span className="text-orange-400 font-bold">🥉</span>}
+                                {i > 2 && <span className="text-gray-500">{i + 1}</span>}
+                              </td>
+                              <td className="px-4 py-2 text-sm font-medium">
+                                {r.swimmer_detail?.name}
+                                {isRelay && swimmers.length > 0 && (
+                                  <span className="ml-2 text-xs text-gray-400">{isExpanded ? '▼' : '▶'} {swimmers.length} swimmers</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2 text-sm">
+                                <CountryFlag
+                                  code={r.swimmer_detail?.nationality_detail?.code}
+                                  flagUrl={r.swimmer_detail?.nationality_detail?.flag_url}
+                                  name={r.swimmer_detail?.nationality_detail?.name}
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-500">{r.team || '-'}</td>
+                              <td className="px-4 py-2 text-sm font-mono font-semibold">{r.formatted_time}</td>
+                              <td className="px-4 py-2 text-sm">{r.fina_points || '-'}</td>
+                              <td className="px-4 py-2 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
+                            </tr>
+                            {isRelay && isExpanded && swimmers.map((s, j) => (
+                              <tr key={`${r.id}-${j}`} className="bg-blue-50">
+                                <td className="px-4 py-1.5 text-sm text-gray-400 text-right">{j + 1}</td>
+                                <td className="px-4 py-1.5 text-sm pl-8">{s.name}</td>
+                                <td className="px-4 py-1.5 text-sm" colSpan={2}></td>
+                                <td className="px-4 py-1.5 text-sm font-mono text-gray-600">{s.split_time || '-'}</td>
+                                <td className="px-4 py-1.5 text-sm" colSpan={2}></td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
                         )
                       })}
                       {results.length === 0 && (

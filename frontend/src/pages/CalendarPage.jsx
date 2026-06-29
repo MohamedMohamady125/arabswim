@@ -3,30 +3,25 @@ import { useNavigate } from 'react-router-dom'
 import { getCalendarEvents, createCalendarEvent } from '../api/calendar'
 import { getChampionships } from '../api/championships'
 import { getCountries } from '../api/core'
-import { getSwimmerBirthdays } from '../api/swimmers'
 import { POOL_TYPES } from '../utils/constants'
+import CountryFlag from '../components/common/CountryFlag'
 import dayjs from 'dayjs'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
+dayjs.extend(customParseFormat)
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
 export default function CalendarPage() {
-  // Main view state
-  const [scope, setScope] = useState('') // '' = all, national, international
-  const [filterCountry, setFilterCountry] = useState('')
-  const [filterYear, setFilterYear] = useState('')
+  const navigate = useNavigate()
   const [championships, setChampionships] = useState([])
   const [countries, setCountries] = useState([])
+  const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()))
+  const [filterCountry, setFilterCountry] = useState('')
+  const [selectedMeet, setSelectedMeet] = useState(null)
 
-  const navigate = useNavigate()
-
-  // Add event modal
+  // Add event
   const [showAddEvent, setShowAddEvent] = useState(false)
-
-  // Calendar state (inside add event)
-  const [currentDate, setCurrentDate] = useState(dayjs())
-  const [calendarEvents, setCalendarEvents] = useState([])
-  const [birthdays, setBirthdays] = useState([])
-  const [summary, setSummary] = useState({ total_events: 0, birthdays_count: 0 })
-
-  // New event form
   const [newEvent, setNewEvent] = useState({
     title: '', date: '', end_date: '', event_type: 'CHAMPIONSHIP',
     description: '', location: '', pool: 'LCM',
@@ -39,256 +34,244 @@ export default function CalendarPage() {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
   }, [])
 
-  // Fetch championships based on filters
   useEffect(() => {
-    const params = { page_size: 200, ordering: '-date' }
+    const params = { page_size: 500, ordering: 'date' }
     if (filterYear) params.year = filterYear
     if (filterCountry) params.country = filterCountry
     getChampionships(params).then(res => {
       setChampionships(res.data.results || res.data)
     }).catch(() => {})
-  }, [filterYear, filterCountry, scope])
+  }, [filterYear, filterCountry])
 
-  // Calendar data (when add event is open)
-  const month = currentDate.month() + 1
-  const calYear = currentDate.year()
-
-  useEffect(() => {
-    if (!showAddEvent) return
-    getCalendarEvents({ month, year: calYear }).then(res => {
-      const data = res.data.results || res.data
-      setCalendarEvents(data)
-      setSummary(prev => ({ ...prev, total_events: data.length }))
-    }).catch(() => {})
-    getSwimmerBirthdays(month).then(res => {
-      setBirthdays(res.data)
-      setSummary(prev => ({ ...prev, birthdays_count: res.data.length }))
-    }).catch(() => {})
-  }, [month, calYear, showAddEvent])
-
-  const daysInMonth = currentDate.daysInMonth()
-  const firstDayOfWeek = currentDate.startOf('month').day()
-  const days = []
-  for (let i = 0; i < firstDayOfWeek; i++) days.push(null)
-  for (let i = 1; i <= daysInMonth; i++) days.push(i)
-
-  const getEventsForDay = (day) => calendarEvents.filter(e => dayjs(e.date).date() === day)
-  const getBirthdaysForDay = (day) => birthdays.filter(b => b.day === day)
+  // Group championships by month
+  const grouped = {}
+  championships.forEach(c => {
+    const d = dayjs(c.date, 'DD/MM/YYYY')
+    const key = `${d.year()}-${String(d.month() + 1).padStart(2, '0')}`
+    if (!grouped[key]) grouped[key] = { year: d.year(), month: d.month(), events: [] }
+    grouped[key].events.push(c)
+  })
 
   const handleAddEvent = async (e) => {
     e.preventDefault()
     await createCalendarEvent(newEvent)
     setNewEvent({ title: '', date: '', end_date: '', event_type: 'CHAMPIONSHIP', description: '', location: '', pool: 'LCM' })
     setShowAddEvent(false)
-    // Refresh
-    getCalendarEvents({ month, year: calYear }).then(res => setCalendarEvents(res.data.results || res.data)).catch(() => {})
   }
 
-  // Main view
-  if (!showAddEvent) {
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Championships</h1>
-          <button
-            onClick={() => setShowAddEvent(true)}
-            className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-blue-700"
-          >
-            + Add Event
-          </button>
+  return (
+    <div>
+      {/* Hero Banner */}
+      <div className="relative rounded-xl overflow-hidden mb-8 bg-gradient-to-br from-slate-800 to-cyan-900 text-white">
+        <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")'}} />
+        <div className="relative px-8 py-10">
+          <h1 className="text-3xl font-bold mb-2">Competition Calendar</h1>
+          <p className="text-slate-300 text-lg">Dates, status, and official results &mdash; the full competition schedule in one place.</p>
         </div>
+        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent rounded-b-xl" />
+      </div>
 
-        {/* Scope tabs */}
-        <div className="flex gap-2 mb-4">
-          {['', 'national', 'international'].map(s => (
-            <button
-              key={s}
-              onClick={() => { setScope(s); if (s !== 'national') setFilterCountry('') }}
-              className={`px-5 py-2 rounded-lg text-sm font-medium border-2 ${
-                scope === s ? 'bg-sky-500 text-white border-sky-500' : 'border-sky-500 text-sky-500 bg-white'
-              }`}
-            >
-              {s === '' ? 'All' : s === 'national' ? 'National' : 'International'}
-            </button>
-          ))}
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-3 mb-6">
-          {scope === 'national' && (
-            <select
-              value={filterCountry}
-              onChange={(e) => setFilterCountry(e.target.value)}
-              className="border-2 border-sky-500 rounded-lg px-4 py-2 text-sm bg-white"
-            >
-              <option value="">Country</option>
-              {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          )}
-          <select
-            value={filterYear}
-            onChange={(e) => setFilterYear(e.target.value)}
-            className="border-2 border-sky-500 rounded-lg px-4 py-2 text-sm bg-white"
-          >
+      {/* Filters */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex gap-3">
+          <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}
+            className="border-2 border-cyan-500 rounded-lg px-4 py-2 text-sm bg-white font-medium">
             <option value="">All Years</option>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+          <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)}
+            className="border-2 border-cyan-500 rounded-lg px-4 py-2 text-sm bg-white">
+            <option value="">All Countries</option>
+            {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
         </div>
-
-        {/* Championships list */}
-        <div className="space-y-3">
-          {championships.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              No championships found for the selected filters
-            </div>
-          )}
-          {championships.map((c) => (
-            <div
-              key={c.id}
-              onClick={() => navigate(`/meets/${c.id}`)}
-              className="bg-sky-500 text-white rounded-lg px-6 py-4 text-center text-lg font-semibold cursor-pointer hover:bg-sky-600 transition-colors"
-            >
-              {c.name}
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  // Add Event view (calendar + form)
-  return (
-    <div>
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => setShowAddEvent(false)} className="text-gray-500 hover:text-gray-700">← Back</button>
-        <h1 className="text-2xl font-bold">Add Event</h1>
+        <button onClick={() => setShowAddEvent(true)}
+          className="bg-cyan-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-cyan-700 font-medium">
+          + Add Event
+        </button>
       </div>
 
-      <div className="flex gap-6">
-        {/* Calendar */}
-        <div className="flex-1">
-          <div className="flex items-center gap-4 mb-4">
-            <button onClick={() => setCurrentDate(currentDate.subtract(1, 'month'))} className="px-3 py-1 border rounded">← Prev</button>
-            <button onClick={() => setCurrentDate(dayjs())} className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm">Today</button>
-            <h2 className="text-lg font-semibold">{currentDate.format('MMMM YYYY')}</h2>
-            <button onClick={() => setCurrentDate(currentDate.add(1, 'month'))} className="px-3 py-1 border rounded">Next →</button>
+      {/* Events grouped by month */}
+      {Object.keys(grouped).length === 0 && (
+        <div className="text-center py-16 text-gray-400">
+          <div className="text-5xl mb-3">&#x1F4C5;</div>
+          <p>No competitions found for the selected filters</p>
+        </div>
+      )}
+
+      {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([key, group]) => (
+        <div key={key} className="mb-8">
+          {/* Month header */}
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
+              {MONTHS[group.month]} {group.year}
+            </h2>
+            <div className="flex-1 h-px bg-cyan-200" />
           </div>
-          <div className="bg-white rounded-lg border">
-            <div className="grid grid-cols-7 border-b">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                <div key={d} className="px-2 py-2 text-center text-xs font-medium text-gray-500">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7">
-              {days.map((day, i) => (
-                <div
-                  key={i}
-                  className={`min-h-[80px] border-b border-r p-1 cursor-pointer hover:bg-gray-50 ${
-                    day === dayjs().date() && month === dayjs().month() + 1 && calYear === dayjs().year() ? 'bg-blue-50' : ''
-                  }`}
-                  onClick={() => day && setNewEvent(prev => ({ ...prev, date: `${calYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` }))}
-                >
-                  {day && (
-                    <>
-                      <div className="text-sm font-medium text-gray-700">{day}</div>
-                      {getBirthdaysForDay(day).map(b => (
-                        <div key={b.id} className="text-[10px] bg-pink-100 text-pink-700 rounded px-1 mb-0.5 truncate">{b.name} 🎂{b.age}</div>
-                      ))}
-                      {getEventsForDay(day).map(e => (
-                        <div key={e.id} className="text-[10px] bg-blue-100 text-blue-700 rounded px-1 mb-0.5 truncate">{e.title}</div>
-                      ))}
-                    </>
+
+          {/* Meet cards */}
+          <div className="space-y-3">
+            {group.events.map(c => {
+              const d = dayjs(c.date, 'DD/MM/YYYY')
+              const isSelected = selectedMeet?.id === c.id
+
+              return (
+                <div key={c.id}>
+                  <div
+                    onClick={() => setSelectedMeet(isSelected ? null : c)}
+                    className={`bg-white border rounded-xl px-5 py-4 flex items-center gap-5 cursor-pointer transition-all hover:shadow-md ${
+                      isSelected ? 'border-cyan-500 shadow-md' : 'border-gray-200'
+                    }`}
+                  >
+                    {/* Date badge */}
+                    <div className="w-16 h-16 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
+                      <span className="text-2xl font-bold leading-none">{d.date()}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider">{MONTH_SHORT[d.month()]}</span>
+                    </div>
+
+                    {/* Meet info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 truncate">{c.name}</h3>
+                      <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                        {c.location && (
+                          <span className="flex items-center gap-1">
+                            <span className="text-gray-400">&#x1F4CD;</span>
+                            {c.location}
+                            {c.country_detail && <span>, {c.country_detail.name}</span>}
+                          </span>
+                        )}
+                        {!c.location && c.country_detail && (
+                          <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                        <span>{c.pool === 'LCM' ? '50m Pool' : '25m Pool'}</span>
+                        {c.end_date && c.end_date !== c.date && (
+                          <span>&mdash; {c.date} to {c.end_date}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stats badges */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      {c.results_count > 0 && (
+                        <span className="bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                          {c.results_count} results
+                        </span>
+                      )}
+                      {c.swimmers_count > 0 && (
+                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs font-medium">
+                          {c.swimmers_count} swimmers
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Arrow */}
+                    <span className={`text-gray-400 transition-transform ${isSelected ? 'rotate-90' : ''}`}>&#x276F;</span>
+                  </div>
+
+                  {/* Expanded meet details */}
+                  {isSelected && (
+                    <div className="bg-gray-50 border border-t-0 border-gray-200 rounded-b-xl px-6 py-4 -mt-1">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Date</div>
+                          <div className="text-sm font-medium">{c.date}{c.end_date && c.end_date !== c.date ? ` to ${c.end_date}` : ''}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Pool</div>
+                          <div className="text-sm font-medium">{c.pool === 'LCM' ? 'Long Course (50m)' : 'Short Course (25m)'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Country</div>
+                          <div className="text-sm font-medium">
+                            {c.country_detail && <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Location</div>
+                          <div className="text-sm font-medium">{c.location || '-'}</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        {c.results_count > 0 && (
+                          <button onClick={() => navigate(`/meets/${c.id}`)}
+                            className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700">
+                            View Results
+                          </button>
+                        )}
+                        <button onClick={() => navigate(`/championships/${c.id}/edit`)}
+                          className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100">
+                          Edit Meet
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Month Summary */}
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">{summary.total_events}</div>
-              <div className="text-xs text-gray-500">Events This Month</div>
-            </div>
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-2xl font-bold text-pink-600">{summary.birthdays_count}</div>
-              <div className="text-xs text-gray-500">Birthdays This Month</div>
-            </div>
+              )
+            })}
           </div>
         </div>
+      ))}
 
-        {/* Event Form + Birthdays */}
-        <div className="w-80">
-          <form onSubmit={handleAddEvent} className="bg-white rounded-lg border p-5 mb-4 space-y-4">
-            <h3 className="font-semibold text-lg">Event Details</h3>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Title *</label>
-              <input type="text" value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })} placeholder="e.g. 4th Arab Aquatics Championships" className="w-full border rounded-lg px-3 py-2 text-sm" required />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <select value={newEvent.event_type} onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm">
-                <option value="CHAMPIONSHIP">Championship</option>
-                <option value="MEET">Meet</option>
-                <option value="CUSTOM">Custom</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
+      {/* Add Event Modal */}
+      {showAddEvent && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowAddEvent(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-4">Add Calendar Event</h2>
+            <form onSubmit={handleAddEvent} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Start Date *</label>
-                <input type="date" value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm" required />
+                <label className="block text-sm font-medium mb-1">Title *</label>
+                <input type="text" value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" required />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">End Date</label>
-                <input type="date" value={newEvent.end_date} onChange={(e) => setNewEvent({ ...newEvent, end_date: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-sm font-medium mb-1">Type</label>
+                <select value={newEvent.event_type} onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm">
+                  <option value="CHAMPIONSHIP">Championship</option>
+                  <option value="MEET">Meet</option>
+                  <option value="CUSTOM">Custom</option>
+                </select>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Location</label>
-              <input type="text" value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })} placeholder="City / Country" className="w-full border rounded-lg px-3 py-2 text-sm" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Pool</label>
-              <select value={newEvent.pool} onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm">
-                {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
-              <textarea value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })} placeholder="Notes about the event..." className="w-full border rounded-lg px-3 py-2 text-sm" rows={3} />
-            </div>
-
-            <button type="submit" disabled={!newEvent.title || !newEvent.date} className="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
-              Save Event
-            </button>
-          </form>
-
-          {/* Birthdays */}
-          <div className="bg-white rounded-lg border p-4">
-            <h3 className="font-semibold mb-3">Birthdays This Month</h3>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {birthdays.map(b => (
-                <div key={b.id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs shrink-0">
-                    {b.photo ? <img src={b.photo} alt="" className="w-full h-full rounded-full object-cover" /> : '👤'}
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">{b.name}</div>
-                    <div className="text-xs text-gray-500">{currentDate.format('MMM')} {b.day} - Turns {b.age}</div>
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Start Date *</label>
+                  <input type="date" value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm" required />
                 </div>
-              ))}
-              {birthdays.length === 0 && <p className="text-sm text-gray-400">No birthdays this month</p>}
-            </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">End Date</label>
+                  <input type="date" value={newEvent.end_date} onChange={(e) => setNewEvent({ ...newEvent, end_date: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Location</label>
+                <input type="text" value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="City / Country" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Pool</label>
+                <select value={newEvent.pool} onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm">
+                  {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <textarea value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" rows={2} />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowAddEvent(false)} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
+                <button type="submit" disabled={!newEvent.title || !newEvent.date}
+                  className="flex-1 bg-cyan-600 text-white rounded-lg py-2 text-sm hover:bg-cyan-700 disabled:opacity-50">Save</button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

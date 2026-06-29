@@ -193,9 +193,89 @@ def parse(html_content):
                     current_event.round_type = 'Finals'
 
         elif element.name == 'table' and current_event:
-            _parse_result_table(element, current_event)
+            is_relay = 'relay' in current_event.event_name.lower() or '4x' in current_event.event_name.lower()
+            if is_relay:
+                _parse_relay_table(element, current_event)
+            else:
+                _parse_result_table(element, current_event)
 
     return meet
+
+
+def _parse_relay_table(table, event):
+    """Parse a Nat2i relay result table.
+    Relay format: 4 rows per team.
+    - Rows 1-3: swimmer name + nation + birth year (no club, no time)
+    - Row 4: last swimmer + club (=team name) + time + points + splits
+    The rank is on row 1 only.
+    """
+    rows = table.find_all('tr')
+    current_rank = 0
+    current_swimmers = []
+
+    for row in rows:
+        cells = row.find_all('td')
+        if len(cells) < 6:
+            continue
+
+        cell_texts = [c.get_text(strip=True).replace('\xa0', ' ').strip() for c in cells]
+
+        if 'Place' in cell_texts[0] or 'Nom' in cell_texts[1]:
+            continue
+
+        place_text = cell_texts[0].strip().rstrip('.')
+        name_text = cell_texts[1]
+        club = cell_texts[4] if len(cells) > 4 else ''
+        time_text = cell_texts[5] if len(cells) > 5 else ''
+        points_text = cell_texts[6] if len(cells) > 6 else '0'
+        split_text = cell_texts[7] if len(cells) > 7 else ''
+
+        if not name_text or not name_text.strip():
+            continue
+
+        name = _nat2i_normalize_name(name_text)
+
+        # Row with a rank = start of new team
+        if place_text.isdigit():
+            current_rank = int(place_text)
+            current_swimmers = [name]
+        elif place_text in ('N.C', 'NC'):
+            current_rank = 0
+            current_swimmers = [name]
+        else:
+            # Continuation row (no rank)
+            current_swimmers.append(name)
+
+        # Row with a time = last swimmer of the team, create the result
+        time_cs = parse_time_to_centiseconds(time_text)
+        if time_cs > 0 and club:
+            fina_points = int(points_text) if points_text.isdigit() else 0
+
+            splits = []
+            if split_text:
+                split_matches = re.findall(
+                    r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*\((\d+)\s*m\)',
+                    split_text
+                )
+                if split_matches:
+                    splits = [f'{time} ({dist}m)' for time, dist in split_matches]
+
+            result = ParsedResult(
+                swimmer_name=club,  # Team name = club
+                time_text=time_text,
+                time_centiseconds=time_cs,
+                event_name=event.event_name,
+                event_distance=event.distance,
+                event_stroke=event.stroke,
+                gender=event.gender,
+                rank=current_rank,
+                club=club,
+                fina_points=fina_points,
+                split_times=current_swimmers,  # Store swimmer names as splits
+                round_type=event.round_type,
+            )
+            event.results.append(result)
+            current_swimmers = []
 
 
 def _parse_result_table(table, event):

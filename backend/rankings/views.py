@@ -29,7 +29,7 @@ class RankingView(APIView):
             })
 
         qs = Result.objects.select_related(
-            'swimmer', 'swimmer__nationality', 'championship', 'event'
+            'swimmer', 'swimmer__nationality', 'championship', 'championship__country', 'event'
         ).filter(event_id=event)
 
         # Filter by scope
@@ -99,8 +99,11 @@ class RankingView(APIView):
                 'time_centiseconds': result.time_centiseconds,
                 'championship_name': result.championship.name,
                 'championship_location': result.championship.location,
+                'championship_country': result.championship.country.name if result.championship.country else '',
+                'championship_country_code': result.championship.country.code if result.championship.country else '',
+                'championship_country_flag': result.championship.country.flag_url if result.championship.country else '',
                 'fina_points': result.fina_points,
-                'date': result.championship.date,
+                'date': result.championship.date.strftime('%d/%m/%Y'),
             })
 
         if page:

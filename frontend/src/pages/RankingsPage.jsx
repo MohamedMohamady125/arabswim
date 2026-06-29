@@ -118,7 +118,7 @@ export default function RankingsPage() {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Swimmer Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Championship Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Championship Location</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fina Point</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
             </tr>
@@ -131,7 +131,7 @@ export default function RankingsPage() {
                 <td className="px-4 py-3 text-sm font-medium">{r.swimmer_name}</td>
                 <td className="px-4 py-3 text-sm font-mono">{r.time}</td>
                 <td className="px-4 py-3 text-sm">{r.championship_name}</td>
-                <td className="px-4 py-3 text-sm">{r.championship_location}</td>
+                <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} name={r.championship_country} /></td>
                 <td className="px-4 py-3 text-sm">{r.fina_points || '-'}</td>
                 <td className="px-4 py-3 text-sm">{r.date}</td>
               </tr>

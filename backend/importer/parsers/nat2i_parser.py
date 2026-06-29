@@ -22,9 +22,9 @@ EVENT_TITLE = re.compile(
     re.IGNORECASE
 )
 
-# Relay event: "4x100 m NAGE LIBRE Dames"
+# Relay event: "4x100 m NAGE LIBRE Dames" or "4x50 m NAGE LIBRE Mixte"
 RELAY_TITLE = re.compile(
-    r'(\d+)\s*x\s*(\d+)\s*m\s+(.+?)\s+(Dames|Messieurs)',
+    r'(\d+)\s*x\s*(\d+)\s*m\s+(.+?)\s+(Dames|Messieurs|Mixte|Filles|Garçons|Garcons)',
     re.IGNORECASE
 )
 
@@ -154,8 +154,16 @@ def parse(html_content):
                 leg_dist = int(relay_match.group(2))
                 distance = teams * leg_dist
                 stroke = normalize_stroke(relay_match.group(3))
-                gender = detect_gender(relay_match.group(4))
+                gender_word = relay_match.group(4).lower()
+                if gender_word == 'mixte':
+                    gender = 'X'
+                else:
+                    gender = detect_gender(relay_match.group(4))
                 event_name = normalize_event_name(distance, stroke, is_relay=True)
+                # Include gender in relay event name to differentiate
+                gender_label = {'M': 'Men', 'F': 'Women', 'X': 'Mixed'}.get(gender, '')
+                if gender_label:
+                    event_name = f'{event_name} {gender_label}'
                 current_event = ParsedEvent(
                     event_name=event_name, distance=distance,
                     stroke=stroke, gender=gender,

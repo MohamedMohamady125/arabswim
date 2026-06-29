@@ -313,7 +313,11 @@ def normalize_event_name(distance, stroke, is_relay=False):
     if is_relay:
         legs = 4
         leg_dist = distance // legs if distance >= 200 else distance
-        return f'4x{leg_dist} M {stroke} Relay'
+        # For relays, use "Medley Relay" not "Individual Medley Relay"
+        relay_stroke = stroke
+        if stroke == 'Individual Medley':
+            relay_stroke = 'Medley'
+        return f'4x{leg_dist} M {relay_stroke} Relay'
     return f'{distance} M {stroke}'
 
 

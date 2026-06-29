@@ -124,9 +124,12 @@ export default function RankingsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {rankings.map((r, i) => (
+            {rankings.map((r, i) => {
+              const prevTime = i > 0 ? rankings[i - 1].time_centiseconds : null
+              const isTied = prevTime !== null && r.time_centiseconds === prevTime
+              return (
               <tr key={i} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{r.rank}</td>
+                <td className="px-4 py-3 text-sm">{isTied ? '--' : r.rank}</td>
                 <td className="px-4 py-3 text-sm"><CountryFlag code={r.nationality_code} name={r.nationality} /></td>
                 <td className="px-4 py-3 text-sm font-medium">{r.swimmer_name}</td>
                 <td className="px-4 py-3 text-sm font-mono">{r.time}</td>
@@ -135,7 +138,8 @@ export default function RankingsPage() {
                 <td className="px-4 py-3 text-sm">{r.fina_points || '-'}</td>
                 <td className="px-4 py-3 text-sm">{r.date}</td>
               </tr>
-            ))}
+              )
+            })}
             {rankings.length === 0 && (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">No rankings found. Select filters to view rankings.</td></tr>
             )}

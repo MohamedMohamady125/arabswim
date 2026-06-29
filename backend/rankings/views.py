@@ -48,6 +48,7 @@ class RankingView(APIView):
             qs = qs.filter(championship__pool=pool)
 
         # Age group filter
+        # OPEN = best times regardless of age (no filter)
         if age_group and age_group != 'OPEN':
             try:
                 max_age = int(age_group.replace('U', ''))
@@ -56,8 +57,6 @@ class RankingView(APIView):
                 )
             except (ValueError, AttributeError):
                 pass
-        elif age_group == 'OPEN':
-            qs = qs.filter(age_at_competition__gte=18)
 
         # Get best time per swimmer using DB aggregation
         best_times = (

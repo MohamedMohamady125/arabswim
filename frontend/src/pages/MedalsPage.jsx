@@ -3,6 +3,7 @@ import { getMedals, getMedalSummary } from '../api/medals'
 import { getChampionships } from '../api/championships'
 import DataTable from '../components/common/DataTable'
 import CountryFlag from '../components/common/CountryFlag'
+import MedalIcon from '../components/common/MedalIcon'
 
 export default function MedalsPage() {
   const [summary, setSummary] = useState([])
@@ -23,9 +24,9 @@ export default function MedalsPage() {
 
   const summaryColumns = [
     { key: 'country', label: 'Country', render: (row) => <CountryFlag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} /> },
-    { key: 'gold', label: '🥇 Gold' },
-    { key: 'silver', label: '🥈 Silver' },
-    { key: 'bronze', label: '🥉 Bronze' },
+    { key: 'gold', label: <span className="flex items-center gap-1"><MedalIcon type="gold" size={18} /> Gold</span> },
+    { key: 'silver', label: <span className="flex items-center gap-1"><MedalIcon type="silver" size={18} /> Silver</span> },
+    { key: 'bronze', label: <span className="flex items-center gap-1"><MedalIcon type="bronze" size={18} /> Bronze</span> },
     { key: 'total', label: 'Total' },
   ]
 
@@ -33,7 +34,10 @@ export default function MedalsPage() {
     { key: 'swimmer', label: 'Swimmer', render: (row) => row.swimmer_detail?.name },
     { key: 'nationality', label: 'Nationality', render: (row) => <CountryFlag code={row.swimmer_detail?.nationality_detail?.code} flagUrl={row.swimmer_detail?.nationality_detail?.flag_url} name={row.swimmer_detail?.nationality_detail?.name} /> },
     { key: 'event', label: 'Event', render: (row) => row.event_detail?.name },
-    { key: 'medal_type', label: 'Medal', render: (row) => ({ GOLD: '🥇 Gold', SILVER: '🥈 Silver', BRONZE: '🥉 Bronze' }[row.medal_type]) },
+    { key: 'medal_type', label: 'Medal', render: (row) => {
+      const type = row.medal_type?.toLowerCase()
+      return <span className="flex items-center gap-1"><MedalIcon type={type} size={20} /> {row.medal_type}</span>
+    }},
     { key: 'championship', label: 'Championship', render: (row) => row.championship_detail?.name },
   ]
 

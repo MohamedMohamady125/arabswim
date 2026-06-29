@@ -454,13 +454,6 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 team = parsed_name  # For relay, team = the team name itself
             else:
                 team = result_data.get('club', '').strip()
-                if not team:
-                    nat_code = result_data.get('nationality_code', '')
-                    if nat_code:
-                        nat_country = resolve_country(nat_code)
-                        team = nat_country.name if nat_country else nat_code
-                    elif meet_country:
-                        team = meet_country.name
 
             # Update swimmer's club if they don't have one yet
             if team and not swimmer.club and not (is_relay or result_data.get('is_relay', False)):

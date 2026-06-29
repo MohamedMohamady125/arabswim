@@ -241,10 +241,21 @@ def parse(text):
         event_is_relay = 'relay' in current_event.event_name.lower() or '4x' in current_event.event_name.lower()
 
         if event_is_relay:
-            # Try to parse relay result line
-            relay_result = _parse_relay_result_line(stripped, current_event)
-            if relay_result:
-                current_event.results.append(relay_result)
+            # FRMN relay format: same as individual lines but grouped under relay event
+            # "1.Mohamed Zouhir MOUFADDAL MAR 2008 FUS 4:01.10 0 0" = team result (club=team)
+            # "Louay ELJABRI MAR 2010 FUS 0" = relay swimmer detail (no rank)
+            result = _parse_result_line(stripped, current_event)
+            if result and result.rank > 0:
+                # Use club as team name for relay
+                result.swimmer_name = result.club or result.swimmer_name
+                current_event.results.append(result)
+                continue
+            # Try to capture relay swimmer detail lines (no rank, for split info)
+            if current_event.results:
+                swimmer_detail = _parse_relay_swimmer_detail(stripped)
+                if swimmer_detail:
+                    last = current_event.results[-1]
+                    last.split_times.append(swimmer_detail)
                 continue
         else:
             # Try to parse individual result line
@@ -272,6 +283,21 @@ def parse(text):
             current_event.results.append(result)
 
     return meet
+
+
+def _parse_relay_swimmer_detail(line):
+    """Parse a relay swimmer detail line (no rank, no time).
+    Format: 'Louay ELJABRI MAR 2010 FUS 0'
+    Returns swimmer name string or None."""
+    # Must NOT start with a rank number followed by "."
+    if re.match(r'^\d+\.', line):
+        return None
+    # Should have a name followed by NAT YEAR CLUB pattern
+    m = re.match(r'^(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(\S+)', line)
+    if m:
+        name = _frmn_normalize_name(m.group(1))
+        return name
+    return None
 
 
 def _parse_relay_result_line(line, event):

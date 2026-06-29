@@ -5,6 +5,7 @@ Identified by: "F.R.M.N" in footer.
 
 Format:
   Event header: "1. 200 m 4 NAGES DAMES"
+  Relay header: "5. 4 x 100 m NAGE LIBRE DAMES"
   Columns: Rg Nom Nat Lic Club Tps Pts
   Result line: "1.Malak MEQDAR MAR 2007 RAJA NAT 2:25.94 664455"
   TLD prefix = time limit exceeded but valid
@@ -56,6 +57,12 @@ EVENT_HEADER = re.compile(
     re.IGNORECASE
 )
 
+# Relay header: "5. 4 x 100 m NAGE LIBRE DAMES" or "5. 4 x 50 m 4 NAGES MESSIEURS"
+RELAY_HEADER = re.compile(
+    r'^\d+\.\s+(\d+)\s*x\s*(\d+)\s*m\s+(.+?)\s+(DAMES|MESSIEURS|FILLES|GARCONS|MIXTE)\s*$',
+    re.IGNORECASE
+)
+
 # Result line variations:
 # "1.Malak MEQDAR MAR 2007 RAJA NAT 2:25.94 664455"
 # "TLD.Safa EL ABOUDI MAR 2011 USCM 2:41.18 447799"
@@ -70,14 +77,31 @@ RESULT_LINE = re.compile(
     r'(\d+)?'                    # points
 )
 
+# Relay result line: "1. CLUB NAME 3:39.22 839"
+RELAY_RESULT_LINE = re.compile(
+    r'^(\d+)\.\s*'                  # rank
+    r'(.+?)\s+'                     # team name
+    r'(\d{1,2}:\d{2}\.\d{2})\s*'   # time
+    r'(\d+)?'                       # points (optional)
+)
+
 # NC/DSQ line
 NC_LINE = re.compile(
     r'^NC\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(\S+(?:\s+\S+)?)\s+(Dsq|Frf)',
     re.IGNORECASE
 )
 
-# Category marker
-CATEGORY = re.compile(r'^(OPEN|MINIMES?|CADETS?|JUNIORS?|SENIORS?)\s*$', re.IGNORECASE)
+# Category marker — including BENJAMINS
+CATEGORY = re.compile(
+    r'^(OPEN|MINIMES?|CADETS?|JUNIORS?|SENIORS?|BENJAMINS?)\s*$',
+    re.IGNORECASE
+)
+
+# Also detect "SENIORS/JUNIORS" combined
+CATEGORY_COMBINED = re.compile(
+    r'^(SENIORS?\s*/\s*JUNIORS?)\s*$',
+    re.IGNORECASE
+)
 
 
 def detect_format(text):
@@ -95,7 +119,6 @@ def parse(text):
     # FRMN format first lines:
     # "10/05/2026 16:08:58"
     # "COUPE DU TRONE DE NATATION - 10/05/2026 - MARRAKECH - Petit bassin"
-    # Find the main title line (has the meet name, date, location, pool all in one)
     for line in lines[:5]:
         line = line.strip()
         if not line:
@@ -104,22 +127,17 @@ def parse(text):
         if re.match(r'^\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}', line):
             continue
         # This is the main title line
-        # Format: "COUPE DU TRONE DE NATATION - 10/05/2026 - MARRAKECH - Petit bassin"
         if 'coupe' in line.lower() or 'championnat' in line.lower() or 'natation' in line.lower():
-            # Split by " - " and classify each part
             parts = [p.strip() for p in re.split(r'\s*-\s*', line) if p.strip()]
 
             name_parts = []
             location_parts = []
             for part in parts:
                 part_lower = part.lower()
-                # Skip pool info
                 if 'petit bassin' in part_lower or 'grand bassin' in part_lower:
                     continue
-                # Skip date parts
                 if re.match(r'^\d{1,2}/\d{1,2}/\d{4}$', part.strip()):
                     continue
-                # City names (short, uppercase, no digits) = location
                 if part.isupper() and len(part) < 30 and not any(c.isdigit() for c in part) and not any(kw in part_lower for kw in ['coupe', 'championnat', 'natation', 'trone']):
                     location_parts.append(part)
                 else:
@@ -128,7 +146,6 @@ def parse(text):
             meet.meet_name = ' - '.join(name_parts) if name_parts else line
             meet.location = ', '.join(location_parts) if location_parts else ''
 
-            # Extract dates from the full line
             start_date, end_date, _ = extract_date_and_location(line)
             meet.date_text = start_date
             if end_date:
@@ -153,7 +170,41 @@ def parse(text):
                 meet.date_text = stripped.split()[0]
             continue
 
-        # Check for event header
+        # Check for relay event header FIRST (before individual)
+        relay_match = RELAY_HEADER.match(stripped)
+        if relay_match:
+            teams = int(relay_match.group(1))
+            leg_dist = int(relay_match.group(2))
+            distance = teams * leg_dist
+            stroke_raw = relay_match.group(3).strip()
+            gender_raw = relay_match.group(4)
+
+            stroke = normalize_stroke(stroke_raw)
+            gender_word = gender_raw.upper()
+            if gender_word == 'MIXTE':
+                gender = 'X'
+            elif gender_word in ('DAMES', 'FILLES'):
+                gender = 'F'
+            else:
+                gender = 'M'
+
+            event_name = normalize_event_name(distance, stroke, is_relay=True)
+            # Add gender label to differentiate relay events
+            gender_label = {'M': 'Men', 'F': 'Women', 'X': 'Mixed'}.get(gender, '')
+            if gender_label:
+                event_name = f'{event_name} {gender_label}'
+
+            current_event = ParsedEvent(
+                event_name=event_name,
+                distance=distance,
+                stroke=stroke,
+                gender=gender,
+                age_group=current_age_group,
+            )
+            meet.events.append(current_event)
+            continue
+
+        # Check for individual event header
         header_match = EVENT_HEADER.match(stripped)
         if header_match:
             distance = int(header_match.group(1))
@@ -175,8 +226,8 @@ def parse(text):
             meet.events.append(current_event)
             continue
 
-        # Check for category
-        cat_match = CATEGORY.match(stripped)
+        # Check for category (including combined "SENIORS/JUNIORS")
+        cat_match = CATEGORY.match(stripped) or CATEGORY_COMBINED.match(stripped)
         if cat_match:
             current_age_group = cat_match.group(1).upper()
             if current_event:
@@ -186,11 +237,21 @@ def parse(text):
         if not current_event:
             continue
 
-        # Try to parse result line
-        result = _parse_result_line(stripped, current_event)
-        if result:
-            current_event.results.append(result)
-            continue
+        # Check if current event is a relay
+        event_is_relay = 'relay' in current_event.event_name.lower() or '4x' in current_event.event_name.lower()
+
+        if event_is_relay:
+            # Try to parse relay result line
+            relay_result = _parse_relay_result_line(stripped, current_event)
+            if relay_result:
+                current_event.results.append(relay_result)
+                continue
+        else:
+            # Try to parse individual result line
+            result = _parse_result_line(stripped, current_event)
+            if result:
+                current_event.results.append(result)
+                continue
 
         # Check NC/DSQ
         nc_match = NC_LINE.match(stripped)
@@ -213,38 +274,71 @@ def parse(text):
     return meet
 
 
+def _parse_relay_result_line(line, event):
+    """Parse a FRMN relay result line."""
+    match = RELAY_RESULT_LINE.match(line)
+    if not match:
+        return None
+
+    rank = int(match.group(1))
+    team_name = match.group(2).strip()
+    time_text = match.group(3)
+    pts_raw = match.group(4) or '0'
+    pts = _fix_frmn_points(pts_raw)
+    time_cs = parse_time_to_centiseconds(time_text)
+
+    if time_cs <= 0:
+        return None
+
+    return ParsedResult(
+        swimmer_name=team_name,
+        time_text=time_text,
+        time_centiseconds=time_cs,
+        event_name=event.event_name,
+        event_distance=event.distance,
+        event_stroke=event.stroke,
+        gender=event.gender,
+        rank=rank,
+        club=team_name,
+        fina_points=pts,
+        age_group=event.age_group,
+    )
+
+
 def _parse_result_line(line, event):
-    """Parse a FRMN result line."""
+    """Parse a FRMN individual result line."""
+    # Check for TLD prefix first
+    tld_match = re.match(
+        r'^TLD\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(\S+(?:\s+\S+)?)\s+'
+        r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*(\d+)?',
+        line
+    )
+    if tld_match:
+        name = _frmn_normalize_name(tld_match.group(1))
+        time_text = tld_match.group(5)
+        time_cs = parse_time_to_centiseconds(time_text)
+        pts_raw = tld_match.group(6) or '0'
+        pts = _fix_frmn_points(pts_raw)
+
+        return ParsedResult(
+            swimmer_name=name,
+            time_text=time_text,
+            time_centiseconds=time_cs,
+            event_name=event.event_name,
+            event_distance=event.distance,
+            event_stroke=event.stroke,
+            gender=event.gender,
+            rank=0,
+            status='TLD',
+            nationality_code=tld_match.group(2),
+            birth_year=int(tld_match.group(3)),
+            club=tld_match.group(4),
+            fina_points=pts,
+            age_group=event.age_group,
+        )
+
     match = RESULT_LINE.match(line)
     if not match:
-        # Try TLD prefix
-        tld_match = re.match(
-            r'^TLD\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(\S+(?:\s+\S+)?)\s+'
-            r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*(\d+)?',
-            line
-        )
-        if tld_match:
-            name = _frmn_normalize_name(tld_match.group(1))
-            time_text = tld_match.group(5)
-            time_cs = parse_time_to_centiseconds(time_text)
-            # Points in FRMN are sometimes concatenated oddly, extract properly
-            pts_raw = tld_match.group(6) or '0'
-            pts = _fix_frmn_points(pts_raw)
-
-            return ParsedResult(
-                swimmer_name=name,
-                time_text=time_text,
-                time_centiseconds=time_cs,
-                event_name=event.event_name,
-                event_distance=event.distance,
-                event_stroke=event.stroke,
-                gender=event.gender,
-                rank=0,
-                nationality_code=tld_match.group(2),
-                birth_year=int(tld_match.group(3)),
-                club=tld_match.group(4),
-                fina_points=pts,
-            )
         return None
 
     rank = int(match.group(1)) if match.group(1) else 0

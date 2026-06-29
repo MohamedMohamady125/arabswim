@@ -105,7 +105,7 @@ def _build_preview(parsed_meet):
         }
 
         for r in event.results:
-            if r.status != 'OK' or r.time_centiseconds <= 0:
+            if r.status not in ('OK', 'TLD') or r.time_centiseconds <= 0:
                 continue
 
             # Use inferred country if no nationality on the result
@@ -199,10 +199,19 @@ def _build_preview(parsed_meet):
     }
 
 
+ARAB_COUNTRY_CODES = {
+    'ALG', 'BHR', 'COM', 'DJI', 'EGY', 'IRQ', 'JOR', 'KWT', 'LBN',
+    'LBY', 'MTN', 'MAR', 'OMA', 'PLE', 'QAT', 'KSA', 'SOM', 'SUD',
+    'SYR', 'TUN', 'UAE', 'YEM',
+}
+
+
 def match_swimmers_preview(preview_data):
     """
     Step 2: Match extracted swimmers against database.
     Returns enriched preview with match suggestions.
+    Only shows Arab nationality swimmers for matching — other swimmers'
+    results are kept but they don't need accounts created.
     """
     swimmers = preview_data.get('swimmers', [])
     matched = []
@@ -210,6 +219,10 @@ def match_swimmers_preview(preview_data):
     from .parsers.base import ParsedResult
 
     for s in swimmers:
+        # Skip non-Arab swimmers in matching (their results are still imported)
+        nat_code = s.get('nationality_code', '').upper()
+        if nat_code and nat_code not in ARAB_COUNTRY_CODES:
+            continue
         # Create a minimal ParsedResult for matching
         pr = ParsedResult(
             swimmer_name=s['name'],

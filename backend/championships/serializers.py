@@ -26,6 +26,8 @@ class ChampionshipListSerializer(serializers.ModelSerializer):
     country_detail = CountrySerializer(source='country', read_only=True)
     results_count = serializers.SerializerMethodField()
     swimmers_count = serializers.SerializerMethodField()
+    date = serializers.DateField(format='%d/%m/%Y')
+    end_date = serializers.DateField(format='%d/%m/%Y')
 
     class Meta:
         model = Championship

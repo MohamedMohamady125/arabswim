@@ -27,14 +27,15 @@ class Command(BaseCommand):
             {'name': '100 M Butterfly', 'distance': 100, 'stroke': 'Butterfly', 'is_relay': False, 'sort_order': 14},
             {'name': '200 M Butterfly', 'distance': 200, 'stroke': 'Butterfly', 'is_relay': False, 'sort_order': 15},
             # Individual Medley
-            {'name': '200 M Individual Medley', 'distance': 200, 'stroke': 'Individual Medley', 'is_relay': False, 'sort_order': 16},
-            {'name': '400 M Individual Medley', 'distance': 400, 'stroke': 'Individual Medley', 'is_relay': False, 'sort_order': 17},
+            {'name': '100 M Individual Medley', 'distance': 100, 'stroke': 'Individual Medley', 'is_relay': False, 'sort_order': 16},
+            {'name': '200 M Individual Medley', 'distance': 200, 'stroke': 'Individual Medley', 'is_relay': False, 'sort_order': 17},
+            {'name': '400 M Individual Medley', 'distance': 400, 'stroke': 'Individual Medley', 'is_relay': False, 'sort_order': 18},
             # Relays
-            {'name': '4x50 M Freestyle Relay', 'distance': 200, 'stroke': 'Freestyle Relay', 'is_relay': True, 'sort_order': 18},
-            {'name': '4x100 M Freestyle Relay', 'distance': 400, 'stroke': 'Freestyle Relay', 'is_relay': True, 'sort_order': 19},
-            {'name': '4x200 M Freestyle Relay', 'distance': 800, 'stroke': 'Freestyle Relay', 'is_relay': True, 'sort_order': 20},
-            {'name': '4x50 M Medley Relay', 'distance': 200, 'stroke': 'Medley Relay', 'is_relay': True, 'sort_order': 21},
-            {'name': '4x100 M Medley Relay', 'distance': 400, 'stroke': 'Medley Relay', 'is_relay': True, 'sort_order': 22},
+            {'name': '4x50 M Freestyle Relay', 'distance': 200, 'stroke': 'Freestyle Relay', 'is_relay': True, 'sort_order': 19},
+            {'name': '4x100 M Freestyle Relay', 'distance': 400, 'stroke': 'Freestyle Relay', 'is_relay': True, 'sort_order': 20},
+            {'name': '4x200 M Freestyle Relay', 'distance': 800, 'stroke': 'Freestyle Relay', 'is_relay': True, 'sort_order': 21},
+            {'name': '4x50 M Medley Relay', 'distance': 200, 'stroke': 'Medley Relay', 'is_relay': True, 'sort_order': 22},
+            {'name': '4x100 M Medley Relay', 'distance': 400, 'stroke': 'Medley Relay', 'is_relay': True, 'sort_order': 23},
         ]
         for e in events:
             Event.objects.update_or_create(

@@ -36,7 +36,7 @@ export default function CalendarPage() {
   for (let y = new Date().getFullYear() + 2; y >= 2000; y--) years.push(y)
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data))
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
   }, [])
 
   // Fetch championships based on filters
@@ -46,7 +46,7 @@ export default function CalendarPage() {
     if (filterCountry) params.country = filterCountry
     getChampionships(params).then(res => {
       setChampionships(res.data.results || res.data)
-    })
+    }).catch(() => {})
   }, [filterYear, filterCountry, scope])
 
   // Calendar data (when add event is open)
@@ -58,11 +58,11 @@ export default function CalendarPage() {
     getCalendarEvents({ month, year: calYear }).then(res => {
       const data = res.data.results || res.data
       setCalendarEvents(data)
-      setSummary(prev => ({ ...prev, total_events: data.length }))
+      setSummary(prev => ({ ...prev, total_events: data.length }).catch(() => {}))
     })
     getSwimmerBirthdays(month).then(res => {
       setBirthdays(res.data)
-      setSummary(prev => ({ ...prev, birthdays_count: res.data.length }))
+      setSummary(prev => ({ ...prev, birthdays_count: res.data.length }).catch(() => {}))
     })
   }, [month, calYear, showAddEvent])
 
@@ -81,7 +81,7 @@ export default function CalendarPage() {
     setNewEvent({ title: '', date: '', end_date: '', event_type: 'CHAMPIONSHIP', description: '', location: '', pool: 'LCM' })
     setShowAddEvent(false)
     // Refresh
-    getCalendarEvents({ month, year: calYear }).then(res => setCalendarEvents(res.data.results || res.data))
+    getCalendarEvents({ month, year: calYear }).then(res => setCalendarEvents(res.data.results || res.data)).catch(() => {})
   }
 
   // Main view

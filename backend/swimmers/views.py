@@ -42,6 +42,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         if not month:
             return Response({'error': 'month parameter required'}, status=400)
         swimmers = Swimmer.objects.filter(
+            date_of_birth__isnull=False,
             date_of_birth__month=int(month)
         ).select_related('nationality')
         data = []

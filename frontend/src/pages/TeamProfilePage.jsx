@@ -35,10 +35,10 @@ export default function TeamProfilePage() {
 
   useEffect(() => {
     if (activeTab === 'times' && !timesLoaded) {
-      getTeamTimes(id).then(res => { setTimes(res.data); setTimesLoaded(true) })
+      getTeamTimes(id).then(res => { setTimes(res.data); setTimesLoaded(true) }).catch(() => {})
     }
     if (activeTab === 'medals' && !medalsLoaded) {
-      getTeamMedals(id).then(res => { setMedals(res.data); setMedalsLoaded(true) })
+      getTeamMedals(id).then(res => { setMedals(res.data); setMedalsLoaded(true) }).catch(() => {})
     }
   }, [activeTab, id])
 

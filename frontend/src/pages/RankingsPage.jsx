@@ -16,13 +16,13 @@ export default function RankingsPage() {
   })
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data))
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
     getEvents().then(res => {
       setEvents(res.data)
       // Auto-select first non-relay event
       if (res.data.length && !filters.event) {
         const first = res.data.find(e => !e.is_relay) || res.data[0]
-        setFilters(prev => ({ ...prev, event: first.id.toString() }))
+        setFilters(prev => ({ ...prev, event: first.id.toString() }).catch(() => {}))
       }
     })
   }, [])
@@ -37,7 +37,7 @@ export default function RankingsPage() {
     getRankings(params).then(res => {
       setRankings(res.data.results || res.data)
       if (res.data.count !== undefined) {
-        setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous })
+        setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous }).catch(() => {})
       }
     })
   }, [page, filters])

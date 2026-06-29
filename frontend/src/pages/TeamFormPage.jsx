@@ -19,7 +19,7 @@ export default function TeamFormPage() {
   const [trophies, setTrophies] = useState([])
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data))
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
     if (isEdit) {
       getTeam(id).then(res => {
         const t = res.data
@@ -28,7 +28,7 @@ export default function TeamFormPage() {
           founded_year: t.founded_year?.toString() || '', website: t.website || '',
           address: t.address || '', email: t.email || '', phone: t.phone || '',
           is_national_team: t.is_national_team || false,
-        })
+        }).catch(() => {})
         setTrophies(t.trophies || [])
       })
     }

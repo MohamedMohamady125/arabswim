@@ -13,8 +13,8 @@ export default function SwimmerProfilePage() {
   const [loadingHistory, setLoadingHistory] = useState(false)
 
   useEffect(() => {
-    getSwimmer(id).then(res => setSwimmer(res.data))
-    getSwimmerEvents(id).then(res => setEvents(res.data))
+    getSwimmer(id).then(res => setSwimmer(res.data)).catch(() => {})
+    getSwimmerEvents(id).then(res => setEvents(res.data)).catch(() => {})
   }, [id])
 
   const handleEventClick = async (event) => {

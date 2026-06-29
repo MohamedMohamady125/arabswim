@@ -171,10 +171,12 @@ def parse(text):
 
         # Skip known non-data lines
         if _should_skip(stripped):
-            # But check for round type
-            for rtype, pattern in ROUND_KEYWORDS.items():
-                if pattern.search(stripped):
-                    current_round = rtype
+            # Check for round type ONLY on standalone round markers
+            # NOT on column headers like "Name Age Team Finals Time"
+            if not re.search(r'Name\s+Ag', stripped, re.IGNORECASE):
+                for rtype, pattern in ROUND_KEYWORDS.items():
+                    if pattern.search(stripped):
+                        current_round = rtype
             continue
 
         # Check for relay event header

@@ -93,13 +93,16 @@ export default function SwimmerProfilePage() {
             )}
             {events.map((e) => (
               <button
-                key={e.event_id}
+                key={`${e.event_id}-${e.is_relay ? 'relay' : 'ind'}`}
                 onClick={() => handleEventClick(e)}
                 className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
                   selectedEvent?.event_id === e.event_id ? 'bg-blue-50 border-l-4 border-blue-600' : ''
                 }`}
               >
-                <div className="font-medium text-sm">{e.event_name}</div>
+                <div className="font-medium text-sm">
+                  {e.event_name}
+                  {e.is_relay && <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">Relay</span>}
+                </div>
                 <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
                   <span className="font-mono text-blue-600 font-semibold">{e.best_time}</span>
                   <span>{e.times_count} {e.times_count === 1 ? 'time' : 'times'}</span>
@@ -146,8 +149,17 @@ export default function SwimmerProfilePage() {
                       <tr key={h.id} className={`hover:bg-gray-50 ${isBest ? 'bg-green-50' : ''}`}>
                         <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
                         <td className="px-4 py-2 text-sm font-mono font-semibold">
-                          {h.time}
-                          {isBest && <span className="ml-2 text-xs text-green-600 font-normal">PB</span>}
+                          {h.is_relay ? (
+                            <>
+                              <span>{h.time}</span>
+                              {h.split_time && <span className="ml-2 text-xs text-purple-600 font-normal">Split: {h.split_time}</span>}
+                            </>
+                          ) : (
+                            <>
+                              {h.time}
+                              {isBest && <span className="ml-2 text-xs text-green-600 font-normal">PB</span>}
+                            </>
+                          )}
                         </td>
                         <td className="px-4 py-2 text-sm">
                           {h.round_type ? (

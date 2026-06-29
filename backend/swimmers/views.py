@@ -60,11 +60,14 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def events(self, request, pk=None):
-        """Get all events this swimmer has competed in, with result counts."""
+        """Get all events this swimmer has competed in, with result counts.
+        Also includes relay events where this swimmer appears in relay_swimmers."""
         swimmer = self.get_object()
         from championships.models import Result
-        from django.db.models import Count, Min
+        from django.db.models import Count, Min, Q
+        from importer.parsers.base import format_centiseconds
 
+        # Individual events
         events = Result.objects.filter(swimmer=swimmer).values(
             'event__id', 'event__name', 'event__distance', 'event__stroke'
         ).annotate(
@@ -73,63 +76,149 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         ).order_by('event__sort_order', 'event__distance')
 
         data = []
+        seen_event_ids = set()
         for e in events:
-            best_cs = e['best_time']
-            minutes = best_cs // 6000
-            seconds = (best_cs % 6000) // 100
-            centis = best_cs % 100
-            if minutes:
-                best_formatted = f'{minutes}:{seconds:02d}.{centis:02d}'
-            else:
-                best_formatted = f'{seconds}.{centis:02d}'
-
+            seen_event_ids.add(e['event__id'])
             data.append({
                 'event_id': e['event__id'],
                 'event_name': e['event__name'],
                 'distance': e['event__distance'],
                 'stroke': e['event__stroke'],
                 'times_count': e['times_count'],
-                'best_time': best_formatted,
-                'best_time_centiseconds': best_cs,
+                'best_time': format_centiseconds(e['best_time']),
+                'best_time_centiseconds': e['best_time'],
+                'is_relay': False,
             })
+
+        # Relay events where this swimmer appears in relay_swimmers JSON
+        relay_results = Result.objects.filter(
+            relay_swimmers__isnull=False,
+            event__is_relay=True,
+        ).select_related('event').filter(
+            relay_swimmers__contains=[{'name': swimmer.name}]
+        ) if 'postgres' in str(type(Result.objects.db)) else []
+
+        # Fallback: search relay_swimmers as text for all DB backends
+        if not relay_results:
+            relay_results = Result.objects.filter(
+                relay_swimmers__isnull=False,
+                event__is_relay=True,
+            ).select_related('event', 'championship')
+
+            # Filter in Python for swimmer name match
+            matched_relays = {}
+            for r in relay_results:
+                if not r.relay_swimmers:
+                    continue
+                for s in r.relay_swimmers:
+                    if isinstance(s, dict) and s.get('name', '').upper() == swimmer.name.upper():
+                        eid = r.event_id
+                        if eid not in matched_relays:
+                            matched_relays[eid] = {'results': [], 'event': r.event}
+                        matched_relays[eid]['results'].append(r)
+                    elif isinstance(s, str) and s.upper() == swimmer.name.upper():
+                        eid = r.event_id
+                        if eid not in matched_relays:
+                            matched_relays[eid] = {'results': [], 'event': r.event}
+                        matched_relays[eid]['results'].append(r)
+
+            for eid, info in matched_relays.items():
+                if eid in seen_event_ids:
+                    continue
+                ev = info['event']
+                best_cs = min(r.time_centiseconds for r in info['results'])
+                data.append({
+                    'event_id': ev.id,
+                    'event_name': ev.name,
+                    'distance': ev.distance,
+                    'stroke': ev.stroke,
+                    'times_count': len(info['results']),
+                    'best_time': format_centiseconds(best_cs),
+                    'best_time_centiseconds': best_cs,
+                    'is_relay': True,
+                })
+
         return Response(data)
 
     @action(detail=True, methods=['get'], url_path='events/(?P<event_id>[^/.]+)/history')
     def event_history(self, request, pk=None, event_id=None):
-        """Get all times for a swimmer in a specific event, with championship details."""
+        """Get all times for a swimmer in a specific event.
+        For relay events, finds results where swimmer appears in relay_swimmers."""
         swimmer = self.get_object()
         from championships.models import Result
+        from core.models import Event
+        from importer.parsers.base import format_centiseconds
 
-        results = Result.objects.filter(
-            swimmer=swimmer, event_id=event_id
-        ).select_related('championship', 'championship__country', 'event').order_by('championship__date')
-
+        event = Event.objects.get(id=event_id)
         data = []
-        for r in results:
-            cs = r.time_centiseconds
-            minutes = cs // 6000
-            seconds = (cs % 6000) // 100
-            centis = cs % 100
-            if minutes:
-                formatted = f'{minutes}:{seconds:02d}.{centis:02d}'
-            else:
-                formatted = f'{seconds}.{centis:02d}'
 
-            data.append({
-                'id': r.id,
-                'time': formatted,
-                'time_centiseconds': cs,
-                'round_type': r.round_type,
-                'fina_points': r.fina_points,
-                'team': r.team,
-                'championship_id': r.championship.id,
-                'championship_name': r.championship.name,
-                'championship_date': r.championship.date,
-                'championship_location': r.championship.location,
-                'championship_country': r.championship.country.name if r.championship.country else '',
-                'pool': r.championship.pool,
-                'age_at_competition': r.age_at_competition,
-            })
+        if event.is_relay:
+            # Search relay results for this swimmer's name
+            relay_results = Result.objects.filter(
+                event_id=event_id,
+                relay_swimmers__isnull=False,
+            ).select_related('championship', 'championship__country', 'event').order_by('championship__date')
+
+            for r in relay_results:
+                if not r.relay_swimmers:
+                    continue
+                # Find this swimmer in the relay
+                swimmer_split = None
+                found = False
+                for s in r.relay_swimmers:
+                    if isinstance(s, dict):
+                        if s.get('name', '').upper() == swimmer.name.upper():
+                            swimmer_split = s.get('split_time', '')
+                            found = True
+                            break
+                    elif isinstance(s, str) and s.upper() == swimmer.name.upper():
+                        found = True
+                        break
+
+                if not found:
+                    continue
+
+                data.append({
+                    'id': r.id,
+                    'time': format_centiseconds(r.time_centiseconds),
+                    'time_centiseconds': r.time_centiseconds,
+                    'split_time': swimmer_split or '',
+                    'round_type': r.round_type,
+                    'fina_points': r.fina_points,
+                    'team': r.swimmer.name,  # Team/club name
+                    'is_relay': True,
+                    'relay_swimmers': r.relay_swimmers,
+                    'championship_id': r.championship.id,
+                    'championship_name': r.championship.name,
+                    'championship_date': r.championship.date,
+                    'championship_location': r.championship.location,
+                    'championship_country': r.championship.country.name if r.championship.country else '',
+                    'pool': r.championship.pool,
+                    'age_at_competition': r.age_at_competition,
+                })
+        else:
+            # Individual event
+            results = Result.objects.filter(
+                swimmer=swimmer, event_id=event_id
+            ).select_related('championship', 'championship__country', 'event').order_by('championship__date')
+
+            for r in results:
+                data.append({
+                    'id': r.id,
+                    'time': format_centiseconds(r.time_centiseconds),
+                    'time_centiseconds': r.time_centiseconds,
+                    'round_type': r.round_type,
+                    'fina_points': r.fina_points,
+                    'team': r.team,
+                    'is_relay': False,
+                    'championship_id': r.championship.id,
+                    'championship_name': r.championship.name,
+                    'championship_date': r.championship.date,
+                    'championship_location': r.championship.location,
+                    'championship_country': r.championship.country.name if r.championship.country else '',
+                    'pool': r.championship.pool,
+                    'age_at_competition': r.age_at_competition,
+                })
         return Response(data)
 
     @action(detail=True, methods=['post'])

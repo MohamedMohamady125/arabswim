@@ -21,8 +21,8 @@ export default function ChampionshipFormPage() {
     if (isEdit) {
       getChampionship(id).then(res => {
         const c = res.data
-        setForm({ name: c.name, date: c.date, end_date: c.end_date || '', pool: c.pool, country: c.country, location: c.location || '', classification_category: c.classification_category || '', classification: c.classification || '', sub_classification: c.sub_classification || '' }).catch(() => {})
-      })
+        setForm({ name: c.name, date: c.date, end_date: c.end_date || '', pool: c.pool, country: c.country, location: c.location || '', classification_category: c.classification_category || '', classification: c.classification || '', sub_classification: c.sub_classification || '' })
+      }).catch(() => {})
     }
   }, [id, isEdit])
 

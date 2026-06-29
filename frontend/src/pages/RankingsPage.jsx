@@ -22,9 +22,9 @@ export default function RankingsPage() {
       // Auto-select first non-relay event
       if (res.data.length && !filters.event) {
         const first = res.data.find(e => !e.is_relay) || res.data[0]
-        setFilters(prev => ({ ...prev, event: first.id.toString() }).catch(() => {}))
+        setFilters(prev => ({ ...prev, event: first.id.toString() }))
       }
-    })
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -37,9 +37,9 @@ export default function RankingsPage() {
     getRankings(params).then(res => {
       setRankings(res.data.results || res.data)
       if (res.data.count !== undefined) {
-        setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous }).catch(() => {})
+        setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous })
       }
-    })
+    }).catch(() => {})
   }, [page, filters])
 
   const updateFilter = (key, value) => {

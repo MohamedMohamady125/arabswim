@@ -21,8 +21,8 @@ export default function ChampionshipsPage() {
     const params = { page, search: filters.search || undefined, pool: filters.pool || undefined, country: filters.country || undefined }
     getChampionships(params).then(res => {
       setChampionships(res.data.results)
-      setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous }).catch(() => {})
-    })
+      setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous })
+    }).catch(() => {})
   }, [page, filters])
 
   const handleDelete = async (id) => {

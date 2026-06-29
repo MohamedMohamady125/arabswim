@@ -257,7 +257,7 @@ export default function MeetDetailPage() {
                               <td className="px-4 py-2 text-sm font-medium">
                                 {r.swimmer_detail?.name}
                                 {isRelay && swimmers.length > 0 && (
-                                  <span className="ml-2 text-xs text-gray-400">{isExpanded ? '▼' : '▶'} {swimmers.length} swimmers</span>
+                                  <span className="ml-2 text-xs text-gray-400">{isExpanded ? '▲' : '▼'}</span>
                                 )}
                               </td>
                               <td className="px-4 py-2 text-sm">

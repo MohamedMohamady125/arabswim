@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getTeamProfile, getTeamTimes, getTeamMedals } from '../api/teams'
 import CountryFlag from '../components/common/CountryFlag'
+import MedalIcon from '../components/common/MedalIcon'
 
 export default function TeamProfilePage() {
   const { id } = useParams()
@@ -318,9 +319,9 @@ export default function TeamProfilePage() {
                       )}
                     </div>
                     <div className="flex gap-3 text-xs text-gray-500 mt-0.5">
-                      <span>🥇 {counts.GOLD}</span>
-                      <span>🥈 {counts.SILVER}</span>
-                      <span>🥉 {counts.BRONZE}</span>
+                      <span className="flex items-center gap-1"><MedalIcon type="gold" size={18} /> {counts.GOLD}</span>
+                      <span className="flex items-center gap-1"><MedalIcon type="silver" size={18} /> {counts.SILVER}</span>
+                      <span className="flex items-center gap-1"><MedalIcon type="bronze" size={18} /> {counts.BRONZE}</span>
                     </div>
                   </div>
                 )

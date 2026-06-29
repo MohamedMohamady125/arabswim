@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getChampionship, getChampionshipResults, getChampionshipStats } from '../api/championships'
 import CountryFlag from '../components/common/CountryFlag'
+import MedalIcon from '../components/common/MedalIcon'
 
 export default function MeetDetailPage() {
   const { id } = useParams()
@@ -248,9 +249,9 @@ export default function MeetDetailPage() {
                               }}
                             >
                               <td className="px-4 py-2 text-sm">
-                                {i === 0 && <span className="text-amber-500 font-bold">🥇</span>}
-                                {i === 1 && <span className="text-gray-400 font-bold">🥈</span>}
-                                {i === 2 && <span className="text-orange-400 font-bold">🥉</span>}
+                                {i === 0 && <MedalIcon type="gold" size={22} />}
+                                {i === 1 && <MedalIcon type="silver" size={22} />}
+                                {i === 2 && <MedalIcon type="bronze" size={22} />}
                                 {i > 2 && <span className="text-gray-500">{i + 1}</span>}
                               </td>
                               <td className="px-4 py-2 text-sm font-medium">

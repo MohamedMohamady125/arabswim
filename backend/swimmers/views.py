@@ -103,7 +103,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             relay_results = Result.objects.filter(
                 relay_swimmers__isnull=False,
                 event__is_relay=True,
-            ).select_related('event', 'championship')
+            ).select_related('event', 'championship')[:500]  # Limit to prevent timeout
 
             # Filter in Python for swimmer name match
             matched_relays = {}

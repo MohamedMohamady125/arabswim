@@ -27,7 +27,7 @@ from .base import (
 EVENT_HEADER = re.compile(
     r'(?:Event\s+\d+\s+)?'
     r'(Boys|Girls|Men|Women|Mixed)\s+'
-    r'((?:\d+(?:\s*[-&]\s*(?:\d+|Over|Under))?|Open))\s+'
+    r'((?:\d+(?:\s*[-&\s]\s*(?:\d+|Over|Under|Year\s*Olds?))?|Open))\s+'
     r'(\d+)\s+'
     r'(?:SC|LC)\s+Met(?:er|re)s?\s+'
     r'(.+)',
@@ -38,7 +38,7 @@ EVENT_HEADER = re.compile(
 RELAY_HEADER = re.compile(
     r'(?:Event\s+\d+\s+)?'
     r'(Boys|Girls|Men|Women|Mixed)\s+'
-    r'((?:\d+(?:\s*[-&]\s*(?:\d+|Over|Under))?|Open))\s+'
+    r'((?:\d+(?:\s*[-&\s]\s*(?:\d+|Over|Under|Year\s*Olds?))?|Open))\s+'
     r'(\d+)x(\d+)\s+'
     r'(?:SC|LC)\s+Met(?:er|re)s?\s+'
     r'(.+)',
@@ -51,6 +51,10 @@ SKIP_PATTERNS = [
     re.compile(r'meet manager', re.IGNORECASE),
     re.compile(r'^\s*Page\s+\d', re.IGNORECASE),
     re.compile(r'^\s*Record:', re.IGNORECASE),
+    re.compile(r'Age\s*G\s*Record', re.IGNORECASE),
+    re.compile(r'Jor\s*Record', re.IGNORECASE),
+    re.compile(r'National\s+Team', re.IGNORECASE),
+    re.compile(r'High\s+Performance', re.IGNORECASE),
     re.compile(r'Meet Qualifying', re.IGNORECASE),
     re.compile(r'^\s*Name\s+Age\s+Team', re.IGNORECASE),
     re.compile(r'^\s*Name\s+Ag\s*e\s+Team', re.IGNORECASE),
@@ -151,14 +155,8 @@ def parse(text):
     elif ' lc ' in text_lower or 'long course' in text_lower or 'lc meter' in text_lower:
         meet.pool = 'LCM'
 
-    # Detect comma order for names:
-    # Lebanon local meets use "First, Last" (e.g. "Adam, Hmedeh")
-    # All other HY-TEK meets use "LAST, First" (international standard)
-    header_text = combined_header.lower()
-    is_lebanon_local = any(kw in header_text for kw in [
-        'liban', 'lebanese', 'lebanon', 'championnat du liban',
-    ])
-    comma_order = 'first_last' if is_lebanon_local else 'last_first'
+    # All HY-TEK files use "LAST, First" comma order (including Lebanon)
+    comma_order = 'last_first'
 
     # ---- PARSE EVENTS AND RESULTS ----
     current_event = None
@@ -419,6 +417,9 @@ def _parse_result_line(line, event, comma_order='last_first'):
 
     # Reconstruct name from remaining tokens
     name_raw = ' '.join(tokens[:name_end_idx])
+    # Strip ID numbers (Jordan format: "Karim 10011446 SINUKROT" or "10011446 Sinukrot, Karim")
+    name_raw = re.sub(r'\b\d{7,10}\b', '', name_raw).strip()
+    name_raw = re.sub(r'\s+', ' ', name_raw)
     name = normalize_name(name_raw, comma_order=comma_order)
 
     if not name or len(name) < 2:

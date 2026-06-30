@@ -403,8 +403,11 @@ def _fix_frmn_points(pts_str):
     if not pts_str or not pts_str.isdigit():
         return 0
     val = int(pts_str)
-    if val > 2000 and len(pts_str) == 6:
+    if val > 1200 and len(pts_str) == 6:
         # Likely doubled chars: take every other char
-        fixed = pts_str[0] + pts_str[2] + pts_str[4]
-        return int(fixed)
+        fixed = int(pts_str[0] + pts_str[2] + pts_str[4])
+        if 1 <= fixed <= 1100:
+            return fixed
+    if val > 1200:
+        return 0  # Invalid FINA points
     return val

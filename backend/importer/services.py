@@ -617,7 +617,8 @@ def _find_event(event_data, event_cache):
     stroke = event_data.get('stroke', '')
     if distance and stroke:
         if is_relay:
-            standard_name = f'4x{distance} M {stroke} Relay'
+            leg_dist = distance // 4 if distance >= 200 else distance
+            standard_name = f'4x{leg_dist} M {stroke} Relay'
         else:
             standard_name = f'{distance} M {stroke}'
         if standard_name.upper() in event_cache:
@@ -635,7 +636,8 @@ def _find_event(event_data, event_cache):
     # Create new event if not found
     if distance and stroke:
         if is_relay:
-            final_name = event_name or f'4x{distance} M {stroke} Relay'
+            leg_dist = distance // 4 if distance >= 200 else distance
+            final_name = event_name or f'4x{leg_dist} M {stroke} Relay'
         else:
             final_name = event_name or f'{distance} M {stroke}'
         event = Event.objects.create(

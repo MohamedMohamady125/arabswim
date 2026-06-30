@@ -119,10 +119,10 @@ def _build_preview(parsed_meet):
             elif birth_year and not age:
                 age = meet_year - birth_year
 
-            # Calculate FINA points if not already provided
-            fina_points = r.fina_points
+            # Always calculate FINA points from World Aquatics base times
             gender_for_event = r.gender or event.gender
-            if not fina_points and r.time_centiseconds > 0:
+            fina_points = 0
+            if r.time_centiseconds > 0:
                 from .points import calculate_points
                 fina_points = calculate_points(
                     r.time_centiseconds,
@@ -516,17 +516,15 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             else:
                                 relay_swimmers.append({'name': split_str.strip(), 'split_time': ''})
 
-                # Use existing fina_points or calculate if missing
-                fina_pts = result_data.get('fina_points', 0) or 0
-                if not fina_pts and time_cs > 0:
-                    from .points import calculate_points
-                    gender_code = result_data.get('gender', 'M') or 'M'
-                    fina_pts = calculate_points(
-                        time_cs,
-                        event_data.get('event_name', db_event.name),
-                        gender_code,
-                        championship.pool,
-                    )
+                # Always calculate FINA points from World Aquatics base times
+                from .points import calculate_points
+                gender_code = result_data.get('gender', 'M') or 'M'
+                fina_pts = calculate_points(
+                    time_cs,
+                    event_data.get('event_name', db_event.name),
+                    gender_code,
+                    championship.pool,
+                ) if time_cs > 0 else 0
 
                 Result.objects.create(
                     swimmer=swimmer,

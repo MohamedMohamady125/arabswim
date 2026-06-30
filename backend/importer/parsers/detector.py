@@ -59,11 +59,16 @@ def detect_and_parse_upload(uploaded_file):
 
 def _parse_pdf(file_path, filename=''):
     """Extract text from PDF and route to correct parser."""
+    import gc
     with pdfplumber.open(file_path) as pdf:
         # First pass: simple extraction for format detection
-        simple_text = '\n'.join(
-            page.extract_text() or '' for page in pdf.pages
-        )
+        text_parts = []
+        for page in pdf.pages:
+            text_parts.append(page.extract_text() or '')
+            page.flush_cache()
+        simple_text = '\n'.join(text_parts)
+        del text_parts
+        gc.collect()
 
     if not simple_text.strip():
         raise ValueError('Could not extract text from PDF. The file may be image-based.')
@@ -159,12 +164,8 @@ def _extract_columns(file_path):
             has_two_columns = right_event_headers >= 2 or right_ranked_names >= 3
 
             if has_two_columns:
-                # For the first page, extract header (top ~60px) at full width
-                # to get meet name, date, etc. that span both columns
                 if not header_extracted:
-                    # Extract full-width header text first (meet name, date span both columns)
                     full_page_text = page.extract_text() or ''
-                    # Grab just the first few lines as header
                     header_lines = []
                     for ln in full_page_text.split('\n')[:8]:
                         ln = ln.strip()
@@ -176,18 +177,14 @@ def _extract_columns(file_path):
                         all_text_parts.append('\n'.join(header_lines))
                     header_extracted = True
 
-                # Find the actual column boundary by looking for the gap
-                # between left and right content
                 left_max_x = max(w['x1'] for w in left_words) if left_words else mid_x
                 right_min_x = min(w['x0'] for w in right_words) if right_words else mid_x
                 split_x = (left_max_x + right_min_x) / 2
 
-                # Ensure split_x is reasonable (between 30%-70% of page width)
                 if split_x < page_width * 0.3 or split_x > page_width * 0.7:
                     split_x = mid_x
 
-                # Extract left column then right column using page bbox
-                bbox = page.bbox  # (x0, top, x1, bottom)
+                bbox = page.bbox
                 left_crop = page.crop((bbox[0], bbox[1], split_x, bbox[3]))
                 right_crop = page.crop((split_x, bbox[1], bbox[2], bbox[3]))
 
@@ -197,9 +194,12 @@ def _extract_columns(file_path):
                 all_text_parts.append(left_text)
                 all_text_parts.append(right_text)
             else:
-                # Single column — extract normally
                 text = page.extract_text() or ''
                 all_text_parts.append(text)
+
+            # Free memory after each page
+            del words, left_words, right_words
+            page.flush_cache()
 
     return '\n'.join(all_text_parts)
 

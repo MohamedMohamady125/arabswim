@@ -116,11 +116,22 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if request.method == 'GET':
             event_id = request.query_params.get('event')
             gender = request.query_params.get('gender')
+            show_all_rounds = request.query_params.get('all_rounds')
             results = championship.results.select_related('swimmer', 'swimmer__nationality', 'event')
             if event_id:
                 results = results.filter(event_id=event_id)
             if gender:
                 results = results.filter(swimmer__sex=gender)
+            # By default, show only the best round per swimmer per event
+            # If Finals exist for this event, show only Finals
+            # Otherwise show all (timed finals / single round)
+            if not show_all_rounds and event_id:
+                rounds = set(results.values_list('round_type', flat=True))
+                if 'Finals' in rounds and len(rounds) > 1:
+                    results = results.filter(round_type='Finals')
+                elif 'Prelims' in rounds and '' in rounds and len(rounds) > 1:
+                    # Has both prelims and unlabeled — keep unlabeled (likely timed finals)
+                    results = results.exclude(round_type='Prelims')
             serializer = ResultSerializer(results, many=True)
             return Response(serializer.data)
         else:
@@ -179,20 +190,39 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             results_count=Count('id'),
         ).order_by('-swimmers_count')
 
-        # Top performers (best FINA points)
-        top = results.filter(fina_points__isnull=False, fina_points__gt=0).order_by('-fina_points')[:10]
+        # Top performers (best FINA points, deduplicated per swimmer+event)
+        from django.db.models import Max, Subquery, OuterRef
+        best_per_swimmer_event = (
+            results.filter(fina_points__isnull=False, fina_points__gt=0)
+            .values('swimmer_id', 'event_id')
+            .annotate(max_fina=Max('fina_points'))
+        )
+        # Build lookup of best fina per (swimmer, event)
+        best_lookup = {(r['swimmer_id'], r['event_id']): r['max_fina'] for r in best_per_swimmer_event}
+        # Get all results, filter to only the best per swimmer+event
+        top_candidates = results.filter(
+            fina_points__isnull=False, fina_points__gt=0
+        ).order_by('-fina_points').select_related('swimmer', 'swimmer__nationality', 'event')
         top_list = []
-        for r in top:
-            top_list.append({
-                'swimmer_id': r.swimmer.id,
-                'swimmer_name': r.swimmer.name,
-                'nationality': r.swimmer.nationality.name,
-                'nationality_code': r.swimmer.nationality.code,
-                'flag_url': r.swimmer.nationality.flag_url,
-                'event_name': r.event.name,
-                'time': r.formatted_time,
-                'fina_points': r.fina_points,
-            })
+        seen = set()
+        for r in top_candidates:
+            key = (r.swimmer_id, r.event_id)
+            if key in seen:
+                continue
+            if r.fina_points == best_lookup.get(key):
+                seen.add(key)
+                top_list.append({
+                    'swimmer_id': r.swimmer.id,
+                    'swimmer_name': r.swimmer.name,
+                    'nationality': r.swimmer.nationality.name,
+                    'nationality_code': r.swimmer.nationality.code,
+                    'flag_url': r.swimmer.nationality.flag_url,
+                    'event_name': r.event.name,
+                    'time': r.formatted_time,
+                    'fina_points': r.fina_points,
+                })
+                if len(top_list) >= 10:
+                    break
 
         return Response({
             'total_results': total_results,

@@ -200,9 +200,10 @@ def _build_preview(parsed_meet):
 
 
 ARAB_COUNTRY_CODES = {
-    'ALG', 'BHR', 'COM', 'DJI', 'EGY', 'IRQ', 'JOR', 'KWT', 'LBN',
-    'LBY', 'MTN', 'MAR', 'OMA', 'PLE', 'QAT', 'KSA', 'SOM', 'SUD',
-    'SYR', 'TUN', 'UAE', 'YEM',
+    'ALG', 'BHR', 'BRN', 'BAH', 'COM', 'DJI', 'EGY', 'IRQ', 'JOR',
+    'KWT', 'KUW', 'LBN', 'LIB', 'LBY', 'MTN', 'MRT', 'MAR', 'OMA',
+    'PLE', 'PAL', 'QAT', 'KSA', 'SAU', 'SOM', 'SUD', 'SYR', 'TUN',
+    'UAE', 'YEM',
 }
 
 

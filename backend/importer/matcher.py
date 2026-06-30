@@ -26,14 +26,15 @@ def get_country_map():
             _country_cache[c.code.upper()] = c
             _country_cache[c.name.upper()] = c
             aliases = {
-                'KUW': 'KWT', 'UAE': 'UAE', 'KSA': 'KSA',
+                'KUW': 'KWT', 'BRN': 'BHR', 'BAH': 'BHR',
+                'UAE': 'UAE', 'KSA': 'KSA', 'SAU': 'KSA',
                 'ALG': 'ALG', 'MAR': 'MAR', 'TUN': 'TUN',
-                'EGY': 'EGY', 'JOR': 'JOR', 'LBN': 'LBN',
+                'EGY': 'EGY', 'JOR': 'JOR', 'LBN': 'LBN', 'LIB': 'LBN',
                 'IRQ': 'IRQ', 'SYR': 'SYR', 'OMA': 'OMA',
                 'BHR': 'BHR', 'QAT': 'QAT', 'SUD': 'SUD',
-                'YEM': 'YEM', 'LBY': 'LBY', 'PLE': 'PLE',
-                'SOM': 'SOM', 'MTN': 'MTN', 'DJI': 'DJI',
-                'COM': 'COM',
+                'YEM': 'YEM', 'LBY': 'LBY', 'PLE': 'PLE', 'PAL': 'PLE',
+                'SOM': 'SOM', 'MTN': 'MTN', 'MRT': 'MTN',
+                'DJI': 'DJI', 'COM': 'COM',
             }
             if c.code.upper() in aliases.values():
                 for alias, target in aliases.items():

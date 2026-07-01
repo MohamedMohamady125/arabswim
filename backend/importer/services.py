@@ -143,6 +143,7 @@ def _build_preview(parsed_meet):
                 'fina_points': fina_points,
                 'gender': gender_for_event,
                 'is_relay': is_relay,
+                'category': event.age_group or '',
             }
             if r.split_times:
                 result_data['split_times'] = r.split_times
@@ -465,12 +466,14 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 swimmer.save(update_fields=['club'])
 
             round_type = event_data.get('round_type', '') or ''
+            category = result_data.get('category', '') or event_data.get('age_group', '') or ''
 
             existing = Result.objects.filter(
                 swimmer=swimmer,
                 championship=championship,
                 event=db_event,
                 round_type=round_type,
+                category=category,
             ).first()
 
             if existing:
@@ -531,6 +534,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     championship=championship,
                     event=db_event,
                     round_type=round_type,
+                    category=category,
                     team=team,
                     time_centiseconds=time_cs,
                     fina_points=fina_pts or None,

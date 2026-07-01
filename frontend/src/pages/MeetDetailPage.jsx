@@ -231,62 +231,90 @@ export default function MeetDetailPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {results.map((r, i) => {
-                        const isBest = i === 0
+                      {(() => {
+                        // Group results by age category (meets split by category).
+                        // Results arrive time-sorted, so each category keeps its
+                        // own ranking (medals restart per category).
+                        const order = []
+                        const byCat = new Map()
+                        for (const r of results) {
+                          const cat = r.category || ''
+                          if (!byCat.has(cat)) { byCat.set(cat, []); order.push(cat) }
+                          byCat.get(cat).push(r)
+                        }
+                        const hasCategories = order.some(c => c !== '')
                         const isRelay = selectedEvent?.event_name?.toLowerCase().includes('relay')
-                        const isExpanded = expandedRelay === r.id
-                        const swimmers = r.relay_swimmers || []
-                        return (
-                          <React.Fragment key={r.id}>
-                            <tr
-                              className={`hover:bg-gray-50 cursor-pointer ${isBest ? 'bg-amber-50' : ''}`}
-                              onClick={() => {
-                                if (isRelay && swimmers.length > 0) {
-                                  setExpandedRelay(isExpanded ? null : r.id)
-                                } else {
-                                  navigate(`/swimmers/${r.swimmer_detail?.id || r.swimmer}`)
-                                }
-                              }}
-                            >
-                              <td className="px-4 py-2 text-sm">
-                                {i === 0 && <MedalIcon type="gold" size={22} />}
-                                {i === 1 && <MedalIcon type="silver" size={22} />}
-                                {i === 2 && <MedalIcon type="bronze" size={22} />}
-                                {i > 2 && <span className="text-gray-500">{i + 1}</span>}
-                              </td>
-                              <td className="px-4 py-2 text-sm font-medium">
-                                {r.swimmer_detail?.name}
-                                {isRelay && swimmers.length > 0 && (
-                                  <span className="ml-2 text-xs text-gray-400">{isExpanded ? '▲' : '▼'}</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-2 text-sm">
-                                <CountryFlag
-                                  code={r.swimmer_detail?.nationality_detail?.code}
-                                  flagUrl={r.swimmer_detail?.nationality_detail?.flag_url}
-                                  name={r.swimmer_detail?.nationality_detail?.name}
-                                />
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-500">{r.team || '-'}</td>
-                              <td className="px-4 py-2 text-sm font-mono font-semibold">{r.formatted_time}</td>
-                              <td className="px-4 py-2 text-sm">{r.fina_points || '-'}</td>
-                              <td className="px-4 py-2 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
-                            </tr>
-                            {isRelay && isExpanded && swimmers.map((s, j) => (
-                              <tr key={`${r.id}-${j}`} className="bg-blue-50">
-                                <td className="px-4 py-1.5 text-sm text-gray-400 text-right">{j + 1}</td>
-                                <td className="px-4 py-1.5 text-sm pl-8">{s.name}</td>
-                                <td className="px-4 py-1.5 text-sm" colSpan={2}></td>
-                                <td className="px-4 py-1.5 text-sm font-mono text-gray-600">{s.split_time || '-'}</td>
-                                <td className="px-4 py-1.5 text-sm" colSpan={2}></td>
+
+                        const renderRow = (r, i) => {
+                          const isBest = i === 0
+                          const isExpanded = expandedRelay === r.id
+                          const swimmers = r.relay_swimmers || []
+                          return (
+                            <React.Fragment key={r.id}>
+                              <tr
+                                className={`hover:bg-gray-50 cursor-pointer ${isBest ? 'bg-amber-50' : ''}`}
+                                onClick={() => {
+                                  if (isRelay && swimmers.length > 0) {
+                                    setExpandedRelay(isExpanded ? null : r.id)
+                                  } else {
+                                    navigate(`/swimmers/${r.swimmer_detail?.id || r.swimmer}`)
+                                  }
+                                }}
+                              >
+                                <td className="px-4 py-2 text-sm">
+                                  {i === 0 && <MedalIcon type="gold" size={22} />}
+                                  {i === 1 && <MedalIcon type="silver" size={22} />}
+                                  {i === 2 && <MedalIcon type="bronze" size={22} />}
+                                  {i > 2 && <span className="text-gray-500">{i + 1}</span>}
+                                </td>
+                                <td className="px-4 py-2 text-sm font-medium">
+                                  {r.swimmer_detail?.name}
+                                  {isRelay && swimmers.length > 0 && (
+                                    <span className="ml-2 text-xs text-gray-400">{isExpanded ? '▲' : '▼'}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2 text-sm">
+                                  <CountryFlag
+                                    code={r.swimmer_detail?.nationality_detail?.code}
+                                    flagUrl={r.swimmer_detail?.nationality_detail?.flag_url}
+                                    name={r.swimmer_detail?.nationality_detail?.name}
+                                  />
+                                </td>
+                                <td className="px-4 py-2 text-sm text-gray-500">{r.team || '-'}</td>
+                                <td className="px-4 py-2 text-sm font-mono font-semibold">{r.formatted_time}</td>
+                                <td className="px-4 py-2 text-sm">{r.fina_points || '-'}</td>
+                                <td className="px-4 py-2 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
                               </tr>
-                            ))}
+                              {isRelay && isExpanded && swimmers.map((s, j) => (
+                                <tr key={`${r.id}-${j}`} className="bg-blue-50">
+                                  <td className="px-4 py-1.5 text-sm text-gray-400 text-right">{j + 1}</td>
+                                  <td className="px-4 py-1.5 text-sm pl-8">{s.name}</td>
+                                  <td className="px-4 py-1.5 text-sm" colSpan={2}></td>
+                                  <td className="px-4 py-1.5 text-sm font-mono text-gray-600">{s.split_time || '-'}</td>
+                                  <td className="px-4 py-1.5 text-sm" colSpan={2}></td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          )
+                        }
+
+                        if (results.length === 0) {
+                          return <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No results</td></tr>
+                        }
+
+                        return order.map(cat => (
+                          <React.Fragment key={cat || '_general'}>
+                            {hasCategories && (
+                              <tr className="bg-sky-50">
+                                <td colSpan={7} className="px-4 py-2 text-sm font-semibold text-sky-800 uppercase tracking-wide">
+                                  {cat || 'General'}
+                                </td>
+                              </tr>
+                            )}
+                            {byCat.get(cat).map((r, i) => renderRow(r, i))}
                           </React.Fragment>
-                        )
-                      })}
-                      {results.length === 0 && (
-                        <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No results</td></tr>
-                      )}
+                        ))
+                      })()}
                     </tbody>
                   </table>
                 </div>

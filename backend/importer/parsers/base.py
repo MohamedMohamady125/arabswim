@@ -321,6 +321,56 @@ def normalize_event_name(distance, stroke, is_relay=False):
     return f'{distance} M {stroke}'
 
 
+# --- Age category translation ---
+
+# French swimming age-categories → English tier names. Keyed on the
+# UPPERCASE French word (singular and plural both listed).
+CATEGORY_TRANSLATIONS = {
+    'POUSSIN': 'Under 11',
+    'POUSSINS': 'Under 11',
+    'BENJAMIN': 'Youth',
+    'BENJAMINS': 'Youth',
+    'MINIME': 'Intermediate',
+    'MINIMES': 'Intermediate',
+    'CADET': 'Junior',
+    'CADETS': 'Junior',
+    'JUNIOR': 'Junior',
+    'JUNIORS': 'Junior',
+    'SENIOR': 'Senior',
+    'SENIORS': 'Senior',
+    'OPEN': 'Open',
+    'TOUTES CATEGORIES': 'All Ages',
+    'TOUTES CATÉGORIES': 'All Ages',
+}
+
+
+def normalize_category(label):
+    """Translate a French age-category label to its English tier name.
+
+    Handles combined labels like 'SENIORS/JUNIORS' or 'JUNIORS SENIORS'
+    (→ 'Senior/Junior') and falls back to Title Case for anything unknown so
+    no raw French ever reaches the database.
+    """
+    if not label:
+        return ''
+    raw = re.sub(r'\s+', ' ', label.replace('\xa0', ' ')).strip()
+    if not raw:
+        return ''
+    key = raw.upper()
+    if key in CATEGORY_TRANSLATIONS:
+        return CATEGORY_TRANSLATIONS[key]
+    tokens = [t for t in re.split(r'[\s/]+', key) if t]
+    translated = []
+    for t in tokens:
+        if t not in CATEGORY_TRANSLATIONS:
+            # Unknown token — don't guess, return the whole label title-cased.
+            return raw.title()
+        val = CATEGORY_TRANSLATIONS[t]
+        if val not in translated:
+            translated.append(val)
+    return '/'.join(translated)
+
+
 # --- Pool detection ---
 
 # SCM indicators (multiple languages) — must be unambiguous pool descriptors

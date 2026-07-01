@@ -16,6 +16,7 @@ from .base import (
     ParsedResult, ParsedEvent, ParsedMeet,
     parse_time_to_centiseconds, normalize_stroke, detect_gender,
     is_relay_event, normalize_event_name, extract_distance,
+    normalize_category,
 )
 
 
@@ -67,14 +68,17 @@ RELAY_HEADER = re.compile(
 # "1.Malak MEQDAR MAR 2007 RAJA NAT 2:25.94 664455"
 # "TLD.Safa EL ABOUDI MAR 2011 USCM 2:41.18 447799"
 # "NC.Bayane BOULAFRAH MAR 2011 USCM Dsq VI 0"
+# Club can be any number of words (e.g. Spanish "CLUB NATACIO SANT ANDREU"),
+# so anchor on NAT+year before it and the time after it instead of counting words.
 RESULT_LINE = re.compile(
     r'^(?:(\d+)|TLD|Frf)\.\s*'  # rank or TLD/Frf
     r'(.+?)\s+'                  # name
     r'([A-Z]{3})\s+'             # nationality
     r'(\d{4})\s+'                # birth year (4 digits)
-    r'(\S+(?:\s+\S+)?)\s+'      # club (can be 2 words like "RAJA NAT")
-    r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*'  # time
-    r'(\d+)?'                    # points
+    r'(.+?)\s+'                  # club (any number of words)
+    r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})'  # time
+    r'(?:\s+(\d+))?'             # points (optional)
+    r'(?:\s+\d+)?\s*$'           # trailing reaction/obs field (optional)
 )
 
 # Relay result line: "1. CLUB NAME 3:39.22 839"
@@ -87,13 +91,13 @@ RELAY_RESULT_LINE = re.compile(
 
 # NC/DSQ line
 NC_LINE = re.compile(
-    r'^NC\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(\S+(?:\s+\S+)?)\s+(Dsq|Frf)',
+    r'^NC\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(.+?)\s+(Dsq|Frf)',
     re.IGNORECASE
 )
 
-# Category marker — including BENJAMINS
+# Category marker — the age classements a FRMN event is split into.
 CATEGORY = re.compile(
-    r'^(OPEN|MINIMES?|CADETS?|JUNIORS?|SENIORS?|BENJAMINS?)\s*$',
+    r'^(OPEN|POUSSINS?|MINIMES?|CADETS?|JUNIORS?|SENIORS?|BENJAMINS?)\s*$',
     re.IGNORECASE
 )
 
@@ -102,6 +106,17 @@ CATEGORY_COMBINED = re.compile(
     r'^(SENIORS?\s*/\s*JUNIORS?)\s*$',
     re.IGNORECASE
 )
+
+
+def _sibling_event(event, category):
+    """Create a new ParsedEvent that shares an event's identity but a new category."""
+    return ParsedEvent(
+        event_name=event.event_name,
+        distance=event.distance,
+        stroke=event.stroke,
+        gender=event.gender,
+        age_group=category,
+    )
 
 
 def detect_format(text):
@@ -153,7 +168,6 @@ def parse(text):
             break
 
     current_event = None
-    current_age_group = 'OPEN'
 
     for line in lines:
         stripped = line.strip()
@@ -194,12 +208,16 @@ def parse(text):
             if gender_label:
                 event_name = f'{event_name} {gender_label}'
 
+            # A page break repeats the event header; don't start a fresh event.
+            if current_event and current_event.event_name == event_name and current_event.gender == gender:
+                continue
+
             current_event = ParsedEvent(
                 event_name=event_name,
                 distance=distance,
                 stroke=stroke,
                 gender=gender,
-                age_group=current_age_group,
+                age_group='',
             )
             meet.events.append(current_event)
             continue
@@ -216,22 +234,38 @@ def parse(text):
             relay = is_relay_event(stripped)
             event_name = normalize_event_name(distance, stroke, relay)
 
+            # A page break repeats the event header; don't start a fresh event.
+            if current_event and current_event.event_name == event_name and current_event.gender == gender:
+                continue
+
             current_event = ParsedEvent(
                 event_name=event_name,
                 distance=distance,
                 stroke=stroke,
                 gender=gender,
-                age_group=current_age_group,
+                age_group='',
             )
             meet.events.append(current_event)
             continue
 
-        # Check for category (including combined "SENIORS/JUNIORS")
+        # Check for an age-category sub-header (SENIORS/JUNIORS, CADETS, MINIMES,
+        # BENJAMINS, POUSSINS). Each FRMN event is split into these classements,
+        # every one with its own ranking. The first category reuses the event
+        # created by the title (still empty); each subsequent category opens a
+        # fresh sibling event so every classement keeps its own results.
         cat_match = CATEGORY.match(stripped) or CATEGORY_COMBINED.match(stripped)
         if cat_match:
-            current_age_group = cat_match.group(1).upper()
+            category = normalize_category(cat_match.group(1))
             if current_event:
-                current_event.age_group = current_age_group
+                # A page break repeats the current category header; it's a
+                # continuation of the same classement, not a new one.
+                if current_event.age_group == category:
+                    continue
+                if current_event.results:
+                    current_event = _sibling_event(current_event, category)
+                    meet.events.append(current_event)
+                else:
+                    current_event.age_group = category
             continue
 
         if not current_event:
@@ -246,8 +280,15 @@ def parse(text):
             # "Louay ELJABRI MAR 2010 FUS 0" = relay swimmer detail (no rank)
             result = _parse_result_line(stripped, current_event)
             if result and result.rank > 0:
-                # Use club as team name for relay
-                result.swimmer_name = result.club or result.swimmer_name
+                # The rank line carries the leadoff swimmer's name; the following
+                # three detail lines carry swimmers 2-4. Capture the leadoff into
+                # split_times before we overwrite swimmer_name with the club/team,
+                # otherwise the first relay swimmer is lost (only 3 would show).
+                leadoff = result.swimmer_name
+                team_name = result.club or result.swimmer_name
+                if leadoff and leadoff != team_name:
+                    result.split_times.append(leadoff)
+                result.swimmer_name = team_name
                 current_event.results.append(result)
                 continue
             # Try to capture relay swimmer detail lines (no rank, for split info)
@@ -335,7 +376,7 @@ def _parse_result_line(line, event):
     """Parse a FRMN individual result line."""
     # Check for TLD prefix first
     tld_match = re.match(
-        r'^TLD\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(\S+(?:\s+\S+)?)\s+'
+        r'^TLD\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(.+?)\s+'
         r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*(\d+)?',
         line
     )

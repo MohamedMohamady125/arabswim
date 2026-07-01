@@ -62,6 +62,7 @@ class Result(models.Model):
     championship = models.ForeignKey(Championship, on_delete=models.CASCADE, related_name='results')
     event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name='results')
     round_type = models.CharField(max_length=20, blank=True, default='', choices=ROUND_CHOICES)
+    category = models.CharField(max_length=50, blank=True, default='', help_text='Age category / classement (e.g. Minimes, Cadets), for meets split by category')
     team = models.CharField(max_length=200, blank=True, default='', help_text='Club or national team represented at this meet')
     time_centiseconds = models.IntegerField(help_text='Time in centiseconds (e.g. 2190 = 21.90s)')
     fina_points = models.IntegerField(blank=True, null=True)
@@ -70,7 +71,7 @@ class Result(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ['swimmer', 'championship', 'event', 'round_type']
+        unique_together = ['swimmer', 'championship', 'event', 'round_type', 'category']
         ordering = ['time_centiseconds']
         indexes = [
             models.Index(fields=['event', 'time_centiseconds']),

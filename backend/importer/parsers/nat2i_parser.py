@@ -13,6 +13,7 @@ from .base import (
     ParsedResult, ParsedEvent, ParsedMeet,
     parse_time_to_centiseconds, normalize_stroke, detect_gender,
     normalize_name, is_relay_event, normalize_event_name, extract_distance,
+    normalize_category,
 )
 
 
@@ -27,6 +28,42 @@ RELAY_TITLE = re.compile(
     r'(\d+)\s*x\s*(\d+)\s*m\s+(.+?)\s+(Dames|Messieurs|Mixte|Filles|Garçons|Garcons)',
     re.IGNORECASE
 )
+
+# Age-category sub-headers appear in dark red (#C00000) directly under the event
+# title in multi-category meets, e.g. "JUNIORS SENIORS", "CADETS", "MINIMES".
+CATEGORY_COLOR = re.compile(r'C0{2}00', re.IGNORECASE)  # matches #C00000
+
+
+def _detect_category(p_element, text):
+    """Return the age-category label if this <p> is a category sub-header.
+
+    In multi-category Tunisia meets each event is split into several classements
+    (one per age category), announced by a short dark-red (#C00000) heading right
+    under the event title. Returns '' when the paragraph is not such a header.
+    """
+    font = p_element.find('font', attrs={'color': CATEGORY_COLOR})
+    if not font:
+        return ''
+    t = (text or '').replace('\xa0', ' ')
+    t = re.sub(r'\s+', ' ', t).strip()
+    # Real category labels are short and contain no digits (dates/meet titles do).
+    if not t or len(t) > 40 or any(ch.isdigit() for ch in t):
+        return ''
+    low = t.lower()
+    if any(kw in low for kw in ('championnat', 'coupe', 'compétition', 'competition', 'programme')):
+        return ''
+    return normalize_category(t)
+
+
+def _sibling_event(event, category):
+    """Create a new ParsedEvent that shares an event's identity but a new category."""
+    return ParsedEvent(
+        event_name=event.event_name,
+        distance=event.distance,
+        stroke=event.stroke,
+        gender=event.gender,
+        age_group=category,
+    )
 
 
 def _nat2i_normalize_name(name):
@@ -182,6 +219,19 @@ def parse(html_content):
                     stroke=stroke, gender=gender,
                 )
                 meet.events.append(current_event)
+                continue
+
+            # Check for an age-category sub-header (multi-category meets).
+            # The first category reuses the event created by the title (still
+            # empty); each subsequent category opens a fresh sibling event so
+            # every classement keeps its own ranking and results.
+            category = _detect_category(element, text)
+            if category and current_event:
+                if current_event.results:
+                    current_event = _sibling_event(current_event, category)
+                    meet.events.append(current_event)
+                else:
+                    current_event.age_group = category
                 continue
 
             # Check for round type

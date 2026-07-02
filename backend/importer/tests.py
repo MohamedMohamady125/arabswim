@@ -279,6 +279,17 @@ class Algeria2022Tests(SanityMixin, SimpleTestCase):
             for r in ev.results if r.status in ('OK', 'TLD') and not r.split_times)
         self.assertLessEqual(missing, 6)
 
+    def test_relay_leg_distance(self):
+        # regression: "4 x 200m Libre" was mislabeled "4x50 M Freestyle Relay"
+        # because the parser passed the leg distance where the total belongs
+        names = {ev.event_name for ev in self.meet().events}
+        self.assertIn('4x200 M Freestyle Relay Men', names)
+        self.assertIn('4x200 M Freestyle Relay Women', names)
+        for ev in self.meet().events:
+            if is_relay(ev):
+                self.assertGreaterEqual(ev.distance, 200,
+                                        f'relay distance must be the total: {ev.event_name}')
+
 
 @needs_sample('arab2022')
 class Arab2022Tests(SanityMixin, SimpleTestCase):

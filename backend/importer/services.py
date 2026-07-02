@@ -369,6 +369,18 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             relay_key = f"{name_upper}_{relay_gender}"
 
             if is_relay or result_data.get('is_relay', False):
+                # Guard: a relay "swimmer" is a team name. If parsing glitched
+                # and the name is a time/number, skip instead of creating a
+                # junk placeholder swimmer (which then becomes a junk Team).
+                from teams.utils import is_valid_team_name
+                if not is_valid_team_name(parsed_name):
+                    skipped_results += 1
+                    skipped_details.append({
+                        'swimmer': parsed_name,
+                        'event': event_data.get('event_name', ''),
+                        'reason': 'Invalid relay team name (looks like a time/number)',
+                    })
+                    continue
                 if relay_key not in swimmer_map:
                     # Try to find existing placeholder with matching sex
                     existing_placeholder = Swimmer.objects.filter(name__iexact=parsed_name, sex=relay_gender).first()
@@ -462,8 +474,10 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
 
             # Update swimmer's club if they don't have one yet
             if team and not swimmer.club and not (is_relay or result_data.get('is_relay', False)):
-                swimmer.club = team
-                swimmer.save(update_fields=['club'])
+                from teams.utils import is_valid_team_name
+                if is_valid_team_name(team):
+                    swimmer.club = team
+                    swimmer.save(update_fields=['club'])
 
             round_type = event_data.get('round_type', '') or ''
             category = result_data.get('category', '') or event_data.get('age_group', '') or ''
@@ -578,7 +592,10 @@ def _create_swimmer(result_data, fallback_country=None):
     if not nationality:
         nationality = Country.objects.first()
 
+    from teams.utils import is_valid_team_name
     club = result_data.get('club', '').strip()
+    if club and not is_valid_team_name(club):
+        club = ''
 
     swimmer = Swimmer.objects.create(
         name=result_data['swimmer_name'],

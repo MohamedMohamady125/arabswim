@@ -500,6 +500,38 @@ def merge_duplicate_events(meet):
     return meet
 
 
+def promote_lone_heats_to_finals(meet):
+    """If an event never ran a Finals round, its lone Heats/Prelims round IS
+    the final ranking, so relabel it Finals.
+
+    Some federations publish single-round meets under a "Séries/Eliminatoires"
+    heading (e.g. Tunisia Nat'2i summer championships): every swim decides the
+    final classification, there is no separate finals session. A meet can't
+    have heats without finals — heats only exist to qualify for a final.
+    The same applies to results published with no round marker at all
+    (single-session meets): they are the final classification.
+    Grouped per (event_name, gender) so meets that DO run heats + finals for
+    some events keep their real heats untouched.
+    """
+    groups = {}
+    for ev in meet.events:
+        groups.setdefault((ev.event_name, ev.gender), []).append(ev)
+    for evs in groups.values():
+        rounds = set()
+        for ev in evs:
+            for r in ev.results:
+                rounds.add(r.round_type or ev.round_type or '')
+        if 'Finals' in rounds:
+            continue
+        for ev in evs:
+            if ev.round_type in ('Heats', 'Prelims', '', None):
+                ev.round_type = 'Finals'
+            for r in ev.results:
+                if r.round_type in ('Heats', 'Prelims', '', None):
+                    r.round_type = 'Finals'
+    return meet
+
+
 def clean_text(text):
     """Remove non-breaking spaces and collapse whitespace."""
     if not text:

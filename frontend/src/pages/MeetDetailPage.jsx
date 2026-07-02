@@ -11,6 +11,7 @@ export default function MeetDetailPage() {
   const [stats, setStats] = useState(null)
   const [results, setResults] = useState([])
   const [selectedEvent, setSelectedEvent] = useState(null)
+  const [selectedRound, setSelectedRound] = useState(null)
   const [loadingResults, setLoadingResults] = useState(false)
   const [expandedRelay, setExpandedRelay] = useState(null)
 
@@ -19,13 +20,23 @@ export default function MeetDetailPage() {
     getChampionshipStats(id).then(res => setStats(res.data)).catch(() => {})
   }, [id])
 
+  // Round display order: finals first, then semis/consolation, prelims/heats
+  const ROUND_ORDER = ['Finals', 'Consolation', 'Prelims', 'Heats', '']
+  const roundLabel = (r) => r || 'Timed Finals'
+
   const handleEventClick = async (event) => {
     setSelectedEvent(event)
+    setSelectedRound(null)
+    setExpandedRelay(null)
     setLoadingResults(true)
     try {
-      const params = { event: event.event_id, gender: event.gender }
+      const params = { event: event.event_id, gender: event.gender, all_rounds: 1 }
       const res = await getChampionshipResults(id, params)
       setResults(res.data)
+      // Default to the most important round present (Finals if available)
+      const rounds = [...new Set(res.data.map(r => r.round_type || ''))]
+      rounds.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
+      setSelectedRound(rounds[0] ?? '')
     } catch {
       setResults([])
     } finally {
@@ -209,10 +220,39 @@ export default function MeetDetailPage() {
                   <h3 className="font-semibold">{selectedEvent.event_name} — {selectedEvent.gender_label || (selectedEvent.gender === 'M' ? 'Men' : 'Women')}</h3>
                   <p className="text-xs text-gray-500">{results.length} results</p>
                 </div>
-                <button onClick={() => { setSelectedEvent(null); setResults([]) }} className="text-sm text-gray-500 hover:text-gray-700">
+                <button onClick={() => { setSelectedEvent(null); setResults([]); setSelectedRound(null) }} className="text-sm text-gray-500 hover:text-gray-700">
                   ← All events
                 </button>
               </div>
+
+              {/* Round tabs (Finals / Prelims / Heats) */}
+              {!loadingResults && (() => {
+                const rounds = [...new Set(results.map(r => r.round_type || ''))]
+                if (rounds.length <= 1) return null
+                rounds.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
+                return (
+                  <div className="flex gap-2 px-4 pt-3 border-b">
+                    {rounds.map(round => {
+                      const count = results.filter(r => (r.round_type || '') === round).length
+                      const active = selectedRound === round
+                      return (
+                        <button
+                          key={round || '_timed'}
+                          onClick={() => { setSelectedRound(round); setExpandedRelay(null) }}
+                          className={`px-4 py-2 text-sm font-medium rounded-t-lg border border-b-0 transition-colors ${
+                            active
+                              ? 'bg-sky-600 text-white border-sky-600'
+                              : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          {roundLabel(round)}
+                          <span className={`ml-1.5 text-xs ${active ? 'text-sky-200' : 'text-gray-400'}`}>{count}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
 
               {loadingResults ? (
                 <div className="p-12 text-center text-gray-400">Loading...</div>
@@ -232,12 +272,19 @@ export default function MeetDetailPage() {
                     </thead>
                     <tbody className="divide-y">
                       {(() => {
+                        // Show only the selected round (Finals / Prelims / Heats)
+                        const roundResults = results.filter(r => (r.round_type || '') === (selectedRound ?? ''))
+                        // Medals belong to the round that decides the ranking:
+                        // Finals, or the only round swum (timed finals)
+                        const roundsPresent = new Set(results.map(r => r.round_type || ''))
+                        const showMedals = selectedRound === 'Finals' || roundsPresent.size <= 1
+
                         // Group results by age category (meets split by category).
                         // Results arrive time-sorted, so each category keeps its
                         // own ranking (medals restart per category).
                         const order = []
                         const byCat = new Map()
-                        for (const r of results) {
+                        for (const r of roundResults) {
                           const cat = r.category || ''
                           if (!byCat.has(cat)) { byCat.set(cat, []); order.push(cat) }
                           byCat.get(cat).push(r)
@@ -262,10 +309,10 @@ export default function MeetDetailPage() {
                                 }}
                               >
                                 <td className="px-4 py-2 text-sm">
-                                  {i === 0 && <MedalIcon type="gold" size={22} />}
-                                  {i === 1 && <MedalIcon type="silver" size={22} />}
-                                  {i === 2 && <MedalIcon type="bronze" size={22} />}
-                                  {i > 2 && <span className="text-gray-500">{i + 1}</span>}
+                                  {showMedals && i === 0 && <MedalIcon type="gold" size={22} />}
+                                  {showMedals && i === 1 && <MedalIcon type="silver" size={22} />}
+                                  {showMedals && i === 2 && <MedalIcon type="bronze" size={22} />}
+                                  {(!showMedals || i > 2) && <span className="text-gray-500">{i + 1}</span>}
                                 </td>
                                 <td className="px-4 py-2 text-sm font-medium">
                                   {r.swimmer_detail?.name}
@@ -298,7 +345,7 @@ export default function MeetDetailPage() {
                           )
                         }
 
-                        if (results.length === 0) {
+                        if (roundResults.length === 0) {
                           return <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No results</td></tr>
                         }
 

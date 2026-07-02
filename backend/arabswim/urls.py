@@ -17,6 +17,11 @@ urlpatterns = [
     path('api/v1/', include('calendar_app.urls')),
     path('api/v1/', include('importer.urls')),
     path('api/v1/', include('teams.urls')),
+    path('api/v1/', include('news.urls')),
+    path('api/v1/', include('market.urls')),
+    path('api/v1/', include('academies.urls')),
+    path('api/v1/', include('fame.urls')),
+    path('api/v1/', include('media_app.urls')),
 ]
 
 if settings.DEBUG:

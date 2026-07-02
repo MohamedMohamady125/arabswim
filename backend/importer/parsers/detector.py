@@ -19,13 +19,16 @@ def detect_and_parse(file_path):
     filename = os.path.basename(file_path)
 
     if ext in ('.html', '.htm'):
-        return _parse_html(file_path, filename)
+        meet = _parse_html(file_path, filename)
     elif ext in ('.pdf',):
-        return _parse_pdf(file_path, filename)
+        meet = _parse_pdf(file_path, filename)
     elif ext in ('.xlsx', '.xls', '.csv'):
-        return _parse_excel(file_path, filename)
+        meet = _parse_excel(file_path, filename)
     else:
         raise ValueError(f'Unsupported file type: {ext}')
+    # An event with no Finals round only swam once: that round IS the finals
+    from .base import promote_lone_heats_to_finals
+    return promote_lone_heats_to_finals(meet)
 
 
 def detect_and_parse_upload(uploaded_file):
@@ -46,13 +49,16 @@ def detect_and_parse_upload(uploaded_file):
         # Parse with temp path but pass original filename
         ext_lower = ext
         if ext_lower in ('.html', '.htm'):
-            return _parse_html(tmp_path, original_name)
+            meet = _parse_html(tmp_path, original_name)
         elif ext_lower in ('.pdf',):
-            return _parse_pdf(tmp_path, original_name)
+            meet = _parse_pdf(tmp_path, original_name)
         elif ext_lower in ('.xlsx', '.xls', '.csv'):
-            return _parse_excel(tmp_path, original_name)
+            meet = _parse_excel(tmp_path, original_name)
         else:
             raise ValueError(f'Unsupported file type: {ext}')
+        # An event with no Finals round only swam once: that round IS the finals
+        from .base import promote_lone_heats_to_finals
+        return promote_lone_heats_to_finals(meet)
     finally:
         os.unlink(tmp_path)
 

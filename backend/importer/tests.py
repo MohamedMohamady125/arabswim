@@ -270,8 +270,10 @@ class Algeria2022Tests(SanityMixin, SimpleTestCase):
     def test_rounds(self):
         rounds = collections.Counter(
             r.round_type or '(none)' for ev in self.meet().events for r in ev.results)
-        self.assertEqual(rounds['Finals'], 199)
+        # 199 true finals + 84 single-round results promoted to Finals
+        self.assertEqual(rounds['Finals'], 283)
         self.assertEqual(rounds['Heats'], 1899)
+        self.assertEqual(rounds['(none)'], 0)
 
     def test_relays_have_swimmers(self):
         missing = sum(
@@ -312,7 +314,8 @@ class Arab2022Tests(SanityMixin, SimpleTestCase):
         rounds = collections.Counter(
             r.round_type for ev in self.meet().events for r in ev.results)
         self.assertEqual(rounds['Heats'], 120)
-        self.assertEqual(rounds['Finals'], 224)
+        # 224 true finals + 21 single-round results promoted to Finals
+        self.assertEqual(rounds['Finals'], 245)
 
     def test_all_relays_have_swimmers(self):
         for ev in self.meet().events:
@@ -344,6 +347,12 @@ class TunisiaNat2iTests(SanityMixin, SimpleTestCase):
         m = self.meet()
         self.assertEqual(m.total_events, 36)
         self.assertEqual(m.total_results, 1575)
+
+    def test_single_round_meet_is_finals(self):
+        # regression: source labels every event "Séries" but there is no
+        # separate finals session — a lone round IS the final ranking
+        rounds = {r.round_type for ev in self.meet().events for r in ev.results}
+        self.assertEqual(rounds, {'Finals'})
 
 
 @needs_sample('hamilton')

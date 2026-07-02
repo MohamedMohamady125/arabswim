@@ -235,6 +235,12 @@ def parse(text):
             if not desc_match:
                 continue
             distance = int(desc_match.group(2))
+            # Relay headers give the LEG distance ("4 x 200m Libre"); the
+            # event's total distance is teams x leg, and normalize_event_name
+            # expects the total (it derives the leg back for the name).
+            if desc_match.group(1):
+                teams = int(re.match(r'\d+', desc_match.group(1)).group())
+                distance = teams * distance
             stroke_raw = desc_match.group(3).strip(' ,')
             # Strip trailing round/category words from the stroke text
             stroke_raw = re.sub(

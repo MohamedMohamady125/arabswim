@@ -16,7 +16,7 @@ from .base import (
     ParsedResult, ParsedEvent, ParsedMeet,
     parse_time_to_centiseconds, normalize_stroke, detect_gender,
     is_relay_event, normalize_event_name, extract_distance,
-    normalize_category,
+    normalize_category, to_iso_date,
 )
 
 
@@ -141,8 +141,10 @@ def parse(text):
         # Skip timestamp-only lines
         if re.match(r'^\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}', line):
             continue
-        # This is the main title line
-        if 'coupe' in line.lower() or 'championnat' in line.lower() or 'natation' in line.lower():
+        # This is the main title line: either it carries a known keyword or it
+        # embeds a date (e.g. "TANGIER INTERNATIONAL SWIMMING MEETING - 28/06/2026 - TANGER - Grand bassin")
+        keywords = ('coupe', 'championnat', 'natation', 'meeting', 'swimming')
+        if any(kw in line.lower() for kw in keywords) or re.search(r'\d{1,2}/\d{1,2}/\d{4}', line):
             parts = [p.strip() for p in re.split(r'\s*-\s*', line) if p.strip()]
 
             name_parts = []
@@ -181,7 +183,7 @@ def parse(text):
         # Check for timestamp lines
         if re.match(r'^\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}', stripped):
             if not meet.date_text:
-                meet.date_text = stripped.split()[0]
+                meet.date_text = to_iso_date(stripped.split()[0])
             continue
 
         # Check for relay event header FIRST (before individual)

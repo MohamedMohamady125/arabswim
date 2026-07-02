@@ -13,7 +13,7 @@ from .base import (
     ParsedResult, ParsedEvent, ParsedMeet,
     parse_time_to_centiseconds, normalize_stroke, detect_gender,
     normalize_name, is_relay_event, normalize_event_name, extract_distance,
-    normalize_category,
+    normalize_category, clean_text,
 )
 
 
@@ -135,6 +135,7 @@ def parse(html_content):
             break
 
     if raw_title:
+        raw_title = clean_text(raw_title)
         # Title format: "CHAMPIONNAT D'ÉTÉ DE TUNISIE BENJAMINS - RADES - Grand bassin - 25/07/2024 ¤ 27/07/2024"
         # Split by " - " and classify each part
         parts = [p.strip() for p in re.split(r'\s*[-–]\s*', raw_title) if p.strip()]

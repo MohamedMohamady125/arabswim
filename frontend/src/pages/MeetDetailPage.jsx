@@ -83,7 +83,7 @@ export default function MeetDetailPage() {
             <div className="text-xs text-sky-200">Results</div>
           </div>
           <div className="bg-white/15 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">{stats.total_events}</div>
+            <div className="text-2xl font-bold">{stats.events.length}</div>
             <div className="text-xs text-sky-200">Events</div>
           </div>
           <div className="bg-white/15 rounded-lg p-3 text-center">

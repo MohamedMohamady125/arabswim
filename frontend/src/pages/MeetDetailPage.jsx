@@ -289,6 +289,14 @@ export default function MeetDetailPage() {
                           if (!byCat.has(cat)) { byCat.set(cat, []); order.push(cat) }
                           byCat.get(cat).push(r)
                         }
+                        // Display categories oldest → youngest, matching the
+                        // source PDFs (Seniors/Juniors, Cadets, Minimes, Benjamins).
+                        const CATEGORY_ORDER = ['Seniors/Juniors', 'Seniors', 'Juniors', 'Cadets', 'Minimes', 'Benjamins', 'Poussins']
+                        const catRank = (c) => {
+                          const i = CATEGORY_ORDER.indexOf(c)
+                          return i === -1 ? CATEGORY_ORDER.length : i
+                        }
+                        order.sort((a, b) => catRank(a) - catRank(b))
                         const hasCategories = order.some(c => c !== '')
                         const isRelay = selectedEvent?.event_name?.toLowerCase().includes('relay')
 

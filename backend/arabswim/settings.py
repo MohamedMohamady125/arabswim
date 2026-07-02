@@ -31,6 +31,11 @@ INSTALLED_APPS = [
     'calendar_app',
     'importer',
     'teams',
+    'news',
+    'market',
+    'academies',
+    'fame',
+    'media_app',
 ]
 
 MIDDLEWARE = [

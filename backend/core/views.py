@@ -19,6 +19,17 @@ class CountryViewSet(viewsets.ModelViewSet):
     serializer_class = CountrySerializer
     pagination_class = None
 
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        if request.query_params.get('with_stats'):
+            from django.db.models import Count
+            counts = dict(
+                Country.objects.annotate(n=Count('swimmers')).values_list('id', 'n')
+            )
+            for row in response.data:
+                row['swimmers_count'] = counts.get(row['id'], 0)
+        return response
+
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()

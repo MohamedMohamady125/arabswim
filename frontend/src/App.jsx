@@ -17,6 +17,18 @@ import MeetDetailPage from './pages/MeetDetailPage'
 import TeamsPage from './pages/TeamsPage'
 import TeamProfilePage from './pages/TeamProfilePage'
 import TeamFormPage from './pages/TeamFormPage'
+import HomePage from './pages/HomePage'
+import NewsPage from './pages/NewsPage'
+import NewsFormPage from './pages/NewsFormPage'
+import MarketPage from './pages/MarketPage'
+import MarketFormPage from './pages/MarketFormPage'
+import AcademiesPage from './pages/AcademiesPage'
+import AcademyFormPage from './pages/AcademyFormPage'
+import HallOfFamePage from './pages/HallOfFamePage'
+import InducteeFormPage from './pages/InducteeFormPage'
+import MediaPage from './pages/MediaPage'
+import AlbumDetailPage from './pages/AlbumDetailPage'
+import CountriesPage from './pages/CountriesPage'
 
 function ProtectedRoute({ children }) {
   const { token } = useAuth()
@@ -29,7 +41,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="/swimmers" />} />
+        <Route index element={<HomePage />} />
         <Route path="swimmers" element={<SwimmersPage />} />
         <Route path="swimmers/new" element={<SwimmerFormPage />} />
         <Route path="swimmers/:id/edit" element={<SwimmerFormPage />} />
@@ -47,6 +59,21 @@ export default function App() {
         <Route path="teams/new" element={<TeamFormPage />} />
         <Route path="teams/:id/edit" element={<TeamFormPage />} />
         <Route path="teams/:id" element={<TeamProfilePage />} />
+        <Route path="news" element={<NewsPage />} />
+        <Route path="news/new" element={<NewsFormPage />} />
+        <Route path="news/:id/edit" element={<NewsFormPage />} />
+        <Route path="market" element={<MarketPage />} />
+        <Route path="market/new" element={<MarketFormPage />} />
+        <Route path="market/:id/edit" element={<MarketFormPage />} />
+        <Route path="academies" element={<AcademiesPage />} />
+        <Route path="academies/new" element={<AcademyFormPage />} />
+        <Route path="academies/:id/edit" element={<AcademyFormPage />} />
+        <Route path="hall-of-fame" element={<HallOfFamePage />} />
+        <Route path="hall-of-fame/new" element={<InducteeFormPage />} />
+        <Route path="hall-of-fame/:id/edit" element={<InducteeFormPage />} />
+        <Route path="media" element={<MediaPage />} />
+        <Route path="media/albums/:id" element={<AlbumDetailPage />} />
+        <Route path="countries" element={<CountriesPage />} />
         <Route path="import" element={<ImportPage />} />
       </Route>
     </Routes>

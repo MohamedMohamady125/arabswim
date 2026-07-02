@@ -1,10 +1,51 @@
 """
 Utility functions for auto-creating and syncing teams from swimmer/result data.
 """
+import re
+
 from django.db.models import Count, Q
 from .models import Team
 from swimmers.models import Swimmer
 from core.models import Country
+
+# A whole name that is just a swim time, e.g. "3:37.01", "07:58.87", "58.31"
+_TIME_NAME_RE = re.compile(r'^\d{0,2}:?\d{1,2}[:.,]\d{2}([.,]\d{1,2})?$')
+# A swim time embedded anywhere in the name, e.g. "CLUB X 3:40.68"
+_EMBEDDED_TIME_RE = re.compile(r'\d{1,2}[:.]\d{2}[.,]\d{2}')
+
+
+def is_valid_team_name(name):
+    """
+    Reject junk "team" names produced by relay/result parsing glitches:
+    pure numbers, swim times, or club names with time digits interleaved
+    into the letters (PDF text-extraction corruption).
+    """
+    if not name:
+        return False
+    name = name.strip()
+    if len(name) < 2:
+        return False
+    # Must contain at least two letters — kills "1875", "3:37.01", "58.31"
+    if sum(c.isalpha() for c in name) < 2:
+        return False
+    if _TIME_NAME_RE.match(name):
+        return False
+    if _EMBEDDED_TIME_RE.search(name):
+        return False
+    # Real club names never contain a colon — it always comes from a swim
+    # time getting merged into the name ("Said1a:", "Eu1l:m0a").
+    if ':' in name:
+        return False
+    # Digits sandwiched inside a word ("Sta1if2ia") = time digits interleaved
+    # into letters by broken PDF extraction. Trailing/leading digits are fine
+    # ("BAHIA NAUTIQUE 2", "4LSA").
+    if re.search(r'[A-Za-z]\d+[A-Za-z]', name):
+        return False
+    # Corruption like "Wo5s8t.a68 446": many separate digit groups scattered
+    # through the name. Real clubs rarely have 3+.
+    if len(re.findall(r'\d+', name)) >= 3:
+        return False
+    return True
 
 
 def auto_create_teams():
@@ -24,7 +65,7 @@ def auto_create_teams():
 
     for swimmer in swimmers:
         club = swimmer.club.strip()
-        if not club or club in skip_names:
+        if not club or club in skip_names or not is_valid_team_name(club):
             continue
 
         if club not in club_data:
@@ -74,7 +115,7 @@ def ensure_team_exists(club_name, country=None):
 
     club_name = club_name.strip()
     skip_names = _get_skip_names()
-    if club_name in skip_names:
+    if club_name in skip_names or not is_valid_team_name(club_name):
         return None
 
     team = Team.objects.filter(name__iexact=club_name).first()

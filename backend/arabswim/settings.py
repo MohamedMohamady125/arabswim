@@ -103,8 +103,12 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# WhiteNoise for static files
+# WhiteNoise for static files. 'default' must be declared too, otherwise
+# Django drops the file-system storage and every ImageField upload 500s.
 STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },

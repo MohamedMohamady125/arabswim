@@ -79,19 +79,29 @@ def _parse_pdf(file_path, filename=''):
     # Splash is more specific than HY-TEK — check Splash first
     # (some Splash PDFs also contain "meet manager" which triggers HY-TEK detection)
     if splash_parser.detect_format(simple_text):
-        full_text = _extract_columns(file_path)
+        # Splash PDFs often have overlapping club/time columns that garble
+        # character order in default extraction ("D'Ora1n:00.89").
+        # use_text_flow follows the PDF stream order and keeps them separate.
+        full_text = _extract_text_flow(file_path)
         meet = splash_parser.parse(full_text)
     elif hytek_parser.detect_format(simple_text):
         full_text = _extract_columns(file_path)
         meet = hytek_parser.parse(full_text)
     elif frmn_parser.detect_format(simple_text):
+        # FRMN PDFs lay out fine with default extraction; text-flow order
+        # actually breaks their result-line structure.
         meet = frmn_parser.parse(simple_text)
     else:
         # Try each parser and pick the one that extracts the most results
         results = []
         for parser in [splash_parser, hytek_parser, frmn_parser]:
             try:
-                text = _extract_columns(file_path) if parser == hytek_parser else simple_text
+                if parser == hytek_parser:
+                    text = _extract_columns(file_path)
+                elif parser == frmn_parser:
+                    text = simple_text
+                else:
+                    text = _extract_text_flow(file_path)
                 m = parser.parse(text)
                 results.append((m.total_results, m))
             except Exception:
@@ -110,6 +120,26 @@ def _parse_pdf(file_path, filename=''):
     # Override pool with the smarter detection
     meet.pool = pool
     return meet
+
+
+def _extract_text_flow(file_path):
+    """Extract PDF text following the content-stream order.
+
+    Splash/FRMN PDFs draw the club name and the time as separate text objects
+    that can physically overlap in x-position. Default (position-sorted)
+    extraction interleaves their characters ("D'Ora1n:00.89"); stream-order
+    extraction keeps each text object intact.
+    """
+    import gc
+    parts = []
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            parts.append(page.extract_text(use_text_flow=True) or '')
+            page.flush_cache()
+    text = '\n'.join(parts)
+    del parts
+    gc.collect()
+    return text
 
 
 def _extract_columns(file_path):
@@ -167,12 +197,20 @@ def _extract_columns(file_path):
                 if not header_extracted:
                     full_page_text = page.extract_text() or ''
                     header_lines = []
+                    result_like = _re.compile(
+                        r'^\*?\d{1,3}\s+\S.*\d{1,2}[:.]\d{2}')  # rank ... time
                     for ln in full_page_text.split('\n')[:8]:
                         ln = ln.strip()
-                        if ln and not ln.startswith('Event '):
-                            header_lines.append(ln)
-                        elif ln.startswith('Event '):
+                        if not ln:
+                            continue
+                        if ln.startswith('Event ') or _re.match(
+                                r'^(Boys|Girls|Men|Women|Mixed)\b.*Met(er|re)', ln):
                             break
+                        # Full-page extraction interleaves both columns, so
+                        # result rows can appear here — never treat them as header
+                        if result_like.match(ln):
+                            continue
+                        header_lines.append(ln)
                     if header_lines:
                         all_text_parts.append('\n'.join(header_lines))
                     header_extracted = True

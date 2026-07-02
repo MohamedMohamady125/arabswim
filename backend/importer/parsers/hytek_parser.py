@@ -1,20 +1,30 @@
 """
 Parser for HY-TEK Meet Manager PDF format.
-Used by: Hamilton Aquatics, Lebanon championships, and many international meets.
+Used by: Hamilton Aquatics, Lebanon championships, Jordan, and many international meets.
 Identified by: "HY-TEK" or "MEET MANAGER" in text.
 
 Format varies but generally:
   Event header: "Event 1 Boys 12-13 800 SC Meter Freestyle" or
                 "Girls 8-11 50 SC Meter Freestyle"
-  Columns: Name Age Team Finals Time [LEN]
+  Continuation: "(Event 5 Boys 12-13 50 SC Meter Backstroke)" after page breaks,
+                sometimes prefixed with "Preliminaries ..." on the same line
+  Round markers come AFTER the event header:
+    column header "Name Age Team Prelim Time" / "... Finals Time"
+    standalone "Preliminaries" / "Finals" lines
   Result line: "1 Josselin, Holly 11 EXCW-SW 29.70"
-  Lebanon adds: record info, meet qualifying, split times on separate lines
+  Relay section:
+    header: "Event 69 Boys 12-13 200 SC Meter Freestyle Relay"
+    team:   "1 NAJ A 2:00.88 354"   /  DQ: "--- MTY A NS"
+    legs:   "1) Ghassan, Zein 12 2) Mohamad, Chahrour 13"
+    splits: "29.93 32.67 29.35 28.93"  (paired with legs in order)
+  Individual splits appear on their own lines after the result line.
 """
 import re
 from .base import (
     ParsedResult, ParsedEvent, ParsedMeet,
-    parse_time_to_centiseconds, normalize_stroke, detect_gender,
+    parse_time_to_centiseconds, normalize_stroke,
     normalize_name, is_relay_event, normalize_event_name,
+    merge_duplicate_events,
 )
 
 
@@ -27,19 +37,19 @@ from .base import (
 EVENT_HEADER = re.compile(
     r'(?:Event\s+\d+\s+)?'
     r'(Boys|Girls|Men|Women|Mixed)\s+'
-    r'((?:\d+(?:\s*[-&\s]\s*(?:\d+|Over|Under|Year\s*Olds?))?|Open))\s+'
+    r'(?:((?:\d+(?:\s*[-&\s]\s*(?:\d+|Over|Under|Year\s*Olds?))?|Open))\s+)?'
     r'(\d+)\s+'
     r'(?:SC|LC)\s+Met(?:er|re)s?\s+'
     r'(.+)',
     re.IGNORECASE
 )
 
-# Relay header: "Event 1 Boys 12-13 4x100 SC Meter Freestyle Relay"
+# Relay header with explicit legs: "Event 1 Boys 12-13 4x100 SC Meter Freestyle Relay"
 RELAY_HEADER = re.compile(
     r'(?:Event\s+\d+\s+)?'
     r'(Boys|Girls|Men|Women|Mixed)\s+'
-    r'((?:\d+(?:\s*[-&\s]\s*(?:\d+|Over|Under|Year\s*Olds?))?|Open))\s+'
-    r'(\d+)x(\d+)\s+'
+    r'(?:((?:\d+(?:\s*[-&\s]\s*(?:\d+|Over|Under|Year\s*Olds?))?|Open))\s+)?'
+    r'(\d+)\s*x\s*(\d+)\s+'
     r'(?:SC|LC)\s+Met(?:er|re)s?\s+'
     r'(.+)',
     re.IGNORECASE
@@ -56,43 +66,62 @@ SKIP_PATTERNS = [
     re.compile(r'National\s+Team', re.IGNORECASE),
     re.compile(r'High\s+Performance', re.IGNORECASE),
     re.compile(r'Meet Qualifying', re.IGNORECASE),
-    re.compile(r'^\s*Name\s+Age\s+Team', re.IGNORECASE),
-    re.compile(r'^\s*Name\s+Ag\s*e\s+Team', re.IGNORECASE),
     re.compile(r'^\s*[-=]+\s*$'),
     re.compile(r'^\s*Results$', re.IGNORECASE),
-    re.compile(r'^\s*Preliminaries$', re.IGNORECASE),
-    re.compile(r'^\s*Finals$', re.IGNORECASE),
     re.compile(r'^\s*Consolation', re.IGNORECASE),
     re.compile(r'^\s*Seed\s+Time', re.IGNORECASE),
-    re.compile(r'^\s*(?:Finals|Prelim)\s+Time', re.IGNORECASE),
     re.compile(r'^\s*LEN\s+Points', re.IGNORECASE),
 ]
 
+# Column headers carry the round: "Name Ag e Team Prelim Time LEN",
+# "Name Age Team Finals Time", "Team R elay Finals Time LEN"
+COLUMN_HEADER = re.compile(
+    r'^\s*(?:Name\s+Ag\s*e?\s+Team|Team\s+R\s*elay)\b', re.IGNORECASE
+)
+COLUMN_ROUND = re.compile(r'(Prelim\w*|Finals?)\s+Time', re.IGNORECASE)
+
+# Standalone round marker lines
+ROUND_MARKER = re.compile(r'^\s*(Preliminaries|Finals|Swim-?offs?)\s*$', re.IGNORECASE)
+
+# Round keywords for lines that combine marker + event reference
+ROUND_KEYWORDS = {
+    'Finals': re.compile(r'\bFinals?\b', re.IGNORECASE),
+    'Prelims': re.compile(r'\bPrelim', re.IGNORECASE),
+}
+
 # ---- RESULT LINE PATTERNS ----
 
-# Standard: "1 Fakhreddine, Youssef 15 NSSC-LB 1:12.66"
-# With points: "2 Al Khatib, Omar 14 OLY-LB 1:15.34 456"
-# Tie: "*3 Saad, Ali 16 NSSC-LB 59.85"
-# No comma: "1 Youssef Fakhreddine 15 NSSC-LB 1:12.66"
-#
-# Strategy: use TIME as anchor, then parse backwards from it
 TIME_PATTERN = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})')
 
-# DQ/NS/DNF patterns
+# Individual DQ/NS/DNF: "--- Fakhreddine, Youssef 15 NSSC-LB DQ"
 DQ_LINE = re.compile(
     r'^\s*---\s+(.+?)\s+(\d{1,2})\s+(\S+)\s+(DQ|NS|DFS|DNF|SCR|DSQ)',
     re.IGNORECASE
 )
 
+# Relay team result: "1 NAJ A 2:00.88 354"  (team code + relay letter)
+RELAY_TEAM_LINE = re.compile(
+    r'^\s*\*?(\d{1,3})\s+'
+    r'([A-Z][A-Za-z0-9\'\.\- ]*?)\s+'
+    r'([A-Z])\s+'
+    r'(\d{1,2}:\d{2}\.\d{2}|\d{2,3}\.\d{2})'
+    r'(?:\s+(\d+))?'
+)
+
+# Relay team DQ: "--- MTY A NS"
+RELAY_DQ_LINE = re.compile(
+    r'^\s*---\s+([A-Z][A-Za-z0-9\'\.\- ]*?)\s+([A-Z])\s+(DQ|NS|DFS|DNF|SCR|DSQ)',
+    re.IGNORECASE
+)
+
+# Relay leg swimmers: "1) Ghassan, Zein 12 2) Mohamad, Chahrour 13"
+RELAY_SWIMMER_MARK = re.compile(r'\d\)\s')
+RELAY_SWIMMER_PART = re.compile(r'(\d)\)\s*(.+?)(?=\s+\d\)|\s*$)')
+
 # Rank at start of a result line
 RANK_PREFIX = re.compile(r'^\s*\*?(\d{1,3})\s+')
 
-# Round type markers
-ROUND_KEYWORDS = {
-    'Finals': re.compile(r'\bFinals?\b', re.IGNORECASE),
-    'Prelims': re.compile(r'\bPrelim', re.IGNORECASE),
-    'Consolation': re.compile(r'\bConsol', re.IGNORECASE),
-}
+STATUS_MAP = {'DQ': 'DQ', 'DSQ': 'DQ', 'NS': 'DNS', 'DFS': 'DNS', 'DNF': 'DNF', 'SCR': 'DNS'}
 
 
 def detect_format(text):
@@ -155,103 +184,170 @@ def parse(text):
     elif ' lc ' in text_lower or 'long course' in text_lower or 'lc meter' in text_lower:
         meet.pool = 'LCM'
 
-    # All HY-TEK files use "LAST, First" comma order (including Lebanon)
-    comma_order = 'last_first'
+    # Name comma order:
+    #   Most HY-TEK meets print "LAST, First" (Hamilton, Jordan).
+    #   Lebanese federation files print "First, LAST" ("Jude, Aoun" = Jude AOUN).
+    sniff = (meet.meet_name + ' ' + ' '.join(header_lines)).lower()
+    comma_order = 'first_last' if ('leban' in sniff or 'liban' in sniff) else 'last_first'
 
     # ---- PARSE EVENTS AND RESULTS ----
     current_event = None
-    current_round = ''
+    current_key = None  # (event_name, gender, age_group)
+
+    def switch_round(round_type):
+        """Point current_event at the (event, round) classement, creating a
+        sibling event when the current one already holds other-round results."""
+        nonlocal current_event
+        if current_event is None or not round_type:
+            return
+        if current_event.round_type == round_type:
+            return
+        if not current_event.results:
+            current_event.round_type = round_type
+            return
+        sibling = ParsedEvent(
+            event_name=current_event.event_name,
+            distance=current_event.distance,
+            stroke=current_event.stroke,
+            gender=current_event.gender,
+            round_type=round_type,
+            age_group=current_event.age_group,
+        )
+        meet.events.append(sibling)
+        current_event = sibling
 
     for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
 
+        # Strip stray single lowercase letters that column-cropped extraction
+        # sometimes prepends ("e 2 Thompson, Anna 14 Hamilton 9:11.28")
+        stripped = re.sub(r'^[a-z]\s+(?=\S)', '', stripped)
+        if len(stripped) <= 1:
+            continue
+
+        # Round in this line, if any (used by headers and markers below)
+        line_round = ''
+        for rtype, pattern in ROUND_KEYWORDS.items():
+            if pattern.search(stripped):
+                line_round = rtype
+                break
+
+        # ---- Event headers (incl. "(Event N ...)" page-break continuations) ----
+        relay_match = RELAY_HEADER.search(stripped)
+        header_match = None if relay_match else EVENT_HEADER.search(stripped)
+
+        if relay_match or header_match:
+            m = relay_match or header_match
+            gender_text = m.group(1)
+            age_group = (m.group(2) or '').strip()
+            if relay_match:
+                legs = int(m.group(3))
+                leg_dist = int(m.group(4))
+                distance = legs * leg_dist
+                stroke_raw = m.group(5).strip()
+                relay = True
+            else:
+                distance = int(m.group(3))
+                stroke_raw = m.group(4).strip()
+                relay = is_relay_event(stroke_raw)
+
+            gl = gender_text.lower()
+            if gl == 'mixed':
+                gender = 'X'
+            elif gl in ('girls', 'women'):
+                gender = 'F'
+            else:
+                gender = 'M'
+            stroke = normalize_stroke(stroke_raw)
+            event_name = normalize_event_name(distance, stroke, relay)
+            if relay:
+                gender_label = {'M': 'Men', 'F': 'Women', 'X': 'Mixed'}.get(gender, '')
+                if gender_label:
+                    event_name = f'{event_name} {gender_label}'
+
+            key = (event_name, gender, age_group)
+            if key == current_key and current_event is not None:
+                # Page-break continuation of the same event
+                if line_round:
+                    switch_round(line_round)
+                continue
+
+            current_event = ParsedEvent(
+                event_name=event_name,
+                distance=distance,
+                stroke=stroke,
+                gender=gender,
+                round_type=line_round,
+                age_group=age_group,
+            )
+            meet.events.append(current_event)
+            current_key = key
+            continue
+
+        # ---- Round signals (apply to the CURRENT event) ----
+        # Column header: "Name Ag e Team Prelim Time LEN" / "Team R elay Finals Time"
+        if COLUMN_HEADER.match(stripped):
+            col_round = COLUMN_ROUND.search(stripped)
+            if col_round and current_event is not None:
+                word = col_round.group(1).lower()
+                switch_round('Prelims' if word.startswith('prelim') else 'Finals')
+            continue
+
+        # Standalone marker: "Preliminaries" / "Finals"
+        marker = ROUND_MARKER.match(stripped)
+        if marker:
+            word = marker.group(1).lower()
+            if word.startswith('prelim'):
+                switch_round('Prelims')
+            elif word.startswith('final'):
+                switch_round('Finals')
+            continue
+
         # Skip known non-data lines
         if _should_skip(stripped):
-            # Check for round type ONLY on standalone round markers
-            # NOT on column headers like "Name Age Team Finals Time"
-            if not re.search(r'Name\s+Ag', stripped, re.IGNORECASE):
-                for rtype, pattern in ROUND_KEYWORDS.items():
-                    if pattern.search(stripped):
-                        current_round = rtype
-            continue
-
-        # Check for relay event header
-        relay_match = RELAY_HEADER.search(stripped)
-        if relay_match:
-            gender_text = relay_match.group(1)
-            age_group = relay_match.group(2).strip()
-            legs = int(relay_match.group(3))
-            leg_dist = int(relay_match.group(4))
-            stroke_raw = relay_match.group(5).strip()
-
-            gender = 'F' if gender_text.lower() in ('girls', 'women') else 'M'
-            stroke = normalize_stroke(stroke_raw)
-            distance = legs * leg_dist
-            event_name = normalize_event_name(distance, stroke, True)
-
-            current_event = ParsedEvent(
-                event_name=event_name,
-                distance=distance,
-                stroke=stroke,
-                gender=gender,
-                round_type=current_round,
-                age_group=age_group,
-            )
-            meet.events.append(current_event)
-            current_round = ''
-            continue
-
-        # Check for individual event header
-        header_match = EVENT_HEADER.search(stripped)
-        if header_match:
-            gender_text = header_match.group(1)
-            age_group = header_match.group(2).strip()
-            distance = int(header_match.group(3))
-            stroke_raw = header_match.group(4).strip()
-
-            gender = 'F' if gender_text.lower() in ('girls', 'women') else 'M'
-            stroke = normalize_stroke(stroke_raw)
-            relay = is_relay_event(stroke_raw)
-            event_name = normalize_event_name(distance, stroke, relay)
-
-            current_event = ParsedEvent(
-                event_name=event_name,
-                distance=distance,
-                stroke=stroke,
-                gender=gender,
-                round_type=current_round,
-                age_group=age_group,
-            )
-            meet.events.append(current_event)
-            current_round = ''
             continue
 
         if not current_event:
             continue
 
-        # Skip split time lines (e.g. "28.54  1:02.80  1:41.80  2:19.05")
-        if _is_split_line(stripped):
+        event_is_relay = _is_relay(current_event.event_name)
+
+        if event_is_relay:
+            if _parse_relay_line(stripped, current_event, comma_order):
+                continue
+            # Splits line inside relay: pair with leg swimmers
+            if _is_split_line(stripped) and current_event.results:
+                _attach_relay_splits(current_event.results[-1], stripped)
+                continue
             continue
 
-        # Check for DQ/NS/DNF lines
+        # Individual split lines: attach to the previous result
+        if _is_split_line(stripped):
+            if current_event.results:
+                times = TIME_PATTERN.findall(stripped)
+                current_event.results[-1].split_times.extend(times)
+            continue
+
+        # DQ/NS/DNF lines
         dq_match = DQ_LINE.match(stripped)
         if dq_match:
             name = normalize_name(dq_match.group(1), comma_order=comma_order)
             age = int(dq_match.group(2))
             status_raw = dq_match.group(4).upper()
-            status_map = {'DQ': 'DQ', 'DSQ': 'DQ', 'NS': 'DNS', 'DFS': 'DNS', 'DNF': 'DNF', 'SCR': 'DNS'}
             result = ParsedResult(
                 swimmer_name=name,
                 time_text='',
                 age=age,
                 club=dq_match.group(3),
-                status=status_map.get(status_raw, 'DQ'),
+                status=STATUS_MAP.get(status_raw, 'DQ'),
                 gender=current_event.gender,
                 event_name=current_event.event_name,
                 event_distance=current_event.distance,
                 event_stroke=current_event.stroke,
+                round_type=current_event.round_type,
+                age_group=current_event.age_group,
             )
             current_event.results.append(result)
             continue
@@ -265,7 +361,100 @@ def parse(text):
                 continue
             current_event.results.append(result)
 
+    meet.events = [e for e in meet.events if e.results]
+    merge_duplicate_events(meet)
     return meet
+
+
+def _is_relay(event_name):
+    return 'relay' in event_name.lower()
+
+
+def _parse_relay_line(line, event, comma_order):
+    """Parse team/DQ/leg-swimmer lines inside a relay event.
+    Returns True if the line was consumed."""
+    # Team result: "1 NAJ A 2:00.88 354"
+    m = RELAY_TEAM_LINE.match(line)
+    if m:
+        rank = int(m.group(1))
+        team = m.group(2).strip()
+        letter = m.group(3)
+        time_text = m.group(4)
+        time_cs = parse_time_to_centiseconds(time_text)
+        # Relay totals are swum by 4 swimmers — judge plausibility per leg
+        if not _time_plausible(time_cs, event.distance // 4):
+            return False
+        fina = 0
+        if m.group(5):
+            val = int(m.group(5))
+            if 1 <= val <= 1200:
+                fina = val
+        event.results.append(ParsedResult(
+            swimmer_name=f'{team} {letter}',
+            time_text=time_text,
+            time_centiseconds=time_cs,
+            event_name=event.event_name,
+            event_distance=event.distance,
+            event_stroke=event.stroke,
+            gender=event.gender,
+            rank=rank,
+            club=team,
+            fina_points=fina,
+            round_type=event.round_type,
+            age_group=event.age_group,
+        ))
+        return True
+
+    # Team DQ: "--- MTY A NS"
+    m = RELAY_DQ_LINE.match(line)
+    if m:
+        team = m.group(1).strip()
+        letter = m.group(2)
+        status_raw = m.group(3).upper()
+        event.results.append(ParsedResult(
+            swimmer_name=f'{team} {letter}',
+            time_text='',
+            status=STATUS_MAP.get(status_raw, 'DQ'),
+            gender=event.gender,
+            event_name=event.event_name,
+            event_distance=event.distance,
+            event_stroke=event.stroke,
+            club=team,
+            round_type=event.round_type,
+            age_group=event.age_group,
+        ))
+        return True
+
+    # Leg swimmers: "1) Ghassan, Zein 12 2) Mohamad, Chahrour 13"
+    if RELAY_SWIMMER_MARK.search(line) and event.results:
+        result = event.results[-1]
+        if not hasattr(result, '_relay_names'):
+            result._relay_names = []
+        for pm in RELAY_SWIMMER_PART.finditer(line):
+            raw = pm.group(2).strip()
+            # Strip trailing age
+            raw = re.sub(r'\s+\d{1,2}$', '', raw).strip()
+            name = normalize_name(raw, comma_order=comma_order)
+            if name:
+                result._relay_names.append(name)
+        # Until (unless) a splits line arrives, record names alone
+        result.split_times = list(result._relay_names)
+        return True
+
+    return False
+
+
+def _attach_relay_splits(result, line):
+    """Pair a relay splits line ("29.93 32.67 29.35 28.93") with leg swimmers."""
+    times = TIME_PATTERN.findall(line)
+    names = getattr(result, '_relay_names', [])
+    if names:
+        result.split_times = [
+            f'{name} {times[i]}' if i < len(times) else name
+            for i, name in enumerate(names)
+        ]
+    else:
+        result.split_times.extend(times)
 
 
 def _should_skip(line):
@@ -365,6 +554,10 @@ def _parse_result_line(line, event, comma_order='last_first'):
         # Check if the line at least has enough structure
         if not before_time:
             return None
+
+    # Fix PDF-extraction shifted spaces gluing the age to the name's last letter:
+    # "Shahzadehhamzeh, Amiryousse f14 AST" -> "Shahzadehhamzeh, Amiryoussef 14 AST"
+    before_time = re.sub(r'(\w)\s+([a-z])(\d{1,2})\b', r'\1\2 \3', before_time)
 
     # Now before_time should be: "Name, First Age Team" or "Name First Age Team"
     # Work backwards: split into tokens

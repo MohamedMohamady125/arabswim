@@ -467,6 +467,63 @@ def detect_gender(text):
     return ''
 
 
+# --- Meet post-processing ---
+
+def merge_duplicate_events(meet):
+    """Merge fragmented events that share the same identity.
+
+    PDF page breaks and two-column layouts repeat event headers, which makes
+    parsers open a fresh ParsedEvent for the same (event, gender, round,
+    category). Merging them restores one event per classement and also drops
+    exact-duplicate result rows that come from re-extracted pages.
+    """
+    merged = {}
+    seen_keys = {}
+    order = []
+    for ev in meet.events:
+        key = (ev.event_name, ev.gender, ev.round_type, ev.age_group)
+        if key not in merged:
+            merged[key] = ev
+            seen_keys[key] = set()
+            order.append(ev)
+        target = merged[key]
+        seen = seen_keys[key]
+        incoming = ev.results if ev is not target else list(ev.results)
+        if ev is target:
+            target.results = []
+        for r in incoming:
+            rkey = (r.swimmer_name.upper(), r.time_centiseconds, r.rank, r.status)
+            if rkey not in seen:
+                seen.add(rkey)
+                target.results.append(r)
+    meet.events = order
+    return meet
+
+
+def clean_text(text):
+    """Remove non-breaking spaces and collapse whitespace."""
+    if not text:
+        return ''
+    text = text.replace('\xa0', ' ').replace('&nbsp;', ' ')
+    return re.sub(r'\s+', ' ', text).strip()
+
+
+def to_iso_date(date_text):
+    """Normalize a DD/MM/YYYY-style date string to YYYY-MM-DD.
+    Returns the input unchanged if it is already ISO or unparseable."""
+    if not date_text:
+        return ''
+    date_text = date_text.strip()
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', date_text):
+        return date_text
+    m = re.search(r'(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})', date_text)
+    if m:
+        day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            return f'{year:04d}-{month:02d}-{day:02d}'
+    return date_text
+
+
 # --- Name normalization ---
 
 def normalize_name(name, comma_order='first_last'):

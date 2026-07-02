@@ -1,3 +1,505 @@
-from django.test import TestCase
+"""
+Regression tests for the importer parsers.
 
-# Create your tests here.
+Two layers:
+  1. Unit tests for the shared helpers in parsers/base.py (fast, no files).
+  2. Golden-file tests: parse every sample meet file and assert the exact
+     metadata, event/result counts, round distribution, relay coverage and
+     data-sanity invariants that were manually verified against the source
+     documents. If a parser change alters any of these numbers, a test fails
+     and the change must be re-verified against the source PDFs/HTML/Excel.
+
+Sample files are looked up relative to the repo root; tests for missing
+files are skipped so the suite still runs on machines without the samples.
+
+Run:  ./venv/bin/python -m pytest importer/tests.py -v
+  or  ./manage.py test importer
+"""
+import os
+import unittest
+import collections
+
+from django.test import SimpleTestCase
+
+from importer.parsers.base import (
+    parse_time_to_centiseconds, normalize_name, normalize_category,
+    normalize_event_name, normalize_stroke, to_iso_date,
+    extract_date_and_location, clean_text,
+)
+from importer.parsers.frmn_parser import _fix_frmn_points
+
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+SAMPLES = {
+    'algeria2022': '../data/Algeria.2022.SCM.pdf',
+    'arab2022': '../data/Arab.Algeria.2022.pdf',
+    'tunisia': "../data/CHAMPIONNAT D'\u00c9T\u00c9 DE TUNISIE BENJAMINS - 25_07_2024 \u00a4 27_07_2024 - RADES.html",
+    'hamilton': '../data/Hamilton.SCM.2023.PDF',
+    'lebanon': '../data/Lebanon.2024.SCM.pdf',
+    'trone': '../data/Maroc.Trone.2026.pdf',
+    'algeria2026': '../Algeria.AG.SCM.2026.pdf',
+    'tangier': '../Maroc.Tangier.2026.pdf',
+    'gcc': '../GCC  Final Version.xlsx',
+}
+SAMPLES = {k: os.path.normpath(os.path.join(BACKEND_DIR, p)) for k, p in SAMPLES.items()}
+
+_PARSE_CACHE = {}
+
+
+def parse_sample(key):
+    """Parse a sample file once per test run (parsing big PDFs is slow)."""
+    if key not in _PARSE_CACHE:
+        from importer.parsers.detector import detect_and_parse
+        _PARSE_CACHE[key] = detect_and_parse(SAMPLES[key])
+    return _PARSE_CACHE[key]
+
+
+def needs_sample(key):
+    return unittest.skipUnless(
+        os.path.exists(SAMPLES[key]), f'sample file missing: {SAMPLES[key]}')
+
+
+def is_relay(ev):
+    n = ev.event_name.lower()
+    return 'relay' in n or '4x' in n or '4\u00d7' in n
+
+
+# ---------------------------------------------------------------------------
+# 1. Unit tests for shared helpers
+# ---------------------------------------------------------------------------
+
+class TimeParsingTests(SimpleTestCase):
+    def test_minutes_seconds(self):
+        self.assertEqual(parse_time_to_centiseconds('2:25.94'), 14594)
+
+    def test_seconds_only(self):
+        self.assertEqual(parse_time_to_centiseconds('29.26'), 2926)
+
+    def test_comma_decimal(self):
+        self.assertEqual(parse_time_to_centiseconds('2:25,94'), 14594)
+
+    def test_invalid(self):
+        self.assertEqual(parse_time_to_centiseconds(''), 0)
+        self.assertEqual(parse_time_to_centiseconds('DSQ'), 0)
+
+
+class NameNormalizationTests(SimpleTestCase):
+    def test_last_first_comma(self):
+        # Splash / international: "LAST, First"
+        self.assertEqual(normalize_name('ALZAMIL, Ali', comma_order='last_first'),
+                         'Ali ALZAMIL')
+
+    def test_first_last_comma(self):
+        # Lebanon HyTek: "First, Last"
+        self.assertEqual(normalize_name('Jude, Aoun', comma_order='first_last'),
+                         'Jude AOUN')
+
+    def test_whitespace_and_nbsp(self):
+        self.assertEqual(clean_text('Grand\xa0bassin'), 'Grand bassin')
+
+
+class CategoryTests(SimpleTestCase):
+    def test_french_tiers(self):
+        self.assertEqual(normalize_category('BENJAMINS'), 'Youth')
+        self.assertEqual(normalize_category('MINIMES'), 'Intermediate')
+        self.assertEqual(normalize_category('CADETS'), 'Junior')
+        self.assertEqual(normalize_category('SENIORS'), 'Senior')
+
+
+class EventNameTests(SimpleTestCase):
+    def test_individual(self):
+        self.assertEqual(normalize_event_name(100, 'Freestyle'), '100 M Freestyle')
+
+    def test_relay_uses_leg_distance(self):
+        name = normalize_event_name(400, 'Freestyle', is_relay=True)
+        self.assertIn('4x100', name.replace(' ', '').lower())
+        self.assertIn('relay', name.lower())
+
+    def test_stroke_french(self):
+        self.assertEqual(normalize_stroke('NAGE LIBRE'), 'Freestyle')
+        self.assertEqual(normalize_stroke('4 NAGES'), 'Individual Medley')
+        self.assertEqual(normalize_stroke('Brasse'), 'Breaststroke')
+        self.assertEqual(normalize_stroke('Dos'), 'Backstroke')
+        self.assertEqual(normalize_stroke('Papillon'), 'Butterfly')
+
+
+class DateTests(SimpleTestCase):
+    def test_to_iso(self):
+        self.assertEqual(to_iso_date('28/06/2026'), '2026-06-28')
+        self.assertEqual(to_iso_date('2026-06-28'), '2026-06-28')
+        self.assertEqual(to_iso_date(''), '')
+
+    def test_range_with_shared_month(self):
+        start, end, loc = extract_date_and_location('EL BEZ SETIF, 19 - 22/1/2022')
+        self.assertEqual(start, '2022-01-19')
+        self.assertEqual(end, '2022-01-22')
+
+    def test_two_full_dates(self):
+        start, end, _ = extract_date_and_location(
+            'Hamilton Aquatics Short Course - 21/10/2023 to 22/10/2023')
+        self.assertEqual((start, end), ('2023-10-21', '2023-10-22'))
+
+
+class FrmnPointsTests(SimpleTestCase):
+    def test_doubled_digits(self):
+        self.assertEqual(_fix_frmn_points('664455'), 645)
+        self.assertEqual(_fix_frmn_points('553333'), 533)
+
+    def test_normal(self):
+        self.assertEqual(_fix_frmn_points('839'), 839)
+
+    def test_invalid(self):
+        self.assertEqual(_fix_frmn_points(''), 0)
+        self.assertEqual(_fix_frmn_points('9999'), 0)  # >1200 and not de-doublable
+
+
+# ---------------------------------------------------------------------------
+# 2. Shared invariants applied to every sample file
+# ---------------------------------------------------------------------------
+
+def _min_plausible(distance):
+    table = {50: 1500, 100: 3500, 200: 9000, 400: 20000, 800: 42000, 1500: 80000}
+    best = 0
+    for d, t in table.items():
+        if distance >= d:
+            best = t
+    return best
+
+
+def _max_plausible(distance):
+    return max(distance, 50) // 50 * 18000
+
+
+class SanityMixin:
+    """Invariants every parsed meet must satisfy (mirrors verify_harness)."""
+    KEY = None
+    # (name.upper(), event, gender, round, cat, birth_year) keys that legitimately
+    # repeat in the source document (e.g. one club fielding two same-label relay teams)
+    ALLOWED_DUPLICATE_KEYS = 0
+
+    @classmethod
+    def meet(cls):
+        return parse_sample(cls.KEY)
+
+    def test_every_event_has_gender_and_results(self):
+        for ev in self.meet().events:
+            self.assertTrue(ev.gender, f'event missing gender: {ev.event_name}')
+            self.assertTrue(ev.results, f'event has zero results: {ev.event_name}')
+
+    def test_ranks_start_at_one(self):
+        for ev in self.meet().events:
+            ranks = sorted(r.rank for r in ev.results
+                           if r.status in ('OK', 'TLD') and r.rank > 0)
+            if ranks:
+                self.assertEqual(ranks[0], 1,
+                                 f'{ev.event_name} [{ev.round_type}/{ev.age_group}]: '
+                                 f'first rank is {ranks[0]}')
+
+    def test_times_plausible(self):
+        for ev in self.meet().events:
+            # relays are skipped: some parsers store the leg distance, others
+            # the total, so no single bound applies (mirrors verify_harness)
+            if not ev.distance or is_relay(ev):
+                continue
+            lo, hi = _min_plausible(ev.distance), _max_plausible(ev.distance)
+            for r in ev.results:
+                if r.status not in ('OK', 'TLD') or not r.time_centiseconds:
+                    continue
+                self.assertGreaterEqual(
+                    r.time_centiseconds, lo,
+                    f'implausibly fast: {r.swimmer_name} {r.time_text} in {ev.event_name}')
+                self.assertLessEqual(
+                    r.time_centiseconds, hi,
+                    f'implausibly slow: {r.swimmer_name} {r.time_text} in {ev.event_name}')
+
+    def test_birth_years_ages_points_sane(self):
+        for ev in self.meet().events:
+            for r in ev.results:
+                if r.status not in ('OK', 'TLD'):
+                    continue
+                if r.birth_year:
+                    self.assertTrue(1930 <= r.birth_year <= 2025,
+                                    f'bad birth year {r.birth_year}: {r.swimmer_name}')
+                if r.age:
+                    self.assertTrue(4 <= r.age <= 90,
+                                    f'bad age {r.age}: {r.swimmer_name}')
+                if r.fina_points:
+                    self.assertLessEqual(r.fina_points, 1200,
+                                         f'bad points {r.fina_points}: {r.swimmer_name}')
+
+    def test_no_duplicate_results(self):
+        seen = collections.Counter()
+        for ev in self.meet().events:
+            for r in ev.results:
+                if r.status not in ('OK', 'TLD'):
+                    continue
+                key = (r.swimmer_name.upper(), ev.event_name, ev.gender,
+                       r.round_type or ev.round_type, ev.age_group, r.birth_year)
+                seen[key] += 1
+        dupes = {k: c for k, c in seen.items() if c > 1}
+        self.assertLessEqual(
+            len(dupes), self.ALLOWED_DUPLICATE_KEYS,
+            f'unexpected duplicate results: {list(dupes.items())[:10]}')
+
+
+# ---------------------------------------------------------------------------
+# 3. Golden-file tests, one class per sample
+# ---------------------------------------------------------------------------
+
+@needs_sample('algeria2022')
+class Algeria2022Tests(SanityMixin, SimpleTestCase):
+    KEY = 'algeria2022'
+    # Verified against source: same club fields multiple relay teams printed with
+    # identical labels, plus two distinct swimmers sharing name+birth year.
+    ALLOWED_DUPLICATE_KEYS = 12
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'splash')
+        self.assertEqual(m.pool, 'SCM')
+        self.assertEqual(m.meet_name, 'CHAMPIONNAT NATIONAL M-J-OPEN 2022')
+        self.assertEqual(m.date_text, '2022-01-19')
+        self.assertEqual(m.date_end, '2022-01-22')
+        self.assertEqual(m.location, 'EL BEZ SETIF')
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.total_events, 126)
+        self.assertEqual(m.total_results, 2182)
+
+    def test_rounds(self):
+        rounds = collections.Counter(
+            r.round_type or '(none)' for ev in self.meet().events for r in ev.results)
+        self.assertEqual(rounds['Finals'], 199)
+        self.assertEqual(rounds['Heats'], 1899)
+
+    def test_relays_have_swimmers(self):
+        missing = sum(
+            1 for ev in self.meet().events if is_relay(ev)
+            for r in ev.results if r.status in ('OK', 'TLD') and not r.split_times)
+        self.assertLessEqual(missing, 6)
+
+
+@needs_sample('arab2022')
+class Arab2022Tests(SanityMixin, SimpleTestCase):
+    KEY = 'arab2022'
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'splash')
+        self.assertEqual(m.pool, 'LCM')
+        self.assertEqual(m.meet_name, 'ARAB CHAMPIONSHIP OPEN 2022 -ORAN-')
+        self.assertEqual(m.date_text, '2022-07-20')
+        self.assertEqual(m.date_end, '2022-07-23')
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.total_events, 51)
+        self.assertEqual(m.total_results, 365)
+
+    def test_prelims_and_finals_detected(self):
+        rounds = collections.Counter(
+            r.round_type for ev in self.meet().events for r in ev.results)
+        self.assertEqual(rounds['Heats'], 120)
+        self.assertEqual(rounds['Finals'], 224)
+
+    def test_all_relays_have_swimmers(self):
+        for ev in self.meet().events:
+            if not is_relay(ev):
+                continue
+            for r in ev.results:
+                if r.status in ('OK', 'TLD'):
+                    self.assertTrue(r.split_times,
+                                    f'relay without swimmers: {r.swimmer_name} in {ev.event_name}')
+
+
+@needs_sample('tunisia')
+class TunisiaNat2iTests(SanityMixin, SimpleTestCase):
+    KEY = 'tunisia'
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'nat2i')
+        self.assertEqual(m.pool, 'LCM')
+        # regression: raw HTML contains \xa0 in the title
+        self.assertEqual(m.meet_name, "CHAMPIONNAT D'\u00c9T\u00c9 DE TUNISIE BENJAMINS")
+        self.assertNotIn('\xa0', m.meet_name)
+        self.assertNotIn('\xa0', m.location)
+        self.assertEqual(m.date_text, '2024-07-25')
+        self.assertEqual(m.date_end, '2024-07-27')
+        self.assertEqual(m.location, 'RADES')
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.total_events, 36)
+        self.assertEqual(m.total_results, 1575)
+
+
+@needs_sample('hamilton')
+class HamiltonHytekTests(SanityMixin, SimpleTestCase):
+    KEY = 'hamilton'
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'hytek')
+        self.assertEqual(m.pool, 'SCM')
+        self.assertEqual(m.meet_name, 'Hamilton Aquatics Short Course')
+        self.assertEqual(m.date_text, '2023-10-21')
+        self.assertEqual(m.date_end, '2023-10-22')
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.total_events, 176)
+        self.assertEqual(m.total_results, 2534)
+
+    def test_all_individual_results_have_age(self):
+        ok = [r for ev in self.meet().events if not is_relay(ev)
+              for r in ev.results if r.status in ('OK', 'TLD')]
+        with_age = [r for r in ok if r.age]
+        self.assertEqual(len(ok), len(with_age))
+
+    def test_no_garbled_names(self):
+        # regression: column cropping used to leak stray single letters into names
+        for ev in self.meet().events:
+            for r in ev.results:
+                self.assertNotRegex(r.swimmer_name, r'^[A-Za-z]\s',
+                                    f'garbled name: {r.swimmer_name!r}')
+
+    def test_800_free_is_its_own_event(self):
+        # regression: "Women 800 SC Meter Freestyle" (no age group) used to be
+        # swallowed by the previous 400 IM event
+        names = {(ev.event_name, ev.gender) for ev in self.meet().events}
+        self.assertIn(('800 M Freestyle', 'F'), names)
+
+
+@needs_sample('lebanon')
+class LebanonHytekTests(SanityMixin, SimpleTestCase):
+    KEY = 'lebanon'
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'hytek')
+        self.assertEqual(m.pool, 'SCM')
+        self.assertEqual(m.meet_name, 'Championnat du Liban 25 M')
+        self.assertEqual(m.date_text, '2024-04-20')
+        self.assertEqual(m.date_end, '2024-04-21')
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.total_events, 193)
+        self.assertEqual(m.total_results, 1264)
+
+    def test_prelims_vs_finals(self):
+        # This file is THE prelims/finals regression case: markers appear after
+        # the event header and column headers say "Prelim Time"/"Finals Time".
+        rounds = collections.Counter(
+            r.round_type for ev in self.meet().events for r in ev.results)
+        self.assertEqual(rounds.get('Prelims', 0), 533)
+        self.assertEqual(rounds.get('Finals', 0), 731)
+        self.assertEqual(rounds.get(None, 0) + rounds.get('', 0), 0,
+                         'no result may be missing its round')
+
+    def test_lebanese_comma_order(self):
+        # "Jude, Aoun" means First=Jude Last=Aoun in this federation's HyTek output
+        names = {r.swimmer_name for ev in self.meet().events for r in ev.results}
+        self.assertIn('Jude AOUN', names)
+
+    def test_relay_legs_mapped_to_swimmers(self):
+        relay_ok = [r for ev in self.meet().events if is_relay(ev)
+                    for r in ev.results if r.status in ('OK', 'TLD')]
+        self.assertTrue(relay_ok)
+        missing = [r for r in relay_ok if not r.split_times]
+        self.assertLessEqual(len(missing), 1)  # one team listed without legs in source
+        # legs must be "Name time" pairs
+        sample = next(r for r in relay_ok if len(r.split_times) == 4)
+        for leg in sample.split_times:
+            self.assertRegex(leg, r'.+\s\d', f'bad relay leg: {leg!r}')
+
+
+@needs_sample('trone')
+class MarocTroneFrmnTests(SanityMixin, SimpleTestCase):
+    KEY = 'trone'
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'frmn')
+        self.assertEqual(m.pool, 'SCM')
+        self.assertEqual(m.meet_name, 'COUPE DU TRONE DE NATATION')
+        self.assertEqual(m.date_text, '2026-05-10')
+        self.assertEqual(m.location, 'MARRAKECH')
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.total_events, 20)
+        self.assertEqual(m.total_results, 321)
+
+    def test_birth_year_coverage(self):
+        ok = [r for ev in self.meet().events for r in ev.results
+              if r.status in ('OK', 'TLD')]
+        self.assertTrue(all(r.birth_year for r in ok))
+
+
+@needs_sample('algeria2026')
+class Algeria2026SplashTests(SanityMixin, SimpleTestCase):
+    KEY = 'algeria2026'
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'splash')
+        self.assertEqual(m.pool, 'SCM')
+        self.assertEqual(m.meet_name, 'ALGERIAN WINTER CHAMPIONSHIPS AGE GROUPS')
+        self.assertEqual(m.date_text, '2026-01-27')
+        self.assertEqual(m.date_end, '2026-01-31')
+        self.assertEqual(m.location, 'Oran')
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.total_events, 74)
+        self.assertEqual(m.total_results, 3884)
+
+    def test_long_race_splits_attached(self):
+        # regression: cumulative "800m: 9:12.34" split lines must attach to the
+        # preceding swimmer, not be dropped
+        long_events = [ev for ev in self.meet().events
+                       if ev.distance in (800, 1500) and not is_relay(ev)]
+        self.assertTrue(long_events)
+        with_splits = [r for ev in long_events for r in ev.results if r.split_times]
+        self.assertTrue(with_splits, 'no long-race result has splits')
+
+
+@needs_sample('tangier')
+class MarocTangierFrmnTests(SanityMixin, SimpleTestCase):
+    KEY = 'tangier'
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'frmn')
+        self.assertEqual(m.pool, 'LCM')
+        # regression: English title line has no French keyword
+        self.assertEqual(m.meet_name, 'TANGIER INTERNATIONAL SWIMMING MEETING')
+        self.assertEqual(m.date_text, '2026-06-28')
+        self.assertEqual(m.location, 'TANGER')
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.total_events, 83)
+        self.assertEqual(m.total_results, 838)
+
+
+@needs_sample('gcc')
+class GccExcelTests(SanityMixin, SimpleTestCase):
+    KEY = 'gcc'
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'excel')
+        self.assertEqual(m.pool, 'LCM')
+        self.assertEqual(m.meet_name, '4th GCC Games')
+        self.assertEqual(m.date_text, '2026-05-12')
+        self.assertEqual(m.date_end, '2026-05-15')
+        self.assertEqual(m.location, 'Doha')
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.total_events, 20)
+        self.assertEqual(m.total_results, 139)

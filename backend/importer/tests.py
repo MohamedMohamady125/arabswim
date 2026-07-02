@@ -99,11 +99,16 @@ class NameNormalizationTests(SimpleTestCase):
 
 
 class CategoryTests(SimpleTestCase):
-    def test_french_tiers(self):
-        self.assertEqual(normalize_category('BENJAMINS'), 'Youth')
-        self.assertEqual(normalize_category('MINIMES'), 'Intermediate')
-        self.assertEqual(normalize_category('CADETS'), 'Junior')
-        self.assertEqual(normalize_category('SENIORS'), 'Senior')
+    def test_french_categories_kept_in_french(self):
+        self.assertEqual(normalize_category('BENJAMINS'), 'Benjamins')
+        self.assertEqual(normalize_category('MINIMES'), 'Minimes')
+        self.assertEqual(normalize_category('CADETS'), 'Cadets')
+        self.assertEqual(normalize_category('SENIORS'), 'Seniors')
+
+    def test_combined_labels_ordered_oldest_first(self):
+        self.assertEqual(normalize_category('SENIORS/JUNIORS'), 'Seniors/Juniors')
+        self.assertEqual(normalize_category('JUNIORS SENIORS'), 'Seniors/Juniors')
+        self.assertEqual(normalize_category('JUNIORS/SENIORS'), 'Seniors/Juniors')
 
 
 class EventNameTests(SimpleTestCase):
@@ -474,8 +479,15 @@ class Algeria2026SplashTests(SanityMixin, SimpleTestCase):
 
     def test_counts(self):
         m = self.meet()
-        self.assertEqual(m.total_events, 74)
+        # 114: Cadets, Juniors and Minimes each keep their own classement.
+        # (Was 74 when CADETS and JUNIORS both translated to 'Junior' and
+        # their events were wrongly merged.)
+        self.assertEqual(m.total_events, 114)
         self.assertEqual(m.total_results, 3884)
+
+    def test_categories_stay_french(self):
+        cats = {ev.age_group for ev in self.meet().events}
+        self.assertEqual(cats, {'Cadets', 'Juniors', 'Minimes'})
 
     def test_long_race_splits_attached(self):
         # regression: cumulative "800m: 9:12.34" split lines must attach to the

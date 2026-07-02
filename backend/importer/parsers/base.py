@@ -321,35 +321,46 @@ def normalize_event_name(distance, stroke, is_relay=False):
     return f'{distance} M {stroke}'
 
 
-# --- Age category translation ---
+# --- Age category normalization ---
 
-# French swimming age-categories → English tier names. Keyed on the
-# UPPERCASE French word (singular and plural both listed).
-CATEGORY_TRANSLATIONS = {
-    'POUSSIN': 'Under 11',
-    'POUSSINS': 'Under 11',
-    'BENJAMIN': 'Youth',
-    'BENJAMINS': 'Youth',
-    'MINIME': 'Intermediate',
-    'MINIMES': 'Intermediate',
-    'CADET': 'Junior',
-    'CADETS': 'Junior',
-    'JUNIOR': 'Junior',
-    'JUNIORS': 'Junior',
-    'SENIOR': 'Senior',
-    'SENIORS': 'Senior',
+# French swimming age-categories are kept in French (per federation request —
+# e.g. Morocco FRMN uses Seniors/Juniors, Cadets, Minimes, Benjamins).
+# Keyed on the UPPERCASE label (singular and plural both listed), each maps
+# to the canonical French display form.
+CATEGORY_CANONICAL = {
+    'POUSSIN': 'Poussins',
+    'POUSSINS': 'Poussins',
+    'BENJAMIN': 'Benjamins',
+    'BENJAMINS': 'Benjamins',
+    'MINIME': 'Minimes',
+    'MINIMES': 'Minimes',
+    'CADET': 'Cadets',
+    'CADETS': 'Cadets',
+    'JUNIOR': 'Juniors',
+    'JUNIORS': 'Juniors',
+    'SENIOR': 'Seniors',
+    'SENIORS': 'Seniors',
     'OPEN': 'Open',
-    'TOUTES CATEGORIES': 'All Ages',
-    'TOUTES CATÉGORIES': 'All Ages',
+    'TOUTES CATEGORIES': 'Toutes Catégories',
+    'TOUTES CATÉGORIES': 'Toutes Catégories',
 }
+
+# Oldest → youngest. Combined labels ('SENIORS/JUNIORS', 'JUNIORS SENIORS')
+# are always emitted in this order → 'Seniors/Juniors'; the same order is
+# used to sort categories for display (matches the source PDFs).
+CATEGORY_SENIORITY = [
+    'Open', 'Toutes Catégories', 'Seniors', 'Juniors',
+    'Cadets', 'Minimes', 'Benjamins', 'Poussins',
+]
 
 
 def normalize_category(label):
-    """Translate a French age-category label to its English tier name.
+    """Normalize an age-category label to its canonical French form.
 
-    Handles combined labels like 'SENIORS/JUNIORS' or 'JUNIORS SENIORS'
-    (→ 'Senior/Junior') and falls back to Title Case for anything unknown so
-    no raw French ever reaches the database.
+    Category names stay in French as they appear in federation PDFs
+    (Seniors/Juniors, Cadets, Minimes, Benjamins...). Combined labels like
+    'SENIORS/JUNIORS' or 'JUNIORS SENIORS' become 'Seniors/Juniors'
+    (oldest first). Unknown labels fall back to Title Case.
     """
     if not label:
         return ''
@@ -357,18 +368,19 @@ def normalize_category(label):
     if not raw:
         return ''
     key = raw.upper()
-    if key in CATEGORY_TRANSLATIONS:
-        return CATEGORY_TRANSLATIONS[key]
+    if key in CATEGORY_CANONICAL:
+        return CATEGORY_CANONICAL[key]
     tokens = [t for t in re.split(r'[\s/]+', key) if t]
-    translated = []
+    canonical = []
     for t in tokens:
-        if t not in CATEGORY_TRANSLATIONS:
+        if t not in CATEGORY_CANONICAL:
             # Unknown token — don't guess, return the whole label title-cased.
             return raw.title()
-        val = CATEGORY_TRANSLATIONS[t]
-        if val not in translated:
-            translated.append(val)
-    return '/'.join(translated)
+        val = CATEGORY_CANONICAL[t]
+        if val not in canonical:
+            canonical.append(val)
+    canonical.sort(key=lambda v: CATEGORY_SENIORITY.index(v))
+    return '/'.join(canonical)
 
 
 # --- Pool detection ---

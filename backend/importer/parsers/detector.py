@@ -26,9 +26,10 @@ def detect_and_parse(file_path):
         meet = _parse_excel(file_path, filename)
     else:
         raise ValueError(f'Unsupported file type: {ext}')
-    # An event with no Finals round only swam once: that round IS the finals
-    from .base import promote_lone_heats_to_finals
-    return promote_lone_heats_to_finals(meet)
+    # Drop overall-classification rows duplicated in age categories, then:
+    # an event with no Finals round only swam once — that round IS the finals
+    from .base import drop_general_duplicate_results, promote_lone_heats_to_finals
+    return promote_lone_heats_to_finals(drop_general_duplicate_results(meet))
 
 
 def detect_and_parse_upload(uploaded_file):
@@ -56,9 +57,10 @@ def detect_and_parse_upload(uploaded_file):
             meet = _parse_excel(tmp_path, original_name)
         else:
             raise ValueError(f'Unsupported file type: {ext}')
-        # An event with no Finals round only swam once: that round IS the finals
-        from .base import promote_lone_heats_to_finals
-        return promote_lone_heats_to_finals(meet)
+        # Drop overall-classification rows duplicated in age categories, then:
+        # an event with no Finals round only swam once — that round IS the finals
+        from .base import drop_general_duplicate_results, promote_lone_heats_to_finals
+        return promote_lone_heats_to_finals(drop_general_duplicate_results(meet))
     finally:
         os.unlink(tmp_path)
 

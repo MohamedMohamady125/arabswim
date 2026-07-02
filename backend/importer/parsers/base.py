@@ -512,6 +512,40 @@ def merge_duplicate_events(meet):
     return meet
 
 
+def drop_general_duplicate_results(meet):
+    """Drop overall-classification rows that duplicate age-category rows.
+
+    Splash meets often print heats twice: once as an overall ranking
+    ("Cat. générale" → age_group '') and once per age category. Importing
+    both duplicates every swim in the swimmer profile. Within each
+    (event, gender, round), remove a no-category result when the exact same
+    swim (name + time) also appears under a specific age category. Rows
+    unique to the overall list (e.g. unclassified swimmers) are kept.
+    """
+    groups = {}
+    emptied = set()
+    for ev in meet.events:
+        groups.setdefault((ev.event_name, ev.gender, ev.round_type), []).append(ev)
+    for evs in groups.values():
+        aged_keys = set()
+        for ev in evs:
+            if ev.age_group:
+                for r in ev.results:
+                    aged_keys.add((r.swimmer_name.upper(), r.time_centiseconds))
+        if not aged_keys:
+            continue
+        for ev in evs:
+            if not ev.age_group and ev.results:
+                ev.results = [
+                    r for r in ev.results
+                    if (r.swimmer_name.upper(), r.time_centiseconds) not in aged_keys
+                ]
+                if not ev.results:
+                    emptied.add(id(ev))
+    meet.events = [ev for ev in meet.events if id(ev) not in emptied]
+    return meet
+
+
 def promote_lone_heats_to_finals(meet):
     """If an event never ran a Finals round, its lone Heats/Prelims round IS
     the final ranking, so relabel it Finals.

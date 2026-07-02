@@ -268,17 +268,34 @@ class Algeria2022Tests(SanityMixin, SimpleTestCase):
         self.assertEqual(m.location, 'EL BEZ SETIF')
 
     def test_counts(self):
+        # This meet prints every heat swim twice: overall ("Cat. générale")
+        # ranking + per-age-category ranking. drop_general_duplicate_results
+        # keeps only the age-category copy (was 126 events / 2182 results
+        # before dedupe).
         m = self.meet()
-        self.assertEqual(m.total_events, 126)
-        self.assertEqual(m.total_results, 2182)
+        self.assertEqual(m.total_events, 102)
+        self.assertEqual(m.total_results, 1226)
 
     def test_rounds(self):
         rounds = collections.Counter(
             r.round_type or '(none)' for ev in self.meet().events for r in ev.results)
-        # 199 true finals + 84 single-round results promoted to Finals
-        self.assertEqual(rounds['Finals'], 283)
-        self.assertEqual(rounds['Heats'], 1899)
+        # 199 true finals + 42 single-round results promoted to Finals
+        self.assertEqual(rounds['Finals'], 241)
+        self.assertEqual(rounds['Heats'], 985)
         self.assertEqual(rounds['(none)'], 0)
+
+    def test_no_general_duplicates_in_heats(self):
+        # A swim must not appear both with and without an age category
+        # within the same event + round (swimmer profile duplication bug).
+        by_group = {}
+        for ev in self.meet().events:
+            by_group.setdefault((ev.event_name, ev.gender, ev.round_type), []).append(ev)
+        for evs in by_group.values():
+            aged = {(r.swimmer_name.upper(), r.time_centiseconds)
+                    for ev in evs if ev.age_group for r in ev.results}
+            general = {(r.swimmer_name.upper(), r.time_centiseconds)
+                       for ev in evs if not ev.age_group for r in ev.results}
+            self.assertEqual(aged & general, set())
 
     def test_relays_have_swimmers(self):
         missing = sum(

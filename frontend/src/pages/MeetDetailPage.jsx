@@ -5,6 +5,13 @@ import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
 import AddResultsModal from '../components/championships/AddResultsModal'
 
+// Display categories oldest → youngest, matching the source PDFs
+const CATEGORY_ORDER = ['Seniors/Juniors', 'Seniors', 'Juniors', 'Cadets', 'Minimes', 'Benjamins', 'Poussins']
+const catRank = (c) => {
+  const i = CATEGORY_ORDER.indexOf(c)
+  return i === -1 ? CATEGORY_ORDER.length : i
+}
+
 // "1:02.34" | "62.34" -> centiseconds, or null when invalid
 function parseTimeToCs(text) {
   const t = (text || '').trim()
@@ -32,6 +39,7 @@ export default function MeetDetailPage() {
   const [editMode, setEditMode] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editValues, setEditValues] = useState({ time: '', team: '' })
+  const [selectedCategory, setSelectedCategory] = useState(null)  // null = all
 
   useEffect(() => {
     getChampionship(id).then(res => setMeet(res.data)).catch(() => {})
@@ -83,6 +91,7 @@ export default function MeetDetailPage() {
   const handleEventClick = async (event) => {
     setSelectedEvent(event)
     setSelectedRound(null)
+    setSelectedCategory(null)
     setExpandedRelay(null)
     setLoadingResults(true)
     try {
@@ -390,7 +399,7 @@ export default function MeetDetailPage() {
                       return (
                         <button
                           key={round || '_timed'}
-                          onClick={() => { setSelectedRound(round); setExpandedRelay(null) }}
+                          onClick={() => { setSelectedRound(round); setSelectedCategory(null); setExpandedRelay(null) }}
                           className={`px-4 py-2 text-sm font-medium rounded-t-lg border border-b-0 transition-colors ${
                             active
                               ? 'bg-sky-600 text-white border-sky-600'
@@ -399,6 +408,37 @@ export default function MeetDetailPage() {
                         >
                           {roundLabel(round)}
                           <span className={`ml-1.5 text-xs ${active ? 'text-sky-200' : 'text-gray-400'}`}>{count}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+
+              {/* Age category filter pills */}
+              {!loadingResults && (() => {
+                const roundResults = results.filter(r => (r.round_type || '') === (selectedRound ?? ''))
+                const cats = [...new Set(roundResults.map(r => r.category || ''))]
+                if (cats.filter(c => c !== '').length === 0 || cats.length <= 1) return null
+                cats.sort((a, b) => catRank(a) - catRank(b))
+                const pill = (active) => `px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                  active
+                    ? 'bg-sky-600 text-white border-sky-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-sky-300 hover:text-sky-600'
+                }`
+                return (
+                  <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b bg-gray-50/60">
+                    <button onClick={() => setSelectedCategory(null)} className={pill(selectedCategory === null)}>
+                      All
+                      <span className={`ml-1 ${selectedCategory === null ? 'text-sky-200' : 'text-gray-400'}`}>{roundResults.length}</span>
+                    </button>
+                    {cats.map(cat => {
+                      const count = roundResults.filter(r => (r.category || '') === cat).length
+                      const active = selectedCategory === cat
+                      return (
+                        <button key={cat || '_general'} onClick={() => setSelectedCategory(cat)} className={pill(active)}>
+                          {cat || 'General'}
+                          <span className={`ml-1 ${active ? 'text-sky-200' : 'text-gray-400'}`}>{count}</span>
                         </button>
                       )
                     })}
@@ -435,22 +475,20 @@ export default function MeetDetailPage() {
                         // Group results by age category (meets split by category).
                         // Results arrive time-sorted, so each category keeps its
                         // own ranking (medals restart per category).
+                        const catFiltered = selectedCategory === null
+                          ? roundResults
+                          : roundResults.filter(r => (r.category || '') === selectedCategory)
                         const order = []
                         const byCat = new Map()
-                        for (const r of roundResults) {
+                        for (const r of catFiltered) {
                           const cat = r.category || ''
                           if (!byCat.has(cat)) { byCat.set(cat, []); order.push(cat) }
                           byCat.get(cat).push(r)
                         }
-                        // Display categories oldest → youngest, matching the
-                        // source PDFs (Seniors/Juniors, Cadets, Minimes, Benjamins).
-                        const CATEGORY_ORDER = ['Seniors/Juniors', 'Seniors', 'Juniors', 'Cadets', 'Minimes', 'Benjamins', 'Poussins']
-                        const catRank = (c) => {
-                          const i = CATEGORY_ORDER.indexOf(c)
-                          return i === -1 ? CATEGORY_ORDER.length : i
-                        }
                         order.sort((a, b) => catRank(a) - catRank(b))
-                        const hasCategories = order.some(c => c !== '')
+                        // Category header rows only in the "All" view — a
+                        // selected pill already names the category.
+                        const hasCategories = selectedCategory === null && order.some(c => c !== '')
                         const isRelay = selectedEvent?.event_name?.toLowerCase().includes('relay')
 
                         const renderRow = (r, i) => {
@@ -542,7 +580,7 @@ export default function MeetDetailPage() {
                           )
                         }
 
-                        if (roundResults.length === 0) {
+                        if (catFiltered.length === 0) {
                           return <tr><td colSpan={editMode ? 8 : 7} className="px-4 py-8 text-center text-gray-400">No results</td></tr>
                         }
 

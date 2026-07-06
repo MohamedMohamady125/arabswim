@@ -395,6 +395,22 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             relay_gender = result_data.get('gender', '') or event_data.get('gender', 'M') or 'M'
             relay_key = f"{name_upper}_{relay_gender}"
 
+            # Arab-only database: skip swimmers/teams from non-Arab countries
+            # (African, world or invitational meets list many nations).
+            # Rows with no/unknown country code are kept — domestic meets
+            # often omit codes and fall back to the meet's (Arab) country.
+            nat_country = resolve_country(result_data.get('nationality_code', ''))
+            if nat_country is None and (is_relay or result_data.get('is_relay', False)):
+                nat_country = resolve_country(parsed_name)  # relay teams are countries
+            if nat_country is not None and nat_country.region == 'OTHER':
+                skipped_results += 1
+                skipped_details.append({
+                    'swimmer': parsed_name,
+                    'event': event_data.get('event_name', ''),
+                    'reason': f'Non-Arab country ({nat_country.code})',
+                })
+                continue
+
             if is_relay or result_data.get('is_relay', False):
                 # Guard: a relay "swimmer" is a team name. If parsing glitched
                 # and the name is a time/number, skip instead of creating a

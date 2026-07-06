@@ -606,6 +606,13 @@ class _MeetFixtureMixin:
         cls.event = Event.objects.create(
             name='100 M Freestyle', distance=100, stroke='Freestyle')
 
+    def setUp(self):
+        # The matcher caches the Country table per process — reset it so
+        # each test sees the countries created by its own fixture.
+        import importer.matcher as matcher
+        matcher._country_cache = None
+        super().setUp()
+
 
 class SameNameImportTests(_MeetFixtureMixin, TestCase):
     """confirm_import must keep two same-named athletes in conflicting
@@ -890,3 +897,109 @@ class AddResultsEndpointTests(_MeetFixtureMixin, TestCase):
         self.assertEqual(data['updated'], 1)
         self.assertEqual(
             Result.objects.get(swimmer__name='Ok GUY').time_centiseconds, 5850)
+
+
+# ---------------------------------------------------------------------------
+# 5. Arab-only database (non-Arab swimmers are never imported)
+# ---------------------------------------------------------------------------
+
+class ArabOnlyImportTests(_MeetFixtureMixin, TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        from core.models import Country
+        cls.rsa = Country.objects.create(
+            name='South Africa', code='RSA', region='OTHER')
+
+    def test_non_arab_rows_are_skipped_on_import(self):
+        from importer.services import confirm_import
+        preview = {
+            'meet': {'name': 'African Champs', 'date': '2026-06-01', 'pool': 'LCM'},
+            'events': [{
+                'event_name': '100 M Freestyle',
+                'distance': 100, 'stroke': 'Freestyle',
+                'gender': 'M', 'is_relay': False, 'round_type': 'Finals',
+                'results': [
+                    {'swimmer_name': 'Pieter COETZE', 'gender': 'M',
+                     'category': '', 'time_centiseconds': 5200,
+                     'birth_year': 2004, 'nationality_code': 'RSA'},
+                    {'swimmer_name': 'Ahmed HAFNAOUI', 'gender': 'M',
+                     'category': '', 'time_centiseconds': 5300,
+                     'birth_year': 2002, 'nationality_code': 'TUN'},
+                    {'swimmer_name': 'No CODE', 'gender': 'M',
+                     'category': '', 'time_centiseconds': 5400,
+                     'birth_year': 0, 'nationality_code': ''},
+                ],
+            }],
+        }
+        summary = confirm_import(preview, {})
+        self.assertFalse(Swimmer.objects.filter(name='Pieter COETZE').exists())
+        self.assertTrue(Swimmer.objects.filter(name='Ahmed HAFNAOUI').exists())
+        # No code -> kept (falls back to the meet's Arab country)
+        self.assertTrue(Swimmer.objects.filter(name='No CODE').exists())
+
+    def test_non_arab_relay_team_is_skipped(self):
+        from importer.services import confirm_import
+        from core.models import Event
+        Event.objects.create(name='4x100 M Freestyle Relay', distance=400,
+                             stroke='Freestyle', is_relay=True)
+        preview = {
+            'meet': {'name': 'African Champs', 'date': '2026-06-01', 'pool': 'LCM'},
+            'events': [{
+                'event_name': '4x100 M Freestyle Relay',
+                'distance': 400, 'stroke': 'Freestyle',
+                'gender': 'M', 'is_relay': True, 'round_type': 'Finals',
+                'results': [
+                    {'swimmer_name': 'South Africa', 'gender': 'M',
+                     'category': '', 'time_centiseconds': 20000,
+                     'birth_year': 0, 'nationality_code': ''},
+                    {'swimmer_name': 'Tunisia', 'gender': 'M',
+                     'category': '', 'time_centiseconds': 20500,
+                     'birth_year': 0, 'nationality_code': 'TUN'},
+                ],
+            }],
+        }
+        confirm_import(preview, {})
+        self.assertFalse(Swimmer.objects.filter(name='South Africa').exists())
+        self.assertTrue(Swimmer.objects.filter(name='Tunisia').exists())
+
+    def test_add_results_endpoint_rejects_non_arab(self):
+        import datetime
+        champ = Championship.objects.create(
+            name='Meet', date=datetime.date(2026, 6, 1),
+            pool='LCM', country=self.country)
+        resp = self.client.post(
+            f'/api/v1/championships/{champ.id}/add-results/',
+            {'event': self.event.id, 'gender': 'M',
+             'rows': [{'name': 'Pieter COETZE', 'country': 'RSA', 'time': '52.00'},
+                      {'name': 'Ahmed HAFNAOUI', 'country': 'TUN', 'time': '53.00'}]},
+            content_type='application/json')
+        data = resp.json()
+        self.assertEqual(data['created'], 1)
+        self.assertEqual(len(data['errors']), 1)
+        self.assertIn('RSA', data['errors'][0]['reason'])
+
+    def test_remove_non_arab_swimmers_command(self):
+        import datetime
+        from django.core.management import call_command
+        champ = Championship.objects.create(
+            name='Meet', date=datetime.date(2026, 6, 1),
+            pool='LCM', country=self.country)
+        foreign = Swimmer.objects.create(
+            name='Pieter COETZE', nationality=self.rsa, sex='M')
+        arab = Swimmer.objects.create(
+            name='Ahmed HAFNAOUI', nationality=self.country, sex='M')
+        Result.objects.create(swimmer=foreign, championship=champ,
+                              event=self.event, time_centiseconds=5200)
+        Result.objects.create(swimmer=arab, championship=champ,
+                              event=self.event, time_centiseconds=5300)
+        call_command('remove_non_arab_swimmers', '--dry-run', verbosity=0)
+        self.assertTrue(Swimmer.objects.filter(id=foreign.id).exists())
+        call_command('remove_non_arab_swimmers', verbosity=0)
+        self.assertFalse(Swimmer.objects.filter(id=foreign.id).exists())
+        self.assertFalse(Result.objects.filter(swimmer_id=foreign.id).exists())
+        self.assertTrue(Swimmer.objects.filter(id=arab.id).exists())
+        self.assertEqual(arab.results.count(), 1)
+        # Idempotent
+        call_command('remove_non_arab_swimmers', verbosity=0)
+        self.assertTrue(Swimmer.objects.filter(id=arab.id).exists())

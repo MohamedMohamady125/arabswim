@@ -7,6 +7,7 @@ python manage.py seed_classifications
 python manage.py fix_names
 python manage.py fix_relay_event_names
 python manage.py split_merged_swimmers
+python manage.py remove_non_arab_swimmers
 
 # Create admin user if not exists
 python manage.py shell -c "

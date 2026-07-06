@@ -74,11 +74,13 @@ SKIP_PATTERNS = [
 ]
 
 # Column headers carry the round: "Name Ag e Team Prelim Time LEN",
-# "Name Age Team Finals Time", "Team R elay Finals Time LEN"
+# "Name Age Team Finals Time", "Team R elay Finals Time LEN",
+# Jordan: "ID# Name Age Team Seed Time Finals Time FINA"
 COLUMN_HEADER = re.compile(
-    r'^\s*(?:Name\s+Ag\s*e?\s+Team|Team\s+R\s*elay)\b', re.IGNORECASE
+    r'^\s*(?:ID#?\s+)?(?:Name\s+Ag\s*e?\s+Team|Team\s+R\s*elay)\b', re.IGNORECASE
 )
 COLUMN_ROUND = re.compile(r'(Prelim\w*|Finals?)\s+Time', re.IGNORECASE)
+COLUMN_SEED = re.compile(r'Seed\s+Time', re.IGNORECASE)
 
 # Standalone round marker lines
 ROUND_MARKER = re.compile(r'^\s*(Preliminaries|Finals|Swim-?offs?)\s*$', re.IGNORECASE)
@@ -94,10 +96,17 @@ ROUND_KEYWORDS = {
 TIME_PATTERN = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})')
 
 # Individual DQ/NS/DNF: "--- Fakhreddine, Youssef 15 NSSC-LB DQ"
+# Jordan variant carries an ID and a seed time before the status:
+# "--- 20011367 Masarweh, Assiel 13 ORTH 3:16.31 DQ"
 DQ_LINE = re.compile(
-    r'^\s*---\s+(.+?)\s+(\d{1,2})\s+(\S+)\s+(DQ|NS|DFS|DNF|SCR|DSQ)',
+    r'^\s*---\s+(?:\d{6,10}\s+)?(.+?)\s+(\d{1,2})\s+(\S+)\s+'
+    r'(?:(?:NT|\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})\s+)?'
+    r'(DQ|NS|DFS|DNF|SCR|DSQ)',
     re.IGNORECASE
 )
+
+# A result line must never end in a status word (DQ row with a seed time)
+STATUS_TAIL = re.compile(r'\b(DQ|NS|DFS|DNF|SCR|DSQ)\s*$', re.IGNORECASE)
 
 # Relay team result: "1 NAJ A 2:00.88 354"  (team code + relay letter)
 RELAY_TEAM_LINE = re.compile(
@@ -193,6 +202,9 @@ def parse(text):
     # ---- PARSE EVENTS AND RESULTS ----
     current_event = None
     current_key = None  # (event_name, gender, age_group)
+    # True when the column header lists "Seed Time" before the result time
+    # column (Jordan) — result lines then carry seed first, swim time second.
+    seed_first = False
 
     def switch_round(round_type):
         """Point current_event at the (event, round) classement, creating a
@@ -290,6 +302,8 @@ def parse(text):
         # Column header: "Name Ag e Team Prelim Time LEN" / "Team R elay Finals Time"
         if COLUMN_HEADER.match(stripped):
             col_round = COLUMN_ROUND.search(stripped)
+            seed = COLUMN_SEED.search(stripped)
+            seed_first = bool(seed and (not col_round or seed.start() < col_round.start()))
             if col_round and current_event is not None:
                 word = col_round.group(1).lower()
                 switch_round('Prelims' if word.startswith('prelim') else 'Finals')
@@ -353,7 +367,7 @@ def parse(text):
             continue
 
         # Try to parse as result line
-        result = _parse_result_line(stripped, current_event, comma_order)
+        result = _parse_result_line(stripped, current_event, comma_order, seed_first)
         if result:
             # Sanity check: reject times that are impossibly fast for the event distance
             # This catches interleaved two-column PDF results from adjacent events
@@ -508,7 +522,7 @@ def _is_split_line(line):
     return False
 
 
-def _parse_result_line(line, event, comma_order='last_first'):
+def _parse_result_line(line, event, comma_order='last_first', seed_first=False):
     """
     Parse a HY-TEK result line using TIME as anchor.
 
@@ -520,18 +534,28 @@ def _parse_result_line(line, event, comma_order='last_first'):
        - Token before time = team code
        - Token before team = age (1-2 digit number)
        - Everything before age = name (after rank)
+
+    When seed_first is True (Jordan: "Seed Time" column precedes the result
+    time), the first time on the line is the SEED time — the actual swim
+    time is the second one. A single time then means seed was "NT".
     """
-    # Must have a time somewhere in the line
-    time_match = TIME_PATTERN.search(line)
-    if not time_match:
+    # A DQ/NS row with a seed time must never be read as a timed result
+    if STATUS_TAIL.search(line):
         return None
+
+    # Must have a time somewhere in the line
+    times = list(TIME_PATTERN.finditer(line))
+    if not times:
+        return None
+    time_match = times[1] if (seed_first and len(times) >= 2) else times[0]
 
     time_text = time_match.group(1)
     time_cs = parse_time_to_centiseconds(time_text)
     if time_cs <= 0:
         return None
 
-    before_time = line[:time_match.start()].strip()
+    # The name section always ends at the FIRST time on the line
+    before_time = line[:times[0].start()].strip()
     after_time = line[time_match.end():].strip()
 
     # ---- Parse AFTER time: FINA points ----

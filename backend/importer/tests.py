@@ -1142,3 +1142,61 @@ class Nat2iRelaySplitTests(TestCase):
             {'name': 'Sami DOUMA', 'split_time': '27.00'},
             {'name': 'Omar JLASSI', 'split_time': '26.00'},
         ])
+
+
+class JordanHytekSeedTimeTests(TestCase):
+    """Jordan HyTek lines carry Seed Time BEFORE Finals Time — the parser
+    must read the second time as the swim time, not the seed."""
+
+    HEADER = (
+        'Jordan Age Group Championship - HY-TEK\'s MEET MANAGER\n'
+        'Results\n'
+        'Event 1 Boys 13-14 1500 LC Meter Freestyle\n'
+    )
+
+    def _parse(self, body):
+        from importer.parsers import hytek_parser
+        return hytek_parser.parse(self.HEADER + body)
+
+    def test_reads_finals_time_not_seed(self):
+        meet = self._parse(
+            'ID# Name Age Team Seed Time Finals Time FINA\n'
+            '1 10011446 Sinukrot, Karim 13 HCSC 20:02.27 19:40.26 369\n')
+        r = meet.events[0].results[0]
+        self.assertEqual(r.time_text, '19:40.26')
+        self.assertEqual(r.time_centiseconds, 118026)
+        self.assertEqual(r.fina_points, 369)
+        self.assertEqual(r.rank, 1)
+        self.assertEqual(r.age, 13)
+        self.assertEqual(r.club, 'HCSC')
+        self.assertEqual(r.swimmer_name, 'Karim SINUKROT')
+
+    def test_nt_seed_falls_back_to_single_time(self):
+        meet = self._parse(
+            'ID# Name Age Team Seed Time Finals Time FINA\n'
+            '2 20011391 Hawwash, Yanal 13 ORTH NT 19:42.81 367\n')
+        r = meet.events[0].results[0]
+        self.assertEqual(r.time_text, '19:42.81')
+        self.assertEqual(r.fina_points, 367)
+        self.assertEqual(r.swimmer_name, 'Yanal HAWWASH')
+
+    def test_dq_with_seed_time_is_not_a_timed_result(self):
+        meet = self._parse(
+            'ID# Name Age Team Seed Time Finals Time FINA\n'
+            '1 10011446 Sinukrot, Karim 13 HCSC 20:02.27 19:40.26 369\n'
+            '--- 20011367 Masarweh, Assiel 13 ORTH 3:16.31 DQ\n')
+        results = meet.events[0].results
+        self.assertEqual(len(results), 2)
+        dq = results[1]
+        self.assertEqual(dq.status, 'DQ')
+        self.assertEqual(dq.time_text, '')
+        self.assertEqual(dq.swimmer_name, 'Assiel MASARWEH')
+
+    def test_header_without_seed_column_keeps_first_time(self):
+        meet = self._parse(
+            'Event 2 Girls 11-12 50 LC Meter Freestyle\n'
+            'Name Age Team Finals Time\n'
+            '1 Josselin, Holly 11 EXCW 29.70\n')
+        event = [e for e in meet.events if e.distance == 50][0]
+        r = event.results[0]
+        self.assertEqual(r.time_text, '29.70')

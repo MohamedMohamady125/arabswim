@@ -719,3 +719,91 @@ class SplitMergedSwimmersTests(_MeetFixtureMixin, TestCase):
                               category='Cadets', time_centiseconds=6100)
         call_command('split_merged_swimmers', verbosity=0)
         self.assertEqual(Swimmer.objects.filter(name='Sara HAMDI').count(), 1)
+
+
+# ---------------------------------------------------------------------------
+# 4. Relay event name canonicalization
+# ---------------------------------------------------------------------------
+
+from importer.services import canonical_relay_name
+from importer.management.commands.fix_relay_event_names import canonical_name
+
+
+class RelayNameTests(SimpleTestCase):
+    def test_gender_words_are_stripped(self):
+        self.assertEqual(canonical_name('4x100 M Freestyle Relay Men'),
+                         '4x100 M Freestyle Relay')
+        self.assertEqual(canonical_name('4x100 M Medley Relay Women'),
+                         '4x100 M Medley Relay')
+
+    def test_mixed_is_kept(self):
+        self.assertEqual(canonical_name('4x50 M Medley Relay Mixed'),
+                         '4x50 M Medley Relay Mixed')
+
+    def test_unicode_x_and_garbled_stroke(self):
+        self.assertEqual(canonical_name('4×100 M Medley Relay'),
+                         '4x100 M Medley Relay')
+        self.assertEqual(canonical_name('4x100 M 4 na ges Relay Mixed'),
+                         '4x100 M Medley Relay Mixed')
+
+    def test_already_canonical_is_unchanged(self):
+        for n in ('4x100 M Freestyle Relay', '4x50 M Medley Relay Mixed'):
+            self.assertEqual(canonical_name(n), n)
+
+    def test_import_side_canonical_name(self):
+        self.assertEqual(
+            canonical_relay_name('4x100 M Freestyle Relay Men', 400, 'Freestyle'),
+            '4x100 M Freestyle Relay')
+        self.assertEqual(
+            canonical_relay_name('4x100 M Medley Relay Women', 400,
+                                 'Individual Medley'),
+            '4x100 M Medley Relay')
+        self.assertEqual(
+            canonical_relay_name('4x50 M Medley Relay', 200,
+                                 'Individual Medley', gender='X'),
+            '4x50 M Medley Relay Mixed')
+        # No distance/stroke: clean the raw name instead
+        self.assertEqual(
+            canonical_relay_name('4×100 M Freestyle Relay Dames'),
+            '4x100 M Freestyle Relay')
+
+    def test_normalize_stroke_with_injected_spaces(self):
+        self.assertEqual(normalize_stroke('4 na ges'), 'Individual Medley')
+        self.assertEqual(normalize_stroke('4 Nages'), 'Individual Medley')
+
+
+class FixRelayEventNamesCommandTests(_MeetFixtureMixin, TestCase):
+    def test_merge_gendered_duplicate(self):
+        import datetime
+        from django.core.management import call_command
+        from core.models import Event
+        canonical = Event.objects.create(
+            name='4x100 M Freestyle Relay', distance=400,
+            stroke='Freestyle', is_relay=True)
+        gendered = Event.objects.create(
+            name='4x100 M Freestyle Relay Men', distance=400,
+            stroke='Freestyle', is_relay=True)
+        champ = Championship.objects.create(
+            name='Meet', date=datetime.date(2026, 6, 1),
+            pool='LCM', country=self.country)
+        team = Swimmer.objects.create(
+            name='Tunisia', nationality=self.country, sex='M')
+        Result.objects.create(swimmer=team, championship=champ,
+                              event=gendered, time_centiseconds=22000)
+        call_command('fix_relay_event_names', verbosity=0)
+        self.assertFalse(
+            Event.objects.filter(name='4x100 M Freestyle Relay Men').exists())
+        self.assertEqual(canonical.results.count(), 1)
+        # Idempotent
+        call_command('fix_relay_event_names', verbosity=0)
+        self.assertEqual(canonical.results.count(), 1)
+
+    def test_rename_when_no_canonical_exists(self):
+        from django.core.management import call_command
+        from core.models import Event
+        Event.objects.create(
+            name='4×100 M Medley Relay', distance=400,
+            stroke='Individual Medley', is_relay=True)
+        call_command('fix_relay_event_names', verbosity=0)
+        self.assertTrue(
+            Event.objects.filter(name='4x100 M Medley Relay').exists())

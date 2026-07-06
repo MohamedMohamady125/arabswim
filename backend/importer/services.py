@@ -666,30 +666,55 @@ def _most_common_country(preview_data):
     return None
 
 
+_RELAY_GENDER_RE = re.compile(
+    r'\b(men|women|boys|girls|messieurs|dames|garcons|garçons|filles|hommes|femmes)\b',
+    re.IGNORECASE)
+_RELAY_MIXED_RE = re.compile(r'\b(mixed|mixtes?)\b', re.IGNORECASE)
+
+
+def canonical_relay_name(event_name, distance=0, stroke='', gender=''):
+    """One canonical name per relay event, never gendered.
+
+    The UI derives Men/Women from the team's sex, so relay Event names
+    must not carry gender words — otherwise the same relay is stored as
+    two events ('4x100 M Freestyle Relay' vs '... Relay Men'). 'Mixed'
+    stays in the name because a team's sex field can't express it.
+    """
+    mixed = gender == 'X' or bool(_RELAY_MIXED_RE.search(event_name))
+    if distance and stroke:
+        from .parsers.base import normalize_event_name
+        base = normalize_event_name(distance, stroke, is_relay=True)
+    else:
+        base = _RELAY_MIXED_RE.sub(' ', _RELAY_GENDER_RE.sub(' ', event_name))
+        base = re.sub(r'\s+', ' ', base.replace('×', 'x')).strip()
+    return f'{base} Mixed' if mixed else base
+
+
 def _find_event(event_data, event_cache):
     """Find a matching Event in the database."""
     event_name = event_data.get('event_name', '')
     is_relay = event_data.get('is_relay', False) or 'relay' in event_name.lower() or '4x' in event_name.lower() or '4×' in event_name.lower()
 
+    distance = event_data.get('distance', 0)
+    stroke = event_data.get('stroke', '')
+
+    if is_relay:
+        event_name = canonical_relay_name(
+            event_name, distance, stroke, event_data.get('gender', ''))
+
     # Try exact match
     if event_name.upper() in event_cache:
         return event_cache[event_name.upper()]
 
-    # Try constructing standard name
-    distance = event_data.get('distance', 0)
-    stroke = event_data.get('stroke', '')
-    if distance and stroke:
-        if is_relay:
-            leg_dist = distance // 4 if distance >= 200 else distance
-            standard_name = f'4x{leg_dist} M {stroke} Relay'
-        else:
-            standard_name = f'{distance} M {stroke}'
+    # Try constructing standard name (relays: already canonical above)
+    if distance and stroke and not is_relay:
+        standard_name = f'{distance} M {stroke}'
         if standard_name.upper() in event_cache:
             return event_cache[standard_name.upper()]
 
     # Try partial match (but don't match relay to individual or vice versa)
     # Skip partial matching for relay events — they need exact name match
-    # because Men's, Women's, and Mixed relays are different events
+    # because Mixed relays are a different event from single-sex ones
     if not is_relay:
         for db_name, db_event in event_cache.items():
             if str(distance) in db_name and stroke.upper() in db_name:
@@ -699,8 +724,7 @@ def _find_event(event_data, event_cache):
     # Create new event if not found
     if distance and stroke:
         if is_relay:
-            leg_dist = distance // 4 if distance >= 200 else distance
-            final_name = event_name or f'4x{leg_dist} M {stroke} Relay'
+            final_name = event_name  # canonical name built above
         else:
             final_name = event_name or f'{distance} M {stroke}'
         event = Event.objects.create(

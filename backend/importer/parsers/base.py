@@ -288,6 +288,12 @@ def normalize_stroke(text):
     for key, val in STROKE_MAP.items():
         if key in t:
             return val
+    # PDF extraction sometimes injects spaces ('4 na ges'): retry the
+    # multi-word keys with all whitespace squashed out.
+    squashed = re.sub(r'\s+', '', t)
+    for key, val in STROKE_MAP.items():
+        if ' ' in key and key.replace(' ', '') in squashed:
+            return val
     return text.strip()
 
 

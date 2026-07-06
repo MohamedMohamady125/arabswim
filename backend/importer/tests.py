@@ -1058,3 +1058,87 @@ class UnrankedSwimmerTests(TestCase):
             'RAHMOUNI, Mahdi 12 Union Sportf Biskra 28.23 350', event, False, 5)
         self.assertIsNotNone(r)
         self.assertEqual(r.rank, 5)  # tie line inherits previous rank
+
+
+class Nat2iRelaySplitTests(TestCase):
+    """Relay passage times must be turned into per-swimmer leg splits."""
+
+    RELAY_HTML = '''<html><body>
+    <p>4x50 m NAGE LIBRE Messieurs</p>
+    <table>
+    <tr><td>Place</td><td>Nom et prenom</td><td>Nation</td><td>Naissance</td><td>Club</td><td>Temps</td><td>Points</td><td>Temps de passage</td></tr>
+    <tr><td>1.</td><td>TRABELSI Youssef</td><td>TUN</td><td>2008</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>BEN AHMED Karim</td><td>TUN</td><td>2009</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>DOUMA Sami</td><td>TUN</td><td>2007</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>JLASSI Omar</td><td>TUN</td><td>2006</td><td>CNT</td><td>1:45.00</td><td>600</td><td>25.00 (50 m) - 52.00 (100 m) - 1:19.00 (150 m) - 1:45.00 (200 m)</td></tr>
+    </table></body></html>'''
+
+    def test_leg_times_matched_to_each_swimmer(self):
+        from importer.parsers import nat2i_parser
+        meet = nat2i_parser.parse(self.RELAY_HTML)
+        self.assertEqual(len(meet.events), 1)
+        results = meet.events[0].results
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].split_times, [
+            'Youssef TRABELSI 25.00',
+            'Karim BEN AHMED 27.00',
+            'Sami DOUMA 27.00',
+            'Omar JLASSI 26.00',
+        ])
+
+    def test_missing_boundary_leaves_name_without_split(self):
+        from importer.parsers import nat2i_parser
+        # Passage times only at 50 and 200 — legs 2 and 3 can't be derived
+        html = self.RELAY_HTML.replace(
+            '25.00 (50 m) - 52.00 (100 m) - 1:19.00 (150 m) - 1:45.00 (200 m)',
+            '25.00 (50 m) - 1:45.00 (200 m)')
+        meet = nat2i_parser.parse(html)
+        self.assertEqual(meet.events[0].results[0].split_times, [
+            'Youssef TRABELSI 25.00',
+            'Karim BEN AHMED',
+            'Sami DOUMA',
+            'Omar JLASSI',
+        ])
+
+    def test_no_passage_times_keeps_names_and_final_leg(self):
+        from importer.parsers import nat2i_parser
+        html = self.RELAY_HTML.replace(
+            '25.00 (50 m) - 52.00 (100 m) - 1:19.00 (150 m) - 1:45.00 (200 m)', '')
+        meet = nat2i_parser.parse(html)
+        splits = meet.events[0].results[0].split_times
+        self.assertEqual(splits[:3], [
+            'Youssef TRABELSI', 'Karim BEN AHMED', 'Sami DOUMA'])
+
+    def test_confirm_import_stores_relay_swimmer_splits(self):
+        from importer.parsers import nat2i_parser
+        from importer.services import confirm_import
+        import importer.matcher as matcher
+        from core.models import Country
+        matcher._country_cache = None
+        Country.objects.get_or_create(name='Tunisia', code='TUN',
+                                      defaults={'region': 'ARAB'})
+        meet = nat2i_parser.parse(self.RELAY_HTML)
+        preview = {
+            'meet': {'name': 'Tunisia Relay Meet', 'date': '2026-06-01',
+                     'pool': 'LCM'},
+            'events': [{
+                'event_name': meet.events[0].event_name,
+                'distance': meet.events[0].distance,
+                'stroke': meet.events[0].stroke,
+                'gender': 'M', 'is_relay': True, 'round_type': 'Finals',
+                'results': [{
+                    'swimmer_name': r.swimmer_name, 'gender': 'M',
+                    'time_centiseconds': r.time_centiseconds,
+                    'birth_year': 0, 'nationality_code': 'TUN',
+                    'is_relay': True, 'split_times': r.split_times,
+                } for r in meet.events[0].results],
+            }],
+        }
+        confirm_import(preview, {})
+        result = Result.objects.get()
+        self.assertEqual(result.relay_swimmers, [
+            {'name': 'Youssef TRABELSI', 'split_time': '25.00'},
+            {'name': 'Karim BEN AHMED', 'split_time': '27.00'},
+            {'name': 'Sami DOUMA', 'split_time': '27.00'},
+            {'name': 'Omar JLASSI', 'split_time': '26.00'},
+        ])

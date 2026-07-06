@@ -302,14 +302,13 @@ def _parse_relay_table(table, event):
         if time_cs > 0 and club:
             fina_points = int(points_text) if points_text.isdigit() else 0
 
-            splits = []
+            # Cumulative passage times: "31.93 (50 m) - 1:06.56 (100 m) - ..."
+            cumulative = {}
             if split_text:
-                split_matches = re.findall(
-                    r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*\((\d+)\s*m\)',
-                    split_text
-                )
-                if split_matches:
-                    splits = [f'{time} ({dist}m)' for time, dist in split_matches]
+                for t, dist in re.findall(
+                        r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*\((\d+)\s*m\)',
+                        split_text):
+                    cumulative[int(dist)] = parse_time_to_centiseconds(t)
 
             result = ParsedResult(
                 swimmer_name=club,  # Team name = club
@@ -322,11 +321,46 @@ def _parse_relay_table(table, event):
                 rank=current_rank,
                 club=club,
                 fina_points=fina_points,
-                split_times=current_swimmers,  # Store swimmer names as splits
+                # "Name m:ss.xx" entries, each swimmer with their leg time
+                split_times=_match_relay_splits(
+                    current_swimmers, cumulative, event, time_cs),
                 round_type=event.round_type,
             )
             event.results.append(result)
             current_swimmers = []
+
+
+def _match_relay_splits(swimmers, cumulative, event, total_cs):
+    """Pair each relay swimmer with their leg time.
+
+    ``cumulative`` maps passage distance -> cumulative centiseconds
+    (e.g. {50: 3193, 100: 6656, 150: ..., 200: ...} for a 4x50).
+    Leg N's time = cumulative at its end boundary minus cumulative at its
+    start boundary; the last leg falls back to the team's total time.
+    Returns "Name m:ss.xx" strings (name alone when a boundary is missing),
+    which confirm_import parses into {name, split_time} relay entries.
+    """
+    from .base import format_centiseconds
+
+    m = re.search(r'(\d+)\s*x\s*(\d+)', event.event_name, re.IGNORECASE)
+    if m:
+        legs, leg_dist = int(m.group(1)), int(m.group(2))
+    else:
+        legs = len(swimmers) or 4
+        leg_dist = event.distance // legs if event.distance else 0
+
+    entries = []
+    for i, name in enumerate(swimmers):
+        leg_cs = None
+        if leg_dist:
+            start_cs = 0 if i == 0 else cumulative.get(leg_dist * i)
+            end_cs = cumulative.get(leg_dist * (i + 1))
+            if end_cs is None and i == legs - 1 and total_cs:
+                end_cs = total_cs
+            if start_cs is not None and end_cs is not None and end_cs > start_cs:
+                leg_cs = end_cs - start_cs
+        entries.append(f'{name} {format_centiseconds(leg_cs)}' if leg_cs else name)
+    return entries
 
 
 def _parse_result_table(table, event):

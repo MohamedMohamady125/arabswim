@@ -254,6 +254,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             )
             created += 1
 
+        if created or updated:
+            from medals.utils import recompute_medals
+            recompute_medals(championship)
+
         return Response({
             'created': created,
             'updated': updated,
@@ -419,3 +423,21 @@ class ResultViewSet(viewsets.ModelViewSet):
         if event:
             qs = qs.filter(event_id=event)
         return qs
+
+    def perform_create(self, serializer):
+        result = serializer.save()
+        self._recompute(result.championship)
+
+    def perform_update(self, serializer):
+        result = serializer.save()
+        self._recompute(result.championship)
+
+    def perform_destroy(self, instance):
+        championship = instance.championship
+        instance.delete()
+        self._recompute(championship)
+
+    @staticmethod
+    def _recompute(championship):
+        from medals.utils import recompute_medals
+        recompute_medals(championship)

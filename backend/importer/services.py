@@ -620,6 +620,10 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     from teams.utils import auto_create_teams
     teams_created = auto_create_teams()
 
+    # Re-award medals with Olympic tie rules
+    from medals.utils import recompute_medals
+    recompute_medals(championship)
+
     return {
         'championship_id': championship.id,
         'championship_name': championship.name,

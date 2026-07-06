@@ -491,8 +491,10 @@ export default function MeetDetailPage() {
                         const hasCategories = selectedCategory === null && order.some(c => c !== '')
                         const isRelay = selectedEvent?.event_name?.toLowerCase().includes('relay')
 
-                        const renderRow = (r, i) => {
-                          const isBest = i === 0
+                        const renderRow = (r, i, arr) => {
+                          // Competition ranking: tied times share a rank (1,2,2,4)
+                          const rank = arr.findIndex(x => x.time_centiseconds === r.time_centiseconds) + 1
+                          const isBest = rank === 1
                           const isExpanded = expandedRelay === r.id
                           const swimmers = r.relay_swimmers || []
                           const isEditing = editingId === r.id
@@ -510,10 +512,10 @@ export default function MeetDetailPage() {
                                 }}
                               >
                                 <td className="px-4 py-2 text-sm">
-                                  {showMedals && i === 0 && <MedalIcon type="gold" size={22} />}
-                                  {showMedals && i === 1 && <MedalIcon type="silver" size={22} />}
-                                  {showMedals && i === 2 && <MedalIcon type="bronze" size={22} />}
-                                  {(!showMedals || i > 2) && <span className="text-gray-500">{i + 1}</span>}
+                                  {showMedals && rank === 1 && <MedalIcon type="gold" size={22} />}
+                                  {showMedals && rank === 2 && <MedalIcon type="silver" size={22} />}
+                                  {showMedals && rank === 3 && <MedalIcon type="bronze" size={22} />}
+                                  {(!showMedals || rank > 3) && <span className="text-gray-500">{rank}</span>}
                                 </td>
                                 <td className="px-4 py-2 text-sm font-medium">
                                   {r.swimmer_detail?.name}
@@ -593,7 +595,7 @@ export default function MeetDetailPage() {
                                 </td>
                               </tr>
                             )}
-                            {byCat.get(cat).map((r, i) => renderRow(r, i))}
+                            {byCat.get(cat).map((r, i, arr) => renderRow(r, i, arr))}
                           </React.Fragment>
                         ))
                       })()}

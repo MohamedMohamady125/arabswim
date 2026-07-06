@@ -1003,3 +1003,58 @@ class ArabOnlyImportTests(_MeetFixtureMixin, TestCase):
         # Idempotent
         call_command('remove_non_arab_swimmers', verbosity=0)
         self.assertTrue(Swimmer.objects.filter(id=arab.id).exists())
+
+
+class UnrankedSwimmerTests(TestCase):
+    """N.C ("non classé") / H.C ("hors concours") swimmers have no rank in
+    the source file but swam a real time — they must be read and imported."""
+
+    def test_nat2i_nc_and_hc_rows_are_kept(self):
+        from importer.parsers import nat2i_parser
+        html = '''<html><body>
+        <p>100 m NAGE LIBRE Messieurs Classement</p>
+        <table>
+        <tr><td>Place</td><td>Nom et pr&eacute;nom</td><td>Nation</td><td>Naissance</td><td>Club</td><td>Temps</td><td>Points</td><td>Temps de passage</td></tr>
+        <tr><td>1.</td><td>TRABELSI Youssef</td><td>TUN</td><td>2008</td><td>CNT</td><td>1:02.34</td><td>500</td><td></td></tr>
+        <tr><td>N.C.</td><td>BEN AHMED Karim</td><td>TUN</td><td>2009</td><td>ASM</td><td>1:03.00</td><td>480</td><td></td></tr>
+        <tr><td>H.C.</td><td>DOUMA Sami</td><td>TUN</td><td>2007</td><td>EST</td><td>1:04.00</td><td>460</td><td></td></tr>
+        <tr><td>N.C.</td><td>ABSENT Amine</td><td>TUN</td><td>2009</td><td>ASM</td><td>Frf</td><td>0</td><td></td></tr>
+        </table></body></html>'''
+        meet = nat2i_parser.parse(html)
+        self.assertEqual(len(meet.events), 1)
+        kept = [r for r in meet.events[0].results
+                if r.status == 'OK' and r.time_centiseconds > 0]
+        self.assertEqual(
+            {r.swimmer_name for r in kept},
+            {'Youssef TRABELSI', 'Karim BEN AHMED', 'Sami DOUMA'})
+        by_name = {r.swimmer_name: r for r in kept}
+        self.assertEqual(by_name['Karim BEN AHMED'].rank, 0)
+        self.assertEqual(by_name['Karim BEN AHMED'].time_centiseconds, 6300)
+        self.assertEqual(by_name['Sami DOUMA'].rank, 0)
+        # The forfeit row must not come back as an OK result
+        self.assertNotIn('Amine ABSENT', {r.swimmer_name for r in kept})
+
+    def test_splash_nc_and_hc_lines_are_parsed(self):
+        from importer.parsers import splash_parser
+        from importer.parsers.base import ParsedEvent
+        event = ParsedEvent(event_name='50 M Freestyle', distance=50,
+                            stroke='Freestyle', gender='M')
+        for prefix in ('n.c.', 'N.C.', 'h.c.', 'H.C', 'nc', 'HC'):
+            r = splash_parser._parse_result_line(
+                f'{prefix} RAHMOUNI, Mahdi 12 Union Sportf Biskra 28.23 350',
+                event, False, 5)
+            self.assertIsNotNone(r, f'line with "{prefix}" not parsed')
+            self.assertEqual(r.swimmer_name, 'Mahdi RAHMOUNI')
+            self.assertEqual(r.rank, 0)  # unranked, not tied with prev rank
+            self.assertEqual(r.time_centiseconds, 2823)
+            self.assertEqual(r.status, 'OK')
+
+    def test_splash_normal_names_still_parse_as_ties(self):
+        from importer.parsers import splash_parser
+        from importer.parsers.base import ParsedEvent
+        event = ParsedEvent(event_name='50 M Freestyle', distance=50,
+                            stroke='Freestyle', gender='M')
+        r = splash_parser._parse_result_line(
+            'RAHMOUNI, Mahdi 12 Union Sportf Biskra 28.23 350', event, False, 5)
+        self.assertIsNotNone(r)
+        self.assertEqual(r.rank, 5)  # tie line inherits previous rank

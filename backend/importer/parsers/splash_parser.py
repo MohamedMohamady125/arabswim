@@ -551,9 +551,15 @@ def _extract_birth_year(before_time):
 def _parse_result_line(line, event, is_international, prev_rank):
     """Try to parse a single individual result line."""
     m = re.match(r'^\s*(\d+)\.\s+(.*)$', line)
+    nc = None if m else re.match(r'^\s*[NnHh]\.?[Cc]\.?\s+(.+)$', line)
     if m:
         rank = int(m.group(1))
         rest = m.group(2)
+    elif nc:
+        # "n.c." (non classé) / "h.c." (hors concours): swam without a
+        # ranking but the time is real — keep the swimmer, rank 0.
+        rank = 0
+        rest = nc.group(1)
     else:
         # Rankless tie line: "RAHMOUNI, Mahdi 12 Union Sportf Biskra 28.23 350"
         if not re.match(r'^[A-ZÀ-Ý]', line):

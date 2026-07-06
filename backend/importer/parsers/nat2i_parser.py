@@ -290,7 +290,7 @@ def _parse_relay_table(table, event):
         if place_text.isdigit():
             current_rank = int(place_text)
             current_swimmers = [name]
-        elif place_text in ('N.C', 'NC'):
+        elif place_text.upper().replace('.', '') in ('NC', 'HC'):
             current_rank = 0
             current_swimmers = [name]
         else:
@@ -358,12 +358,12 @@ def _parse_result_table(table, event):
         if not name_text or not name_text.strip():
             continue
 
-        # Determine status
+        # Determine status. N.C ("non classé") / H.C ("hors concours")
+        # swimmers swam without a ranking — keep them as real results;
+        # rows with no/invalid time are filtered out downstream anyway.
         status = 'OK'
         rank = 0
-        if place_text == 'N.C' or place_text == 'NC':
-            status = 'DNS'
-        elif place_text.isdigit():
+        if place_text.isdigit():
             rank = int(place_text)
 
         # Check for DQ/forfeit in time

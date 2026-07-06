@@ -807,3 +807,86 @@ class FixRelayEventNamesCommandTests(_MeetFixtureMixin, TestCase):
         call_command('fix_relay_event_names', verbosity=0)
         self.assertTrue(
             Event.objects.filter(name='4x100 M Medley Relay').exists())
+
+
+class AddResultsEndpointTests(_MeetFixtureMixin, TestCase):
+    """Bulk manual-entry endpoint for adding missing events/days."""
+
+    def setUp(self):
+        import datetime
+        self.champ = Championship.objects.create(
+            name='Manual Meet', date=datetime.date(2026, 6, 1),
+            pool='LCM', country=self.country)
+        self.url = f'/api/v1/championships/{self.champ.id}/add-results/'
+
+    def _post(self, payload):
+        return self.client.post(self.url, payload, content_type='application/json')
+
+    def test_add_rows_creates_swimmers_and_results(self):
+        resp = self._post({
+            'event': self.event.id, 'gender': 'M', 'round_type': 'Finals',
+            'category': '',
+            'rows': [
+                {'name': 'Ahmed HAFNAOUI', 'birth_year': '2002',
+                 'country': 'TUN', 'team': 'CNM', 'time': '52.34'},
+                {'name': 'Marwan ELKAMASH', 'birth_year': '', 'country': '',
+                 'team': '', 'time': '1:02.34'},
+            ],
+        })
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['created'], 2)
+        self.assertEqual(data['created_swimmers'], 2)
+        self.assertEqual(data['errors'], [])
+        r = Result.objects.get(swimmer__name='Ahmed HAFNAOUI')
+        self.assertEqual(r.time_centiseconds, 5234)
+        self.assertEqual(r.round_type, 'Finals')
+        self.assertEqual(r.team, 'CNM')
+        self.assertEqual(r.age_at_competition, 24)
+        r2 = Result.objects.get(swimmer__name='Marwan ELKAMASH')
+        self.assertEqual(r2.time_centiseconds, 6234)
+
+    def test_matches_existing_swimmer(self):
+        existing = Swimmer.objects.create(
+            name='Ahmed HAFNAOUI', birth_year=2002,
+            nationality=self.country, sex='M')
+        resp = self._post({
+            'event': self.event.id, 'gender': 'M',
+            'rows': [{'name': 'Ahmed HAFNAOUI', 'birth_year': '2002',
+                      'time': '52.34'}],
+        })
+        data = resp.json()
+        self.assertEqual(data['matched_swimmers'], 1)
+        self.assertEqual(data['created_swimmers'], 0)
+        self.assertEqual(existing.results.count(), 1)
+
+    def test_invalid_rows_reported(self):
+        resp = self._post({
+            'event': self.event.id, 'gender': 'M',
+            'rows': [
+                {'name': '', 'time': '52.34'},
+                {'name': 'X Y', 'time': 'abc'},
+                {'name': 'Ok GUY', 'time': '59.99'},
+            ],
+        })
+        data = resp.json()
+        self.assertEqual(data['created'], 1)
+        self.assertEqual(len(data['errors']), 2)
+
+    def test_duplicate_keeps_better_time(self):
+        payload = {
+            'event': self.event.id, 'gender': 'M',
+            'rows': [{'name': 'Ok GUY', 'time': '59.99'}],
+        }
+        self._post(payload)
+        # Worse time: skipped
+        payload['rows'][0]['time'] = '1:01.00'
+        data = self._post(payload).json()
+        self.assertEqual(data['created'], 0)
+        self.assertEqual(len(data['errors']), 1)
+        # Better time: updated
+        payload['rows'][0]['time'] = '58.50'
+        data = self._post(payload).json()
+        self.assertEqual(data['updated'], 1)
+        self.assertEqual(
+            Result.objects.get(swimmer__name='Ok GUY').time_centiseconds, 5850)

@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers } from '../api/championships'
+import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers, updateResult, deleteResult } from '../api/championships'
 import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
+import AddResultsModal from '../components/championships/AddResultsModal'
+
+// "1:02.34" | "62.34" -> centiseconds, or null when invalid
+function parseTimeToCs(text) {
+  const t = (text || '').trim()
+  let m = t.match(/^(\d{1,2}):(\d{2})[.,](\d{1,2})$/)
+  if (m) return (+m[1]) * 6000 + (+m[2]) * 100 + +(m[3].padEnd(2, '0'))
+  m = t.match(/^(\d{1,3})[.,](\d{1,2})$/)
+  if (m) return (+m[1]) * 100 + +(m[2].padEnd(2, '0'))
+  return null
+}
 
 export default function MeetDetailPage() {
   const { id } = useParams()
@@ -17,11 +28,53 @@ export default function MeetDetailPage() {
   const [expandedCountry, setExpandedCountry] = useState(null)
   const [countrySwimmers, setCountrySwimmers] = useState({})   // countryId -> swimmers[]
   const [loadingCountry, setLoadingCountry] = useState(null)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editValues, setEditValues] = useState({ time: '', team: '' })
 
   useEffect(() => {
     getChampionship(id).then(res => setMeet(res.data)).catch(() => {})
     getChampionshipStats(id).then(res => setStats(res.data)).catch(() => {})
   }, [id])
+
+  const refreshStats = () => getChampionshipStats(id).then(res => setStats(res.data)).catch(() => {})
+
+  const refreshResults = async () => {
+    if (!selectedEvent) return
+    try {
+      const params = { event: selectedEvent.event_id, gender: selectedEvent.gender, all_rounds: 1 }
+      const res = await getChampionshipResults(id, params)
+      setResults(res.data)
+    } catch { /* keep current */ }
+  }
+
+  const startEditRow = (r) => {
+    setEditingId(r.id)
+    setEditValues({ time: r.formatted_time || '', team: r.team || '' })
+  }
+
+  const saveEditRow = async (r) => {
+    const cs = parseTimeToCs(editValues.time)
+    if (!cs) { alert('Invalid time — use 1:02.34 or 28.75'); return }
+    try {
+      await updateResult(r.id, { time_centiseconds: cs, team: editValues.team })
+      setEditingId(null)
+      await Promise.all([refreshResults(), refreshStats()])
+    } catch {
+      alert('Failed to save the result')
+    }
+  }
+
+  const removeRow = async (r) => {
+    if (!window.confirm(`Delete ${r.swimmer_detail?.name}'s ${selectedEvent?.event_name} result (${r.formatted_time})?`)) return
+    try {
+      await deleteResult(r.id)
+      await Promise.all([refreshResults(), refreshStats()])
+    } catch {
+      alert('Failed to delete the result')
+    }
+  }
 
   // Round display order: finals first, then semis/consolation, prelims/heats
   const ROUND_ORDER = ['Finals', 'Consolation', 'Prelims', 'Heats', '']
@@ -92,6 +145,12 @@ export default function MeetDetailPage() {
               <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-medium">{meet.pool}</span>
             </div>
           </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="shrink-0 flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-3.5 py-2 rounded-lg text-sm font-medium"
+          >
+            <span className="text-base leading-none">＋</span> Add Results
+          </button>
         </div>
 
         {/* Stats Row */}
@@ -301,9 +360,21 @@ export default function MeetDetailPage() {
                   <h3 className="font-semibold">{selectedEvent.event_name} — {selectedEvent.gender_label || (selectedEvent.gender === 'M' ? 'Men' : 'Women')}</h3>
                   <p className="text-xs text-gray-500">{results.length} results</p>
                 </div>
-                <button onClick={() => { setSelectedEvent(null); setResults([]); setSelectedRound(null) }} className="text-sm text-gray-500 hover:text-gray-700">
-                  ← All events
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setEditMode(m => !m); setEditingId(null) }}
+                    className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+                      editMode
+                        ? 'bg-sky-600 text-white border-sky-600'
+                        : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {editMode ? 'Done editing' : '✎ Edit'}
+                  </button>
+                  <button onClick={() => { setSelectedEvent(null); setResults([]); setSelectedRound(null); setEditMode(false); setEditingId(null) }} className="text-sm text-gray-500 hover:text-gray-700">
+                    ← All events
+                  </button>
+                </div>
               </div>
 
               {/* Round tabs (Finals / Prelims / Heats) */}
@@ -349,6 +420,7 @@ export default function MeetDetailPage() {
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA Pts</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Age</th>
+                        {editMode && <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Actions</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -385,11 +457,13 @@ export default function MeetDetailPage() {
                           const isBest = i === 0
                           const isExpanded = expandedRelay === r.id
                           const swimmers = r.relay_swimmers || []
+                          const isEditing = editingId === r.id
                           return (
                             <React.Fragment key={r.id}>
                               <tr
-                                className={`hover:bg-gray-50 cursor-pointer ${isBest ? 'bg-amber-50' : ''}`}
+                                className={`hover:bg-gray-50 ${editMode ? '' : 'cursor-pointer'} ${isBest ? 'bg-amber-50' : ''} ${isEditing ? 'bg-sky-50' : ''}`}
                                 onClick={() => {
+                                  if (editMode) return
                                   if (isRelay && swimmers.length > 0) {
                                     setExpandedRelay(isExpanded ? null : r.id)
                                   } else {
@@ -416,10 +490,44 @@ export default function MeetDetailPage() {
                                     name={r.swimmer_detail?.nationality_detail?.name}
                                   />
                                 </td>
-                                <td className="px-4 py-2 text-sm text-gray-500">{r.team || '-'}</td>
-                                <td className="px-4 py-2 text-sm font-mono font-semibold">{r.formatted_time}</td>
+                                <td className="px-4 py-2 text-sm text-gray-500">
+                                  {isEditing ? (
+                                    <input
+                                      value={editValues.team}
+                                      onChange={e => setEditValues(v => ({ ...v, team: e.target.value }))}
+                                      className="w-28 border rounded px-1.5 py-1 text-sm"
+                                      placeholder="Club"
+                                    />
+                                  ) : (r.team || '-')}
+                                </td>
+                                <td className="px-4 py-2 text-sm font-mono font-semibold">
+                                  {isEditing ? (
+                                    <input
+                                      value={editValues.time}
+                                      onChange={e => setEditValues(v => ({ ...v, time: e.target.value }))}
+                                      onKeyDown={e => { if (e.key === 'Enter') saveEditRow(r); if (e.key === 'Escape') setEditingId(null) }}
+                                      className="w-24 border rounded px-1.5 py-1 text-sm font-mono"
+                                      autoFocus
+                                    />
+                                  ) : r.formatted_time}
+                                </td>
                                 <td className="px-4 py-2 text-sm">{r.fina_points || '-'}</td>
                                 <td className="px-4 py-2 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
+                                {editMode && (
+                                  <td className="px-4 py-2 text-right whitespace-nowrap">
+                                    {isEditing ? (
+                                      <>
+                                        <button onClick={() => saveEditRow(r)} className="text-xs px-2 py-1 rounded bg-sky-600 text-white hover:bg-sky-700 mr-1">Save</button>
+                                        <button onClick={() => setEditingId(null)} className="text-xs px-2 py-1 rounded border text-gray-500 hover:bg-gray-50">Cancel</button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button onClick={() => startEditRow(r)} title="Edit" className="text-gray-400 hover:text-sky-600 px-1.5">✎</button>
+                                        <button onClick={() => removeRow(r)} title="Delete" className="text-gray-400 hover:text-red-500 px-1.5">🗑</button>
+                                      </>
+                                    )}
+                                  </td>
+                                )}
                               </tr>
                               {isRelay && isExpanded && swimmers.map((s, j) => (
                                 <tr key={`${r.id}-${j}`} className="bg-blue-50">
@@ -427,7 +535,7 @@ export default function MeetDetailPage() {
                                   <td className="px-4 py-1.5 text-sm pl-8">{s.name}</td>
                                   <td className="px-4 py-1.5 text-sm" colSpan={2}></td>
                                   <td className="px-4 py-1.5 text-sm font-mono text-gray-600">{s.split_time || '-'}</td>
-                                  <td className="px-4 py-1.5 text-sm" colSpan={2}></td>
+                                  <td className="px-4 py-1.5 text-sm" colSpan={editMode ? 3 : 2}></td>
                                 </tr>
                               ))}
                             </React.Fragment>
@@ -435,14 +543,14 @@ export default function MeetDetailPage() {
                         }
 
                         if (roundResults.length === 0) {
-                          return <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No results</td></tr>
+                          return <tr><td colSpan={editMode ? 8 : 7} className="px-4 py-8 text-center text-gray-400">No results</td></tr>
                         }
 
                         return order.map(cat => (
                           <React.Fragment key={cat || '_general'}>
                             {hasCategories && (
                               <tr className="bg-sky-50">
-                                <td colSpan={7} className="px-4 py-2 text-sm font-semibold text-sky-800 uppercase tracking-wide">
+                                <td colSpan={editMode ? 8 : 7} className="px-4 py-2 text-sm font-semibold text-sky-800 uppercase tracking-wide">
                                   {cat || 'General'}
                                 </td>
                               </tr>
@@ -459,6 +567,14 @@ export default function MeetDetailPage() {
           )}
         </div>
       </div>
+
+      {showAddModal && (
+        <AddResultsModal
+          championshipId={id}
+          onClose={() => setShowAddModal(false)}
+          onSaved={() => { refreshStats(); refreshResults() }}
+        />
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import ClassificationCategory, Classification, SubClassification, Championship, Result
 from .serializers import (
     ClassificationCategorySerializer, ClassificationSerializer, SubClassificationSerializer,
@@ -47,7 +47,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['date', 'name']
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -139,6 +139,121 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save(championship=championship)
             return Response(serializer.data, status=201)
+
+    @action(detail=True, methods=['post'], url_path='add-results')
+    def add_results(self, request, pk=None):
+        """Bulk-add results for one event/round (manual data entry).
+
+        Payload: {event, gender, round_type, category, rows: [
+            {name, birth_year, country, team, time}, ...]}
+        Swimmers are matched with the same rules as the PDF importer
+        (exact name + birth year / age band), created when new.
+        """
+        from datetime import date as _date
+        from core.models import Event
+        from swimmers.models import Swimmer
+        from importer.parsers.base import parse_time_to_centiseconds, ParsedResult
+        from importer.matcher import find_matching_swimmer, resolve_country, category_band
+        from importer.points import calculate_points
+
+        championship = self.get_object()
+        data = request.data
+        try:
+            event = Event.objects.get(id=int(data.get('event')))
+        except (Event.DoesNotExist, TypeError, ValueError):
+            return Response({'error': 'Valid event id required'}, status=400)
+        gender = data.get('gender', 'M')
+        if gender not in ('M', 'F'):
+            gender = 'M'
+        round_type = data.get('round_type', '') or ''
+        category = (data.get('category', '') or '').strip()
+        rows = data.get('rows') or []
+        if not rows:
+            return Response({'error': 'rows required'}, status=400)
+
+        band = category_band(category)
+        created = updated = 0
+        created_swimmers = matched_swimmers = 0
+        errors = []
+
+        for i, row in enumerate(rows):
+            name = (row.get('name') or '').strip()
+            time_text = (row.get('time') or '').strip()
+            if not name or not time_text:
+                errors.append({'row': i + 1, 'reason': 'Name and time are required'})
+                continue
+            time_cs = parse_time_to_centiseconds(time_text)
+            if not time_cs or time_cs <= 0:
+                errors.append({'row': i + 1, 'reason': f'Invalid time "{time_text}"'})
+                continue
+            try:
+                birth_year = int(row.get('birth_year') or 0)
+            except (TypeError, ValueError):
+                birth_year = 0
+            team = (row.get('team') or '').strip()
+
+            if event.is_relay:
+                swimmer = Swimmer.objects.filter(name__iexact=name, sex=gender).first()
+            else:
+                pr = ParsedResult(
+                    swimmer_name=name, time_text='', birth_year=birth_year,
+                    nationality_code=(row.get('country') or '').strip(),
+                )
+                swimmer, _conf, _mtype = find_matching_swimmer(
+                    pr, category=band, meet_date=championship.date)
+            if swimmer:
+                matched_swimmers += 1
+            else:
+                nationality = resolve_country((row.get('country') or '').strip()) \
+                    or championship.country
+                swimmer = Swimmer.objects.create(
+                    name=name,
+                    birth_year=birth_year or None,
+                    nationality=nationality,
+                    sex=gender,
+                    club=name if event.is_relay else team,
+                )
+                created_swimmers += 1
+
+            fina = calculate_points(time_cs, event.name, gender, championship.pool)
+            age = None
+            if birth_year and championship.date:
+                age = championship.date.year - birth_year
+
+            existing = Result.objects.filter(
+                swimmer=swimmer, championship=championship, event=event,
+                round_type=round_type, category=category,
+            ).first()
+            if existing:
+                if time_cs < existing.time_centiseconds:
+                    existing.time_centiseconds = time_cs
+                    existing.fina_points = fina or existing.fina_points
+                    if team:
+                        existing.team = team
+                    existing.save()
+                    updated += 1
+                else:
+                    errors.append({'row': i + 1,
+                                   'reason': f'{name}: already has an equal or better time in this event/round'})
+                continue
+
+            Result.objects.create(
+                swimmer=swimmer, championship=championship, event=event,
+                round_type=round_type, category=category,
+                team=name if event.is_relay else team,
+                time_centiseconds=time_cs,
+                fina_points=fina or None,
+                age_at_competition=age,
+            )
+            created += 1
+
+        return Response({
+            'created': created,
+            'updated': updated,
+            'created_swimmers': created_swimmers,
+            'matched_swimmers': matched_swimmers,
+            'errors': errors,
+        })
 
     @action(detail=True, methods=['get'], url_path='country-swimmers')
     def country_swimmers(self, request, pk=None):

@@ -50,6 +50,92 @@ def resolve_country(code):
     return cmap.get(code.upper())
 
 
+# Broad classifications that any swimmer can appear in — they never
+# distinguish two same-named athletes.
+_BROAD_CATEGORIES = {
+    '', 'OPEN', 'TC', 'TOUTES CATEGORIES', 'TOUTES CATÉGORIES',
+    'CAT. GENERALE', 'CAT. GÉNÉRALE', 'GENERALE', 'GÉNÉRALE',
+    'CATEGORIE GENERALE', 'CATÉGORIE GÉNÉRALE', 'GENERAL', 'ALL AGES',
+}
+
+# Mutually exclusive French age bands (a swimmer belongs to exactly one
+# per season).
+_FRENCH_BANDS = {'POUSSINS', 'BENJAMINS', 'MINIMES', 'CADETS', 'JUNIORS', 'SENIORS'}
+
+_AGE_RANGE_RE = re.compile(r'(\d{1,2})\s*-\s*(\d{1,2})')
+_AGE_PLUS_RE = re.compile(r'(\d{1,2})\s*\+')
+
+
+def category_band(category):
+    """The exclusive age-band label of a category, or '' when broad/absent."""
+    c = (category or '').strip()
+    if c.upper() in _BROAD_CATEGORIES:
+        return ''
+    return c
+
+
+def _age_range(band):
+    """Numeric age range (lo, hi) implied by a band label, or None."""
+    m = _AGE_RANGE_RE.search(band)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    m = _AGE_PLUS_RE.search(band)
+    if m:
+        return int(m.group(1)), 99
+    return None
+
+
+def bands_conflict(cat_a, cat_b):
+    """True when two categories cannot describe the same swimmer at one meet.
+
+    'Cadets' vs 'Minimes' → conflict (disjoint French bands).
+    '13-14' vs '15-16' → conflict (disjoint numeric ranges).
+    'Juniors' vs 'Seniors/Juniors' → no conflict (shared band token).
+    Anything vs a broad category ('', Open, TC, générale…) → no conflict.
+    Unknown/mixed labels → no conflict (never split on a guess).
+    """
+    a, b = category_band(cat_a), category_band(cat_b)
+    if not a or not b or a.upper() == b.upper():
+        return False
+    tokens_a = {t.strip().upper() for t in a.split('/')}
+    tokens_b = {t.strip().upper() for t in b.split('/')}
+    if tokens_a & tokens_b:
+        return False
+    if tokens_a <= _FRENCH_BANDS and tokens_b <= _FRENCH_BANDS:
+        return True
+    range_a, range_b = _age_range(a), _age_range(b)
+    if range_a and range_b:
+        return range_a[1] < range_b[0] or range_b[1] < range_a[0]
+    return False
+
+
+def _candidate_conflicts_by_category(swimmer, band, meet_date):
+    """True when a DB swimmer's known age bands rule out this result.
+
+    Looks at the candidate's existing results in meets close in time
+    (categories shift as swimmers age, so old meets prove nothing).
+    Only rejects when every nearby banded result conflicts.
+    """
+    if not band:
+        return False
+    from championships.models import Result
+    nearby = Result.objects.filter(swimmer=swimmer).exclude(
+        category='').select_related('championship')
+    has_conflict = False
+    for r in nearby:
+        other = category_band(r.category)
+        if not other:
+            continue
+        if meet_date and r.championship.date:
+            if abs((r.championship.date - meet_date).days) > 400:
+                continue
+        if bands_conflict(other, band):
+            has_conflict = True
+        else:
+            return False  # compatible band nearby — could be the same person
+    return has_conflict
+
+
 def normalize_for_matching(name):
     """Normalize a name for comparison."""
     name = name.upper().strip()
@@ -68,7 +154,7 @@ def _get_swimmer_birth_year(swimmer):
     return 0
 
 
-def find_matching_swimmer(parsed_result, threshold=92):
+def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=None):
     """
     Find the best matching swimmer in the database.
 
@@ -76,7 +162,9 @@ def find_matching_swimmer(parsed_result, threshold=92):
     - Name must be an EXACT match (case-insensitive)
     - Birth year must match (±1 year tolerance) if both are available
     - If names match exactly but birth years differ by >1 → NOT a match (different person)
-    - If names match exactly and no birth year to compare → match with 95% confidence
+    - If names match exactly and no birth year to compare → match with 95% confidence,
+      unless the result's age category conflicts with the candidate's known
+      age band in meets around the same date (same name, different kid).
 
     Returns: (swimmer_or_None, confidence_score, match_type)
     """
@@ -125,8 +213,15 @@ def find_matching_swimmer(parsed_result, threshold=92):
         # with the same name but different age
         return None, 0, 'new'
     else:
-        # No birth year in the import data — accept first exact name match
-        return candidates[0], 95, 'exact'
+        # No birth year in the import data — accept the first exact name
+        # match whose known age band doesn't rule it out.
+        band = category_band(category)
+        for swimmer in candidates:
+            if not _candidate_conflicts_by_category(swimmer, band, meet_date):
+                return swimmer, 95, 'exact'
+        # Every same-named swimmer belongs to a conflicting age band:
+        # this is a different athlete with the same name.
+        return None, 0, 'new'
 
 
 def match_all_results(parsed_meet, threshold=92):

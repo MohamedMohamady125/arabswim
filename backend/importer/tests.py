@@ -552,3 +552,170 @@ class GccExcelTests(SanityMixin, SimpleTestCase):
         m = self.meet()
         self.assertEqual(m.total_events, 20)
         self.assertEqual(m.total_results, 139)
+
+# ---------------------------------------------------------------------------
+# 3. Same-name athlete separation (age-band matching)
+# ---------------------------------------------------------------------------
+
+from importer.matcher import category_band, bands_conflict
+from swimmers.models import Swimmer
+from championships.models import Championship, Result
+
+
+class BandTests(SimpleTestCase):
+    """Unit tests for age-band classification and conflict detection."""
+
+    def test_broad_categories_have_no_band(self):
+        for c in ('', 'Open', 'TC', 'Toutes Catégories', 'Cat. générale',
+                  'CATEGORIE GENERALE', 'All Ages'):
+            self.assertEqual(category_band(c), '', c)
+
+    def test_exclusive_categories_keep_their_band(self):
+        self.assertEqual(category_band('Cadets'), 'Cadets')
+        self.assertEqual(category_band('13-14'), '13-14')
+
+    def test_disjoint_french_bands_conflict(self):
+        self.assertTrue(bands_conflict('Cadets', 'Minimes'))
+        self.assertTrue(bands_conflict('Juniors', 'Benjamins'))
+
+    def test_shared_token_bands_do_not_conflict(self):
+        self.assertFalse(bands_conflict('Juniors', 'Seniors/Juniors'))
+        self.assertFalse(bands_conflict('Cadets', 'Cadets'))
+
+    def test_numeric_ranges(self):
+        self.assertTrue(bands_conflict('13-14', '15-16'))
+        self.assertFalse(bands_conflict('13-14', '14-15'))  # overlap
+        self.assertTrue(bands_conflict('12-13', '19+'))
+        self.assertFalse(bands_conflict('17-18', '18+'))
+
+    def test_broad_or_unknown_never_conflicts(self):
+        self.assertFalse(bands_conflict('Cadets', ''))
+        self.assertFalse(bands_conflict('Cadets', 'Open'))
+        self.assertFalse(bands_conflict('Cadets', 'Elite'))  # unknown label
+        self.assertFalse(bands_conflict('Weird A', 'Weird B'))
+
+
+from django.test import TestCase
+
+
+class _MeetFixtureMixin:
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Country, Event
+        cls.country = Country.objects.create(name='Tunisia', code='TUN')
+        cls.event = Event.objects.create(
+            name='100 M Freestyle', distance=100, stroke='Freestyle')
+
+
+class SameNameImportTests(_MeetFixtureMixin, TestCase):
+    """confirm_import must keep two same-named athletes in conflicting
+    age bands as two separate Swimmer records."""
+
+    def _preview(self):
+        return {
+            'meet': {'name': 'Test Meet', 'date': '2026-06-01', 'pool': 'LCM'},
+            'events': [{
+                'event_name': '100 M Freestyle',
+                'distance': 100, 'stroke': 'Freestyle',
+                'gender': 'M', 'is_relay': False, 'round_type': 'Finals',
+                'results': [
+                    {'swimmer_name': 'Youssef TRABELSI', 'gender': 'M',
+                     'category': 'Cadets', 'time_centiseconds': 5740,
+                     'birth_year': 0, 'nationality_code': 'TUN'},
+                    {'swimmer_name': 'Youssef TRABELSI', 'gender': 'M',
+                     'category': 'Minimes', 'time_centiseconds': 6496,
+                     'birth_year': 0, 'nationality_code': 'TUN'},
+                ],
+            }],
+        }
+
+    def test_conflicting_bands_create_two_swimmers(self):
+        from importer.services import confirm_import
+        confirm_import(self._preview(), {})
+        swimmers = Swimmer.objects.filter(name__iexact='Youssef TRABELSI')
+        self.assertEqual(swimmers.count(), 2)
+        times = set()
+        for s in swimmers:
+            rs = list(s.results.all())
+            self.assertEqual(len(rs), 1)
+            times.add(rs[0].time_centiseconds)
+        self.assertEqual(times, {5740, 6496})
+
+    def test_reimport_matches_existing_pair(self):
+        """Importing the same meet again must not create a third profile."""
+        from importer.services import confirm_import
+        confirm_import(self._preview(), {})
+        champ_id = Championship.objects.get().id
+        confirm_import(self._preview(), {}, championship_id=champ_id)
+        self.assertEqual(
+            Swimmer.objects.filter(name__iexact='Youssef TRABELSI').count(), 2)
+
+    def test_compatible_categories_stay_one_swimmer(self):
+        from importer.services import confirm_import
+        preview = self._preview()
+        # Same band + a broad classification: one athlete, two rows
+        preview['events'][0]['results'][1]['category'] = 'Cat. générale'
+        preview['events'][0]['results'][1]['time_centiseconds'] = 5740
+        preview['events'][0]['results'][1]['round_type'] = 'Heats'
+        confirm_import(preview, {})
+        self.assertEqual(
+            Swimmer.objects.filter(name__iexact='Youssef TRABELSI').count(), 1)
+
+
+class SplitMergedSwimmersTests(_MeetFixtureMixin, TestCase):
+    """The split_merged_swimmers command must separate a merged profile."""
+
+    def _merged_swimmer(self):
+        import datetime
+        champ = Championship.objects.create(
+            name='Été M/C', date=datetime.date(2025, 7, 1),
+            pool='LCM', country=self.country)
+        swimmer = Swimmer.objects.create(
+            name='Youssef TRABELSI', nationality=self.country, sex='M')
+        Result.objects.create(
+            swimmer=swimmer, championship=champ, event=self.event,
+            round_type='Finals', category='Cadets', time_centiseconds=5740)
+        Result.objects.create(
+            swimmer=swimmer, championship=champ, event=self.event,
+            round_type='Finals', category='Minimes', time_centiseconds=6496)
+        return swimmer
+
+    def test_split(self):
+        from django.core.management import call_command
+        swimmer = self._merged_swimmer()
+        call_command('split_merged_swimmers', verbosity=0)
+        self.assertEqual(
+            Swimmer.objects.filter(name__iexact='Youssef TRABELSI').count(), 2)
+        # Original keeps one result, the new profile has the other
+        for s in Swimmer.objects.filter(name__iexact='Youssef TRABELSI'):
+            self.assertEqual(s.results.count(), 1)
+        # Idempotent: a second run changes nothing
+        call_command('split_merged_swimmers', verbosity=0)
+        self.assertEqual(
+            Swimmer.objects.filter(name__iexact='Youssef TRABELSI').count(), 2)
+
+    def test_dry_run_changes_nothing(self):
+        from django.core.management import call_command
+        self._merged_swimmer()
+        call_command('split_merged_swimmers', '--dry-run', verbosity=0)
+        self.assertEqual(
+            Swimmer.objects.filter(name__iexact='Youssef TRABELSI').count(), 1)
+
+    def test_clean_swimmer_untouched(self):
+        import datetime
+        from django.core.management import call_command
+        c1 = Championship.objects.create(
+            name='Meet A', date=datetime.date(2024, 7, 1),
+            pool='LCM', country=self.country)
+        c2 = Championship.objects.create(
+            name='Meet B', date=datetime.date(2026, 7, 1),
+            pool='LCM', country=self.country)
+        s = Swimmer.objects.create(
+            name='Sara HAMDI', nationality=self.country, sex='F')
+        # Category changed across seasons — legitimate ageing, no conflict
+        Result.objects.create(swimmer=s, championship=c1, event=self.event,
+                              category='Minimes', time_centiseconds=6300)
+        Result.objects.create(swimmer=s, championship=c2, event=self.event,
+                              category='Cadets', time_centiseconds=6100)
+        call_command('split_merged_swimmers', verbosity=0)
+        self.assertEqual(Swimmer.objects.filter(name='Sara HAMDI').count(), 1)

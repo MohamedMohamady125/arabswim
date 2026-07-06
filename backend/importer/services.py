@@ -350,8 +350,35 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     skipped_results = 0
     skipped_details = []
 
-    # Map swimmer names to Swimmer objects
+    # Map swimmer identities to Swimmer objects. Two athletes can share a
+    # name within one meet (e.g. two "Youssef Trabelsi"s, one Cadet, one
+    # Minime) — so the identity is name + birth year when known, otherwise
+    # name + exclusive age band.
+    from .matcher import category_band, bands_conflict
     swimmer_map = {}
+    name_bands = {}  # NAME -> {band: identity_key} for birth-year-less rows
+
+    def individual_key(name_upper, band, birth_year):
+        if birth_year:
+            return (name_upper, 'Y', birth_year)
+        bands = name_bands.setdefault(name_upper, {})
+        if band in bands:
+            return bands[band]
+        if band:
+            # A broad-only identity (seen in Open/TC lists) is the same
+            # person unless another exclusive band already claimed it.
+            if set(bands) == {''}:
+                bands[band] = bands['']
+                return bands[band]
+        else:
+            # Broad category: reuse the known identity when unambiguous;
+            # with several same-named athletes we can't tell — use the first.
+            if bands:
+                bands[''] = next(iter(bands.values()))
+                return bands['']
+        key = (name_upper, 'B', band)
+        bands[band] = key
+        return key
 
     for event_data in preview_data['events']:
         # Find or create the event
@@ -408,18 +435,22 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         created_swimmers += 1
             else:
                 # Individual: normal swimmer matching
-                if name_upper not in swimmer_map:
+                band = category_band(
+                    result_data.get('category', '') or event_data.get('age_group', '') or '')
+                ind_key = individual_key(
+                    name_upper, band, result_data.get('birth_year', 0) or 0)
+                if ind_key not in swimmer_map:
                     decision = swimmer_decisions.get(parsed_name, swimmer_decisions.get(name_upper, {}))
                     action = decision.get('action', 'auto')
 
                     if action == 'skip':
-                        swimmer_map[name_upper] = None
+                        swimmer_map[ind_key] = None
                         skipped_swimmers += 1
                     elif action == 'match' and decision.get('swimmer_id'):
-                        swimmer_map[name_upper] = Swimmer.objects.get(id=decision['swimmer_id'])
+                        swimmer_map[ind_key] = Swimmer.objects.get(id=decision['swimmer_id'])
                         matched_swimmers += 1
                     elif action == 'create':
-                        swimmer_map[name_upper] = _create_swimmer(result_data, meet_country)
+                        swimmer_map[ind_key] = _create_swimmer(result_data, meet_country)
                         created_swimmers += 1
                     else:
                         # Auto: try to match, create if new
@@ -431,15 +462,27 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             nationality_code=result_data.get('nationality_code', ''),
                             age=result_data.get('age', 0),
                         )
-                        swimmer, conf, mtype = find_matching_swimmer(pr, threshold=92)
+                        swimmer, conf, mtype = find_matching_swimmer(
+                            pr, threshold=92, category=band,
+                            meet_date=championship.date)
+                        # Never reuse a swimmer another identity in this
+                        # import already claimed under a conflicting band.
+                        if swimmer is not None:
+                            for other_key, other_sw in swimmer_map.items():
+                                if (other_sw is not None and other_sw.id == swimmer.id
+                                        and other_key[0] == name_upper and other_key != ind_key
+                                        and other_key[1] == 'B'
+                                        and bands_conflict(other_key[2], band)):
+                                    swimmer = None
+                                    break
                         if swimmer:
-                            swimmer_map[name_upper] = swimmer
+                            swimmer_map[ind_key] = swimmer
                             matched_swimmers += 1
                         else:
-                            swimmer_map[name_upper] = _create_swimmer(result_data, meet_country)
+                            swimmer_map[ind_key] = _create_swimmer(result_data, meet_country)
                             created_swimmers += 1
 
-            lookup_key = relay_key if (is_relay or result_data.get('is_relay', False)) else name_upper
+            lookup_key = relay_key if (is_relay or result_data.get('is_relay', False)) else ind_key
             swimmer = swimmer_map.get(lookup_key)
             if not swimmer:
                 skipped_results += 1

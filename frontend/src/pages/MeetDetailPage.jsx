@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getChampionship, getChampionshipResults, getChampionshipStats } from '../api/championships'
+import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers } from '../api/championships'
 import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
 
@@ -14,6 +14,9 @@ export default function MeetDetailPage() {
   const [selectedRound, setSelectedRound] = useState(null)
   const [loadingResults, setLoadingResults] = useState(false)
   const [expandedRelay, setExpandedRelay] = useState(null)
+  const [expandedCountry, setExpandedCountry] = useState(null)
+  const [countrySwimmers, setCountrySwimmers] = useState({})   // countryId -> swimmers[]
+  const [loadingCountry, setLoadingCountry] = useState(null)
 
   useEffect(() => {
     getChampionship(id).then(res => setMeet(res.data)).catch(() => {})
@@ -41,6 +44,25 @@ export default function MeetDetailPage() {
       setResults([])
     } finally {
       setLoadingResults(false)
+    }
+  }
+
+  const handleCountryClick = async (countryId) => {
+    if (expandedCountry === countryId) {
+      setExpandedCountry(null)
+      return
+    }
+    setExpandedCountry(countryId)
+    if (!countrySwimmers[countryId]) {
+      setLoadingCountry(countryId)
+      try {
+        const res = await getChampionshipCountrySwimmers(id, countryId)
+        setCountrySwimmers(prev => ({ ...prev, [countryId]: res.data }))
+      } catch {
+        setCountrySwimmers(prev => ({ ...prev, [countryId]: [] }))
+      } finally {
+        setLoadingCountry(null)
+      }
     }
   }
 
@@ -105,20 +127,79 @@ export default function MeetDetailPage() {
             <div className="p-3 border-b">
               <h3 className="font-semibold text-sm">Countries ({stats.countries.length})</h3>
             </div>
-            <div className="divide-y max-h-48 overflow-y-auto">
-              {stats.countries.map((c, i) => (
-                <div key={i} className="flex items-center justify-between px-3 py-2">
-                  <CountryFlag
-                    code={c.swimmer__nationality__code}
-                    flagUrl={c.swimmer__nationality__flag_url}
-                    name={c.swimmer__nationality__name}
-                    className="text-sm"
-                  />
-                  <div className="text-xs text-gray-500">
-                    <span className="font-medium text-gray-700">{c.swimmers_count}</span> swimmers
+            <div className="divide-y max-h-96 overflow-y-auto">
+              {stats.countries.map((c, i) => {
+                const countryId = c.swimmer__nationality__id
+                const isOpen = expandedCountry === countryId
+                const swimmers = countrySwimmers[countryId]
+                return (
+                  <div key={countryId ?? i}>
+                    <button
+                      onClick={() => handleCountryClick(countryId)}
+                      className={`w-full flex items-center justify-between px-3 py-2 transition-colors hover:bg-gray-50 ${
+                        isOpen ? 'bg-sky-50' : ''
+                      }`}
+                    >
+                      <CountryFlag
+                        code={c.swimmer__nationality__code}
+                        flagUrl={c.swimmer__nationality__flag_url}
+                        name={c.swimmer__nationality__name}
+                        className="text-sm"
+                      />
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span><span className="font-medium text-gray-700">{c.swimmers_count}</span> swimmers</span>
+                        <svg
+                          className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div className="bg-gray-50 border-t border-gray-100">
+                        {loadingCountry === countryId ? (
+                          <div className="px-3 py-3 text-xs text-gray-400 text-center">Loading swimmers...</div>
+                        ) : (swimmers || []).length === 0 ? (
+                          <div className="px-3 py-3 text-xs text-gray-400 text-center">No individual swimmers</div>
+                        ) : (
+                          swimmers.map(s => (
+                            <button
+                              key={s.swimmer_id}
+                              onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white transition-colors group"
+                            >
+                              <div className="w-7 h-7 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center overflow-hidden shrink-0 text-[10px] font-bold">
+                                {s.photo ? (
+                                  <img src={s.photo} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  s.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-medium text-gray-800 truncate group-hover:text-sky-600">
+                                  {s.name}
+                                </div>
+                                <div className="text-[11px] text-gray-400">
+                                  {s.events_count} {s.events_count === 1 ? 'event' : 'events'}
+                                  {s.best_fina > 0 && (
+                                    <> · best <span className="font-mono text-sky-600 font-semibold">{s.best_time}</span> ({s.best_event})</>
+                                  )}
+                                </div>
+                              </div>
+                              <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                s.sex === 'F' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'
+                              }`}>
+                                {s.sex}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 

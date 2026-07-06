@@ -140,6 +140,46 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             serializer.save(championship=championship)
             return Response(serializer.data, status=201)
 
+    @action(detail=True, methods=['get'], url_path='country-swimmers')
+    def country_swimmers(self, request, pk=None):
+        """Swimmers from one country at this championship, with their best swim."""
+        from django.db.models import Count, Max
+        from importer.parsers.base import format_centiseconds
+        championship = self.get_object()
+        country_id = request.query_params.get('country')
+        if not country_id:
+            return Response({'error': 'country query param required'}, status=400)
+        results = championship.results.filter(
+            swimmer__nationality_id=country_id,
+            event__is_relay=False,  # relay rows use team pseudo-swimmers
+        ).select_related('swimmer', 'event')
+
+        swimmers = {}
+        for r in results:
+            s = swimmers.setdefault(r.swimmer_id, {
+                'swimmer_id': r.swimmer_id,
+                'name': r.swimmer.name,
+                'sex': r.swimmer.sex,
+                'birth_year': r.swimmer.birth_year,
+                'photo': r.swimmer.photo.url if r.swimmer.photo else None,
+                'events': set(),
+                'results_count': 0,
+                'best_fina': 0,
+                'best_event': '',
+                'best_time': '',
+            })
+            s['events'].add(r.event_id)
+            s['results_count'] += 1
+            if (r.fina_points or 0) > s['best_fina']:
+                s['best_fina'] = r.fina_points or 0
+                s['best_event'] = r.event.name
+                s['best_time'] = format_centiseconds(r.time_centiseconds)
+
+        data = sorted(swimmers.values(), key=lambda s: (-s['best_fina'], s['name']))
+        for s in data:
+            s['events_count'] = len(s.pop('events'))
+        return Response(data)
+
     @action(detail=True, methods=['get'])
     def stats(self, request, pk=None):
         """Get comprehensive stats for a championship."""
@@ -184,6 +224,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
         # Country breakdown
         countries = results.values(
+            'swimmer__nationality__id',
             'swimmer__nationality__name', 'swimmer__nationality__code', 'swimmer__nationality__flag_url'
         ).annotate(
             swimmers_count=Count('swimmer', distinct=True),

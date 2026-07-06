@@ -7,6 +7,7 @@ export const updateChampionship = (id, data) => api.patch(`/championships/${id}/
 export const deleteChampionship = (id) => api.delete(`/championships/${id}/`)
 export const getChampionshipResults = (id, params) => api.get(`/championships/${id}/results/`, { params })
 export const getChampionshipStats = (id) => api.get(`/championships/${id}/stats/`)
+export const getChampionshipCountrySwimmers = (id, countryId) => api.get(`/championships/${id}/country-swimmers/`, { params: { country: countryId } })
 export const addChampionshipResult = (id, data) => api.post(`/championships/${id}/results/`, data)
 export const uploadPdf = (id, formData) => api.post(`/championships/${id}/upload-pdf/`, formData)
 export const importExcel = (id, formData) => api.post(`/championships/${id}/import-excel/`, formData)

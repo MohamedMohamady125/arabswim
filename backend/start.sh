@@ -8,6 +8,7 @@ python manage.py fix_names
 python manage.py fix_relay_event_names
 python manage.py split_merged_swimmers
 python manage.py remove_non_arab_swimmers
+python manage.py strip_team_numbers
 python manage.py recalculate_medals
 
 # Create admin user if not exists

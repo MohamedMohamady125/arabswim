@@ -8,6 +8,16 @@ from .models import Team
 from swimmers.models import Swimmer
 from core.models import Country
 
+# Trailing squad number on club names ("BAHIA NAUTIQUE 2") — Algerian
+# meets number each club's relay squads; we store only the club name.
+_SQUAD_NUMBER_RE = re.compile(r'\s+\d{1,2}$')
+
+
+def strip_squad_number(name):
+    """Remove a trailing standalone squad number from a team/club name."""
+    return _SQUAD_NUMBER_RE.sub('', (name or '').strip())
+
+
 # A whole name that is just a swim time, e.g. "3:37.01", "07:58.87", "58.31"
 _TIME_NAME_RE = re.compile(r'^\d{0,2}:?\d{1,2}[:.,]\d{2}([.,]\d{1,2})?$')
 # A swim time embedded anywhere in the name, e.g. "CLUB X 3:40.68"

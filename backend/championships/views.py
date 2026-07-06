@@ -177,7 +177,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         errors = []
 
         for i, row in enumerate(rows):
+            from teams.utils import strip_squad_number
             name = (row.get('name') or '').strip()
+            if event.is_relay:
+                name = strip_squad_number(name)
             time_text = (row.get('time') or '').strip()
             if not name or not time_text:
                 errors.append({'row': i + 1, 'reason': 'Name and time are required'})
@@ -190,7 +193,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 birth_year = int(row.get('birth_year') or 0)
             except (TypeError, ValueError):
                 birth_year = 0
-            team = (row.get('team') or '').strip()
+            team = strip_squad_number(row.get('team') or '')
 
             # Arab-only database: reject rows from non-Arab countries
             row_country = resolve_country((row.get('country') or '').strip())

@@ -390,6 +390,10 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
 
         for result_data in event_data['results']:
             parsed_name = result_data['swimmer_name']
+            if is_relay or result_data.get('is_relay', False):
+                # Drop trailing squad numbers ("MC ALGER 2" -> "MC ALGER")
+                from teams.utils import strip_squad_number
+                parsed_name = strip_squad_number(parsed_name)
             name_upper = parsed_name.upper()
 
             relay_gender = result_data.get('gender', '') or event_data.get('gender', 'M') or 'M'
@@ -529,7 +533,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             if is_relay or result_data.get('is_relay', False):
                 team = parsed_name  # For relay, team = the team name itself
             else:
-                team = result_data.get('club', '').strip()
+                from teams.utils import strip_squad_number
+                team = strip_squad_number(result_data.get('club', ''))
 
             # Update swimmer's club if they don't have one yet
             if team and not swimmer.club and not (is_relay or result_data.get('is_relay', False)):

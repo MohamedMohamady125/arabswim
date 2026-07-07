@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+@theme {
+  /* Times use font-mono; system monospace fonts (Menlo/Monaco) draw a
+     slashed zero that looks like an 8. Use the sans stack with tabular
+     (fixed-width) figures instead — digits stay aligned, zeros stay open. */
+  --font-mono: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono--font-feature-settings: "tnum";
+}

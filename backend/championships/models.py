@@ -71,7 +71,10 @@ class Result(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ['swimmer', 'championship', 'event', 'round_type', 'category']
+        # team is part of the identity so a club's multiple relay squads
+        # ("MC ALGER 1", "MC ALGER 2") can each keep their result; the
+        # importer still dedupes individual results at application level.
+        unique_together = ['swimmer', 'championship', 'event', 'round_type', 'category', 'team']
         ordering = ['time_centiseconds']
         indexes = [
             models.Index(fields=['event', 'time_centiseconds']),

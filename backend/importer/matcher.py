@@ -215,6 +215,12 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
 
     # We have exact name matches — now check birth year
     if birth_year:
+        # Prefer an exact birth-year match: two same-named athletes born a
+        # year apart (e.g. Lina MAHI 2006 and Lina MAHI 2007) must each
+        # match their own profile, not whichever candidate comes first.
+        for swimmer in candidates:
+            if _get_swimmer_birth_year(swimmer) == birth_year:
+                return swimmer, 100, 'exact'
         for swimmer in candidates:
             db_birth_year = _get_swimmer_birth_year(swimmer)
             if db_birth_year:

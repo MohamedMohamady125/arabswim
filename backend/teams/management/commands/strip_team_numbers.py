@@ -1,12 +1,13 @@
 """Strip trailing squad numbers from Algerian team/club names.
 
 Algerian meets number each club's relay squads ("BAHIA NAUTIQUE 1",
-"BAHIA NAUTIQUE 2"). We store only the club name, so this command:
+"BAHIA NAUTIQUE 2"). The club name (swimmer placeholder, club field,
+Team record) is stored without the number, but each squad keeps its own
+Result row with the squad-numbered name in Result.team. This command:
 - renames or merges relay placeholder swimmers whose name ends in a number
-  (result clashes resolved by keeping the better time),
-- strips the number from swimmer clubs and result team fields,
+  (their results move to the base swimmer, keeping their squad team names),
+- strips the number from swimmer clubs and non-relay result team fields,
 - renames or merges numbered Team records.
-Imports no longer store these numbers; this repairs existing data.
 Idempotent.
 """
 from django.core.management.base import BaseCommand
@@ -47,13 +48,18 @@ class Command(BaseCommand):
             keep = (Swimmer.objects.filter(name__iexact=base, sex=sw.sex)
                     .exclude(pk=sw.pk).first())
             if keep:
-                # Two squads of the same club in the same race clash on the
-                # result unique constraint — keep the better time.
+                # Move this squad's results to the base swimmer, keeping the
+                # squad-numbered team name so each squad keeps its own row.
                 for r in Result.objects.filter(swimmer=sw):
+                    if not r.team:
+                        r.team = sw.name
+                        r.save(update_fields=['team'])
                     clash = Result.objects.filter(
                         swimmer=keep, championship=r.championship, event=r.event,
-                        round_type=r.round_type, category=r.category).first()
+                        round_type=r.round_type, category=r.category,
+                        team=r.team).first()
                     if clash:
+                        # True duplicate (same squad) — keep the better time.
                         if r.time_centiseconds < clash.time_centiseconds:
                             clash.time_centiseconds = r.time_centiseconds
                             clash.fina_points = r.fina_points
@@ -78,7 +84,9 @@ class Command(BaseCommand):
             clubs += 1
 
         result_teams = 0
-        for r in Result.objects.filter(team__regex=NUM_RE):
+        # Relay results keep the squad number in team (it is part of the
+        # result identity); only individual results get stripped.
+        for r in Result.objects.filter(team__regex=NUM_RE, event__is_relay=False):
             r.team = strip_squad_number(r.team)
             r.save(update_fields=['team'])
             result_teams += 1

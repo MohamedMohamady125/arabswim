@@ -393,8 +393,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
 
         for result_data in event_data['results']:
             parsed_name = result_data['swimmer_name']
+            squad_name = parsed_name.strip()  # keeps squad number, e.g. "MC ALGER 2"
             if is_relay or result_data.get('is_relay', False):
                 # Drop trailing squad numbers ("MC ALGER 2" -> "MC ALGER")
+                # for the placeholder swimmer identity — but the squad
+                # number is preserved in Result.team so each squad keeps
+                # its own result row.
                 from teams.utils import strip_squad_number
                 parsed_name = strip_squad_number(parsed_name)
             name_upper = parsed_name.upper()
@@ -481,15 +485,22 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             pr, threshold=92, category=band,
                             meet_date=championship.date)
                         # Never reuse a swimmer another identity in this
-                        # import already claimed under a conflicting band.
+                        # import already claimed under a conflicting band
+                        # or a different explicit birth year (two same-named
+                        # athletes, e.g. Lina MAHI 2006 and Lina MAHI 2007 —
+                        # the matcher's ±1-year tolerance would merge them).
                         if swimmer is not None:
                             for other_key, other_sw in swimmer_map.items():
                                 if (other_sw is not None and other_sw.id == swimmer.id
-                                        and other_key[0] == name_upper and other_key != ind_key
-                                        and other_key[1] == 'B'
-                                        and bands_conflict(other_key[2], band)):
-                                    swimmer = None
-                                    break
+                                        and other_key[0] == name_upper and other_key != ind_key):
+                                    if (other_key[1] == 'B'
+                                            and bands_conflict(other_key[2], band)):
+                                        swimmer = None
+                                        break
+                                    if (other_key[1] == 'Y' and ind_key[1] == 'Y'
+                                            and other_key[2] != ind_key[2]):
+                                        swimmer = None
+                                        break
                         if swimmer:
                             swimmer_map[ind_key] = swimmer
                             matched_swimmers += 1
@@ -526,7 +537,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
 
             # Determine team
             if is_relay or result_data.get('is_relay', False):
-                team = parsed_name  # For relay, team = the team name itself
+                team = squad_name  # For relay, team = squad name ("MC ALGER 2")
             else:
                 from teams.utils import strip_squad_number
                 team = strip_squad_number(result_data.get('club', ''))
@@ -541,13 +552,43 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             round_type = event_data.get('round_type', '') or ''
             category = result_data.get('category', '') or event_data.get('age_group', '') or ''
 
-            existing = Result.objects.filter(
-                swimmer=swimmer,
-                championship=championship,
-                event=db_event,
-                round_type=round_type,
-                category=category,
-            ).first()
+            if is_relay or result_data.get('is_relay', False):
+                # A club can enter several squads in one relay event
+                # ("MC ALGER 1", "MC ALGER 2") that share one placeholder
+                # swimmer — dedupe by time so each squad keeps its row,
+                # while re-imports of the same squad stay idempotent.
+                existing = Result.objects.filter(
+                    swimmer=swimmer,
+                    championship=championship,
+                    event=db_event,
+                    round_type=round_type,
+                    category=category,
+                    time_centiseconds=time_cs,
+                ).first()
+                if existing:
+                    # Legacy rows stored the stripped club name; adopt the
+                    # squad-numbered name so squads stay distinguishable.
+                    if team and existing.team != team:
+                        existing.team = team
+                        existing.save(update_fields=['team'])
+                    from .parsers.base import format_centiseconds
+                    skipped_results += 1
+                    skipped_details.append({
+                        'swimmer': squad_name,
+                        'event': event_data.get('event_name', ''),
+                        'round': round_type,
+                        'reason': f'Duplicate — same time {format_centiseconds(time_cs)} already exists',
+                    })
+                    continue
+                existing = None
+            else:
+                existing = Result.objects.filter(
+                    swimmer=swimmer,
+                    championship=championship,
+                    event=db_event,
+                    round_type=round_type,
+                    category=category,
+                ).first()
 
             if existing:
                 # Keep the better time

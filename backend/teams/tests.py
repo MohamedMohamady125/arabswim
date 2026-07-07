@@ -60,10 +60,11 @@ class RelayImportSquadNumberTests(TestCase):
         self.assertEqual(teams.count(), 1)
         team = teams.get()
         self.assertEqual(team.name, 'MC ALGER')
-        # Both squads collapse to one result keeping the better time
-        result = Result.objects.get(swimmer=team)
-        self.assertEqual(result.time_centiseconds, 21000)
-        self.assertEqual(result.team, 'MC ALGER')
+        # One placeholder swimmer, but each squad keeps its own result
+        results = Result.objects.filter(swimmer=team).order_by('time_centiseconds')
+        self.assertEqual(results.count(), 2)
+        self.assertEqual([r.time_centiseconds for r in results], [21000, 22000])
+        self.assertEqual([r.team for r in results], ['MC ALGER 1', 'MC ALGER 2'])
 
 
 class StripTeamNumbersCommandTests(TestCase):
@@ -83,7 +84,7 @@ class StripTeamNumbersCommandTests(TestCase):
                               time_centiseconds=time_cs)
         return sw
 
-    def test_merges_numbered_squads_keeping_better_time(self):
+    def test_merges_numbered_squads_keeping_both_results(self):
         self._squad('BAHIA NAUTIQUE 1', 21000)
         self._squad('BAHIA NAUTIQUE 2', 22000)
         call_command('strip_team_numbers')
@@ -92,16 +93,17 @@ class StripTeamNumbersCommandTests(TestCase):
         sw = swimmers.get()
         self.assertEqual(sw.name, 'BAHIA NAUTIQUE')
         self.assertEqual(sw.club, 'BAHIA NAUTIQUE')
-        result = Result.objects.get(swimmer=sw)
-        self.assertEqual(result.time_centiseconds, 21000)
-        self.assertEqual(result.team, 'BAHIA NAUTIQUE')
+        results = Result.objects.filter(swimmer=sw).order_by('time_centiseconds')
+        self.assertEqual([r.time_centiseconds for r in results], [21000, 22000])
+        self.assertEqual([r.team for r in results],
+                         ['BAHIA NAUTIQUE 1', 'BAHIA NAUTIQUE 2'])
 
     def test_merges_into_existing_base_swimmer(self):
         base = self._squad('MC ALGER', 20000)
         self._squad('MC ALGER 2', 21000)
         call_command('strip_team_numbers')
         self.assertEqual(Swimmer.objects.filter(name__istartswith='MC ALGER').count(), 1)
-        self.assertEqual(Result.objects.get(swimmer=base).time_centiseconds, 20000)
+        self.assertEqual(Result.objects.filter(swimmer=base).count(), 2)
 
     def test_strips_individual_club_and_result_team(self):
         sw = Swimmer.objects.create(name='Ali Benali', sex='M',

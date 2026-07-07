@@ -71,10 +71,12 @@ class Result(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # team is part of the identity so a club's multiple relay squads
-        # ("MC ALGER 1", "MC ALGER 2") can each keep their result; the
+        # team and time are part of the identity so a club's multiple relay
+        # squads (which can share both a placeholder swimmer AND a name —
+        # "MC ALGER" twice in one heats list) each keep their result; the
         # importer still dedupes individual results at application level.
-        unique_together = ['swimmer', 'championship', 'event', 'round_type', 'category', 'team']
+        unique_together = ['swimmer', 'championship', 'event', 'round_type',
+                           'category', 'team', 'time_centiseconds']
         ordering = ['time_centiseconds']
         indexes = [
             models.Index(fields=['event', 'time_centiseconds']),

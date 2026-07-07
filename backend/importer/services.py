@@ -360,10 +360,24 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     from .matcher import category_band, bands_conflict
     swimmer_map = {}
     name_bands = {}  # NAME -> {band: identity_key} for birth-year-less rows
+    # Result rows matched/updated/created during this run. Legacy merged
+    # relay rows are updated in place — but never a row another squad
+    # already claimed in this import.
+    claimed_results = set()
 
-    def individual_key(name_upper, band, birth_year):
+    year_clubs = {}  # (NAME, 'Y', year) -> first club seen for that identity
+
+    def individual_key(name_upper, band, birth_year, club=''):
         if birth_year:
-            return (name_upper, 'Y', birth_year)
+            base = (name_upper, 'Y', birth_year)
+            club_norm = (club or '').strip().upper()
+            first_club = year_clubs.setdefault(base, club_norm)
+            if club_norm and first_club and club_norm != first_club:
+                # Same name AND same birth year but different club — two
+                # different athletes (e.g. two "Mohamed Amine DRIDI"
+                # b.2010, clubs CA and OLYMPICA).
+                return (name_upper, 'Y', birth_year, club_norm)
+            return base
         bands = name_bands.setdefault(name_upper, {})
         if band in bands:
             return bands[band]
@@ -457,7 +471,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 band = category_band(
                     result_data.get('category', '') or event_data.get('age_group', '') or '')
                 ind_key = individual_key(
-                    name_upper, band, result_data.get('birth_year', 0) or 0)
+                    name_upper, band, result_data.get('birth_year', 0) or 0,
+                    result_data.get('club', ''))
                 if ind_key not in swimmer_map:
                     decision = swimmer_decisions.get(parsed_name, swimmer_decisions.get(name_upper, {}))
                     action = decision.get('action', 'auto')
@@ -480,6 +495,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             birth_year=result_data.get('birth_year', 0),
                             nationality_code=result_data.get('nationality_code', ''),
                             age=result_data.get('age', 0),
+                            club=result_data.get('club', ''),
                         )
                         swimmer, conf, mtype = find_matching_swimmer(
                             pr, threshold=92, category=band,
@@ -497,8 +513,11 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                                             and bands_conflict(other_key[2], band)):
                                         swimmer = None
                                         break
-                                    if (other_key[1] == 'Y' and ind_key[1] == 'Y'
-                                            and other_key[2] != ind_key[2]):
+                                    # Two 'Y' identities with the same name
+                                    # are distinct athletes: either different
+                                    # birth years, or same year but different
+                                    # clubs (club-suffixed keys).
+                                    if other_key[1] == 'Y' and ind_key[1] == 'Y':
                                         swimmer = None
                                         break
                         if swimmer:
@@ -566,12 +585,14 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     time_centiseconds=time_cs,
                 ).first()
                 if existing:
+                    claimed_results.add(existing.id)
                     # Legacy rows stored the stripped club name; adopt the
                     # squad-numbered name so squads stay distinguishable.
                     if team and existing.team != team and not Result.objects.filter(
                             swimmer=swimmer, championship=championship,
                             event=db_event, round_type=round_type,
-                            category=category, team=team).exists():
+                            category=category, team=team,
+                            time_centiseconds=time_cs).exists():
                         existing.team = team
                         existing.save(update_fields=['team'])
                     from .parsers.base import format_centiseconds
@@ -583,10 +604,10 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         'reason': f'Duplicate — same time {format_centiseconds(time_cs)} already exists',
                     })
                     continue
-                # No same-time row. A row with this exact team name is a
-                # legacy merged row (old imports kept one "better time" per
-                # club) — update it in place instead of violating the
-                # (…, team) unique constraint.
+                # No same-time row. An unclaimed row with this exact team
+                # name is a legacy merged row (old imports kept one "better
+                # time" per club) — update it in place. Rows claimed by
+                # other squads this run are never touched.
                 same_team = Result.objects.filter(
                     swimmer=swimmer,
                     championship=championship,
@@ -594,7 +615,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     round_type=round_type,
                     category=category,
                     team=team,
-                ).first()
+                ).exclude(id__in=claimed_results).first()
                 if same_team:
                     from .points import calculate_points
                     gender_code = result_data.get('gender', 'M') or 'M'
@@ -603,6 +624,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         time_cs, event_data.get('event_name', db_event.name),
                         gender_code, championship.pool) or None
                     same_team.save()
+                    claimed_results.add(same_team.id)
                     created_results += 1
                     continue
                 existing = None
@@ -668,7 +690,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     championship.pool,
                 ) if time_cs > 0 else 0
 
-                Result.objects.create(
+                new_result = Result.objects.create(
                     swimmer=swimmer,
                     championship=championship,
                     event=db_event,
@@ -680,6 +702,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     age_at_competition=age_at_comp or None,
                     relay_swimmers=relay_swimmers,
                 )
+                claimed_results.add(new_result.id)
                 created_results += 1
 
     # Auto-create teams from club names found in this import

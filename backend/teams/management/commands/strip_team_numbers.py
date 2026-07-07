@@ -57,14 +57,9 @@ class Command(BaseCommand):
                     clash = Result.objects.filter(
                         swimmer=keep, championship=r.championship, event=r.event,
                         round_type=r.round_type, category=r.category,
-                        team=r.team).first()
+                        team=r.team, time_centiseconds=r.time_centiseconds).first()
                     if clash:
-                        # True duplicate (same squad) — keep the better time.
-                        if r.time_centiseconds < clash.time_centiseconds:
-                            clash.time_centiseconds = r.time_centiseconds
-                            clash.fina_points = r.fina_points
-                            clash.relay_swimmers = r.relay_swimmers
-                            clash.save()
+                        # True duplicate (same squad, same time) — drop it.
                         r.delete()
                 merge_swimmers(keep, sw)
                 if keep.club and strip_squad_number(keep.club) != keep.club:

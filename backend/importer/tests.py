@@ -743,6 +743,24 @@ class RelaySquadImportTests(_MeetFixtureMixin, TestCase):
         self.assertEqual({r.team for r in results},
                          {'MC ALGER 1', 'MC ALGER 2'})
 
+    def test_identically_named_squads_both_import(self):
+        """Algerian heats sheets list a club's squads without numbers
+        ('MC ALGER' twice) — both rows must import and re-imports must
+        stay idempotent."""
+        from importer.services import confirm_import
+        preview = self._preview()
+        for r in preview['events'][0]['results']:
+            r['swimmer_name'] = 'MC ALGER'
+        confirm_import(preview, {})
+        placeholder = Swimmer.objects.get(name__iexact='MC ALGER')
+        results = Result.objects.filter(swimmer=placeholder)
+        self.assertEqual(results.count(), 2)
+        self.assertEqual({r.time_centiseconds for r in results},
+                         {24246, 25133})
+        champ_id = Championship.objects.get().id
+        confirm_import(preview, {}, championship_id=champ_id)
+        self.assertEqual(Result.objects.count(), 2)
+
     def test_legacy_row_with_stale_time_updated_in_place(self):
         """An unnumbered squad whose legacy row holds a different (merged)
         time must update that row, not violate the unique constraint."""
@@ -818,6 +836,51 @@ class SameNameBirthYearTests(_MeetFixtureMixin, TestCase):
         self.assertEqual(
             Swimmer.objects.filter(name__iexact='Lina MAHI').count(), 2)
         self.assertEqual(Result.objects.count(), 2)
+
+
+class SameNameSameYearTests(_MeetFixtureMixin, TestCase):
+    """Two same-named athletes born the SAME year but in different clubs
+    must stay separate (two 'Mohamed Amine DRIDI' b.2010, Tunisie 2025)."""
+
+    def _preview(self):
+        return {
+            'meet': {'name': 'Test Meet', 'date': '2026-06-01', 'pool': 'LCM'},
+            'events': [{
+                'event_name': '100 M Freestyle',
+                'distance': 100, 'stroke': 'Freestyle',
+                'gender': 'M', 'is_relay': False, 'round_type': 'Finals',
+                'results': [
+                    {'swimmer_name': 'Mohamed Amine DRIDI', 'gender': 'M',
+                     'category': 'Minimes', 'time_centiseconds': 6595,
+                     'birth_year': 2010, 'nationality_code': 'TUN',
+                     'club': 'CA'},
+                    {'swimmer_name': 'Mohamed Amine DRIDI', 'gender': 'M',
+                     'category': 'Minimes', 'time_centiseconds': 7106,
+                     'birth_year': 2010, 'nationality_code': 'TUN',
+                     'club': 'OLYMPICA'},
+                ],
+            }],
+        }
+
+    def test_different_clubs_create_two_swimmers(self):
+        from importer.services import confirm_import
+        confirm_import(self._preview(), {})
+        swimmers = Swimmer.objects.filter(name__iexact='Mohamed Amine DRIDI')
+        self.assertEqual(swimmers.count(), 2)
+        self.assertEqual({s.club for s in swimmers}, {'CA', 'OLYMPICA'})
+        for s in swimmers:
+            self.assertEqual(s.results.count(), 1)
+
+    def test_reimport_matches_each_to_own_club_profile(self):
+        from importer.services import confirm_import
+        confirm_import(self._preview(), {})
+        champ_id = Championship.objects.get().id
+        confirm_import(self._preview(), {}, championship_id=champ_id)
+        swimmers = Swimmer.objects.filter(name__iexact='Mohamed Amine DRIDI')
+        self.assertEqual(swimmers.count(), 2)
+        self.assertEqual(Result.objects.count(), 2)
+        for s in swimmers:
+            self.assertEqual(s.results.count(), 1)
 
 
 class SplitMergedSwimmersTests(_MeetFixtureMixin, TestCase):

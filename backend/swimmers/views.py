@@ -1,13 +1,20 @@
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .models import Swimmer
 from .serializers import SwimmerListSerializer, SwimmerDetailSerializer, SwimmerCreateUpdateSerializer
 
 
+class SwimmerPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 200
+
+
 class SwimmerViewSet(viewsets.ModelViewSet):
     queryset = Swimmer.objects.select_related('nationality').prefetch_related('nicknames')
-    pagination_class = None
+    pagination_class = SwimmerPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['name', 'date_of_birth', 'created_at']
@@ -95,53 +102,48 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'is_relay': False,
             })
 
-        # Relay events where this swimmer appears in relay_swimmers JSON
+        # Relay events where this swimmer appears in relay_swimmers JSON.
+        # Prefilter in the DB with a text match on the JSON column, then
+        # verify the exact name in Python (works on Postgres and sqlite).
+        from django.db.models import TextField
+        from django.db.models.functions import Cast
         relay_results = Result.objects.filter(
             relay_swimmers__isnull=False,
             event__is_relay=True,
-        ).select_related('event').filter(
-            relay_swimmers__contains=[{'name': swimmer.name}]
-        ) if 'postgres' in str(type(Result.objects.db)) else []
+        ).annotate(
+            relay_swimmers_text=Cast('relay_swimmers', TextField()),
+        ).filter(
+            relay_swimmers_text__icontains=swimmer.name,
+        ).select_related('event')
 
-        # Fallback: search relay_swimmers as text for all DB backends
-        if not relay_results:
-            relay_results = Result.objects.filter(
-                relay_swimmers__isnull=False,
-                event__is_relay=True,
-            ).select_related('event', 'championship')[:500]  # Limit to prevent timeout
+        matched_relays = {}
+        for r in relay_results:
+            if not r.relay_swimmers:
+                continue
+            for s in r.relay_swimmers:
+                name = s.get('name', '') if isinstance(s, dict) else (s if isinstance(s, str) else '')
+                if name.upper() == swimmer.name.upper():
+                    eid = r.event_id
+                    if eid not in matched_relays:
+                        matched_relays[eid] = {'results': [], 'event': r.event}
+                    matched_relays[eid]['results'].append(r)
+                    break
 
-            # Filter in Python for swimmer name match
-            matched_relays = {}
-            for r in relay_results:
-                if not r.relay_swimmers:
-                    continue
-                for s in r.relay_swimmers:
-                    if isinstance(s, dict) and s.get('name', '').upper() == swimmer.name.upper():
-                        eid = r.event_id
-                        if eid not in matched_relays:
-                            matched_relays[eid] = {'results': [], 'event': r.event}
-                        matched_relays[eid]['results'].append(r)
-                    elif isinstance(s, str) and s.upper() == swimmer.name.upper():
-                        eid = r.event_id
-                        if eid not in matched_relays:
-                            matched_relays[eid] = {'results': [], 'event': r.event}
-                        matched_relays[eid]['results'].append(r)
-
-            for eid, info in matched_relays.items():
-                if eid in seen_event_ids:
-                    continue
-                ev = info['event']
-                best_cs = min(r.time_centiseconds for r in info['results'])
-                data.append({
-                    'event_id': ev.id,
-                    'event_name': ev.name,
-                    'distance': ev.distance,
-                    'stroke': ev.stroke,
-                    'times_count': len(info['results']),
-                    'best_time': format_centiseconds(best_cs),
-                    'best_time_centiseconds': best_cs,
-                    'is_relay': True,
-                })
+        for eid, info in matched_relays.items():
+            if eid in seen_event_ids:
+                continue
+            ev = info['event']
+            best_cs = min(r.time_centiseconds for r in info['results'])
+            data.append({
+                'event_id': ev.id,
+                'event_name': ev.name,
+                'distance': ev.distance,
+                'stroke': ev.stroke,
+                'times_count': len(info['results']),
+                'best_time': format_centiseconds(best_cs),
+                'best_time_centiseconds': best_cs,
+                'is_relay': True,
+            })
 
         return Response(data)
 
@@ -154,7 +156,10 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         from core.models import Event
         from importer.parsers.base import format_centiseconds
 
-        event = Event.objects.get(id=event_id)
+        try:
+            event = Event.objects.get(id=event_id)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=404)
         data = []
 
         if event.is_relay:
@@ -230,8 +235,10 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     def upload_photo(self, request, pk=None):
         swimmer = self.get_object()
         photo = request.FILES.get('photo')
-        if not photo:
-            return Response({'error': 'No photo provided'}, status=400)
+        from core.uploads import validate_image
+        err = validate_image(photo)
+        if err:
+            return Response({'error': err}, status=400)
         swimmer.photo = photo
         swimmer.save()
         return Response({'photo': swimmer.photo.url})

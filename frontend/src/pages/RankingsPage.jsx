@@ -30,6 +30,7 @@ export default function RankingsPage() {
   useEffect(() => {
     if (!filters.event) {
       setRankings([])
+      setPagination({})
       return
     }
     const params = { page, ...filters }
@@ -143,12 +144,14 @@ export default function RankingsPage() {
               )
             })}
             {rankings.length === 0 && (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">No rankings found. Select filters to view rankings.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                {filters.event ? 'No rankings found for these filters.' : 'Select an event above to view rankings.'}
+              </td></tr>
             )}
           </tbody>
         </table>
       </div>
-      {pagination.count > 0 && <Pagination {...pagination} currentPage={page} onPageChange={setPage} />}
+      {pagination.count > 0 && <Pagination {...pagination} currentPage={page} onPageChange={setPage} pageSize={50} />}
     </div>
   )
 }

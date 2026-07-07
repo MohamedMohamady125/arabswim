@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from championships.models import Result
-from django.db.models import Min
+from django.db.models import Min, Q
 
 
 class RankingPagination(PageNumberPagination):
@@ -58,35 +58,35 @@ class RankingView(APIView):
             except (ValueError, AttributeError):
                 pass
 
-        # Get best time per swimmer using DB aggregation
+        # Best time per swimmer via DB aggregation, paginated BEFORE any
+        # Result rows are fetched (avoids loading the whole event history).
         best_times = (
             qs.values('swimmer_id')
             .annotate(best_time=Min('time_centiseconds'))
-            .order_by('best_time')
+            .order_by('best_time', 'swimmer_id')
         )
 
-        # Now fetch the full result rows for those best times
-        swimmer_best = {row['swimmer_id']: row['best_time'] for row in best_times}
-
-        # Get the actual Result objects matching the best times
-        results = []
-        for result in qs.order_by('time_centiseconds'):
-            if result.swimmer_id in swimmer_best and result.time_centiseconds == swimmer_best[result.swimmer_id]:
-                results.append(result)
-                del swimmer_best[result.swimmer_id]  # only take first match
-            if not swimmer_best:
-                break
-
-        # Sort by time
-        results.sort(key=lambda r: r.time_centiseconds)
-
-        # Paginate
         paginator = RankingPagination()
-        page = paginator.paginate_queryset(results, request)
+        page = paginator.paginate_queryset(best_times, request)
+        page_rows = page if page is not None else list(best_times)
+
+        # Fetch only this page's Result rows
+        row_filter = Q(pk__in=[])
+        for row in page_rows:
+            row_filter |= Q(swimmer_id=row['swimmer_id'],
+                            time_centiseconds=row['best_time'])
+        fetched = qs.filter(row_filter) if page_rows else []
+        by_swimmer = {}
+        for r in fetched:
+            # keep one result per swimmer (first seen)
+            by_swimmer.setdefault(r.swimmer_id, r)
+        results_to_serialize = [
+            by_swimmer[row['swimmer_id']] for row in page_rows
+            if row['swimmer_id'] in by_swimmer
+        ]
 
         data = []
         start_rank = (paginator.page.number - 1) * paginator.page_size + 1 if page else 1
-        results_to_serialize = page if page else results
         for i, result in enumerate(results_to_serialize):
             data.append({
                 'rank': start_rank + i,
@@ -106,6 +106,6 @@ class RankingView(APIView):
                 'date': result.championship.date.strftime('%d/%m/%Y'),
             })
 
-        if page:
+        if page is not None:
             return paginator.get_paginated_response(data)
         return Response(data)

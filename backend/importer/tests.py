@@ -611,6 +611,11 @@ class _MeetFixtureMixin:
         # each test sees the countries created by its own fixture.
         import importer.matcher as matcher
         matcher._country_cache = None
+        # Write endpoints require authentication
+        from django.contrib.auth import get_user_model
+        user = get_user_model().objects.create_user(
+            username='tester', password='test-pass-123')
+        self.client.force_login(user)
         super().setUp()
 
 
@@ -820,6 +825,7 @@ class AddResultsEndpointTests(_MeetFixtureMixin, TestCase):
     """Bulk manual-entry endpoint for adding missing events/days."""
 
     def setUp(self):
+        super().setUp()  # mixin logs the test client in for write endpoints
         import datetime
         self.champ = Championship.objects.create(
             name='Manual Meet', date=datetime.date(2026, 6, 1),
@@ -983,7 +989,8 @@ class NonArabImportTests(_MeetFixtureMixin, TestCase):
             name='Pieter COETZE', nationality=self.rsa, sex='M')
         arab = Swimmer.objects.create(
             name='Ahmed HAFNAOUI', nationality=self.country, sex='M')
-        names = [s['name'] for s in self.client.get('/api/v1/swimmers/').json()]
+        names = [s['name'] for s in
+                 self.client.get('/api/v1/swimmers/').json()['results']]
         self.assertIn('Ahmed HAFNAOUI', names)
         self.assertNotIn('Pieter COETZE', names)
         search = [s['name'] for s in self.client.get(
@@ -1018,7 +1025,8 @@ class RelayTeamPlaceholderTests(_MeetFixtureMixin, TestCase):
         team, _ = self._make_relay_placeholder()
         Swimmer.objects.create(name='Ahmed HAFNAOUI',
                                nationality=self.country, sex='M')
-        names = [s['name'] for s in self.client.get('/api/v1/swimmers/').json()]
+        names = [s['name'] for s in
+                 self.client.get('/api/v1/swimmers/').json()['results']]
         self.assertIn('Ahmed HAFNAOUI', names)
         self.assertNotIn('CN TUNIS', names)
         search = self.client.get('/api/v1/swimmers/search/?q=TUNIS').json()

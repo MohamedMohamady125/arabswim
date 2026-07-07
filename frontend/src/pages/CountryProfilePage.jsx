@@ -5,19 +5,12 @@ import {
 } from 'lucide-react'
 import { getCountryProfile } from '../api/core'
 import MedalIcon from '../components/common/MedalIcon'
+import { CODE_TO_ALPHA2 } from '../components/common/CountryFlag'
 
 const REGION_STYLES = {
   ARAB: 'bg-blue-100 text-blue-700',
   GCC: 'bg-emerald-100 text-emerald-700',
   OTHER: 'bg-gray-100 text-gray-600',
-}
-
-const CODE_TO_ALPHA2 = {
-  KSA: 'sa', UAE: 'ae', QAT: 'qa', KWT: 'kw', BHR: 'bh', OMA: 'om',
-  EGY: 'eg', JOR: 'jo', LBN: 'lb', SYR: 'sy', IRQ: 'iq', PLE: 'ps',
-  YEM: 'ye', LBY: 'ly', TUN: 'tn', ALG: 'dz', MAR: 'ma', SUD: 'sd',
-  SOM: 'so', MTN: 'mr', DJI: 'dj', COM: 'km',
-  KUW: 'kw', LBA: 'ly', LIB: 'lb', BRN: 'bh',
 }
 
 function StatCard({ icon: Icon, label, value, sub }) {

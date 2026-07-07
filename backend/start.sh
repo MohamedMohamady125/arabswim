@@ -11,12 +11,18 @@ python manage.py strip_team_numbers
 python manage.py mark_relay_teams
 python manage.py recalculate_medals
 
-# Create admin user if not exists
+# Create admin user if not exists (password comes from the ADMIN_PASSWORD
+# env var — never hardcode credentials in the repo)
 python manage.py shell -c "
+import os
 from core.models import User
+password = os.environ.get('ADMIN_PASSWORD')
 if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@arabswim.com', 'admin123')
-    print('Admin user created')
+    if password:
+        User.objects.create_superuser('admin', 'admin@arabswim.com', password)
+        print('Admin user created')
+    else:
+        print('ADMIN_PASSWORD not set; skipping admin creation')
 else:
     print('Admin user exists')
 "

@@ -27,8 +27,8 @@ export default function SwimmerFormPage() {
           sex: s.sex, club: s.club || '', email: s.email || '', phone: s.phone || '',
           nicknames: s.nicknames?.map(n => n.nickname) || [],
           photo: s.photo,
-        }).catch(() => {})
-      })
+        })
+      }).catch(() => {})
     }
   }, [id, isEdit])
 

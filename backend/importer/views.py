@@ -22,8 +22,10 @@ class FileUploadView(APIView):
 
     def post(self, request):
         file = request.FILES.get('file')
-        if not file:
-            return Response({'error': 'No file provided'}, status=400)
+        from core.uploads import validate_import_file
+        err = validate_import_file(file)
+        if err:
+            return Response({'error': err}, status=400)
 
         try:
             preview = parse_file(uploaded_file=file)
@@ -31,7 +33,7 @@ class FileUploadView(APIView):
             # Store preview in cache for subsequent steps
             import uuid
             import_id = str(uuid.uuid4())
-            cache.set(f'import_{import_id}', json.dumps(preview, default=str), timeout=3600)
+            cache.set(f'import_{import_id}', json.dumps(preview, default=str), timeout=21600)
 
             # Log the import attempt
             ImportLog.objects.create(

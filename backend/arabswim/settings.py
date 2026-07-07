@@ -5,11 +5,23 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure--pbmf3xp-w-n1s8*u3*d=ymd=atm$daa5pc)($nn8r&986^a36')
+# Fail safe: production (DEBUG off) is the default, and a real SECRET_KEY
+# is mandatory outside local development.
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+SECRET_KEY = os.environ.get('SECRET_KEY', '')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-local-dev-only-key'
+    else:
+        raise RuntimeError('SECRET_KEY environment variable is required in production')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    h.strip() for h in os.environ.get(
+        'ALLOWED_HOSTS',
+        '.railway.app,localhost,127.0.0.1',
+    ).split(',') if h.strip()
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -114,17 +126,47 @@ STORAGES = {
     },
 }
 
-# CORS
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS — only the frontend (Vercel deploys + local dev) may call the API
+# from a browser. Extra origins can be added via CORS_ALLOWED_ORIGINS env
+# (comma-separated), e.g. a future custom domain.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https://.*\.vercel\.app$',
+]
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()
+] + [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+]
 
-# DRF
+# DRF — reads are public (rankings, results, profiles); every write
+# (POST/PUT/PATCH/DELETE) requires a logged-in user.
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 25,
 }
+
+# Uploads: cap request sizes (imports are the largest legitimate payloads)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 60 * 1024 * 1024  # 60 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB then temp file
+
+# HTTPS hardening (production only; Railway terminates TLS at its proxy)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30  # 30 days
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    CSRF_TRUSTED_ORIGINS = ['https://*.railway.app']
 
 # JWT
 SIMPLE_JWT = {

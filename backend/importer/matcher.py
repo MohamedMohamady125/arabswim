@@ -180,18 +180,22 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
     # Check both the raw name and the normalized version
     candidates = list(Swimmer.objects.filter(name__iexact=name, is_relay_team=False))
     if not candidates:
-        # Try normalized match
-        all_swimmers = Swimmer.objects.filter(is_relay_team=False)
-        for s in all_swimmers:
-            if normalize_for_matching(s.name) == normalized:
-                candidates.append(s)
-
-    if not candidates:
-        # Also try with words sorted (handles "Ali TAMER SAYED" vs "Ali SAYED TAMER")
+        # Single pass over (id, name) pairs — much cheaper than hydrating
+        # full Swimmer objects. Exact-normalized matches are preferred over
+        # word-order matches ("Ali TAMER SAYED" vs "Ali SAYED TAMER").
         sorted_normalized = ' '.join(sorted(normalized.split()))
-        for s in Swimmer.objects.filter(is_relay_team=False):
-            if ' '.join(sorted(normalize_for_matching(s.name).split())) == sorted_normalized:
-                candidates.append(s)
+        normalized_ids = []
+        word_order_ids = []
+        for sid, sname in Swimmer.objects.filter(
+                is_relay_team=False).values_list('id', 'name'):
+            norm = normalize_for_matching(sname)
+            if norm == normalized:
+                normalized_ids.append(sid)
+            elif ' '.join(sorted(norm.split())) == sorted_normalized:
+                word_order_ids.append(sid)
+        matched_ids = normalized_ids or word_order_ids
+        if matched_ids:
+            candidates = list(Swimmer.objects.filter(id__in=matched_ids))
 
     if not candidates:
         return None, 0, 'new'
@@ -259,33 +263,25 @@ def match_all_results(parsed_meet, threshold=92):
 def find_potential_duplicates():
     """Find potential duplicate swimmers in the database.
     Only flags exact name matches with consistent birth years."""
-    swimmers = list(Swimmer.objects.filter(is_relay_team=False))
+    # Group by sorted-word normalized name (covers both exact-normalized
+    # and word-order matches) — O(n) instead of O(n²) pairwise scan.
+    groups = {}
+    for s in Swimmer.objects.filter(is_relay_team=False):
+        key = ' '.join(sorted(normalize_for_matching(s.name).split()))
+        groups.setdefault(key, []).append(s)
+
     duplicates = []
-    seen = set()
-
-    for i, s1 in enumerate(swimmers):
-        n1 = normalize_for_matching(s1.name)
-        by1 = _get_swimmer_birth_year(s1)
-        for s2 in swimmers[i+1:]:
-            n2 = normalize_for_matching(s2.name)
-
-            # Exact name match only
-            if n1 != n2:
-                # Also check sorted words
-                if ' '.join(sorted(n1.split())) != ' '.join(sorted(n2.split())):
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        for i, s1 in enumerate(members):
+            by1 = _get_swimmer_birth_year(s1)
+            for s2 in members[i + 1:]:
+                by2 = _get_swimmer_birth_year(s2)
+                # If both have birth years, they must match
+                if by1 and by2 and abs(by1 - by2) > 1:
                     continue
-
-            by2 = _get_swimmer_birth_year(s2)
-
-            # If both have birth years, they must match
-            if by1 and by2 and abs(by1 - by2) > 1:
-                continue
-
-            score = 100 if by1 and by2 and abs(by1 - by2) <= 1 else 95
-
-            pair = tuple(sorted([s1.id, s2.id]))
-            if pair not in seen:
-                seen.add(pair)
+                score = 100 if by1 and by2 and abs(by1 - by2) <= 1 else 95
                 duplicates.append((s1, s2, score))
 
     duplicates.sort(key=lambda x: x[2], reverse=True)

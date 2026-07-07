@@ -26,8 +26,10 @@ class AcademyViewSet(viewsets.ModelViewSet):
     def upload_logo(self, request, pk=None):
         academy = self.get_object()
         logo = request.FILES.get('logo')
-        if not logo:
-            return Response({'error': 'No logo file provided'}, status=400)
+        from core.uploads import validate_image
+        err = validate_image(logo)
+        if err:
+            return Response({'error': err}, status=400)
         academy.logo = logo
         academy.save()
         return Response({'message': 'Logo uploaded successfully', 'logo': academy.logo.url})

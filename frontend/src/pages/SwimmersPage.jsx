@@ -4,6 +4,7 @@ import { getSwimmers, deleteSwimmer, searchSwimmers } from '../api/swimmers'
 import { getCountries } from '../api/core'
 import { mergeSwimmers } from '../api/importer'
 import DataTable from '../components/common/DataTable'
+import Pagination from '../components/common/Pagination'
 import CountryFlag from '../components/common/CountryFlag'
 
 export default function SwimmersPage() {
@@ -30,10 +31,15 @@ export default function SwimmersPage() {
   }, [])
 
   const fetchSwimmers = () => {
-    const params = { search: search || undefined, nationality: filterNationality || undefined, sex: filterSex || undefined }
+    const params = { page, search: search || undefined, nationality: filterNationality || undefined, sex: filterSex || undefined }
     getSwimmers(params).then(res => {
       const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
       setSwimmers(data)
+      if (res.data.count !== undefined) {
+        setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous })
+      } else {
+        setPagination({})
+      }
     }).catch(() => {})
   }
 
@@ -253,6 +259,7 @@ export default function SwimmersPage() {
         </select>
       </div>
       <DataTable columns={columns} data={swimmers} onRowClick={(row) => navigate(`/swimmers/${row.id}`)} />
+      {pagination.count > 0 && <Pagination {...pagination} currentPage={page} onPageChange={setPage} pageSize={50} />}
     </div>
   )
 }

@@ -31,6 +31,11 @@ class ListingViewSet(viewsets.ModelViewSet):
         files = request.FILES.getlist('images') or request.FILES.getlist('image')
         if not files:
             return Response({'error': 'No image files provided'}, status=400)
+        from core.uploads import validate_image
+        for f in files:
+            err = validate_image(f)
+            if err:
+                return Response({'error': f'{f.name}: {err}'}, status=400)
         start = listing.images.count()
         created = []
         for i, f in enumerate(files):

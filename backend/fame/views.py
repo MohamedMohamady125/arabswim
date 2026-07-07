@@ -27,8 +27,10 @@ class InducteeViewSet(viewsets.ModelViewSet):
     def upload_photo(self, request, pk=None):
         inductee = self.get_object()
         photo = request.FILES.get('photo')
-        if not photo:
-            return Response({'error': 'No photo file provided'}, status=400)
+        from core.uploads import validate_image
+        err = validate_image(photo)
+        if err:
+            return Response({'error': err}, status=400)
         inductee.photo = photo
         inductee.save()
         return Response({'message': 'Photo uploaded successfully', 'photo': inductee.photo.url})

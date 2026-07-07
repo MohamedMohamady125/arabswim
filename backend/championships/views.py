@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.pagination import PageNumberPagination
 from .models import ClassificationCategory, Classification, SubClassification, Championship, Result
 from .serializers import (
     ClassificationCategorySerializer, ClassificationSerializer, SubClassificationSerializer,
@@ -42,8 +43,15 @@ class SubClassificationViewSet(viewsets.ModelViewSet):
         return qs
 
 
+class ChampionshipPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 200
+
+
 class ChampionshipViewSet(viewsets.ModelViewSet):
     queryset = Championship.objects.select_related('country', 'classification', 'sub_classification')
+    pagination_class = ChampionshipPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['date', 'name']
@@ -56,12 +64,21 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        if self.action == 'list':
+            from django.db.models import Count, Q
+            qs = qs.annotate(
+                results_count_annotated=Count('results'),
+                swimmers_count_annotated=Count(
+                    'results__swimmer',
+                    filter=Q(results__swimmer__is_relay_team=False),
+                    distinct=True,
+                ),
+            )
         pool = self.request.query_params.get('pool')
         country = self.request.query_params.get('country')
         year = self.request.query_params.get('year')
         classification = self.request.query_params.get('classification')
         sub_classification = self.request.query_params.get('sub_classification')
-        page_size = self.request.query_params.get('page_size')
         if pool:
             qs = qs.filter(pool=pool)
         if country:
@@ -72,8 +89,6 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             qs = qs.filter(classification_id=classification)
         if sub_classification:
             qs = qs.filter(sub_classification_id=sub_classification)
-        if page_size:
-            self.pagination_class.page_size = int(page_size)
         return qs
 
     def destroy(self, request, *args, **kwargs):
@@ -86,14 +101,17 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         )
         # Delete the championship (cascades to results, medals, calendar_events, imports)
         response = super().destroy(request, *args, **kwargs)
-        # Clean up orphan swimmers (no results left in any championship)
+        # Clean up orphan swimmers — but only truly orphaned rows: no
+        # results in any other championship AND no medals, records or
+        # hall-of-fame entries pointing at them.
         if swimmer_ids:
             orphans = Swimmer.objects.filter(
-                id__in=swimmer_ids
-            ).annotate(
-                result_count=Count('results')
-            ).filter(result_count=0)
-            orphan_count = orphans.count()
+                id__in=swimmer_ids,
+                results__isnull=True,
+                medals__isnull=True,
+                records__isnull=True,
+                hall_of_fame_entries__isnull=True,
+            )
             orphans.delete()
         return response
 
@@ -101,8 +119,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
     def upload_pdf(self, request, pk=None):
         championship = self.get_object()
         pdf_file = request.FILES.get('pdf_file')
-        if not pdf_file:
-            return Response({'error': 'No PDF file provided'}, status=400)
+        from core.uploads import validate_pdf
+        err = validate_pdf(pdf_file)
+        if err:
+            return Response({'error': err}, status=400)
         championship.pdf_file = pdf_file
         championship.save()
         return Response({'message': 'PDF uploaded successfully'})

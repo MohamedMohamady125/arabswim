@@ -164,8 +164,10 @@ class TeamViewSet(viewsets.ModelViewSet):
     def upload_logo(self, request, pk=None):
         team = self.get_object()
         logo = request.FILES.get('logo')
-        if not logo:
-            return Response({'error': 'No logo file provided'}, status=400)
+        from core.uploads import validate_image
+        err = validate_image(logo)
+        if err:
+            return Response({'error': err}, status=400)
         team.logo = logo
         team.save()
         return Response({'message': 'Logo uploaded successfully', 'logo': team.logo.url})
@@ -174,8 +176,10 @@ class TeamViewSet(viewsets.ModelViewSet):
     def upload_banner(self, request, pk=None):
         team = self.get_object()
         banner = request.FILES.get('banner')
-        if not banner:
-            return Response({'error': 'No banner file provided'}, status=400)
+        from core.uploads import validate_image
+        err = validate_image(banner)
+        if err:
+            return Response({'error': err}, status=400)
         team.banner = banner
         team.save()
         return Response({'message': 'Banner uploaded successfully', 'banner': team.banner.url})

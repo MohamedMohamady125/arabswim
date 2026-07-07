@@ -1,5 +1,5 @@
-export default function Pagination({ count, next, previous, onPageChange, currentPage = 1 }) {
-  const totalPages = Math.ceil(count / 25)
+export default function Pagination({ count, next, previous, onPageChange, currentPage = 1, pageSize = 25 }) {
+  const totalPages = Math.ceil(count / pageSize)
 
   return (
     <div className="flex items-center justify-center gap-4 mt-6">

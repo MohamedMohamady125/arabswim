@@ -39,9 +39,16 @@ class ChampionshipListSerializer(serializers.ModelSerializer):
                   'results_count', 'swimmers_count', 'created_at']
 
     def get_results_count(self, obj):
+        # Annotated by the list view (single query); fall back for other callers
+        annotated = getattr(obj, 'results_count_annotated', None)
+        if annotated is not None:
+            return annotated
         return obj.results.count()
 
     def get_swimmers_count(self, obj):
+        annotated = getattr(obj, 'swimmers_count_annotated', None)
+        if annotated is not None:
+            return annotated
         return obj.results.filter(
             swimmer__is_relay_team=False).values('swimmer').distinct().count()
 

@@ -1,7 +1,7 @@
 // flag_url stores the ISO alpha-2 code (e.g. "lb" for Lebanon)
 // Falls back to guessing from the 3-letter code if flag_url not set
 
-const CODE_TO_ALPHA2 = {
+export const CODE_TO_ALPHA2 = {
   KSA: 'sa', UAE: 'ae', QAT: 'qa', KWT: 'kw', BHR: 'bh', OMA: 'om',
   EGY: 'eg', JOR: 'jo', LBN: 'lb', SYR: 'sy', IRQ: 'iq', PLE: 'ps',
   YEM: 'ye', LBY: 'ly', TUN: 'tn', ALG: 'dz', MAR: 'ma', SUD: 'sd',

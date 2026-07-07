@@ -518,14 +518,25 @@ def _parse_relay_swimmers(line):
     return results
 
 
+# Country codes that appear in meet files (DB + IOC + ISO variants).
+# Used to detect international meets and to split a trailing country code
+# off the name when a result line has no birth year to anchor on.
+KNOWN_COUNTRY_CODES = {
+    'ALG', 'DZA', 'EGY', 'TUN', 'MAR', 'MOR', 'JOR', 'KUW', 'KWT', 'KSA',
+    'SAU', 'QAT', 'OMA', 'OMN', 'BHR', 'BRN', 'IRQ', 'SYR', 'LBN', 'LIB',
+    'UAE', 'ARE', 'SUD', 'SDN', 'YEM', 'LBY', 'LBA', 'PLE', 'PAL', 'PSE',
+    'MTN', 'MRT', 'DJI', 'SOM', 'COM',
+    'FRA', 'USA', 'GBR', 'GER', 'ITA', 'ESP', 'TUR', 'RSA', 'KEN', 'NGR',
+    'SEN', 'CMR', 'CIV', 'ZAM', 'ZIM', 'MRI', 'MOZ', 'NAM', 'BOT', 'UGA',
+    'TAN', 'SEY', 'GHA', 'ANG', 'MAD', 'MAW', 'MLI', 'GAB', 'GAM', 'GUI',
+    'NIG', 'BUR', 'CAF', 'ETH', 'ERI',
+}
+
+
 def _detect_international(text):
     """Detect if this is an international meet (has country codes instead of clubs)."""
     codes = re.findall(r'\b([A-Z]{3})\b', text)
-    known_countries = {'ALG', 'EGY', 'TUN', 'MAR', 'JOR', 'KUW', 'KWT', 'KSA',
-                       'QAT', 'OMA', 'BHR', 'BRN', 'IRQ', 'SYR', 'LBN', 'LIB',
-                       'UAE', 'SUD', 'YEM', 'LBY', 'LBA', 'PLE', 'MTN', 'DJI',
-                       'SOM', 'COM', 'FRA', 'USA', 'GBR', 'GER', 'ITA', 'ESP'}
-    country_count = sum(1 for c in codes if c in known_countries)
+    country_count = sum(1 for c in codes if c in KNOWN_COUNTRY_CODES)
     return country_count > 5
 
 
@@ -541,6 +552,13 @@ def _extract_birth_year(before_time):
         # Glued: letter immediately followed by exactly 2 digits then boundary
         m = re.search(r'(?<=[A-Za-zÀ-ÿ.\'])(\d{2})(?=\s|$)', before_time)
     if not m:
+        # No birth year on the line. Without the year anchor the country
+        # code / club would be swallowed into the name — split off a known
+        # country code (and anything after it) when we can spot one.
+        tokens = before_time.strip().split()
+        for i in range(1, len(tokens)):
+            if tokens[i] in KNOWN_COUNTRY_CODES:
+                return ' '.join(tokens[:i]), 0, ' '.join(tokens[i:])
         return before_time.strip(), 0, ''
     name_part = before_time[:m.start()].strip()
     club = before_time[m.end():].strip()

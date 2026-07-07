@@ -1477,3 +1477,71 @@ class CountryCodeAliasTests(TestCase):
         from importer.services import ARAB_COUNTRY_CODES
         for alias in COUNTRY_CODE_ALIASES:
             self.assertIn(alias, ARAB_COUNTRY_CODES, f'{alias} missing from ARAB_COUNTRY_CODES')
+
+
+class MissingAgeLineTests(SimpleTestCase):
+    """When a result line has no age/birth-year token, the parsers must not
+    swallow the country code or team into the swimmer's name (user-reported:
+    'name with country and team all as name')."""
+
+    def _splash_event(self):
+        from importer.parsers.base import ParsedEvent
+        return ParsedEvent(event_name='50 M Freestyle', distance=50,
+                           stroke='Freestyle', gender='M',
+                           round_type='Finals', age_group='')
+
+    def test_splash_international_line_without_birth_year(self):
+        from importer.parsers.splash_parser import _parse_result_line
+        r = _parse_result_line('1. ALZAMIL, ALI KUW 25.71 793',
+                               self._splash_event(), True, 0)
+        self.assertIsNotNone(r)
+        self.assertEqual(r.swimmer_name, 'Ali ALZAMIL')
+        self.assertEqual(r.nationality_code, 'KUW')
+        self.assertEqual(r.birth_year, 0)
+        self.assertEqual(r.time_text, '25.71')
+
+    def test_splash_line_with_birth_year_still_works(self):
+        from importer.parsers.splash_parser import _parse_result_line
+        r = _parse_result_line('1. ALZAMIL, ALI 02 KUW 25.71 793',
+                               self._splash_event(), True, 0)
+        self.assertEqual(r.swimmer_name, 'Ali ALZAMIL')
+        self.assertEqual(r.nationality_code, 'KUW')
+        self.assertEqual(r.birth_year, 2002)
+
+    def test_splash_status_line_without_birth_year(self):
+        from importer.parsers.splash_parser import _parse_status_line
+        r = _parse_status_line('disq. TAIBI, Abderraouf KSA',
+                               self._splash_event())
+        self.assertIsNotNone(r)
+        self.assertEqual(r.swimmer_name, 'Abderraouf TAIBI')
+        self.assertNotIn('KSA', r.swimmer_name)
+
+    def _hytek_event(self):
+        from importer.parsers.base import ParsedEvent
+        return ParsedEvent(event_name='100 M Backstroke', distance=100,
+                           stroke='Backstroke', gender='M',
+                           round_type='Finals', age_group='')
+
+    def test_hytek_line_without_age_keeps_team_out_of_name(self):
+        from importer.parsers.hytek_parser import _parse_result_line
+        r = _parse_result_line('5 Sinukrot, Karim NSSC-LB 1:05.33',
+                               self._hytek_event())
+        self.assertIsNotNone(r)
+        self.assertEqual(r.swimmer_name, 'Karim SINUKROT')
+        self.assertEqual(r.club, 'NSSC-LB')
+
+    def test_hytek_line_without_age_allcaps_team_code(self):
+        from importer.parsers.hytek_parser import _parse_result_line
+        r = _parse_result_line('1 Alabed, Hadi ORTH 4:50.92 525',
+                               self._hytek_event())
+        self.assertIsNotNone(r)
+        self.assertEqual(r.swimmer_name, 'Hadi ALABED')
+        self.assertEqual(r.club, 'ORTH')
+
+    def test_hytek_line_with_age_unchanged(self):
+        from importer.parsers.hytek_parser import _parse_result_line
+        r = _parse_result_line('1 Alabed, Hadi 19 ORTH 5:35.64 4:50.92 525',
+                               self._hytek_event())
+        self.assertEqual(r.swimmer_name, 'Hadi ALABED')
+        self.assertEqual(r.age, 19)
+        self.assertEqual(r.club, 'ORTH')

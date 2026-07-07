@@ -629,6 +629,18 @@ def _parse_result_line(line, event, comma_order='last_first', seed_first=False):
                         # But we already captured it — skip
                     break
 
+    if age == 0 and name_end_idx == len(tokens) and len(tokens) >= 3:
+        # No age on the line at all. Don't let the team code get swallowed
+        # into the name: strip a trailing token that looks like a team code
+        # (dashed like "NSSC-LB", or short ALL-CAPS/alnum like "ORTH", "4B")
+        # as long as a comma confirms the name is already complete.
+        last = tokens[-1]
+        looks_dashed = re.match(r'^[A-Za-z0-9]+-[A-Za-z0-9]+$', last)
+        looks_code = re.match(r'^[A-Z0-9]{2,6}$', last) and ',' in before_time
+        if looks_dashed or looks_code:
+            team = last
+            name_end_idx = len(tokens) - 1
+
     if name_end_idx <= 0:
         return None
 

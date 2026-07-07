@@ -64,16 +64,20 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.action == 'list':
-            from django.db.models import Count, Q
-            qs = qs.annotate(
-                results_count_annotated=Count('results'),
-                swimmers_count_annotated=Count(
-                    'results__swimmer',
-                    filter=Q(results__swimmer__is_relay_team=False),
-                    distinct=True,
-                ),
-            )
+        # List-only filters. They must NOT apply to detail actions: e.g.
+        # country-swimmers is called with ?country=<nationality>, and
+        # filtering the base queryset by host country would 404 get_object.
+        if self.action != 'list':
+            return qs
+        from django.db.models import Count, Q
+        qs = qs.annotate(
+            results_count_annotated=Count('results'),
+            swimmers_count_annotated=Count(
+                'results__swimmer',
+                filter=Q(results__swimmer__is_relay_team=False),
+                distinct=True,
+            ),
+        )
         pool = self.request.query_params.get('pool')
         country = self.request.query_params.get('country')
         year = self.request.query_params.get('year')

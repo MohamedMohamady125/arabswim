@@ -121,7 +121,7 @@ export default function MeetDetailPage() {
         const res = await getChampionshipCountrySwimmers(id, countryId)
         setCountrySwimmers(prev => ({ ...prev, [countryId]: res.data }))
       } catch {
-        setCountrySwimmers(prev => ({ ...prev, [countryId]: [] }))
+        // don't cache the failure — leave it unset so the next click retries
       } finally {
         setLoadingCountry(null)
       }

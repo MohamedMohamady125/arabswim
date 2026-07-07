@@ -1057,6 +1057,27 @@ class RelayTeamPlaceholderTests(_MeetFixtureMixin, TestCase):
         self.assertTrue(team.is_relay_team)
         self.assertFalse(athlete.is_relay_team)
 
+    def test_country_swimmers_works_for_non_host_countries(self):
+        """The dropdown endpoint passes ?country=<nationality>, which must
+        NOT be treated as the championships-list host-country filter
+        (regression: get_object 404'd for any country != host country)."""
+        from core.models import Country
+        import datetime
+        champ = Championship.objects.create(
+            name='Hosted Meet', date=datetime.date(2026, 6, 1),
+            pool='LCM', country=self.country)  # hosted in Tunisia
+        egypt = Country.objects.create(name='Egypt', code='EGY')
+        visitor = Swimmer.objects.create(
+            name='Marwan ELKAMASH', nationality=egypt, sex='M')
+        Result.objects.create(swimmer=visitor, championship=champ,
+                              event=self.event, time_centiseconds=5100)
+        resp = self.client.get(
+            f'/api/v1/championships/{champ.id}/country-swimmers/'
+            f'?country={egypt.id}')
+        self.assertEqual(resp.status_code, 200)
+        names = [s['name'] for s in resp.json()]
+        self.assertEqual(names, ['Marwan ELKAMASH'])
+
     def test_matcher_never_matches_a_relay_placeholder(self):
         from importer.matcher import find_matching_swimmer
         from importer.parsers.base import ParsedResult

@@ -1434,3 +1434,46 @@ class ExcelWorkbookTests(SimpleTestCase):
         self.assertEqual(team.gender, 'M')
         self.assertEqual(len(team.split_times), 4)
         self.assertEqual(team.split_times[0], 'Swimmer 1 CAIRO 52.30')
+
+
+class CountryCodeAliasTests(TestCase):
+    """Source files use IOC/legacy codes (LBA=Libya, LIB=Lebanon, KUW=Kuwait…)
+    while the DB stores a mix of ISO/IOC codes. Every alias must resolve —
+    an unresolved code silently falls back to the meet host country, which
+    mis-nationalizes athletes (this happened to Libyan swimmers)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Country
+        codes = {
+            'KWT': 'Kuwait', 'BHR': 'Bahrain', 'KSA': 'Saudi Arabia',
+            'UAE': 'UAE', 'OMA': 'Oman', 'LBN': 'Lebanon', 'PLE': 'Palestine',
+            'LBY': 'Libya', 'ALG': 'Algeria', 'SUD': 'Sudan',
+            'MTN': 'Mauritania', 'MAR': 'Morocco', 'EGY': 'Egypt',
+        }
+        for code, name in codes.items():
+            Country.objects.create(name=name, code=code)
+
+    def setUp(self):
+        from importer import matcher
+        matcher._country_cache = None
+        self.addCleanup(lambda: setattr(matcher, '_country_cache', None))
+
+    def test_every_alias_resolves_to_its_target(self):
+        from importer.matcher import COUNTRY_CODE_ALIASES, resolve_country
+        for alias, target in COUNTRY_CODE_ALIASES.items():
+            country = resolve_country(alias)
+            self.assertIsNotNone(country, f'alias {alias} did not resolve')
+            self.assertEqual(country.code, target, f'alias {alias} resolved to {country.code}')
+
+    def test_ioc_libya_and_lebanon(self):
+        from importer.matcher import resolve_country
+        self.assertEqual(resolve_country('LBA').name, 'Libya')
+        self.assertEqual(resolve_country('lba').name, 'Libya')
+        self.assertEqual(resolve_country('LIB').name, 'Lebanon')
+
+    def test_arab_country_codes_cover_all_aliases(self):
+        from importer.matcher import COUNTRY_CODE_ALIASES
+        from importer.services import ARAB_COUNTRY_CODES
+        for alias in COUNTRY_CODE_ALIASES:
+            self.assertIn(alias, ARAB_COUNTRY_CODES, f'{alias} missing from ARAB_COUNTRY_CODES')

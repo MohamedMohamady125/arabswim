@@ -200,11 +200,14 @@ def _build_preview(parsed_meet):
     }
 
 
+# All codes (DB, IOC, ISO, legacy) that identify an Arab country.
+# Keep in sync with matcher.COUNTRY_CODE_ALIASES.
 ARAB_COUNTRY_CODES = {
-    'ALG', 'BHR', 'BRN', 'BAH', 'COM', 'DJI', 'EGY', 'IRQ', 'JOR',
-    'KWT', 'KUW', 'LBN', 'LIB', 'LBY', 'MTN', 'MRT', 'MAR', 'OMA',
-    'PLE', 'PAL', 'QAT', 'KSA', 'SAU', 'SOM', 'SUD', 'SYR', 'TUN',
-    'UAE', 'YEM',
+    'ALG', 'DZA', 'BHR', 'BRN', 'BAH', 'COM', 'DJI', 'EGY', 'UAR',
+    'IRQ', 'JOR', 'KWT', 'KUW', 'LBN', 'LIB', 'LBY', 'LBA',
+    'MTN', 'MRT', 'MAR', 'MOR', 'OMA', 'OMN', 'PLE', 'PAL', 'PSE',
+    'QAT', 'KSA', 'SAU', 'SOM', 'SUD', 'SDN', 'SYR', 'TUN',
+    'UAE', 'ARE', 'YEM',
 }
 
 

@@ -17,29 +17,42 @@ from core.models import Country
 
 _country_cache = None
 
+# Alternate country codes seen in source files (IOC vs ISO vs FINA vs
+# legacy variants) mapped to the code stored in our Country table.
+# Meet PDFs mostly use IOC codes; Excel/World Aquatics exports use ISO.
+COUNTRY_CODE_ALIASES = {
+    # Gulf
+    'KUW': 'KWT',               # IOC Kuwait -> ISO (DB code)
+    'BRN': 'BHR', 'BAH': 'BHR',  # IOC / legacy Bahrain
+    'SAU': 'KSA',               # ISO Saudi Arabia -> IOC (DB code)
+    'ARE': 'UAE',               # ISO UAE -> IOC (DB code)
+    'OMN': 'OMA',               # ISO Oman -> IOC (DB code)
+    # Levant
+    'LIB': 'LBN',               # old IOC Lebanon -> ISO (DB code)
+    'PAL': 'PLE', 'PSE': 'PLE',  # legacy / ISO Palestine -> IOC (DB code)
+    # North Africa
+    'LBA': 'LBY',               # IOC Libya -> ISO (DB code)
+    'DZA': 'ALG',               # ISO Algeria -> IOC (DB code)
+    'SDN': 'SUD',               # ISO Sudan -> IOC (DB code)
+    'MRT': 'MTN',               # ISO Mauritania -> IOC (DB code)
+    'MOR': 'MAR',               # legacy Morocco
+    # Egypt
+    'UAR': 'EGY',               # historic (United Arab Republic)
+}
+
 
 def get_country_map():
     global _country_cache
     if _country_cache is None:
         _country_cache = {}
+        by_code = {}
         for c in Country.objects.all():
+            by_code[c.code.upper()] = c
             _country_cache[c.code.upper()] = c
             _country_cache[c.name.upper()] = c
-            aliases = {
-                'KUW': 'KWT', 'BRN': 'BHR', 'BAH': 'BHR',
-                'UAE': 'UAE', 'KSA': 'KSA', 'SAU': 'KSA',
-                'ALG': 'ALG', 'MAR': 'MAR', 'TUN': 'TUN',
-                'EGY': 'EGY', 'JOR': 'JOR', 'LBN': 'LBN', 'LIB': 'LBN',
-                'IRQ': 'IRQ', 'SYR': 'SYR', 'OMA': 'OMA',
-                'BHR': 'BHR', 'QAT': 'QAT', 'SUD': 'SUD',
-                'YEM': 'YEM', 'LBY': 'LBY', 'PLE': 'PLE', 'PAL': 'PLE',
-                'SOM': 'SOM', 'MTN': 'MTN', 'MRT': 'MTN',
-                'DJI': 'DJI', 'COM': 'COM',
-            }
-            if c.code.upper() in aliases.values():
-                for alias, target in aliases.items():
-                    if target == c.code.upper():
-                        _country_cache[alias] = c
+        for alias, target in COUNTRY_CODE_ALIASES.items():
+            if target in by_code:
+                _country_cache[alias] = by_code[target]
     return _country_cache
 
 

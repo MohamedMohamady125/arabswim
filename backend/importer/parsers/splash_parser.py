@@ -521,9 +521,10 @@ def _parse_relay_swimmers(line):
 def _detect_international(text):
     """Detect if this is an international meet (has country codes instead of clubs)."""
     codes = re.findall(r'\b([A-Z]{3})\b', text)
-    known_countries = {'ALG', 'EGY', 'TUN', 'MAR', 'JOR', 'KUW', 'KSA', 'QAT',
-                       'OMA', 'BHR', 'IRQ', 'SYR', 'LBN', 'UAE', 'SUD', 'YEM',
-                       'LBY', 'PLE', 'FRA', 'USA', 'GBR', 'GER', 'ITA', 'ESP'}
+    known_countries = {'ALG', 'EGY', 'TUN', 'MAR', 'JOR', 'KUW', 'KWT', 'KSA',
+                       'QAT', 'OMA', 'BHR', 'BRN', 'IRQ', 'SYR', 'LBN', 'LIB',
+                       'UAE', 'SUD', 'YEM', 'LBY', 'LBA', 'PLE', 'MTN', 'DJI',
+                       'SOM', 'COM', 'FRA', 'USA', 'GBR', 'GER', 'ITA', 'ESP'}
     country_count = sum(1 for c in codes if c in known_countries)
     return country_count > 5
 

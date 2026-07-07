@@ -21,6 +21,10 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        if self.action == 'list':
+            # Non-Arab swimmers hold meet results but get no profile in
+            # the Swimmers section
+            qs = qs.exclude(nationality__region='OTHER')
         nationality = self.request.query_params.get('nationality')
         sex = self.request.query_params.get('sex')
         if nationality:
@@ -32,7 +36,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def search(self, request):
         q = request.query_params.get('q', '')
-        swimmers = Swimmer.objects.filter(name__icontains=q)[:20]
+        swimmers = Swimmer.objects.filter(name__icontains=q).exclude(
+            nationality__region='OTHER')[:20]
         serializer = SwimmerListSerializer(swimmers, many=True)
         return Response(serializer.data)
 

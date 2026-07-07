@@ -201,13 +201,6 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 birth_year = 0
             team = strip_squad_number(row.get('team') or '')
 
-            # Arab-only database: reject rows from non-Arab countries
-            row_country = resolve_country((row.get('country') or '').strip())
-            if row_country is not None and row_country.region == 'OTHER':
-                errors.append({'row': i + 1,
-                               'reason': f'{name}: non-Arab country ({row_country.code})'})
-                continue
-
             if event.is_relay:
                 swimmer = Swimmer.objects.filter(name__iexact=name, sex=gender).first()
             else:

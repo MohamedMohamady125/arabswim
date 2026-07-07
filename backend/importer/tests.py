@@ -900,10 +900,10 @@ class AddResultsEndpointTests(_MeetFixtureMixin, TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 5. Arab-only database (non-Arab swimmers are never imported)
+# 5. Non-Arab swimmers: results imported normally, but no visible profile
 # ---------------------------------------------------------------------------
 
-class ArabOnlyImportTests(_MeetFixtureMixin, TestCase):
+class NonArabImportTests(_MeetFixtureMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
@@ -911,7 +911,7 @@ class ArabOnlyImportTests(_MeetFixtureMixin, TestCase):
         cls.rsa = Country.objects.create(
             name='South Africa', code='RSA', region='OTHER')
 
-    def test_non_arab_rows_are_skipped_on_import(self):
+    def test_non_arab_results_are_imported(self):
         from importer.services import confirm_import
         preview = {
             'meet': {'name': 'African Champs', 'date': '2026-06-01', 'pool': 'LCM'},
@@ -926,19 +926,16 @@ class ArabOnlyImportTests(_MeetFixtureMixin, TestCase):
                     {'swimmer_name': 'Ahmed HAFNAOUI', 'gender': 'M',
                      'category': '', 'time_centiseconds': 5300,
                      'birth_year': 2002, 'nationality_code': 'TUN'},
-                    {'swimmer_name': 'No CODE', 'gender': 'M',
-                     'category': '', 'time_centiseconds': 5400,
-                     'birth_year': 0, 'nationality_code': ''},
                 ],
             }],
         }
-        summary = confirm_import(preview, {})
-        self.assertFalse(Swimmer.objects.filter(name='Pieter COETZE').exists())
+        confirm_import(preview, {})
+        pieter = Swimmer.objects.get(name='Pieter COETZE')
+        self.assertEqual(pieter.nationality.code, 'RSA')
+        self.assertEqual(pieter.results.count(), 1)
         self.assertTrue(Swimmer.objects.filter(name='Ahmed HAFNAOUI').exists())
-        # No code -> kept (falls back to the meet's Arab country)
-        self.assertTrue(Swimmer.objects.filter(name='No CODE').exists())
 
-    def test_non_arab_relay_team_is_skipped(self):
+    def test_non_arab_relay_team_is_imported(self):
         from importer.services import confirm_import
         from core.models import Event
         Event.objects.create(name='4x100 M Freestyle Relay', distance=400,
@@ -960,10 +957,10 @@ class ArabOnlyImportTests(_MeetFixtureMixin, TestCase):
             }],
         }
         confirm_import(preview, {})
-        self.assertFalse(Swimmer.objects.filter(name='South Africa').exists())
+        self.assertTrue(Swimmer.objects.filter(name='South Africa').exists())
         self.assertTrue(Swimmer.objects.filter(name='Tunisia').exists())
 
-    def test_add_results_endpoint_rejects_non_arab(self):
+    def test_add_results_endpoint_accepts_non_arab(self):
         import datetime
         champ = Championship.objects.create(
             name='Meet', date=datetime.date(2026, 6, 1),
@@ -975,34 +972,23 @@ class ArabOnlyImportTests(_MeetFixtureMixin, TestCase):
                       {'name': 'Ahmed HAFNAOUI', 'country': 'TUN', 'time': '53.00'}]},
             content_type='application/json')
         data = resp.json()
-        self.assertEqual(data['created'], 1)
-        self.assertEqual(len(data['errors']), 1)
-        self.assertIn('RSA', data['errors'][0]['reason'])
+        self.assertEqual(data['created'], 2)
+        self.assertEqual(len(data['errors']), 0)
 
-    def test_remove_non_arab_swimmers_command(self):
-        import datetime
-        from django.core.management import call_command
-        champ = Championship.objects.create(
-            name='Meet', date=datetime.date(2026, 6, 1),
-            pool='LCM', country=self.country)
+    def test_non_arab_swimmers_hidden_from_swimmers_section(self):
         foreign = Swimmer.objects.create(
             name='Pieter COETZE', nationality=self.rsa, sex='M')
         arab = Swimmer.objects.create(
             name='Ahmed HAFNAOUI', nationality=self.country, sex='M')
-        Result.objects.create(swimmer=foreign, championship=champ,
-                              event=self.event, time_centiseconds=5200)
-        Result.objects.create(swimmer=arab, championship=champ,
-                              event=self.event, time_centiseconds=5300)
-        call_command('remove_non_arab_swimmers', '--dry-run', verbosity=0)
-        self.assertTrue(Swimmer.objects.filter(id=foreign.id).exists())
-        call_command('remove_non_arab_swimmers', verbosity=0)
-        self.assertFalse(Swimmer.objects.filter(id=foreign.id).exists())
-        self.assertFalse(Result.objects.filter(swimmer_id=foreign.id).exists())
-        self.assertTrue(Swimmer.objects.filter(id=arab.id).exists())
-        self.assertEqual(arab.results.count(), 1)
-        # Idempotent
-        call_command('remove_non_arab_swimmers', verbosity=0)
-        self.assertTrue(Swimmer.objects.filter(id=arab.id).exists())
+        names = [s['name'] for s in self.client.get('/api/v1/swimmers/').json()]
+        self.assertIn('Ahmed HAFNAOUI', names)
+        self.assertNotIn('Pieter COETZE', names)
+        search = [s['name'] for s in self.client.get(
+            '/api/v1/swimmers/search/?q=COETZE').json()]
+        self.assertEqual(search, [])
+        # Detail stays reachable so meet result rows can still link out
+        self.assertEqual(
+            self.client.get(f'/api/v1/swimmers/{foreign.id}/').status_code, 200)
 
 
 class UnrankedSwimmerTests(TestCase):

@@ -30,7 +30,7 @@ class RankingView(APIView):
 
         qs = Result.objects.select_related(
             'swimmer', 'swimmer__nationality', 'championship', 'championship__country', 'event'
-        ).filter(event_id=event)
+        ).filter(event_id=event).exclude(swimmer__nationality__region='OTHER')
 
         # Filter by scope
         if scope == 'national' and country:

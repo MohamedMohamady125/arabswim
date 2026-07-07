@@ -1200,3 +1200,154 @@ class JordanHytekSeedTimeTests(TestCase):
         event = [e for e in meet.events if e.distance == 50][0]
         r = event.results[0]
         self.assertEqual(r.time_text, '29.70')
+
+
+class ExcelCellAccuracyTests(SimpleTestCase):
+    """Excel cells must be understood whatever shape Excel stored them in."""
+
+    def test_time_cells_all_shapes(self):
+        import datetime
+        from importer.parsers.detector import _cell_time_str
+        # text stays text (comma decimals normalized)
+        self.assertEqual(_cell_time_str('7:57.54'), '7:57.54')
+        self.assertEqual(_cell_time_str('1:02,45'), '1:02.45')
+        # "7:57.54" typed into a time-formatted cell arrives as 07:57:54
+        self.assertEqual(_cell_time_str(datetime.time(7, 57, 54)), '7:57.54')
+        # "25.43" in a time cell arrives as 00:25:43
+        self.assertEqual(_cell_time_str(datetime.time(0, 25, 43)), '25.43')
+        # true sub-second time cell keeps its centiseconds
+        self.assertEqual(_cell_time_str(datetime.time(0, 2, 5, 300000)), '2:05.30')
+        # timedelta and numeric seconds
+        self.assertEqual(_cell_time_str(datetime.timedelta(minutes=2, seconds=5.3)), '2:05.30')
+        self.assertEqual(_cell_time_str(125.3), '2:05.30')
+        self.assertEqual(_cell_time_str(57.54), '57.54')
+
+    def test_status_cells_are_not_times(self):
+        from importer.parsers.detector import _cell_time_str
+        for status in ('DQ', 'dsq', 'DNS', 'NT', 'N.C', 'H.C', '-', '/', 'nan', ''):
+            self.assertEqual(_cell_time_str(status), '', status)
+
+    def test_int_cells(self):
+        from importer.parsers.detector import _cell_int
+        self.assertEqual(_cell_int('1er'), 1)
+        self.assertEqual(_cell_int('2nd'), 2)
+        self.assertEqual(_cell_int(' 3 '), 3)
+        self.assertEqual(_cell_int(2.0), 2)
+        self.assertIsNone(_cell_int('DSQ'))
+        self.assertIsNone(_cell_int(None))
+
+    def test_gender_cells(self):
+        from importer.parsers.detector import _cell_gender
+        for v in ('M', 'Male', 'Men', "Men's", 'Homme', 'Boys', 'garcons'):
+            self.assertEqual(_cell_gender(v), 'M', v)
+        for v in ('F', 'Female', 'Women', "Women's", 'Filles', 'Dames'):
+            self.assertEqual(_cell_gender(v), 'F', v)
+        self.assertEqual(_cell_gender('Mixed'), 'X')
+        self.assertEqual(_cell_gender('??'), '')
+
+
+class ExcelWorkbookTests(SimpleTestCase):
+    """End-to-end: every sheet read, relays and categories separated."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        import datetime
+        import tempfile
+        import pandas as pd
+        cls.tmp = tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False)
+        individual = pd.DataFrame({
+            'Events': ['50 M Freestyle', '50 M Freestyle', '50 M Freestyle',
+                       '50 M Freestyle'],
+            'Category': ['Junior', 'Junior', 'Senior', 'Senior'],
+            'Round': ['Final', 'Final', 'Final', 'Final'],
+            'Swimmer Name': ['Omar KAMAL', 'Ali HASSAN', 'Sami NOUR', 'Zed DQED'],
+            # a time-formatted cell, a text time, a numeric-seconds cell, a DQ
+            'Time': [datetime.time(0, 25, 43), '26.10', 26.55, 'DQ'],
+            'Rank': ['1er', 2, 1, 'DSQ'],
+            'YoB': [2008, 2008.0, '2001', 2000],
+            'Nationality': ['EGY', 'EGY', 'EGY', 'EGY'],
+            'Gender': ['Male', 'M', "Men's", 'M'],
+            'Pool': ['LCM'] * 4,
+            'Championships Name': ['Test Cup'] * 4,
+            'Meet City': ['Cairo'] * 4,
+            'Date': ['12/05/2026'] * 4,
+        })
+        # second individual sheet must also be read
+        extra = pd.DataFrame({
+            'Events': ['100 M Backstroke'],
+            'Category': ['Junior'],
+            'Round': ['Final'],
+            'Swimmer Name': ['Nada FAWZY'],
+            'Time': ['1:05.20'],
+            'Gender': ['Female'],
+        })
+        relay = pd.DataFrame({
+            'Events': ['4x100 M Freestyle Relay'] * 8,
+            'Relay': ["Men's"] * 8,
+            'Category': ['Junior'] * 4 + ['Senior'] * 4,
+            'Round': ['Final'] * 8,
+            'Team Time': ['3:30.00'] * 4 + ['3:25.00'] * 4,
+            'Team Name': ['Cairo Club'] * 4 + ['Alex Club'] * 4,
+            'Swimmer Name': [f'Swimmer {i} CAIRO' for i in range(1, 5)] +
+                            [f'Swimmer {i} ALEX' for i in range(1, 5)],
+            'Split Time': [datetime.time(0, 52, 30), '52.50', '52.60', '52.60',
+                           '51.10', '51.20', '51.30', '51.40'],
+            'Gender': ['Male'] * 8,
+        })
+        with pd.ExcelWriter(cls.tmp.name) as xl:
+            individual.to_excel(xl, sheet_name='Individual', index=False)
+            extra.to_excel(xl, sheet_name='More Results', index=False)
+            relay.to_excel(xl, sheet_name='Relay', index=False)
+
+        from importer.parsers.detector import detect_and_parse
+        cls.meet = detect_and_parse(cls.tmp.name)
+
+    @classmethod
+    def tearDownClass(cls):
+        import os
+        os.unlink(cls.tmp.name)
+        super().tearDownClass()
+
+    def test_meta(self):
+        self.assertEqual(self.meet.meet_name, 'Test Cup')
+        self.assertEqual(self.meet.location, 'Cairo')
+        self.assertEqual(self.meet.pool, 'LCM')
+        self.assertEqual(self.meet.date_text, '2026-05-12')
+
+    def test_individual_categories_separated(self):
+        free = [e for e in self.meet.events if e.event_name == '50 M Freestyle']
+        self.assertEqual({e.age_group for e in free}, {'Junior', 'Senior'})
+
+    def test_cells_understood(self):
+        junior = next(e for e in self.meet.events
+                      if e.event_name == '50 M Freestyle' and e.age_group == 'Junior')
+        omar = next(r for r in junior.results if r.swimmer_name == 'Omar KAMAL')
+        self.assertEqual(omar.time_text, '25.43')   # time-formatted cell
+        self.assertEqual(omar.rank, 1)              # "1er"
+        self.assertEqual(omar.birth_year, 2008)
+        senior = next(e for e in self.meet.events
+                      if e.event_name == '50 M Freestyle' and e.age_group == 'Senior')
+        sami = next(r for r in senior.results if r.swimmer_name == 'Sami NOUR')
+        self.assertEqual(sami.time_text, '26.55')   # numeric-seconds cell
+        self.assertEqual(sami.birth_year, 2001)     # text year
+
+    def test_dq_row_not_a_timed_result(self):
+        names = {r.swimmer_name for e in self.meet.events for r in e.results}
+        self.assertNotIn('Zed DQED', names)
+
+    def test_all_sheets_read(self):
+        names = {r.swimmer_name for e in self.meet.events for r in e.results}
+        self.assertIn('Nada FAWZY', names)  # from the second individual sheet
+
+    def test_relay_categories_separated_with_splits(self):
+        relays = [e for e in self.meet.events if 'relay' in e.event_name.lower()]
+        self.assertEqual({e.age_group for e in relays}, {'Junior', 'Senior'})
+        junior = next(e for e in relays if e.age_group == 'Junior')
+        self.assertEqual(len(junior.results), 1)
+        team = junior.results[0]
+        self.assertEqual(team.swimmer_name, 'Cairo Club')
+        self.assertEqual(team.time_text, '3:30.00')
+        self.assertEqual(team.gender, 'M')
+        self.assertEqual(len(team.split_times), 4)
+        self.assertEqual(team.split_times[0], 'Swimmer 1 CAIRO 52.30')

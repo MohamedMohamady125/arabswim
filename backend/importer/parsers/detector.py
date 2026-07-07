@@ -273,9 +273,141 @@ def _parse_html(file_path, filename=''):
     return meet
 
 
+NAME_CANDIDATES = ['swimmer name', 'name', 'nom', 'swimmer', 'nageur', 'athlete']
+TIME_CANDIDATES = ['team time', 'time', 'temps', 'tps', 'finals time', 'result']
+
+# Cells that mean "no time swum" rather than a time
+STATUS_CELL = None  # compiled lazily below
+
+
+def _is_status_cell(text):
+    """True for DQ/DNS/NT/'-' style cells that carry no swim time."""
+    import re
+    global STATUS_CELL
+    if STATUS_CELL is None:
+        STATUS_CELL = re.compile(
+            r'^(dq|dsq|disq\w*|dns|dnf|ns|nt|n\.?c\.?|h\.?c\.?|scr|wdr|abd|frf|'
+            r'-+|—|–|/|x)$', re.IGNORECASE)
+    return bool(STATUS_CELL.match(text.strip()))
+
+
+def _cell_time_str(val):
+    """Read a time cell exactly as the user meant it.
+
+    Excel stores swim times in many shapes: plain text ("7:57.54"),
+    time-formatted cells (datetime.time(7, 57, 54) really means 7:57.54),
+    datetimes, timedeltas, numeric seconds, or day fractions. Convert each
+    to canonical "m:ss.xx" text; return '' for empty/status cells.
+    """
+    import datetime
+    import pandas as pd
+
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return ''
+    if isinstance(val, pd.Timedelta):
+        val = val.to_pytimedelta()
+    if isinstance(val, datetime.timedelta):
+        return _fmt_seconds(val.total_seconds())
+    if isinstance(val, (datetime.datetime, pd.Timestamp)):
+        val = val.time()
+    if isinstance(val, datetime.time):
+        if val.microsecond:
+            # true m:ss.cc time — hour/minute are minutes, micros are centis
+            secs = (val.hour * 60 + val.minute) * 60 + val.second + val.microsecond / 1e6
+            return _fmt_seconds(secs)
+        if val.hour:
+            # "7:57.54" typed into a time cell arrives as 07:57:54
+            return f'{val.hour}:{val.minute:02d}.{val.second:02d}'
+        # "25.43" in a time cell arrives as 00:25:43
+        return f'{val.minute}.{val.second:02d}'
+    if isinstance(val, (int, float)):
+        if 0 < val < 1:  # Excel day fraction
+            return _fmt_seconds(val * 86400)
+        return _fmt_seconds(float(val))
+    text = str(val).strip()
+    if not text or text.lower() == 'nan' or _is_status_cell(text):
+        return ''
+    # Time-formatted cells sometimes round-trip as "HH:MM:SS" strings —
+    # reinterpret exactly like the datetime.time branch above.
+    import re
+    hms = re.match(r'^(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?$', text)
+    if hms:
+        h, mi, s, frac = (int(hms.group(1)), int(hms.group(2)),
+                          int(hms.group(3)), hms.group(4))
+        if frac:
+            secs = (h * 60 + mi) * 60 + s + float(f'0.{frac}')
+            return _fmt_seconds(secs)
+        if h:
+            return f'{h}:{mi:02d}.{s:02d}'
+        return f'{mi}.{s:02d}'
+    # French decimal comma: "1:02,45"
+    return text.replace(',', '.')
+
+
+def _fmt_seconds(seconds):
+    """Format seconds as swim time text ("57.54" / "2:05.30")."""
+    if seconds <= 0:
+        return ''
+    cs = round(seconds * 100)
+    minutes, rem = divmod(cs, 6000)
+    if minutes:
+        return f'{minutes}:{rem // 100:02d}.{rem % 100:02d}'
+    return f'{rem // 100}.{rem % 100:02d}'
+
+
+def _cell_int(val, allow_float=True):
+    """Read an integer cell tolerating '1er', '1st', '2.0', ' 3 '."""
+    import re
+    import pandas as pd
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return None
+    if isinstance(val, (int, float)):
+        return int(val)
+    m = re.match(r'\s*(\d+)', str(val))
+    return int(m.group(1)) if m else None
+
+
+def _cell_gender(val):
+    """Understand gender cells in English/French/Arabic-latin variants."""
+    g = _safe_str(val).upper().rstrip('S')
+    if g in ('M', 'MALE', 'H', 'HOMME', 'MEN', "MEN'", 'BOY', 'GARCON', 'GAR\u00c7ON', 'MESSIEUR'):
+        return 'M'
+    if g in ('F', 'FEMALE', 'FEMME', 'W', 'WOMEN', "WOMEN'", 'GIRL', 'FILLE', 'DAME'):
+        return 'F'
+    if g in ('X', 'MIXED', 'MIXTE'):
+        return 'X'
+    return ''
+
+
+def _fix_header(df):
+    """Recover the real header when title rows sit above it.
+
+    If the frame's columns don't contain name+time labels, scan the first
+    15 rows for the row that does and re-frame the sheet below it.
+    """
+    def has_required(columns):
+        lower = [str(c).lower().strip() for c in columns]
+        return (any(k in c for c in lower for k in NAME_CANDIDATES)
+                and any(k in c for c in lower for k in TIME_CANDIDATES))
+
+    if has_required(df.columns):
+        return df
+    for i in range(min(15, len(df))):
+        row_vals = [str(v).strip() for v in df.iloc[i].tolist()]
+        if has_required(row_vals):
+            new_df = df.iloc[i + 1:].reset_index(drop=True)
+            new_df.columns = row_vals
+            return new_df
+    return df
+
+
 def _parse_excel(file_path, filename=''):
     """Parse Excel/CSV files with pandas.
 
+    Reads EVERY sheet in the workbook and classifies each by its columns:
+      - sheets with Team Time / Split Time columns are relay sheets
+        (one row per swimmer, 4 rows per team entry)
+      - sheets with Name + Time columns are individual result sheets
     Handles standard swim result spreadsheets with columns like:
     Events, Swimmer Name, Time, YoB, Nationality, Gender, Pool,
     Championships Name, Meet City, Meet Country, Date, Round,
@@ -291,24 +423,44 @@ def _parse_excel(file_path, filename=''):
 
     ext = os.path.splitext(file_path)[1].lower()
     if ext == '.csv':
-        all_sheets = {'Sheet1': pd.read_csv(file_path)}
+        try:
+            all_sheets = {'Sheet1': pd.read_csv(file_path)}
+        except UnicodeDecodeError:
+            all_sheets = {'Sheet1': pd.read_csv(file_path, encoding='latin-1')}
     else:
         all_sheets = pd.read_excel(file_path, sheet_name=None)
 
-    # Use first sheet as main individual results
-    first_sheet_name = list(all_sheets.keys())[0]
-    df = all_sheets[first_sheet_name]
-
-    # Detect relay sheet
-    relay_df = None
+    # ---- Classify every sheet by its columns ----
+    individual_dfs = []
+    relay_dfs = []
     for sheet_name, sheet_df in all_sheets.items():
-        if 'relay' in sheet_name.lower():
-            relay_df = sheet_df
-            break
+        if sheet_df.empty:
+            continue
+        sheet_df = _fix_header(sheet_df)
+        scols = {str(c).lower().strip(): c for c in sheet_df.columns}
+        has_name = _find_column(scols, NAME_CANDIDATES)
+        has_team_time = _find_column(scols, ['team time'])
+        has_split = _find_column(scols, ['split time', 'split'])
+        has_time = _find_column(scols, ['time', 'temps', 'tps', 'finals time', 'result'])
+        if has_team_time or (has_split and 'relay' in sheet_name.lower()) or (
+                has_name and not has_time and 'relay' in sheet_name.lower()):
+            relay_dfs.append(sheet_df)
+        elif has_name and has_time:
+            individual_dfs.append(sheet_df)
+        # sheets with neither shape (notes, legends) are ignored
+
+    if not individual_dfs and not relay_dfs:
+        first_df = _fix_header(list(all_sheets.values())[0])
+        raise ValueError(
+            f'Could not find required columns (name, time) in Excel file. '
+            f'Found columns: {list(first_df.columns)}'
+        )
 
     meet = ParsedMeet(source_format='excel')
 
-    cols = {c.lower().strip(): c for c in df.columns}
+    # Meta (meet name, city, dates...) comes from the first data sheet
+    df = individual_dfs[0] if individual_dfs else relay_dfs[0]
+    cols = {str(c).lower().strip(): c for c in df.columns}
 
     # ---- Map columns ----
     name_col = _find_column(cols, ['swimmer name', 'name', 'nom', 'swimmer', 'nageur', 'athlete'])
@@ -375,31 +527,82 @@ def _parse_excel(file_path, filename=''):
                     if len(sorted_dates) > 1:
                         meet.date_end = sorted_dates[-1]
 
-    # ---- Parse rows into events ----
-    # Group by event name + round + category for proper separation
+    # ---- Parse every individual sheet, row by row ----
+    # Group by event name + gender + round + category for proper separation
     events_dict = {}
+    for ind_df in individual_dfs:
+        _parse_individual_sheet(ind_df, meet, events_dict)
+
+    # Store extra meet metadata for the preview
+    # (classification, sub-classification, meet country are used by the import confirm step)
+    if first_row is not None:
+        if classification_col:
+            meet._excel_classification = _safe_str(first_row[classification_col])
+        if sub_classification_col:
+            meet._excel_sub_classification = _safe_str(first_row[sub_classification_col])
+        if meet_country_col:
+            meet._excel_meet_country = _safe_str(first_row[meet_country_col])
+
+    # ---- Process every relay sheet ----
+    for relay_df in relay_dfs:
+        _parse_relay_sheet(relay_df, meet, cols_finder=_find_column)
+
+    return meet
+
+
+def _parse_individual_sheet(df, meet, events_dict):
+    """Parse one individual-results sheet into meet.events.
+
+    Reads each cell defensively: times may be text, Excel time cells,
+    timedeltas or numbers; ranks may carry suffixes ("1er"); DQ/DNS/NT
+    cells are recognized and skipped. Relay events that appear in an
+    individual sheet (rows holding the team name) are kept as relay
+    entries with the team stored as the club.
+    """
+    import pandas as pd
+    from .base import (
+        ParsedEvent, ParsedResult,
+        parse_time_to_centiseconds, normalize_name,
+        normalize_stroke, extract_distance, is_relay_event, detect_gender,
+    )
+
+    cols = {str(c).lower().strip(): c for c in df.columns}
+    name_col = _find_column(cols, NAME_CANDIDATES)
+    time_col = _find_column(cols, ['time', 'temps', 'tps', 'finals time', 'result'])
+    event_col = _find_column(cols, ['event', 'epreuve', 'race', 'épreuve'])
+    age_col = _find_column(cols, ['age', 'âge'])
+    year_col = _find_column(cols, ['yob', 'birth', 'naissance', 'year of birth', 'year', 'an', 'lic', 'dob'])
+    club_col = _find_column(cols, ['club', 'team', 'équipe'])
+    nation_col = _find_column(cols, ['nationality', 'nation', 'nat', 'country', 'pays'])
+    gender_col = _find_column(cols, ['gender', 'sex', 'sexe'])
+    rank_col = _find_column(cols, ['rank', 'place', 'rg', 'rang', 'pos'])
+    points_col = _find_column(cols, ['points', 'pts', 'fina', 'len'])
+    round_col = _find_column(cols, ['round', 'tour', 'phase'])
+    category_col = _find_column(cols, ['category', 'catégorie', 'cat', 'age group'])
+    if not name_col or not time_col:
+        return
+
     for _, row in df.iterrows():
         event_name = _safe_str(row[event_col]) if event_col else 'Unknown Event'
         if not event_name or event_name.lower() == 'nan':
             continue
+        relay = is_relay_event(event_name)
 
         round_type = _safe_str(row[round_col]) if round_col else ''
-        # Normalize round type
         round_lower = round_type.lower()
         if 'final' in round_lower:
             round_type = 'Finals'
-        elif 'prelim' in round_lower or 'heat' in round_lower:
+        elif 'prelim' in round_lower or 'heat' in round_lower or 'serie' in round_lower or 'série' in round_lower:
             round_type = 'Prelims'
         elif 'consol' in round_lower:
             round_type = 'Consolation'
 
         category = _safe_str(row[category_col]) if category_col else ''
+        if category.lower() == 'nan':
+            category = ''
 
-        # Determine gender from category or gender column
-        gender = ''
-        if gender_col:
-            g = _safe_str(row[gender_col]).upper()
-            gender = 'M' if g in ('M', 'MALE', 'H', 'HOMME', 'MEN', "MEN'S") else 'F' if g in ('F', 'FEMALE', 'FEMME', 'WOMEN', "WOMEN'S") else ''
+        # Gender: explicit column first, then category text
+        gender = _cell_gender(row[gender_col]) if gender_col else ''
         if not gender and category:
             gender = detect_gender(category)
 
@@ -407,15 +610,10 @@ def _parse_excel(file_path, filename=''):
         event_key = f'{event_name}|{gender}|{round_type}|{category}'
 
         if event_key not in events_dict:
-            # Parse event details
-            distance = extract_distance(event_name)
-            stroke = normalize_stroke(event_name)
-            relay = is_relay_event(event_name)
-
             parsed_event = ParsedEvent(
                 event_name=event_name,
-                distance=distance,
-                stroke=stroke,
+                distance=extract_distance(event_name),
+                stroke=normalize_stroke(event_name),
                 gender=gender,
                 round_type=round_type,
                 age_group=category,
@@ -423,15 +621,20 @@ def _parse_excel(file_path, filename=''):
             events_dict[event_key] = parsed_event
             meet.events.append(parsed_event)
 
-        # ---- Parse result ----
-        time_val = _safe_str(row[time_col])
-        if not time_val or time_val.lower() == 'nan':
-            continue
+        # ---- Parse result cells ----
+        time_val = _cell_time_str(row[time_col])
+        if not time_val:
+            continue  # empty or DQ/DNS/NT cell — no time swum
         time_cs = parse_time_to_centiseconds(time_val)
+        if time_cs <= 0:
+            continue
 
-        name = _safe_str(row[name_col])
-        name = normalize_name(name)
-        if not name or name.lower() == 'nan':
+        raw_name = _safe_str(row[name_col])
+        if not raw_name or raw_name.lower() == 'nan':
+            continue
+        # Relay rows in individual sheets carry the team name — keep as-is
+        name = raw_name if relay else normalize_name(raw_name)
+        if not name or len(name) < 2:
             continue
 
         result = ParsedResult(
@@ -444,53 +647,35 @@ def _parse_excel(file_path, filename=''):
             age_group=category,
         )
 
-        # Optional fields
+        # Optional cells, each read tolerantly
         if age_col:
-            try:
-                result.age = int(float(row[age_col]))
-            except (ValueError, TypeError):
-                pass
+            age = _cell_int(row[age_col])
+            if age and 4 < age < 100:
+                result.age = age
         if year_col:
-            try:
-                val = row[year_col]
-                if pd.notna(val):
-                    result.birth_year = int(float(val))
-            except (ValueError, TypeError):
-                pass
+            by = _cell_int(row[year_col])
+            if by and 1900 < by < 2100:
+                result.birth_year = by
         if club_col:
-            result.club = _safe_str(row[club_col])
+            club = _safe_str(row[club_col])
+            if club and club.lower() != 'nan':
+                result.club = club
+        if relay and not result.club:
+            result.club = name  # relay team doubles as the club
         if nation_col:
-            nat = _safe_str(row[nation_col])
-            if nat and nat.lower() != 'nan':
+            nat = _safe_str(row[nation_col]).upper()
+            if nat and nat != 'NAN':
                 result.nationality_code = nat
         if rank_col:
-            try:
-                result.rank = int(float(row[rank_col]))
-            except (ValueError, TypeError):
-                pass
+            rank = _cell_int(row[rank_col])
+            if rank:
+                result.rank = rank
         if points_col:
-            try:
-                result.fina_points = int(float(row[points_col]))
-            except (ValueError, TypeError):
-                pass
+            pts = _cell_int(row[points_col])
+            if pts and 0 < pts <= 1200:
+                result.fina_points = pts
 
         events_dict[event_key].results.append(result)
-
-    # Store extra meet metadata for the preview
-    # (classification, sub-classification, meet country are used by the import confirm step)
-    if first_row is not None:
-        if classification_col:
-            meet._excel_classification = _safe_str(first_row[classification_col])
-        if sub_classification_col:
-            meet._excel_sub_classification = _safe_str(first_row[sub_classification_col])
-        if meet_country_col:
-            meet._excel_meet_country = _safe_str(first_row[meet_country_col])
-
-    # ---- Process Relay sheet if present ----
-    if relay_df is not None and len(relay_df) > 0:
-        _parse_relay_sheet(relay_df, meet, cols_finder=_find_column)
-
-    return meet
 
 
 def _parse_relay_sheet(relay_df, meet, cols_finder):
@@ -507,19 +692,18 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
         normalize_stroke, extract_distance, detect_gender,
     )
 
-    rcols = {c.lower().strip(): c for c in relay_df.columns}
+    rcols = {str(c).lower().strip(): c for c in relay_df.columns}
 
     event_col = cols_finder(rcols, ['event', 'epreuve'])
     team_time_col = cols_finder(rcols, ['team time'])
     team_name_col = cols_finder(rcols, ['team name', 'team'])
     name_col = cols_finder(rcols, ['swimmer name', 'name', 'swimmer'])
     split_col = cols_finder(rcols, ['split time', 'split'])
-    year_col = cols_finder(rcols, ['yob', 'birth', 'year'])
     nation_col = cols_finder(rcols, ['nationality', 'nat'])
     gender_col = cols_finder(rcols, ['gender', 'sex'])
     round_col = cols_finder(rcols, ['round'])
     category_col = cols_finder(rcols, ['category'])
-    medal_col = cols_finder(rcols, ['medal'])
+    relay_kind_col = rcols.get('relay')  # "Men's" / "Women's" / "Mixed"
 
     if not event_col:
         return
@@ -532,8 +716,10 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
         if not event_name or event_name.lower() == 'nan':
             continue
 
-        team_time_str = _safe_str(row[team_time_col]) if team_time_col else ''
+        team_time_str = _cell_time_str(row[team_time_col]) if team_time_col else ''
         team_name = _safe_str(row[team_name_col]) if team_name_col else ''
+        if team_name.lower() == 'nan':
+            team_name = ''
         round_type = ''
         if round_col:
             rt = _safe_str(row[round_col]).lower()
@@ -543,17 +729,23 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
                 round_type = 'Prelims'
 
         category = _safe_str(row[category_col]) if category_col else ''
+        if category.lower() == 'nan':
+            category = ''
 
-        gender = ''
-        if gender_col:
-            g = _safe_str(row[gender_col]).upper()
-            gender = 'M' if g in ('M', 'MALE', 'MEN', "MEN'S") else 'F' if g in ('F', 'FEMALE', 'WOMEN', "WOMEN'S") else ''
+        # Gender: gender column, then the "Relay" column ("Men's"/"Women's"/
+        # "Mixed"), then the category text
+        gender = _cell_gender(row[gender_col]) if gender_col else ''
+        if not gender and relay_kind_col:
+            gender = _cell_gender(row[relay_kind_col])
         if not gender and category:
             gender = detect_gender(category)
+        if not gender and relay_kind_col:
+            gender = detect_gender(_safe_str(row[relay_kind_col]))
 
-        # Event key for relay: event + team_name + team_time (unique per team entry)
-        team_key = f'{event_name}|{team_name}|{team_time_str}'
-        event_key = f'{event_name}|{gender}|{round_type}'
+        # Event key for relay: event + gender + round + CATEGORY so each
+        # age category keeps its own relay classement
+        team_key = f'{event_name}|{team_name}|{team_time_str}|{category}'
+        event_key = f'{event_name}|{gender}|{round_type}|{category}'
 
         if event_key not in events_dict:
             distance = extract_distance(event_name)
@@ -573,6 +765,8 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
 
         # Create team result if we haven't seen this team yet
         if team_key not in ev_data['teams']:
+            if not team_name and not team_time_str:
+                continue  # nothing identifying a team on this row
             team_time_cs = parse_time_to_centiseconds(team_time_str)
             team_result = ParsedResult(
                 swimmer_name=team_name,
@@ -585,25 +779,19 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
                 club=team_name,
             )
             if nation_col:
-                team_result.nationality_code = _safe_str(row[nation_col])
+                nat = _safe_str(row[nation_col]).upper()
+                if nat and nat != 'NAN':
+                    team_result.nationality_code = nat
             ev_data['teams'][team_key] = team_result
             ev_data['event'].results.append(team_result)
 
         # Store swimmer split info in the team result's split_times
         swimmer_name = normalize_name(_safe_str(row[name_col])) if name_col else ''
-        split_time = _safe_str(row[split_col]) if split_col else ''
-        birth_year = 0
-        if year_col:
-            try:
-                val = row[year_col]
-                if pd.notna(val):
-                    birth_year = int(float(val))
-            except (ValueError, TypeError):
-                pass
+        split_time = _cell_time_str(row[split_col]) if split_col else ''
 
-        if swimmer_name and split_time:
+        if swimmer_name:
             ev_data['teams'][team_key].split_times.append(
-                f'{swimmer_name} {split_time}'
+                f'{swimmer_name} {split_time}' if split_time else swimmer_name
             )
 
 

@@ -743,6 +743,35 @@ class RelaySquadImportTests(_MeetFixtureMixin, TestCase):
         self.assertEqual({r.team for r in results},
                          {'MC ALGER 1', 'MC ALGER 2'})
 
+    def test_legacy_row_with_stale_time_updated_in_place(self):
+        """An unnumbered squad whose legacy row holds a different (merged)
+        time must update that row, not violate the unique constraint."""
+        import datetime
+        from core.models import Event
+        from importer.services import confirm_import
+        champ = Championship.objects.create(
+            name='Relay Meet', date=datetime.date(2026, 6, 1),
+            pool='LCM', country=self.country)
+        relay_event = Event.objects.create(
+            name='4x100 M Freestyle Relay', distance=400,
+            stroke='Freestyle', is_relay=True)
+        placeholder = Swimmer.objects.create(
+            name='MC ALGER', nationality=self.country, sex='F',
+            club='MC ALGER', is_relay_team=True)
+        Result.objects.create(
+            swimmer=placeholder, championship=champ, event=relay_event,
+            round_type='Finals', category='', team='MC ALGER',
+            time_centiseconds=24000)  # matches neither incoming squad
+        preview = self._preview()
+        preview['events'][0]['results'][0]['swimmer_name'] = 'MC ALGER'
+        confirm_import(preview, {}, championship_id=champ.id)
+        results = Result.objects.filter(swimmer=placeholder)
+        self.assertEqual(results.count(), 2)
+        self.assertEqual({r.time_centiseconds for r in results},
+                         {24246, 25133})
+        self.assertEqual({r.team for r in results},
+                         {'MC ALGER', 'MC ALGER 2'})
+
 
 class SameNameBirthYearTests(_MeetFixtureMixin, TestCase):
     """Two same-named athletes with different explicit birth years must

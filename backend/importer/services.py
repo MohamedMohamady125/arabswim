@@ -568,7 +568,10 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 if existing:
                     # Legacy rows stored the stripped club name; adopt the
                     # squad-numbered name so squads stay distinguishable.
-                    if team and existing.team != team:
+                    if team and existing.team != team and not Result.objects.filter(
+                            swimmer=swimmer, championship=championship,
+                            event=db_event, round_type=round_type,
+                            category=category, team=team).exists():
                         existing.team = team
                         existing.save(update_fields=['team'])
                     from .parsers.base import format_centiseconds
@@ -579,6 +582,28 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         'round': round_type,
                         'reason': f'Duplicate — same time {format_centiseconds(time_cs)} already exists',
                     })
+                    continue
+                # No same-time row. A row with this exact team name is a
+                # legacy merged row (old imports kept one "better time" per
+                # club) — update it in place instead of violating the
+                # (…, team) unique constraint.
+                same_team = Result.objects.filter(
+                    swimmer=swimmer,
+                    championship=championship,
+                    event=db_event,
+                    round_type=round_type,
+                    category=category,
+                    team=team,
+                ).first()
+                if same_team:
+                    from .points import calculate_points
+                    gender_code = result_data.get('gender', 'M') or 'M'
+                    same_team.time_centiseconds = time_cs
+                    same_team.fina_points = calculate_points(
+                        time_cs, event_data.get('event_name', db_event.name),
+                        gender_code, championship.pool) or None
+                    same_team.save()
+                    created_results += 1
                     continue
                 existing = None
             else:

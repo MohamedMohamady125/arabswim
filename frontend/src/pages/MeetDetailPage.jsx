@@ -321,7 +321,7 @@ export default function MeetDetailPage() {
                 <div className="bg-white rounded-lg border">
                   <div className="p-4 border-b">
                     <h3 className="font-semibold">Top Performers</h3>
-                    <p className="text-xs text-gray-500 mt-1">Highest FINA points at this championship</p>
+                    <p className="text-xs text-gray-500 mt-1">Highest FINA at this championship</p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -332,7 +332,7 @@ export default function MeetDetailPage() {
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA Pts</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -458,7 +458,7 @@ export default function MeetDetailPage() {
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Team</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA Pts</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Age</th>
                         {editMode && <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Actions</th>}
                       </tr>

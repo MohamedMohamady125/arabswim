@@ -119,7 +119,7 @@ export default function RankingsPage() {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Championship Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fina Point</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">FINA</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
             </tr>
           </thead>

@@ -139,7 +139,7 @@ export default function SwimmerProfilePage() {
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pool</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">FINA Pts</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">FINA</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">

@@ -391,7 +391,7 @@ export default function ManualEntryForm({ onComplete }) {
               className="w-full border rounded-lg px-3 py-2 text-sm font-mono" placeholder="0:00.00" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">FINA Points</label>
+            <label className="block text-sm font-medium mb-1">FINA</label>
             <input type="number" value={resultForm.fina_points} onChange={(e) => setResultForm({ ...resultForm, fina_points: e.target.value })}
               className="w-full border rounded-lg px-3 py-2 text-sm" />
           </div>

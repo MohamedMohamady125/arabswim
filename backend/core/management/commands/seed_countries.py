@@ -146,10 +146,37 @@ FLAGS = {
 }
 
 
+# Legacy IOC codes that older imports stored on Country rows. Renamed in
+# place (keeps swimmer/championship FKs) so the seeder doesn't create a
+# duplicate country under the new code.
+LEGACY_CODE_RENAMES = {
+    'KUW': 'KWT',  # Kuwait
+    'LBA': 'LBY',  # Libya
+    'LIB': 'LBN',  # Lebanon
+}
+
+
 class Command(BaseCommand):
     help = 'Seed all World Aquatics nations (Arab/GCC + rest of world) by IOC code'
 
     def handle(self, *args, **kwargs):
+        # Migrate legacy-coded rows first so update_or_create matches them
+        for old, new in LEGACY_CODE_RENAMES.items():
+            legacy = Country.objects.filter(code=old).first()
+            if not legacy:
+                continue
+            target = Country.objects.filter(code=new).first()
+            if target:
+                # Both exist: move every FK to the canonical row, drop legacy
+                for rel in Country._meta.related_objects:
+                    rel.related_model.objects.filter(
+                        **{rel.field.name: legacy}
+                    ).update(**{rel.field.name: target})
+                legacy.delete()
+            else:
+                legacy.code = new
+                legacy.save(update_fields=['code'])
+
         rows = list(ARAB_COUNTRIES)
         rows += [{'name': n, 'code': c, 'region': 'OTHER'} for n, c in WORLD_COUNTRIES]
 

@@ -455,11 +455,11 @@ export default function MeetDetailPage() {
                       <tr className="bg-gray-50 border-b">
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Rank</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Age</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Team</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Age</th>
                         {editMode && <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Actions</th>}
                       </tr>
                     </thead>
@@ -523,6 +523,7 @@ export default function MeetDetailPage() {
                                     <span className="ml-2 text-xs text-gray-400">{isExpanded ? '▲' : '▼'}</span>
                                   )}
                                 </td>
+                                <td className="px-4 py-2 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
                                 <td className="px-4 py-2 text-sm">
                                   <CountryFlag
                                     code={r.swimmer_detail?.nationality_detail?.code}
@@ -552,7 +553,6 @@ export default function MeetDetailPage() {
                                   ) : r.formatted_time}
                                 </td>
                                 <td className="px-4 py-2 text-sm">{r.fina_points || '-'}</td>
-                                <td className="px-4 py-2 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
                                 {editMode && (
                                   <td className="px-4 py-2 text-right whitespace-nowrap">
                                     {isEditing ? (
@@ -573,9 +573,9 @@ export default function MeetDetailPage() {
                                 <tr key={`${r.id}-${j}`} className="bg-blue-50">
                                   <td className="px-4 py-1.5 text-sm text-gray-400 text-right">{j + 1}</td>
                                   <td className="px-4 py-1.5 text-sm pl-8">{s.name}</td>
-                                  <td className="px-4 py-1.5 text-sm" colSpan={2}></td>
+                                  <td className="px-4 py-1.5 text-sm" colSpan={3}></td>
                                   <td className="px-4 py-1.5 text-sm font-mono text-gray-600">{s.split_time || '-'}</td>
-                                  <td className="px-4 py-1.5 text-sm" colSpan={editMode ? 3 : 2}></td>
+                                  <td className="px-4 py-1.5 text-sm" colSpan={editMode ? 2 : 1}></td>
                                 </tr>
                               ))}
                             </React.Fragment>

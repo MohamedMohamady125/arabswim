@@ -114,8 +114,9 @@ export default function RankingsPage() {
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 border-b">
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nationality</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Swimmer Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Age</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nationality</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Championship Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
@@ -130,8 +131,9 @@ export default function RankingsPage() {
               return (
               <tr key={i} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{isTied ? '--' : r.rank}</td>
-                <td className="px-4 py-3 text-sm"><CountryFlag code={r.nationality_code} name={r.nationality} /></td>
                 <td className="px-4 py-3 text-sm font-medium">{r.swimmer_name}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
+                <td className="px-4 py-3 text-sm"><CountryFlag code={r.nationality_code} name={r.nationality} /></td>
                 <td className="px-4 py-3 text-sm font-mono">{r.time}</td>
                 <td className="px-4 py-3 text-sm">{r.championship_name}</td>
                 <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} name={r.championship_country} /></td>
@@ -141,7 +143,7 @@ export default function RankingsPage() {
               )
             })}
             {rankings.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">No rankings found. Select filters to view rankings.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">No rankings found. Select filters to view rankings.</td></tr>
             )}
           </tbody>
         </table>

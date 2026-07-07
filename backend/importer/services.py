@@ -420,6 +420,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     # Try to find existing placeholder with matching sex
                     existing_placeholder = Swimmer.objects.filter(name__iexact=parsed_name, sex=relay_gender).first()
                     if existing_placeholder:
+                        if not existing_placeholder.is_relay_team:
+                            existing_placeholder.is_relay_team = True
+                            existing_placeholder.save(update_fields=['is_relay_team'])
                         swimmer_map[relay_key] = existing_placeholder
                     else:
                         # Resolve nationality for the team
@@ -439,6 +442,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             nationality=nationality,
                             sex=relay_gender,
                             club=parsed_name,
+                            is_relay_team=True,
                         )
                         created_swimmers += 1
             else:

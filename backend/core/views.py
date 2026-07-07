@@ -32,8 +32,11 @@ class CountryViewSet(viewsets.ModelViewSet):
         response = super().list(request, *args, **kwargs)
         if request.query_params.get('with_stats'):
             from django.db.models import Count
+            from django.db.models import Q
             counts = dict(
-                Country.objects.annotate(n=Count('swimmers')).values_list('id', 'n')
+                Country.objects.annotate(
+                    n=Count('swimmers', filter=Q(swimmers__is_relay_team=False))
+                ).values_list('id', 'n')
             )
             for row in response.data:
                 row['swimmers_count'] = counts.get(row['id'], 0)
@@ -49,7 +52,7 @@ class CountryViewSet(viewsets.ModelViewSet):
 
         country = self.get_object()
 
-        swimmer_counts = country.swimmers.aggregate(
+        swimmer_counts = country.swimmers.filter(is_relay_team=False).aggregate(
             total=Count('id'), male=Count('id', filter=Q(sex='M')),
             female=Count('id', filter=Q(sex='F')),
         )
@@ -77,7 +80,7 @@ class CountryViewSet(viewsets.ModelViewSet):
         # Top swimmers by best FINA (best single swim each)
         top_swimmers = []
         seen = set()
-        fina_qs = (results_qs.filter(fina_points__isnull=False)
+        fina_qs = (results_qs.filter(fina_points__isnull=False, swimmer__is_relay_team=False)
                    .select_related('swimmer', 'event', 'championship')
                    .order_by('-fina_points'))
         for r in fina_qs[:400]:
@@ -120,6 +123,7 @@ class CountryViewSet(viewsets.ModelViewSet):
                     'time': _fmt_cs(r.time_centiseconds),
                     'fina': r.fina_points,
                     'swimmer_id': r.swimmer_id, 'swimmer': r.swimmer.name,
+                    'age_at_competition': r.age_at_competition,
                     'championship': r.championship.name,
                     'date': r.championship.date,
                 })
@@ -133,7 +137,8 @@ class CountryViewSet(viewsets.ModelViewSet):
             .order_by('event__sort_order', 'event__distance')]
 
         top_medalists = list(
-            medals_qs.values('swimmer_id', 'swimmer__name')
+            medals_qs.filter(swimmer__is_relay_team=False)
+            .values('swimmer_id', 'swimmer__name')
             .annotate(gold=Count('id', filter=Q(medal_type='GOLD')),
                       silver=Count('id', filter=Q(medal_type='SILVER')),
                       bronze=Count('id', filter=Q(medal_type='BRONZE')),

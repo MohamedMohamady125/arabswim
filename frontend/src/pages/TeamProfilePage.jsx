@@ -212,6 +212,7 @@ export default function TeamProfilePage() {
                           <thead>
                             <tr className="text-xs text-gray-500 border-b">
                               <th className="py-1 text-left">Swimmer</th>
+                              <th className="py-1 text-left">Age</th>
                               <th className="py-1 text-left">Time</th>
                               <th className="py-1 text-left">Championship</th>
                               <th className="py-1 text-left">Location</th>
@@ -226,6 +227,7 @@ export default function TeamProfilePage() {
                                   onClick={() => navigate(`/swimmers/${r.swimmer_id}`)}>
                                   {r.swimmer_name}
                                 </td>
+                                <td className="py-1.5 text-gray-500">{r.age_at_competition || '-'}</td>
                                 <td className="py-1.5 font-mono font-semibold">{r.time}</td>
                                 <td className="py-1.5 text-gray-600">{r.championship_name}</td>
                                 <td className="py-1.5 text-gray-500">{r.championship_location || r.championship_country}</td>

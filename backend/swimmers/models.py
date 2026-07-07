@@ -11,6 +11,9 @@ class Swimmer(models.Model):
     sex = models.CharField(max_length=1, choices=SEX_CHOICES)
     club = models.CharField(max_length=200, blank=True, default='')
     photo = models.ImageField(upload_to='swimmers/photos/', blank=True, null=True)
+    is_relay_team = models.BooleanField(
+        default=False,
+        help_text='Placeholder row that holds relay results for a team, not a real athlete')
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)

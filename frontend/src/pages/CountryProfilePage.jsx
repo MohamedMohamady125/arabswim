@@ -17,6 +17,7 @@ const CODE_TO_ALPHA2 = {
   EGY: 'eg', JOR: 'jo', LBN: 'lb', SYR: 'sy', IRQ: 'iq', PLE: 'ps',
   YEM: 'ye', LBY: 'ly', TUN: 'tn', ALG: 'dz', MAR: 'ma', SUD: 'sd',
   SOM: 'so', MTN: 'mr', DJI: 'dj', COM: 'km',
+  KUW: 'kw', LBA: 'ly', LIB: 'lb', BRN: 'bh',
 }
 
 function StatCard({ icon: Icon, label, value, sub }) {
@@ -203,6 +204,7 @@ export default function CountryProfilePage() {
                 <th className="px-4 py-2">Time</th>
                 <th className="px-4 py-2">FINA</th>
                 <th className="px-4 py-2">Swimmer</th>
+                <th className="px-4 py-2">Age</th>
                 <th className="px-4 py-2">Championship</th>
                 <th className="px-4 py-2">Date</th>
               </tr>
@@ -218,12 +220,13 @@ export default function CountryProfilePage() {
                   <td className="px-4 py-2">
                     <Link to={`/swimmers/${b.swimmer_id}`} className="text-blue-600 hover:underline">{b.swimmer}</Link>
                   </td>
+                  <td className="px-4 py-2 text-gray-500">{b.age_at_competition || '-'}</td>
                   <td className="px-4 py-2 text-gray-500">{b.championship}</td>
                   <td className="px-4 py-2 text-gray-500">{b.date}</td>
                 </tr>
               ))}
               {filteredBest.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No times yet</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">No times yet</td></tr>
               )}
             </tbody>
           </table>

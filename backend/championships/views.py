@@ -202,7 +202,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             team = strip_squad_number(row.get('team') or '')
 
             if event.is_relay:
-                swimmer = Swimmer.objects.filter(name__iexact=name, sex=gender).first()
+                swimmer = Swimmer.objects.filter(
+                    name__iexact=name, sex=gender, is_relay_team=True).first()
             else:
                 pr = ParsedResult(
                     swimmer_name=name, time_text='', birth_year=birth_year,
@@ -221,6 +222,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     nationality=nationality,
                     sex=gender,
                     club=name if event.is_relay else team,
+                    is_relay_team=event.is_relay,
                 )
                 created_swimmers += 1
 
@@ -317,10 +319,12 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
         # Basic counts
         total_results = results.count()
-        total_swimmers = results.values('swimmer').distinct().count()
+        # Relay-team placeholders are not athletes — count real swimmers only
+        athletes = results.filter(swimmer__is_relay_team=False)
+        total_swimmers = athletes.values('swimmer').distinct().count()
         total_events = results.values('event').distinct().count()
-        male_count = results.filter(swimmer__sex='M').values('swimmer').distinct().count()
-        female_count = results.filter(swimmer__sex='F').values('swimmer').distinct().count()
+        male_count = athletes.filter(swimmer__sex='M').values('swimmer').distinct().count()
+        female_count = athletes.filter(swimmer__sex='F').values('swimmer').distinct().count()
 
         # Events split by gender
         events = results.values(
@@ -351,7 +355,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             })
 
         # Country breakdown
-        countries = results.values(
+        countries = athletes.values(
             'swimmer__nationality__id',
             'swimmer__nationality__name', 'swimmer__nationality__code', 'swimmer__nationality__flag_url'
         ).annotate(
@@ -362,14 +366,14 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         # Top performers (best FINA points, deduplicated per swimmer+event)
         from django.db.models import Max, Subquery, OuterRef
         best_per_swimmer_event = (
-            results.filter(fina_points__isnull=False, fina_points__gt=0)
+            athletes.filter(fina_points__isnull=False, fina_points__gt=0)
             .values('swimmer_id', 'event_id')
             .annotate(max_fina=Max('fina_points'))
         )
         # Build lookup of best fina per (swimmer, event)
         best_lookup = {(r['swimmer_id'], r['event_id']): r['max_fina'] for r in best_per_swimmer_event}
         # Get all results, filter to only the best per swimmer+event
-        top_candidates = results.filter(
+        top_candidates = athletes.filter(
             fina_points__isnull=False, fina_points__gt=0
         ).order_by('-fina_points').select_related('swimmer', 'swimmer__nationality', 'event')
         top_list = []

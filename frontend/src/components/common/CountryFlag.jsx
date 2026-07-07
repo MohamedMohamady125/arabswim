@@ -6,6 +6,8 @@ const CODE_TO_ALPHA2 = {
   EGY: 'eg', JOR: 'jo', LBN: 'lb', SYR: 'sy', IRQ: 'iq', PLE: 'ps',
   YEM: 'ye', LBY: 'ly', TUN: 'tn', ALG: 'dz', MAR: 'ma', SUD: 'sd',
   SOM: 'so', MTN: 'mr', DJI: 'dj', COM: 'km',
+  // Legacy IOC codes still present in older data
+  KUW: 'kw', LBA: 'ly', LIB: 'lb', BRN: 'bh',
 }
 
 export default function CountryFlag({ code, flagUrl, name, className = '' }) {

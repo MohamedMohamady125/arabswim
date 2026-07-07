@@ -23,8 +23,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if self.action == 'list':
             # Non-Arab swimmers hold meet results but get no profile in
-            # the Swimmers section
-            qs = qs.exclude(nationality__region='OTHER')
+            # the Swimmers section; relay-team placeholders are not athletes
+            qs = qs.exclude(nationality__region='OTHER').exclude(is_relay_team=True)
         nationality = self.request.query_params.get('nationality')
         sex = self.request.query_params.get('sex')
         if nationality:
@@ -37,7 +37,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     def search(self, request):
         q = request.query_params.get('q', '')
         swimmers = Swimmer.objects.filter(name__icontains=q).exclude(
-            nationality__region='OTHER')[:20]
+            nationality__region='OTHER').exclude(is_relay_team=True)[:20]
         serializer = SwimmerListSerializer(swimmers, many=True)
         return Response(serializer.data)
 
@@ -49,7 +49,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         swimmers = Swimmer.objects.filter(
             date_of_birth__isnull=False,
             date_of_birth__month=int(month)
-        ).select_related('nationality')
+        ).exclude(is_relay_team=True).select_related('nationality')
         data = []
         for s in swimmers:
             data.append({

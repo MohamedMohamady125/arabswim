@@ -46,13 +46,13 @@ class TeamViewSet(viewsets.ModelViewSet):
 
         # Roster: swimmers whose club matches this team
         roster = Swimmer.objects.filter(
-            Q(club__iexact=team.name)
+            Q(club__iexact=team.name), is_relay_team=False,
         ).select_related('nationality')
         roster_data = SwimmerListSerializer(roster, many=True).data
 
         # Best swimmers: by max FINA points from results with this team
         best_swimmers = (
-            Result.objects.filter(team__iexact=team.name)
+            Result.objects.filter(team__iexact=team.name, swimmer__is_relay_team=False)
             .values('swimmer__id', 'swimmer__name', 'swimmer__nationality__name',
                     'swimmer__nationality__code', 'swimmer__nationality__flag_url')
             .annotate(max_fina=Max('fina_points'))

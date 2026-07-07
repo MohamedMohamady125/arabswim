@@ -959,6 +959,9 @@ class NonArabImportTests(_MeetFixtureMixin, TestCase):
         confirm_import(preview, {})
         self.assertTrue(Swimmer.objects.filter(name='South Africa').exists())
         self.assertTrue(Swimmer.objects.filter(name='Tunisia').exists())
+        # Relay placeholders are flagged so they never surface as athletes
+        self.assertTrue(Swimmer.objects.get(name='South Africa').is_relay_team)
+        self.assertTrue(Swimmer.objects.get(name='Tunisia').is_relay_team)
 
     def test_add_results_endpoint_accepts_non_arab(self):
         import datetime
@@ -989,6 +992,71 @@ class NonArabImportTests(_MeetFixtureMixin, TestCase):
         # Detail stays reachable so meet result rows can still link out
         self.assertEqual(
             self.client.get(f'/api/v1/swimmers/{foreign.id}/').status_code, 200)
+
+
+class RelayTeamPlaceholderTests(_MeetFixtureMixin, TestCase):
+    """Relay results are stored on placeholder Swimmer rows (name = team
+    name). Those placeholders must never appear as athletes in the app."""
+
+    def _make_relay_placeholder(self, name='CN TUNIS', flagged=True):
+        import datetime
+        from core.models import Event
+        relay_event = Event.objects.create(
+            name='4x100 M Freestyle Relay', distance=400,
+            stroke='Freestyle', is_relay=True)
+        champ = Championship.objects.create(
+            name='Relay Meet', date=datetime.date(2026, 6, 1),
+            pool='LCM', country=self.country)
+        team = Swimmer.objects.create(
+            name=name, nationality=self.country, sex='M', club=name,
+            is_relay_team=flagged)
+        Result.objects.create(swimmer=team, championship=champ,
+                              event=relay_event, time_centiseconds=21000)
+        return team, champ
+
+    def test_relay_teams_hidden_from_swimmers_list_and_search(self):
+        team, _ = self._make_relay_placeholder()
+        Swimmer.objects.create(name='Ahmed HAFNAOUI',
+                               nationality=self.country, sex='M')
+        names = [s['name'] for s in self.client.get('/api/v1/swimmers/').json()]
+        self.assertIn('Ahmed HAFNAOUI', names)
+        self.assertNotIn('CN TUNIS', names)
+        search = self.client.get('/api/v1/swimmers/search/?q=TUNIS').json()
+        self.assertEqual(search, [])
+
+    def test_relay_teams_excluded_from_championship_swimmer_counts(self):
+        team, champ = self._make_relay_placeholder()
+        athlete = Swimmer.objects.create(
+            name='Ahmed HAFNAOUI', nationality=self.country, sex='M')
+        Result.objects.create(swimmer=athlete, championship=champ,
+                              event=self.event, time_centiseconds=5200)
+        stats = self.client.get(
+            f'/api/v1/championships/{champ.id}/stats/').json()
+        self.assertEqual(stats['total_swimmers'], 1)
+        self.assertEqual(stats['male_count'], 1)
+        self.assertEqual(stats['total_results'], 2)
+
+    def test_mark_relay_teams_backfill(self):
+        from django.core.management import call_command
+        team, champ = self._make_relay_placeholder(flagged=False)
+        athlete = Swimmer.objects.create(
+            name='Ahmed HAFNAOUI', nationality=self.country, sex='M')
+        Result.objects.create(swimmer=athlete, championship=champ,
+                              event=self.event, time_centiseconds=5200)
+        call_command('mark_relay_teams', verbosity=0)
+        team.refresh_from_db()
+        athlete.refresh_from_db()
+        self.assertTrue(team.is_relay_team)
+        self.assertFalse(athlete.is_relay_team)
+
+    def test_matcher_never_matches_a_relay_placeholder(self):
+        from importer.matcher import find_matching_swimmer
+        from importer.parsers.base import ParsedResult
+        self._make_relay_placeholder(name='EGYPT')
+        pr = ParsedResult(swimmer_name='EGYPT', time_text='', birth_year=2008)
+        swimmer, _conf, match_type = find_matching_swimmer(pr)
+        self.assertIsNone(swimmer)
+        self.assertEqual(match_type, 'new')
 
 
 class UnrankedSwimmerTests(TestCase):

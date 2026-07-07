@@ -16,7 +16,7 @@ class SwimmerListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Swimmer
         fields = ['id', 'name', 'date_of_birth', 'birth_year', 'nationality', 'nationality_detail',
-                  'sex', 'club', 'photo', 'email', 'phone', 'age']
+                  'sex', 'club', 'photo', 'email', 'phone', 'age', 'is_relay_team']
 
 
 class SwimmerDetailSerializer(serializers.ModelSerializer):
@@ -28,7 +28,7 @@ class SwimmerDetailSerializer(serializers.ModelSerializer):
         model = Swimmer
         fields = ['id', 'name', 'date_of_birth', 'birth_year', 'nationality', 'nationality_detail',
                   'sex', 'club', 'photo', 'email', 'phone', 'age', 'nicknames',
-                  'created_at', 'updated_at']
+                  'is_relay_team', 'created_at', 'updated_at']
 
 
 class SwimmerCreateUpdateSerializer(serializers.ModelSerializer):

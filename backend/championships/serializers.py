@@ -42,7 +42,8 @@ class ChampionshipListSerializer(serializers.ModelSerializer):
         return obj.results.count()
 
     def get_swimmers_count(self, obj):
-        return obj.results.values('swimmer').distinct().count()
+        return obj.results.filter(
+            swimmer__is_relay_team=False).values('swimmer').distinct().count()
 
 
 class ChampionshipDetailSerializer(serializers.ModelSerializer):

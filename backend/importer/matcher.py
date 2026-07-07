@@ -178,10 +178,10 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
 
     # Find all swimmers with exact name match (case-insensitive)
     # Check both the raw name and the normalized version
-    candidates = list(Swimmer.objects.filter(name__iexact=name))
+    candidates = list(Swimmer.objects.filter(name__iexact=name, is_relay_team=False))
     if not candidates:
         # Try normalized match
-        all_swimmers = Swimmer.objects.all()
+        all_swimmers = Swimmer.objects.filter(is_relay_team=False)
         for s in all_swimmers:
             if normalize_for_matching(s.name) == normalized:
                 candidates.append(s)
@@ -189,7 +189,7 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
     if not candidates:
         # Also try with words sorted (handles "Ali TAMER SAYED" vs "Ali SAYED TAMER")
         sorted_normalized = ' '.join(sorted(normalized.split()))
-        for s in Swimmer.objects.all():
+        for s in Swimmer.objects.filter(is_relay_team=False):
             if ' '.join(sorted(normalize_for_matching(s.name).split())) == sorted_normalized:
                 candidates.append(s)
 
@@ -259,7 +259,7 @@ def match_all_results(parsed_meet, threshold=92):
 def find_potential_duplicates():
     """Find potential duplicate swimmers in the database.
     Only flags exact name matches with consistent birth years."""
-    swimmers = list(Swimmer.objects.all())
+    swimmers = list(Swimmer.objects.filter(is_relay_team=False))
     duplicates = []
     seen = set()
 

@@ -132,6 +132,7 @@ export default function SwimmerProfilePage() {
                 <thead>
                   <tr className="bg-gray-50 border-b">
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Age</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Round</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Team</th>
@@ -148,6 +149,7 @@ export default function SwimmerProfilePage() {
                     return (
                       <tr key={h.id} className={`hover:bg-gray-50 ${isBest ? 'bg-green-50' : ''}`}>
                         <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                        <td className="px-4 py-2 text-sm text-gray-500">{h.age_at_competition || '-'}</td>
                         <td className="px-4 py-2 text-sm font-mono font-semibold">
                           {h.is_relay ? (
                             <>
@@ -178,7 +180,7 @@ export default function SwimmerProfilePage() {
                     )
                   })}
                   {history.length === 0 && (
-                    <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">No times recorded</td></tr>
+                    <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">No times recorded</td></tr>
                   )}
                 </tbody>
               </table>

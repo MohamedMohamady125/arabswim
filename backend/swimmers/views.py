@@ -79,23 +79,27 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         from django.db.models import Count, Min, Q
         from importer.parsers.base import format_centiseconds
 
-        # Individual events
+        # Individual events, split per pool (SCM and LCM times are not
+        # comparable, so each gets its own entry and best time)
         events = Result.objects.filter(swimmer=swimmer).values(
-            'event__id', 'event__name', 'event__distance', 'event__stroke'
+            'event__id', 'event__name', 'event__distance', 'event__stroke',
+            'championship__pool',
         ).annotate(
             times_count=Count('id'),
             best_time=Min('time_centiseconds'),
-        ).order_by('event__sort_order', 'event__distance')
+        ).order_by('event__sort_order', 'event__distance', '-championship__pool')
 
         data = []
-        seen_event_ids = set()
+        seen_keys = set()
         for e in events:
-            seen_event_ids.add(e['event__id'])
+            pool = e['championship__pool'] or ''
+            seen_keys.add((e['event__id'], pool))
             data.append({
                 'event_id': e['event__id'],
                 'event_name': e['event__name'],
                 'distance': e['event__distance'],
                 'stroke': e['event__stroke'],
+                'pool': pool,
                 'times_count': e['times_count'],
                 'best_time': format_centiseconds(e['best_time']),
                 'best_time_centiseconds': e['best_time'],
@@ -114,7 +118,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             relay_swimmers_text=Cast('relay_swimmers', TextField()),
         ).filter(
             relay_swimmers_text__icontains=swimmer.name,
-        ).select_related('event')
+        ).select_related('event', 'championship')
 
         matched_relays = {}
         for r in relay_results:
@@ -123,14 +127,14 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             for s in r.relay_swimmers:
                 name = s.get('name', '') if isinstance(s, dict) else (s if isinstance(s, str) else '')
                 if name.upper() == swimmer.name.upper():
-                    eid = r.event_id
-                    if eid not in matched_relays:
-                        matched_relays[eid] = {'results': [], 'event': r.event}
-                    matched_relays[eid]['results'].append(r)
+                    key = (r.event_id, r.championship.pool or '')
+                    if key not in matched_relays:
+                        matched_relays[key] = {'results': [], 'event': r.event}
+                    matched_relays[key]['results'].append(r)
                     break
 
-        for eid, info in matched_relays.items():
-            if eid in seen_event_ids:
+        for (eid, pool), info in matched_relays.items():
+            if (eid, pool) in seen_keys:
                 continue
             ev = info['event']
             best_cs = min(r.time_centiseconds for r in info['results'])
@@ -139,6 +143,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'event_name': ev.name,
                 'distance': ev.distance,
                 'stroke': ev.stroke,
+                'pool': pool,
                 'times_count': len(info['results']),
                 'best_time': format_centiseconds(best_cs),
                 'best_time_centiseconds': best_cs,
@@ -161,6 +166,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         except Event.DoesNotExist:
             return Response({'error': 'Event not found'}, status=404)
         data = []
+        pool = request.query_params.get('pool')
 
         if event.is_relay:
             # Search relay results for this swimmer's name
@@ -168,6 +174,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 event_id=event_id,
                 relay_swimmers__isnull=False,
             ).select_related('championship', 'championship__country', 'event').order_by('championship__date')
+            if pool:
+                relay_results = relay_results.filter(championship__pool=pool)
 
             for r in relay_results:
                 if not r.relay_swimmers:
@@ -211,6 +219,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             results = Result.objects.filter(
                 swimmer=swimmer, event_id=event_id
             ).select_related('championship', 'championship__country', 'event').order_by('championship__date')
+            if pool:
+                results = results.filter(championship__pool=pool)
 
             for r in results:
                 data.append({

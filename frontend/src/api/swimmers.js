@@ -9,4 +9,4 @@ export const searchSwimmers = (q) => api.get('/swimmers/search/', { params: { q 
 export const getSwimmerBirthdays = (month) => api.get('/swimmers/birthdays/', { params: { month } })
 export const uploadSwimmerPhoto = (id, formData) => api.post(`/swimmers/${id}/upload_photo/`, formData)
 export const getSwimmerEvents = (id) => api.get(`/swimmers/${id}/events/`)
-export const getSwimmerEventHistory = (id, eventId) => api.get(`/swimmers/${id}/events/${eventId}/history/`)
+export const getSwimmerEventHistory = (id, eventId, pool) => api.get(`/swimmers/${id}/events/${eventId}/history/`, { params: pool ? { pool } : {} })

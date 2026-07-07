@@ -21,7 +21,7 @@ export default function SwimmerProfilePage() {
     setSelectedEvent(event)
     setLoadingHistory(true)
     try {
-      const res = await getSwimmerEventHistory(id, event.event_id)
+      const res = await getSwimmerEventHistory(id, event.event_id, event.pool)
       setHistory(res.data)
     } catch {
       setHistory([])
@@ -93,14 +93,19 @@ export default function SwimmerProfilePage() {
             )}
             {events.map((e) => (
               <button
-                key={`${e.event_id}-${e.is_relay ? 'relay' : 'ind'}`}
+                key={`${e.event_id}-${e.pool || 'na'}-${e.is_relay ? 'relay' : 'ind'}`}
                 onClick={() => handleEventClick(e)}
                 className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
-                  selectedEvent?.event_id === e.event_id ? 'bg-blue-50 border-l-4 border-blue-600' : ''
+                  selectedEvent?.event_id === e.event_id && selectedEvent?.pool === e.pool ? 'bg-blue-50 border-l-4 border-blue-600' : ''
                 }`}
               >
                 <div className="font-medium text-sm">
                   {e.event_name}
+                  {e.pool && (
+                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded font-semibold ${
+                      e.pool === 'SCM' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'
+                    }`}>{e.pool}</span>
+                  )}
                   {e.is_relay && <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">Relay</span>}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
@@ -116,7 +121,7 @@ export default function SwimmerProfilePage() {
         <div className="bg-white rounded-lg border">
           <div className="p-4 border-b">
             <h3 className="font-semibold">
-              {selectedEvent ? `${selectedEvent.event_name} — Time History` : 'Select an event to view history'}
+              {selectedEvent ? `${selectedEvent.event_name}${selectedEvent.pool ? ` (${selectedEvent.pool})` : ''} — Time History` : 'Select an event to view history'}
             </h3>
           </div>
           {!selectedEvent ? (

@@ -57,7 +57,7 @@ export default function ChampionshipsPage() {
       <div className="relative rounded-xl overflow-hidden mb-8 bg-gradient-to-br from-blue-900 to-cyan-800 text-white">
         <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.15\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10S0 14.5 0 20s4.5 10 10 10 10-4.5 10-10zm20 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")'}} />
         <div className="relative px-8 py-10">
-          <h1 className="text-3xl font-bold mb-2">Championship Management</h1>
+          <h1 className="text-3xl font-bold mb-2">Championships Management</h1>
           <p className="text-blue-200 text-lg">Manage all competitions, results, and meet data.</p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent rounded-b-xl" />

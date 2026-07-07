@@ -28,11 +28,14 @@ class ChampionshipListSerializer(serializers.ModelSerializer):
     swimmers_count = serializers.SerializerMethodField()
     date = serializers.DateField(format='%d/%m/%Y')
     end_date = serializers.DateField(format='%d/%m/%Y', allow_null=True)
+    classification_name = serializers.CharField(source='classification.name', read_only=True, default=None)
+    sub_classification_name = serializers.CharField(source='sub_classification.name', read_only=True, default=None)
 
     class Meta:
         model = Championship
         fields = ['id', 'name', 'date', 'end_date', 'pool', 'country', 'country_detail',
                   'location', 'classification_category', 'classification', 'sub_classification',
+                  'classification_name', 'sub_classification_name',
                   'results_count', 'swimmers_count', 'created_at']
 
     def get_results_count(self, obj):

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getChampionships, deleteChampionship } from '../api/championships'
+import { getChampionships, deleteChampionship, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
 import { POOL_TYPES } from '../utils/constants'
@@ -19,6 +19,10 @@ export default function ChampionshipsPage() {
   const [filterPool, setFilterPool] = useState('')
   const [filterCountry, setFilterCountry] = useState('')
   const [filterYear, setFilterYear] = useState('')
+  const [filterClassification, setFilterClassification] = useState('')
+  const [filterSub, setFilterSub] = useState('')
+  const [classifications, setClassifications] = useState([])
+  const [subClassifications, setSubClassifications] = useState([])
   const [expandedId, setExpandedId] = useState(null)
 
   const years = []
@@ -26,15 +30,31 @@ export default function ChampionshipsPage() {
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
+    getClassifications().then(res => setClassifications(res.data)).catch(() => {})
   }, [])
 
+  // Sub-classifications depend on the chosen classification
   useEffect(() => {
-    const params = { page_size: 500, ordering: '-date', search: search || undefined, pool: filterPool || undefined, country: filterCountry || undefined }
+    setFilterSub('')
+    if (filterClassification) {
+      getSubClassifications(filterClassification).then(res => setSubClassifications(res.data)).catch(() => {})
+    } else {
+      setSubClassifications([])
+    }
+  }, [filterClassification])
+
+  useEffect(() => {
+    const params = {
+      page_size: 500, ordering: '-date', search: search || undefined,
+      pool: filterPool || undefined, country: filterCountry || undefined,
+      classification: filterClassification || undefined,
+      sub_classification: filterSub || undefined,
+    }
     if (filterYear) params.year = filterYear
     getChampionships(params).then(res => {
       setChampionships(res.data.results || res.data)
     }).catch(() => {})
-  }, [search, filterPool, filterCountry, filterYear])
+  }, [search, filterPool, filterCountry, filterYear, filterClassification, filterSub])
 
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Delete championship "${name}"?`)) return
@@ -61,6 +81,61 @@ export default function ChampionshipsPage() {
           <p className="text-blue-200 text-lg">Manage all competitions, results, and meet data.</p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent rounded-b-xl" />
+      </div>
+
+      {/* Classification filters */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Browse by Classification</h2>
+          {(filterClassification || filterSub) && (
+            <button onClick={() => { setFilterClassification(''); setFilterSub('') }}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+              Clear classification filters &times;
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Classification</label>
+            <select value={filterClassification} onChange={(e) => setFilterClassification(e.target.value)}
+              className="w-full border-2 border-blue-500 rounded-lg px-4 py-2.5 text-sm bg-white font-medium">
+              <option value="">All Classifications</option>
+              {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Sub-classification</label>
+            <select value={filterSub} onChange={(e) => setFilterSub(e.target.value)}
+              disabled={!filterClassification}
+              className={`w-full border-2 rounded-lg px-4 py-2.5 text-sm font-medium ${
+                filterClassification ? 'border-blue-500 bg-white' : 'border-gray-200 bg-gray-50 text-gray-400'
+              }`}>
+              <option value="">
+                {!filterClassification ? 'Pick a classification first' :
+                  subClassifications.length ? 'All Sub-classifications' : 'No sub-classifications'}
+              </option>
+              {subClassifications.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        </div>
+        {(filterClassification || filterSub) && (
+          <div className="flex items-center gap-2 mt-3 text-sm">
+            <span className="text-gray-500">Showing:</span>
+            {filterClassification && (
+              <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                {classifications.find(c => String(c.id) === String(filterClassification))?.name}
+              </span>
+            )}
+            {filterSub && (
+              <span className="bg-cyan-100 text-cyan-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                {subClassifications.find(s => String(s.id) === String(filterSub))?.name}
+              </span>
+            )}
+            <span className="text-gray-400 text-xs ml-1">
+              {championships.length} championship{championships.length !== 1 ? 's' : ''} found
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -144,6 +219,12 @@ export default function ChampionshipsPage() {
                           <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
                         )}
                         <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{c.pool === 'LCM' ? '50m' : '25m'}</span>
+                        {c.classification_name && (
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{c.classification_name}</span>
+                        )}
+                        {c.sub_classification_name && (
+                          <span className="text-xs bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded">{c.sub_classification_name}</span>
+                        )}
                       </div>
                     </div>
 
@@ -188,6 +269,14 @@ export default function ChampionshipsPage() {
                         <div>
                           <div className="text-xs text-gray-500 mb-1">Location</div>
                           <div className="text-sm font-medium">{c.location || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Classification</div>
+                          <div className="text-sm font-medium">{c.classification_name || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Sub-classification</div>
+                          <div className="text-sm font-medium">{c.sub_classification_name || '-'}</div>
                         </div>
                       </div>
                       <div className="flex gap-3">

@@ -43,7 +43,7 @@ class SubClassificationViewSet(viewsets.ModelViewSet):
 
 
 class ChampionshipViewSet(viewsets.ModelViewSet):
-    queryset = Championship.objects.select_related('country')
+    queryset = Championship.objects.select_related('country', 'classification', 'sub_classification')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['date', 'name']
@@ -59,6 +59,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         pool = self.request.query_params.get('pool')
         country = self.request.query_params.get('country')
         year = self.request.query_params.get('year')
+        classification = self.request.query_params.get('classification')
+        sub_classification = self.request.query_params.get('sub_classification')
         page_size = self.request.query_params.get('page_size')
         if pool:
             qs = qs.filter(pool=pool)
@@ -66,6 +68,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             qs = qs.filter(country_id=country)
         if year:
             qs = qs.filter(date__year=int(year))
+        if classification:
+            qs = qs.filter(classification_id=classification)
+        if sub_classification:
+            qs = qs.filter(sub_classification_id=sub_classification)
         if page_size:
             self.pagination_class.page_size = int(page_size)
         return qs

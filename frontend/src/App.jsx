@@ -29,6 +29,7 @@ import InducteeFormPage from './pages/InducteeFormPage'
 import MediaPage from './pages/MediaPage'
 import AlbumDetailPage from './pages/AlbumDetailPage'
 import CountriesPage from './pages/CountriesPage'
+import CountryProfilePage from './pages/CountryProfilePage'
 
 function ProtectedRoute({ children }) {
   const { token } = useAuth()
@@ -74,6 +75,7 @@ export default function App() {
         <Route path="media" element={<MediaPage />} />
         <Route path="media/albums/:id" element={<AlbumDetailPage />} />
         <Route path="countries" element={<CountriesPage />} />
+        <Route path="countries/:id" element={<CountryProfilePage />} />
         <Route path="import" element={<ImportPage />} />
       </Route>
     </Routes>

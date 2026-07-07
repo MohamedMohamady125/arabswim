@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Globe, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 import { getCountries, createCountry, updateCountry, deleteCountry } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
@@ -147,7 +148,9 @@ export default function CountriesPage() {
                   <td className="px-4 py-2.5">
                     <CountryFlag code={c.code} flagUrl={c.flag_url} name="" />
                   </td>
-                  <td className="px-4 py-2.5 text-sm font-medium">{c.name}</td>
+                  <td className="px-4 py-2.5 text-sm font-medium">
+                    <Link to={`/countries/${c.id}`} className="text-blue-600 hover:underline">{c.name}</Link>
+                  </td>
                   <td className="px-4 py-2.5 text-sm text-gray-500">{c.code}</td>
                   <td className="px-4 py-2.5">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${REGION_STYLES[c.region]}`}>

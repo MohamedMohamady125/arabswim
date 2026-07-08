@@ -61,11 +61,19 @@ COUNTRY_NAME_ALIASES = {
     'MAROC': 'MAR',
     # Informal / HyTek team names
     'SAUDIA': 'KSA', 'SAUDI': 'KSA', 'SAUDI ARABIA': 'KSA',
+    'KINGDOM OF SAUDI ARABIA': 'KSA', 'KINGDOM OF SAUDIA ARABIA': 'KSA',
     'BAHREIN': 'BHR', 'BAHREÏN': 'BHR',
     'IRAK': 'IRQ',
     'PALESTINE': 'PLE',
     'GREAT BRITAIN': 'GBR',
     'UNITED STATES': 'USA',
+    # Asian HyTek team names
+    'HONG KONG CHINA': 'HKG', 'HONG KONG': 'HKG',
+    'CHINESE TAIPEI': 'TPE',
+    'SRI LANKA': 'LKA',
+    'KINGDOM OF THAILAND': 'THA',
+    'KOREA': 'KOR', 'SOUTH KOREA': 'KOR',
+    'DPR KOREA': 'PRK', 'NORTH KOREA': 'PRK',
 }
 
 

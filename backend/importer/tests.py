@@ -463,14 +463,14 @@ class LebanonHytekTests(SanityMixin, SimpleTestCase):
     def test_counts(self):
         m = self.meet()
         self.assertEqual(m.total_events, 147)
-        self.assertEqual(m.total_results, 731)
+        self.assertEqual(m.total_results, 732)
 
     def test_prelims_vs_finals(self):
         # Prelims dropped when finals exist; lone prelims promoted to Finals.
         rounds = collections.Counter(
             r.round_type for ev in self.meet().events for r in ev.results)
         self.assertEqual(rounds.get('Prelims', 0), 0)
-        self.assertEqual(rounds.get('Finals', 0), 731)
+        self.assertEqual(rounds.get('Finals', 0), 732)
         self.assertEqual(rounds.get(None, 0) + rounds.get('', 0), 0,
                          'no result may be missing its round')
 

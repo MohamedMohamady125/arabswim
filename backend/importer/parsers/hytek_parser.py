@@ -108,22 +108,17 @@ DQ_LINE = re.compile(
 # A result line must never end in a status word (DQ row with a seed time)
 STATUS_TAIL = re.compile(r'\b(DQ|NS|DFS|DNF|SCR|DSQ)\s*$', re.IGNORECASE)
 
-# Relay team result: "1 NAJ A 2:00.88 354"  or  "2 Tunisie H NT 4:01.95 34"
-# Handles optional seed time or NT before the finals time, and optional
-# record marker (*) after the finals time.
+# Relay team result/DQ patterns are now handled flexibly inside
+# _parse_relay_line() using TIME_PATTERN anchoring (no rigid regex).
 _TIME_PAT = r'(?:\d{1,2}:\d{2}\.\d{2}|\d{2,3}\.\d{2})'
-RELAY_TEAM_LINE = re.compile(
-    r'^\s*\*?(\d{1,3})\s+'                     # rank
-    r'([A-Z][A-Za-z0-9\'\.\- ]*?)\s+'          # team name
-    r'([A-Z])\s+'                               # relay letter
-    r'(?:(?:NT|' + _TIME_PAT + r')\*?\s+)?'     # optional seed time or NT
-    r'(' + _TIME_PAT + r')\*?'                  # finals time (may have * for record)
-    r'(?:\s+(\d+))?'                            # optional points
-)
 
-# Relay team DQ: "--- MTY A NS"
+# Relay team DQ: "--- MTY A NS"  or  "--- Iran DQ"  or  "--- Malaysia 3:33.08 DQ"
 RELAY_DQ_LINE = re.compile(
-    r'^\s*---\s+([A-Z][A-Za-z0-9\'\.\- ]*?)\s+([A-Z])\s+(DQ|NS|DFS|DNF|SCR|DSQ)',
+    r'^\s*---\s+'
+    r'([A-Z][A-Za-z0-9\'\.\- ]+?)\s+'          # team name
+    r'(?:([A-Z])\s+)?'                          # optional relay letter
+    r'(?:(?:NT|' + _TIME_PAT + r')\s+)?'        # optional seed/prelim time or NT
+    r'(DQ|NS|DFS|DNF|SCR|DSQ)',
     re.IGNORECASE
 )
 
@@ -214,9 +209,10 @@ def parse(text):
     # ---- PARSE EVENTS AND RESULTS ----
     current_event = None
     current_key = None  # (event_name, gender, age_group)
-    # True when the column header lists "Seed Time" before the result time
-    # column (Jordan) — result lines then carry seed first, swim time second.
-    seed_first = False
+    # True when the column header has two time columns (e.g. "Seed Time
+    # Prelim Time" or "Prelim Time Finals Time") — the actual swim time
+    # for the current round is the LAST time on each result line.
+    take_last_time = False
 
     def switch_round(round_type):
         """Point current_event at the (event, round) classement, creating a
@@ -312,12 +308,16 @@ def parse(text):
 
         # ---- Round signals (apply to the CURRENT event) ----
         # Column header: "Name Ag e Team Prelim Time LEN" / "Team R elay Finals Time"
+        # Headers with two time columns ("Prelim Time Finals Time" or
+        # "Seed Time Prelim Time") mean the LAST time on each result
+        # line is the actual swim; the first time is a reference column.
         if COLUMN_HEADER.match(stripped):
-            col_round = COLUMN_ROUND.search(stripped)
+            round_matches = list(COLUMN_ROUND.finditer(stripped))
             seed = COLUMN_SEED.search(stripped)
-            seed_first = bool(seed and (not col_round or seed.start() < col_round.start()))
-            if col_round and current_event is not None:
-                word = col_round.group(1).lower()
+            take_last_time = len(round_matches) >= 2 or bool(seed)
+            if round_matches and current_event is not None:
+                # Use the LAST match as the round (that's the result column)
+                word = round_matches[-1].group(1).lower()
                 switch_round('Prelims' if word.startswith('prelim') else 'Finals')
             continue
 
@@ -341,7 +341,7 @@ def parse(text):
         event_is_relay = _is_relay(current_event.event_name)
 
         if event_is_relay:
-            if _parse_relay_line(stripped, current_event, comma_order):
+            if _parse_relay_line(stripped, current_event, comma_order, take_last_time):
                 continue
             # Splits line inside relay: pair with leg swimmers
             if _is_split_line(stripped) and current_event.results:
@@ -379,7 +379,7 @@ def parse(text):
             continue
 
         # Try to parse as result line
-        result = _parse_result_line(stripped, current_event, comma_order, seed_first)
+        result = _parse_result_line(stripped, current_event, comma_order, take_last_time)
         if result:
             # Sanity check: reject times that are impossibly fast for the event distance
             # This catches interleaved two-column PDF results from adjacent events
@@ -396,49 +396,19 @@ def _is_relay(event_name):
     return 'relay' in event_name.lower()
 
 
-def _parse_relay_line(line, event, comma_order):
+def _parse_relay_line(line, event, comma_order, take_last_time=False):
     """Parse team/DQ/leg-swimmer lines inside a relay event.
     Returns True if the line was consumed."""
-    # Team result: "1 NAJ A 2:00.88 354"
-    m = RELAY_TEAM_LINE.match(line)
-    if m:
-        rank = int(m.group(1))
-        team = m.group(2).strip()
-        letter = m.group(3)
-        time_text = m.group(4)
-        time_cs = parse_time_to_centiseconds(time_text)
-        # Relay totals are swum by 4 swimmers — judge plausibility per leg
-        if not _time_plausible(time_cs, event.distance // 4):
-            return False
-        fina = 0
-        if m.group(5):
-            val = int(m.group(5))
-            if 1 <= val <= 1200:
-                fina = val
-        event.results.append(ParsedResult(
-            swimmer_name=f'{team} {letter}',
-            time_text=time_text,
-            time_centiseconds=time_cs,
-            event_name=event.event_name,
-            event_distance=event.distance,
-            event_stroke=event.stroke,
-            gender=event.gender,
-            rank=rank,
-            club=team,
-            fina_points=fina,
-            round_type=event.round_type,
-            age_group=event.age_group,
-        ))
-        return True
 
-    # Team DQ: "--- MTY A NS"
+    # Team DQ: "--- MTY A NS" / "--- Iran DQ" / "--- Malaysia 3:33.08 DQ"
     m = RELAY_DQ_LINE.match(line)
     if m:
         team = m.group(1).strip()
-        letter = m.group(2)
+        letter = m.group(2) or ''
         status_raw = m.group(3).upper()
+        display = f'{team} {letter}'.strip()
         event.results.append(ParsedResult(
-            swimmer_name=f'{team} {letter}',
+            swimmer_name=display,
             time_text='',
             status=STATUS_MAP.get(status_raw, 'DQ'),
             gender=event.gender,
@@ -450,6 +420,70 @@ def _parse_relay_line(line, event, comma_order):
             age_group=event.age_group,
         ))
         return True
+
+    # Team result: flexible parsing with time anchoring.
+    # Handles: "1 NAJ A 2:00.88 354" (with relay letter, one time)
+    #          "1 Japan 3:30.50 3:25.32" (no relay letter, two times)
+    #          "1 Hong Kong China 3:56.76" (multi-word, one time)
+    #          "1 Kazakhstan 3:28.58 q" (one time + qualifier)
+    rank_m = RANK_PREFIX.match(line)
+    if rank_m:
+        rank = int(rank_m.group(1))
+        rest = line[rank_m.end():]
+        times = list(TIME_PATTERN.finditer(rest))
+        if times:
+            # Text before first time = team [+ relay letter] [+ NT]
+            before = rest[:times[0].start()].strip()
+            before = re.sub(r'\bNT\b', '', before).strip()
+            tokens = before.split()
+            if tokens:
+                # Check for relay letter (single uppercase letter at end)
+                letter = ''
+                if len(tokens) >= 2 and len(tokens[-1]) == 1 and tokens[-1].isupper():
+                    letter = tokens[-1]
+                    team = ' '.join(tokens[:-1])
+                else:
+                    team = ' '.join(tokens)
+
+                # Pick the right time
+                if take_last_time and len(times) >= 2:
+                    time_match = times[-1]
+                else:
+                    time_match = times[0]
+
+                time_text = time_match.group(1)
+                time_cs = parse_time_to_centiseconds(time_text)
+
+                # Relay totals are swum by 4 swimmers — judge plausibility per leg
+                if not _time_plausible(time_cs, event.distance // 4):
+                    return False
+
+                # Points after last time (skip qualifier letters like "q")
+                after = rest[times[-1].end():].strip()
+                after = re.sub(r'^[qQ*]\s*', '', after).strip()
+                fina = 0
+                pts_m = re.match(r'(\d+)', after)
+                if pts_m:
+                    val = int(pts_m.group(1))
+                    if 1 <= val <= 1200:
+                        fina = val
+
+                display = f'{team} {letter}'.strip()
+                event.results.append(ParsedResult(
+                    swimmer_name=display,
+                    time_text=time_text,
+                    time_centiseconds=time_cs,
+                    event_name=event.event_name,
+                    event_distance=event.distance,
+                    event_stroke=event.stroke,
+                    gender=event.gender,
+                    rank=rank,
+                    club=team,
+                    fina_points=fina,
+                    round_type=event.round_type,
+                    age_group=event.age_group,
+                ))
+                return True
 
     # Leg swimmers: "1) Ghassan, Zein 12 2) Mohamad, Chahrour 13"
     if RELAY_SWIMMER_MARK.search(line) and event.results:
@@ -534,7 +568,7 @@ def _is_split_line(line):
     return False
 
 
-def _parse_result_line(line, event, comma_order='last_first', seed_first=False):
+def _parse_result_line(line, event, comma_order='last_first', take_last_time=False):
     """
     Parse a HY-TEK result line using TIME as anchor.
 
@@ -547,9 +581,9 @@ def _parse_result_line(line, event, comma_order='last_first', seed_first=False):
        - Token before team = age (1-2 digit number)
        - Everything before age = name (after rank)
 
-    When seed_first is True (Jordan: "Seed Time" column precedes the result
-    time), the first time on the line is the SEED time — the actual swim
-    time is the second one. A single time then means seed was "NT".
+    When take_last_time is True (column header has two time columns like
+    "Prelim Time Finals Time" or "Seed Time Prelim Time"), the last time
+    on the line is the actual swim time for the current round.
     """
     # A DQ/NS row with a seed time must never be read as a timed result
     if STATUS_TAIL.search(line):
@@ -559,7 +593,7 @@ def _parse_result_line(line, event, comma_order='last_first', seed_first=False):
     times = list(TIME_PATTERN.finditer(line))
     if not times:
         return None
-    time_match = times[1] if (seed_first and len(times) >= 2) else times[0]
+    time_match = times[-1] if (take_last_time and len(times) >= 2) else times[0]
 
     time_text = time_match.group(1)
     time_cs = parse_time_to_centiseconds(time_text)
@@ -601,45 +635,27 @@ def _parse_result_line(line, event, comma_order='last_first', seed_first=False):
     if len(tokens) < 3:
         return None
 
-    # Find age and team by scanning from the right
-    # Team is the last token (e.g., "NSSC-LB", "OLY-LB", "EXCW-SW")
-    # Age is the second-to-last token (1-2 digit number)
+    # Find age and team by scanning for the age token (1-2 digit number
+    # between 5 and 99). Everything before the age is part of the name;
+    # everything after the age is the team/country name (may be multi-word
+    # like "Hong Kong China" or "Kingdom oF Saudi Arabia").
     team = ''
     age = 0
     name_end_idx = len(tokens)
 
-    # Scan from right to find: team_code age_number
-    # Team codes are alphanumeric (often with dash): [A-Z0-9]+-?[A-Z0-9]*
-    # Age is 1-2 digits between 5 and 99
-    for i in range(len(tokens) - 1, 0, -1):
-        token = tokens[i]
-        prev_token = tokens[i - 1]
-
-        # Check if prev_token is age (1-2 digit number, 5-99)
-        if re.match(r'^\d{1,2}$', prev_token):
-            possible_age = int(prev_token)
+    # Scan from LEFT to RIGHT for the first standalone age digit that
+    # appears AFTER at least one name token (to skip rank remnants).
+    # In HyTek, the order is always: Name Age Team.
+    for i in range(1, len(tokens)):
+        if re.match(r'^\d{1,2}$', tokens[i]):
+            possible_age = int(tokens[i])
             if 5 <= possible_age <= 99:
-                # Check if current token looks like a team code
-                if re.match(r'^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)?$', token):
-                    team = token
-                    age = possible_age
-                    name_end_idx = i - 1
-                    break
-
-    if age == 0:
-        # Could not find age+team pattern — try without team
-        # Some formats might not have a team code
-        for i in range(len(tokens) - 1, 0, -1):
-            if re.match(r'^\d{1,2}$', tokens[i]):
-                possible_age = int(tokens[i])
-                if 5 <= possible_age <= 99:
-                    age = possible_age
-                    name_end_idx = i
-                    # The token after might be team
-                    if i + 1 < len(tokens):
-                        team = tokens[i + 1]
-                        # But we already captured it — skip
-                    break
+                age = possible_age
+                name_end_idx = i
+                # Everything after the age is the team name
+                if i + 1 < len(tokens):
+                    team = ' '.join(tokens[i + 1:])
+                break
 
     if age == 0 and name_end_idx == len(tokens) and len(tokens) >= 3:
         # No age on the line at all. Don't let the team code get swallowed

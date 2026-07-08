@@ -155,7 +155,7 @@ REST_FRAMEWORK = {
 }
 
 # Uploads: cap request sizes (imports are the largest legitimate payloads)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 60 * 1024 * 1024  # 60 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 130 * 1024 * 1024  # 130 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB then temp file
 
 # HTTPS hardening (production only; Railway terminates TLS at its proxy)

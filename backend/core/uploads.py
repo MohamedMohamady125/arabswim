@@ -6,7 +6,7 @@ Returns an error string (for a 400 response) or None when the file is OK.
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024    # 5 MB
 MAX_PDF_SIZE = 40 * 1024 * 1024     # 40 MB (full meet result books)
-MAX_IMPORT_SIZE = 50 * 1024 * 1024  # 50 MB
+MAX_IMPORT_SIZE = 120 * 1024 * 1024  # 120 MB (Omega/Swiss-Timing books with embedded fonts hit ~90 MB)
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 IMPORT_EXTENSIONS = {'.pdf', '.xlsx', '.xls', '.html', '.htm'}

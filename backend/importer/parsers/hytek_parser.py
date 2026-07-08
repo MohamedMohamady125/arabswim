@@ -108,13 +108,17 @@ DQ_LINE = re.compile(
 # A result line must never end in a status word (DQ row with a seed time)
 STATUS_TAIL = re.compile(r'\b(DQ|NS|DFS|DNF|SCR|DSQ)\s*$', re.IGNORECASE)
 
-# Relay team result: "1 NAJ A 2:00.88 354"  (team code + relay letter)
+# Relay team result: "1 NAJ A 2:00.88 354"  or  "2 Tunisie H NT 4:01.95 34"
+# Handles optional seed time or NT before the finals time, and optional
+# record marker (*) after the finals time.
+_TIME_PAT = r'(?:\d{1,2}:\d{2}\.\d{2}|\d{2,3}\.\d{2})'
 RELAY_TEAM_LINE = re.compile(
-    r'^\s*\*?(\d{1,3})\s+'
-    r'([A-Z][A-Za-z0-9\'\.\- ]*?)\s+'
-    r'([A-Z])\s+'
-    r'(\d{1,2}:\d{2}\.\d{2}|\d{2,3}\.\d{2})'
-    r'(?:\s+(\d+))?'
+    r'^\s*\*?(\d{1,3})\s+'                     # rank
+    r'([A-Z][A-Za-z0-9\'\.\- ]*?)\s+'          # team name
+    r'([A-Z])\s+'                               # relay letter
+    r'(?:(?:NT|' + _TIME_PAT + r')\*?\s+)?'     # optional seed time or NT
+    r'(' + _TIME_PAT + r')\*?'                  # finals time (may have * for record)
+    r'(?:\s+(\d+))?'                            # optional points
 )
 
 # Relay team DQ: "--- MTY A NS"

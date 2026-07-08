@@ -257,7 +257,9 @@ def _extract_columns(file_path):
 
             # Heuristic: true two-column layout has "Event" headers or rank+comma-name
             # patterns starting on the RIGHT side (not just numbers like FINA points).
-            # Check for "Event" keyword or rank-then-name pattern on the right half.
+            # Relay leg lines ("1) Name, First 14 2) Name2, Second 14") span the
+            # full width and look like rank+comma-name on the right — exclude them
+            # by checking that no ")" precedes the digit on the same line.
             import re as _re
             right_event_headers = 0
             right_ranked_names = 0
@@ -265,9 +267,16 @@ def _extract_columns(file_path):
                 if w['x0'] > mid_x:
                     if w['text'] == 'Event':
                         right_event_headers += 1
-                    # Look for a rank number followed by a name with comma on the right
                     if _re.match(r'^\d{1,3}$', w['text']) and int(w['text']) <= 20:
-                        # Check if next word on same line contains a comma (name pattern)
+                        # Reject if a ")" word sits on the same line just before
+                        # this digit — that's a relay leg age, not a rank.
+                        is_relay_age = False
+                        for wp in words[max(0, wi-4):wi]:
+                            if abs(wp['top'] - w['top']) < 3 and wp['text'].endswith(')'):
+                                is_relay_age = True
+                                break
+                        if is_relay_age:
+                            continue
                         for w2 in words[wi+1:wi+4]:
                             if abs(w2['top'] - w['top']) < 3 and ',' in w2['text']:
                                 right_ranked_names += 1

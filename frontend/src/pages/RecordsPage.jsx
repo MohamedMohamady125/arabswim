@@ -1,46 +1,135 @@
 import { useState, useEffect } from 'react'
-import { getRecords } from '../api/records'
-import DataTable from '../components/common/DataTable'
-import Pagination from '../components/common/Pagination'
+import { getComputedRecords, getClassifications, getSubClassifications } from '../api/records'
 import CountryFlag from '../components/common/CountryFlag'
-import { RECORD_TYPES } from '../utils/constants'
+import { POOL_TYPES, formatTime } from '../utils/constants'
 
 export default function RecordsPage() {
   const [records, setRecords] = useState([])
-  const [pagination, setPagination] = useState({})
-  const [page, setPage] = useState(1)
-  const [filterType, setFilterType] = useState('')
+  const [classifications, setClassifications] = useState([])
+  const [subClassifications, setSubClassifications] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [filters, setFilters] = useState({
+    classification: '',
+    sub_classification: '',
+    pool: 'LCM',
+  })
 
   useEffect(() => {
-    const params = { page }
-    if (filterType) params.record_type = filterType
-    getRecords(params).then(res => {
-      setRecords(res.data.results)
-      setPagination({ count: res.data.count, next: res.data.next, previous: res.data.previous })
+    getClassifications().then(res => {
+      setClassifications(res.data)
+      if (res.data.length && !filters.classification) {
+        setFilters(prev => ({ ...prev, classification: res.data[0].id.toString() }))
+      }
     }).catch(() => {})
-  }, [page, filterType])
+  }, [])
 
-  const columns = [
-    { key: 'swimmer', label: 'Swimmer', render: (row) => row.swimmer_detail?.name },
-    { key: 'nationality', label: 'Nationality', render: (row) => <CountryFlag code={row.swimmer_detail?.nationality_detail?.code} flagUrl={row.swimmer_detail?.nationality_detail?.flag_url} name={row.swimmer_detail?.nationality_detail?.name} /> },
-    { key: 'event', label: 'Event', render: (row) => row.event_detail?.name },
-    { key: 'time', label: 'Time', render: (row) => row.formatted_time },
-    { key: 'record_type', label: 'Type' },
-    { key: 'location', label: 'Location' },
-    { key: 'result_date', label: 'Date' },
-  ]
+  useEffect(() => {
+    if (filters.classification) {
+      getSubClassifications({ classification: filters.classification }).then(res => {
+        setSubClassifications(res.data)
+      }).catch(() => {})
+    } else {
+      setSubClassifications([])
+    }
+    setFilters(prev => ({ ...prev, sub_classification: '' }))
+  }, [filters.classification])
+
+  useEffect(() => {
+    if (!filters.classification) {
+      setRecords([])
+      return
+    }
+    setLoading(true)
+    const params = {}
+    if (filters.classification) params.classification = filters.classification
+    if (filters.sub_classification) params.sub_classification = filters.sub_classification
+    params.pool = filters.pool
+    getComputedRecords(params).then(res => {
+      setRecords(res.data)
+    }).catch(() => {}).finally(() => setLoading(false))
+  }, [filters.classification, filters.sub_classification, filters.pool])
+
+  const updateFilter = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
+
+  const menRecords = records.filter(r => r.gender === 'M')
+  const womenRecords = records.filter(r => r.gender === 'F')
+
+  const RecordTable = ({ title, data }) => (
+    <div className="mb-8">
+      <h2 className="text-lg font-bold mb-3">{title}</h2>
+      <div className="bg-white rounded-lg border overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50 border-b">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Swimmer</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nationality</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">FINA</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Championship</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {data.map((r, i) => (
+              <tr key={i} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-medium">{r.event_name}</td>
+                <td className="px-4 py-3 text-sm">{r.swimmer_name}</td>
+                <td className="px-4 py-3 text-sm"><CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} name={r.nationality} /></td>
+                <td className="px-4 py-3 text-sm font-mono font-medium">{r.time}</td>
+                <td className="px-4 py-3 text-sm">{r.fina_points || '-'}</td>
+                <td className="px-4 py-3 text-sm">{r.championship_name}</td>
+                <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} name={r.championship_country} /></td>
+                <td className="px-4 py-3 text-sm">{r.date}</td>
+              </tr>
+            ))}
+            {data.length === 0 && (
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">No records found.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Records</h1>
-      <div className="mb-4">
-        <select value={filterType} onChange={(e) => { setFilterType(e.target.value); setPage(1) }} className="border rounded-lg px-3 py-2 text-sm">
-          <option value="">All Types</option>
-          {RECORD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Classification</label>
+          <select value={filters.classification} onChange={(e) => updateFilter('classification', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="">Select...</option>
+            {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Sub-Classification</label>
+          <select value={filters.sub_classification} onChange={(e) => updateFilter('sub_classification', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="">All</option>
+            {subClassifications.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Pool</label>
+          <select value={filters.pool} onChange={(e) => updateFilter('pool', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+            {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+        </div>
       </div>
-      <DataTable columns={columns} data={records} />
-      <Pagination {...pagination} currentPage={page} onPageChange={setPage} />
+
+      {loading ? (
+        <div className="text-center py-8 text-gray-500">Loading records...</div>
+      ) : (
+        <>
+          <RecordTable title="Men" data={menRecords} />
+          <RecordTable title="Women" data={womenRecords} />
+        </>
+      )}
     </div>
   )
 }

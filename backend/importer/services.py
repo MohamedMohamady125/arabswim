@@ -81,6 +81,13 @@ def _build_preview(parsed_meet):
     )
     inferred_country_code = inferred_country.code if inferred_country else ''
 
+    # Detect international meet: majority of results carry nationality codes
+    # from the parser. In domestic meets, clubs should stay as clubs — their
+    # abbreviations (e.g. "EST") may collide with country codes.
+    all_results = [r for ev in parsed_meet.events for r in ev.results]
+    has_nat_count = sum(1 for r in all_results if r.nationality_code)
+    is_international = has_nat_count > len(all_results) * 0.5
+
     # Determine meet year for birth_year calculation from age
     meet_year = 0
     if parsed_meet.date_text:
@@ -112,9 +119,13 @@ def _build_preview(parsed_meet):
             # otherwise fall back to the meet's host country.
             # When the club IS a country (national-team meet), clear it
             # so it doesn't show redundantly alongside nationality.
+            # Only try club→country in international meets (majority of
+            # results already carry a nationality code from the parser);
+            # in domestic meets, club abbreviations like "EST" collide
+            # with country codes (Estonia) and produce wrong nationalities.
             nat_code = r.nationality_code
             club_is_country = False
-            if not nat_code and r.club:
+            if not nat_code and r.club and is_international:
                 club_country = resolve_country(r.club)
                 if club_country:
                     nat_code = club_country.code

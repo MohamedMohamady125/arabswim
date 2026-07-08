@@ -28,8 +28,10 @@ def detect_and_parse(file_path):
         raise ValueError(f'Unsupported file type: {ext}')
     # Drop overall-classification rows duplicated in age categories, then:
     # an event with no Finals round only swam once — that round IS the finals
-    from .base import drop_general_duplicate_results, promote_lone_heats_to_finals
-    return promote_lone_heats_to_finals(drop_general_duplicate_results(meet))
+    from .base import drop_general_duplicate_results, promote_lone_heats_to_finals, drop_heats_if_finals_exist
+    meet = drop_general_duplicate_results(meet)
+    meet = promote_lone_heats_to_finals(meet)
+    return drop_heats_if_finals_exist(meet)
 
 
 def detect_and_parse_upload(uploaded_file):

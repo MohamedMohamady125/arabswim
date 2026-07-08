@@ -631,6 +631,31 @@ def promote_lone_heats_to_finals(meet):
     return meet
 
 
+def drop_heats_if_finals_exist(meet):
+    """When an event has both Heats and Finals results, drop the Heats.
+
+    Finals contain the definitive rankings.  Keeping heats alongside finals
+    for the same (event, gender) creates duplicate entries that confuse the
+    display.  Events that only have heats are untouched — they were already
+    promoted to Finals by promote_lone_heats_to_finals.
+    """
+    groups = {}
+    for ev in meet.events:
+        groups.setdefault((ev.event_name, ev.gender), []).append(ev)
+    drop = set()
+    for evs in groups.values():
+        has_finals = any(
+            ev.round_type == 'Finals' and ev.results for ev in evs
+        )
+        if not has_finals:
+            continue
+        for ev in evs:
+            if ev.round_type in ('Heats', 'Prelims', 'Semis'):
+                drop.add(id(ev))
+    meet.events = [ev for ev in meet.events if id(ev) not in drop]
+    return meet
+
+
 def clean_text(text):
     """Remove non-breaking spaces and collapse whitespace."""
     if not text:

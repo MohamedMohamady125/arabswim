@@ -394,7 +394,6 @@ export default function MeetDetailPage() {
                 return (
                   <div className="flex gap-2 px-4 pt-3 border-b">
                     {rounds.map(round => {
-                      const count = results.filter(r => (r.round_type || '') === round).length
                       const active = selectedRound === round
                       return (
                         <button
@@ -407,7 +406,6 @@ export default function MeetDetailPage() {
                           }`}
                         >
                           {roundLabel(round)}
-                          <span className={`ml-1.5 text-xs ${active ? 'text-sky-200' : 'text-gray-400'}`}>{count}</span>
                         </button>
                       )
                     })}

@@ -367,7 +367,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             cent = cs % 100
             best = f'{mins}:{secs:02d}.{cent:02d}' if mins else f'{secs}.{cent:02d}'
             gender = e['swimmer__sex']
-            gender_label = 'Men' if gender == 'M' else 'Women'
+            gender_label = {'M': 'Men', 'F': 'Women', 'X': 'Mixed'}.get(gender, 'Men')
             events_list.append({
                 'event_id': e['event__id'],
                 'event_name': e['event__name'],

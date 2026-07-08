@@ -366,7 +366,7 @@ export default function MeetDetailPage() {
             <div className="bg-white rounded-lg border">
               <div className="p-4 border-b flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold">{selectedEvent.event_name} — {selectedEvent.gender_label || (selectedEvent.gender === 'M' ? 'Men' : 'Women')}</h3>
+                  <h3 className="font-semibold">{selectedEvent.event_name} — {selectedEvent.gender_label || ({M: 'Men', F: 'Women', X: 'Mixed'}[selectedEvent.gender] || 'Men')}</h3>
                   <p className="text-xs text-gray-500">{results.length} results</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -421,6 +421,10 @@ export default function MeetDetailPage() {
                 const cats = [...new Set(roundResults.map(r => r.category || ''))]
                 if (cats.filter(c => c !== '').length === 0 || cats.length <= 1) return null
                 cats.sort((a, b) => catRank(a) - catRank(b))
+                // Auto-select first category when none is selected
+                if (selectedCategory === null && cats.length > 0) {
+                  setTimeout(() => setSelectedCategory(cats[0]), 0)
+                }
                 const pill = (active) => `px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
                   active
                     ? 'bg-sky-600 text-white border-sky-600'
@@ -428,17 +432,11 @@ export default function MeetDetailPage() {
                 }`
                 return (
                   <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b bg-gray-50/60">
-                    <button onClick={() => setSelectedCategory(null)} className={pill(selectedCategory === null)}>
-                      All
-                      <span className={`ml-1 ${selectedCategory === null ? 'text-sky-200' : 'text-gray-400'}`}>{roundResults.length}</span>
-                    </button>
                     {cats.map(cat => {
-                      const count = roundResults.filter(r => (r.category || '') === cat).length
                       const active = selectedCategory === cat
                       return (
                         <button key={cat || '_general'} onClick={() => setSelectedCategory(cat)} className={pill(active)}>
                           {cat || 'General'}
-                          <span className={`ml-1 ${active ? 'text-sky-200' : 'text-gray-400'}`}>{count}</span>
                         </button>
                       )
                     })}

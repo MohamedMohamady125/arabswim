@@ -108,8 +108,15 @@ def _build_preview(parsed_meet):
             if r.status not in ('OK', 'TLD') or r.time_centiseconds <= 0:
                 continue
 
-            # Use inferred country if no nationality on the result
-            nat_code = r.nationality_code or inferred_country_code
+            # Use club as nationality when it resolves to a country,
+            # otherwise fall back to the meet's host country.
+            nat_code = r.nationality_code
+            if not nat_code and r.club:
+                club_country = resolve_country(r.club)
+                if club_country:
+                    nat_code = club_country.code
+            if not nat_code:
+                nat_code = inferred_country_code
 
             # Compute birth_year and age from each other when one is missing
             birth_year = r.birth_year

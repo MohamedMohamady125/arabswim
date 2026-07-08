@@ -40,6 +40,34 @@ COUNTRY_CODE_ALIASES = {
     'UAR': 'EGY',               # historic (United Arab Republic)
 }
 
+# Variant country names (French, Arabic-English, informal) found in meet
+# PDFs, mapped to the DB country code.  These go into the same lookup
+# cache as COUNTRY_CODE_ALIASES so resolve_country('Egypte') works.
+COUNTRY_NAME_ALIASES = {
+    # French / HyTek variants
+    'EGYPTE': 'EGY',
+    'LIBYE': 'LBY',
+    'TUNISIE': 'TUN',
+    'ALGÉRIE': 'ALG', 'ALGERIE': 'ALG',
+    'LIBAN': 'LBN',
+    'JORDANIE': 'JOR',
+    'KOWEÏT': 'KWT', 'KOWEIT': 'KWT',
+    'SYRIE': 'SYR',
+    'SOUDAN': 'SUD',
+    'ÉMIRATS': 'UAE', 'EMIRATS': 'UAE',
+    'SAOUDITE': 'KSA',
+    'YÉMEN': 'YEM', 'YEMEN': 'YEM',
+    'MAURITANIE': 'MTN',
+    'MAROC': 'MAR',
+    # Informal / HyTek team names
+    'SAUDIA': 'KSA', 'SAUDI': 'KSA', 'SAUDI ARABIA': 'KSA',
+    'BAHREIN': 'BHR', 'BAHREÏN': 'BHR',
+    'IRAK': 'IRQ',
+    'PALESTINE': 'PLE',
+    'GREAT BRITAIN': 'GBR',
+    'UNITED STATES': 'USA',
+}
+
 
 def get_country_map():
     global _country_cache
@@ -51,6 +79,9 @@ def get_country_map():
             _country_cache[c.code.upper()] = c
             _country_cache[c.name.upper()] = c
         for alias, target in COUNTRY_CODE_ALIASES.items():
+            if target in by_code:
+                _country_cache[alias] = by_code[target]
+        for alias, target in COUNTRY_NAME_ALIASES.items():
             if target in by_code:
                 _country_cache[alias] = by_code[target]
     return _country_cache

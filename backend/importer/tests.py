@@ -144,6 +144,40 @@ class DateTests(SimpleTestCase):
             'Hamilton Aquatics Short Course - 21/10/2023 to 22/10/2023')
         self.assertEqual((start, end), ('2023-10-21', '2023-10-22'))
 
+    def test_full_range_ignores_record_dates(self):
+        """The 'to' range should win; record dates from other years are ignored."""
+        header = (
+            '4EME CHAMPIONNATS ARABE - 28/08/2025 to 01/09/2025 '
+            'CHAMP ARABE: 25.24 * 25/08/2024 ZYAD JAMAL ACHRI'
+        )
+        start, end, _ = extract_date_and_location(header)
+        self.assertEqual(start, '2025-08-28')
+        self.assertEqual(end, '2025-09-01')
+
+    def test_day_range_not_fooled_by_year(self):
+        """'2025 - 09/05/2025' must not treat '25' from 2025 as a start day."""
+        header = '2nd Open Winter Championship 2025 - 09/05/2025 to 12/05/2025'
+        start, end, _ = extract_date_and_location(header)
+        self.assertEqual(start, '2025-05-09')
+        self.assertEqual(end, '2025-05-12')
+
+    def test_month_name_english(self):
+        start, end, _ = extract_date_and_location(
+            'Arab Championships - 28-31 August 2025 - Rabat')
+        self.assertEqual(start, '2025-08-28')
+        self.assertEqual(end, '2025-08-31')
+
+    def test_month_name_french(self):
+        start, end, _ = extract_date_and_location(
+            'Championnat - 10 mai 2026 - Marrakech')
+        self.assertEqual(start, '2026-05-10')
+
+    def test_single_date_no_end(self):
+        start, end, _ = extract_date_and_location(
+            'COUPE DU TRONE - 10/05/2026 - MARRAKECH')
+        self.assertEqual(start, '2026-05-10')
+        self.assertEqual(end, '')
+
 
 class FrmnPointsTests(SimpleTestCase):
     def test_doubled_digits(self):
@@ -1350,6 +1384,49 @@ class UnrankedSwimmerTests(TestCase):
             'RAHMOUNI, Mahdi 12 Union Sportf Biskra 28.23 350', event, False, 5)
         self.assertIsNotNone(r)
         self.assertEqual(r.rank, 5)  # tie line inherits previous rank
+
+
+class SplashStandaloneRoundTests(SimpleTestCase):
+    """Standalone round markers ('Séries', 'Finale') without a 'Liste résultats'
+    prefix must still set the round context for subsequent results."""
+
+    def test_standalone_series_sets_heats(self):
+        from importer.parsers import splash_parser
+        text = (
+            'CHAMPIONNAT TEST 2026\n'
+            'ORAN, 28/06/2026\n'
+            'Epreuve 1 Messieurs, 50m Nage Libre\n'
+            'Séries\n'
+            '1. BENBARA, MEHDI NAZIM 98 MC ALGER 22.67 703\n'
+            '2. ARDJOUNE, ABDELLAH 01 MC ALGER 23.45 650\n'
+            'Finale\n'
+            '1. BENBARA, MEHDI NAZIM 98 MC ALGER 22.12 750\n'
+        )
+        meet = splash_parser.parse(text)
+        rounds = {(r.round_type, r.swimmer_name)
+                  for ev in meet.events for r in ev.results}
+        self.assertIn(('Heats', 'Mehdi Nazim BENBARA'), rounds)
+        self.assertIn(('Heats', 'Abdellah ARDJOUNE'), rounds)
+        self.assertIn(('Finals', 'Mehdi Nazim BENBARA'), rounds)
+        # Heats and Finals must be separate events
+        heat_count = sum(1 for ev in meet.events if ev.round_type == 'Heats')
+        final_count = sum(1 for ev in meet.events if ev.round_type == 'Finals')
+        self.assertGreaterEqual(heat_count, 1)
+        self.assertGreaterEqual(final_count, 1)
+
+    def test_country_code_not_swallowed_into_name(self):
+        """Regression: _extract_birth_year used to scan all tokens for country
+        codes, truncating names whose middle tokens matched (e.g. 'MAR')."""
+        from importer.parsers.splash_parser import _extract_birth_year
+        # Middle token should NOT be stripped
+        name, by, club = _extract_birth_year('BOUGUERRA, Mohamed MAR ALG')
+        # Only the LAST token that is a country code should split off
+        self.assertEqual(name, 'BOUGUERRA, Mohamed MAR')
+        self.assertEqual(club, 'ALG')
+        # Single country code at end
+        name, by, club = _extract_birth_year('ALZAMIL, ALI KUW')
+        self.assertEqual(name, 'ALZAMIL, ALI')
+        self.assertEqual(club, 'KUW')
 
 
 class Nat2iRelaySplitTests(TestCase):

@@ -96,6 +96,15 @@ ROUND_PATTERNS = {
     'Heats': re.compile(r'\bEliminatoire|\bS[ée]ries?\b', re.IGNORECASE),
 }
 
+# Standalone round marker: a line that is JUST a round word (e.g. "Séries",
+# "Finale"). The "Liste résultats" check already handles those that include
+# that prefix, but standalone markers were silently consumed — causing the
+# parser to lose round context and collapse heats into finals.
+STANDALONE_ROUND = re.compile(
+    r'^\s*(Finale\w*|Demi[- ]?finale\w*|Eliminatoire\w*|S[ée]ries?\w*)\s*$',
+    re.IGNORECASE
+)
+
 # Page furniture that must never be parsed as data
 SKIP_KEYWORDS = (
     'splash meet manager', 'registered to', 'liste résultats',
@@ -281,6 +290,15 @@ def parse(text):
         if 'liste r' in lower and current_event is not None:
             for rtype, pattern in ROUND_PATTERNS.items():
                 if pattern.search(line):
+                    sibling_event(round_type=rtype)
+                    break
+            continue
+
+        # Standalone round marker: "Séries", "Finale", "Eliminatoire"
+        standalone = STANDALONE_ROUND.match(line)
+        if standalone and current_event is not None:
+            for rtype, pattern in ROUND_PATTERNS.items():
+                if pattern.search(standalone.group(1)):
                     sibling_event(round_type=rtype)
                     break
             continue
@@ -553,12 +571,14 @@ def _extract_birth_year(before_time):
         m = re.search(r'(?<=[A-Za-zÀ-ÿ.\'])(\d{2})(?=\s|$)', before_time)
     if not m:
         # No birth year on the line. Without the year anchor the country
-        # code / club would be swallowed into the name — split off a known
-        # country code (and anything after it) when we can spot one.
+        # code / club would be swallowed into the name — split off the
+        # LAST token only if it is a known country code.  Scanning inner
+        # tokens was too aggressive: names/clubs like "…COM…" or "…MAR…"
+        # got truncated (e.g. "BOUGUERRA, Mohamed MAR" lost "MAR" even
+        # when it was part of the name in a national meet).
         tokens = before_time.strip().split()
-        for i in range(1, len(tokens)):
-            if tokens[i] in KNOWN_COUNTRY_CODES:
-                return ' '.join(tokens[:i]), 0, ' '.join(tokens[i:])
+        if len(tokens) >= 2 and tokens[-1] in KNOWN_COUNTRY_CODES:
+            return ' '.join(tokens[:-1]), 0, tokens[-1]
         return before_time.strip(), 0, ''
     name_part = before_time[:m.start()].strip()
     club = before_time[m.end():].strip()

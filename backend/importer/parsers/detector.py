@@ -144,15 +144,83 @@ def _extract_text_flow(file_path):
         for page in pdf.pages:
             parts.append(page.extract_text(use_text_flow=True) or '')
             page.flush_cache()
-    text = '\n'.join(parts)
+    text = _fix_cid_ligatures('\n'.join(parts))
     del parts
     gc.collect()
     return text
 
 
+import re as _re_module
+
+# CID codes for ligatures that pdfplumber can't decode from some fonts.
+_CID_MAP = {
+    '(cid:976)': 'f',    # f glyph (some HyTek fonts store it as CID)
+    '(cid:975)': 'fi',   # ﬁ ligature
+    '(cid:64257)': 'fi',
+    '(cid:64258)': 'fl',
+}
+_CID_RE = _re_module.compile(r'\(cid:\d+\)')
+
+
+def _fix_cid_ligatures(text):
+    """Replace (cid:NNN) ligature placeholders with actual characters."""
+    def _replace(m):
+        return _CID_MAP.get(m.group(0), '')
+    return _CID_RE.sub(_replace, text)
+
+
+def _has_overlapping_text(words, tolerance=2):
+    """Check if a page's words have overlapping x-positions on any line.
+
+    Some HyTek PDFs render name/age/team as separate text objects whose
+    characters physically overlap. Default extraction interleaves characters
+    from different objects, garbling names ("Hassan A 1L4 NeJoarmdaanit").
+    """
+    lines = {}
+    for w in words:
+        ly = round(w['top'] / 5) * 5
+        lines.setdefault(ly, []).append(w)
+    overlap_count = 0
+    for line_words in lines.values():
+        sw = sorted(line_words, key=lambda w: w['x0'])
+        for j in range(1, len(sw)):
+            if sw[j]['x0'] < sw[j - 1]['x1'] - tolerance:
+                overlap_count += 1
+                if overlap_count >= 3:
+                    return True
+    return False
+
+
+def _extract_page_deoverlap(page):
+    """Extract text from a page with overlapping text objects.
+
+    Uses text_flow to get intact words (no character interleaving), then
+    sorts them by position. Words that belong to the same line (within 4pt
+    y-tolerance) are joined with spaces.
+    """
+    flow_words = page.extract_words(use_text_flow=True, keep_blank_chars=True)
+    if not flow_words:
+        return ''
+    # Cluster words into lines using a merge approach (avoids rounding
+    # boundary issues where 0.12pt differences split a line in two).
+    flow_words.sort(key=lambda w: w['top'])
+    lines = []
+    for w in flow_words:
+        if lines and abs(w['top'] - lines[-1][0]['top']) < 4:
+            lines[-1].append(w)
+        else:
+            lines.append([w])
+    page_lines = []
+    for line_words in lines:
+        line_words.sort(key=lambda w: w['x0'])
+        page_lines.append(' '.join(w['text'] for w in line_words))
+    return '\n'.join(page_lines)
+
+
 def _extract_columns(file_path):
     """
-    Extract text from a HY-TEK PDF handling two-column layouts.
+    Extract text from a HY-TEK PDF handling two-column layouts and
+    overlapping text objects.
 
     HY-TEK Meet Manager often produces PDFs with two columns of results
     side by side. Standard text extraction interleaves the columns,
@@ -161,6 +229,11 @@ def _extract_columns(file_path):
     2. Splits each page at the midpoint
     3. Extracts left column first, then right column
     4. Concatenates them sequentially so events are properly separated
+
+    Additionally, some HyTek PDFs (e.g. FRMN-produced Arab championships)
+    render name, age, and team as separate text objects whose characters
+    physically overlap. For those pages, extraction uses text_flow to keep
+    each text run intact and then sorts runs by position.
     """
     import pdfplumber
 
@@ -234,20 +307,22 @@ def _extract_columns(file_path):
                 left_crop = page.crop((bbox[0], bbox[1], split_x, bbox[3]))
                 right_crop = page.crop((split_x, bbox[1], bbox[2], bbox[3]))
 
-                left_text = left_crop.extract_text() or ''
-                right_text = right_crop.extract_text() or ''
+                left_text = _extract_page_deoverlap(left_crop)
+                right_text = _extract_page_deoverlap(right_crop)
 
                 all_text_parts.append(left_text)
                 all_text_parts.append(right_text)
             else:
-                text = page.extract_text() or ''
-                all_text_parts.append(text)
+                # Use text_flow extraction for all single-column pages:
+                # keeps each text run intact even when objects overlap
+                # in x-position (common in HyTek PDFs from FRMN).
+                all_text_parts.append(_extract_page_deoverlap(page))
 
             # Free memory after each page
             del words, left_words, right_words
             page.flush_cache()
 
-    return '\n'.join(all_text_parts)
+    return _fix_cid_ligatures('\n'.join(all_text_parts))
 
 
 def _parse_html(file_path, filename=''):

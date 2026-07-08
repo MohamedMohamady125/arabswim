@@ -147,6 +147,8 @@ def parse(text):
     meet = ParsedMeet(source_format='hytek')
 
     # ---- EXTRACT HEADER INFO ----
+    # Collect only the true header: meet name, date, location.
+    # Stop before Event lines, Record lines, or column headers.
     header_lines = []
     for line in lines[:20]:
         line = line.strip()
@@ -154,10 +156,16 @@ def parse(text):
             continue
         if 'results' == line.lower():
             continue
-        if re.match(r'^\d+\s+\w+,', line):  # skip result lines
-            continue
+        if re.match(r'^\d+\s+\w+,', line):  # result lines
+            break
         if any(p.search(line) for p in SKIP_PATTERNS):
             continue
+        if re.match(r'^Event\s+\d', line, re.IGNORECASE):
+            break
+        if re.search(r'Record:', line, re.IGNORECASE):
+            break
+        if re.match(r'^(Name|ID#)\s+(Age|Team)', line, re.IGNORECASE):
+            break
         header_lines.append(line)
         if len(header_lines) >= 5:
             break

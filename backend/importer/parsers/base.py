@@ -87,91 +87,138 @@ STRIP_KEYWORDS = [
 ]
 
 
+def _iso(day, month, year):
+    """Format a validated date as YYYY-MM-DD, or '' if invalid."""
+    if 1 <= month <= 12 and 1 <= day <= 31 and 1900 <= year <= 2100:
+        return f'{year:04d}-{month:02d}-{day:02d}'
+    return ''
+
+
+# Explicit range: "DD/MM/YYYY to DD/MM/YYYY" (connectors: to, ¤, –, -)
+_FULL_RANGE_RE = re.compile(
+    r'(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})'
+    r'\s*(?:to|¤|–|-)\s*'
+    r'(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})'
+)
+# Compact day range: "19 - 22/1/2022" or "19–22/1/2022"
+# (?<!\d) prevents matching "2025 - 09/..." where "25" comes from a year.
+_DAY_RANGE_RE = re.compile(
+    r'(?<!\d)(\d{1,2})\s*[-–]\s*(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})'
+)
+# Compact slash range: "20/21-04-2024" (day/day-month-year)
+_SLASH_RANGE_RE = re.compile(
+    r'(\d{1,2})/(\d{1,2})-(\d{2})-(\d{4})'
+)
+# Month names (English + French) → month number
+_MONTH_NAMES = {
+    'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5,
+    'june': 6, 'july': 7, 'august': 8, 'september': 9, 'october': 10,
+    'november': 11, 'december': 12,
+    'janvier': 1, 'février': 2, 'fevrier': 2, 'mars': 3, 'avril': 4,
+    'mai': 5, 'juin': 6, 'juillet': 7, 'août': 8, 'aout': 8,
+    'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12,
+    'decembre': 12,
+    # Abbreviations
+    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'jun': 6, 'jul': 7,
+    'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+}
+_MONTH_NAME_RE = re.compile(
+    r'(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?\s+'
+    r'(' + '|'.join(_MONTH_NAMES) + r')\.?'
+    r'(?:\s*,?\s*(\d{4}))?',
+    re.IGNORECASE,
+)
+
+
 def extract_date_and_location(text):
     """
     Extract date(s) and location from a messy text string.
     Returns (start_date_str, end_date_str, location).
     Date strings are in YYYY-MM-DD format for HTML date inputs.
 
-    Handles formats like:
-    - "EL BEZ SETIF, 19 - 22/1/2022"
-    - "COMPLEX ORAN , 20 - 23/7/2022"
-    - "Hamilton Aquatics Short Course - 21/10/2023 to 22/10/2023"
-    - "CHAMPIONNAT ... - 25/07/2024 ¤ 27/07/2024 - RADES"
-    - "COUPE DU TRONE DE NATATION - 10/05/2026 - MARRAKECH - Petit bassin"
-    - "20/21-04-2024"
+    Priority order:
+    1. Explicit range: "DD/MM/YYYY to DD/MM/YYYY" (or ¤, –, -)
+    2. Day range: "19 - 22/1/2022"
+    3. Compact slash: "20/21-04-2024"
+    4. Month-name dates: "28-31 August 2025", "25 Mars 2024"
+    5. Individual dates: first DD/MM/YYYY found (NOT last — avoids
+       picking up record dates from subsequent lines).
     """
     if not text:
         return '', '', ''
 
     start_date = ''
     end_date = ''
-    location = ''
 
-    # Find all date-like patterns
-    dates_found = []
-    for m in DATE_PATTERN.finditer(text):
-        day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        if 1 <= month <= 12 and 1 <= day <= 31 and 1900 <= year <= 2100:
-            dates_found.append((m.start(), m.end(), f'{year:04d}-{month:02d}-{day:02d}'))
+    # --- 1. Explicit full range: "DD/MM/YYYY to DD/MM/YYYY" ---
+    rm = _FULL_RANGE_RE.search(text)
+    if rm:
+        start_date = _iso(int(rm.group(1)), int(rm.group(2)), int(rm.group(3)))
+        end_date = _iso(int(rm.group(4)), int(rm.group(5)), int(rm.group(6)))
 
-    if dates_found:
-        start_date = dates_found[0][2]
-        if len(dates_found) >= 2:
-            end_date = dates_found[-1][2]
+    # --- 2. Day range: "19 - 22/1/2022" ---
+    if not start_date:
+        rm = _DAY_RANGE_RE.search(text)
+        if rm:
+            start_day, end_day = int(rm.group(1)), int(rm.group(2))
+            month, year = int(rm.group(3)), int(rm.group(4))
+            start_date = _iso(start_day, month, year)
+            end_date = _iso(end_day, month, year)
 
-    # Also check for range like "19 - 22/1/2022" (start day before the full date)
-    range_match = re.search(
-        r'(\d{1,2})\s*[-–]\s*(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})',
-        text
-    )
-    if range_match:
-        start_day = int(range_match.group(1))
-        end_day = int(range_match.group(2))
-        month = int(range_match.group(3))
-        year = int(range_match.group(4))
-        if 1 <= month <= 12 and 1 <= start_day <= 31 and 1 <= end_day <= 31:
-            start_date = f'{year:04d}-{month:02d}-{start_day:02d}'
-            end_date = f'{year:04d}-{month:02d}-{end_day:02d}'
+    # --- 3. Compact slash: "20/21-04-2024" ---
+    if not start_date:
+        rm = _SLASH_RANGE_RE.search(text)
+        if rm:
+            d1, d2 = int(rm.group(1)), int(rm.group(2))
+            month, year = int(rm.group(3)), int(rm.group(4))
+            start_date = _iso(d1, month, year)
+            end_date = _iso(d2, month, year)
 
-    # Also handle "20/21-04-2024" format (day/day-month-year)
-    compact_range = re.search(r'(\d{1,2})/(\d{1,2})-(\d{2})-(\d{4})', text)
-    if compact_range:
-        d1 = int(compact_range.group(1))
-        d2 = int(compact_range.group(2))
-        month = int(compact_range.group(3))
-        year = int(compact_range.group(4))
-        if 1 <= month <= 12:
-            start_date = f'{year:04d}-{month:02d}-{d1:02d}'
-            end_date = f'{year:04d}-{month:02d}-{d2:02d}'
+    # --- 4. Month-name dates: "28 August 2025" or "28-31 August 2025" ---
+    if not start_date:
+        mm = _MONTH_NAME_RE.search(text)
+        if mm:
+            month = _MONTH_NAMES[mm.group(3).lower().rstrip('.')]
+            year_str = mm.group(4)
+            # If no year in the match, look for a 4-digit year nearby
+            if not year_str:
+                yr_m = re.search(r'(\d{4})', text)
+                year_str = yr_m.group(1) if yr_m else ''
+            if year_str:
+                year = int(year_str)
+                start_date = _iso(int(mm.group(1)), month, year)
+                if mm.group(2):
+                    end_date = _iso(int(mm.group(2)), month, year)
 
-    # Extract location: remove dates, known keywords, and clean up
+    # --- 5. Fallback: first individual DD/MM/YYYY date ---
+    if not start_date:
+        for m in DATE_PATTERN.finditer(text):
+            day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            iso = _iso(day, month, year)
+            if iso:
+                start_date = iso
+                break  # only the FIRST date — don't grab record dates
+
+    # --- Extract location: strip dates, keywords, and clean up ---
     loc_text = text
-    # Remove all date patterns
+    loc_text = _FULL_RANGE_RE.sub('', loc_text)
     loc_text = DATE_PATTERN.sub('', loc_text)
-    # Remove day ranges like "19 - " before dates
-    loc_text = re.sub(r'\d{1,2}\s*[-–]\s*(?=\s)', '', loc_text)
-    # Remove known keywords
+    loc_text = _MONTH_NAME_RE.sub('', loc_text)
+    loc_text = re.sub(r'(?<!\d)\d{1,2}\s*[-–]\s*(?=\s)', '', loc_text)
     for kw in STRIP_KEYWORDS:
         loc_text = re.sub(re.escape(kw), '', loc_text, flags=re.IGNORECASE)
-    # Remove "to", "¤", connectors
     loc_text = re.sub(r'\b(to|¤)\b', '', loc_text)
-    # Remove pool indicators like "25 M", "50 M" when standalone
     loc_text = re.sub(r'\b(25|50)\s*M\b', '', loc_text, flags=re.IGNORECASE)
-    # Clean up separators and whitespace
-    loc_text = re.sub(r'\s*[-–,]\s*$', '', loc_text)  # trailing
-    loc_text = re.sub(r'^\s*[-–,]\s*', '', loc_text)  # leading
-    loc_text = re.sub(r'\s*[-–]\s*[-–]\s*', ' - ', loc_text)  # double dashes
-    loc_text = re.sub(r'\s*[-–,]\s*$', '', loc_text)  # trailing again after cleanup
+    loc_text = re.sub(r'\s*[-–,]\s*$', '', loc_text)
+    loc_text = re.sub(r'^\s*[-–,]\s*', '', loc_text)
+    loc_text = re.sub(r'\s*[-–]\s*[-–]\s*', ' - ', loc_text)
+    loc_text = re.sub(r'\s*[-–,]\s*$', '', loc_text)
     loc_text = re.sub(r'^\s*[-–,]\s*', '', loc_text)
     loc_text = re.sub(r'\s+', ' ', loc_text).strip()
-    # Remove empty parentheses or dangling punctuation
     loc_text = re.sub(r'[,\s]+$', '', loc_text)
     loc_text = re.sub(r'^[,\s]+', '', loc_text)
 
-    location = loc_text
-
-    return start_date, end_date, location
+    return start_date, end_date, loc_text
 
 
 def extract_meet_info(lines, max_lines=5):

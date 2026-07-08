@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCalendarEvents, createCalendarEvent } from '../api/calendar'
-import { getChampionships } from '../api/championships'
+import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries } from '../api/core'
 import { POOL_TYPES } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
@@ -16,8 +16,12 @@ export default function CalendarPage() {
   const navigate = useNavigate()
   const [championships, setChampionships] = useState([])
   const [countries, setCountries] = useState([])
+  const [classifications, setClassifications] = useState([])
+  const [subClassifications, setSubClassifications] = useState([])
   const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()))
   const [filterCountry, setFilterCountry] = useState('')
+  const [filterClassification, setFilterClassification] = useState('')
+  const [filterSub, setFilterSub] = useState('')
   const [selectedMeet, setSelectedMeet] = useState(null)
 
   // Add event
@@ -32,16 +36,28 @@ export default function CalendarPage() {
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
+    getClassifications().then(res => setClassifications(res.data)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    setFilterSub('')
+    if (filterClassification) {
+      getSubClassifications(filterClassification).then(res => setSubClassifications(res.data)).catch(() => {})
+    } else {
+      setSubClassifications([])
+    }
+  }, [filterClassification])
 
   useEffect(() => {
     const params = { page_size: 500, ordering: 'date' }
     if (filterYear) params.year = filterYear
     if (filterCountry) params.country = filterCountry
+    if (filterClassification) params.classification = filterClassification
+    if (filterSub) params.sub_classification = filterSub
     getChampionships(params).then(res => {
       setChampionships(res.data.results || res.data)
     }).catch(() => {})
-  }, [filterYear, filterCountry])
+  }, [filterYear, filterCountry, filterClassification, filterSub])
 
   // Group championships by month
   const grouped = {}
@@ -69,6 +85,58 @@ export default function CalendarPage() {
           <p className="text-slate-300 text-lg">Dates, status, and official results &mdash; the full competition schedule in one place.</p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent rounded-b-xl" />
+      </div>
+
+      {/* Classification filters */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Browse by Classification</h2>
+          {(filterClassification || filterSub) && (
+            <button onClick={() => { setFilterClassification(''); setFilterSub('') }}
+              className="text-xs text-cyan-600 hover:text-cyan-800 font-medium">
+              Clear classification filters &times;
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Classification</label>
+            <select value={filterClassification} onChange={(e) => setFilterClassification(e.target.value)}
+              className="w-full border-2 border-cyan-500 rounded-lg px-4 py-2.5 text-sm bg-white font-medium">
+              <option value="">All Classifications</option>
+              {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Sub-classification</label>
+            <select value={filterSub} onChange={(e) => setFilterSub(e.target.value)}
+              disabled={!filterClassification}
+              className={`w-full border-2 rounded-lg px-4 py-2.5 text-sm font-medium ${
+                filterClassification ? 'border-cyan-500 bg-white' : 'border-gray-200 bg-gray-50 text-gray-400'
+              }`}>
+              <option value="">
+                {!filterClassification ? 'Pick a classification first' :
+                  subClassifications.length ? 'All Sub-classifications' : 'No sub-classifications'}
+              </option>
+              {subClassifications.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        </div>
+        {(filterClassification || filterSub) && (
+          <div className="flex items-center gap-2 mt-3 text-sm">
+            <span className="text-gray-500">Showing:</span>
+            {filterClassification && (
+              <span className="bg-cyan-100 text-cyan-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                {classifications.find(c => String(c.id) === String(filterClassification))?.name}
+              </span>
+            )}
+            {filterSub && (
+              <span className="bg-teal-100 text-teal-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                {subClassifications.find(s => String(s.id) === String(filterSub))?.name}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filters */}

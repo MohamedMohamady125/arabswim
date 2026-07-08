@@ -110,11 +110,15 @@ def _build_preview(parsed_meet):
 
             # Use club as nationality when it resolves to a country,
             # otherwise fall back to the meet's host country.
+            # When the club IS a country (national-team meet), clear it
+            # so it doesn't show redundantly alongside nationality.
             nat_code = r.nationality_code
+            club_is_country = False
             if not nat_code and r.club:
                 club_country = resolve_country(r.club)
                 if club_country:
                     nat_code = club_country.code
+                    club_is_country = True
             if not nat_code:
                 nat_code = inferred_country_code
 
@@ -146,7 +150,7 @@ def _build_preview(parsed_meet):
                 'birth_year': birth_year,
                 'age': age,
                 'nationality_code': nat_code,
-                'club': r.club,
+                'club': '' if club_is_country else r.club,
                 'fina_points': fina_points,
                 'gender': gender_for_event,
                 'is_relay': is_relay,

@@ -5,11 +5,25 @@ import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
 import AddResultsModal from '../components/championships/AddResultsModal'
 
-// Display categories oldest → youngest, matching the source PDFs
-const CATEGORY_ORDER = ['Seniors/Juniors', 'Seniors', 'Juniors', 'Cadets', 'Minimes', 'Benjamins', 'Poussins']
+// Display categories oldest → youngest (bigger age first).
+// Extracts the highest age number from the category string for sorting.
+// Named categories (Seniors, Juniors, etc.) have fixed ranks.
+const NAMED_RANKS = { 'Seniors/Juniors': 0, 'Seniors': 1, 'Juniors': 2, 'Cadets': 3, 'Minimes': 4, 'Benjamins': 5, 'Poussins': 6 }
 const catRank = (c) => {
-  const i = CATEGORY_ORDER.indexOf(c)
-  return i === -1 ? CATEGORY_ORDER.length : i
+  if (!c) return 9999
+  // Check named categories first
+  const named = NAMED_RANKS[c]
+  if (named !== undefined) return named
+  // Extract the highest age number: "18 & Over" → 18, "15-17" → 17,
+  // "Girl's 15-16" → 16, "12-14" → 14, "Open" → -1 (top)
+  if (/open/i.test(c)) return -1
+  const nums = c.match(/\d+/g)
+  if (nums) {
+    const maxAge = Math.max(...nums.map(Number))
+    // Negate so bigger age sorts first (descending)
+    return -maxAge
+  }
+  return 9998
 }
 
 // "1:02.34" | "62.34" -> centiseconds, or null when invalid

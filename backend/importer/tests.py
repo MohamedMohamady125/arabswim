@@ -304,18 +304,16 @@ class Algeria2022Tests(SanityMixin, SimpleTestCase):
     def test_counts(self):
         # This meet prints every heat swim twice: overall ("Cat. générale")
         # ranking + per-age-category ranking. drop_general_duplicate_results
-        # keeps only the age-category copy; drop_heats_if_finals_exist then
-        # removes heats for events that also have finals.
+        # keeps only the age-category copy. Heats are kept alongside finals.
         m = self.meet()
-        self.assertEqual(m.total_events, 32)
-        self.assertEqual(m.total_results, 241)
+        self.assertEqual(m.total_events, 102)
+        self.assertEqual(m.total_results, 1226)
 
     def test_rounds(self):
         rounds = collections.Counter(
             r.round_type or '(none)' for ev in self.meet().events for r in ev.results)
-        # Heats dropped when finals exist; lone heats promoted to Finals
         self.assertEqual(rounds['Finals'], 241)
-        self.assertEqual(rounds.get('Heats', 0), 0)
+        self.assertEqual(rounds['Heats'], 985)
         self.assertEqual(rounds.get('(none)', 0), 0)
 
     def test_no_general_duplicates_in_heats(self):
@@ -363,14 +361,14 @@ class Arab2022Tests(SanityMixin, SimpleTestCase):
 
     def test_counts(self):
         m = self.meet()
-        self.assertEqual(m.total_events, 40)
-        self.assertEqual(m.total_results, 245)
+        self.assertEqual(m.total_events, 51)
+        self.assertEqual(m.total_results, 365)
 
-    def test_only_finals_after_dedup(self):
-        # Heats dropped when finals exist; all results are Finals
+    def test_rounds_present(self):
+        # Both heats and finals are kept when they have different swimmers
         rounds = collections.Counter(
             r.round_type for ev in self.meet().events for r in ev.results)
-        self.assertEqual(rounds.get('Heats', 0), 0)
+        self.assertEqual(rounds['Heats'], 120)
         self.assertEqual(rounds['Finals'], 245)
 
     def test_all_relays_have_swimmers(self):
@@ -462,15 +460,15 @@ class LebanonHytekTests(SanityMixin, SimpleTestCase):
 
     def test_counts(self):
         m = self.meet()
-        self.assertEqual(m.total_events, 147)
-        self.assertEqual(m.total_results, 732)
+        self.assertEqual(m.total_events, 193)
+        self.assertEqual(m.total_results, 1265)
 
     def test_prelims_vs_finals(self):
-        # Prelims dropped when finals exist; lone prelims promoted to Finals.
+        # Both prelims and finals kept when they have different swimmers.
         rounds = collections.Counter(
             r.round_type for ev in self.meet().events for r in ev.results)
-        self.assertEqual(rounds.get('Prelims', 0), 0)
-        self.assertEqual(rounds.get('Finals', 0), 732)
+        self.assertEqual(rounds['Prelims'], 533)
+        self.assertEqual(rounds['Finals'], 732)
         self.assertEqual(rounds.get(None, 0) + rounds.get('', 0), 0,
                          'no result may be missing its round')
 

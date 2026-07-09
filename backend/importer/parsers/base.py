@@ -632,25 +632,41 @@ def promote_lone_heats_to_finals(meet):
 
 
 def drop_heats_if_finals_exist(meet):
-    """When an event has both Heats and Finals results, drop the Heats.
+    """Drop heats only when they are exact duplicates of the finals.
 
-    Finals contain the definitive rankings.  Keeping heats alongside finals
-    for the same (event, gender) creates duplicate entries that confuse the
-    display.  Events that only have heats are untouched — they were already
-    promoted to Finals by promote_lone_heats_to_finals.
+    Some PDF formats list both "Heats" and "Finals" for the same event
+    with identical swimmers and times — those heats are artifacts and
+    should be dropped.  Genuinely different rounds (different swimmers
+    or times) are kept so both rounds appear on the site.
+
+    A heats event is considered a duplicate when >=80% of its results
+    match a finals result (same swimmer name AND same time).
     """
     groups = {}
     for ev in meet.events:
         groups.setdefault((ev.event_name, ev.gender), []).append(ev)
     drop = set()
     for evs in groups.values():
-        has_finals = any(
-            ev.round_type == 'Finals' and ev.results for ev in evs
-        )
-        if not has_finals:
+        finals_evs = [ev for ev in evs if ev.round_type == 'Finals' and ev.results]
+        if not finals_evs:
             continue
+        # Collect all finals swimmer+time pairs
+        finals_keys = set()
+        for fev in finals_evs:
+            for r in fev.results:
+                finals_keys.add((r.swimmer_name, r.time_centiseconds))
         for ev in evs:
-            if ev.round_type in ('Heats', 'Prelims', 'Semis'):
+            if ev.round_type not in ('Heats', 'Prelims', 'Semis'):
+                continue
+            if not ev.results:
+                drop.add(id(ev))
+                continue
+            # Check how many heats results duplicate a finals result
+            dupes = sum(
+                1 for r in ev.results
+                if (r.swimmer_name, r.time_centiseconds) in finals_keys
+            )
+            if dupes / len(ev.results) >= 0.8:
                 drop.add(id(ev))
     meet.events = [ev for ev in meet.events if id(ev) not in drop]
     return meet

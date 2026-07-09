@@ -88,6 +88,19 @@ def _build_preview(parsed_meet):
     has_nat_count = sum(1 for r in all_results if r.nationality_code)
     is_international = has_nat_count > len(all_results) * 0.5
 
+    # Fallback: some HyTek PDFs put full country names in the Team/club
+    # column but never set nationality_code. If most clubs resolve as
+    # countries, this is an international meet. Only consider clubs longer
+    # than 3 chars to avoid IOC-code collisions with domestic club
+    # abbreviations (e.g. "COL" the club vs Colombia the country).
+    if not is_international and all_results:
+        club_resolves = sum(
+            1 for r in all_results
+            if r.club and len(r.club) > 3 and resolve_country(r.club)
+        )
+        if club_resolves > len(all_results) * 0.5:
+            is_international = True
+
     # Determine meet year for birth_year calculation from age
     meet_year = 0
     if parsed_meet.date_text:

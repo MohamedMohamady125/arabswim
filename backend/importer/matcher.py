@@ -55,6 +55,9 @@ COUNTRY_NAME_ALIASES = {
     'SYRIE': 'SYR',
     'SOUDAN': 'SUD',
     'ÉMIRATS': 'UAE', 'EMIRATS': 'UAE',
+    'UNITED ARAB EMIRATES': 'UAE', 'EAU': 'UAE', 'EMIRATES': 'UAE',
+    'U.A.E': 'UAE', 'U.A.E.': 'UAE', 'E.A.U': 'UAE', 'E.A.U.': 'UAE',
+    'ÉMIRATS ARABES UNIS': 'UAE', 'EMIRATS ARABES UNIS': 'UAE',
     'SAOUDITE': 'KSA', 'ARABIE SAOUDITE': 'KSA',
     'CHINE': 'CHN',
     'KINGDOM OF BAHRAIN': 'BHR',
@@ -101,7 +104,21 @@ def resolve_country(code):
     if not code:
         return None
     cmap = get_country_map()
-    return cmap.get(code.upper())
+    key = code.strip().upper()
+    hit = cmap.get(key)
+    if hit:
+        return hit
+    # Try stripping dots/periods: "U.A.E." -> "UAE", "E.A.U." -> "EAU"
+    stripped = re.sub(r'[.\s]+', '', key)
+    if stripped != key:
+        hit = cmap.get(stripped)
+        if hit:
+            return hit
+    # Try collapsing multiple spaces
+    collapsed = re.sub(r'\s+', ' ', key)
+    if collapsed != key:
+        return cmap.get(collapsed)
+    return None
 
 
 # Broad classifications that any swimmer can appear in — they never

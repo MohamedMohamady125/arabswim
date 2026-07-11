@@ -121,7 +121,28 @@ def resolve_country(code):
     # Try collapsing multiple spaces
     collapsed = re.sub(r'\s+', ' ', key)
     if collapsed != key:
-        return cmap.get(collapsed)
+        hit = cmap.get(collapsed)
+        if hit:
+            return hit
+    # Strip common HyTek team suffixes: "Morocco National Team" -> "Morocco",
+    # "United Arab Emirates-AD" -> "United Arab Emirates"
+    cleaned = re.sub(r'\s+National\s+Team$', '', key, flags=re.IGNORECASE)
+    cleaned = re.sub(r'-[A-Z]{1,4}$', '', cleaned)  # strip region codes like "-AD"
+    cleaned = cleaned.strip()
+    if cleaned and cleaned != key:
+        hit = cmap.get(cleaned)
+        if hit:
+            return hit
+        # Also try the adjective→country: "Tunisian" -> "Tunisia", "Syrian" -> "Syria"
+        for suffix in ('N', 'AN', 'IAN', 'ESE', 'I', 'ISH'):
+            if cleaned.endswith(suffix):
+                base = cleaned[:-len(suffix)]
+                if base:
+                    # Try common adjective endings
+                    for ending in ('', 'A', 'E', 'IA', 'Y'):
+                        hit = cmap.get(base + ending)
+                        if hit:
+                            return hit
     return None
 
 

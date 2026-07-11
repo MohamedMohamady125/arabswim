@@ -552,11 +552,11 @@ def _parse_excel(file_path, filename=''):
 
     # ---- Check for multi-meet Excel (multiple unique meet names) ----
     MEET_NAME_CANDIDATES = ['championships name', 'championship', 'meet name', 'meet', 'competition']
-    unique_meet_names = _collect_unique_meet_names(
+    unique_meet_names, name_map = _collect_unique_meet_names(
         individual_dfs + relay_dfs, MEET_NAME_CANDIDATES)
     if len(unique_meet_names) > 1:
         return _parse_excel_multi(
-            individual_dfs, relay_dfs, unique_meet_names,
+            individual_dfs, relay_dfs, unique_meet_names, name_map,
             MEET_NAME_CANDIDATES, filename)
 
     # ---- Single-meet path (original) ----
@@ -655,9 +655,15 @@ def _parse_excel(file_path, filename=''):
 
 
 def _collect_unique_meet_names(dfs, meet_name_candidates):
-    """Return ordered unique meet names across all DataFrames."""
-    seen = set()
-    ordered = []
+    """Return ordered unique meet names across all DataFrames.
+
+    Also builds a mapping from every raw name to its canonical form,
+    merging near-duplicates like 'Championships' vs 'Championship'.
+    Returns (ordered_canonical_names, raw_to_canonical_map).
+    """
+    from thefuzz import fuzz
+
+    raw_names = []
     for df in dfs:
         cols = {str(c).lower().strip(): c for c in df.columns}
         mn_col = _find_column(cols, meet_name_candidates)
@@ -665,10 +671,27 @@ def _collect_unique_meet_names(dfs, meet_name_candidates):
             continue
         for val in df[mn_col]:
             name = _safe_str(val)
-            if name and name.lower() != 'nan' and name not in seen:
-                seen.add(name)
-                ordered.append(name)
-    return ordered
+            if name and name.lower() != 'nan' and name not in raw_names:
+                raw_names.append(name)
+
+    if not raw_names:
+        return [], {}
+
+    # Group near-duplicates (ratio >= 90) under the first occurrence
+    canonical = []       # ordered list of canonical names
+    name_map = {}        # raw_name -> canonical_name
+    for name in raw_names:
+        merged = False
+        for canon in canonical:
+            if fuzz.ratio(name.lower(), canon.lower()) >= 95:
+                name_map[name] = canon
+                merged = True
+                break
+        if not merged:
+            canonical.append(name)
+            name_map[name] = name
+
+    return canonical, name_map
 
 
 def _extract_excel_meet_metadata(meet, df, filename):
@@ -725,8 +748,13 @@ def _extract_excel_meet_metadata(meet, df, filename):
         meet._excel_meet_country = _safe_str(first_row[meet_country_col])
 
 
-def _parse_excel_multi(individual_dfs, relay_dfs, meet_names, meet_name_candidates, filename):
-    """Split a multi-meet Excel into separate ParsedMeet objects, one per meet name."""
+def _parse_excel_multi(individual_dfs, relay_dfs, meet_names, name_map,
+                       meet_name_candidates, filename):
+    """Split a multi-meet Excel into separate ParsedMeet objects, one per meet name.
+
+    ``name_map`` maps every raw cell value to its canonical meet name,
+    merging near-duplicates like 'Championships' vs 'Championship'.
+    """
     from .base import ParsedMeet
 
     meets = []
@@ -741,7 +769,8 @@ def _parse_excel_multi(individual_dfs, relay_dfs, meet_names, meet_name_candidat
             mn_col = _find_column(cols, meet_name_candidates)
             if not mn_col:
                 continue
-            mask = ind_df[mn_col].apply(lambda x, mn=meet_name: _safe_str(x) == mn)
+            mask = ind_df[mn_col].apply(
+                lambda x, mn=meet_name: name_map.get(_safe_str(x), _safe_str(x)) == mn)
             filtered = ind_df[mask].reset_index(drop=True)
             if filtered.empty:
                 continue
@@ -756,7 +785,8 @@ def _parse_excel_multi(individual_dfs, relay_dfs, meet_names, meet_name_candidat
             rcols = {str(c).lower().strip(): c for c in relay_df.columns}
             mn_col = _find_column(rcols, meet_name_candidates)
             if mn_col:
-                mask = relay_df[mn_col].apply(lambda x, mn=meet_name: _safe_str(x) == mn)
+                mask = relay_df[mn_col].apply(
+                    lambda x, mn=meet_name: name_map.get(_safe_str(x), _safe_str(x)) == mn)
                 filtered = relay_df[mask].reset_index(drop=True)
                 if not filtered.empty:
                     _parse_relay_sheet(filtered, meet, cols_finder=_find_column)

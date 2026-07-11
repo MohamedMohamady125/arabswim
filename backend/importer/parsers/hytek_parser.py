@@ -63,7 +63,7 @@ SKIP_PATTERNS = [
     re.compile(r'^\s*Record:', re.IGNORECASE),
     re.compile(r'Age\s*G\s*Record', re.IGNORECASE),
     re.compile(r'Jor\s*Record', re.IGNORECASE),
-    re.compile(r'National\s+Team', re.IGNORECASE),
+    re.compile(r'^\s*National\s+Team\s*$', re.IGNORECASE),
     re.compile(r'High\s+Performance', re.IGNORECASE),
     re.compile(r'Meet Qualifying', re.IGNORECASE),
     re.compile(r'^\s*[-=]+\s*$'),

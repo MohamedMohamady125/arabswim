@@ -151,7 +151,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             if event_id:
                 results = results.filter(event_id=event_id)
             if gender:
-                results = results.filter(swimmer__sex=gender)
+                # Mixed relays have both M and F placeholder swimmers;
+                # don't filter by sex when the caller requests 'X' (Mixed).
+                if gender != 'X':
+                    results = results.filter(swimmer__sex=gender)
             # By default, show only the best round per swimmer per event
             # If Finals exist for this event, show only Finals
             # Otherwise show all (timed finals / single round)
@@ -350,14 +353,23 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         male_count = athletes.filter(swimmer__sex='M').values('swimmer').distinct().count()
         female_count = athletes.filter(swimmer__sex='F').values('swimmer').distinct().count()
 
-        # Events split by gender
-        events = results.values(
+        # Events split by gender.
+        # Mixed relays contain both male and female placeholder swimmers;
+        # group them under gender 'X' so they appear once, not twice.
+        from django.db.models import Case, When, Value, CharField
+        events = results.annotate(
+            effective_gender=Case(
+                When(event__name__icontains='mixed', then=Value('X')),
+                default='swimmer__sex',
+                output_field=CharField(),
+            ),
+        ).values(
             'event__id', 'event__name', 'event__distance', 'event__stroke',
-            'event__sort_order', 'swimmer__sex'
+            'event__sort_order', 'effective_gender'
         ).annotate(
             results_count=Count('id'),
             best_time=Min('time_centiseconds'),
-        ).order_by('swimmer__sex', 'event__sort_order', 'event__distance')
+        ).order_by('effective_gender', 'event__sort_order', 'event__distance')
 
         events_list = []
         for e in events:
@@ -366,7 +378,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             secs = (cs % 6000) // 100
             cent = cs % 100
             best = f'{mins}:{secs:02d}.{cent:02d}' if mins else f'{secs}.{cent:02d}'
-            gender = e['swimmer__sex']
+            gender = e['effective_gender']
             gender_label = {'M': 'Men', 'F': 'Women', 'X': 'Mixed'}.get(gender, 'Men')
             events_list.append({
                 'event_id': e['event__id'],

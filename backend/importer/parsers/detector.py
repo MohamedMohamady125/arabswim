@@ -848,10 +848,17 @@ def _parse_individual_sheet(df, meet, events_dict):
         if category.lower() == 'nan':
             category = ''
 
-        # Gender: explicit column first, then category text
-        gender = _cell_gender(row[gender_col]) if gender_col else ''
-        if not gender and category:
-            gender = detect_gender(category)
+        # Gender: explicit column first, then category text.
+        # For mixed events (category or event name says "mixed"), force 'X'
+        # — the gender column holds the individual swimmer's sex, not the
+        # event's gender.
+        is_mixed = 'mixed' in category.lower() or 'mixte' in category.lower() or 'mixed' in event_name.lower()
+        if is_mixed:
+            gender = 'X'
+        else:
+            gender = _cell_gender(row[gender_col]) if gender_col else ''
+            if not gender and category:
+                gender = detect_gender(category)
 
         # Event grouping key: event + gender + round + category
         event_key = f'{event_name}|{gender}|{round_type}|{category}'
@@ -979,15 +986,23 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
         if category.lower() == 'nan':
             category = ''
 
-        # Gender: gender column, then the "Relay" column ("Men's"/"Women's"/
-        # "Mixed"), then the category text
-        gender = _cell_gender(row[gender_col]) if gender_col else ''
-        if not gender and relay_kind_col:
-            gender = _cell_gender(row[relay_kind_col])
-        if not gender and category:
-            gender = detect_gender(category)
-        if not gender and relay_kind_col:
-            gender = detect_gender(_safe_str(row[relay_kind_col]))
+        # Gender: check for mixed first (relay column, category, or event name).
+        # The gender column holds the individual swimmer's sex, which must
+        # NOT override 'X' for mixed relay events.
+        relay_kind = _safe_str(row[relay_kind_col]) if relay_kind_col else ''
+        is_mixed = ('mixed' in category.lower() or 'mixte' in category.lower()
+                    or 'mixed' in relay_kind.lower() or 'mixte' in relay_kind.lower()
+                    or 'mixed' in event_name.lower())
+        if is_mixed:
+            gender = 'X'
+        else:
+            gender = _cell_gender(row[gender_col]) if gender_col else ''
+            if not gender and relay_kind_col:
+                gender = _cell_gender(row[relay_kind_col])
+            if not gender and category:
+                gender = detect_gender(category)
+            if not gender and relay_kind_col:
+                gender = detect_gender(relay_kind)
 
         # Event key for relay: event + gender + round + CATEGORY so each
         # age category keeps its own relay classement

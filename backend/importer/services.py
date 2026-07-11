@@ -169,8 +169,13 @@ def _build_preview(parsed_meet):
                     parsed_meet.pool,
                 )
 
+            display_name = r.swimmer_name
+            if is_relay:
+                from teams.utils import clean_relay_team_name
+                display_name = clean_relay_team_name(r.swimmer_name)
+
             result_data = {
-                'swimmer_name': r.swimmer_name,
+                'swimmer_name': display_name,
                 'time_text': r.time_text,
                 'time_centiseconds': r.time_centiseconds,
                 'rank': r.rank,
@@ -445,14 +450,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
 
         for result_data in event_data['results']:
             parsed_name = result_data['swimmer_name']
-            squad_name = parsed_name.strip()  # keeps squad number, e.g. "MC ALGER 2"
             if is_relay or result_data.get('is_relay', False):
-                # Drop trailing squad numbers ("MC ALGER 2" -> "MC ALGER")
-                # for the placeholder swimmer identity — but the squad
-                # number is preserved in Result.team so each squad keeps
-                # its own result row.
-                from teams.utils import strip_squad_number
-                parsed_name = strip_squad_number(parsed_name)
+                # Clean relay team names: strip squad numbers/letters,
+                # "National Team" suffix, and region codes like "-AD"
+                # so placeholder swimmers match existing teams consistently.
+                from teams.utils import clean_relay_team_name
+                parsed_name = clean_relay_team_name(parsed_name)
+            squad_name = parsed_name.strip()
             name_upper = parsed_name.upper()
 
             relay_gender = result_data.get('gender', '') or event_data.get('gender', 'M') or 'M'

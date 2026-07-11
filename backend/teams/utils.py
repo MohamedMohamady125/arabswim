@@ -11,11 +11,34 @@ from core.models import Country
 # Trailing squad number on club names ("BAHIA NAUTIQUE 2") — Algerian
 # meets number each club's relay squads; we store only the club name.
 _SQUAD_NUMBER_RE = re.compile(r'\s+\d{1,2}$')
+# Trailing single squad letter: " A", " B", " C" etc.
+_SQUAD_LETTER_RE = re.compile(r'\s+[A-Z]$')
+# HyTek region suffix: "-AD", "-DU", etc.
+_REGION_SUFFIX_RE = re.compile(r'-[A-Z]{1,4}$')
 
 
 def strip_squad_number(name):
     """Remove a trailing standalone squad number from a team/club name."""
     return _SQUAD_NUMBER_RE.sub('', (name or '').strip())
+
+
+def clean_relay_team_name(name):
+    """Clean relay team placeholder name for consistent matching.
+
+    Strips trailing squad letters (A/B), 'National Team', region codes (-AD).
+    """
+    if not name:
+        return name
+    cleaned = name.strip()
+    # Strip trailing squad letter first (before other cleaning)
+    cleaned = _SQUAD_LETTER_RE.sub('', cleaned).strip()
+    # Strip trailing squad number
+    cleaned = _SQUAD_NUMBER_RE.sub('', cleaned).strip()
+    # Strip "National Team" suffix
+    cleaned = re.sub(r'\s+National\s+Team$', '', cleaned, flags=re.IGNORECASE).strip()
+    # Strip region suffix like "-AD", "-DU"
+    cleaned = _REGION_SUFFIX_RE.sub('', cleaned).strip()
+    return cleaned or name.strip()
 
 
 # A whole name that is just a swim time, e.g. "3:37.01", "07:58.87", "58.31"

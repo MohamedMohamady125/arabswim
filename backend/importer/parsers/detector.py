@@ -10,28 +10,34 @@ from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_pars
 from .base import ParsedMeet, detect_pool
 
 
+def _post_process_meet(meet):
+    """Apply standard post-processing to a parsed meet."""
+    from .base import drop_general_duplicate_results, promote_lone_heats_to_finals, drop_heats_if_finals_exist
+    meet = drop_general_duplicate_results(meet)
+    meet = promote_lone_heats_to_finals(meet)
+    return drop_heats_if_finals_exist(meet)
+
+
 def detect_and_parse(file_path):
     """
     Auto-detect the format of a swimming results file and parse it.
-    Returns a ParsedMeet object.
+    Returns a ParsedMeet object, or a list of ParsedMeet for multi-meet Excel files.
     """
     ext = os.path.splitext(file_path)[1].lower()
     filename = os.path.basename(file_path)
 
     if ext in ('.html', '.htm'):
-        meet = _parse_html(file_path, filename)
+        result = _parse_html(file_path, filename)
     elif ext in ('.pdf',):
-        meet = _parse_pdf(file_path, filename)
+        result = _parse_pdf(file_path, filename)
     elif ext in ('.xlsx', '.xls', '.csv'):
-        meet = _parse_excel(file_path, filename)
+        result = _parse_excel(file_path, filename)
     else:
         raise ValueError(f'Unsupported file type: {ext}')
-    # Drop overall-classification rows duplicated in age categories, then:
-    # an event with no Finals round only swam once — that round IS the finals
-    from .base import drop_general_duplicate_results, promote_lone_heats_to_finals, drop_heats_if_finals_exist
-    meet = drop_general_duplicate_results(meet)
-    meet = promote_lone_heats_to_finals(meet)
-    return drop_heats_if_finals_exist(meet)
+
+    if isinstance(result, list):
+        return [_post_process_meet(m) for m in result]
+    return _post_process_meet(result)
 
 
 def detect_and_parse_upload(uploaded_file):
@@ -52,17 +58,17 @@ def detect_and_parse_upload(uploaded_file):
         # Parse with temp path but pass original filename
         ext_lower = ext
         if ext_lower in ('.html', '.htm'):
-            meet = _parse_html(tmp_path, original_name)
+            result = _parse_html(tmp_path, original_name)
         elif ext_lower in ('.pdf',):
-            meet = _parse_pdf(tmp_path, original_name)
+            result = _parse_pdf(tmp_path, original_name)
         elif ext_lower in ('.xlsx', '.xls', '.csv'):
-            meet = _parse_excel(tmp_path, original_name)
+            result = _parse_excel(tmp_path, original_name)
         else:
             raise ValueError(f'Unsupported file type: {ext}')
-        # Drop overall-classification rows duplicated in age categories, then:
-        # an event with no Finals round only swam once — that round IS the finals
-        from .base import drop_general_duplicate_results, promote_lone_heats_to_finals
-        return promote_lone_heats_to_finals(drop_general_duplicate_results(meet))
+
+        if isinstance(result, list):
+            return [_post_process_meet(m) for m in result]
+        return _post_process_meet(result)
     finally:
         os.unlink(tmp_path)
 
@@ -544,6 +550,16 @@ def _parse_excel(file_path, filename=''):
             f'Found columns: {list(first_df.columns)}'
         )
 
+    # ---- Check for multi-meet Excel (multiple unique meet names) ----
+    MEET_NAME_CANDIDATES = ['championships name', 'championship', 'meet name', 'meet', 'competition']
+    unique_meet_names = _collect_unique_meet_names(
+        individual_dfs + relay_dfs, MEET_NAME_CANDIDATES)
+    if len(unique_meet_names) > 1:
+        return _parse_excel_multi(
+            individual_dfs, relay_dfs, unique_meet_names,
+            MEET_NAME_CANDIDATES, filename)
+
+    # ---- Single-meet path (original) ----
     meet = ParsedMeet(source_format='excel')
 
     # Meta (meet name, city, dates...) comes from the first data sheet
@@ -565,7 +581,7 @@ def _parse_excel(file_path, filename=''):
     category_col = _find_column(cols, ['category', 'catégorie', 'cat', 'age group'])
     medal_col = _find_column(cols, ['medal', 'médaille'])
     pool_col = _find_column(cols, ['pool', 'bassin', 'course'])
-    meet_name_col = _find_column(cols, ['championships name', 'championship', 'meet name', 'meet', 'competition'])
+    meet_name_col = _find_column(cols, MEET_NAME_CANDIDATES)
     meet_city_col = _find_column(cols, ['meet city', 'city', 'ville', 'location', 'lieu'])
     meet_country_col = _find_column(cols, ['meet country'])
     date_col = _find_column(cols, ['date'])
@@ -636,6 +652,119 @@ def _parse_excel(file_path, filename=''):
         _parse_relay_sheet(relay_df, meet, cols_finder=_find_column)
 
     return meet
+
+
+def _collect_unique_meet_names(dfs, meet_name_candidates):
+    """Return ordered unique meet names across all DataFrames."""
+    seen = set()
+    ordered = []
+    for df in dfs:
+        cols = {str(c).lower().strip(): c for c in df.columns}
+        mn_col = _find_column(cols, meet_name_candidates)
+        if not mn_col:
+            continue
+        for val in df[mn_col]:
+            name = _safe_str(val)
+            if name and name.lower() != 'nan' and name not in seen:
+                seen.add(name)
+                ordered.append(name)
+    return ordered
+
+
+def _extract_excel_meet_metadata(meet, df, filename):
+    """Set meet-level metadata (date, pool, city, classification) from a DataFrame."""
+    from .base import extract_date_and_location
+
+    cols = {str(c).lower().strip(): c for c in df.columns}
+    meet_city_col = _find_column(cols, ['meet city', 'city', 'ville', 'location', 'lieu'])
+    pool_col = _find_column(cols, ['pool', 'bassin', 'course'])
+    date_col = _find_column(cols, ['date'])
+    classification_col = _find_column(cols, ['classification'])
+    sub_classification_col = _find_column(cols, ['sub-classification', 'sub classification', 'subclassification'])
+    meet_country_col = _find_column(cols, ['meet country'])
+
+    first_row = df.iloc[0] if len(df) > 0 else None
+    if first_row is None:
+        return
+
+    if meet_city_col:
+        meet.location = _safe_str(first_row[meet_city_col])
+    if pool_col:
+        pool_val = _safe_str(first_row[pool_col]).upper()
+        if pool_val in ('LCM', 'SCM'):
+            meet.pool = pool_val
+        elif 'SHORT' in pool_val or '25' in pool_val:
+            meet.pool = 'SCM'
+        else:
+            meet.pool = 'LCM'
+    else:
+        meet.pool = detect_pool(str(df.head(20).to_string()), filename)
+    if date_col:
+        date_str = _safe_str(first_row[date_col])
+        start_date, end_date, _ = extract_date_and_location(date_str)
+        meet.date_text = start_date
+        if end_date:
+            meet.date_end = end_date
+        if not end_date:
+            all_dates = set()
+            for _, r in df.iterrows():
+                d = _safe_str(r[date_col])
+                sd, _, _ = extract_date_and_location(d)
+                if sd:
+                    all_dates.add(sd)
+            if all_dates:
+                sorted_dates = sorted(all_dates)
+                meet.date_text = sorted_dates[0]
+                if len(sorted_dates) > 1:
+                    meet.date_end = sorted_dates[-1]
+    if classification_col:
+        meet._excel_classification = _safe_str(first_row[classification_col])
+    if sub_classification_col:
+        meet._excel_sub_classification = _safe_str(first_row[sub_classification_col])
+    if meet_country_col:
+        meet._excel_meet_country = _safe_str(first_row[meet_country_col])
+
+
+def _parse_excel_multi(individual_dfs, relay_dfs, meet_names, meet_name_candidates, filename):
+    """Split a multi-meet Excel into separate ParsedMeet objects, one per meet name."""
+    from .base import ParsedMeet
+
+    meets = []
+    for meet_name in meet_names:
+        meet = ParsedMeet(source_format='excel')
+        meet.meet_name = meet_name
+        events_dict = {}
+        metadata_set = False
+
+        for ind_df in individual_dfs:
+            cols = {str(c).lower().strip(): c for c in ind_df.columns}
+            mn_col = _find_column(cols, meet_name_candidates)
+            if not mn_col:
+                continue
+            mask = ind_df[mn_col].apply(lambda x, mn=meet_name: _safe_str(x) == mn)
+            filtered = ind_df[mask].reset_index(drop=True)
+            if filtered.empty:
+                continue
+
+            if not metadata_set:
+                _extract_excel_meet_metadata(meet, filtered, filename)
+                metadata_set = True
+
+            _parse_individual_sheet(filtered, meet, events_dict)
+
+        for relay_df in relay_dfs:
+            rcols = {str(c).lower().strip(): c for c in relay_df.columns}
+            mn_col = _find_column(rcols, meet_name_candidates)
+            if mn_col:
+                mask = relay_df[mn_col].apply(lambda x, mn=meet_name: _safe_str(x) == mn)
+                filtered = relay_df[mask].reset_index(drop=True)
+                if not filtered.empty:
+                    _parse_relay_sheet(filtered, meet, cols_finder=_find_column)
+
+        if meet.events:
+            meets.append(meet)
+
+    return meets
 
 
 def _parse_individual_sheet(df, meet, events_dict):

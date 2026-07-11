@@ -58,7 +58,8 @@ def _detect_country_from_meet(meet_name, location=''):
 def parse_file(file_path=None, uploaded_file=None):
     """
     Step 1: Parse a file and return structured preview data.
-    Returns dict with meet info, events, and results for review.
+    Returns a single preview dict, or a list of preview dicts for
+    multi-meet Excel files.
     """
     if uploaded_file:
         parsed = detect_and_parse_upload(uploaded_file)
@@ -67,6 +68,8 @@ def parse_file(file_path=None, uploaded_file=None):
     else:
         raise ValueError('Must provide file_path or uploaded_file')
 
+    if isinstance(parsed, list):
+        return [_build_preview(m) for m in parsed]
     return _build_preview(parsed)
 
 

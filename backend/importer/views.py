@@ -28,10 +28,33 @@ class FileUploadView(APIView):
             return Response({'error': err}, status=400)
 
         try:
-            preview = parse_file(uploaded_file=file)
-
-            # Store preview in cache for subsequent steps
             import uuid
+            result = parse_file(uploaded_file=file)
+
+            # Multi-meet Excel: return a list of previews
+            if isinstance(result, list):
+                meets_data = []
+                for preview in result:
+                    import_id = str(uuid.uuid4())
+                    cache.set(f'import_{import_id}', json.dumps(preview, default=str), timeout=21600)
+                    ImportLog.objects.create(
+                        file_name=file.name,
+                        file_type=os.path.splitext(file.name)[1].lower().strip('.'),
+                        source_format=preview['meet'].get('format', 'unknown'),
+                        meet_name=preview['meet'].get('name', ''),
+                        total_results=preview['stats']['total_results'],
+                        status='pending',
+                    )
+                    meet_warnings = _check_meet_duplicates(preview)
+                    meets_data.append({
+                        'import_id': import_id,
+                        'meet_warnings': meet_warnings,
+                        **preview,
+                    })
+                return Response({'meets': meets_data})
+
+            # Single meet (original behavior)
+            preview = result
             import_id = str(uuid.uuid4())
             cache.set(f'import_{import_id}', json.dumps(preview, default=str), timeout=21600)
 

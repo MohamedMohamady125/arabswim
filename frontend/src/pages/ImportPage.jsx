@@ -71,6 +71,29 @@ export default function ImportPage() {
     setLoading(true)
     const parsed = []
     const failures = []
+
+    const buildMeetEntry = (fileName, meetData) => {
+      const m = meetData.meet
+      const inferredCountry = countries.find(c => c.code === m.inferred_country)
+      return {
+        fileName,
+        importId: meetData.import_id,
+        preview: meetData,
+        editedPreview: meetData,
+        meetWarnings: meetData.meet_warnings || [],
+        champForm: {
+          ...emptyForm,
+          name: m.name || '',
+          date: m.date || _formatDateForInput(m.date) || '',
+          end_date: m.date_end || '',
+          pool: m.pool || 'LCM',
+          country: inferredCountry?.id?.toString() || '',
+          location: m.location || '',
+        },
+        matches: [], matchStats: {}, decisions: {}, result: null, confirmError: '',
+      }
+    }
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       setLoadingMsg(files.length > 1 ? `Parsing ${i + 1} / ${files.length}: ${file.name}` : 'Parsing...')
@@ -78,25 +101,19 @@ export default function ImportPage() {
         const formData = new FormData()
         formData.append('file', file)
         const res = await uploadFile(formData)
-        const m = res.data.meet
-        const inferredCountry = countries.find(c => c.code === m.inferred_country)
-        parsed.push({
-          fileName: file.name,
-          importId: res.data.import_id,
-          preview: res.data,
-          editedPreview: res.data,
-          meetWarnings: res.data.meet_warnings || [],
-          champForm: {
-            ...emptyForm,
-            name: m.name || '',
-            date: m.date || _formatDateForInput(m.date) || '',
-            end_date: m.date_end || '',
-            pool: m.pool || 'LCM',
-            country: inferredCountry?.id?.toString() || '',
-            location: m.location || '',
-          },
-          matches: [], matchStats: {}, decisions: {}, result: null, confirmError: '',
-        })
+
+        if (res.data.meets) {
+          // Multi-meet Excel: one file produced multiple meets
+          for (const meetData of res.data.meets) {
+            const label = res.data.meets.length > 1
+              ? `${file.name} — ${meetData.meet.name}`
+              : file.name
+            parsed.push(buildMeetEntry(label, meetData))
+          }
+        } else {
+          // Single meet
+          parsed.push(buildMeetEntry(file.name, res.data))
+        }
       } catch (err) {
         failures.push(`${file.name}: ${err.response?.data?.error || 'failed to parse'}`)
       }

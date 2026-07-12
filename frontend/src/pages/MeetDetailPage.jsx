@@ -158,10 +158,7 @@ export default function MeetDetailPage() {
             <h1 className="text-2xl font-bold mb-2">{meet.name}</h1>
             <div className="flex flex-wrap items-center gap-4 text-sky-100 text-sm">
               {meet.country_detail && (
-                <span className="flex items-center gap-1.5">
-                  <img src={`https://flagcdn.com/w40/${meet.country_detail.flag_url || meet.country_detail.code?.toLowerCase().slice(0,2)}.png`} alt="" className="w-5 h-3.5 rounded-sm" />
-                  {meet.country_detail.name}
-                </span>
+                <CountryFlag code={meet.country_detail.code} flagUrl={meet.country_detail.flag_url} name={meet.country_detail.name} className="text-sky-100" />
               )}
               {meet.location && <span>{meet.location}</span>}
               <span>{meet.date}{meet.end_date ? ` to ${meet.end_date}` : ''}</span>

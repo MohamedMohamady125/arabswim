@@ -82,7 +82,7 @@ export default function RecordsPage() {
                 <td className="px-4 py-3 text-sm font-mono font-medium">{r.time}</td>
                 <td className="px-4 py-3 text-sm">{r.fina_points || '-'}</td>
                 <td className="px-4 py-3 text-sm">{r.championship_name}</td>
-                <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} name={r.championship_country} /></td>
+                <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} flagUrl={r.championship_country_flag} name={r.championship_country} /></td>
                 <td className="px-4 py-3 text-sm">{r.date}</td>
               </tr>
             ))}

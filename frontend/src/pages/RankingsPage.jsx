@@ -134,10 +134,10 @@ export default function RankingsPage() {
                 <td className="px-4 py-3 text-sm">{isTied ? '--' : r.rank}</td>
                 <td className="px-4 py-3 text-sm font-medium">{r.swimmer_name}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
-                <td className="px-4 py-3 text-sm"><CountryFlag code={r.nationality_code} name={r.nationality} /></td>
+                <td className="px-4 py-3 text-sm"><CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} name={r.nationality} /></td>
                 <td className="px-4 py-3 text-sm font-mono">{r.time}</td>
                 <td className="px-4 py-3 text-sm">{r.championship_name}</td>
-                <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} name={r.championship_country} /></td>
+                <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} flagUrl={r.championship_country_flag} name={r.championship_country} /></td>
                 <td className="px-4 py-3 text-sm">{r.fina_points || '-'}</td>
                 <td className="px-4 py-3 text-sm">{r.date}</td>
               </tr>

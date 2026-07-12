@@ -51,7 +51,7 @@ export default function MedalsPage() {
   }, [selectedChampionship, filterClassification, filterSub])
 
   const summaryColumns = [
-    { key: 'country', label: 'Country', render: (row) => <CountryFlag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} /> },
+    { key: 'country', label: 'Country', render: (row) => <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} /> },
     { key: 'gold', label: <span className="flex items-center gap-1"><MedalIcon type="gold" size={18} /> Gold</span> },
     { key: 'silver', label: <span className="flex items-center gap-1"><MedalIcon type="silver" size={18} /> Silver</span> },
     { key: 'bronze', label: <span className="flex items-center gap-1"><MedalIcon type="bronze" size={18} /> Bronze</span> },

@@ -43,7 +43,8 @@ class MedalViewSet(viewsets.ModelViewSet):
     def summary(self, request):
         qs = self._apply_filters(Medal.objects.all())
         summary = qs.values(
-            'swimmer__nationality__name', 'swimmer__nationality__code'
+            'swimmer__nationality__name', 'swimmer__nationality__code',
+            'swimmer__nationality__flag_url'
         ).annotate(
             gold=Count('id', filter=Q(medal_type='GOLD')),
             silver=Count('id', filter=Q(medal_type='SILVER')),

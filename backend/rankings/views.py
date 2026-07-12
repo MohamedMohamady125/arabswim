@@ -94,6 +94,7 @@ class RankingView(APIView):
                 'swimmer_name': result.swimmer.name,
                 'nationality': result.swimmer.nationality.name,
                 'nationality_code': result.swimmer.nationality.code,
+                'nationality_flag': result.swimmer.nationality.flag_url if result.swimmer.nationality else '',
                 'age_at_competition': result.age_at_competition,
                 'time': result.formatted_time,
                 'time_centiseconds': result.time_centiseconds,

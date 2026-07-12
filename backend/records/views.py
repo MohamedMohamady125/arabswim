@@ -123,6 +123,7 @@ class RecordViewSet(viewsets.ModelViewSet):
                     'championship_name': result.championship.name,
                     'championship_country': result.championship.country.name if result.championship.country else '',
                     'championship_country_code': result.championship.country.code if result.championship.country else '',
+                    'championship_country_flag': result.championship.country.flag_url if result.championship.country else '',
                     'date': result.championship.date.isoformat(),
                 })
 

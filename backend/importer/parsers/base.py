@@ -350,7 +350,15 @@ def is_relay_event(text):
 
 
 def extract_distance(text):
-    """Extract distance in meters from event text."""
+    """Extract distance in meters from event text.
+
+    For relay events like '4x200m Freestyle', returns the total distance
+    (legs × leg_distance, e.g. 800), not just the leg distance.
+    """
+    # Check for relay pattern first: "4x200", "4×100", "4 x 50"
+    relay_m = re.search(r'(\d)\s*[x×X]\s*(\d+)', text)
+    if relay_m:
+        return int(relay_m.group(1)) * int(relay_m.group(2))
     m = re.search(r'(\d+)\s*m(?:eter|etre|ètre)?s?\b', text, re.IGNORECASE)
     if m:
         return int(m.group(1))

@@ -172,13 +172,20 @@ class CountryViewSet(viewsets.ModelViewSet):
                 total=Count('id'),
             )
             c_results_count = results_qs.filter(championship=c).count()
-            c_swimmers_count = (results_qs.filter(championship=c)
-                                .values('swimmer_id').distinct().count())
+            c_swimmer_ids = (results_qs.filter(championship=c, swimmer__is_relay_team=False)
+                             .values_list('swimmer_id', flat=True).distinct())
+            from swimmers.models import Swimmer as Sw
+            c_swimmers = list(
+                Sw.objects.filter(id__in=c_swimmer_ids)
+                .values('id', 'name', 'sex')
+                .order_by('name')
+            )
             championships_participated.append({
                 'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,
                 'location': c.location,
                 'results_count': c_results_count,
-                'swimmers_count': c_swimmers_count,
+                'swimmers_count': len(c_swimmers),
+                'swimmers': c_swimmers,
                 'medals': c_medal_counts,
             })
 

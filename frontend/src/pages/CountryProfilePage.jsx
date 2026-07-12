@@ -54,6 +54,7 @@ export default function CountryProfilePage() {
 
   const { country, stats, medals, top_swimmers, top_medalists, best_times, records, championships_hosted, championships_participated, teams } = data
   const [openChamp, setOpenChamp] = useState(null)
+  const [showSwimmers, setShowSwimmers] = useState(null)
   const alpha2 = country.flag_url || CODE_TO_ALPHA2[country.code?.toUpperCase()] || (country.code || '').toLowerCase().slice(0, 2)
   const filteredBest = best_times.filter((b) =>
     (!btSex || b.sex === btSex) && (!btPool || b.pool === btPool))
@@ -284,7 +285,11 @@ export default function CountryProfilePage() {
                       <div className="text-gray-400 text-xs mt-0.5">{c.date} · {c.pool} {c.location ? `· ${c.location}` : ''}</div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500">{c.swimmers_count} swimmers · {c.results_count} results</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowSwimmers(showSwimmers === c.id ? null : c.id) }}
+                        className="text-xs text-blue-600 hover:underline font-medium"
+                      >{c.swimmers_count} swimmers</button>
+                      <span className="text-xs text-gray-500">· {c.results_count} results</span>
                       {c.medals.total > 0 && (
                         <span className="flex items-center gap-1.5">
                           {c.medals.gold > 0 && <span className="flex items-center gap-0.5"><MedalIcon type="gold" size={16} /><span className="text-xs font-semibold">{c.medals.gold}</span></span>}
@@ -305,6 +310,19 @@ export default function CountryProfilePage() {
                       <Link to={`/meets/${c.id}`} className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline">
                         View full meet details →
                       </Link>
+                    </div>
+                  )}
+                  {showSwimmers === c.id && c.swimmers && (
+                    <div className="px-4 pb-3 pt-2 bg-blue-50 border-t border-blue-100">
+                      <div className="text-xs font-semibold text-gray-600 mb-2">Athletes ({c.swimmers.length})</div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
+                        {c.swimmers.map(s => (
+                          <Link key={s.id} to={`/swimmers/${s.id}`}
+                            className="text-sm text-blue-600 hover:underline px-2 py-1 rounded hover:bg-blue-100">
+                            {s.name} <span className="text-gray-400 text-xs">{s.sex}</span>
+                          </Link>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

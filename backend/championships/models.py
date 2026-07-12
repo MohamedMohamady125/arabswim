@@ -41,6 +41,8 @@ class Championship(models.Model):
     classification = models.ForeignKey(Classification, on_delete=models.SET_NULL, blank=True, null=True)
     sub_classification = models.ForeignKey(SubClassification, on_delete=models.SET_NULL, blank=True, null=True)
     pdf_file = models.FileField(upload_to='championships/pdfs/', blank=True, null=True)
+    website = models.URLField(max_length=500, blank=True, default='')
+    policy_pdf = models.FileField(upload_to='championships/policies/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { getCalendarEvents, createCalendarEvent } from '../api/calendar'
 import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries } from '../api/core'
@@ -13,7 +12,6 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
 export default function CalendarPage() {
-  const navigate = useNavigate()
   const [championships, setChampionships] = useState([])
   const [countries, setCountries] = useState([])
   const [classifications, setClassifications] = useState([])
@@ -262,16 +260,18 @@ export default function CalendarPage() {
                         </div>
                       </div>
                       <div className="flex gap-3">
-                        {c.results_count > 0 && (
-                          <button onClick={() => navigate(`/meets/${c.id}`)}
-                            className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700">
-                            View Results
-                          </button>
+                        {c.website && (
+                          <a href={c.website} target="_blank" rel="noopener noreferrer"
+                            className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700 inline-flex items-center gap-1.5">
+                            <span>&#x1F310;</span> Website
+                          </a>
                         )}
-                        <button onClick={() => navigate(`/championships/${c.id}/edit`)}
-                          className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100">
-                          Edit Meet
-                        </button>
+                        {c.policy_pdf && (
+                          <a href={c.policy_pdf} target="_blank" rel="noopener noreferrer"
+                            className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100 inline-flex items-center gap-1.5">
+                            <span>&#x1F4C4;</span> Nashra (Policy)
+                          </a>
+                        )}
                       </div>
                     </div>
                   )}

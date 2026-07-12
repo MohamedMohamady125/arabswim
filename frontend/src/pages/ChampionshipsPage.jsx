@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getChampionships, deleteChampionship, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries } from '../api/core'
-import { getOrCreateAlbumForChampionship } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 import { POOL_TYPES } from '../utils/constants'
 import dayjs from 'dayjs'
@@ -287,16 +286,6 @@ export default function ChampionshipsPage() {
                             View Results
                           </button>
                         )}
-                        <button onClick={async (e) => {
-                            e.stopPropagation()
-                            try {
-                              const res = await getOrCreateAlbumForChampionship(c.id)
-                              navigate(`/media/albums/${res.data.id}`)
-                            } catch { /* ignore */ }
-                          }}
-                          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 inline-flex items-center gap-1.5">
-                          &#x1F4F7; Gallery
-                        </button>
                         <button onClick={(e) => { e.stopPropagation(); navigate(`/championships/${c.id}/edit`) }}
                           className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100">
                           Edit

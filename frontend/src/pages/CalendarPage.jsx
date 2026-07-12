@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getCalendarEvents, createCalendarEvent } from '../api/calendar'
 import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
+import { getOrCreateAlbumForChampionship } from '../api/media'
 import { getCountries } from '../api/core'
 import { POOL_TYPES } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
@@ -12,6 +14,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
 export default function CalendarPage() {
+  const navigate = useNavigate()
   const [championships, setChampionships] = useState([])
   const [countries, setCountries] = useState([])
   const [classifications, setClassifications] = useState([])
@@ -272,6 +275,16 @@ export default function CalendarPage() {
                             <span>&#x1F4C4;</span> Nashra (Policy)
                           </a>
                         )}
+                        <button onClick={async (e) => {
+                            e.stopPropagation()
+                            try {
+                              const res = await getOrCreateAlbumForChampionship(c.id)
+                              navigate(`/media/albums/${res.data.id}`)
+                            } catch { /* ignore */ }
+                          }}
+                          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 inline-flex items-center gap-1.5">
+                          &#x1F4F7; Gallery
+                        </button>
                       </div>
                     </div>
                   )}

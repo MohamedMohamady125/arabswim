@@ -154,6 +154,34 @@ class CountryViewSet(viewsets.ModelViewSet):
             'location': c.location,
         } for c in country.championships.all()[:25]]
 
+        # Championships participated: every championship where this country has results
+        from championships.models import Championship
+        participated_ids = (results_qs.values_list('championship_id', flat=True)
+                            .distinct())
+        participated_champs = (Championship.objects
+                               .filter(id__in=participated_ids)
+                               .select_related('country')
+                               .order_by('-date'))
+        championships_participated = []
+        for c in participated_champs:
+            c_medals = medals_qs.filter(championship=c)
+            c_medal_counts = c_medals.aggregate(
+                gold=Count('id', filter=Q(medal_type='GOLD')),
+                silver=Count('id', filter=Q(medal_type='SILVER')),
+                bronze=Count('id', filter=Q(medal_type='BRONZE')),
+                total=Count('id'),
+            )
+            c_results_count = results_qs.filter(championship=c).count()
+            c_swimmers_count = (results_qs.filter(championship=c)
+                                .values('swimmer_id').distinct().count())
+            championships_participated.append({
+                'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,
+                'location': c.location,
+                'results_count': c_results_count,
+                'swimmers_count': c_swimmers_count,
+                'medals': c_medal_counts,
+            })
+
         teams = [{
             'id': t.id, 'name': t.name, 'is_national_team': t.is_national_team,
         } for t in country.teams.all()]
@@ -167,6 +195,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             'best_times': best_times,
             'records': records,
             'championships_hosted': championships_hosted,
+            'championships_participated': championships_participated,
             'teams': teams,
         })
 

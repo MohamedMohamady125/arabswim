@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { getMedals, getMedalSummary } from '../api/medals'
 import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
+import { getCountries } from '../api/core'
+import { getSwimmers } from '../api/swimmers'
 import DataTable from '../components/common/DataTable'
 import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
@@ -11,15 +13,31 @@ export default function MedalsPage() {
   const [championships, setChampionships] = useState([])
   const [classifications, setClassifications] = useState([])
   const [subClassifications, setSubClassifications] = useState([])
+  const [countries, setCountries] = useState([])
+  const [swimmers, setSwimmers] = useState([])
+  const [swimmerSearch, setSwimmerSearch] = useState('')
   const [filterClassification, setFilterClassification] = useState('')
   const [filterSub, setFilterSub] = useState('')
   const [selectedChampionship, setSelectedChampionship] = useState('')
+  const [filterCountry, setFilterCountry] = useState('')
+  const [filterSwimmer, setFilterSwimmer] = useState('')
   const [view, setView] = useState('summary')
 
-  // Load classifications on mount
+  // Load classifications and countries on mount
   useEffect(() => {
     getClassifications().then(res => setClassifications(res.data.results || res.data)).catch(() => {})
+    getCountries().then(res => setCountries(res.data.results || res.data)).catch(() => {})
   }, [])
+
+  // Search swimmers with debounce
+  useEffect(() => {
+    if (swimmerSearch.length < 2) { setSwimmers([]); return }
+    const t = setTimeout(() => {
+      getSwimmers({ search: swimmerSearch, page_size: 20 })
+        .then(res => setSwimmers(res.data.results || res.data)).catch(() => {})
+    }, 300)
+    return () => clearTimeout(t)
+  }, [swimmerSearch])
 
   // Load subclassifications when classification changes
   useEffect(() => {
@@ -46,9 +64,11 @@ export default function MedalsPage() {
     if (selectedChampionship) params.championship = selectedChampionship
     if (!selectedChampionship && filterClassification) params.classification = filterClassification
     if (!selectedChampionship && filterSub) params.sub_classification = filterSub
+    if (filterCountry) params.country = filterCountry
+    if (filterSwimmer) params.swimmer = filterSwimmer
     getMedalSummary(params).then(res => setSummary(res.data)).catch(() => {})
     getMedals(params).then(res => setMedals(res.data.results || res.data)).catch(() => {})
-  }, [selectedChampionship, filterClassification, filterSub])
+  }, [selectedChampionship, filterClassification, filterSub, filterCountry, filterSwimmer])
 
   const summaryColumns = [
     { key: 'country', label: 'Country', render: (row) => <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} /> },
@@ -82,6 +102,35 @@ export default function MedalsPage() {
           <option value="">All Championships</option>
           {championships.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
+          <option value="">All Countries</option>
+          {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search swimmer..."
+            value={filterSwimmer ? swimmers.find(s => String(s.id) === filterSwimmer)?.name || swimmerSearch : swimmerSearch}
+            onChange={(e) => { setSwimmerSearch(e.target.value); setFilterSwimmer('') }}
+            className="border rounded-lg px-3 py-2 text-sm w-48"
+          />
+          {swimmerSearch.length >= 2 && !filterSwimmer && swimmers.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {swimmers.map(s => (
+                <button key={s.id} onClick={() => { setFilterSwimmer(String(s.id)); setSwimmerSearch(s.name); setSwimmers([]) }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-b-0">
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {filterSwimmer && (
+            <button onClick={() => { setFilterSwimmer(''); setSwimmerSearch('') }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">
+              ✕
+            </button>
+          )}
+        </div>
         <div className="flex gap-1">
           <button onClick={() => setView('summary')} className={`px-4 py-2 rounded-lg text-sm ${view === 'summary' ? 'bg-blue-600 text-white' : 'border'}`}>Medal Tally</button>
           <button onClick={() => setView('list')} className={`px-4 py-2 rounded-lg text-sm ${view === 'list' ? 'bg-blue-600 text-white' : 'border'}`}>All Medals</button>

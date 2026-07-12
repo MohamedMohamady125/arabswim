@@ -52,7 +52,8 @@ export default function CountryProfilePage() {
   if (error) return <div className="text-center text-gray-400 py-20">Failed to load country profile</div>
   if (!data) return <div className="text-center text-gray-400 py-20">Loading…</div>
 
-  const { country, stats, medals, top_swimmers, top_medalists, best_times, records, championships_hosted, teams } = data
+  const { country, stats, medals, top_swimmers, top_medalists, best_times, records, championships_hosted, championships_participated, teams } = data
+  const [openChamp, setOpenChamp] = useState(null)
   const alpha2 = country.flag_url || CODE_TO_ALPHA2[country.code?.toUpperCase()] || (country.code || '').toLowerCase().slice(0, 2)
   const filteredBest = best_times.filter((b) =>
     (!btSex || b.sex === btSex) && (!btPool || b.pool === btPool))
@@ -265,6 +266,53 @@ export default function CountryProfilePage() {
           </Section>
         )
       ))}
+
+      {/* Championships participated */}
+      {championships_participated && championships_participated.length > 0 && (
+        <Section title="Championships Participated" count={championships_participated.length}>
+          <div className="divide-y divide-gray-100">
+            {championships_participated.map((c) => {
+              const isOpen = openChamp === c.id
+              return (
+                <div key={c.id}>
+                  <button
+                    onClick={() => setOpenChamp(isOpen ? null : c.id)}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-sm text-left"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{c.name}</div>
+                      <div className="text-gray-400 text-xs mt-0.5">{c.date} · {c.pool} {c.location ? `· ${c.location}` : ''}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500">{c.swimmers_count} swimmers · {c.results_count} results</span>
+                      {c.medals.total > 0 && (
+                        <span className="flex items-center gap-1.5">
+                          {c.medals.gold > 0 && <span className="flex items-center gap-0.5"><MedalIcon type="gold" size={16} /><span className="text-xs font-semibold">{c.medals.gold}</span></span>}
+                          {c.medals.silver > 0 && <span className="flex items-center gap-0.5"><MedalIcon type="silver" size={16} /><span className="text-xs font-semibold">{c.medals.silver}</span></span>}
+                          {c.medals.bronze > 0 && <span className="flex items-center gap-0.5"><MedalIcon type="bronze" size={16} /><span className="text-xs font-semibold">{c.medals.bronze}</span></span>}
+                        </span>
+                      )}
+                      <svg
+                        className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-3 pt-1 bg-gray-50 border-t border-gray-100">
+                      <Link to={`/meets/${c.id}`} className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline">
+                        View full meet details →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </Section>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Championships hosted */}

@@ -16,13 +16,23 @@ class MedalViewSet(viewsets.ModelViewSet):
             return MedalCreateSerializer
         return MedalSerializer
 
-    def get_queryset(self):
-        qs = super().get_queryset()
+    def _apply_filters(self, qs):
         championship = self.request.query_params.get('championship')
-        swimmer = self.request.query_params.get('swimmer')
-        country = self.request.query_params.get('country')
+        classification = self.request.query_params.get('classification')
+        sub_classification = self.request.query_params.get('sub_classification')
         if championship:
             qs = qs.filter(championship_id=championship)
+        if classification:
+            qs = qs.filter(championship__classification_id=classification)
+        if sub_classification:
+            qs = qs.filter(championship__sub_classification_id=sub_classification)
+        return qs
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = self._apply_filters(qs)
+        swimmer = self.request.query_params.get('swimmer')
+        country = self.request.query_params.get('country')
         if swimmer:
             qs = qs.filter(swimmer_id=swimmer)
         if country:
@@ -31,10 +41,7 @@ class MedalViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        championship = request.query_params.get('championship')
-        qs = Medal.objects.all()
-        if championship:
-            qs = qs.filter(championship_id=championship)
+        qs = self._apply_filters(Medal.objects.all())
         summary = qs.values(
             'swimmer__nationality__name', 'swimmer__nationality__code'
         ).annotate(

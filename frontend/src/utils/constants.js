@@ -21,6 +21,14 @@ export function formatTime(centiseconds) {
   return `${seconds}.${String(centis).padStart(2, '0')}`
 }
 
+export const ARAB_COUNTRY_CODES = new Set([
+  'ALG', 'DZA', 'BHR', 'BRN', 'BAH', 'COM', 'DJI', 'EGY', 'UAR',
+  'IRQ', 'JOR', 'KWT', 'KUW', 'LBN', 'LIB', 'LBY', 'LBA',
+  'MTN', 'MRT', 'MAR', 'MOR', 'OMA', 'OMN', 'PLE', 'PAL', 'PSE',
+  'QAT', 'KSA', 'SAU', 'SOM', 'SUD', 'SDN', 'SYR', 'TUN',
+  'UAE', 'ARE', 'YEM',
+])
+
 export function parseTime(timeStr) {
   const parts = timeStr.split(':')
   let minutes = 0, rest

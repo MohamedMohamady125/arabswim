@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { uploadFile, matchSwimmers, confirmImport } from '../api/importer'
 import { getCountries } from '../api/core'
-import { getClassifications, getSubClassifications } from '../api/championships'
-import { POOL_TYPES } from '../utils/constants'
+import { getClassifications, getSubClassifications, getResultsBySwimmer, bulkDeleteResults } from '../api/championships'
+import { POOL_TYPES, ARAB_COUNTRY_CODES } from '../utils/constants'
 import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
 
@@ -90,6 +90,7 @@ export default function ImportPage() {
           country: inferredCountry?.id?.toString() || '',
           location: m.location || '',
         },
+        arabOnly: false,
         matches: [], matchStats: {}, decisions: {}, result: null, confirmError: '',
       }
     }
@@ -131,6 +132,32 @@ export default function ImportPage() {
     setMeets(parsed)
     setActive(0)
     setStep(2)
+  }
+
+  const toggleArabOnly = (idx) => {
+    const m = meets[idx]
+    const newVal = !m.arabOnly
+    if (newVal) {
+      // Filter to Arab swimmers only
+      const filtered = {
+        ...m.editedPreview,
+        events: m.editedPreview.events.map(ev => ({
+          ...ev,
+          results: ev.results.filter(r =>
+            ev.is_relay || ARAB_COUNTRY_CODES.has((r.nationality_code || '').toUpperCase())
+          ),
+        })).filter(ev => ev.results.length > 0),
+      }
+      filtered.stats = {
+        ...filtered.stats,
+        total_results: filtered.events.reduce((s, ev) => s + ev.results.length, 0),
+        total_events: filtered.events.length,
+      }
+      updateMeet(idx, { arabOnly: true, editedPreview: filtered, _fullPreview: m.editedPreview })
+    } else {
+      // Restore full preview
+      updateMeet(idx, { arabOnly: false, editedPreview: m._fullPreview || m.preview })
+    }
   }
 
   const formComplete = (m) => m.champForm.name && m.champForm.country && m.champForm.date
@@ -393,6 +420,21 @@ export default function ImportPage() {
             </div>
           </div>
 
+          {/* Arab Only Toggle */}
+          <div className="flex items-center gap-3 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={meet.arabOnly || false}
+                onChange={() => toggleArabOnly(active)}
+                className="w-4 h-4 accent-amber-600" />
+              <span className="text-sm font-medium text-amber-800">Arab Swimmers Only</span>
+            </label>
+            <span className="text-xs text-amber-600">
+              {meet.arabOnly
+                ? `Filtered: only Arab/GCC swimmers will be imported (${meet.editedPreview.stats.total_results} results)`
+                : 'Import all swimmers from this meet'}
+            </span>
+          </div>
+
           {/* Championship details form */}
           <div className="bg-white rounded-lg border p-6 mb-4">
             <h2 className="text-lg font-semibold mb-1">Championship Details</h2>
@@ -595,82 +637,215 @@ export default function ImportPage() {
 
       {/* Step 4: Done */}
       {step === 4 && (
-        <div>
-          {meetTabs}
-          {meets.map((m, i) => (meets.length === 1 || i === active) && (
-            <div key={m.importId} className="bg-white rounded-lg border p-8 text-center mb-4">
-              {m.result ? (
-                <>
-                  <div className="text-6xl mb-4">&#x2705;</div>
-                  <h2 className="text-xl font-semibold mb-4">
-                    Import Complete{meets.length > 1 ? `: ${m.result.championship_name}` : '!'}
-                  </h2>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-6">
-                    <div className="bg-green-50 p-3 rounded-lg">
-                      <div className="text-xl font-bold text-green-600">{m.result.created_results}</div>
-                      <div className="text-xs">Results Created</div>
-                    </div>
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <div className="text-xl font-bold text-blue-600">{m.result.created_swimmers}</div>
-                      <div className="text-xs">New Swimmers</div>
-                    </div>
-                    <div className="bg-purple-50 p-3 rounded-lg">
-                      <div className="text-xl font-bold text-purple-600">{m.result.matched_swimmers}</div>
-                      <div className="text-xs">Matched Swimmers</div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xl font-bold text-gray-600">{m.result.skipped_results}</div>
-                      <div className="text-xs">Skipped (duplicates)</div>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-500 mb-4">Championship: {m.result.championship_name}</p>
+        <DoneStep meets={meets} active={active} meetTabs={meetTabs} resetAll={resetAll} />
+      )}
+    </div>
+  )
+}
 
-                  {m.result.skipped_details && m.result.skipped_details.length > 0 && (
-                    <details className="text-left max-w-2xl mx-auto mb-4">
-                      <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700 font-medium">
-                        View {m.result.skipped_details.length} skipped result{m.result.skipped_details.length !== 1 ? 's' : ''}
-                      </summary>
-                      <div className="mt-2 border rounded-lg overflow-hidden">
+function DoneStep({ meets, active, meetTabs, resetAll }) {
+  const [cleanupChampId, setCleanupChampId] = useState(null)
+  const [swimmers, setSwimmers] = useState([])
+  const [selected, setSelected] = useState(new Set())
+  const [cleanupLoading, setCleanupLoading] = useState(false)
+  const [cleanupDone, setCleanupDone] = useState(null)
+
+  const openCleanup = async (champId) => {
+    setCleanupChampId(champId)
+    setCleanupLoading(true)
+    try {
+      const res = await getResultsBySwimmer(champId)
+      const data = res.data
+      setSwimmers(data)
+      // Pre-select non-Arab swimmers for deletion
+      const nonArab = new Set(data.filter(s => !s.is_arab).map(s => s.swimmer_id))
+      setSelected(nonArab)
+    } catch { setSwimmers([]) }
+    setCleanupLoading(false)
+  }
+
+  const toggleSwimmer = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAllNonArab = () => {
+    setSelected(new Set(swimmers.filter(s => !s.is_arab).map(s => s.swimmer_id)))
+  }
+
+  const deselectAll = () => setSelected(new Set())
+
+  const handleDelete = async () => {
+    if (!selected.size) return
+    if (!window.confirm(`Delete results for ${selected.size} swimmer(s)? This cannot be undone.`)) return
+    setCleanupLoading(true)
+    try {
+      const res = await bulkDeleteResults(cleanupChampId, [...selected])
+      setCleanupDone(res.data)
+      // Refresh swimmer list
+      const updated = await getResultsBySwimmer(cleanupChampId)
+      setSwimmers(updated.data)
+      setSelected(new Set())
+    } catch { /* error handled by API interceptor */ }
+    setCleanupLoading(false)
+  }
+
+  return (
+    <div>
+      {meetTabs}
+      {meets.map((m, i) => (meets.length === 1 || i === active) && (
+        <div key={m.importId} className="bg-white rounded-lg border p-8 text-center mb-4">
+          {m.result ? (
+            <>
+              <div className="text-6xl mb-4">&#x2705;</div>
+              <h2 className="text-xl font-semibold mb-4">
+                Import Complete{meets.length > 1 ? `: ${m.result.championship_name}` : '!'}
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-6">
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <div className="text-xl font-bold text-green-600">{m.result.created_results}</div>
+                  <div className="text-xs">Results Created</div>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <div className="text-xl font-bold text-blue-600">{m.result.created_swimmers}</div>
+                  <div className="text-xs">New Swimmers</div>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-lg">
+                  <div className="text-xl font-bold text-purple-600">{m.result.matched_swimmers}</div>
+                  <div className="text-xs">Matched Swimmers</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-xl font-bold text-gray-600">{m.result.skipped_results}</div>
+                  <div className="text-xs">Skipped (duplicates)</div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">Championship: {m.result.championship_name}</p>
+
+              {m.result.skipped_details && m.result.skipped_details.length > 0 && (
+                <details className="text-left max-w-2xl mx-auto mb-4">
+                  <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700 font-medium">
+                    View {m.result.skipped_details.length} skipped result{m.result.skipped_details.length !== 1 ? 's' : ''}
+                  </summary>
+                  <div className="mt-2 border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Event</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Round</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {m.result.skipped_details.map((s, j) => (
+                          <tr key={j} className="text-xs">
+                            <td className="px-3 py-1.5 font-medium">{s.swimmer}</td>
+                            <td className="px-3 py-1.5">{s.event}</td>
+                            <td className="px-3 py-1.5">{s.round || '-'}</td>
+                            <td className="px-3 py-1.5 text-gray-500">{s.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+
+              {/* Cleanup button */}
+              {m.result.championship_id && cleanupChampId !== m.result.championship_id && (
+                <button onClick={() => openCleanup(m.result.championship_id)}
+                  className="mt-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600">
+                  Clean Up Results (Remove Non-Arab Swimmers)
+                </button>
+              )}
+
+              {/* Cleanup panel */}
+              {cleanupChampId === m.result.championship_id && (
+                <div className="text-left max-w-3xl mx-auto mt-4">
+                  {cleanupDone && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3 text-sm text-green-800">
+                      Deleted {cleanupDone.deleted_results} results and {cleanupDone.deleted_orphan_swimmers} orphan swimmers.
+                    </div>
+                  )}
+                  <div className="bg-white border rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-3 border-b flex items-center justify-between">
+                      <h3 className="font-semibold text-sm">Select swimmers to remove</h3>
+                      <div className="flex gap-2">
+                        <button onClick={selectAllNonArab} className="text-xs text-amber-600 hover:underline">Select non-Arab</button>
+                        <button onClick={deselectAll} className="text-xs text-gray-500 hover:underline">Deselect all</button>
+                      </div>
+                    </div>
+                    {cleanupLoading ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">Loading swimmers...</div>
+                    ) : (
+                      <div className="max-h-[400px] overflow-y-auto">
                         <table className="w-full text-sm">
-                          <thead className="bg-gray-50">
+                          <thead className="bg-gray-50 sticky top-0">
                             <tr>
+                              <th className="px-3 py-2 text-left w-8"></th>
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Event</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Round</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Reason</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Region</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Results</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y">
-                            {m.result.skipped_details.map((s, j) => (
-                              <tr key={j} className="text-xs">
-                                <td className="px-3 py-1.5 font-medium">{s.swimmer}</td>
-                                <td className="px-3 py-1.5">{s.event}</td>
-                                <td className="px-3 py-1.5">{s.round || '-'}</td>
-                                <td className="px-3 py-1.5 text-gray-500">{s.reason}</td>
+                            {swimmers.map(s => (
+                              <tr key={s.swimmer_id} className={`hover:bg-gray-50 ${selected.has(s.swimmer_id) ? 'bg-red-50' : ''}`}>
+                                <td className="px-3 py-2">
+                                  <input type="checkbox" checked={selected.has(s.swimmer_id)}
+                                    onChange={() => toggleSwimmer(s.swimmer_id)}
+                                    className="w-4 h-4" />
+                                </td>
+                                <td className="px-3 py-2 font-medium">{s.name}</td>
+                                <td className="px-3 py-2">{s.nationality} ({s.nationality_code})</td>
+                                <td className="px-3 py-2">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    s.is_arab ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    {s.region}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-right">{s.results_count}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                    </details>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="text-6xl mb-4">&#x274C;</div>
-                  <h2 className="text-xl font-semibold mb-2">Import Failed: {m.champForm.name || m.fileName}</h2>
-                  <p className="text-sm text-red-600 mb-4">{m.confirmError}</p>
-                </>
+                    )}
+                    {selected.size > 0 && (
+                      <div className="px-4 py-3 border-t bg-red-50 flex items-center justify-between">
+                        <span className="text-sm text-red-700">
+                          {selected.size} swimmer{selected.size !== 1 ? 's' : ''} selected for removal
+                        </span>
+                        <button onClick={handleDelete} disabled={cleanupLoading}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                          Delete Selected Results
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
-            </div>
-          ))}
-          <div className="text-center">
-            <button onClick={resetAll} className="px-6 py-2 bg-blue-600 text-white rounded-lg">
-              Import Another File
-            </button>
-          </div>
+            </>
+          ) : (
+            <>
+              <div className="text-6xl mb-4">&#x274C;</div>
+              <h2 className="text-xl font-semibold mb-2">Import Failed: {m.champForm.name || m.fileName}</h2>
+              <p className="text-sm text-red-600 mb-4">{m.confirmError}</p>
+            </>
+          )}
         </div>
-      )}
+      ))}
+      <div className="text-center">
+        <button onClick={resetAll} className="px-6 py-2 bg-blue-600 text-white rounded-lg">
+          Import Another File
+        </button>
+      </div>
     </div>
   )
 }

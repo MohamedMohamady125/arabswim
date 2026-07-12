@@ -1,20 +1,31 @@
 import { useState, useEffect } from 'react'
 import { getComputedRecords } from '../api/records'
-import { getCountries } from '../api/core'
+import { getClassifications, getSubClassifications } from '../api/championships'
 import CountryFlag from '../components/common/CountryFlag'
 import { POOL_TYPES, AGE_GROUPS } from '../utils/constants'
 
 export default function RecordsPage() {
   const [records, setRecords] = useState([])
-  const [countries, setCountries] = useState([])
+  const [classifications, setClassifications] = useState([])
+  const [subClassifications, setSubClassifications] = useState([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState({
-    scope: 'arab', country: '', gender: '', pool: 'LCM', age_group: 'OPEN',
+    scope: 'arab', gender: '', pool: 'LCM', age_group: 'OPEN',
+    classification: '', sub_classification: '',
   })
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data)).catch(() => {})
+    getClassifications().then(res => setClassifications(res.data.results || res.data)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (filters.classification) {
+      getSubClassifications(filters.classification).then(res => setSubClassifications(res.data.results || res.data)).catch(() => {})
+    } else {
+      setSubClassifications([])
+    }
+    setFilters(prev => ({ ...prev, sub_classification: '' }))
+  }, [filters.classification])
 
   useEffect(() => {
     setLoading(true)
@@ -76,23 +87,28 @@ export default function RecordsPage() {
       <h1 className="text-2xl font-bold mb-6">Records</h1>
 
       <div className="flex gap-2 mb-4">
-        {['national', 'arab', 'gcc'].map(scope => (
-          <button key={scope} onClick={() => updateFilter('scope', scope)} className={`px-4 py-2 rounded-full text-sm font-medium capitalize ${filters.scope === scope ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
-            {scope === 'national' ? 'National' : scope.toUpperCase()}
+        {['arab', 'gcc'].map(scope => (
+          <button key={scope} onClick={() => updateFilter('scope', scope)} className={`px-4 py-2 rounded-full text-sm font-medium ${filters.scope === scope ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
+            {scope.toUpperCase()}
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-        {filters.scope === 'national' && (
-          <div>
-            <label className="block text-sm font-medium mb-1">Country</label>
-            <select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
-              <option value="">Select...</option>
-              {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-        )}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Classification</label>
+          <select value={filters.classification} onChange={(e) => updateFilter('classification', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="">All</option>
+            {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Sub-classification</label>
+          <select value={filters.sub_classification} onChange={(e) => updateFilter('sub_classification', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm" disabled={!filters.classification}>
+            <option value="">All</option>
+            {subClassifications.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
         <div>
           <label className="block text-sm font-medium mb-1">Gender</label>
           <select value={filters.gender} onChange={(e) => updateFilter('gender', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">

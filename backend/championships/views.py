@@ -445,6 +445,66 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         })
 
 
+    @action(detail=True, methods=['get'], url_path='results-by-swimmer')
+    def results_by_swimmer(self, request, pk=None):
+        """List swimmers in this championship with result counts and nationality."""
+        from django.db.models import Count
+        championship = self.get_object()
+        rows = (
+            championship.results
+            .filter(swimmer__is_relay_team=False)
+            .values(
+                'swimmer_id', 'swimmer__name', 'swimmer__sex',
+                'swimmer__nationality__code', 'swimmer__nationality__name',
+                'swimmer__nationality__region',
+            )
+            .annotate(results_count=Count('id'))
+            .order_by('swimmer__nationality__region', 'swimmer__name')
+        )
+        data = []
+        for r in rows:
+            data.append({
+                'swimmer_id': r['swimmer_id'],
+                'name': r['swimmer__name'],
+                'sex': r['swimmer__sex'],
+                'nationality_code': r['swimmer__nationality__code'],
+                'nationality': r['swimmer__nationality__name'],
+                'region': r['swimmer__nationality__region'],
+                'results_count': r['results_count'],
+                'is_arab': r['swimmer__nationality__region'] in ('ARAB', 'GCC'),
+            })
+        return Response(data)
+
+    @action(detail=True, methods=['post'], url_path='bulk-delete-results')
+    def bulk_delete_results(self, request, pk=None):
+        """Delete all results for given swimmer_ids in this championship."""
+        championship = self.get_object()
+        swimmer_ids = request.data.get('swimmer_ids', [])
+        if not swimmer_ids:
+            return Response({'error': 'swimmer_ids required'}, status=400)
+        qs = championship.results.filter(swimmer_id__in=swimmer_ids)
+        count = qs.count()
+        qs.delete()
+        # Recompute medals after cleanup
+        from medals.utils import recompute_medals
+        recompute_medals(championship)
+        # Clean up orphan swimmers
+        from swimmers.models import Swimmer
+        orphans = Swimmer.objects.filter(
+            id__in=swimmer_ids,
+            results__isnull=True,
+            medals__isnull=True,
+            records__isnull=True,
+            hall_of_fame_entries__isnull=True,
+        )
+        orphans_deleted = orphans.count()
+        orphans.delete()
+        return Response({
+            'deleted_results': count,
+            'deleted_orphan_swimmers': orphans_deleted,
+        })
+
+
 class ResultViewSet(viewsets.ModelViewSet):
     queryset = Result.objects.select_related('swimmer', 'swimmer__nationality', 'championship', 'event')
 

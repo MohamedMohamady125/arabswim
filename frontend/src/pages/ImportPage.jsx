@@ -366,6 +366,29 @@ export default function ImportPage() {
         <div>
           {meetTabs}
 
+          {/* Arab Only Toggle — TOP of page, big and clear */}
+          <div className={`mb-6 p-6 rounded-xl border-3 text-center cursor-pointer select-none transition-all ${
+            meet.arabOnly
+              ? 'bg-green-50 border-green-500 shadow-lg ring-2 ring-green-300'
+              : 'bg-amber-50 border-amber-400 shadow hover:shadow-lg'
+          }`} onClick={() => toggleArabOnly(active)}>
+            <div className="flex items-center justify-center gap-4">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xl ${
+                meet.arabOnly ? 'bg-green-500 text-white' : 'bg-amber-400 text-white'
+              }`}>
+                {meet.arabOnly ? '\u2713' : '\u2715'}
+              </div>
+              <span className={`text-2xl font-bold ${meet.arabOnly ? 'text-green-700' : 'text-amber-700'}`}>
+                {meet.arabOnly ? 'Arab Swimmers Only — ON' : 'Importing ALL Swimmers'}
+              </span>
+            </div>
+            <p className={`mt-3 text-base font-medium ${meet.arabOnly ? 'text-green-600' : 'text-amber-600'}`}>
+              {meet.arabOnly
+                ? `Filtered: only Arab/GCC swimmers kept (${meet.editedPreview.stats.total_results} results)`
+                : 'Click here to import ONLY Arab/GCC swimmers from this meet'}
+            </p>
+          </div>
+
           {/* Meet warnings */}
           {meet.meetWarnings.length > 0 && (
             <div className="mb-4 space-y-2">
@@ -418,21 +441,6 @@ export default function ImportPage() {
               <div className="text-sm font-semibold text-gray-700">{meet.editedPreview.meet.format?.toUpperCase()}</div>
               <div className="text-xs text-gray-500">Format Detected</div>
             </div>
-          </div>
-
-          {/* Arab Only Toggle */}
-          <div className="flex items-center gap-3 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={meet.arabOnly || false}
-                onChange={() => toggleArabOnly(active)}
-                className="w-4 h-4 accent-amber-600" />
-              <span className="text-sm font-medium text-amber-800">Arab Swimmers Only</span>
-            </label>
-            <span className="text-xs text-amber-600">
-              {meet.arabOnly
-                ? `Filtered: only Arab/GCC swimmers will be imported (${meet.editedPreview.stats.total_results} results)`
-                : 'Import all swimmers from this meet'}
-            </span>
           </div>
 
           {/* Championship details form */}

@@ -6,7 +6,7 @@ Passes filename to parsers for pool detection.
 import os
 import pdfplumber
 
-from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser
+from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser
 from .base import ParsedMeet, detect_pool
 
 
@@ -109,10 +109,12 @@ def _parse_pdf(file_path, filename=''):
         # FRMN PDFs lay out fine with default extraction; text-flow order
         # actually breaks their result-line structure.
         meet = frmn_parser.parse(simple_text)
+    elif ffn_parser.detect_format(simple_text):
+        meet = ffn_parser.parse(simple_text)
     else:
         # Try each parser and pick the one that extracts the most results
         results = []
-        for parser in [splash_parser, hytek_parser, omega_parser, frmn_parser]:
+        for parser in [splash_parser, hytek_parser, omega_parser, frmn_parser, ffn_parser]:
             try:
                 if parser == hytek_parser:
                     text = _extract_columns(file_path)

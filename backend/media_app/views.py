@@ -20,6 +20,23 @@ class AlbumViewSet(viewsets.ModelViewSet):
             return AlbumListSerializer
         return AlbumDetailSerializer
 
+    @action(detail=False, methods=['post'], url_path='for-championship')
+    def for_championship(self, request):
+        """Get or create an album for a championship."""
+        from championships.models import Championship
+        champ_id = request.data.get('championship')
+        if not champ_id:
+            return Response({'error': 'championship is required'}, status=400)
+        try:
+            champ = Championship.objects.get(pk=champ_id)
+        except Championship.DoesNotExist:
+            return Response({'error': 'Championship not found'}, status=404)
+        album, _ = Album.objects.get_or_create(
+            championship=champ,
+            defaults={'title': champ.name},
+        )
+        return Response(AlbumDetailSerializer(album).data)
+
 
 class MediaItemViewSet(viewsets.ModelViewSet):
     queryset = MediaItem.objects.all()

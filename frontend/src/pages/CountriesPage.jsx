@@ -17,7 +17,7 @@ const EMPTY = { name: '', code: '', flag_url: '', region: 'ARAB' }
 export default function CountriesPage() {
   const toast = useToast()
   const [countries, setCountries] = useState([])
-  const [regionFilter, setRegionFilter] = useState('')
+  const [regionFilter, setRegionFilter] = useState('ARAB_ALL')
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState(null) // 'new' or country id
   const [draft, setDraft] = useState(EMPTY)
@@ -64,10 +64,12 @@ export default function CountriesPage() {
     }
   }
 
-  const filtered = countries.filter((c) =>
-    (!regionFilter || c.region === regionFilter) &&
-    (!search || c.name.toLowerCase().includes(search.toLowerCase()) || c.code.toLowerCase().includes(search.toLowerCase()))
-  )
+  const filtered = countries.filter((c) => {
+    const regionMatch = !regionFilter
+      || (regionFilter === 'ARAB_ALL' && (c.region === 'ARAB' || c.region === 'GCC'))
+      || c.region === regionFilter
+    return regionMatch && (!search || c.name.toLowerCase().includes(search.toLowerCase()) || c.code.toLowerCase().includes(search.toLowerCase()))
+  })
 
   const editorRow = (isNew, key) => (
     <tr className="bg-blue-50" key={key}>
@@ -122,6 +124,7 @@ export default function CountriesPage() {
         <select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm bg-white">
           <option value="">All Regions</option>
+          <option value="ARAB_ALL">Arab (All)</option>
           {REGIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </div>

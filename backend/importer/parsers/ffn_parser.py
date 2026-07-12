@@ -25,7 +25,7 @@ EVENT_HEADER = re.compile(
     r'(.+?)\s+'                            # stroke (Nage Libre, Dos, Papillon, etc.)
     r'(Dames|Messieurs|Mixte)\s*'          # gender
     r'-\s*'
-    r'(Finale\s*[A-Z]?|Séries|Demi-Finales?)'  # round
+    r'(Finale\s*[A-Z]?|Séries|Demi-Finales?|Barrage\s+Finales?)'  # round
     r'(?:\s*\(suite\))?'                   # optional "(suite)" continuation
     r'(?:\s*\(.*?\))?',                    # optional date in parens
     re.IGNORECASE
@@ -175,14 +175,19 @@ def parse(text):
                 line.startswith('Copyright') or line.startswith('Page ')):
             continue
 
-        # Clean watermark artifacts: remove stray hyphens/letters inserted
-        # within words (but NOT the structural " - " separator in event headers).
+        # Clean watermark artifacts from event headers and result lines.
         # "S-éries" → "Séries" (hyphen within a word, no spaces)
         cleaned_line = re.sub(r'(?<=[A-Za-zÀ-ÿ])-(?=[a-zà-ÿ])', '', line)
-        # Remove single stray lowercase letters injected between words by watermark
-        # e.g. "Finale sA" but NOT "Finale A" — only kill lone lowercase between spaces
+        # Remove stray uppercase letter inserted WITHIN a lowercase word:
+        # "PaFpillon" → "Papillon" (lowercase-UPPER-lowercase = stray)
+        cleaned_line = re.sub(r'(?<=[a-z])[A-Z](?=[a-z])', '', cleaned_line)
+        # "Do F s" → "Dos": stray uppercase+space between lowercase chars
+        cleaned_line = re.sub(r'(?<=[a-z])\s+[A-Z]\s+(?=[a-z])', '', cleaned_line)
+        # Remove trailing stray lowercase letter: "...2026) a" → "...2026)"
         cleaned_line = re.sub(r'\s+[a-zà-ÿ]\s*$', '', cleaned_line)
-        # Clean stray letters within result data: "FR A" stays, "200N5" stays (handled later)
+        # Fix known mangled French swimming terms
+        cleaned_line = re.sub(r'\bD\s+ames\b', 'Dames', cleaned_line)
+        cleaned_line = re.sub(r'\bM\s+essieurs\b', 'Messieurs', cleaned_line)
 
         # Check for event header
         em = EVENT_HEADER.match(cleaned_line)
@@ -193,7 +198,12 @@ def parse(text):
             round_text = em.group(4)
 
             is_relay = 'x' in distance_text.lower()
-            distance = extract_distance(distance_text + ' ' + stroke_text)
+            # For "200 4 Nages", distance_text is "200" and stroke_text is "4 Nages"
+            # extract_distance would wrongly pick up "4" — use distance_text directly
+            try:
+                distance = int(re.sub(r'[^\d]', '', distance_text))
+            except ValueError:
+                distance = extract_distance(distance_text + ' ' + stroke_text)
             stroke = _parse_french_stroke(stroke_text)
             gender = 'F' if 'dames' in gender_text.lower() else (
                 'X' if 'mixte' in gender_text.lower() else 'M'

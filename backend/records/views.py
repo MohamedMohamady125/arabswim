@@ -46,10 +46,13 @@ class RecordViewSet(viewsets.ModelViewSet):
         """Return the fastest time per event+gender from existing Result data.
 
         Query params:
+          scope           – national, arab, gcc (default: arab)
+          country         – country id (required when scope=national)
           classification  – filter championships by Classification id
           sub_classification – filter by SubClassification id
           pool            – LCM or SCM (default: LCM)
           gender          – M or F (omit for both)
+          age_group       – e.g. U10..U17, OPEN (default: OPEN)
         """
         from championships.models import Result, Championship
         from core.models import Event
@@ -59,16 +62,29 @@ class RecordViewSet(viewsets.ModelViewSet):
         classification = request.query_params.get('classification')
         sub_classification = request.query_params.get('sub_classification')
         gender = request.query_params.get('gender')
+        scope = request.query_params.get('scope', 'arab')
+        country = request.query_params.get('country')
+        age_group = request.query_params.get('age_group')
 
         # Build base queryset: valid timed results from championships
         qs = Result.objects.filter(
             championship__pool=pool,
             time_centiseconds__gt=0,
             swimmer__is_relay_team=False,
+        ).exclude(
+            swimmer__nationality__region='OTHER',
         ).select_related(
             'swimmer', 'swimmer__nationality', 'event', 'championship',
             'championship__country',
         )
+
+        # Scope filter
+        if scope == 'national' and country:
+            qs = qs.filter(swimmer__nationality_id=country)
+        elif scope == 'gcc':
+            qs = qs.filter(swimmer__nationality__region='GCC')
+        else:  # arab (default)
+            qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
 
         if classification:
             qs = qs.filter(championship__classification_id=classification)
@@ -76,6 +92,14 @@ class RecordViewSet(viewsets.ModelViewSet):
             qs = qs.filter(championship__sub_classification_id=sub_classification)
         if gender:
             qs = qs.filter(swimmer__sex=gender)
+
+        # Age group filter
+        if age_group and age_group != 'OPEN':
+            try:
+                max_age = int(age_group.replace('U', ''))
+                qs = qs.filter(age_at_competition__lt=max_age)
+            except (ValueError, AttributeError):
+                pass
 
         # For each (event, gender): find the minimum time
         best_per_event = (

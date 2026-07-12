@@ -1,53 +1,29 @@
 import { useState, useEffect } from 'react'
-import { getComputedRecords, getClassifications, getSubClassifications } from '../api/records'
+import { getComputedRecords } from '../api/records'
+import { getCountries } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
-import { POOL_TYPES, formatTime } from '../utils/constants'
+import { POOL_TYPES, AGE_GROUPS } from '../utils/constants'
 
 export default function RecordsPage() {
   const [records, setRecords] = useState([])
-  const [classifications, setClassifications] = useState([])
-  const [subClassifications, setSubClassifications] = useState([])
+  const [countries, setCountries] = useState([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState({
-    classification: '',
-    sub_classification: '',
-    pool: 'LCM',
+    scope: 'arab', country: '', gender: '', pool: 'LCM', age_group: 'OPEN',
   })
 
   useEffect(() => {
-    getClassifications().then(res => {
-      setClassifications(res.data)
-      if (res.data.length && !filters.classification) {
-        setFilters(prev => ({ ...prev, classification: res.data[0].id.toString() }))
-      }
-    }).catch(() => {})
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
-    if (filters.classification) {
-      getSubClassifications({ classification: filters.classification }).then(res => {
-        setSubClassifications(res.data)
-      }).catch(() => {})
-    } else {
-      setSubClassifications([])
-    }
-    setFilters(prev => ({ ...prev, sub_classification: '' }))
-  }, [filters.classification])
-
-  useEffect(() => {
-    if (!filters.classification) {
-      setRecords([])
-      return
-    }
     setLoading(true)
-    const params = {}
-    if (filters.classification) params.classification = filters.classification
-    if (filters.sub_classification) params.sub_classification = filters.sub_classification
-    params.pool = filters.pool
+    const params = { ...filters }
+    Object.keys(params).forEach(k => { if (!params[k]) delete params[k] })
     getComputedRecords(params).then(res => {
       setRecords(res.data)
     }).catch(() => {}).finally(() => setLoading(false))
-  }, [filters.classification, filters.sub_classification, filters.pool])
+  }, [filters])
 
   const updateFilter = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }))
@@ -99,19 +75,30 @@ export default function RecordsPage() {
     <div>
       <h1 className="text-2xl font-bold mb-6">Records</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="flex gap-2 mb-4">
+        {['national', 'arab', 'gcc'].map(scope => (
+          <button key={scope} onClick={() => updateFilter('scope', scope)} className={`px-4 py-2 rounded-full text-sm font-medium capitalize ${filters.scope === scope ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
+            {scope === 'national' ? 'National' : scope.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        {filters.scope === 'national' && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Country</label>
+            <select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="">Select...</option>
+              {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
         <div>
-          <label className="block text-sm font-medium mb-1">Classification</label>
-          <select value={filters.classification} onChange={(e) => updateFilter('classification', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
-            <option value="">Select...</option>
-            {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Sub-Classification</label>
-          <select value={filters.sub_classification} onChange={(e) => updateFilter('sub_classification', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
-            <option value="">All</option>
-            {subClassifications.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+          <label className="block text-sm font-medium mb-1">Gender</label>
+          <select value={filters.gender} onChange={(e) => updateFilter('gender', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="">Both</option>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
           </select>
         </div>
         <div>
@@ -122,12 +109,20 @@ export default function RecordsPage() {
         </div>
       </div>
 
+      <div className="flex gap-1 mb-4 overflow-x-auto">
+        {AGE_GROUPS.map(ag => (
+          <button key={ag} onClick={() => updateFilter('age_group', ag)} className={`px-4 py-2 text-sm font-medium whitespace-nowrap border ${filters.age_group === ag ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'}`}>
+            {ag}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="text-center py-8 text-gray-500">Loading records...</div>
       ) : (
         <>
-          <RecordTable title="Men" data={menRecords} />
-          <RecordTable title="Women" data={womenRecords} />
+          {(!filters.gender || filters.gender === 'M') && <RecordTable title="Men" data={menRecords} />}
+          {(!filters.gender || filters.gender === 'F') && <RecordTable title="Women" data={womenRecords} />}
         </>
       )}
     </div>

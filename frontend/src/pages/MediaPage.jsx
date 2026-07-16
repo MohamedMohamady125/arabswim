@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Image, Plus, Trash2 } from 'lucide-react'
 import { getAlbums, createAlbum, deleteAlbum } from '../api/media'
 import { getChampionships } from '../api/championships'
@@ -7,6 +7,8 @@ import { useToast } from '../context/ToastContext'
 
 export default function MediaPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const championshipFilter = searchParams.get('championship') || ''
   const toast = useToast()
   const [albums, setAlbums] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -15,7 +17,8 @@ export default function MediaPage() {
   const [form, setForm] = useState({ title: '', description: '', championship: '' })
 
   const load = () => {
-    getAlbums().then((res) => {
+    const params = championshipFilter ? { championship: championshipFilter } : {}
+    getAlbums(params).then((res) => {
       setAlbums(Array.isArray(res.data) ? res.data : res.data.results || [])
     }).catch(() => {})
   }

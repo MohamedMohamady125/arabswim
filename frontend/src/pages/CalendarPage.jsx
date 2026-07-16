@@ -262,7 +262,25 @@ export default function CalendarPage() {
                           <div className="text-sm font-medium">{c.location || '-'}</div>
                         </div>
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex flex-wrap gap-3">
+                        {c.live_results_url && (
+                          <a href={c.live_results_url} target="_blank" rel="noopener noreferrer"
+                            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 inline-flex items-center gap-1.5">
+                            <span>&#x1F534;</span> Live Results
+                          </a>
+                        )}
+                        {c.meet_guide_pdf && (
+                          <a href={c.meet_guide_pdf} target="_blank" rel="noopener noreferrer"
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 inline-flex items-center gap-1.5">
+                            <span>&#x1F4D6;</span> Meet Guide
+                          </a>
+                        )}
+                        {c.registration_url && (
+                          <a href={c.registration_url} target="_blank" rel="noopener noreferrer"
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 inline-flex items-center gap-1.5">
+                            <span>&#x270F;&#xFE0F;</span> Registration
+                          </a>
+                        )}
                         {c.website && (
                           <a href={c.website} target="_blank" rel="noopener noreferrer"
                             className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700 inline-flex items-center gap-1.5">

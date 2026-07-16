@@ -279,13 +279,29 @@ export default function ChampionshipsPage() {
                           <div className="text-sm font-medium">{c.sub_classification_name || '-'}</div>
                         </div>
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex flex-wrap gap-3">
                         {c.results_count > 0 && (
                           <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${c.id}`) }}
                             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
                             View Results
                           </button>
                         )}
+                        {c.results_count > 0 && (
+                          <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${c.id}`) }}
+                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700">
+                            Statistics
+                          </button>
+                        )}
+                        {c.results_count > 0 && (
+                          <button onClick={(e) => { e.stopPropagation(); navigate(`/medals?championship=${c.id}`) }}
+                            className="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-600">
+                            Medals
+                          </button>
+                        )}
+                        <button onClick={(e) => { e.stopPropagation(); navigate(`/media?championship=${c.id}`) }}
+                          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700">
+                          Galleries
+                        </button>
                         <button onClick={(e) => { e.stopPropagation(); navigate(`/championships/${c.id}/edit`) }}
                           className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100">
                           Edit

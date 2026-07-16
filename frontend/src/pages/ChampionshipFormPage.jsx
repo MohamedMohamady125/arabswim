@@ -13,7 +13,9 @@ export default function ChampionshipFormPage() {
   const [classifications, setClassifications] = useState([])
   const [subClassifications, setSubClassifications] = useState([])
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', classification_category: '', classification: '', sub_classification: '' })
+  const [form, setForm] = useState({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', classification_category: '', classification: '', sub_classification: '', website: '', live_results_url: '', registration_url: '' })
+  const [policyPdf, setPolicyPdf] = useState(null)
+  const [meetGuidePdf, setMeetGuidePdf] = useState(null)
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
@@ -21,7 +23,7 @@ export default function ChampionshipFormPage() {
     if (isEdit) {
       getChampionship(id).then(res => {
         const c = res.data
-        setForm({ name: c.name, date: c.date, end_date: c.end_date || '', pool: c.pool, country: c.country, location: c.location || '', classification_category: c.classification_category || '', classification: c.classification || '', sub_classification: c.sub_classification || '' })
+        setForm({ name: c.name, date: c.date, end_date: c.end_date || '', pool: c.pool, country: c.country, location: c.location || '', classification_category: c.classification_category || '', classification: c.classification || '', sub_classification: c.sub_classification || '', website: c.website || '', live_results_url: c.live_results_url || '', registration_url: c.registration_url || '' })
       }).catch(() => {})
     }
   }, [id, isEdit])
@@ -46,11 +48,12 @@ export default function ChampionshipFormPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      const data = { ...form }
-      if (!data.end_date) delete data.end_date
-      if (!data.classification_category) delete data.classification_category
-      if (!data.classification) delete data.classification
-      if (!data.sub_classification) delete data.sub_classification
+      const data = new FormData()
+      Object.entries(form).forEach(([k, v]) => {
+        if (v !== '' && v !== null) data.append(k, v)
+      })
+      if (policyPdf) data.append('policy_pdf', policyPdf)
+      if (meetGuidePdf) data.append('meet_guide_pdf', meetGuidePdf)
       if (isEdit) {
         await updateChampionship(id, data)
       } else {
@@ -103,6 +106,31 @@ export default function ChampionshipFormPage() {
           <div className="col-span-2">
             <label className="block text-sm font-medium mb-1">Location</label>
             <input type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="City / Venue" className="w-full border rounded-lg px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div className="border-t pt-4">
+          <h3 className="font-medium mb-4">Links & Documents</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Website</label>
+              <input type="url" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://..." className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Live Results URL</label>
+              <input type="url" value={form.live_results_url} onChange={(e) => setForm({ ...form, live_results_url: e.target.value })} placeholder="https://..." className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Registration URL</label>
+              <input type="url" value={form.registration_url} onChange={(e) => setForm({ ...form, registration_url: e.target.value })} placeholder="https://..." className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Policy PDF (Nashra)</label>
+              <input type="file" accept=".pdf" onChange={(e) => setPolicyPdf(e.target.files[0])} className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium mb-1">Meet Guide PDF</label>
+              <input type="file" accept=".pdf" onChange={(e) => setMeetGuidePdf(e.target.files[0])} className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
           </div>
         </div>
         <div className="border-t pt-4">

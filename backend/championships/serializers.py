@@ -36,7 +36,7 @@ class ChampionshipListSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'date', 'end_date', 'pool', 'country', 'country_detail',
                   'location', 'classification_category', 'classification', 'sub_classification',
                   'classification_name', 'sub_classification_name',
-                  'website', 'policy_pdf',
+                  'website', 'policy_pdf', 'live_results_url', 'meet_guide_pdf', 'registration_url',
                   'results_count', 'swimmers_count', 'created_at']
 
     def get_results_count(self, obj):

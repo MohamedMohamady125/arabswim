@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getMedals, getMedalSummary } from '../api/medals'
 import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries } from '../api/core'
@@ -8,6 +9,8 @@ import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
 
 export default function MedalsPage() {
+  const [searchParams] = useSearchParams()
+  const initialChampionship = searchParams.get('championship') || ''
   const [summary, setSummary] = useState([])
   const [medals, setMedals] = useState([])
   const [championships, setChampionships] = useState([])
@@ -18,7 +21,7 @@ export default function MedalsPage() {
   const [swimmerSearch, setSwimmerSearch] = useState('')
   const [filterClassification, setFilterClassification] = useState('')
   const [filterSub, setFilterSub] = useState('')
-  const [selectedChampionship, setSelectedChampionship] = useState('')
+  const [selectedChampionship, setSelectedChampionship] = useState(initialChampionship)
   const [filterCountry, setFilterCountry] = useState('')
   const [filterSwimmer, setFilterSwimmer] = useState('')
   const [view, setView] = useState('summary')

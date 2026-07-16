@@ -97,7 +97,7 @@ class RecordViewSet(viewsets.ModelViewSet):
         if age_group and age_group != 'OPEN':
             try:
                 max_age = int(age_group.replace('U', ''))
-                qs = qs.filter(age_at_competition__lt=max_age)
+                qs = qs.filter(age_at_competition__lte=max_age)
             except (ValueError, AttributeError):
                 pass
 

@@ -53,7 +53,7 @@ class RankingView(APIView):
             try:
                 max_age = int(age_group.replace('U', ''))
                 qs = qs.filter(
-                    age_at_competition__lt=max_age,
+                    age_at_competition__lte=max_age,
                 )
             except (ValueError, AttributeError):
                 pass

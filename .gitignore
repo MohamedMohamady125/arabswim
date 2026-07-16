@@ -11,6 +11,7 @@ backend/staticfiles/
 frontend/node_modules/
 frontend/dist/
 frontend/.vercel/
+frontend/.next/
 
 # Environment
 .env
@@ -38,3 +39,4 @@ Screenshot*
 WhatsApp*
 *.jpeg
 arab swim logo*
+.vercel

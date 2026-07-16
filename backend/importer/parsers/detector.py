@@ -685,7 +685,7 @@ def _collect_unique_meet_names(dfs, meet_name_candidates):
     for name in raw_names:
         merged = False
         for canon in canonical:
-            if fuzz.ratio(name.lower(), canon.lower()) >= 95:
+            if fuzz.ratio(name.lower(), canon.lower()) >= 98:
                 name_map[name] = canon
                 merged = True
                 break
@@ -793,8 +793,7 @@ def _parse_excel_multi(individual_dfs, relay_dfs, meet_names, name_map,
                 if not filtered.empty:
                     _parse_relay_sheet(filtered, meet, cols_finder=_find_column)
 
-        if meet.events:
-            meets.append(meet)
+        meets.append(meet)
 
     return meets
 

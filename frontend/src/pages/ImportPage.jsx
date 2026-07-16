@@ -6,7 +6,7 @@ import { POOL_TYPES, ARAB_COUNTRY_CODES } from '../utils/constants'
 import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
 
-const MAX_FILES = 10
+const MAX_FILES = 200
 
 const emptyForm = {
   name: '', date: '', end_date: '', pool: 'LCM', country: '',

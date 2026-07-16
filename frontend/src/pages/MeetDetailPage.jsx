@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers, updateResult, deleteResult } from '../api/championships'
+import { getMedals, getMedalSummary } from '../api/medals'
+import { getOrCreateAlbumForChampionship } from '../api/media'
+import { uploadPhotos, createMediaItem, deleteMediaItem, updateMediaItem } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
 import AddResultsModal from '../components/championships/AddResultsModal'
@@ -39,6 +42,9 @@ function parseTimeToCs(text) {
 export default function MeetDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') || 'results'
+  const setActiveTab = (tab) => setSearchParams({ tab })
   const [meet, setMeet] = useState(null)
   const [stats, setStats] = useState(null)
   const [results, setResults] = useState([])
@@ -55,10 +61,35 @@ export default function MeetDetailPage() {
   const [editValues, setEditValues] = useState({ time: '', team: '' })
   const [selectedCategory, setSelectedCategory] = useState(null)  // null = all
 
+  // Medals tab state
+  const [medals, setMedals] = useState([])
+  const [medalSummary, setMedalSummary] = useState([])
+
+  // Gallery tab state
+  const [album, setAlbum] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [videoUrl, setVideoUrl] = useState('')
+  const [lightbox, setLightbox] = useState(null)
+
   useEffect(() => {
     getChampionship(id).then(res => setMeet(res.data)).catch(() => {})
     getChampionshipStats(id).then(res => setStats(res.data)).catch(() => {})
   }, [id])
+
+  // Load medals when medals tab is active
+  useEffect(() => {
+    if (activeTab === 'medals') {
+      getMedalSummary({ championship: id }).then(res => setMedalSummary(res.data)).catch(() => {})
+      getMedals({ championship: id }).then(res => setMedals(res.data.results || res.data)).catch(() => {})
+    }
+  }, [id, activeTab])
+
+  // Load gallery when gallery tab is active
+  useEffect(() => {
+    if (activeTab === 'gallery' && !album) {
+      getOrCreateAlbumForChampionship(id).then(res => setAlbum(res.data)).catch(() => {})
+    }
+  }, [id, activeTab])
 
   const refreshStats = () => getChampionshipStats(id).then(res => setStats(res.data)).catch(() => {})
 
@@ -198,7 +229,30 @@ export default function MeetDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+      {/* Tab Navigation */}
+      <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl">
+        {[
+          { key: 'results', label: 'Results' },
+          { key: 'statistics', label: 'Statistics' },
+          { key: 'medals', label: 'Medals' },
+          { key: 'gallery', label: 'Gallery' },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === tab.key
+                ? 'bg-white text-sky-700 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Results Tab */}
+      {activeTab === 'results' && <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         {/* Left: Countries + Events */}
         <div className="space-y-4">
           {/* Countries */}
@@ -613,7 +667,310 @@ export default function MeetDetailPage() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
+
+      {/* Statistics Tab */}
+      {activeTab === 'statistics' && stats && (
+        <div className="space-y-6">
+          {/* Overview Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white rounded-lg border p-4 text-center">
+              <div className="text-3xl font-bold text-sky-600">{stats.total_swimmers}</div>
+              <div className="text-sm text-gray-500 mt-1">Swimmers</div>
+            </div>
+            <div className="bg-white rounded-lg border p-4 text-center">
+              <div className="text-3xl font-bold text-sky-600">{stats.total_results}</div>
+              <div className="text-sm text-gray-500 mt-1">Results</div>
+            </div>
+            <div className="bg-white rounded-lg border p-4 text-center">
+              <div className="text-3xl font-bold text-sky-600">{stats.events.length}</div>
+              <div className="text-sm text-gray-500 mt-1">Events</div>
+            </div>
+            <div className="bg-white rounded-lg border p-4 text-center">
+              <div className="text-3xl font-bold text-blue-600">{stats.male_count}</div>
+              <div className="text-sm text-gray-500 mt-1">Male</div>
+            </div>
+            <div className="bg-white rounded-lg border p-4 text-center">
+              <div className="text-3xl font-bold text-pink-500">{stats.female_count}</div>
+              <div className="text-sm text-gray-500 mt-1">Female</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Countries Breakdown */}
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Countries ({stats.countries.length})</h3>
+              </div>
+              <div className="divide-y max-h-[500px] overflow-y-auto">
+                {stats.countries.map((c, i) => (
+                  <div key={c.swimmer__nationality__id ?? i} className="flex items-center justify-between px-4 py-3">
+                    <CountryFlag
+                      code={c.swimmer__nationality__code}
+                      flagUrl={c.swimmer__nationality__flag_url}
+                      name={c.swimmer__nationality__name}
+                    />
+                    <span className="text-sm font-medium text-gray-600">{c.swimmers_count} swimmers</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Events Breakdown */}
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Events ({stats.events.length})</h3>
+              </div>
+              <div className="divide-y max-h-[500px] overflow-y-auto">
+                {stats.events.map(e => (
+                  <div key={`${e.event_id}-${e.gender}`} className="flex items-center justify-between px-4 py-3">
+                    <div>
+                      <div className="text-sm font-medium">{e.event_name}</div>
+                      <div className="text-xs text-gray-400">{e.gender_label}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">{e.results_count} results</div>
+                      <div className="text-sm font-mono font-semibold text-sky-600">{e.best_time}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Top Performers */}
+          {stats.top_performers.length > 0 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Top Performers</h3>
+                <p className="text-xs text-gray-500 mt-1">Highest FINA points at this championship</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {stats.top_performers.map((t, i) => (
+                      <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
+                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                        <td className="px-4 py-2 text-sm font-medium">{t.swimmer_name}</td>
+                        <td className="px-4 py-2 text-sm">
+                          <CountryFlag code={t.nationality_code} flagUrl={t.flag_url} name={t.nationality} />
+                        </td>
+                        <td className="px-4 py-2 text-sm">{t.event_name}</td>
+                        <td className="px-4 py-2 text-sm font-mono">{t.time}</td>
+                        <td className="px-4 py-2 text-sm font-bold text-sky-600">{t.fina_points}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Medals Tab */}
+      {activeTab === 'medals' && (
+        <div className="space-y-6">
+          {/* Medal Tally */}
+          {medalSummary.length > 0 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Medal Tally</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Country</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
+                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
+                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {medalSummary.map((row, i) => (
+                      <tr key={i} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                        <td className="px-4 py-2 text-sm">
+                          <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
+                        </td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
+                        <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Individual Medals */}
+          {medals.length > 0 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">All Medals</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Medal</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {medals.map((m, i) => (
+                      <tr key={m.id || i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}>
+                        <td className="px-4 py-2"><MedalIcon type={m.medal_type?.toLowerCase()} size={24} /></td>
+                        <td className="px-4 py-2 text-sm font-medium">{m.swimmer_detail?.name}</td>
+                        <td className="px-4 py-2 text-sm">
+                          <CountryFlag
+                            code={m.swimmer_detail?.nationality_detail?.code}
+                            flagUrl={m.swimmer_detail?.nationality_detail?.flag_url}
+                            name={m.swimmer_detail?.nationality_detail?.name}
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-sm">{m.event_detail?.name}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {medalSummary.length === 0 && medals.length === 0 && (
+            <div className="bg-white rounded-lg border p-12 text-center text-gray-400">
+              <div className="text-5xl mb-3">🏅</div>
+              <p className="text-lg font-medium">No medals yet</p>
+              <p className="text-sm mt-1">Medals are computed from results automatically</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Gallery Tab */}
+      {activeTab === 'gallery' && (
+        <div>
+          {!album ? (
+            <div className="text-center py-12 text-gray-400">Loading gallery...</div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="text-sm text-gray-500">{(album.items || []).length} item{(album.items || []).length === 1 ? '' : 's'}</div>
+                <div className="flex items-center gap-3">
+                  <form onSubmit={(e) => {
+                    e.preventDefault()
+                    if (!videoUrl.trim()) return
+                    createMediaItem({ album: album.id, media_type: 'VIDEO', video_url: videoUrl.trim() })
+                      .then(() => { setVideoUrl(''); getOrCreateAlbumForChampionship(id).then(res => setAlbum(res.data)) })
+                      .catch(() => {})
+                  }} className="flex gap-2">
+                    <input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
+                      placeholder="YouTube / Instagram link..."
+                      className="border rounded-lg px-3 py-2 text-sm bg-white w-56" />
+                    <button type="submit" className="border border-gray-300 bg-white px-3 py-2 rounded-lg text-sm hover:bg-gray-50">
+                      Add Video
+                    </button>
+                  </form>
+                  <label className={`flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {uploading ? 'Uploading...' : 'Add Photos'}
+                    <input type="file" accept="image/*" multiple onChange={async (e) => {
+                      const files = Array.from(e.target.files || [])
+                      e.target.value = ''
+                      if (!files.length) return
+                      setUploading(true)
+                      try {
+                        const fd = new FormData()
+                        fd.append('album', album.id)
+                        files.forEach(f => fd.append('images', f))
+                        await uploadPhotos(fd)
+                        const res = await getOrCreateAlbumForChampionship(id)
+                        setAlbum(res.data)
+                      } catch { /* ignore */ }
+                      finally { setUploading(false) }
+                    }} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              {(album.items || []).length === 0 ? (
+                <div className="bg-white rounded-lg border p-12 text-center text-gray-400">
+                  <div className="text-5xl mb-3">📷</div>
+                  <p className="text-lg font-medium">No photos or videos yet</p>
+                  <p className="text-sm mt-1">Add photos or video links for this meet</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {(album.items || []).map(item => (
+                    <div key={item.id} className="group bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="h-40 bg-gray-900 relative cursor-pointer"
+                        onClick={() => item.media_type === 'VIDEO' && item.video_url
+                          ? window.open(item.video_url, '_blank')
+                          : setLightbox(item)}>
+                        {item.media_type === 'PHOTO' && item.image ? (
+                          <img src={item.image} alt={item.caption} className="w-full h-full object-cover" />
+                        ) : item.embed_thumbnail ? (
+                          <img src={item.embed_thumbnail} alt={item.caption} className="w-full h-full object-cover opacity-80" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Video</div>
+                        )}
+                        <button onClick={(e) => {
+                          e.stopPropagation()
+                          if (!window.confirm('Delete this item?')) return
+                          deleteMediaItem(item.id).then(() => {
+                            setAlbum(a => ({ ...a, items: a.items.filter(i => i.id !== item.id) }))
+                          }).catch(() => {})
+                        }}
+                          className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity text-xs">
+                          ✕
+                        </button>
+                      </div>
+                      <input
+                        type="text" defaultValue={item.caption || ''} placeholder="Add a caption..."
+                        onBlur={(e) => {
+                          if (e.target.value !== (item.caption || ''))
+                            updateMediaItem(item.id, { caption: e.target.value }).then(() => {
+                              setAlbum(a => ({ ...a, items: a.items.map(i => i.id === item.id ? { ...i, caption: e.target.value } : i) }))
+                            }).catch(() => {})
+                        }}
+                        className="w-full px-3 py-2 text-xs text-gray-600 focus:outline-none focus:bg-blue-50"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Lightbox */}
+          {lightbox && (
+            <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
+              <button className="absolute top-5 right-5 text-white/70 hover:text-white text-2xl">✕</button>
+              <img src={lightbox.image} alt={lightbox.caption} className="max-h-full max-w-full object-contain rounded-lg" />
+              {lightbox.caption && (
+                <div className="absolute bottom-6 left-0 right-0 text-center text-white/80 text-sm">{lightbox.caption}</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {showAddModal && (
         <AddResultsModal

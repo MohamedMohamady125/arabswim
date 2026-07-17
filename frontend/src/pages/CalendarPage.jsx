@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCalendarEvents, createCalendarEvent } from '../api/calendar'
-import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
+import { getChampionships, updateChampionship, getClassifications, getSubClassifications } from '../api/championships'
 import { getOrCreateAlbumForChampionship } from '../api/media'
 import { getCountries } from '../api/core'
 import { POOL_TYPES } from '../utils/constants'
@@ -12,6 +12,190 @@ dayjs.extend(customParseFormat)
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
+  const [editingField, setEditingField] = useState(null)
+  const [fieldValue, setFieldValue] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const startEdit = (field, currentValue) => {
+    setEditingField(field)
+    setFieldValue(currentValue || '')
+  }
+
+  const saveField = async (field, value) => {
+    setSaving(true)
+    try {
+      const data = new FormData()
+      data.append(field, value)
+      await updateChampionship(c.id, data)
+      onUpdate({ ...c, [field]: value })
+      setEditingField(null)
+    } catch { /* ignore */ }
+    finally { setSaving(false) }
+  }
+
+  const uploadGuide = async (file) => {
+    setSaving(true)
+    try {
+      const data = new FormData()
+      data.append('meet_guide_pdf', file)
+      const res = await updateChampionship(c.id, data)
+      onUpdate({ ...c, meet_guide_pdf: res.data.meet_guide_pdf })
+    } catch { /* ignore */ }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="bg-gray-50 border border-t-0 border-gray-200 rounded-b-xl px-6 py-4 -mt-1">
+      {/* Meet Info */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+        <div>
+          <div className="text-xs text-gray-500 mb-1">Date</div>
+          <div className="text-sm font-medium">{c.date}{c.end_date && c.end_date !== c.date ? ` to ${c.end_date}` : ''}</div>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500 mb-1">Pool</div>
+          <div className="text-sm font-medium">{c.pool === 'LCM' ? 'Long Course (50m)' : 'Short Course (25m)'}</div>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500 mb-1">Country</div>
+          <div className="text-sm font-medium">
+            {c.country_detail && <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500 mb-1">Location</div>
+          <div className="text-sm font-medium">{c.location || '-'}</div>
+        </div>
+      </div>
+
+      {/* Three main sections */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        {/* Live Results */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-red-500 text-lg">&#x1F534;</span>
+            <h4 className="font-semibold text-sm">Live Results</h4>
+          </div>
+          {c.live_results_url && editingField !== 'live_results_url' ? (
+            <div>
+              <a href={c.live_results_url} target="_blank" rel="noopener noreferrer"
+                className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 inline-flex items-center gap-1.5 w-full justify-center mb-2">
+                Open Live Results
+              </a>
+              <button onClick={(e) => { e.stopPropagation(); startEdit('live_results_url', c.live_results_url) }}
+                className="text-xs text-gray-400 hover:text-gray-600 w-full text-center">Edit link</button>
+            </div>
+          ) : editingField === 'live_results_url' ? (
+            <div className="space-y-2" onClick={e => e.stopPropagation()}>
+              <input type="url" value={fieldValue} onChange={e => setFieldValue(e.target.value)}
+                placeholder="https://..." className="w-full border rounded-lg px-3 py-2 text-sm" autoFocus />
+              <div className="flex gap-2">
+                <button onClick={() => saveField('live_results_url', fieldValue)} disabled={saving}
+                  className="flex-1 bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-red-700 disabled:opacity-50">Save</button>
+                <button onClick={() => setEditingField(null)}
+                  className="flex-1 border px-3 py-1.5 rounded-lg text-xs hover:bg-gray-50">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={(e) => { e.stopPropagation(); startEdit('live_results_url', '') }}
+              className="w-full border-2 border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-400 hover:border-red-400 hover:text-red-500">
+              + Add Live Results Link
+            </button>
+          )}
+        </div>
+
+        {/* Meet Guide PDF */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-blue-500 text-lg">&#x1F4D6;</span>
+            <h4 className="font-semibold text-sm">Meet Guide</h4>
+          </div>
+          {c.meet_guide_pdf ? (
+            <div>
+              <a href={c.meet_guide_pdf} target="_blank" rel="noopener noreferrer"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 inline-flex items-center gap-1.5 w-full justify-center mb-2">
+                View Meet Guide
+              </a>
+              <label className="block text-xs text-gray-400 hover:text-gray-600 w-full text-center cursor-pointer" onClick={e => e.stopPropagation()}>
+                Replace PDF
+                <input type="file" accept=".pdf" className="hidden" onChange={e => { if (e.target.files[0]) uploadGuide(e.target.files[0]) }} />
+              </label>
+            </div>
+          ) : (
+            <label className="block cursor-pointer" onClick={e => e.stopPropagation()}>
+              <div className="w-full border-2 border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-400 hover:border-blue-400 hover:text-blue-500 text-center">
+                + Upload Meet Guide PDF
+              </div>
+              <input type="file" accept=".pdf" className="hidden" onChange={e => { if (e.target.files[0]) uploadGuide(e.target.files[0]) }} />
+            </label>
+          )}
+        </div>
+
+        {/* Registration */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-green-500 text-lg">&#x270F;&#xFE0F;</span>
+            <h4 className="font-semibold text-sm">Registration</h4>
+          </div>
+          {c.registration_url && editingField !== 'registration_url' ? (
+            <div>
+              <a href={c.registration_url} target="_blank" rel="noopener noreferrer"
+                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 inline-flex items-center gap-1.5 w-full justify-center mb-2">
+                Open Registration
+              </a>
+              <button onClick={(e) => { e.stopPropagation(); startEdit('registration_url', c.registration_url) }}
+                className="text-xs text-gray-400 hover:text-gray-600 w-full text-center">Edit link</button>
+            </div>
+          ) : editingField === 'registration_url' ? (
+            <div className="space-y-2" onClick={e => e.stopPropagation()}>
+              <input type="url" value={fieldValue} onChange={e => setFieldValue(e.target.value)}
+                placeholder="https://..." className="w-full border rounded-lg px-3 py-2 text-sm" autoFocus />
+              <div className="flex gap-2">
+                <button onClick={() => saveField('registration_url', fieldValue)} disabled={saving}
+                  className="flex-1 bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-green-700 disabled:opacity-50">Save</button>
+                <button onClick={() => setEditingField(null)}
+                  className="flex-1 border px-3 py-1.5 rounded-lg text-xs hover:bg-gray-50">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={(e) => { e.stopPropagation(); startEdit('registration_url', '') }}
+              className="w-full border-2 border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-400 hover:border-green-400 hover:text-green-500">
+              + Add Registration Link
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Other buttons */}
+      <div className="flex flex-wrap gap-3">
+        {c.website && (
+          <a href={c.website} target="_blank" rel="noopener noreferrer"
+            className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700 inline-flex items-center gap-1.5">
+            <span>&#x1F310;</span> Website
+          </a>
+        )}
+        {c.policy_pdf && (
+          <a href={c.policy_pdf} target="_blank" rel="noopener noreferrer"
+            className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100 inline-flex items-center gap-1.5">
+            <span>&#x1F4C4;</span> Nashra (Policy)
+          </a>
+        )}
+        <button onClick={async (e) => {
+            e.stopPropagation()
+            try {
+              const res = await getOrCreateAlbumForChampionship(c.id)
+              navigate(`/media/albums/${res.data.id}`)
+            } catch { /* ignore */ }
+          }}
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 inline-flex items-center gap-1.5">
+          &#x1F4F7; Gallery
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function CalendarPage() {
   const navigate = useNavigate()
@@ -241,70 +425,9 @@ export default function CalendarPage() {
 
                   {/* Expanded meet details */}
                   {isSelected && (
-                    <div className="bg-gray-50 border border-t-0 border-gray-200 rounded-b-xl px-6 py-4 -mt-1">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Date</div>
-                          <div className="text-sm font-medium">{c.date}{c.end_date && c.end_date !== c.date ? ` to ${c.end_date}` : ''}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Pool</div>
-                          <div className="text-sm font-medium">{c.pool === 'LCM' ? 'Long Course (50m)' : 'Short Course (25m)'}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Country</div>
-                          <div className="text-sm font-medium">
-                            {c.country_detail && <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Location</div>
-                          <div className="text-sm font-medium">{c.location || '-'}</div>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        {c.live_results_url && (
-                          <a href={c.live_results_url} target="_blank" rel="noopener noreferrer"
-                            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 inline-flex items-center gap-1.5">
-                            <span>&#x1F534;</span> Live Results
-                          </a>
-                        )}
-                        {c.meet_guide_pdf && (
-                          <a href={c.meet_guide_pdf} target="_blank" rel="noopener noreferrer"
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 inline-flex items-center gap-1.5">
-                            <span>&#x1F4D6;</span> Meet Guide
-                          </a>
-                        )}
-                        {c.registration_url && (
-                          <a href={c.registration_url} target="_blank" rel="noopener noreferrer"
-                            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 inline-flex items-center gap-1.5">
-                            <span>&#x270F;&#xFE0F;</span> Registration
-                          </a>
-                        )}
-                        {c.website && (
-                          <a href={c.website} target="_blank" rel="noopener noreferrer"
-                            className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700 inline-flex items-center gap-1.5">
-                            <span>&#x1F310;</span> Website
-                          </a>
-                        )}
-                        {c.policy_pdf && (
-                          <a href={c.policy_pdf} target="_blank" rel="noopener noreferrer"
-                            className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100 inline-flex items-center gap-1.5">
-                            <span>&#x1F4C4;</span> Nashra (Policy)
-                          </a>
-                        )}
-                        <button onClick={async (e) => {
-                            e.stopPropagation()
-                            try {
-                              const res = await getOrCreateAlbumForChampionship(c.id)
-                              navigate(`/media/albums/${res.data.id}`)
-                            } catch { /* ignore */ }
-                          }}
-                          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 inline-flex items-center gap-1.5">
-                          &#x1F4F7; Gallery
-                        </button>
-                      </div>
-                    </div>
+                    <MeetExpandedPanel meet={c} navigate={navigate} onUpdate={(updated) => {
+                      setChampionships(prev => prev.map(ch => ch.id === updated.id ? { ...ch, ...updated } : ch))
+                    }} />
                   )}
                 </div>
               )

@@ -235,9 +235,63 @@ function MedalsTab({ stats, navigate }) {
   )
 }
 
+function PerformanceIndex({ finaDistribution, bestFina }) {
+  if (!finaDistribution || finaDistribution.length === 0) return null
+  const maxCount = Math.max(...finaDistribution.map(d => d.count))
+
+  const TIER_COLORS = {
+    900: { bar: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Elite' },
+    800: { bar: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-700', label: 'World Class' },
+    700: { bar: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700', label: 'Excellent' },
+    600: { bar: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-700', label: 'Very Good' },
+    500: { bar: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-700', label: 'Good' },
+    400: { bar: 'bg-orange-400', bg: 'bg-orange-50', text: 'text-orange-700', label: 'Developing' },
+  }
+
+  return (
+    <div className="bg-white rounded-xl border shadow-sm p-5">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="font-bold text-base">Performance Index</h3>
+          <p className="text-xs text-gray-500 mt-0.5">FINA points distribution across all swims</p>
+        </div>
+        {bestFina && (
+          <div className="text-right">
+            <div className="text-3xl font-black text-sky-600">{bestFina.points}</div>
+            <div className="text-[10px] text-gray-400 font-medium">PEAK FINA</div>
+          </div>
+        )}
+      </div>
+      <div className="space-y-2.5">
+        {finaDistribution.map(tier => {
+          const colors = TIER_COLORS[tier.threshold] || TIER_COLORS[400]
+          const pct = maxCount > 0 ? (tier.count / maxCount) * 100 : 0
+          return (
+            <div key={tier.threshold} className="flex items-center gap-3">
+              <div className={`w-12 text-right text-xs font-bold ${colors.text}`}>{tier.threshold}+</div>
+              <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden relative">
+                <div className={`${colors.bar} h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2`}
+                  style={{ width: `${Math.max(pct, tier.count > 0 ? 8 : 0)}%` }}>
+                  {tier.count > 0 && pct > 15 && (
+                    <span className="text-white text-xs font-bold">{tier.count}</span>
+                  )}
+                </div>
+                {tier.count > 0 && pct <= 15 && (
+                  <span className="absolute left-[calc(8%+4px)] top-1/2 -translate-y-1/2 text-xs font-bold text-gray-600">{tier.count}</span>
+                )}
+              </div>
+              <div className={`w-20 text-[10px] font-medium ${colors.text} hidden md:block`}>{colors.label}</div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function StatsTab({ stats, events }) {
   if (!stats) return null
-  const { medals, best_fina, best_event, total_championships, records, total_records } = stats
+  const { medals, best_fina, best_event, total_championships, records, total_records, fina_distribution } = stats
 
   const totalEvents = new Set(events.map(e => e.event_id)).size
   const totalSwims = events.reduce((sum, e) => sum + e.times_count, 0)
@@ -260,23 +314,26 @@ function StatsTab({ stats, events }) {
         ))}
       </div>
 
-      {/* Highlights */}
+      {/* Performance Index + Best FINA / Best Event */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {best_fina && (
-          <div className="bg-gradient-to-br from-sky-50 to-white rounded-xl border border-sky-200 p-5">
-            <div className="text-xs font-semibold text-sky-600 uppercase tracking-wide mb-2">Best FINA Points</div>
-            <div className="text-4xl font-black text-sky-700">{best_fina.points}</div>
-            <div className="text-sm text-gray-600 mt-1">{best_fina.event_name}</div>
-            <div className="text-xs text-gray-400 mt-0.5">{best_fina.championship_name}</div>
-          </div>
-        )}
-        {best_event && (
-          <div className="bg-gradient-to-br from-amber-50 to-white rounded-xl border border-amber-200 p-5">
-            <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">Best Event</div>
-            <div className="text-2xl font-black text-amber-700">{best_event}</div>
-            <div className="text-sm text-gray-500 mt-1">Highest FINA points across all events</div>
-          </div>
-        )}
+        <PerformanceIndex finaDistribution={fina_distribution} bestFina={best_fina} />
+        <div className="space-y-4">
+          {best_fina && (
+            <div className="bg-gradient-to-br from-sky-50 to-white rounded-xl border border-sky-200 p-5">
+              <div className="text-xs font-semibold text-sky-600 uppercase tracking-wide mb-2">Best FINA Points</div>
+              <div className="text-4xl font-black text-sky-700">{best_fina.points}</div>
+              <div className="text-sm text-gray-600 mt-1">{best_fina.event_name}</div>
+              <div className="text-xs text-gray-400 mt-0.5">{best_fina.championship_name}</div>
+            </div>
+          )}
+          {best_event && (
+            <div className="bg-gradient-to-br from-amber-50 to-white rounded-xl border border-amber-200 p-5">
+              <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">Best Event</div>
+              <div className="text-2xl font-black text-amber-700">{best_event}</div>
+              <div className="text-sm text-gray-500 mt-1">Highest FINA points across all events</div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Records Held */}

@@ -330,6 +330,21 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             .first()
         )
 
+        # FINA points distribution — count of results at each tier
+        fina_results = list(
+            Result.objects.filter(swimmer=swimmer, fina_points__isnull=False)
+            .values_list('fina_points', flat=True)
+        )
+        fina_distribution = []
+        for threshold in [900, 800, 700, 600, 500, 400]:
+            count = sum(1 for p in fina_results if p >= threshold)
+            if count > 0 or fina_distribution:
+                fina_distribution.append({'threshold': threshold, 'count': count})
+        # Only include tiers that the swimmer has actually reached
+        # (trim trailing zero tiers at the bottom)
+        while fina_distribution and fina_distribution[-1]['count'] == 0:
+            fina_distribution.pop()
+
         return Response({
             'total_championships': len(champs_data),
             'championships': champs_data,
@@ -340,6 +355,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'best_event': best_event_agg['event__name'] if best_event_agg else None,
             'records': records,
             'total_records': len(records),
+            'fina_distribution': fina_distribution,
         })
 
     @action(detail=True, methods=['post'])

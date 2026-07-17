@@ -287,15 +287,71 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         for m in medals_by_level:
             m['category'] = m.pop('championship__classification_category__name') or 'Uncategorized'
 
-        # Individual medals list
-        medals_list = [{
-            'id': m.id,
-            'medal_type': m.medal_type,
-            'event_name': m.event.name,
-            'championship_name': m.championship.name,
-            'championship_id': m.championship.id,
-            'championship_date': m.championship.date,
-        } for m in medals_qs.select_related('event', 'championship').order_by('-championship__date')]
+        # Medals grouped by classification hierarchy
+        all_medals = list(
+            medals_qs.select_related(
+                'event', 'championship',
+                'championship__classification_category',
+                'championship__classification',
+                'championship__sub_classification',
+            ).order_by('-championship__date')
+        )
+        # Build tree: category → classification → sub_classification → medals
+        from collections import OrderedDict
+        medals_tree = OrderedDict()
+        for m in all_medals:
+            c = m.championship
+            cat_name = c.classification_category.name if c.classification_category else 'Uncategorized'
+            cls_name = c.classification.name if c.classification else 'General'
+            sub_name = c.sub_classification.name if c.sub_classification else None
+
+            if cat_name not in medals_tree:
+                medals_tree[cat_name] = {'gold': 0, 'silver': 0, 'bronze': 0, 'classifications': OrderedDict()}
+            cat = medals_tree[cat_name]
+            cat[{'GOLD': 'gold', 'SILVER': 'silver', 'BRONZE': 'bronze'}[m.medal_type]] += 1
+
+            if cls_name not in cat['classifications']:
+                cat['classifications'][cls_name] = {'gold': 0, 'silver': 0, 'bronze': 0, 'sub_classifications': OrderedDict(), 'medals': []}
+            cls = cat['classifications'][cls_name]
+            cls[{'GOLD': 'gold', 'SILVER': 'silver', 'BRONZE': 'bronze'}[m.medal_type]] += 1
+
+            medal_data = {
+                'id': m.id, 'medal_type': m.medal_type,
+                'event_name': m.event.name,
+                'championship_name': c.name,
+                'championship_id': c.id,
+                'championship_date': c.date,
+            }
+
+            if sub_name:
+                if sub_name not in cls['sub_classifications']:
+                    cls['sub_classifications'][sub_name] = {'gold': 0, 'silver': 0, 'bronze': 0, 'medals': []}
+                sub = cls['sub_classifications'][sub_name]
+                sub[{'GOLD': 'gold', 'SILVER': 'silver', 'BRONZE': 'bronze'}[m.medal_type]] += 1
+                sub['medals'].append(medal_data)
+            else:
+                cls['medals'].append(medal_data)
+
+        # Serialize the tree
+        medals_hierarchy = []
+        for cat_name, cat_data in medals_tree.items():
+            cat_entry = {
+                'name': cat_name, 'gold': cat_data['gold'], 'silver': cat_data['silver'], 'bronze': cat_data['bronze'],
+                'classifications': [],
+            }
+            for cls_name, cls_data in cat_data['classifications'].items():
+                cls_entry = {
+                    'name': cls_name, 'gold': cls_data['gold'], 'silver': cls_data['silver'], 'bronze': cls_data['bronze'],
+                    'medals': cls_data['medals'],
+                    'sub_classifications': [],
+                }
+                for sub_name, sub_data in cls_data['sub_classifications'].items():
+                    cls_entry['sub_classifications'].append({
+                        'name': sub_name, 'gold': sub_data['gold'], 'silver': sub_data['silver'], 'bronze': sub_data['bronze'],
+                        'medals': sub_data['medals'],
+                    })
+                cat_entry['classifications'].append(cls_entry)
+            medals_hierarchy.append(cat_entry)
 
         # Best FINA points
         best_fina_result = Result.objects.filter(
@@ -350,7 +406,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'championships': champs_data,
             'medals': medal_counts,
             'medals_by_level': medals_by_level,
-            'medals_list': medals_list,
+            'medals_hierarchy': medals_hierarchy,
             'best_fina': best_fina,
             'best_event': best_event_agg['event__name'] if best_event_agg else None,
             'records': records,

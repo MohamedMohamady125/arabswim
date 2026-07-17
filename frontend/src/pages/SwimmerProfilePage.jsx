@@ -156,14 +156,62 @@ function MedalBar({ gold, silver, bronze }) {
   )
 }
 
+function MedalBadge({ type }) {
+  const style = type === 'GOLD' ? 'bg-amber-100 text-amber-800' : type === 'SILVER' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-800'
+  return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${style}`}>{MEDAL_LABELS[type]}</span>
+}
+
+function MedalCounts({ gold, silver, bronze, size = 'sm' }) {
+  const text = size === 'lg' ? 'text-sm' : 'text-[10px]'
+  return (
+    <div className={`flex gap-1.5 ${text} font-bold`}>
+      {gold > 0 && <span style={{ color: '#B8860B' }}>{gold}G</span>}
+      {silver > 0 && <span className="text-gray-500">{silver}S</span>}
+      {bronze > 0 && <span style={{ color: '#CD7F32' }}>{bronze}B</span>}
+    </div>
+  )
+}
+
+function MedalRow({ medal, navigate }) {
+  return (
+    <div className="flex items-center gap-2.5 py-2 px-3 hover:bg-gray-50 rounded-lg">
+      <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0"
+        style={{ backgroundColor: MEDAL_COLORS[medal.medal_type] + '30', color: medal.medal_type === 'GOLD' ? '#B8860B' : medal.medal_type === 'SILVER' ? '#666' : '#CD7F32' }}>
+        {medal.medal_type === 'GOLD' ? '1' : medal.medal_type === 'SILVER' ? '2' : '3'}
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium">{medal.event_name}</span>
+        <button onClick={() => navigate(`/meets/${medal.championship_id}`)}
+          className="text-xs text-sky-600 hover:underline block truncate">
+          {medal.championship_name} ({new Date(medal.championship_date).getFullYear()})
+        </button>
+      </div>
+      <MedalBadge type={medal.medal_type} />
+    </div>
+  )
+}
+
 function MedalsTab({ stats, navigate }) {
   if (!stats) return null
-  const { medals, medals_by_level, medals_list } = stats
+  const { medals, medals_by_level, medals_hierarchy } = stats
+  const [expandedCats, setExpandedCats] = useState(() => new Set((medals_hierarchy || []).map(c => c.name)))
+  const [expandedCls, setExpandedCls] = useState(() => {
+    const set = new Set()
+    ;(medals_hierarchy || []).forEach(cat => cat.classifications.forEach(cls => set.add(`${cat.name}/${cls.name}`)))
+    return set
+  })
+  const [expandedSubs, setExpandedSubs] = useState(new Set())
+
+  const toggle = (set, setter, key) => {
+    const next = new Set(set)
+    next.has(key) ? next.delete(key) : next.add(key)
+    setter(next)
+  }
 
   return (
     <div className="space-y-6">
       {/* Medal Summary Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-4 gap-3">
         {[
           { type: 'GOLD', count: medals.gold, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
           { type: 'SILVER', count: medals.silver, bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600' },
@@ -177,7 +225,7 @@ function MedalsTab({ stats, navigate }) {
         ))}
       </div>
 
-      {/* Medals by Level */}
+      {/* Medal Analytics Bar Chart */}
       {medals_by_level.length > 0 && (
         <div className="bg-white rounded-xl border shadow-sm p-5">
           <h3 className="font-bold text-base mb-4">Medal Analytics by Level</h3>
@@ -188,43 +236,87 @@ function MedalsTab({ stats, navigate }) {
                 <div className="flex-1">
                   <MedalBar gold={level.gold} silver={level.silver} bronze={level.bronze} />
                 </div>
-                <div className="flex gap-2 text-xs text-gray-500 shrink-0 w-24 justify-end">
-                  {level.gold > 0 && <span className="font-semibold" style={{ color: '#B8860B' }}>{level.gold}G</span>}
-                  {level.silver > 0 && <span className="font-semibold text-gray-500">{level.silver}S</span>}
-                  {level.bronze > 0 && <span className="font-semibold" style={{ color: '#CD7F32' }}>{level.bronze}B</span>}
-                </div>
+                <MedalCounts gold={level.gold} silver={level.silver} bronze={level.bronze} size="lg" />
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Individual Medals List */}
-      {medals_list.length > 0 && (
-        <div className="bg-white rounded-xl border shadow-sm">
-          <div className="p-4 border-b">
-            <h3 className="font-bold text-base">All Medals</h3>
-          </div>
-          <div className="divide-y">
-            {medals_list.map(m => (
-              <div key={m.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0"
-                  style={{ backgroundColor: MEDAL_COLORS[m.medal_type] + '30', color: m.medal_type === 'GOLD' ? '#B8860B' : m.medal_type === 'SILVER' ? '#666' : '#CD7F32' }}>
-                  {m.medal_type === 'GOLD' ? '1' : m.medal_type === 'SILVER' ? '2' : '3'}
+      {/* Medals by Classification Hierarchy */}
+      {(medals_hierarchy || []).length > 0 && (
+        <div className="space-y-3">
+          {medals_hierarchy.map(cat => (
+            <div key={cat.name} className="bg-white rounded-xl border shadow-sm overflow-hidden">
+              {/* Category Header */}
+              <button onClick={() => toggle(expandedCats, setExpandedCats, cat.name)}
+                className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
+                <span className={`text-xs transition-transform ${expandedCats.has(cat.name) ? 'rotate-90' : ''}`}>&#9654;</span>
+                <div className="flex-1 text-left">
+                  <h3 className="font-bold text-base">{cat.name}</h3>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium">{m.event_name}</div>
-                  <button onClick={() => navigate(`/meets/${m.championship_id}`)}
-                    className="text-xs text-sky-600 hover:underline truncate block">
-                    {m.championship_name} ({new Date(m.championship_date).getFullYear()})
-                  </button>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    {cat.gold > 0 && <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#FFD70030', color: '#B8860B' }}>{cat.gold}</span>}
+                    {cat.silver > 0 && <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#C0C0C030', color: '#666' }}>{cat.silver}</span>}
+                    {cat.bronze > 0 && <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#CD7F3230', color: '#CD7F32' }}>{cat.bronze}</span>}
+                  </div>
                 </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                  m.medal_type === 'GOLD' ? 'bg-amber-100 text-amber-800' : m.medal_type === 'SILVER' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-800'
-                }`}>{MEDAL_LABELS[m.medal_type]}</span>
-              </div>
-            ))}
-          </div>
+              </button>
+
+              {expandedCats.has(cat.name) && (
+                <div className="border-t">
+                  {cat.classifications.map(cls => {
+                    const clsKey = `${cat.name}/${cls.name}`
+                    return (
+                      <div key={cls.name}>
+                        {/* Classification Header */}
+                        <button onClick={() => toggle(expandedCls, setExpandedCls, clsKey)}
+                          className="w-full flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100">
+                          <span className={`text-[10px] text-gray-400 transition-transform ${expandedCls.has(clsKey) ? 'rotate-90' : ''}`}>&#9654;</span>
+                          <div className="flex-1 text-left">
+                            <span className="text-sm font-semibold text-gray-700">{cls.name}</span>
+                          </div>
+                          <MedalCounts gold={cls.gold} silver={cls.silver} bronze={cls.bronze} size="lg" />
+                        </button>
+
+                        {expandedCls.has(clsKey) && (
+                          <div className="bg-gray-50/50">
+                            {/* Sub-classifications */}
+                            {cls.sub_classifications.map(sub => {
+                              const subKey = `${clsKey}/${sub.name}`
+                              return (
+                                <div key={sub.name}>
+                                  <button onClick={() => toggle(expandedSubs, setExpandedSubs, subKey)}
+                                    className="w-full flex items-center gap-3 px-10 py-2.5 hover:bg-gray-100 transition-colors">
+                                    <span className={`text-[9px] text-gray-400 transition-transform ${expandedSubs.has(subKey) ? 'rotate-90' : ''}`}>&#9654;</span>
+                                    <span className="flex-1 text-left text-sm text-gray-600">{sub.name}</span>
+                                    <MedalCounts gold={sub.gold} silver={sub.silver} bronze={sub.bronze} />
+                                  </button>
+                                  {expandedSubs.has(subKey) && (
+                                    <div className="pl-12 pr-4 pb-2">
+                                      {sub.medals.map(m => <MedalRow key={m.id} medal={m} navigate={navigate} />)}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+
+                            {/* Medals directly under classification (no sub-classification) */}
+                            {cls.medals.length > 0 && (
+                              <div className="pl-8 pr-4 py-2">
+                                {cls.medals.map(m => <MedalRow key={m.id} medal={m} navigate={navigate} />)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

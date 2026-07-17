@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers, updateResult, deleteResult } from '../api/championships'
+import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers, updateResult, deleteResult, getMostImproved, getChampionshipComparison } from '../api/championships'
 import { getMedals, getMedalSummary } from '../api/medals'
 import { getOrCreateAlbumForChampionship } from '../api/media'
 import { uploadPhotos, createMediaItem, deleteMediaItem, updateMediaItem } from '../api/media'
@@ -105,6 +105,73 @@ function TopPerformersTable({ performers, navigate }) {
   )
 }
 
+function MostImprovedTable({ swimmers, navigate }) {
+  const [genderFilter, setGenderFilter] = useState('overall')
+
+  const filtered = genderFilter === 'overall'
+    ? swimmers
+    : swimmers.filter(s => s.gender === genderFilter)
+
+  return (
+    <div className="bg-white rounded-lg border">
+      <div className="p-4 border-b flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">Most Improved Swimmers</h3>
+          <p className="text-xs text-gray-500 mt-1">Biggest time drops vs previous personal best</p>
+        </div>
+        <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+          {[
+            { key: 'overall', label: 'Overall' },
+            { key: 'M', label: 'Male' },
+            { key: 'F', label: 'Female' },
+          ].map(opt => (
+            <button key={opt.key} onClick={() => setGenderFilter(opt.key)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                genderFilter === opt.key ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {filtered.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Previous Best</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">New Time</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Improvement</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filtered.map((s, i) => (
+                <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
+                  <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                  <td className="px-4 py-2 text-sm font-medium">{s.swimmer_name}</td>
+                  <td className="px-4 py-2 text-sm">
+                    <CountryFlag code={s.nationality_code} flagUrl={s.flag_url} name={s.nationality} />
+                  </td>
+                  <td className="px-4 py-2 text-sm">{s.event_name}</td>
+                  <td className="px-4 py-2 text-sm font-mono text-gray-500">{s.previous_best}</td>
+                  <td className="px-4 py-2 text-sm font-mono font-semibold">{s.current_time}</td>
+                  <td className="px-4 py-2 text-sm font-mono font-bold text-green-600">-{s.improvement}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="p-8 text-center text-gray-400 text-sm">No improvements for this filter</div>
+      )}
+    </div>
+  )
+}
+
 export default function MeetDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -131,6 +198,10 @@ export default function MeetDetailPage() {
   const [medals, setMedals] = useState([])
   const [medalSummary, setMedalSummary] = useState([])
 
+  // Statistics tab state
+  const [mostImproved, setMostImproved] = useState([])
+  const [comparison, setComparison] = useState([])
+
   // Gallery tab state
   const [album, setAlbum] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -141,6 +212,14 @@ export default function MeetDetailPage() {
     getChampionship(id).then(res => setMeet(res.data)).catch(() => {})
     getChampionshipStats(id).then(res => setStats(res.data)).catch(() => {})
   }, [id])
+
+  // Load most improved and comparison when statistics tab is active
+  useEffect(() => {
+    if (activeTab === 'statistics') {
+      getMostImproved(id).then(res => setMostImproved(res.data)).catch(() => {})
+      getChampionshipComparison(id).then(res => setComparison(res.data)).catch(() => {})
+    }
+  }, [id, activeTab])
 
   // Load medals when medals tab is active
   useEffect(() => {
@@ -770,6 +849,57 @@ export default function MeetDetailPage() {
 
           {/* Top Performers */}
           <TopPerformersTable performers={stats.top_performers} navigate={navigate} />
+
+          {/* Most Improved Swimmers */}
+          {mostImproved.length > 0 && (
+            <MostImprovedTable swimmers={mostImproved} navigate={navigate} />
+          )}
+
+          {/* Championship Comparison */}
+          {comparison.length > 1 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Compare with Previous Editions</h3>
+                <p className="text-xs text-gray-500 mt-1">Same classification, same pool type</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Championship</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Host</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Year</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Swimmers</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Countries</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Events</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Results</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Best FINA</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {comparison.map((ch, i) => (
+                      <tr key={ch.id} className={`hover:bg-gray-50 ${ch.is_current ? 'bg-sky-50 font-medium' : 'cursor-pointer'}`}
+                        onClick={() => !ch.is_current && navigate(`/meets/${ch.id}?tab=statistics`)}>
+                        <td className="px-4 py-2 text-sm">
+                          {ch.name}
+                          {ch.is_current && <span className="ml-2 text-xs bg-sky-200 text-sky-700 px-1.5 py-0.5 rounded">Current</span>}
+                        </td>
+                        <td className="px-4 py-2 text-sm">
+                          <CountryFlag code={ch.country_code} flagUrl={ch.flag_url} name={ch.country} />
+                        </td>
+                        <td className="px-4 py-2 text-sm text-center">{ch.year}</td>
+                        <td className="px-4 py-2 text-sm text-center">{ch.total_swimmers}</td>
+                        <td className="px-4 py-2 text-sm text-center">{ch.countries_count}</td>
+                        <td className="px-4 py-2 text-sm text-center">{ch.total_events}</td>
+                        <td className="px-4 py-2 text-sm text-center">{ch.total_results}</td>
+                        <td className="px-4 py-2 text-sm text-center font-bold text-sky-600">{ch.best_fina || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

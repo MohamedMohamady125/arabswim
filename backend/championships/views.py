@@ -446,6 +446,161 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         })
 
 
+    @action(detail=True, methods=['get'], url_path='most-improved')
+    def most_improved(self, request, pk=None):
+        """Swimmers who improved the most vs their previous personal best."""
+        from django.db.models import Min
+        championship = self.get_object()
+
+        # Get best time per swimmer+event at this championship (individuals only)
+        current = (
+            championship.results
+            .filter(swimmer__is_relay_team=False)
+            .values('swimmer_id', 'event_id')
+            .annotate(best_time=Min('time_centiseconds'))
+        )
+
+        improvements = []
+        # Batch-fetch swimmer and event info
+        swimmer_ids = set()
+        event_ids = set()
+        for row in current:
+            swimmer_ids.add(row['swimmer_id'])
+            event_ids.add(row['event_id'])
+
+        from swimmers.models import Swimmer
+        from core.models import Event
+        swimmers = {s.id: s for s in Swimmer.objects.filter(id__in=swimmer_ids).select_related('nationality')}
+        events = {e.id: e for e in Event.objects.filter(id__in=event_ids)}
+
+        for row in current:
+            sid, eid, current_time = row['swimmer_id'], row['event_id'], row['best_time']
+            # Previous best: same swimmer, same event, same pool, earlier date
+            prev = (
+                Result.objects.filter(
+                    swimmer_id=sid, event_id=eid,
+                    championship__pool=championship.pool,
+                    championship__date__lt=championship.date,
+                    swimmer__is_relay_team=False,
+                )
+                .aggregate(best=Min('time_centiseconds'))
+            )['best']
+            if prev is None or prev <= current_time:
+                continue  # no previous time or no improvement
+            improvement_cs = prev - current_time
+            swimmer = swimmers.get(sid)
+            event = events.get(eid)
+            if not swimmer or not event:
+                continue
+            improvements.append({
+                'swimmer_id': sid,
+                'swimmer_name': swimmer.name,
+                'gender': swimmer.sex,
+                'nationality': swimmer.nationality.name,
+                'nationality_code': swimmer.nationality.code,
+                'flag_url': swimmer.nationality.flag_url,
+                'event_name': event.name,
+                'current_time': self._format_time(current_time),
+                'previous_best': self._format_time(prev),
+                'improvement_cs': improvement_cs,
+                'improvement': self._format_time(improvement_cs),
+            })
+
+        improvements.sort(key=lambda x: -x['improvement_cs'])
+        return Response(improvements[:30])
+
+    @action(detail=True, methods=['get'], url_path='compare')
+    def compare(self, request, pk=None):
+        """Compare this championship with previous editions (same classification)."""
+        from django.db.models import Count, Min
+        championship = self.get_object()
+
+        # Find related championships: same classification + same pool
+        filters = {'pool': championship.pool}
+        if championship.sub_classification_id:
+            filters['sub_classification_id'] = championship.sub_classification_id
+        elif championship.classification_id:
+            filters['classification_id'] = championship.classification_id
+        else:
+            # No classification — can't compare
+            return Response([])
+
+        related = (
+            Championship.objects
+            .filter(**filters)
+            .exclude(id=championship.id)
+            .order_by('-date')[:10]
+        )
+
+        comparisons = []
+        for champ in related:
+            athletes = champ.results.filter(swimmer__is_relay_team=False)
+            total_results = champ.results.count()
+            total_swimmers = athletes.values('swimmer').distinct().count()
+            countries_count = athletes.values('swimmer__nationality').distinct().count()
+            total_events = champ.results.values('event').distinct().count()
+
+            # Best FINA points at this championship
+            best_fina = athletes.filter(
+                fina_points__isnull=False, fina_points__gt=0
+            ).order_by('-fina_points').values_list('fina_points', flat=True).first()
+
+            comparisons.append({
+                'id': champ.id,
+                'name': champ.name,
+                'date': champ.date.strftime('%d/%m/%Y'),
+                'year': champ.date.year,
+                'pool': champ.pool,
+                'country': champ.country.name if champ.country else '',
+                'country_code': champ.country.code if champ.country else '',
+                'flag_url': champ.country.flag_url if champ.country else '',
+                'total_results': total_results,
+                'total_swimmers': total_swimmers,
+                'countries_count': countries_count,
+                'total_events': total_events,
+                'best_fina': best_fina,
+            })
+
+        # Add current championship for comparison
+        athletes = championship.results.filter(swimmer__is_relay_team=False)
+        best_fina = athletes.filter(
+            fina_points__isnull=False, fina_points__gt=0
+        ).order_by('-fina_points').values_list('fina_points', flat=True).first()
+
+        current = {
+            'id': championship.id,
+            'name': championship.name,
+            'date': championship.date.strftime('%d/%m/%Y'),
+            'year': championship.date.year,
+            'pool': championship.pool,
+            'country': championship.country.name if championship.country else '',
+            'country_code': championship.country.code if championship.country else '',
+            'flag_url': championship.country.flag_url if championship.country else '',
+            'total_results': championship.results.count(),
+            'total_swimmers': athletes.values('swimmer').distinct().count(),
+            'countries_count': athletes.values('swimmer__nationality').distinct().count(),
+            'total_events': championship.results.values('event').distinct().count(),
+            'best_fina': best_fina,
+            'is_current': True,
+        }
+
+        # Sort all by date descending, current first
+        all_champs = [current] + comparisons
+        all_champs.sort(key=lambda x: x['date'], reverse=True)
+
+        return Response(all_champs)
+
+    @staticmethod
+    def _format_time(cs):
+        if not cs:
+            return ''
+        minutes = cs // 6000
+        seconds = (cs % 6000) // 100
+        centis = cs % 100
+        if minutes:
+            return f'{minutes}:{seconds:02d}.{centis:02d}'
+        return f'{seconds}.{centis:02d}'
+
     @action(detail=True, methods=['get'], url_path='results-by-swimmer')
     def results_by_swimmer(self, request, pk=None):
         """List swimmers in this championship with result counts and nationality."""

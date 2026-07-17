@@ -16,6 +16,8 @@ export const uploadPdf = (id, formData) => api.post(`/championships/${id}/upload
 export const importExcel = (id, formData) => api.post(`/championships/${id}/import-excel/`, formData)
 export const getResultsBySwimmer = (id) => api.get(`/championships/${id}/results-by-swimmer/`)
 export const bulkDeleteResults = (id, swimmerIds) => api.post(`/championships/${id}/bulk-delete-results/`, { swimmer_ids: swimmerIds })
+export const getMostImproved = (id) => api.get(`/championships/${id}/most-improved/`)
+export const getChampionshipComparison = (id) => api.get(`/championships/${id}/compare/`)
 export const getClassificationCategories = () => api.get('/classification-categories/')
 export const getClassifications = (category) => api.get('/classifications/', { params: category ? { category } : {} })
 export const getSubClassifications = (classification) => api.get('/sub-classifications/', { params: { classification } })

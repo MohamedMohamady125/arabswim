@@ -39,6 +39,72 @@ function parseTimeToCs(text) {
   return null
 }
 
+function TopPerformersTable({ performers, navigate }) {
+  const [genderFilter, setGenderFilter] = useState('overall')
+  if (!performers || performers.length === 0) return null
+
+  const filtered = genderFilter === 'overall'
+    ? performers
+    : performers.filter(t => t.gender === genderFilter)
+
+  return (
+    <div className="bg-white rounded-lg border">
+      <div className="p-4 border-b flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">Top Performances</h3>
+          <p className="text-xs text-gray-500 mt-1">Highest FINA points at this championship</p>
+        </div>
+        <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+          {[
+            { key: 'overall', label: 'Overall' },
+            { key: 'M', label: 'Male' },
+            { key: 'F', label: 'Female' },
+          ].map(opt => (
+            <button key={opt.key} onClick={() => setGenderFilter(opt.key)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                genderFilter === opt.key ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {filtered.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filtered.map((t, i) => (
+                <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
+                  <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                  <td className="px-4 py-2 text-sm font-medium">{t.swimmer_name}</td>
+                  <td className="px-4 py-2 text-sm">
+                    <CountryFlag code={t.nationality_code} flagUrl={t.flag_url} name={t.nationality} />
+                  </td>
+                  <td className="px-4 py-2 text-sm">{t.event_name}</td>
+                  <td className="px-4 py-2 text-sm font-mono">{t.time}</td>
+                  <td className="px-4 py-2 text-sm font-bold text-sky-600">{t.fina_points}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="p-8 text-center text-gray-400 text-sm">No performances for this filter</div>
+      )}
+    </div>
+  )
+}
+
 export default function MeetDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -381,45 +447,9 @@ export default function MeetDetailPage() {
         <div>
           {!selectedEvent ? (
             <div>
-              {/* Top Performers */}
-              {stats.top_performers.length > 0 && (
-                <div className="bg-white rounded-lg border">
-                  <div className="p-4 border-b">
-                    <h3 className="font-semibold">Top Performers</h3>
-                    <p className="text-xs text-gray-500 mt-1">Highest FINA at this championship</p>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {stats.top_performers.map((t, i) => (
-                          <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
-                            <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                            <td className="px-4 py-2 text-sm font-medium">{t.swimmer_name}</td>
-                            <td className="px-4 py-2 text-sm">
-                              <CountryFlag code={t.nationality_code} flagUrl={t.flag_url} name={t.nationality} />
-                            </td>
-                            <td className="px-4 py-2 text-sm">{t.event_name}</td>
-                            <td className="px-4 py-2 text-sm font-mono">{t.time}</td>
-                            <td className="px-4 py-2 text-sm font-bold text-sky-600">{t.fina_points}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {stats.top_performers.length === 0 && (
+              {stats.top_performers.length > 0 ? (
+                <TopPerformersTable performers={stats.top_performers} navigate={navigate} />
+              ) : (
                 <div className="bg-white rounded-lg border p-12 text-center text-gray-400">
                   <div className="text-5xl mb-3">🏊</div>
                   <p className="text-lg font-medium mb-1">Select an event to view results</p>
@@ -739,42 +769,7 @@ export default function MeetDetailPage() {
           </div>
 
           {/* Top Performers */}
-          {stats.top_performers.length > 0 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Top Performers</h3>
-                <p className="text-xs text-gray-500 mt-1">Highest FINA points at this championship</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {stats.top_performers.map((t, i) => (
-                      <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
-                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                        <td className="px-4 py-2 text-sm font-medium">{t.swimmer_name}</td>
-                        <td className="px-4 py-2 text-sm">
-                          <CountryFlag code={t.nationality_code} flagUrl={t.flag_url} name={t.nationality} />
-                        </td>
-                        <td className="px-4 py-2 text-sm">{t.event_name}</td>
-                        <td className="px-4 py-2 text-sm font-mono">{t.time}</td>
-                        <td className="px-4 py-2 text-sm font-bold text-sky-600">{t.fina_points}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          <TopPerformersTable performers={stats.top_performers} navigate={navigate} />
         </div>
       )}
 

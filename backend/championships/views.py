@@ -423,6 +423,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 top_list.append({
                     'swimmer_id': r.swimmer.id,
                     'swimmer_name': r.swimmer.name,
+                    'gender': r.swimmer.sex,
                     'nationality': r.swimmer.nationality.name,
                     'nationality_code': r.swimmer.nationality.code,
                     'flag_url': r.swimmer.nationality.flag_url,
@@ -430,7 +431,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     'time': r.formatted_time,
                     'fina_points': r.fina_points,
                 })
-                if len(top_list) >= 10:
+                if len(top_list) >= 30:
                     break
 
         return Response({

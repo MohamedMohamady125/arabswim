@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats } from '../api/swimmers'
 import CountryFlag from '../components/common/CountryFlag'
@@ -6,135 +6,181 @@ import CountryFlag from '../components/common/CountryFlag'
 const MEDAL_COLORS = { GOLD: '#FFD700', SILVER: '#C0C0C0', BRONZE: '#CD7F32' }
 const MEDAL_LABELS = { GOLD: 'Gold', SILVER: 'Silver', BRONZE: 'Bronze' }
 
+/* ───────── Animated number counter ───────── */
+function AnimatedNumber({ value, duration = 800 }) {
+  const [display, setDisplay] = useState(0)
+  const ref = useRef()
+  useEffect(() => {
+    if (value == null) return
+    let start = 0
+    const step = (ts) => {
+      if (!start) start = ts
+      const progress = Math.min((ts - start) / duration, 1)
+      setDisplay(Math.round(progress * value))
+      if (progress < 1) ref.current = requestAnimationFrame(step)
+    }
+    ref.current = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(ref.current)
+  }, [value, duration])
+  return <>{display}</>
+}
+
+/* ───────── Pool badge ───────── */
+function PoolBadge({ pool, className = '' }) {
+  if (!pool) return null
+  return (
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md tracking-wide ${
+      pool === 'SCM' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'
+    } ${className}`}>{pool}</span>
+  )
+}
+
+/* ───────── Personal Bests ───────── */
 function PersonalBestsTable({ events, onEventClick, selectedEvent }) {
   const lcm = events.filter(e => e.pool === 'LCM' && !e.is_relay)
   const scm = events.filter(e => e.pool === 'SCM' && !e.is_relay)
   const relays = events.filter(e => e.is_relay)
 
-  const renderTable = (rows, label, poolTag) => {
+  const renderSection = (rows, label, poolTag, delayStart) => {
     if (!rows.length) return null
     return (
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-2 px-1">
-          <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+      <div className="mb-2 animate-fade-in-up" style={{ animationDelay: `${delayStart * 0.08}s` }}>
+        <div className="flex items-center gap-2 mb-1.5 px-1">
+          <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md ${
             poolTag === 'LCM' ? 'bg-sky-100 text-sky-700' : poolTag === 'SCM' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'
           }`}>{label}</span>
+          <div className="flex-1 h-px bg-gray-100" />
         </div>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Event</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Best Time</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Swims</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {rows.map(e => {
-              const isSelected = selectedEvent?.event_id === e.event_id && selectedEvent?.pool === e.pool
-              return (
-                <tr key={`${e.event_id}-${e.pool}`}
-                  onClick={() => onEventClick(e)}
-                  className={`cursor-pointer transition-colors ${isSelected ? 'bg-sky-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-3 py-2.5 text-sm font-medium">{e.event_name}</td>
-                  <td className="px-3 py-2.5 text-sm font-mono text-sky-700 font-semibold">{e.best_time}</td>
-                  <td className="px-3 py-2.5 text-sm text-gray-500">{e.times_count}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+        <div className="space-y-0.5">
+          {rows.map((e, i) => {
+            const isSelected = selectedEvent?.event_id === e.event_id && selectedEvent?.pool === e.pool
+            return (
+              <button key={`${e.event_id}-${e.pool}`} onClick={() => onEventClick(e)}
+                className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 group ${
+                  isSelected
+                    ? 'bg-sky-50 ring-1 ring-sky-200 shadow-sm'
+                    : 'hover:bg-gray-50 hover:shadow-sm'
+                }`}
+                style={{ animationDelay: `${(delayStart + i) * 0.04}s` }}>
+                <div className="flex-1 min-w-0">
+                  <span className={`text-sm font-semibold transition-colors ${isSelected ? 'text-sky-700' : 'text-gray-800 group-hover:text-sky-700'}`}>{e.event_name}</span>
+                </div>
+                <span className="font-mono text-sm font-bold text-sky-600 tabular-nums">{e.best_time}</span>
+                <span className="text-[10px] text-gray-400 bg-gray-100 rounded-md px-1.5 py-0.5 font-medium">{e.times_count}x</span>
+                <svg className={`w-4 h-4 text-gray-300 transition-transform ${isSelected ? 'translate-x-0.5 text-sky-400' : 'group-hover:translate-x-0.5'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+              </button>
+            )
+          })}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm">
-      <div className="p-4 border-b">
-        <h3 className="font-bold text-base">Personal Best Times</h3>
-        <p className="text-xs text-gray-500 mt-0.5">Click an event to view full history</p>
+    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+      <div className="p-4 pb-3 border-b bg-gradient-to-r from-gray-50 to-white">
+        <h3 className="font-bold text-base text-gray-800">Personal Best Times</h3>
+        <p className="text-[11px] text-gray-400 mt-0.5">Tap an event to explore race history</p>
       </div>
-      <div className="p-3">
-        {renderTable(lcm, 'Long Course (LCM)', 'LCM')}
-        {renderTable(scm, 'Short Course (SCM)', 'SCM')}
-        {renderTable(relays, 'Relay Events', 'RELAY')}
+      <div className="p-2.5 max-h-[600px] overflow-y-auto">
+        {renderSection(lcm, 'Long Course', 'LCM', 0)}
+        {renderSection(scm, 'Short Course', 'SCM', lcm.length)}
+        {renderSection(relays, 'Relay', 'RELAY', lcm.length + scm.length)}
         {events.length === 0 && (
-          <div className="py-8 text-center text-gray-400 text-sm">No competition results yet</div>
+          <div className="py-12 text-center text-gray-300">
+            <svg className="w-12 h-12 mx-auto mb-3 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <p className="text-sm">No competition results yet</p>
+          </div>
         )}
       </div>
     </div>
   )
 }
 
+/* ───────── Time History ───────── */
 function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) {
   if (!selectedEvent) {
     return (
-      <div className="bg-white rounded-xl border shadow-sm flex items-center justify-center min-h-[300px]">
-        <div className="text-center text-gray-400">
-          <div className="text-4xl mb-2">&#x23F1;</div>
-          <p className="text-sm">Select an event to view time history</p>
+      <div className="bg-white rounded-2xl border shadow-sm flex items-center justify-center min-h-[400px] animate-fade-in">
+        <div className="text-center text-gray-300 px-6">
+          <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <p className="text-base font-medium text-gray-400">Select an event</p>
+          <p className="text-sm text-gray-300 mt-1">Choose from the list to view full time history</p>
         </div>
       </div>
     )
   }
 
+  const bestCs = history.length ? Math.min(...history.map(x => x.time_centiseconds)) : null
+
   return (
-    <div className="bg-white rounded-xl border shadow-sm">
-      <div className="p-4 border-b">
-        <h3 className="font-bold text-base">
-          {selectedEvent.event_name}
-          {selectedEvent.pool && (
-            <span className={`ml-2 text-xs px-2 py-0.5 rounded font-semibold ${
-              selectedEvent.pool === 'SCM' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'
-            }`}>{selectedEvent.pool}</span>
-          )}
-          {selectedEvent.is_relay && <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Relay</span>}
-        </h3>
+    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-slide-right">
+      <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white flex items-center gap-3">
+        <div className="flex-1">
+          <h3 className="font-bold text-base text-gray-800">{selectedEvent.event_name}</h3>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {history.length} race{history.length !== 1 ? 's' : ''} recorded
+          </p>
+        </div>
+        <PoolBadge pool={selectedEvent.pool} />
+        {selectedEvent.is_relay && <span className="text-[10px] font-bold uppercase tracking-widest bg-purple-100 text-purple-700 px-2.5 py-1 rounded-md">Relay</span>}
       </div>
       {loadingHistory ? (
-        <div className="p-8 text-center text-gray-400">Loading...</div>
+        <div className="p-12 text-center">
+          <div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin mx-auto" />
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b">
+              <tr className="border-b bg-gray-50/80">
                 {['#', 'Age', 'Time', 'Round', 'Team', 'Championship', 'Date', 'FINA'].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-500">{h}</th>
+                  <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody>
               {history.map((h, i) => {
-                const isBest = h.time_centiseconds === Math.min(...history.map(x => x.time_centiseconds))
+                const isBest = h.time_centiseconds === bestCs
                 return (
-                  <tr key={h.id} className={`hover:bg-gray-50 ${isBest ? 'bg-green-50' : ''}`}>
-                    <td className="px-3 py-2 text-sm text-gray-400">{i + 1}</td>
-                    <td className="px-3 py-2 text-sm text-gray-500">{h.age_at_competition || '-'}</td>
-                    <td className="px-3 py-2 text-sm font-mono font-semibold">
-                      {h.time}
-                      {h.is_relay && h.split_time && <span className="ml-1.5 text-xs text-purple-600 font-normal">({h.split_time})</span>}
-                      {!h.is_relay && isBest && <span className="ml-1.5 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-normal">PB</span>}
+                  <tr key={h.id} className={`border-b border-gray-50 transition-colors hover:bg-sky-50/30 animate-fade-in-up`}
+                    style={{ animationDelay: `${i * 0.03}s` }}>
+                    <td className="px-3 py-2.5 text-sm text-gray-300 font-medium">{i + 1}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-500">{h.age_at_competition || '-'}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-sm font-mono font-bold ${isBest ? 'text-emerald-600' : 'text-gray-800'}`}>{h.time}</span>
+                        {h.is_relay && h.split_time && <span className="text-[10px] text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded">Split: {h.split_time}</span>}
+                        {!h.is_relay && isBest && (
+                          <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md tracking-wide">PB</span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-3 py-2 text-sm">
+                    <td className="px-3 py-2.5 text-sm">
                       {h.round_type ? (
-                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${h.round_type === 'Finals' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                          {h.round_type}
-                        </span>
-                      ) : '-'}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          h.round_type === 'Finals' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                        }`}>{h.round_type}</span>
+                      ) : <span className="text-gray-300">-</span>}
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-600">{h.team || '-'}</td>
-                    <td className="px-3 py-2 text-sm">
+                    <td className="px-3 py-2.5 text-sm text-gray-500">{h.team || <span className="text-gray-300">-</span>}</td>
+                    <td className="px-3 py-2.5">
                       <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${h.championship_id}`) }}
-                        className="text-sky-600 hover:text-sky-800 hover:underline text-left">
+                        className="text-sm text-sky-600 hover:text-sky-800 font-medium transition-colors">
                         {h.championship_name}
                       </button>
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-500">{h.championship_date}</td>
-                    <td className="px-3 py-2 text-sm font-mono">{h.fina_points || '-'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-400">{h.championship_date}</td>
+                    <td className="px-3 py-2.5">
+                      {h.fina_points ? (
+                        <span className={`text-sm font-mono font-semibold ${h.fina_points >= 800 ? 'text-emerald-600' : h.fina_points >= 600 ? 'text-sky-600' : 'text-gray-600'}`}>{h.fina_points}</span>
+                      ) : <span className="text-gray-300">-</span>}
+                    </td>
                   </tr>
                 )
               })}
               {history.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No times recorded</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-300 text-sm">No times recorded</td></tr>
               )}
             </tbody>
           </table>
@@ -144,23 +190,20 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
   )
 }
 
-function MedalBar({ gold, silver, bronze }) {
+/* ───────── Medal Bar ───────── */
+function MedalBar({ gold, silver, bronze, animate = false }) {
   const total = gold + silver + bronze
   if (!total) return <div className="h-5 bg-gray-100 rounded-full w-full" />
   return (
-    <div className="flex h-5 rounded-full overflow-hidden w-full" style={{ minWidth: 80 }}>
-      {gold > 0 && <div style={{ width: `${(gold / total) * 100}%`, backgroundColor: MEDAL_COLORS.GOLD }} />}
-      {silver > 0 && <div style={{ width: `${(silver / total) * 100}%`, backgroundColor: MEDAL_COLORS.SILVER }} />}
-      {bronze > 0 && <div style={{ width: `${(bronze / total) * 100}%`, backgroundColor: MEDAL_COLORS.BRONZE }} />}
+    <div className={`flex h-5 rounded-full overflow-hidden w-full ${animate ? 'animate-grow-width' : ''}`}>
+      {gold > 0 && <div className="transition-all duration-700" style={{ width: `${(gold / total) * 100}%`, backgroundColor: MEDAL_COLORS.GOLD }} />}
+      {silver > 0 && <div className="transition-all duration-700" style={{ width: `${(silver / total) * 100}%`, backgroundColor: MEDAL_COLORS.SILVER }} />}
+      {bronze > 0 && <div className="transition-all duration-700" style={{ width: `${(bronze / total) * 100}%`, backgroundColor: MEDAL_COLORS.BRONZE }} />}
     </div>
   )
 }
 
-function MedalBadge({ type }) {
-  const style = type === 'GOLD' ? 'bg-amber-100 text-amber-800' : type === 'SILVER' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-800'
-  return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${style}`}>{MEDAL_LABELS[type]}</span>
-}
-
+/* ───────── Medal Counts Inline ───────── */
 function MedalCounts({ gold, silver, bronze, size = 'sm' }) {
   const text = size === 'lg' ? 'text-sm' : 'text-[10px]'
   return (
@@ -172,25 +215,30 @@ function MedalCounts({ gold, silver, bronze, size = 'sm' }) {
   )
 }
 
-function MedalRow({ medal, navigate }) {
+/* ───────── Medal Row ───────── */
+function MedalRow({ medal, navigate, delay = 0 }) {
   return (
-    <div className="flex items-center gap-2.5 py-2 px-3 hover:bg-gray-50 rounded-lg">
-      <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0"
-        style={{ backgroundColor: MEDAL_COLORS[medal.medal_type] + '30', color: medal.medal_type === 'GOLD' ? '#B8860B' : medal.medal_type === 'SILVER' ? '#666' : '#CD7F32' }}>
+    <div className="flex items-center gap-3 py-2.5 px-3 hover:bg-gray-50 rounded-xl transition-all duration-200 animate-fade-in-up"
+      style={{ animationDelay: `${delay}s` }}>
+      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 shadow-sm"
+        style={{ backgroundColor: MEDAL_COLORS[medal.medal_type] + '40', color: medal.medal_type === 'GOLD' ? '#8B6914' : medal.medal_type === 'SILVER' ? '#555' : '#8B4513' }}>
         {medal.medal_type === 'GOLD' ? '1' : medal.medal_type === 'SILVER' ? '2' : '3'}
       </div>
       <div className="flex-1 min-w-0">
-        <span className="text-sm font-medium">{medal.event_name}</span>
+        <span className="text-sm font-semibold text-gray-800">{medal.event_name}</span>
         <button onClick={() => navigate(`/meets/${medal.championship_id}`)}
-          className="text-xs text-sky-600 hover:underline block truncate">
+          className="text-xs text-sky-600 hover:text-sky-800 block truncate transition-colors">
           {medal.championship_name} ({new Date(medal.championship_date).getFullYear()})
         </button>
       </div>
-      <MedalBadge type={medal.medal_type} />
+      <span className={`text-[10px] font-black px-2 py-1 rounded-full tracking-wide ${
+        medal.medal_type === 'GOLD' ? 'bg-amber-100 text-amber-800' : medal.medal_type === 'SILVER' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-800'
+      }`}>{MEDAL_LABELS[medal.medal_type]}</span>
     </div>
   )
 }
 
+/* ───────── Medals Tab ───────── */
 function MedalsTab({ stats, navigate }) {
   if (!stats) return null
   const { medals, medals_by_level, medals_hierarchy } = stats
@@ -211,30 +259,31 @@ function MedalsTab({ stats, navigate }) {
   return (
     <div className="space-y-6">
       {/* Medal Summary Cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { type: 'GOLD', count: medals.gold, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
-          { type: 'SILVER', count: medals.silver, bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600' },
-          { type: 'BRONZE', count: medals.bronze, bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
-          { type: 'TOTAL', count: medals.total, bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700' },
-        ].map(m => (
-          <div key={m.type} className={`${m.bg} ${m.border} border rounded-xl p-4 text-center`}>
-            <div className={`text-3xl font-black ${m.text}`}>{m.count}</div>
-            <div className="text-xs font-semibold text-gray-500 mt-1">{m.type === 'TOTAL' ? 'Total' : MEDAL_LABELS[m.type]}</div>
+          { type: 'GOLD', count: medals.gold, gradient: 'from-amber-50 to-amber-100/50', border: 'border-amber-200', text: 'text-amber-700', shadow: 'shadow-amber-100' },
+          { type: 'SILVER', count: medals.silver, gradient: 'from-gray-50 to-gray-100/50', border: 'border-gray-200', text: 'text-gray-600', shadow: 'shadow-gray-100' },
+          { type: 'BRONZE', count: medals.bronze, gradient: 'from-orange-50 to-orange-100/50', border: 'border-orange-200', text: 'text-orange-700', shadow: 'shadow-orange-100' },
+          { type: 'TOTAL', count: medals.total, gradient: 'from-sky-50 to-sky-100/50', border: 'border-sky-200', text: 'text-sky-700', shadow: 'shadow-sky-100' },
+        ].map((m, i) => (
+          <div key={m.type} className={`bg-gradient-to-br ${m.gradient} ${m.border} border rounded-2xl p-5 text-center shadow-sm ${m.shadow} animate-count-up stagger-${i + 1}`}>
+            <div className={`text-4xl font-black ${m.text}`}><AnimatedNumber value={m.count} /></div>
+            <div className="text-[11px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider">{m.type === 'TOTAL' ? 'Total' : MEDAL_LABELS[m.type]}</div>
           </div>
         ))}
       </div>
 
       {/* Medal Analytics Bar Chart */}
       {medals_by_level.length > 0 && (
-        <div className="bg-white rounded-xl border shadow-sm p-5">
-          <h3 className="font-bold text-base mb-4">Medal Analytics by Level</h3>
-          <div className="space-y-3">
+        <div className="bg-white rounded-2xl border shadow-sm p-5 animate-fade-in-up stagger-4">
+          <h3 className="font-bold text-base mb-1 text-gray-800">Medal Analytics</h3>
+          <p className="text-[11px] text-gray-400 mb-4">Breakdown by competition level</p>
+          <div className="space-y-3.5">
             {medals_by_level.map((level, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-28 text-sm font-medium text-gray-700 shrink-0">{level.category}</div>
+              <div key={i} className="flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${(i + 5) * 0.08}s` }}>
+                <div className="w-28 text-sm font-semibold text-gray-600 shrink-0">{level.category}</div>
                 <div className="flex-1">
-                  <MedalBar gold={level.gold} silver={level.silver} bronze={level.bronze} />
+                  <MedalBar gold={level.gold} silver={level.silver} bronze={level.bronze} animate />
                 </div>
                 <MedalCounts gold={level.gold} silver={level.silver} bronze={level.bronze} size="lg" />
               </div>
@@ -246,66 +295,53 @@ function MedalsTab({ stats, navigate }) {
       {/* Medals by Classification Hierarchy */}
       {(medals_hierarchy || []).length > 0 && (
         <div className="space-y-3">
-          {medals_hierarchy.map(cat => (
-            <div key={cat.name} className="bg-white rounded-xl border shadow-sm overflow-hidden">
-              {/* Category Header */}
+          {medals_hierarchy.map((cat, ci) => (
+            <div key={cat.name} className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: `${(ci + 6) * 0.08}s` }}>
               <button onClick={() => toggle(expandedCats, setExpandedCats, cat.name)}
-                className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
-                <span className={`text-xs transition-transform ${expandedCats.has(cat.name) ? 'rotate-90' : ''}`}>&#9654;</span>
-                <div className="flex-1 text-left">
-                  <h3 className="font-bold text-base">{cat.name}</h3>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1">
-                    {cat.gold > 0 && <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#FFD70030', color: '#B8860B' }}>{cat.gold}</span>}
-                    {cat.silver > 0 && <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#C0C0C030', color: '#666' }}>{cat.silver}</span>}
-                    {cat.bronze > 0 && <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#CD7F3230', color: '#CD7F32' }}>{cat.bronze}</span>}
-                  </div>
+                className="w-full flex items-center gap-3 p-4 hover:bg-gray-50/80 transition-all duration-200">
+                <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-300 ${expandedCats.has(cat.name) ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" /></svg>
+                <h3 className="flex-1 text-left font-bold text-base text-gray-800">{cat.name}</h3>
+                <div className="flex gap-1.5">
+                  {cat.gold > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-sm" style={{ backgroundColor: '#FFD70030', color: '#8B6914' }}>{cat.gold}</span>}
+                  {cat.silver > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-sm" style={{ backgroundColor: '#C0C0C030', color: '#555' }}>{cat.silver}</span>}
+                  {cat.bronze > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-sm" style={{ backgroundColor: '#CD7F3230', color: '#8B4513' }}>{cat.bronze}</span>}
                 </div>
               </button>
-
               {expandedCats.has(cat.name) && (
-                <div className="border-t">
+                <div className="border-t animate-expand">
                   {cat.classifications.map(cls => {
                     const clsKey = `${cat.name}/${cls.name}`
                     return (
                       <div key={cls.name}>
-                        {/* Classification Header */}
                         <button onClick={() => toggle(expandedCls, setExpandedCls, clsKey)}
-                          className="w-full flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100">
-                          <span className={`text-[10px] text-gray-400 transition-transform ${expandedCls.has(clsKey) ? 'rotate-90' : ''}`}>&#9654;</span>
-                          <div className="flex-1 text-left">
-                            <span className="text-sm font-semibold text-gray-700">{cls.name}</span>
-                          </div>
+                          className="w-full flex items-center gap-3 px-7 py-3 hover:bg-gray-50/80 transition-all duration-200 border-b border-gray-50">
+                          <svg className={`w-3 h-3 text-gray-300 transition-transform duration-300 ${expandedCls.has(clsKey) ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" /></svg>
+                          <span className="flex-1 text-left text-sm font-semibold text-gray-600">{cls.name}</span>
                           <MedalCounts gold={cls.gold} silver={cls.silver} bronze={cls.bronze} size="lg" />
                         </button>
-
                         {expandedCls.has(clsKey) && (
-                          <div className="bg-gray-50/50">
-                            {/* Sub-classifications */}
+                          <div className="bg-gray-50/30 animate-expand">
                             {cls.sub_classifications.map(sub => {
                               const subKey = `${clsKey}/${sub.name}`
                               return (
                                 <div key={sub.name}>
                                   <button onClick={() => toggle(expandedSubs, setExpandedSubs, subKey)}
-                                    className="w-full flex items-center gap-3 px-10 py-2.5 hover:bg-gray-100 transition-colors">
-                                    <span className={`text-[9px] text-gray-400 transition-transform ${expandedSubs.has(subKey) ? 'rotate-90' : ''}`}>&#9654;</span>
-                                    <span className="flex-1 text-left text-sm text-gray-600">{sub.name}</span>
+                                    className="w-full flex items-center gap-3 px-11 py-2.5 hover:bg-gray-100/50 transition-all duration-200">
+                                    <svg className={`w-2.5 h-2.5 text-gray-300 transition-transform duration-300 ${expandedSubs.has(subKey) ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" /></svg>
+                                    <span className="flex-1 text-left text-sm text-gray-500">{sub.name}</span>
                                     <MedalCounts gold={sub.gold} silver={sub.silver} bronze={sub.bronze} />
                                   </button>
                                   {expandedSubs.has(subKey) && (
-                                    <div className="pl-12 pr-4 pb-2">
-                                      {sub.medals.map(m => <MedalRow key={m.id} medal={m} navigate={navigate} />)}
+                                    <div className="pl-12 pr-4 pb-2 animate-expand">
+                                      {sub.medals.map((m, mi) => <MedalRow key={m.id} medal={m} navigate={navigate} delay={mi * 0.04} />)}
                                     </div>
                                   )}
                                 </div>
                               )
                             })}
-
-                            {/* Medals directly under classification (no sub-classification) */}
                             {cls.medals.length > 0 && (
-                              <div className="pl-8 pr-4 py-2">
-                                {cls.medals.map(m => <MedalRow key={m.id} medal={m} navigate={navigate} />)}
+                              <div className="pl-9 pr-4 py-2 animate-expand">
+                                {cls.medals.map((m, mi) => <MedalRow key={m.id} medal={m} navigate={navigate} delay={mi * 0.04} />)}
                               </div>
                             )}
                           </div>
@@ -321,58 +357,62 @@ function MedalsTab({ stats, navigate }) {
       )}
 
       {medals.total === 0 && (
-        <div className="bg-white rounded-xl border shadow-sm p-8 text-center text-gray-400">No medals recorded</div>
+        <div className="bg-white rounded-2xl border shadow-sm p-12 text-center animate-fade-in">
+          <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+          <p className="text-gray-400 font-medium">No medals recorded yet</p>
+        </div>
       )}
     </div>
   )
 }
 
+/* ───────── Performance Index ───────── */
 function PerformanceIndex({ finaDistribution, bestFina }) {
   if (!finaDistribution || finaDistribution.length === 0) return null
   const maxCount = Math.max(...finaDistribution.map(d => d.count))
 
   const TIER_COLORS = {
-    900: { bar: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Elite' },
-    800: { bar: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-700', label: 'World Class' },
-    700: { bar: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700', label: 'Excellent' },
-    600: { bar: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-700', label: 'Very Good' },
-    500: { bar: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-700', label: 'Good' },
-    400: { bar: 'bg-orange-400', bg: 'bg-orange-50', text: 'text-orange-700', label: 'Developing' },
+    900: { bar: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600', label: 'Elite' },
+    800: { bar: 'from-sky-400 to-sky-600', text: 'text-sky-600', label: 'World Class' },
+    700: { bar: 'from-blue-400 to-blue-600', text: 'text-blue-600', label: 'Excellent' },
+    600: { bar: 'from-violet-400 to-violet-600', text: 'text-violet-600', label: 'Very Good' },
+    500: { bar: 'from-amber-400 to-amber-600', text: 'text-amber-600', label: 'Good' },
+    400: { bar: 'from-orange-300 to-orange-500', text: 'text-orange-600', label: 'Developing' },
   }
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm p-5">
-      <div className="flex items-start justify-between mb-4">
+    <div className="bg-white rounded-2xl border shadow-sm p-5 animate-fade-in-up stagger-5">
+      <div className="flex items-start justify-between mb-5">
         <div>
-          <h3 className="font-bold text-base">Performance Index</h3>
-          <p className="text-xs text-gray-500 mt-0.5">FINA points distribution across all swims</p>
+          <h3 className="font-bold text-base text-gray-800">Performance Index</h3>
+          <p className="text-[11px] text-gray-400 mt-0.5">FINA points distribution across all swims</p>
         </div>
         {bestFina && (
-          <div className="text-right">
-            <div className="text-3xl font-black text-sky-600">{bestFina.points}</div>
-            <div className="text-[10px] text-gray-400 font-medium">PEAK FINA</div>
+          <div className="text-right animate-count-up stagger-6">
+            <div className="text-3xl font-black bg-gradient-to-r from-sky-500 to-sky-700 bg-clip-text text-transparent">{bestFina.points}</div>
+            <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Peak FINA</div>
           </div>
         )}
       </div>
-      <div className="space-y-2.5">
-        {finaDistribution.map(tier => {
+      <div className="space-y-3">
+        {finaDistribution.map((tier, i) => {
           const colors = TIER_COLORS[tier.threshold] || TIER_COLORS[400]
           const pct = maxCount > 0 ? (tier.count / maxCount) * 100 : 0
           return (
-            <div key={tier.threshold} className="flex items-center gap-3">
-              <div className={`w-12 text-right text-xs font-bold ${colors.text}`}>{tier.threshold}+</div>
-              <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden relative">
-                <div className={`${colors.bar} h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2`}
-                  style={{ width: `${Math.max(pct, tier.count > 0 ? 8 : 0)}%` }}>
-                  {tier.count > 0 && pct > 15 && (
-                    <span className="text-white text-xs font-bold">{tier.count}</span>
+            <div key={tier.threshold} className="flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${(i + 6) * 0.08}s` }}>
+              <div className={`w-11 text-right text-xs font-black ${colors.text}`}>{tier.threshold}+</div>
+              <div className="flex-1 bg-gray-100 rounded-full h-7 overflow-hidden relative">
+                <div className={`bg-gradient-to-r ${colors.bar} h-full rounded-full animate-grow-width flex items-center justify-end pr-2.5`}
+                  style={{ width: `${Math.max(pct, tier.count > 0 ? 10 : 0)}%`, animationDelay: `${(i + 6) * 0.1}s` }}>
+                  {tier.count > 0 && pct > 18 && (
+                    <span className="text-white text-xs font-black drop-shadow-sm">{tier.count}</span>
                   )}
                 </div>
-                {tier.count > 0 && pct <= 15 && (
-                  <span className="absolute left-[calc(8%+4px)] top-1/2 -translate-y-1/2 text-xs font-bold text-gray-600">{tier.count}</span>
+                {tier.count > 0 && pct <= 18 && (
+                  <span className="absolute left-[calc(10%+6px)] top-1/2 -translate-y-1/2 text-xs font-black text-gray-500">{tier.count}</span>
                 )}
               </div>
-              <div className={`w-20 text-[10px] font-medium ${colors.text} hidden md:block`}>{colors.label}</div>
+              <div className={`w-20 text-[10px] font-semibold ${colors.text} hidden md:block`}>{colors.label}</div>
             </div>
           )
         })}
@@ -381,48 +421,50 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
   )
 }
 
+/* ───────── Stats Tab ───────── */
 function StatsTab({ stats, events }) {
   if (!stats) return null
   const { medals, best_fina, best_event, total_championships, records, total_records, fina_distribution } = stats
-
   const totalEvents = new Set(events.map(e => e.event_id)).size
   const totalSwims = events.reduce((sum, e) => sum + e.times_count, 0)
 
+  const quickStats = [
+    { label: 'Championships', value: total_championships, icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>, color: 'text-sky-500' },
+    { label: 'Events', value: totalEvents, icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>, color: 'text-violet-500' },
+    { label: 'Total Swims', value: totalSwims, icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, color: 'text-emerald-500' },
+    { label: 'Medals', value: medals.total, icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012.75 10.5h-1.5A3.375 3.375 0 007.5 13.875v4.875m9-4.875a3.375 3.375 0 00-3.375-3.375h-1.5" /></svg>, color: 'text-amber-500' },
+  ]
+
   return (
     <div className="space-y-6">
-      {/* Quick Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Championships', value: total_championships, icon: '🏊' },
-          { label: 'Total Events', value: totalEvents, icon: '📋' },
-          { label: 'Total Swims', value: totalSwims, icon: '⏱' },
-          { label: 'Total Medals', value: medals.total, icon: '🏅' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border shadow-sm p-4">
-            <div className="text-2xl mb-1">{s.icon}</div>
-            <div className="text-2xl font-black text-gray-800">{s.value}</div>
-            <div className="text-xs text-gray-500 font-medium mt-0.5">{s.label}</div>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {quickStats.map((s, i) => (
+          <div key={s.label} className={`bg-white rounded-2xl border shadow-sm p-5 group hover:shadow-md transition-all duration-300 animate-count-up stagger-${i + 1}`}>
+            <div className={`${s.color} mb-2 transition-transform group-hover:scale-110 duration-300`}>{s.icon}</div>
+            <div className="text-3xl font-black text-gray-800"><AnimatedNumber value={s.value} /></div>
+            <div className="text-[11px] text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Performance Index + Best FINA / Best Event */}
+      {/* Performance Index + Highlights */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <PerformanceIndex finaDistribution={fina_distribution} bestFina={best_fina} />
         <div className="space-y-4">
           {best_fina && (
-            <div className="bg-gradient-to-br from-sky-50 to-white rounded-xl border border-sky-200 p-5">
-              <div className="text-xs font-semibold text-sky-600 uppercase tracking-wide mb-2">Best FINA Points</div>
-              <div className="text-4xl font-black text-sky-700">{best_fina.points}</div>
-              <div className="text-sm text-gray-600 mt-1">{best_fina.event_name}</div>
+            <div className="bg-gradient-to-br from-sky-50 via-white to-sky-50/30 rounded-2xl border border-sky-200 p-5 shadow-sm animate-fade-in-up stagger-5 hover:shadow-md transition-shadow duration-300">
+              <div className="text-[10px] font-bold text-sky-500 uppercase tracking-widest mb-2">Best FINA Points</div>
+              <div className="text-4xl font-black bg-gradient-to-r from-sky-600 to-sky-800 bg-clip-text text-transparent"><AnimatedNumber value={best_fina.points} /></div>
+              <div className="text-sm font-semibold text-gray-600 mt-2">{best_fina.event_name}</div>
               <div className="text-xs text-gray-400 mt-0.5">{best_fina.championship_name}</div>
             </div>
           )}
           {best_event && (
-            <div className="bg-gradient-to-br from-amber-50 to-white rounded-xl border border-amber-200 p-5">
-              <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">Best Event</div>
+            <div className="bg-gradient-to-br from-amber-50 via-white to-amber-50/30 rounded-2xl border border-amber-200 p-5 shadow-sm animate-fade-in-up stagger-6 hover:shadow-md transition-shadow duration-300">
+              <div className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2">Signature Event</div>
               <div className="text-2xl font-black text-amber-700">{best_event}</div>
-              <div className="text-sm text-gray-500 mt-1">Highest FINA points across all events</div>
+              <div className="text-xs text-gray-400 mt-1">Highest FINA points across all events</div>
             </div>
           )}
         </div>
@@ -430,21 +472,22 @@ function StatsTab({ stats, events }) {
 
       {/* Records Held */}
       {total_records > 0 && (
-        <div className="bg-white rounded-xl border shadow-sm">
-          <div className="p-4 border-b">
-            <h3 className="font-bold text-base">Records Held</h3>
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up stagger-7">
+          <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
+            <h3 className="font-bold text-base text-gray-800">Records Held</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">{total_records} active record{total_records !== 1 ? 's' : ''}</p>
           </div>
-          <div className="divide-y">
-            {records.map(r => (
-              <div key={r.id} className="px-4 py-3 flex items-center gap-3">
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                  r.record_type === 'ARAB' ? 'bg-emerald-100 text-emerald-800' : r.record_type === 'GCC' ? 'bg-sky-100 text-sky-800' : 'bg-purple-100 text-purple-800'
+          <div className="divide-y divide-gray-50">
+            {records.map((r, i) => (
+              <div key={r.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/80 transition-all duration-200 animate-fade-in-up" style={{ animationDelay: `${(i + 8) * 0.06}s` }}>
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg ${
+                  r.record_type === 'ARAB' ? 'bg-emerald-100 text-emerald-700' : r.record_type === 'GCC' ? 'bg-sky-100 text-sky-700' : 'bg-purple-100 text-purple-700'
                 }`}>{r.record_type}</span>
                 <div className="flex-1">
-                  <div className="text-sm font-medium">{r.event_name}</div>
-                  <div className="text-xs text-gray-400">{r.location} &middot; {r.date}</div>
+                  <div className="text-sm font-semibold text-gray-800">{r.event_name}</div>
+                  <div className="text-[11px] text-gray-400">{r.location}{r.location && r.date ? ' \u00b7 ' : ''}{r.date}</div>
                 </div>
-                <div className="font-mono text-sm font-semibold text-sky-700">{r.time}</div>
+                <div className="font-mono text-sm font-black text-sky-600">{r.time}</div>
               </div>
             ))}
           </div>
@@ -454,11 +497,11 @@ function StatsTab({ stats, events }) {
   )
 }
 
+/* ───────── Meets Tab ───────── */
 function MeetsTab({ stats, navigate }) {
   if (!stats) return null
   const { championships } = stats
 
-  // Group by year
   const byYear = {}
   championships.forEach(c => {
     const year = new Date(c.date).getFullYear()
@@ -469,27 +512,51 @@ function MeetsTab({ stats, navigate }) {
 
   return (
     <div className="space-y-4">
-      {years.map(year => (
-        <div key={year} className="bg-white rounded-xl border shadow-sm">
-          <div className="p-3 px-4 border-b bg-gray-50 rounded-t-xl">
-            <h3 className="font-bold text-sm text-gray-700">{year} <span className="font-normal text-gray-400">({byYear[year].length} {byYear[year].length === 1 ? 'meet' : 'meets'})</span></h3>
+      {/* Overview */}
+      <div className="flex items-center gap-4 mb-2 animate-fade-in">
+        <div className="bg-white rounded-2xl border shadow-sm px-5 py-3 flex items-center gap-3">
+          <svg className="w-5 h-5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+          <div>
+            <div className="text-2xl font-black text-gray-800"><AnimatedNumber value={championships.length} /></div>
+            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Meets</div>
           </div>
-          <div className="divide-y">
-            {byYear[year].map(c => (
+        </div>
+        <div className="bg-white rounded-2xl border shadow-sm px-5 py-3 flex items-center gap-3">
+          <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <div>
+            <div className="text-2xl font-black text-gray-800">{years.length}</div>
+            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Active Years</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Timeline */}
+      {years.map((year, yi) => (
+        <div key={year} className="animate-fade-in-up" style={{ animationDelay: `${yi * 0.08}s` }}>
+          {/* Year Pill */}
+          <div className="flex items-center gap-3 mb-2">
+            <span className="bg-sky-600 text-white text-sm font-black px-3.5 py-1 rounded-full shadow-sm">{year}</span>
+            <span className="text-xs text-gray-400 font-medium">{byYear[year].length} meet{byYear[year].length !== 1 ? 's' : ''}</span>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
+          <div className="space-y-2 ml-2 pl-5 border-l-2 border-gray-100">
+            {byYear[year].map((c, ci) => (
               <button key={c.id} onClick={() => navigate(`/meets/${c.id}`)}
-                className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                className="w-full text-left bg-white rounded-xl border shadow-sm px-4 py-3 hover:shadow-md hover:border-sky-200 flex items-center gap-3 transition-all duration-300 group animate-fade-in-up"
+                style={{ animationDelay: `${(yi * 3 + ci) * 0.05}s` }}>
+                {/* Dot on timeline */}
+                <div className="absolute -left-[9px] w-4 h-4 rounded-full bg-white border-2 border-sky-300 group-hover:border-sky-500 group-hover:bg-sky-50 transition-colors duration-200" style={{ position: 'relative', left: '-29px', marginRight: '-16px' }} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium">{c.name}</div>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="text-sm font-semibold text-gray-800 group-hover:text-sky-700 transition-colors">{c.name}</div>
+                  <div className="flex items-center gap-2 mt-1">
                     <CountryFlag code={c.country_code} flagUrl={c.flag_url} name={c.country} />
-                    <span className="text-xs text-gray-400">{c.date}</span>
+                    <span className="text-[11px] text-gray-400">{new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                    c.pool === 'SCM' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'
-                  }`}>{c.pool}</span>
-                  {c.category && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{c.category}</span>}
+                  <PoolBadge pool={c.pool} />
+                  {c.category && <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md font-medium">{c.category}</span>}
+                  <svg className="w-4 h-4 text-gray-300 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </div>
               </button>
             ))}
@@ -497,19 +564,24 @@ function MeetsTab({ stats, navigate }) {
         </div>
       ))}
       {championships.length === 0 && (
-        <div className="bg-white rounded-xl border shadow-sm p-8 text-center text-gray-400">No championship history</div>
+        <div className="bg-white rounded-2xl border shadow-sm p-12 text-center animate-fade-in">
+          <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+          <p className="text-gray-400 font-medium">No championship history yet</p>
+        </div>
       )}
     </div>
   )
 }
 
+/* ───────── TAB CONFIG ───────── */
 const TABS = [
-  { key: 'times', label: 'Times', icon: '⏱' },
-  { key: 'meets', label: 'Meets', icon: '🏊' },
-  { key: 'medals', label: 'Medals', icon: '🏅' },
-  { key: 'stats', label: 'Stats', icon: '📊' },
+  { key: 'times', label: 'Times', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+  { key: 'meets', label: 'Meets', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg> },
+  { key: 'medals', label: 'Medals', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012.75 10.5h-1.5A3.375 3.375 0 007.5 13.875v4.875" /></svg> },
+  { key: 'stats', label: 'Stats', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg> },
 ]
 
+/* ───────── MAIN PAGE ───────── */
 export default function SwimmerProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -522,11 +594,14 @@ export default function SwimmerProfilePage() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    getSwimmer(id).then(res => setSwimmer(res.data)).catch(() => {})
-    getSwimmerEvents(id).then(res => setEvents(res.data)).catch(() => {})
-    getSwimmerProfileStats(id).then(res => setStats(res.data)).catch(() => {})
+    Promise.all([
+      getSwimmer(id).then(res => setSwimmer(res.data)),
+      getSwimmerEvents(id).then(res => setEvents(res.data)),
+      getSwimmerProfileStats(id).then(res => setStats(res.data)),
+    ]).finally(() => setLoaded(true))
   }, [id])
 
   const handleEventClick = async (event) => {
@@ -542,118 +617,155 @@ export default function SwimmerProfilePage() {
     }
   }
 
-  if (!swimmer) return <div className="text-center py-12 text-gray-400">Loading...</div>
+  if (!loaded) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-3 border-sky-200 border-t-sky-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-400">Loading profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!swimmer) return <div className="text-center py-12 text-gray-400">Swimmer not found</div>
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Back Button */}
+    <div className="max-w-6xl mx-auto pb-12">
+      {/* Back */}
       <button onClick={() => navigate('/swimmers')}
-        className="text-gray-400 hover:text-gray-600 text-sm mb-4 inline-flex items-center gap-1">
-        &larr; Back to Swimmers
+        className="text-gray-400 hover:text-gray-600 text-sm mb-4 inline-flex items-center gap-1.5 group transition-colors">
+        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        Back to Swimmers
       </button>
 
       {/* Hero Header */}
-      <div className="bg-gradient-to-r from-sky-600 to-sky-800 rounded-2xl p-6 mb-6 text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
-        <div className="relative flex items-start gap-6">
-          {/* Photo */}
-          <div className="w-28 h-28 rounded-2xl bg-white/20 flex items-center justify-center overflow-hidden shrink-0 border-2 border-white/30">
-            {swimmer.photo ? (
-              <img src={swimmer.photo} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-5xl opacity-60">&#x1F464;</span>
-            )}
-          </div>
+      <div className="relative rounded-2xl overflow-hidden mb-6 animate-hero">
+        {/* Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-sky-900 to-sky-800" />
+        <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2V0h2v20.5z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")` }} />
+        {/* Glow effect */}
+        <div className="absolute -top-20 -right-20 w-60 h-60 bg-sky-400/20 rounded-full blur-3xl" />
+        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-sky-300/10 rounded-full blur-2xl" />
 
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight">{swimmer.name}</h1>
-            <div className="flex items-center gap-2 mt-1.5">
-              <CountryFlag code={swimmer.nationality_detail?.code} flagUrl={swimmer.nationality_detail?.flag_url} name={swimmer.nationality_detail?.name} />
-              <span className="text-white/80 text-sm font-medium">{swimmer.nationality_detail?.name}</span>
+        <div className="relative p-6 md:p-8">
+          <div className="flex items-start gap-6">
+            {/* Photo */}
+            <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/20 shadow-xl animate-fade-in-up stagger-1">
+              {swimmer.photo ? (
+                <img src={swimmer.photo} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <svg className="w-14 h-14 text-white/30" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
+              )}
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-sm text-white/70">
-              {swimmer.date_of_birth ? (
-                <span>DOB: <span className="text-white font-medium">{swimmer.date_of_birth}</span></span>
-              ) : swimmer.birth_year ? (
-                <span>Born: <span className="text-white font-medium">{swimmer.birth_year}</span></span>
-              ) : null}
-              {swimmer.age != null && <span>Age: <span className="text-white font-medium">{swimmer.age}</span></span>}
-              {swimmer.sex && <span><span className="text-white font-medium">{swimmer.sex === 'M' ? 'Male' : 'Female'}</span></span>}
-              {swimmer.club && <span>Club: <span className="text-white font-medium">{swimmer.club}</span></span>}
+
+            {/* Info */}
+            <div className="flex-1 min-w-0 animate-fade-in-up stagger-2">
+              <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-sm">{swimmer.name}</h1>
+              <div className="flex items-center gap-2 mt-2">
+                <CountryFlag code={swimmer.nationality_detail?.code} flagUrl={swimmer.nationality_detail?.flag_url} name={swimmer.nationality_detail?.name} className="text-white/80 text-sm font-medium" />
+              </div>
+              <div className="flex flex-wrap gap-3 mt-3">
+                {swimmer.date_of_birth && (
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                    DOB <span className="text-white font-semibold">{swimmer.date_of_birth}</span>
+                  </span>
+                )}
+                {!swimmer.date_of_birth && swimmer.birth_year && (
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                    Born <span className="text-white font-semibold">{swimmer.birth_year}</span>
+                  </span>
+                )}
+                {swimmer.age != null && (
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                    Age <span className="text-white font-semibold">{swimmer.age}</span>
+                  </span>
+                )}
+                {swimmer.sex && (
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                    {swimmer.sex === 'M' ? 'Male' : 'Female'}
+                  </span>
+                )}
+                {swimmer.club && (
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                    Club <span className="text-white font-semibold">{swimmer.club}</span>
+                  </span>
+                )}
+              </div>
+              {swimmer.nicknames?.length > 0 && (
+                <div className="flex gap-2 mt-2.5">
+                  {swimmer.nicknames.map((n, i) => (
+                    <span key={i} className="bg-sky-500/20 backdrop-blur-sm text-sky-200 text-[11px] px-2.5 py-1 rounded-full font-medium">{n.nickname}</span>
+                  ))}
+                </div>
+              )}
             </div>
-            {swimmer.nicknames?.length > 0 && (
-              <div className="flex gap-2 mt-2">
-                {swimmer.nicknames.map((n, i) => (
-                  <span key={i} className="bg-white/15 backdrop-blur px-2.5 py-0.5 rounded-full text-xs text-white/90">{n.nickname}</span>
-                ))}
+
+            {/* Quick Numbers */}
+            {stats && (
+              <div className="hidden lg:flex gap-2.5 shrink-0 animate-fade-in-up stagger-3">
+                {stats.medals.total > 0 && (
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center min-w-[72px] ring-1 ring-white/10">
+                    <div className="text-2xl font-black text-white"><AnimatedNumber value={stats.medals.total} /></div>
+                    <div className="text-[9px] text-white/50 font-bold uppercase tracking-widest mt-0.5">Medals</div>
+                    <div className="flex gap-1 mt-1.5 justify-center text-[10px] font-bold">
+                      {stats.medals.gold > 0 && <span className="text-amber-300">{stats.medals.gold}G</span>}
+                      {stats.medals.silver > 0 && <span className="text-gray-300">{stats.medals.silver}S</span>}
+                      {stats.medals.bronze > 0 && <span className="text-orange-300">{stats.medals.bronze}B</span>}
+                    </div>
+                  </div>
+                )}
+                {stats.best_fina && (
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center min-w-[72px] ring-1 ring-white/10">
+                    <div className="text-2xl font-black text-white"><AnimatedNumber value={stats.best_fina.points} /></div>
+                    <div className="text-[9px] text-white/50 font-bold uppercase tracking-widest mt-0.5">Best FINA</div>
+                  </div>
+                )}
+                {stats.total_records > 0 && (
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center min-w-[72px] ring-1 ring-white/10">
+                    <div className="text-2xl font-black text-white"><AnimatedNumber value={stats.total_records} /></div>
+                    <div className="text-[9px] text-white/50 font-bold uppercase tracking-widest mt-0.5">Records</div>
+                  </div>
+                )}
               </div>
             )}
+
+            {/* Edit */}
+            <button onClick={() => navigate(`/swimmers/${id}/edit`)}
+              className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20">
+              Edit
+            </button>
           </div>
-
-          {/* Quick Numbers */}
-          {stats && (
-            <div className="hidden md:flex gap-3 shrink-0">
-              {stats.medals.total > 0 && (
-                <div className="bg-white/15 backdrop-blur rounded-xl px-4 py-3 text-center">
-                  <div className="text-2xl font-black">{stats.medals.total}</div>
-                  <div className="text-[10px] text-white/70 font-medium">Medals</div>
-                  <div className="flex gap-1 mt-1 justify-center text-[10px]">
-                    {stats.medals.gold > 0 && <span className="text-amber-300">{stats.medals.gold}G</span>}
-                    {stats.medals.silver > 0 && <span className="text-gray-300">{stats.medals.silver}S</span>}
-                    {stats.medals.bronze > 0 && <span className="text-orange-300">{stats.medals.bronze}B</span>}
-                  </div>
-                </div>
-              )}
-              {stats.best_fina && (
-                <div className="bg-white/15 backdrop-blur rounded-xl px-4 py-3 text-center">
-                  <div className="text-2xl font-black">{stats.best_fina.points}</div>
-                  <div className="text-[10px] text-white/70 font-medium">Best FINA</div>
-                </div>
-              )}
-              {stats.total_records > 0 && (
-                <div className="bg-white/15 backdrop-blur rounded-xl px-4 py-3 text-center">
-                  <div className="text-2xl font-black">{stats.total_records}</div>
-                  <div className="text-[10px] text-white/70 font-medium">Records</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Edit Button */}
-          <button onClick={() => navigate(`/swimmers/${id}/edit`)}
-            className="absolute top-0 right-0 bg-white/15 hover:bg-white/25 backdrop-blur text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
-            Edit
-          </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 overflow-x-auto">
+      <div className="bg-white rounded-2xl border shadow-sm p-1.5 mb-6 flex gap-1 overflow-x-auto animate-fade-in-up stagger-4">
         {TABS.map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
               activeTab === tab.key
-                ? 'bg-white text-sky-700 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}>
-            <span>{tab.icon}</span>
+            {tab.icon}
             {tab.label}
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'times' && (
-        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
-          <PersonalBestsTable events={events} onEventClick={handleEventClick} selectedEvent={selectedEvent} />
-          <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} navigate={navigate} />
-        </div>
-      )}
-
-      {activeTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
-      {activeTab === 'medals' && <MedalsTab stats={stats} navigate={navigate} />}
-      {activeTab === 'stats' && <StatsTab stats={stats} events={events} />}
+      <div key={activeTab} className="animate-fade-in">
+        {activeTab === 'times' && (
+          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
+            <PersonalBestsTable events={events} onEventClick={handleEventClick} selectedEvent={selectedEvent} />
+            <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} navigate={navigate} />
+          </div>
+        )}
+        {activeTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
+        {activeTab === 'medals' && <MedalsTab stats={stats} navigate={navigate} />}
+        {activeTab === 'stats' && <StatsTab stats={stats} events={events} />}
+      </div>
     </div>
   )
 }

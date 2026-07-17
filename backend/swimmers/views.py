@@ -241,6 +241,107 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 })
         return Response(data)
 
+    @action(detail=True, methods=['get'], url_path='profile-stats')
+    def profile_stats(self, request, pk=None):
+        """Aggregated career stats for the swimmer profile page."""
+        swimmer = self.get_object()
+        from championships.models import Result, Championship
+        from medals.models import Medal
+        from records.models import Record
+        from django.db.models import Count, Max, Q, Min
+        from importer.parsers.base import format_centiseconds
+
+        # Championships history
+        champ_ids = Result.objects.filter(swimmer=swimmer).values_list(
+            'championship_id', flat=True).distinct()
+        championships = Championship.objects.filter(id__in=champ_ids).select_related(
+            'country', 'classification_category').order_by('-date')
+        champs_data = [{
+            'id': c.id, 'name': c.name, 'date': c.date,
+            'pool': c.pool,
+            'country': c.country.name if c.country else '',
+            'country_code': c.country.code if c.country else '',
+            'flag_url': c.country.flag_url if c.country else '',
+            'category': c.classification_category.name if c.classification_category else '',
+        } for c in championships]
+
+        # Medal summary
+        medals_qs = Medal.objects.filter(swimmer=swimmer)
+        medal_counts = medals_qs.aggregate(
+            gold=Count('id', filter=Q(medal_type='GOLD')),
+            silver=Count('id', filter=Q(medal_type='SILVER')),
+            bronze=Count('id', filter=Q(medal_type='BRONZE')),
+            total=Count('id'),
+        )
+
+        # Medals by classification category (for the stacked bar chart)
+        medals_by_level = list(
+            medals_qs.values('championship__classification_category__name')
+            .annotate(
+                gold=Count('id', filter=Q(medal_type='GOLD')),
+                silver=Count('id', filter=Q(medal_type='SILVER')),
+                bronze=Count('id', filter=Q(medal_type='BRONZE')),
+            )
+            .order_by('championship__classification_category__name')
+        )
+        for m in medals_by_level:
+            m['category'] = m.pop('championship__classification_category__name') or 'Uncategorized'
+
+        # Individual medals list
+        medals_list = [{
+            'id': m.id,
+            'medal_type': m.medal_type,
+            'event_name': m.event.name,
+            'championship_name': m.championship.name,
+            'championship_id': m.championship.id,
+            'championship_date': m.championship.date,
+        } for m in medals_qs.select_related('event', 'championship').order_by('-championship__date')]
+
+        # Best FINA points
+        best_fina_result = Result.objects.filter(
+            swimmer=swimmer, fina_points__isnull=False
+        ).select_related('event', 'championship').order_by('-fina_points').first()
+        best_fina = None
+        if best_fina_result:
+            best_fina = {
+                'points': best_fina_result.fina_points,
+                'event_name': best_fina_result.event.name,
+                'championship_name': best_fina_result.championship.name,
+                'championship_id': best_fina_result.championship.id,
+            }
+
+        # Records held
+        records = [{
+            'id': r.id,
+            'record_type': r.record_type,
+            'event_name': r.event.name,
+            'time': r.formatted_time,
+            'time_centiseconds': r.time_centiseconds,
+            'location': r.location,
+            'date': r.result_date,
+        } for r in Record.objects.filter(swimmer=swimmer).select_related('event')]
+
+        # Best event (highest FINA across events)
+        best_event_agg = (
+            Result.objects.filter(swimmer=swimmer, fina_points__isnull=False)
+            .values('event__name')
+            .annotate(best_fina=Max('fina_points'))
+            .order_by('-best_fina')
+            .first()
+        )
+
+        return Response({
+            'total_championships': len(champs_data),
+            'championships': champs_data,
+            'medals': medal_counts,
+            'medals_by_level': medals_by_level,
+            'medals_list': medals_list,
+            'best_fina': best_fina,
+            'best_event': best_event_agg['event__name'] if best_event_agg else None,
+            'records': records,
+            'total_records': len(records),
+        })
+
     @action(detail=True, methods=['post'])
     def upload_photo(self, request, pk=None):
         swimmer = self.get_object()

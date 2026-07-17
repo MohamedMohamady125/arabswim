@@ -10,3 +10,4 @@ export const getSwimmerBirthdays = (month) => api.get('/swimmers/birthdays/', { 
 export const uploadSwimmerPhoto = (id, formData) => api.post(`/swimmers/${id}/upload_photo/`, formData)
 export const getSwimmerEvents = (id) => api.get(`/swimmers/${id}/events/`)
 export const getSwimmerEventHistory = (id, eventId, pool) => api.get(`/swimmers/${id}/events/${eventId}/history/`, { params: pool ? { pool } : {} })
+export const getSwimmerProfileStats = (id) => api.get(`/swimmers/${id}/profile-stats/`)

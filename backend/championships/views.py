@@ -476,17 +476,20 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         for row in current:
             sid, eid, current_time = row['swimmer_id'], row['event_id'], row['best_time']
             # Previous best: same swimmer, same event, same pool, earlier date
-            prev = (
+            prev_result = (
                 Result.objects.filter(
                     swimmer_id=sid, event_id=eid,
                     championship__pool=championship.pool,
                     championship__date__lt=championship.date,
                     swimmer__is_relay_team=False,
                 )
-                .aggregate(best=Min('time_centiseconds'))
-            )['best']
-            if prev is None or prev <= current_time:
+                .select_related('championship')
+                .order_by('time_centiseconds')
+                .first()
+            )
+            if prev_result is None or prev_result.time_centiseconds <= current_time:
                 continue  # no previous time or no improvement
+            prev = prev_result.time_centiseconds
             improvement_cs = prev - current_time
             swimmer = swimmers.get(sid)
             event = events.get(eid)
@@ -502,6 +505,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'event_name': event.name,
                 'current_time': self._format_time(current_time),
                 'previous_best': self._format_time(prev),
+                'previous_best_meet': prev_result.championship.name,
+                'previous_best_meet_id': prev_result.championship.id,
+                'previous_best_date': prev_result.championship.date,
                 'improvement_cs': improvement_cs,
                 'improvement': self._format_time(improvement_cs),
             })

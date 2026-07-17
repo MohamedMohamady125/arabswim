@@ -157,7 +157,17 @@ function MostImprovedTable({ swimmers, navigate }) {
                     <CountryFlag code={s.nationality_code} flagUrl={s.flag_url} name={s.nationality} />
                   </td>
                   <td className="px-4 py-2 text-sm">{s.event_name}</td>
-                  <td className="px-4 py-2 text-sm font-mono text-gray-500">{s.previous_best}</td>
+                  <td className="px-4 py-2 text-sm">
+                    <div className="font-mono text-gray-500">{s.previous_best}</div>
+                    <div className="flex items-center gap-1 mt-0.5 cursor-pointer group" onClick={(e) => { e.stopPropagation(); navigate(`/meets/${s.previous_best_meet_id}`) }}>
+                      <span className="text-[10px] text-sky-600 group-hover:text-sky-800 truncate max-w-[140px]" title={s.previous_best_meet}>
+                        📍 {s.previous_best_meet}
+                      </span>
+                      {s.previous_best_date && (
+                        <span className="text-[9px] text-gray-400">({new Date(s.previous_best_date).getFullYear()})</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-sm font-mono font-semibold">{s.current_time}</td>
                   <td className="px-4 py-2 text-sm font-mono font-bold text-green-600">-{s.improvement}</td>
                 </tr>

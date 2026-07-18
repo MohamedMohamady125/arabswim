@@ -414,6 +414,121 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'fina_distribution': fina_distribution,
         })
 
+    @action(detail=False, methods=['get'])
+    def compare(self, request):
+        """Compare up to 5 swimmers side-by-side."""
+        ids = request.query_params.get('ids', '')
+        id_list = [i.strip() for i in ids.split(',') if i.strip()][:5]
+        if len(id_list) < 2:
+            return Response({'error': 'At least 2 swimmer IDs required'}, status=400)
+
+        from championships.models import Result
+        from medals.models import Medal
+        from records.models import Record
+        from django.db.models import Count, Max, Min, Q, Avg
+        from importer.parsers.base import format_centiseconds
+
+        swimmers = Swimmer.objects.filter(id__in=id_list).select_related('nationality')
+        swimmer_map = {s.id: s for s in swimmers}
+
+        # Collect all events across these swimmers
+        all_events_raw = (
+            Result.objects.filter(swimmer_id__in=id_list, swimmer__is_relay_team=False)
+            .values('event__id', 'event__name', 'event__sort_order', 'event__distance', 'event__is_relay', 'championship__pool')
+            .distinct()
+        )
+        # Build event keys that at least 2 swimmers share
+        event_swimmers = {}
+        for row in Result.objects.filter(swimmer_id__in=id_list, swimmer__is_relay_team=False).values('event_id', 'championship__pool', 'swimmer_id').distinct():
+            key = (row['event_id'], row['championship__pool'] or '')
+            event_swimmers.setdefault(key, set()).add(row['swimmer_id'])
+
+        data = []
+        for sid in id_list:
+            s = swimmer_map.get(int(sid))
+            if not s:
+                continue
+
+            results_qs = Result.objects.filter(swimmer=s, swimmer__is_relay_team=False)
+
+            # Aggregates
+            agg = results_qs.aggregate(
+                total_swims=Count('id'),
+                total_championships=Count('championship_id', distinct=True),
+                best_fina=Max('fina_points'),
+                avg_fina=Avg('fina_points'),
+            )
+
+            # Medal counts
+            medal_agg = Medal.objects.filter(swimmer=s).aggregate(
+                gold=Count('id', filter=Q(medal_type='GOLD')),
+                silver=Count('id', filter=Q(medal_type='SILVER')),
+                bronze=Count('id', filter=Q(medal_type='BRONZE')),
+                total=Count('id'),
+            )
+
+            # Records count
+            records_count = Record.objects.filter(swimmer=s).count()
+
+            # Personal bests per event+pool
+            pbs = {}
+            for row in results_qs.values('event_id', 'event__name', 'championship__pool').annotate(
+                best=Min('time_centiseconds'), count=Count('id')
+            ).order_by('event__sort_order', 'event__distance'):
+                pool = row['championship__pool'] or ''
+                key = (row['event_id'], pool)
+                pbs[key] = {
+                    'event_name': row['event__name'],
+                    'pool': pool,
+                    'best_time': format_centiseconds(row['best']),
+                    'best_cs': row['best'],
+                    'swims': row['count'],
+                }
+
+            data.append({
+                'id': s.id,
+                'name': s.name,
+                'photo': s.photo.url if s.photo else None,
+                'nationality': s.nationality.name if s.nationality else '',
+                'nationality_code': s.nationality.code if s.nationality else '',
+                'flag_url': s.nationality.flag_url if s.nationality else '',
+                'sex': s.sex,
+                'age': s.age,
+                'club': s.club,
+                'total_swims': agg['total_swims'],
+                'total_championships': agg['total_championships'],
+                'best_fina': agg['best_fina'],
+                'avg_fina': round(agg['avg_fina']) if agg['avg_fina'] else None,
+                'medals': medal_agg,
+                'records_count': records_count,
+                'personal_bests': pbs,
+            })
+
+        # Find shared events (events where at least 2 of the compared swimmers have results)
+        shared_events = []
+        seen = set()
+        for (eid, pool), sids in sorted(event_swimmers.items(), key=lambda x: len(x[1]), reverse=True):
+            if len(sids) >= 2 and (eid, pool) not in seen:
+                seen.add((eid, pool))
+                # Get event name from any swimmer's pbs
+                event_name = None
+                for d in data:
+                    pb = d['personal_bests'].get((eid, pool))
+                    if pb:
+                        event_name = pb['event_name']
+                        break
+                if event_name:
+                    shared_events.append({'event_id': eid, 'pool': pool, 'event_name': event_name})
+
+        # Serialize pbs as dict with string keys for JSON
+        for d in data:
+            d['personal_bests'] = {f"{k[0]}_{k[1]}": v for k, v in d['personal_bests'].items()}
+
+        return Response({
+            'swimmers': data,
+            'shared_events': shared_events,
+        })
+
     @action(detail=True, methods=['post'])
     def upload_photo(self, request, pk=None):
         swimmer = self.get_object()

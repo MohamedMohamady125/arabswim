@@ -13,3 +13,4 @@ export const updateMediaItem = (id, data) => api.patch(`/media/items/${id}/`, da
 export const deleteMediaItem = (id) => api.delete(`/media/items/${id}/`)
 export const uploadPhotos = (formData) => api.post('/media/items/upload/', formData, multipart)
 export const getOrCreateAlbumForChampionship = (championshipId) => api.post('/media/albums/for-championship/', { championship: championshipId })
+export const getMediaItems = (params) => api.get('/media/items/', { params })

@@ -30,6 +30,7 @@ import MediaPage from './pages/MediaPage'
 import AlbumDetailPage from './pages/AlbumDetailPage'
 import CountriesPage from './pages/CountriesPage'
 import CountryProfilePage from './pages/CountryProfilePage'
+import CompareSwimmersPage from './pages/CompareSwimmersPage'
 
 function ProtectedRoute({ children }) {
   const { token } = useAuth()
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="swimmers" element={<SwimmersPage />} />
         <Route path="swimmers/new" element={<SwimmerFormPage />} />
         <Route path="swimmers/:id/edit" element={<SwimmerFormPage />} />
+        <Route path="swimmers/compare" element={<CompareSwimmersPage />} />
         <Route path="swimmers/:id" element={<SwimmerProfilePage />} />
         <Route path="championships" element={<ChampionshipsPage />} />
         <Route path="championships/new" element={<ChampionshipFormPage />} />

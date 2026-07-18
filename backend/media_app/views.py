@@ -47,8 +47,11 @@ class MediaItemViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         album = self.request.query_params.get('album')
+        swimmer = self.request.query_params.get('swimmer')
         if album:
             qs = qs.filter(album_id=album)
+        if swimmer:
+            qs = qs.filter(swimmer_id=swimmer)
         return qs
 
     @action(detail=False, methods=['post'], url_path='upload')

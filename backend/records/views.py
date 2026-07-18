@@ -22,11 +22,14 @@ class RecordViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         record_type = self.request.query_params.get('record_type')
         event = self.request.query_params.get('event')
+        swimmer = self.request.query_params.get('swimmer')
         is_new = self.request.query_params.get('is_new')
         if record_type:
             qs = qs.filter(record_type=record_type)
         if event:
             qs = qs.filter(event_id=event)
+        if swimmer:
+            qs = qs.filter(swimmer_id=swimmer)
         if is_new is not None:
             qs = qs.filter(is_new=is_new.lower() == 'true')
         return qs

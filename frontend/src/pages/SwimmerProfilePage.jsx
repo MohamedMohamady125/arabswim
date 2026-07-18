@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats } from '../api/swimmers'
+import { getRecords } from '../api/records'
+import { getMediaItems } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 
 const MEDAL_COLORS = { GOLD: '#FFD700', SILVER: '#C0C0C0', BRONZE: '#CD7F32' }
@@ -574,11 +576,192 @@ function MeetsTab({ stats, navigate }) {
 }
 
 /* ───────── TAB CONFIG ───────── */
+/* ───────── Records Tab ───────── */
+function RecordsTab({ swimmerId }) {
+  const [records, setRecords] = useState([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    getRecords({ swimmer: swimmerId, page_size: 200 }).then(res => {
+      setRecords(res.data.results || res.data || [])
+    }).catch(() => {}).finally(() => setLoading(false))
+  }, [swimmerId])
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
+
+  // Group by record type
+  const byType = {}
+  records.forEach(r => {
+    const type = r.record_type || 'OTHER'
+    if (!byType[type]) byType[type] = []
+    byType[type].push(r)
+  })
+
+  const TYPE_STYLES = {
+    ARAB: { bg: 'from-emerald-50 to-emerald-100/30', border: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-700', header: 'text-emerald-800', label: 'Arab Records' },
+    GCC: { bg: 'from-sky-50 to-sky-100/30', border: 'border-sky-200', badge: 'bg-sky-100 text-sky-700', header: 'text-sky-800', label: 'GCC Records' },
+    NATIONAL: { bg: 'from-purple-50 to-purple-100/30', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', header: 'text-purple-800', label: 'National Records' },
+    OTHER: { bg: 'from-gray-50 to-gray-100/30', border: 'border-gray-200', badge: 'bg-gray-100 text-gray-700', header: 'text-gray-800', label: 'Other Records' },
+  }
+
+  const types = Object.keys(byType).sort((a, b) => {
+    const order = { ARAB: 0, GCC: 1, NATIONAL: 2 }
+    return (order[a] ?? 3) - (order[b] ?? 3)
+  })
+
+  if (types.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border shadow-sm p-12 text-center animate-fade-in">
+        <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
+        <p className="text-gray-400 font-medium">No records held</p>
+        <p className="text-gray-300 text-sm mt-1">Records will appear here when this swimmer sets Arab, GCC, or National records</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-3 animate-fade-in-up">
+        {['ARAB', 'GCC', 'NATIONAL'].map((type, i) => {
+          const count = (byType[type] || []).length
+          const style = TYPE_STYLES[type]
+          return (
+            <div key={type} className={`bg-gradient-to-br ${style.bg} ${style.border} border rounded-2xl p-5 text-center shadow-sm animate-count-up stagger-${i + 1}`}>
+              <div className={`text-4xl font-black ${style.header}`}><AnimatedNumber value={count} /></div>
+              <div className="text-[11px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider">{style.label}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Records by category */}
+      {types.map((type, ti) => {
+        const style = TYPE_STYLES[type] || TYPE_STYLES.OTHER
+        const recs = byType[type]
+        return (
+          <div key={type} className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: `${(ti + 3) * 0.08}s` }}>
+            <div className={`p-4 border-b bg-gradient-to-r ${style.bg}`}>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${style.badge}`}>{type}</span>
+                <h3 className={`font-bold text-base ${style.header}`}>{style.label}</h3>
+                <span className="ml-auto text-sm font-bold text-gray-400">{recs.length}</span>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {recs.map((r, ri) => (
+                <div key={r.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/80 transition-all duration-200 animate-fade-in-up" style={{ animationDelay: `${(ti * 3 + ri + 4) * 0.05}s` }}>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-gray-800">{r.event_detail?.name || r.event_name}</div>
+                    <div className="text-[11px] text-gray-400 mt-0.5">{r.location}{r.location && r.result_date ? ' \u00b7 ' : ''}{r.result_date}</div>
+                  </div>
+                  <div className="font-mono text-base font-black text-sky-600">{r.formatted_time}</div>
+                  {r.is_new && <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md uppercase tracking-wide">New</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ───────── Gallery Tab ───────── */
+function GalleryTab({ swimmerId }) {
+  const [media, setMedia] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [lightbox, setLightbox] = useState(null)
+
+  useEffect(() => {
+    getMediaItems({ swimmer: swimmerId }).then(res => {
+      setMedia(res.data.results || res.data || [])
+    }).catch(() => {}).finally(() => setLoading(false))
+  }, [swimmerId])
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
+
+  const photos = media.filter(m => m.media_type === 'PHOTO' && m.image)
+  const videos = media.filter(m => m.media_type === 'VIDEO' && m.video_url)
+
+  if (!photos.length && !videos.length) {
+    return (
+      <div className="bg-white rounded-2xl border shadow-sm p-12 text-center animate-fade-in">
+        <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H3.75A2.25 2.25 0 001.5 6v12.75c0 1.243 1.007 2.25 2.25 2.25z" /></svg>
+        <p className="text-gray-400 font-medium">No media yet</p>
+        <p className="text-gray-300 text-sm mt-1">Photos and videos tagged with this swimmer will appear here</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Photos Grid */}
+      {photos.length > 0 && (
+        <div className="animate-fade-in-up">
+          <h3 className="font-bold text-base text-gray-800 mb-3">Photos <span className="text-gray-400 font-normal text-sm">({photos.length})</span></h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {photos.map((p, i) => (
+              <button key={p.id} onClick={() => setLightbox(p)}
+                className="aspect-square rounded-xl overflow-hidden bg-gray-100 group relative shadow-sm hover:shadow-lg transition-all duration-300 animate-fade-in-up"
+                style={{ animationDelay: `${i * 0.05}s` }}>
+                <img src={p.image} alt={p.caption || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                {p.caption && (
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <p className="text-white text-xs truncate">{p.caption}</p>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Videos */}
+      {videos.length > 0 && (
+        <div className="animate-fade-in-up stagger-4">
+          <h3 className="font-bold text-base text-gray-800 mb-3">Videos <span className="text-gray-400 font-normal text-sm">({videos.length})</span></h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {videos.map((v, i) => (
+              <a key={v.id} href={v.video_url} target="_blank" rel="noopener noreferrer"
+                className="bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 group animate-fade-in-up"
+                style={{ animationDelay: `${(i + photos.length) * 0.05}s` }}>
+                {v.embed_thumbnail && (
+                  <div className="aspect-video bg-gray-100 relative overflow-hidden">
+                    <img src={v.embed_thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                        <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {v.caption && <div className="p-3 text-sm text-gray-700">{v.caption}</div>}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setLightbox(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white text-3xl z-10">&times;</button>
+          <img src={lightbox.image} alt={lightbox.caption || ''} className="max-w-full max-h-[90vh] rounded-lg shadow-2xl animate-count-up" onClick={e => e.stopPropagation()} />
+          {lightbox.caption && <p className="absolute bottom-8 text-white text-center text-sm">{lightbox.caption}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ───────── TAB CONFIG ───────── */
 const TABS = [
   { key: 'times', label: 'Times', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
   { key: 'meets', label: 'Meets', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg> },
   { key: 'medals', label: 'Medals', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012.75 10.5h-1.5A3.375 3.375 0 007.5 13.875v4.875" /></svg> },
+  { key: 'records', label: 'Records', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg> },
   { key: 'stats', label: 'Stats', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg> },
+  { key: 'gallery', label: 'Gallery', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H3.75A2.25 2.25 0 001.5 6v12.75c0 1.243 1.007 2.25 2.25 2.25z" /></svg> },
 ]
 
 /* ───────── MAIN PAGE ───────── */
@@ -764,7 +947,9 @@ export default function SwimmerProfilePage() {
         )}
         {activeTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
         {activeTab === 'medals' && <MedalsTab stats={stats} navigate={navigate} />}
+        {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} />}
         {activeTab === 'stats' && <StatsTab stats={stats} events={events} />}
+        {activeTab === 'gallery' && <GalleryTab swimmerId={parseInt(id)} />}
       </div>
     </div>
   )

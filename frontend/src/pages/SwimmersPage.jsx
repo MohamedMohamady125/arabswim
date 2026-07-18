@@ -124,6 +124,10 @@ export default function SwimmersPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Swimmers</h1>
         <div className="flex gap-2">
+          <button onClick={() => navigate('/swimmers/compare')}
+            className="px-4 py-2 rounded-lg text-sm border border-sky-500 text-sky-500 hover:bg-sky-50">
+            Compare Swimmers
+          </button>
           <button
             onClick={() => mergeMode ? cancelMerge() : setMergeMode(true)}
             className={`px-4 py-2 rounded-lg text-sm ${mergeMode ? 'bg-gray-200 text-gray-700' : 'border border-orange-500 text-orange-500 hover:bg-orange-50'}`}

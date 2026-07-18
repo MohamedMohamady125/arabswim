@@ -11,3 +11,4 @@ export const uploadSwimmerPhoto = (id, formData) => api.post(`/swimmers/${id}/up
 export const getSwimmerEvents = (id) => api.get(`/swimmers/${id}/events/`)
 export const getSwimmerEventHistory = (id, eventId, pool) => api.get(`/swimmers/${id}/events/${eventId}/history/`, { params: pool ? { pool } : {} })
 export const getSwimmerProfileStats = (id) => api.get(`/swimmers/${id}/profile-stats/`)
+export const compareSwimmers = (ids) => api.get('/swimmers/compare/', { params: { ids: ids.join(',') } })

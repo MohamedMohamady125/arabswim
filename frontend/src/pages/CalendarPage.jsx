@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCalendarEvents, createCalendarEvent } from '../api/calendar'
 import { getChampionships, updateChampionship, getClassifications, getSubClassifications } from '../api/championships'
-import { getOrCreateAlbumForChampionship } from '../api/media'
 import { getCountries } from '../api/core'
 import { POOL_TYPES } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
@@ -47,7 +46,7 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
   }
 
   return (
-    <div className="bg-gray-50 border border-t-0 border-gray-200 rounded-b-xl px-6 py-4 -mt-1">
+    <div className="bg-gray-50 border border-cyan-500 border-t-0 rounded-b-xl px-6 py-4">
       {/* Meet Info */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         <div>
@@ -110,13 +109,13 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-blue-500 text-lg">&#x1F4D6;</span>
-            <h4 className="font-semibold text-sm">Meet Guide</h4>
+            <h4 className="font-semibold text-sm">Entry Pack</h4>
           </div>
           {c.meet_guide_pdf ? (
             <div>
               <a href={c.meet_guide_pdf} target="_blank" rel="noopener noreferrer"
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 inline-flex items-center gap-1.5 w-full justify-center mb-2">
-                View Meet Guide
+                View Entry Pack
               </a>
               <label className="block text-xs text-gray-400 hover:text-gray-600 w-full text-center cursor-pointer" onClick={e => e.stopPropagation()}>
                 Replace PDF
@@ -126,7 +125,7 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
           ) : (
             <label className="block cursor-pointer" onClick={e => e.stopPropagation()}>
               <div className="w-full border-2 border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-400 hover:border-blue-400 hover:text-blue-500 text-center">
-                + Upload Meet Guide PDF
+                + Upload Entry Pack PDF
               </div>
               <input type="file" accept=".pdf" className="hidden" onChange={e => { if (e.target.files[0]) uploadGuide(e.target.files[0]) }} />
             </label>
@@ -182,16 +181,6 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
             <span>&#x1F4C4;</span> Nashra (Policy)
           </a>
         )}
-        <button onClick={async (e) => {
-            e.stopPropagation()
-            try {
-              const res = await getOrCreateAlbumForChampionship(c.id)
-              navigate(`/media/albums/${res.data.id}`)
-            } catch { /* ignore */ }
-          }}
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 inline-flex items-center gap-1.5">
-          &#x1F4F7; Gallery
-        </button>
       </div>
     </div>
   )
@@ -372,20 +361,20 @@ export default function CalendarPage() {
                 <div key={c.id}>
                   <div
                     onClick={() => setSelectedMeet(isSelected ? null : c)}
-                    className={`bg-white border rounded-xl px-5 py-4 flex items-center gap-5 cursor-pointer transition-all hover:shadow-md ${
-                      isSelected ? 'border-cyan-500 shadow-md' : 'border-gray-200'
+                    className={`bg-white border px-6 py-5 flex items-center gap-6 cursor-pointer transition-all hover:shadow-md ${
+                      isSelected ? 'border-cyan-500 shadow-md rounded-t-xl' : 'border-gray-200 rounded-xl'
                     }`}
                   >
                     {/* Date badge */}
-                    <div className="w-16 h-16 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
-                      <span className="text-2xl font-bold leading-none">{d.date()}</span>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider">{MONTH_SHORT[d.month()]}</span>
+                    <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
+                      <span className="text-3xl font-bold leading-none">{d.date()}</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{MONTH_SHORT[d.month()]}</span>
                     </div>
 
                     {/* Meet info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 truncate">{c.name}</h3>
-                      <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                      <h3 className="font-bold text-lg text-gray-900 truncate">{c.name}</h3>
+                      <div className="flex items-center gap-3 text-sm text-gray-500 mt-1.5">
                         {c.location && (
                           <span className="flex items-center gap-1">
                             <span className="text-gray-400">&#x1F4CD;</span>
@@ -397,7 +386,7 @@ export default function CalendarPage() {
                           <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                      <div className="flex items-center gap-3 text-sm text-gray-400 mt-1.5">
                         <span>{c.pool === 'LCM' ? '50m Pool' : '25m Pool'}</span>
                         {c.end_date && c.end_date !== c.date && (
                           <span>&mdash; {c.date} to {c.end_date}</span>
@@ -408,19 +397,19 @@ export default function CalendarPage() {
                     {/* Stats badges */}
                     <div className="flex items-center gap-3 shrink-0">
                       {c.results_count > 0 && (
-                        <span className="bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                        <span className="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-sm font-medium">
                           {c.results_count} results
                         </span>
                       )}
                       {c.swimmers_count > 0 && (
-                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs font-medium">
+                        <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
                           {c.swimmers_count} swimmers
                         </span>
                       )}
                     </div>
 
                     {/* Arrow */}
-                    <span className={`text-gray-400 transition-transform ${isSelected ? 'rotate-90' : ''}`}>&#x276F;</span>
+                    <span className={`text-gray-400 text-lg transition-transform ${isSelected ? 'rotate-90' : ''}`}>&#x276F;</span>
                   </div>
 
                   {/* Expanded meet details */}

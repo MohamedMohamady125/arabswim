@@ -196,20 +196,20 @@ export default function ChampionshipsPage() {
                 <div key={c.id}>
                   <div
                     onClick={() => setExpandedId(isExpanded ? null : c.id)}
-                    className={`bg-white border rounded-xl px-5 py-4 flex items-center gap-5 cursor-pointer transition-all hover:shadow-md ${
-                      isExpanded ? 'border-blue-500 shadow-md' : 'border-gray-200'
+                    className={`bg-white border px-6 py-5 flex items-center gap-6 cursor-pointer transition-all hover:shadow-md ${
+                      isExpanded ? 'border-blue-500 shadow-md rounded-t-xl' : 'border-gray-200 rounded-xl'
                     }`}
                   >
                     {/* Date badge */}
-                    <div className="w-16 h-16 bg-blue-600 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
-                      <span className="text-2xl font-bold leading-none">{d.isValid() ? d.date() : '?'}</span>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider">{d.isValid() ? MONTH_SHORT[d.month()] : ''}</span>
+                    <div className="w-20 h-20 bg-blue-600 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
+                      <span className="text-3xl font-bold leading-none">{d.isValid() ? d.date() : '?'}</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{d.isValid() ? MONTH_SHORT[d.month()] : ''}</span>
                     </div>
 
                     {/* Meet info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 truncate">{c.name}</h3>
-                      <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                      <h3 className="font-bold text-lg text-gray-900 truncate">{c.name}</h3>
+                      <div className="flex items-center gap-3 text-sm text-gray-500 mt-1.5">
                         {c.location && (
                           <span className="flex items-center gap-1">
                             <span className="text-gray-400">&#x1F4CD;</span> {c.location}
@@ -218,12 +218,17 @@ export default function ChampionshipsPage() {
                         {c.country_detail && (
                           <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
                         )}
-                        <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{c.pool === 'LCM' ? '50m' : '25m'}</span>
+                        <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-lg font-medium">{c.pool === 'LCM' ? '50m' : '25m'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5">
                         {c.classification_name && (
-                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{c.classification_name}</span>
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg font-medium">{c.classification_name}</span>
                         )}
                         {c.sub_classification_name && (
-                          <span className="text-xs bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded">{c.sub_classification_name}</span>
+                          <span className="text-xs bg-cyan-50 text-cyan-700 px-2.5 py-1 rounded-lg font-medium">{c.sub_classification_name}</span>
+                        )}
+                        {c.end_date && c.end_date !== c.date && (
+                          <span className="text-xs text-gray-400">{c.date} &mdash; {c.end_date}</span>
                         )}
                       </div>
                     </div>
@@ -231,26 +236,26 @@ export default function ChampionshipsPage() {
                     {/* Stats */}
                     <div className="flex items-center gap-2 shrink-0">
                       {c.results_count > 0 && (
-                        <span className="bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
                           {c.results_count} results
                         </span>
                       )}
                       {c.swimmers_count > 0 && (
-                        <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                        <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
                           {c.swimmers_count} swimmers
                         </span>
                       )}
                       {!c.results_count && (
-                        <span className="bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full text-xs">No results</span>
+                        <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-sm">No results</span>
                       )}
                     </div>
 
-                    <span className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>&#x276F;</span>
+                    <span className={`text-gray-400 text-lg transition-transform ${isExpanded ? 'rotate-90' : ''}`}>&#x276F;</span>
                   </div>
 
                   {/* Expanded */}
                   {isExpanded && (
-                    <div className="bg-gray-50 border border-t-0 border-gray-200 rounded-b-xl px-6 py-4 -mt-1">
+                    <div className="bg-gray-50 border border-blue-500 border-t-0 rounded-b-xl px-6 py-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div>
                           <div className="text-xs text-gray-500 mb-1">Date</div>
@@ -281,24 +286,24 @@ export default function ChampionshipsPage() {
                       </div>
                       <div className="flex flex-wrap gap-3">
                         {c.results_count > 0 && (
-                          <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${c.id}?tab=results`) }}
+                          <button onClick={(e) => { e.stopPropagation(); navigate({ pathname: `/meets/${c.id}`, search: '?tab=results' }) }}
                             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
                             View Results
                           </button>
                         )}
                         {c.results_count > 0 && (
-                          <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${c.id}?tab=statistics`) }}
+                          <button onClick={(e) => { e.stopPropagation(); navigate({ pathname: `/meets/${c.id}`, search: '?tab=statistics' }) }}
                             className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700">
                             Statistics
                           </button>
                         )}
                         {c.results_count > 0 && (
-                          <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${c.id}?tab=medals`) }}
+                          <button onClick={(e) => { e.stopPropagation(); navigate({ pathname: `/meets/${c.id}`, search: '?tab=medals' }) }}
                             className="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-600">
                             Medals
                           </button>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${c.id}?tab=gallery`) }}
+                        <button onClick={(e) => { e.stopPropagation(); navigate({ pathname: `/meets/${c.id}`, search: '?tab=gallery' }) }}
                           className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700">
                           Galleries
                         </button>

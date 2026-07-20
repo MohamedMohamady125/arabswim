@@ -27,7 +27,7 @@ export default function SwimmersPage() {
   const [merging, setMerging] = useState(false)
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data)).catch(() => {})
+    getCountries().then(res => setCountries(res.data.filter(c => c.region === 'ARAB' || c.region === 'GCC'))).catch(() => {})
   }, [])
 
   const fetchSwimmers = () => {

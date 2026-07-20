@@ -843,7 +843,10 @@ function TransferHistoryTab({ swimmerId }) {
                     <span className="text-xs font-bold text-sky-700">{i + 1}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-gray-900">{club.club}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-gray-900">{club.club}</span>
+                      {club.is_national && <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">National Team</span>}
+                    </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                       <span>{club.first_meet} &rarr; {club.last_meet}</span>
                     </div>

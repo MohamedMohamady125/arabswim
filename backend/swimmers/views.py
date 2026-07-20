@@ -587,9 +587,11 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         swimmer = self.get_object()
 
         # Club history derived from results
+        all_results = Result.objects.filter(swimmer=swimmer, swimmer__is_relay_team=False)
+
+        # Named clubs
         club_history = (
-            Result.objects.filter(swimmer=swimmer, swimmer__is_relay_team=False)
-            .exclude(team='').exclude(team__isnull=True)
+            all_results.exclude(team='').exclude(team__isnull=True)
             .values('team')
             .annotate(
                 first_meet_date=Min('championship__date'),
@@ -609,6 +611,30 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             }
             for c in club_history
         ]
+
+        # Results with no team = national team representation
+        national_stats = (
+            all_results.filter(Q(team='') | Q(team__isnull=True))
+            .aggregate(
+                first_meet_date=Min('championship__date'),
+                last_meet_date=Max('championship__date'),
+                meets=Count('championship', distinct=True),
+                results=Count('id'),
+            )
+        )
+        if national_stats['results'] and national_stats['results'] > 0:
+            nat_name = swimmer.nationality.name if swimmer.nationality else 'National Team'
+            clubs.insert(0, {
+                'club': nat_name,
+                'is_national': True,
+                'first_meet': str(national_stats['first_meet_date']),
+                'last_meet': str(national_stats['last_meet_date']),
+                'meets': national_stats['meets'],
+                'results': national_stats['results'],
+            })
+
+        # Sort all entries by first_meet date
+        clubs.sort(key=lambda c: c['first_meet'])
 
         # Nationality changes
         changes = NationalityChange.objects.filter(swimmer=swimmer).select_related(

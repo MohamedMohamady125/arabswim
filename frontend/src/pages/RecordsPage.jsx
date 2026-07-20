@@ -44,33 +44,34 @@ export default function RecordsPage() {
   const womenRecords = records.filter(r => r.gender === 'F')
 
   const RecordTable = ({ title, data }) => (
-    <div className="mb-8">
-      <h2 className="text-lg font-bold mb-3">{title}</h2>
+    <div className="mb-6 sm:mb-8">
+      <h2 className="text-base sm:text-lg font-bold mb-2 sm:mb-3">{title}</h2>
       <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50 border-b">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Swimmer</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nationality</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">FINA</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Championship</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Event</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Swimmer</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden sm:table-cell">Nationality</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Time</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden md:table-cell">FINA</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden lg:table-cell">Championship</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden lg:table-cell">Location</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden md:table-cell">Date</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {data.map((r, i) => (
               <tr key={i} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm font-medium">{r.event_name}</td>
-                <td className="px-4 py-3 text-sm">{r.swimmer_name}</td>
-                <td className="px-4 py-3 text-sm"><CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} name={r.nationality} /></td>
-                <td className="px-4 py-3 text-sm font-mono font-medium">{r.time}</td>
-                <td className="px-4 py-3 text-sm">{r.fina_points || '-'}</td>
-                <td className="px-4 py-3 text-sm">{r.championship_name}</td>
-                <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} flagUrl={r.championship_country_flag} name={r.championship_country} /></td>
-                <td className="px-4 py-3 text-sm">{r.date}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium whitespace-nowrap">{r.event_name}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm whitespace-nowrap">{r.swimmer_name}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden sm:table-cell"><CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} name={r.nationality} /></td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-mono font-medium whitespace-nowrap">{r.time}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell">{r.fina_points || '-'}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell">{r.championship_name}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell"><CountryFlag code={r.championship_country_code} flagUrl={r.championship_country_flag} name={r.championship_country} /></td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell">{r.date}</td>
               </tr>
             ))}
             {data.length === 0 && (
@@ -78,23 +79,24 @@ export default function RecordsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Records</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Records</h1>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4">
         {['national', 'arab', 'gcc'].map(scope => (
-          <button key={scope} onClick={() => updateFilter('scope', scope)} className={`px-4 py-2 rounded-full text-sm font-medium capitalize ${filters.scope === scope ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
+          <button key={scope} onClick={() => updateFilter('scope', scope)} className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium capitalize ${filters.scope === scope ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
             {scope === 'national' ? 'National' : scope.toUpperCase()}
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-3 sm:mb-4">
         <div>
           <label className="block text-sm font-medium mb-1">Country</label>
           <select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
@@ -123,9 +125,9 @@ export default function RecordsPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 mb-4 overflow-x-auto">
+      <div className="flex gap-1 mb-3 sm:mb-4 overflow-x-auto scrollbar-hide">
         {AGE_GROUPS.map(ag => (
-          <button key={ag} onClick={() => updateFilter('age_group', ag)} className={`px-4 py-2 text-sm font-medium whitespace-nowrap border ${filters.age_group === ag ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'}`}>
+          <button key={ag} onClick={() => updateFilter('age_group', ag)} className={`px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium whitespace-nowrap border rounded-md ${filters.age_group === ag ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'}`}>
             {ag}
           </button>
         ))}

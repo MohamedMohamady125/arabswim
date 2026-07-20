@@ -59,19 +59,19 @@ export default function HomePage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Welcome to ArabSwiM</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage every section of the Arab Swim platform from one place.</p>
+      <div className="mb-5 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Welcome to ArabSwiM</h1>
+        <p className="text-gray-500 text-xs sm:text-sm mt-1">Manage every section of the Arab Swim platform from one place.</p>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-4">
         {SECTIONS.map(({ to, label, icon: Icon, countKey }) => (
           <Link
             key={to}
             to={to}
-            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 text-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all"
+            className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 text-white p-3.5 sm:p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all"
           >
-            <Icon size={26} className="opacity-90" />
-            <div className="mt-4 font-semibold text-sm">{label}</div>
+            <Icon size={22} className="opacity-90 sm:w-[26px] sm:h-[26px]" />
+            <div className="mt-2.5 sm:mt-4 font-semibold text-xs sm:text-sm">{label}</div>
             <div className="text-blue-200 text-xs mt-0.5 h-4">
               {countKey && counts[countKey] !== undefined
                 ? `${counts[countKey].toLocaleString()} items`

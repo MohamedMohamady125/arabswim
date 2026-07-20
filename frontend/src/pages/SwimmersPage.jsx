@@ -121,21 +121,21 @@ export default function SwimmersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Swimmers</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold">Swimmers</h1>
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => navigate('/swimmers/compare')}
-            className="px-4 py-2 rounded-lg text-sm border border-sky-500 text-sky-500 hover:bg-sky-50">
-            Compare Swimmers
+            className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm border border-sky-500 text-sky-500 hover:bg-sky-50">
+            Compare
           </button>
           <button
             onClick={() => mergeMode ? cancelMerge() : setMergeMode(true)}
-            className={`px-4 py-2 rounded-lg text-sm ${mergeMode ? 'bg-gray-200 text-gray-700' : 'border border-orange-500 text-orange-500 hover:bg-orange-50'}`}
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm ${mergeMode ? 'bg-gray-200 text-gray-700' : 'border border-orange-500 text-orange-500 hover:bg-orange-50'}`}
           >
-            {mergeMode ? 'Cancel Merge' : 'Merge Swimmers'}
+            {mergeMode ? 'Cancel' : 'Merge'}
           </button>
-          <button onClick={() => navigate('/swimmers/new')} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-            + Add Swimmer
+          <button onClick={() => navigate('/swimmers/new')} className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm hover:bg-blue-700">
+            + Add
           </button>
         </div>
       </div>
@@ -250,17 +250,19 @@ export default function SwimmersPage() {
         </div>
       )}
 
-      <div className="flex gap-4 mb-4">
-        <input type="text" placeholder="Search swimmer by name..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-        <select value={filterNationality} onChange={(e) => { setFilterNationality(e.target.value); setPage(1) }} className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          <option value="">All Countries</option>
-          {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select value={filterSex} onChange={(e) => { setFilterSex(e.target.value); setPage(1) }} className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          <option value="">All</option>
-          <option value="M">Male</option>
-          <option value="F">Female</option>
-        </select>
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
+        <input type="text" placeholder="Search swimmer..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm min-w-0" />
+        <div className="flex gap-2">
+          <select value={filterNationality} onChange={(e) => { setFilterNationality(e.target.value); setPage(1) }} className="flex-1 sm:flex-none border border-gray-300 rounded-lg px-2 sm:px-3 py-2 text-sm">
+            <option value="">All Countries</option>
+            {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={filterSex} onChange={(e) => { setFilterSex(e.target.value); setPage(1) }} className="border border-gray-300 rounded-lg px-2 sm:px-3 py-2 text-sm">
+            <option value="">All</option>
+            <option value="M">M</option>
+            <option value="F">F</option>
+          </select>
+        </div>
       </div>
       <DataTable columns={columns} data={swimmers} onRowClick={(row) => navigate(`/swimmers/${row.id}`)} />
       {pagination.count > 0 && <Pagination {...pagination} currentPage={page} onPageChange={setPage} pageSize={50} />}

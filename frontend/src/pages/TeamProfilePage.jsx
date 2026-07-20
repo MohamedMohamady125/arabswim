@@ -94,41 +94,41 @@ export default function TeamProfilePage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* Banner */}
-      <div className="relative h-48 rounded-t-xl overflow-hidden bg-gradient-to-r from-cyan-500 to-blue-600">
+      <div className="relative h-32 sm:h-48 rounded-t-xl overflow-hidden bg-gradient-to-r from-cyan-500 to-blue-600">
         {team.banner && (
           <img src={team.banner} alt="" className="w-full h-full object-cover" />
         )}
-        <div className="absolute top-4 left-4">
-          <button onClick={() => navigate('/teams')} className="bg-white/80 text-gray-700 px-3 py-1 rounded text-sm hover:bg-white">
+        <div className="absolute top-3 left-3 sm:top-4 sm:left-4">
+          <button onClick={() => navigate('/teams')} className="bg-white/80 text-gray-700 px-2.5 sm:px-3 py-1 rounded text-xs sm:text-sm hover:bg-white">
             &larr; Back
           </button>
         </div>
       </div>
 
       {/* Header Card */}
-      <div className="bg-white border border-t-0 rounded-b-xl px-6 py-5 mb-6">
-        <div className="flex items-start gap-5 -mt-14">
+      <div className="bg-white border border-t-0 rounded-b-xl px-4 sm:px-6 py-4 sm:py-5 mb-4 sm:mb-6">
+        <div className="flex items-start gap-3 sm:gap-5 -mt-10 sm:-mt-14">
           {/* Logo */}
-          <div className="w-24 h-24 rounded-xl bg-white border-4 border-white shadow-md flex items-center justify-center overflow-hidden shrink-0">
+          <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl bg-white border-4 border-white shadow-md flex items-center justify-center overflow-hidden shrink-0">
             {team.logo ? (
               <img src={team.logo} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-4xl">🏊</span>
+              <span className="text-2xl sm:text-4xl">🏊</span>
             )}
           </div>
-          <div className="flex-1 pt-10">
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold">{team.name}</h1>
+          <div className="flex-1 pt-6 sm:pt-10 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 mb-1 flex-wrap">
+              <h1 className="text-lg sm:text-2xl font-bold">{team.name}</h1>
               {team.is_national_team && (
-                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">National Team</span>
+                <span className="bg-blue-100 text-blue-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold">National Team</span>
               )}
             </div>
             {country && (
-              <CountryFlag code={country.code} flagUrl={country.flag_url} name={country.name} className="text-sm text-gray-600" />
+              <CountryFlag code={country.code} flagUrl={country.flag_url} name={country.name} className="text-xs sm:text-sm text-gray-600" />
             )}
           </div>
           <button onClick={() => navigate(`/teams/${id}/edit`)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 mt-10">
+            className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm hover:bg-blue-700 mt-6 sm:mt-10 shrink-0">
             Edit
           </button>
         </div>
@@ -160,10 +160,10 @@ export default function TeamProfilePage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 mb-4">
+          <div className="flex gap-1 mb-4 overflow-x-auto scrollbar-hide">
             {['team', 'times', 'medals', 'progression'].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-6 py-2.5 rounded-lg text-sm font-semibold capitalize transition-colors ${
+                className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-semibold capitalize transition-colors whitespace-nowrap ${
                   activeTab === tab ? 'bg-cyan-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}>
                 {tab === 'team' ? 'Team' : tab === 'times' ? 'Times' : tab === 'medals' ? 'Medals' : 'Progression'}

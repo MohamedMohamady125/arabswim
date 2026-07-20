@@ -100,7 +100,7 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
 
       <div className="p-5">
         {/* Legend */}
-        <div className="flex flex-wrap gap-2 mb-5">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-5">
           {lines.map((line, i) => {
             const color = COLORS[i % COLORS.length]
             const hidden = hiddenLines.has(line.event_name)
@@ -119,7 +119,7 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
         </div>
 
         {/* Chart */}
-        <div className="h-[380px]">
+        <div className="h-[260px] sm:h-[380px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 20, left: 5, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />

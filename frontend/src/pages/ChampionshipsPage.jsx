@@ -74,13 +74,13 @@ export default function ChampionshipsPage() {
   return (
     <div>
       {/* Hero Banner */}
-      <div className="relative rounded-xl overflow-hidden mb-8 bg-gradient-to-br from-blue-900 to-cyan-800 text-white">
+      <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-8 bg-gradient-to-br from-blue-900 to-cyan-800 text-white">
         <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.15\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10S0 14.5 0 20s4.5 10 10 10 10-4.5 10-10zm20 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")'}} />
-        <div className="relative px-8 py-10">
-          <h1 className="text-3xl font-bold mb-2">Championships Management</h1>
-          <p className="text-blue-200 text-lg">Manage all competitions, results, and meet data.</p>
+        <div className="relative px-4 sm:px-8 py-6 sm:py-10">
+          <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">Championships</h1>
+          <p className="text-blue-200 text-sm sm:text-lg">Manage all competitions, results, and meet data.</p>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent rounded-b-xl" />
+        <div className="absolute bottom-0 left-0 right-0 h-8 sm:h-12 bg-gradient-to-t from-white to-transparent rounded-b-xl" />
       </div>
 
       {/* Classification filters */}
@@ -139,30 +139,30 @@ export default function ChampionshipsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-3 flex-1">
-          <input type="text" placeholder="Search championships..." value={search}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+        <div className="flex flex-wrap gap-2 flex-1">
+          <input type="text" placeholder="Search..." value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 max-w-xs border-2 border-blue-500 rounded-lg px-4 py-2 text-sm" />
+            className="flex-1 min-w-[120px] border-2 border-blue-500 rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-sm" />
           <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}
-            className="border-2 border-blue-500 rounded-lg px-4 py-2 text-sm bg-white font-medium">
-            <option value="">All Years</option>
+            className="border-2 border-blue-500 rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-sm bg-white font-medium">
+            <option value="">Year</option>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           <select value={filterPool} onChange={(e) => setFilterPool(e.target.value)}
-            className="border-2 border-blue-500 rounded-lg px-4 py-2 text-sm bg-white">
-            <option value="">All Pools</option>
+            className="border-2 border-blue-500 rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-sm bg-white">
+            <option value="">Pool</option>
             {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
           <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)}
-            className="border-2 border-blue-500 rounded-lg px-4 py-2 text-sm bg-white">
-            <option value="">All Countries</option>
+            className="border-2 border-blue-500 rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-sm bg-white">
+            <option value="">Country</option>
             {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <button onClick={() => navigate('/championships/new')}
-          className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-blue-700 font-medium ml-3">
-          + Add Championship
+          className="bg-blue-600 text-white px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm hover:bg-blue-700 font-medium shrink-0">
+          + Add
         </button>
       </div>
 

@@ -367,77 +367,77 @@ export default function MeetDetailPage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/calendar')} className="text-gray-500 hover:text-gray-700">← Back</button>
+      <div className="flex items-center gap-3 mb-3 sm:mb-6">
+        <button onClick={() => navigate('/calendar')} className="text-gray-500 hover:text-gray-700 text-sm">← Back</button>
       </div>
 
       {/* Meet Banner */}
-      <div className="bg-gradient-to-r from-sky-600 to-sky-500 text-white rounded-xl p-6 mb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">{meet.name}</h1>
-            <div className="flex flex-wrap items-center gap-4 text-sky-100 text-sm">
+      <div className="bg-gradient-to-r from-sky-600 to-sky-500 text-white rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold mb-1.5 sm:mb-2">{meet.name}</h1>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sky-100 text-xs sm:text-sm">
               {meet.country_detail && (
                 <CountryFlag code={meet.country_detail.code} flagUrl={meet.country_detail.flag_url} name={meet.country_detail.name} className="text-sky-100" />
               )}
               {meet.location && <span>{meet.location}</span>}
               <span>{meet.date}{meet.end_date ? ` to ${meet.end_date}` : ''}</span>
-              <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-medium">{meet.pool}</span>
+              <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium">{meet.pool}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={() => setShowEditModal(true)}
-              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-3.5 py-2 rounded-lg text-sm font-medium"
+              className="flex items-center gap-1 sm:gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium"
             >
-              <span className="text-base leading-none">✎</span> Edit Meet
+              <span className="text-sm sm:text-base leading-none">✎</span> <span className="hidden sm:inline">Edit Meet</span><span className="sm:hidden">Edit</span>
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-3.5 py-2 rounded-lg text-sm font-medium"
+              className="flex items-center gap-1 sm:gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium"
             >
-              <span className="text-base leading-none">＋</span> Add Results
+              <span className="text-sm sm:text-base leading-none">＋</span> <span className="hidden sm:inline">Add Results</span><span className="sm:hidden">Add</span>
             </button>
           </div>
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
-          <div className="bg-white/15 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">{stats.total_swimmers}</div>
-            <div className="text-xs text-sky-200">Swimmers</div>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4 mt-4 sm:mt-6">
+          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center">
+            <div className="text-lg sm:text-2xl font-bold">{stats.total_swimmers}</div>
+            <div className="text-[10px] sm:text-xs text-sky-200">Swimmers</div>
           </div>
-          <div className="bg-white/15 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">{stats.total_results}</div>
-            <div className="text-xs text-sky-200">Results</div>
+          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center">
+            <div className="text-lg sm:text-2xl font-bold">{stats.total_results}</div>
+            <div className="text-[10px] sm:text-xs text-sky-200">Results</div>
           </div>
-          <div className="bg-white/15 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">{stats.events.length}</div>
-            <div className="text-xs text-sky-200">Events</div>
+          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center">
+            <div className="text-lg sm:text-2xl font-bold">{stats.events.length}</div>
+            <div className="text-[10px] sm:text-xs text-sky-200">Events</div>
           </div>
-          <div className="bg-white/15 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">{stats.male_count}</div>
-            <div className="text-xs text-sky-200">Male</div>
+          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center hidden sm:block">
+            <div className="text-lg sm:text-2xl font-bold">{stats.male_count}</div>
+            <div className="text-[10px] sm:text-xs text-sky-200">Male</div>
           </div>
-          <div className="bg-white/15 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">{stats.female_count}</div>
-            <div className="text-xs text-sky-200">Female</div>
+          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center hidden sm:block">
+            <div className="text-lg sm:text-2xl font-bold">{stats.female_count}</div>
+            <div className="text-[10px] sm:text-xs text-sky-200">Female</div>
           </div>
         </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl">
+      <div className="flex gap-0.5 sm:gap-1 mb-4 sm:mb-6 bg-gray-100 p-1 rounded-xl overflow-x-auto scrollbar-hide">
         {[
           { key: 'results', label: 'Results' },
-          { key: 'statistics', label: 'Statistics' },
+          { key: 'statistics', label: 'Stats' },
           { key: 'medals', label: 'Medals' },
           { key: 'gallery', label: 'Gallery' },
         ].map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+            className={`flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
               activeTab === tab.key
                 ? 'bg-white text-sky-700 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'

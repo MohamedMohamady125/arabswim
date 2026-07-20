@@ -986,59 +986,79 @@ export default function SwimmerProfilePage() {
         <div className="absolute -top-20 -right-20 w-60 h-60 bg-sky-400/20 rounded-full blur-3xl" />
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-sky-300/10 rounded-full blur-2xl" />
 
-        <div className="relative p-6 md:p-8">
-          <div className="flex items-start gap-6">
+        <div className="relative p-4 sm:p-6 md:p-8">
+          {/* Actions - top right */}
+          <div className="absolute top-3 right-3 sm:top-6 sm:right-6 flex gap-1.5 sm:gap-2">
+            <button onClick={async () => {
+                const next = !swimmer.is_retired
+                await updateSwimmer(id, { is_retired: next })
+                setSwimmer({ ...swimmer, is_retired: next })
+              }}
+              className={`backdrop-blur-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 ring-1 ${
+                swimmer.is_retired
+                  ? 'bg-red-500/20 text-red-200 ring-red-400/30 hover:bg-red-500/30'
+                  : 'bg-white/10 text-white/70 ring-white/10 hover:bg-white/20 hover:ring-white/20'
+              }`}>
+              {swimmer.is_retired ? 'Active' : 'Retired'}
+            </button>
+            <button onClick={() => navigate(`/swimmers/${id}/edit`)}
+              className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20">
+              Edit
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
             {/* Photo */}
-            <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/20 shadow-xl animate-fade-in-up stagger-1">
+            <div className="w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/20 shadow-xl animate-fade-in-up stagger-1">
               {swimmer.photo ? (
                 <img src={swimmer.photo} alt="" className="w-full h-full object-cover" />
               ) : (
-                <svg className="w-14 h-14 text-white/30" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
+                <svg className="w-10 h-10 sm:w-14 sm:h-14 text-white/30" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
               )}
             </div>
 
             {/* Info */}
-            <div className="flex-1 min-w-0 animate-fade-in-up stagger-2">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-sm">{swimmer.name}</h1>
+            <div className="flex-1 min-w-0 text-center sm:text-left animate-fade-in-up stagger-2">
+              <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3 flex-wrap">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-sm">{swimmer.name}</h1>
                 {swimmer.is_retired && (
-                  <span className="bg-red-500/20 backdrop-blur-sm text-red-200 text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg ring-1 ring-red-400/30">Retired</span>
+                  <span className="bg-red-500/20 backdrop-blur-sm text-red-200 text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg ring-1 ring-red-400/30">Retired</span>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-1.5 sm:mt-2">
                 <CountryFlag code={swimmer.nationality_detail?.code} flagUrl={swimmer.nationality_detail?.flag_url} name={swimmer.nationality_detail?.name} className="text-white/80 text-sm font-medium" />
               </div>
-              <div className="flex flex-wrap gap-3 mt-3">
+              <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 sm:gap-3 mt-2 sm:mt-3">
                 {swimmer.date_of_birth && (
-                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium">
                     DOB <span className="text-white font-semibold">{swimmer.date_of_birth}</span>
                   </span>
                 )}
                 {!swimmer.date_of_birth && swimmer.birth_year && (
-                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium">
                     Born <span className="text-white font-semibold">{swimmer.birth_year}</span>
                   </span>
                 )}
                 {swimmer.age != null && (
-                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium">
                     Age <span className="text-white font-semibold">{swimmer.age}</span>
                   </span>
                 )}
                 {swimmer.sex && (
-                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium">
                     {swimmer.sex === 'M' ? 'Male' : 'Female'}
                   </span>
                 )}
                 {swimmer.club && (
-                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-lg font-medium">
+                  <span className="bg-white/10 backdrop-blur-sm text-white/80 text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium">
                     Club <span className="text-white font-semibold">{swimmer.club}</span>
                   </span>
                 )}
               </div>
               {swimmer.nicknames?.length > 0 && (
-                <div className="flex gap-2 mt-2.5">
+                <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-2">
                   {swimmer.nicknames.map((n, i) => (
-                    <span key={i} className="bg-sky-500/20 backdrop-blur-sm text-sky-200 text-[11px] px-2.5 py-1 rounded-full font-medium">{n.nickname}</span>
+                    <span key={i} className="bg-sky-500/20 backdrop-blur-sm text-sky-200 text-[10px] sm:text-[11px] px-2.5 py-1 rounded-full font-medium">{n.nickname}</span>
                   ))}
                 </div>
               )}
@@ -1072,40 +1092,20 @@ export default function SwimmerProfilePage() {
                 )}
               </div>
             )}
-
-            {/* Actions */}
-            <div className="absolute top-6 right-6 flex gap-2">
-              <button onClick={async () => {
-                  const next = !swimmer.is_retired
-                  await updateSwimmer(id, { is_retired: next })
-                  setSwimmer({ ...swimmer, is_retired: next })
-                }}
-                className={`backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ring-1 ${
-                  swimmer.is_retired
-                    ? 'bg-red-500/20 text-red-200 ring-red-400/30 hover:bg-red-500/30'
-                    : 'bg-white/10 text-white/70 ring-white/10 hover:bg-white/20 hover:ring-white/20'
-                }`}>
-                {swimmer.is_retired ? 'Mark Active' : 'Mark Retired'}
-              </button>
-              <button onClick={() => navigate(`/swimmers/${id}/edit`)}
-                className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20">
-                Edit
-              </button>
-            </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl border shadow-sm p-1.5 mb-6 flex gap-1 overflow-x-auto animate-fade-in-up stagger-4">
+      <div className="bg-white rounded-2xl border shadow-sm p-1 sm:p-1.5 mb-4 sm:mb-6 flex gap-0.5 sm:gap-1 overflow-x-auto animate-fade-in-up stagger-4 scrollbar-hide">
         {TABS.map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
+            className={`relative flex items-center gap-1 sm:gap-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
               activeTab === tab.key
                 ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}>
-            {tab.icon}
+            <span className="hidden sm:inline">{tab.icon}</span>
             {tab.label}
           </button>
         ))}

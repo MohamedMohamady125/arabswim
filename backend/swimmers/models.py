@@ -14,6 +14,7 @@ class Swimmer(models.Model):
     is_relay_team = models.BooleanField(
         default=False,
         help_text='Placeholder row that holds relay results for a team, not a real athlete')
+    is_retired = models.BooleanField(default=False)
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -47,3 +48,21 @@ class SwimmerNickname(models.Model):
 
     def __str__(self):
         return self.nickname
+
+
+class NationalityChange(models.Model):
+    swimmer = models.ForeignKey(Swimmer, on_delete=models.CASCADE, related_name='nationality_changes')
+    from_country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name='+', null=True, blank=True,
+                                     help_text='Previous nationality (null if first known nationality)')
+    to_country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name='+')
+    effective_date = models.DateField(help_text='Date the nationality change took effect')
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['effective_date']
+
+    def __str__(self):
+        if self.from_country:
+            return f'{self.swimmer.name}: {self.from_country.name} → {self.to_country.name} ({self.effective_date})'
+        return f'{self.swimmer.name}: {self.to_country.name} (initial, {self.effective_date})'

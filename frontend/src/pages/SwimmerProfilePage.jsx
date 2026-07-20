@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { getSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats } from '../api/swimmers'
+import { getSwimmer, updateSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats, getSwimmerProgression, getSwimmerTransferHistory } from '../api/swimmers'
 import { getRecords } from '../api/records'
 import { getMediaItems } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
+import ProgressionChart from '../components/common/ProgressionChart'
 
 const MEDAL_COLORS = { GOLD: '#FFD700', SILVER: '#C0C0C0', BRONZE: '#CD7F32' }
 const MEDAL_LABELS = { GOLD: 'Gold', SILVER: 'Silver', BRONZE: 'Bronze' }
@@ -754,13 +755,150 @@ function GalleryTab({ swimmerId }) {
   )
 }
 
+/* ───────── Progression Tab ───────── */
+function ProgressionTab({ swimmerId }) {
+  const [pool, setPool] = useState('LCM')
+  const [lines, setLines] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    getSwimmerProgression(swimmerId, pool)
+      .then(res => setLines(res.data))
+      .catch(() => setLines([]))
+      .finally(() => setLoading(false))
+  }, [swimmerId, pool])
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 animate-fade-in">
+        <h3 className="font-bold text-base text-gray-800">Performance Progression</h3>
+        <div className="flex gap-1 ml-auto">
+          {['LCM', 'SCM'].map(p => (
+            <button key={p} onClick={() => setPool(p)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+                pool === p ? 'bg-sky-600 text-white shadow-md shadow-sky-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}>
+              {p === 'LCM' ? 'Long Course' : 'Short Course'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ProgressionChart lines={lines} title={`Top Events - ${pool === 'LCM' ? 'Long Course (50m)' : 'Short Course (25m)'}`} />
+    </div>
+  )
+}
+
+/* ───────── Transfer History Tab ───────── */
+function TransferHistoryTab({ swimmerId }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    getSwimmerTransferHistory(swimmerId)
+      .then(res => setData(res.data))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false))
+  }, [swimmerId])
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
+  if (!data) return <div className="text-center py-8 text-gray-400">Failed to load transfer history</div>
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Club History */}
+      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b bg-gray-50">
+          <h3 className="font-bold text-base text-gray-800">Club History</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Clubs represented based on competition results</p>
+        </div>
+        {data.clubs.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">No club history available</div>
+        ) : (
+          <div className="relative">
+            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200" />
+            <div className="divide-y">
+              {data.clubs.map((club, i) => (
+                <div key={i} className="flex items-start gap-4 px-5 py-4 relative">
+                  <div className="w-7 h-7 rounded-full bg-sky-100 border-2 border-sky-400 flex items-center justify-center z-10 shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-sky-700">{i + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm text-gray-900">{club.club}</div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                      <span>{club.first_meet} &rarr; {club.last_meet}</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-bold text-gray-800">{club.meets}</div>
+                    <div className="text-xs text-gray-400">meet{club.meets !== 1 ? 's' : ''}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{club.results} result{club.results !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Nationality */}
+      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b bg-gray-50">
+          <h3 className="font-bold text-base text-gray-800">Nationality</h3>
+        </div>
+        <div className="px-5 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {data.nationality_meet_counts.map((n, i) => (
+              <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
+                <CountryFlag code={n.country_code} flagUrl={n.country_flag} name={n.country} />
+                <div className="flex-1">
+                  <div className="font-medium text-sm">{n.country}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-gray-800">{n.meets}</div>
+                  <div className="text-xs text-gray-400">meet{n.meets !== 1 ? 's' : ''}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {data.nationality_changes.length > 0 && (
+          <div className="px-5 pb-4 border-t pt-4">
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">Nationality Changes</h4>
+            <div className="space-y-3">
+              {data.nationality_changes.map((ch, i) => (
+                <div key={i} className="flex items-center gap-3 text-sm">
+                  {ch.from_country && (
+                    <>
+                      <CountryFlag code={ch.from_country_code} flagUrl={ch.from_country_flag} name={ch.from_country} />
+                      <span className="text-gray-400">&rarr;</span>
+                    </>
+                  )}
+                  <CountryFlag code={ch.to_country_code} flagUrl={ch.to_country_flag} name={ch.to_country} />
+                  <span className="text-gray-500 text-xs">{ch.effective_date}</span>
+                  {ch.notes && <span className="text-gray-400 text-xs">({ch.notes})</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ───────── TAB CONFIG ───────── */
 const TABS = [
   { key: 'times', label: 'Times', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
   { key: 'meets', label: 'Meets', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg> },
   { key: 'medals', label: 'Medals', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012.75 10.5h-1.5A3.375 3.375 0 007.5 13.875v4.875" /></svg> },
   { key: 'records', label: 'Records', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg> },
+  { key: 'progression', label: 'Progression', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg> },
   { key: 'stats', label: 'Stats', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg> },
+  { key: 'transfers', label: 'Transfers', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg> },
   { key: 'gallery', label: 'Gallery', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H3.75A2.25 2.25 0 001.5 6v12.75c0 1.243 1.007 2.25 2.25 2.25z" /></svg> },
 ]
 
@@ -844,7 +982,12 @@ export default function SwimmerProfilePage() {
 
             {/* Info */}
             <div className="flex-1 min-w-0 animate-fade-in-up stagger-2">
-              <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-sm">{swimmer.name}</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-sm">{swimmer.name}</h1>
+                {swimmer.is_retired && (
+                  <span className="bg-red-500/20 backdrop-blur-sm text-red-200 text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg ring-1 ring-red-400/30">Retired</span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-2">
                 <CountryFlag code={swimmer.nationality_detail?.code} flagUrl={swimmer.nationality_detail?.flag_url} name={swimmer.nationality_detail?.name} className="text-white/80 text-sm font-medium" />
               </div>
@@ -913,11 +1056,25 @@ export default function SwimmerProfilePage() {
               </div>
             )}
 
-            {/* Edit */}
-            <button onClick={() => navigate(`/swimmers/${id}/edit`)}
-              className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20">
-              Edit
-            </button>
+            {/* Actions */}
+            <div className="absolute top-6 right-6 flex gap-2">
+              <button onClick={async () => {
+                  const next = !swimmer.is_retired
+                  await updateSwimmer(id, { is_retired: next })
+                  setSwimmer({ ...swimmer, is_retired: next })
+                }}
+                className={`backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ring-1 ${
+                  swimmer.is_retired
+                    ? 'bg-red-500/20 text-red-200 ring-red-400/30 hover:bg-red-500/30'
+                    : 'bg-white/10 text-white/70 ring-white/10 hover:bg-white/20 hover:ring-white/20'
+                }`}>
+                {swimmer.is_retired ? 'Mark Active' : 'Mark Retired'}
+              </button>
+              <button onClick={() => navigate(`/swimmers/${id}/edit`)}
+                className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20">
+                Edit
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -948,7 +1105,9 @@ export default function SwimmerProfilePage() {
         {activeTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
         {activeTab === 'medals' && <MedalsTab stats={stats} navigate={navigate} />}
         {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} />}
+        {activeTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
         {activeTab === 'stats' && <StatsTab stats={stats} events={events} />}
+        {activeTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}
         {activeTab === 'gallery' && <GalleryTab swimmerId={parseInt(id)} />}
       </div>
     </div>

@@ -529,6 +529,152 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'shared_events': shared_events,
         })
 
+    @action(detail=True, methods=['get'])
+    def progression(self, request, pk=None):
+        """Time progression for a swimmer's top 5 events (last 5 times each)."""
+        swimmer = self.get_object()
+        from championships.models import Result
+        from django.db.models import Min, Count
+        from importer.parsers.base import format_centiseconds
+
+        pool = request.query_params.get('pool', 'LCM')
+
+        # Find top 5 events by best FINA or most swims
+        event_stats = (
+            Result.objects.filter(
+                swimmer=swimmer, swimmer__is_relay_team=False,
+                championship__pool=pool, event__is_relay=False,
+            )
+            .values('event_id', 'event__name', 'event__stroke', 'event__sort_order')
+            .annotate(count=Count('id'), best=Min('time_centiseconds'))
+            .order_by('best')[:5]
+        )
+
+        lines = []
+        for es in event_stats:
+            results = (
+                Result.objects.filter(
+                    swimmer=swimmer, event_id=es['event_id'],
+                    championship__pool=pool,
+                )
+                .select_related('championship')
+                .order_by('-championship__date')[:5]
+            )
+            points = []
+            for r in reversed(list(results)):
+                points.append({
+                    'date': r.championship.date.isoformat(),
+                    'time': format_centiseconds(r.time_centiseconds),
+                    'time_cs': r.time_centiseconds,
+                    'meet': r.championship.name,
+                    'fina': r.fina_points,
+                })
+            lines.append({
+                'event_id': es['event_id'],
+                'event_name': es['event__name'],
+                'stroke': es['event__stroke'],
+                'points': points,
+            })
+        return Response(lines)
+
+    @action(detail=True, methods=['get'], url_path='transfer-history')
+    def transfer_history(self, request, pk=None):
+        """Club transfer history and nationality changes for a swimmer."""
+        from django.db.models import Min, Max, Count
+        from .models import NationalityChange
+
+        swimmer = self.get_object()
+
+        # Club history derived from results
+        club_history = (
+            Result.objects.filter(swimmer=swimmer, swimmer__is_relay_team=False)
+            .exclude(team='').exclude(team__isnull=True)
+            .values('team')
+            .annotate(
+                first_meet_date=Min('championship__date'),
+                last_meet_date=Max('championship__date'),
+                meets=Count('championship', distinct=True),
+                results=Count('id'),
+            )
+            .order_by('first_meet_date')
+        )
+        clubs = [
+            {
+                'club': c['team'],
+                'first_meet': str(c['first_meet_date']),
+                'last_meet': str(c['last_meet_date']),
+                'meets': c['meets'],
+                'results': c['results'],
+            }
+            for c in club_history
+        ]
+
+        # Nationality changes
+        changes = NationalityChange.objects.filter(swimmer=swimmer).select_related(
+            'from_country', 'to_country')
+        nationality_history = []
+        for ch in changes:
+            # Count meets under each nationality by date range
+            nationality_history.append({
+                'from_country': ch.from_country.name if ch.from_country else None,
+                'from_country_code': ch.from_country.code if ch.from_country else None,
+                'from_country_flag': ch.from_country.flag_url if ch.from_country else None,
+                'to_country': ch.to_country.name,
+                'to_country_code': ch.to_country.code,
+                'to_country_flag': ch.to_country.flag_url,
+                'effective_date': str(ch.effective_date),
+                'notes': ch.notes,
+            })
+
+        # Meets per nationality: count meets before/after each change date
+        nationality_meet_counts = []
+        if nationality_history:
+            # Build date ranges for each nationality
+            change_dates = [ch['effective_date'] for ch in nationality_history]
+            # First nationality: from beginning to first change
+            first_nat = nationality_history[0]
+            if first_nat['from_country']:
+                count = Result.objects.filter(
+                    swimmer=swimmer, championship__date__lt=change_dates[0]
+                ).values('championship').distinct().count()
+                nationality_meet_counts.append({
+                    'country': first_nat['from_country'],
+                    'country_code': first_nat['from_country_code'],
+                    'country_flag': first_nat['from_country_flag'],
+                    'meets': count,
+                })
+            # Each subsequent nationality
+            for i, ch in enumerate(nationality_history):
+                start = ch['effective_date']
+                end = change_dates[i + 1] if i + 1 < len(change_dates) else None
+                q = Result.objects.filter(swimmer=swimmer, championship__date__gte=start)
+                if end:
+                    q = q.filter(championship__date__lt=end)
+                count = q.values('championship').distinct().count()
+                nationality_meet_counts.append({
+                    'country': ch['to_country'],
+                    'country_code': ch['to_country_code'],
+                    'country_flag': ch['to_country_flag'],
+                    'meets': count,
+                })
+        else:
+            # No changes recorded — all meets under current nationality
+            total_meets = Result.objects.filter(
+                swimmer=swimmer
+            ).values('championship').distinct().count()
+            nationality_meet_counts.append({
+                'country': swimmer.nationality.name,
+                'country_code': swimmer.nationality.code,
+                'country_flag': swimmer.nationality.flag_url,
+                'meets': total_meets,
+            })
+
+        return Response({
+            'clubs': clubs,
+            'nationality_changes': nationality_history,
+            'nationality_meet_counts': nationality_meet_counts,
+        })
+
     @action(detail=True, methods=['post'])
     def upload_photo(self, request, pk=None):
         swimmer = self.get_object()

@@ -46,6 +46,32 @@ MEET_COUNTRY_KEYWORDS = {
 }
 
 
+def normalize_name(text):
+    """Normalize text to title case for consistency.
+    Handles ALL CAPS, all lower, and mixed cases.
+    Preserves Roman numerals (II, III, IV, etc.) and common abbreviations.
+    """
+    if not text or not isinstance(text, str):
+        return text or ''
+    text = text.strip()
+    if not text:
+        return ''
+    # Convert to title case
+    result = text.title()
+    # Fix common patterns that title() breaks:
+    # Roman numerals
+    for roman in ('Ii', 'Iii', 'Iv', 'Vi', 'Vii', 'Viii', 'Ix', 'Xi', 'Xii', 'Xiii', 'Xiv', 'Xv'):
+        result = re.sub(r'\b' + roman + r'\b', roman.upper(), result)
+    # Fix apostrophes (D'Alger -> D'Alger is fine, but d'Alger)
+    result = re.sub(r"\b([A-Z])'([a-z])", lambda m: m.group(1) + "'" + m.group(2).upper(), result)
+    # Fix "Mc" and "Al " prefixes
+    result = re.sub(r'\bMc([a-z])', lambda m: 'Mc' + m.group(1).upper(), result)
+    result = re.sub(r'\bAl ([a-z])', lambda m: 'Al ' + m.group(1).upper(), result)
+    # Clean up extra whitespace
+    result = re.sub(r'\s+', ' ', result).strip()
+    return result
+
+
 def _detect_country_from_meet(meet_name, location=''):
     """Detect the country from meet name and location text."""
     text = f'{meet_name} {location}'.lower()
@@ -354,11 +380,11 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         # Use user-provided details from the form
         champ_date = _parse_date(championship_details.get('date', ''))
         champ_kwargs = {
-            'name': championship_details.get('name') or meet_info.get('name', 'Imported Meet'),
+            'name': normalize_name(championship_details.get('name') or meet_info.get('name', 'Imported Meet')),
             'date': champ_date,
             'pool': championship_details.get('pool') or meet_info.get('pool', 'LCM'),
             'country': meet_country,
-            'location': championship_details.get('location', ''),
+            'location': normalize_name(championship_details.get('location', '')),
         }
         # Optional end date
         end_date_str = championship_details.get('end_date', '')
@@ -376,11 +402,11 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         pool = meet_info.get('pool', 'LCM')
 
         championship = Championship.objects.create(
-            name=meet_info.get('name', 'Imported Meet'),
+            name=normalize_name(meet_info.get('name', 'Imported Meet')),
             date=championship_date,
             pool=pool,
             country=meet_country,
-            location=meet_info.get('location', ''),
+            location=normalize_name(meet_info.get('location', '')),
         )
 
     # Build event cache
@@ -499,12 +525,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             nationality = Country.objects.first()
 
                         swimmer_map[relay_key] = Swimmer.objects.create(
-                            name=parsed_name,
+                            name=normalize_name(parsed_name),
                             date_of_birth=None,
                             birth_year=None,
                             nationality=nationality,
                             sex=relay_gender,
-                            club=parsed_name,
+                            club=normalize_name(parsed_name),
                             is_relay_team=True,
                         )
                         created_swimmers += 1
@@ -598,16 +624,18 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
 
             # Determine team
             if is_relay or result_data.get('is_relay', False):
-                team = squad_name  # For relay, team = squad name ("MC ALGER 2")
+                # Use original swimmer_name (e.g. "MC ALGER 2") as team, not
+                # the cleaned parsed_name which has the squad number stripped.
+                team = normalize_name(result_data['swimmer_name'])
             else:
                 from teams.utils import strip_squad_number
-                team = strip_squad_number(result_data.get('club', ''))
+                team = normalize_name(strip_squad_number(result_data.get('club', '')))
 
             # Update swimmer's club if they don't have one yet
             if team and not swimmer.club and not (is_relay or result_data.get('is_relay', False)):
                 from teams.utils import is_valid_team_name
                 if is_valid_team_name(team):
-                    swimmer.club = team
+                    swimmer.club = normalize_name(team)
                     swimmer.save(update_fields=['club'])
 
             round_type = event_data.get('round_type', '') or ''
@@ -633,7 +661,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     if team and existing.team != team and not Result.objects.filter(
                             swimmer=swimmer, championship=championship,
                             event=db_event, round_type=round_type,
-                            category=category, team=team,
+                            category=category, team__iexact=team,
                             time_centiseconds=time_cs).exists():
                         existing.team = team
                         existing.save(update_fields=['team'])
@@ -656,12 +684,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     event=db_event,
                     round_type=round_type,
                     category=category,
-                    team=team,
+                    team__iexact=team,
                 ).exclude(id__in=claimed_results).first()
                 if same_team:
                     from .points import calculate_points
                     gender_code = result_data.get('gender', 'M') or 'M'
                     same_team.time_centiseconds = time_cs
+                    same_team.team = team  # normalize team name
                     same_team.fina_points = calculate_points(
                         time_cs, event_data.get('event_name', db_event.name),
                         gender_code, championship.pool) or None
@@ -792,12 +821,12 @@ def _create_swimmer(result_data, fallback_country=None):
         club = ''
 
     swimmer = Swimmer.objects.create(
-        name=result_data['swimmer_name'],
+        name=normalize_name(result_data['swimmer_name']),
         date_of_birth=None,
         birth_year=birth_year,
         nationality=nationality,
         sex=gender,
-        club=club,
+        club=normalize_name(club),
     )
 
     return swimmer
@@ -841,6 +870,26 @@ def canonical_relay_name(event_name, distance=0, stroke='', gender=''):
     return f'{base} Mixed' if mixed else base
 
 
+STROKE_ORDER = {
+    'Freestyle': 100,
+    'Backstroke': 200,
+    'Breaststroke': 300,
+    'Butterfly': 400,
+    'Individual Medley': 500,
+    'Freestyle Relay': 600,
+    'Medley Relay': 700,
+}
+
+
+def _compute_sort_order(stroke, distance, is_relay=False):
+    """Compute a sort order that produces standard swimming program order."""
+    base = STROKE_ORDER.get(stroke, 800)
+    if is_relay:
+        base = max(base, 600)
+    # Within each stroke, sort by distance
+    return base + (distance // 10)
+
+
 def _find_event(event_data, event_cache):
     """Find a matching Event in the database."""
     event_name = event_data.get('event_name', '')
@@ -853,15 +902,15 @@ def _find_event(event_data, event_cache):
         event_name = canonical_relay_name(
             event_name, distance, stroke, event_data.get('gender', ''))
 
-    # Try exact match
-    if event_name.upper() in event_cache:
-        return event_cache[event_name.upper()]
-
-    # Try constructing standard name (relays: already canonical above)
+    # For individual events, try canonical name first
     if distance and stroke and not is_relay:
         standard_name = f'{distance} M {stroke}'
         if standard_name.upper() in event_cache:
             return event_cache[standard_name.upper()]
+
+    # Try exact match on parsed name
+    if event_name.upper() in event_cache:
+        return event_cache[event_name.upper()]
 
     # Try partial match (but don't match relay to individual or vice versa)
     # Skip partial matching for relay events — they need exact name match
@@ -877,13 +926,14 @@ def _find_event(event_data, event_cache):
         if is_relay:
             final_name = event_name  # canonical name built above
         else:
-            final_name = event_name or f'{distance} M {stroke}'
+            # Always use canonical format for individual events
+            final_name = f'{distance} M {stroke}'
         event = Event.objects.create(
             name=final_name,
             distance=distance,
             stroke=stroke,
             is_relay=is_relay,
-            sort_order=99,
+            sort_order=_compute_sort_order(stroke, distance, is_relay),
         )
         event_cache[event.name.upper()] = event
         return event

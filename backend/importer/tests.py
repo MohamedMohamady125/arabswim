@@ -738,7 +738,7 @@ class RelaySquadImportTests(_MeetFixtureMixin, TestCase):
         self.assertEqual({r.time_centiseconds for r in results},
                          {24246, 25133})
         self.assertEqual({r.team for r in results},
-                         {'MC ALGER 1', 'MC ALGER 2'})
+                         {'Mc Alger 1', 'Mc Alger 2'})
 
     def test_reimport_is_idempotent(self):
         from importer.services import confirm_import
@@ -772,7 +772,7 @@ class RelaySquadImportTests(_MeetFixtureMixin, TestCase):
         results = Result.objects.filter(swimmer=placeholder)
         self.assertEqual(results.count(), 2)
         self.assertEqual({r.team for r in results},
-                         {'MC ALGER 1', 'MC ALGER 2'})
+                         {'Mc Alger 1', 'Mc Alger 2'})
 
     def test_identically_named_squads_both_import(self):
         """Algerian heats sheets list a club's squads without numbers
@@ -819,7 +819,7 @@ class RelaySquadImportTests(_MeetFixtureMixin, TestCase):
         self.assertEqual({r.time_centiseconds for r in results},
                          {24246, 25133})
         self.assertEqual({r.team for r in results},
-                         {'MC ALGER', 'MC ALGER 2'})
+                         {'Mc Alger', 'Mc Alger 2'})
 
 
 class SameNameBirthYearTests(_MeetFixtureMixin, TestCase):
@@ -898,7 +898,7 @@ class SameNameSameYearTests(_MeetFixtureMixin, TestCase):
         confirm_import(self._preview(), {})
         swimmers = Swimmer.objects.filter(name__iexact='Mohamed Amine DRIDI')
         self.assertEqual(swimmers.count(), 2)
-        self.assertEqual({s.club for s in swimmers}, {'CA', 'OLYMPICA'})
+        self.assertEqual({s.club for s in swimmers}, {'Ca', 'Olympica'})
         for s in swimmers:
             self.assertEqual(s.results.count(), 1)
 
@@ -1176,10 +1176,10 @@ class NonArabImportTests(_MeetFixtureMixin, TestCase):
             }],
         }
         confirm_import(preview, {})
-        pieter = Swimmer.objects.get(name='Pieter COETZE')
+        pieter = Swimmer.objects.get(name='Pieter Coetze')
         self.assertEqual(pieter.nationality.code, 'RSA')
         self.assertEqual(pieter.results.count(), 1)
-        self.assertTrue(Swimmer.objects.filter(name='Ahmed HAFNAOUI').exists())
+        self.assertTrue(Swimmer.objects.filter(name='Ahmed Hafnaoui').exists())
 
     def test_non_arab_relay_team_is_imported(self):
         from importer.services import confirm_import

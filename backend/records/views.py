@@ -82,12 +82,21 @@ class RecordViewSet(viewsets.ModelViewSet):
         )
 
         # Scope filter
-        if scope == 'national' and country:
-            qs = qs.filter(swimmer__nationality_id=country)
+        if scope == 'national':
+            if country:
+                qs = qs.filter(swimmer__nationality_id=country)
+            else:
+                return Response([])
         elif scope == 'gcc':
-            qs = qs.filter(swimmer__nationality__region='GCC')
+            if country:
+                qs = qs.filter(swimmer__nationality_id=country)
+            else:
+                qs = qs.filter(swimmer__nationality__region='GCC')
         else:  # arab (default)
-            qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
+            if country:
+                qs = qs.filter(swimmer__nationality_id=country)
+            else:
+                qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
 
         if classification:
             qs = qs.filter(championship__classification_id=classification)

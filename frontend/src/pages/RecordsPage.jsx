@@ -102,8 +102,7 @@ export default function RecordsPage() {
             {countries
               .filter(c => {
                 if (filters.scope === 'gcc') return c.region === 'GCC'
-                if (filters.scope === 'arab') return c.region === 'ARAB' || c.region === 'GCC'
-                return true
+                return c.region === 'ARAB' || c.region === 'GCC'
               })
               .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -132,7 +131,9 @@ export default function RecordsPage() {
         ))}
       </div>
 
-      {loading ? (
+      {filters.scope === 'national' && !filters.country ? (
+        <div className="text-center py-8 text-gray-500">Select a country to view national records</div>
+      ) : loading ? (
         <div className="text-center py-8 text-gray-500">Loading records...</div>
       ) : (
         <>

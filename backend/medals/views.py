@@ -52,3 +52,18 @@ class MedalViewSet(viewsets.ModelViewSet):
             total=Count('id'),
         ).order_by('-gold', '-silver', '-bronze')
         return Response(list(summary))
+
+    @action(detail=False, methods=['get'], url_path='club-summary')
+    def club_summary(self, request):
+        qs = self._apply_filters(Medal.objects.all())
+        # Only include medals that have a team/club via result
+        qs = qs.filter(
+            result__isnull=False,
+        ).exclude(result__team='').exclude(result__team__isnull=True)
+        summary = qs.values('result__team').annotate(
+            gold=Count('id', filter=Q(medal_type='GOLD')),
+            silver=Count('id', filter=Q(medal_type='SILVER')),
+            bronze=Count('id', filter=Q(medal_type='BRONZE')),
+            total=Count('id'),
+        ).order_by('-gold', '-silver', '-bronze')
+        return Response(list(summary))

@@ -297,6 +297,49 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'errors': errors,
         })
 
+    @action(detail=True, methods=['get'], url_path='club-swimmers')
+    def club_swimmers(self, request, pk=None):
+        """Swimmers from one club/team at this championship, with their best swim."""
+        from django.db.models import Count, Max
+        from importer.parsers.base import format_centiseconds
+        championship = self.get_object()
+        club = request.query_params.get('club')
+        if not club:
+            return Response({'error': 'club query param required'}, status=400)
+        results = championship.results.filter(
+            team__iexact=club,
+            swimmer__is_relay_team=False,
+        ).select_related('swimmer', 'swimmer__nationality', 'event')
+
+        swimmers = {}
+        for r in results:
+            s = swimmers.setdefault(r.swimmer_id, {
+                'swimmer_id': r.swimmer_id,
+                'name': r.swimmer.name,
+                'sex': r.swimmer.sex,
+                'birth_year': r.swimmer.birth_year,
+                'photo': r.swimmer.photo.url if r.swimmer.photo else None,
+                'nationality_code': r.swimmer.nationality.code if r.swimmer.nationality else '',
+                'nationality_flag': r.swimmer.nationality.flag_url if r.swimmer.nationality else '',
+                'nationality_name': r.swimmer.nationality.name if r.swimmer.nationality else '',
+                'events': set(),
+                'results_count': 0,
+                'best_fina': 0,
+                'best_event': '',
+                'best_time': '',
+            })
+            s['events'].add(r.event_id)
+            s['results_count'] += 1
+            if (r.fina_points or 0) > s['best_fina']:
+                s['best_fina'] = r.fina_points or 0
+                s['best_event'] = r.event.name
+                s['best_time'] = format_centiseconds(r.time_centiseconds)
+
+        data = sorted(swimmers.values(), key=lambda s: (-s['best_fina'], s['name']))
+        for s in data:
+            s['events_count'] = len(s.pop('events'))
+        return Response(data)
+
     @action(detail=True, methods=['get'], url_path='country-swimmers')
     def country_swimmers(self, request, pk=None):
         """Swimmers from one country at this championship, with their best swim."""
@@ -399,6 +442,24 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             results_count=Count('id'),
         ).order_by('-swimmers_count')
 
+        # Determine if this is a national/local meet (show clubs)
+        is_club_meet = True  # show clubs for all meets
+        cat_name = ''
+        if championship.classification_category:
+            cat_name = championship.classification_category.name.lower()
+
+        # Club breakdown
+        clubs = list(
+            athletes.filter(swimmer__is_relay_team=False)
+            .exclude(team='').exclude(team__isnull=True)
+            .values('team')
+            .annotate(
+                swimmers_count=Count('swimmer', distinct=True),
+                results_count=Count('id'),
+            )
+            .order_by('-swimmers_count')
+        )
+
         # Top performers (best FINA points, deduplicated per swimmer+event)
         from django.db.models import Max, Subquery, OuterRef
         best_per_swimmer_event = (
@@ -434,6 +495,65 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 if len(top_list) >= 30:
                     break
 
+        # Personal bests achieved at this meet
+        personal_bests = []
+        pb_candidates = athletes.filter(
+            swimmer__is_relay_team=False, time_centiseconds__gt=0
+        ).values('swimmer_id', 'event_id').annotate(
+            meet_best=Min('time_centiseconds')
+        )
+        for pb in pb_candidates:
+            sid, eid, meet_best = pb['swimmer_id'], pb['event_id'], pb['meet_best']
+            # Check if this is their all-time best
+            all_time_best = (
+                Result.objects.filter(
+                    swimmer_id=sid, event_id=eid,
+                    championship__pool=championship.pool,
+                    swimmer__is_relay_team=False,
+                    time_centiseconds__gt=0,
+                )
+                .aggregate(best=Min('time_centiseconds'))['best']
+            )
+            if all_time_best == meet_best:
+                # This IS their PB — get the result
+                result = athletes.filter(
+                    swimmer_id=sid, event_id=eid, time_centiseconds=meet_best
+                ).select_related('swimmer', 'swimmer__nationality', 'event').first()
+                if result:
+                    personal_bests.append({
+                        'swimmer_id': result.swimmer.id,
+                        'swimmer_name': result.swimmer.name,
+                        'gender': result.swimmer.sex,
+                        'nationality': result.swimmer.nationality.name,
+                        'nationality_code': result.swimmer.nationality.code,
+                        'flag_url': result.swimmer.nationality.flag_url,
+                        'event_name': result.event.name,
+                        'time': result.formatted_time,
+                        'fina_points': result.fina_points,
+                    })
+        personal_bests.sort(key=lambda x: -(x['fina_points'] or 0))
+
+        # Records broken at this meet
+        from records.models import Record
+        records_broken = []
+        meet_records = Record.objects.filter(
+            result__championship=championship
+        ).select_related('swimmer', 'swimmer__nationality', 'event')
+        for rec in meet_records:
+            records_broken.append({
+                'id': rec.id,
+                'record_type': rec.record_type,
+                'swimmer_id': rec.swimmer.id,
+                'swimmer_name': rec.swimmer.name,
+                'gender': rec.swimmer.sex,
+                'nationality': rec.swimmer.nationality.name,
+                'nationality_code': rec.swimmer.nationality.code,
+                'flag_url': rec.swimmer.nationality.flag_url,
+                'event_name': rec.event.name,
+                'time': self._format_time(rec.time_centiseconds),
+                'is_new': rec.is_new,
+            })
+
         return Response({
             'total_results': total_results,
             'total_swimmers': total_swimmers,
@@ -443,6 +563,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'events': events_list,
             'countries': list(countries),
             'top_performers': top_list,
+            'personal_bests': personal_bests[:50],
+            'records_broken': records_broken,
+            'clubs': clubs,
         })
 
 
@@ -487,14 +610,35 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 .order_by('time_centiseconds')
                 .first()
             )
-            if prev_result is None or prev_result.time_centiseconds <= current_time:
-                continue  # no previous time or no improvement
-            prev = prev_result.time_centiseconds
-            improvement_cs = prev - current_time
             swimmer = swimmers.get(sid)
             event = events.get(eid)
             if not swimmer or not event:
                 continue
+
+            if prev_result is None:
+                # First time in this event — include as new entry
+                improvements.append({
+                    'swimmer_id': sid,
+                    'swimmer_name': swimmer.name,
+                    'gender': swimmer.sex,
+                    'nationality': swimmer.nationality.name,
+                    'nationality_code': swimmer.nationality.code,
+                    'flag_url': swimmer.nationality.flag_url,
+                    'event_name': event.name,
+                    'current_time': self._format_time(current_time),
+                    'previous_best': None,
+                    'previous_best_meet': None,
+                    'previous_best_meet_id': None,
+                    'previous_best_date': None,
+                    'improvement_cs': 0,
+                    'improvement': None,
+                    'is_new_entry': True,
+                })
+                continue
+            if prev_result.time_centiseconds <= current_time:
+                continue  # no improvement
+            prev = prev_result.time_centiseconds
+            improvement_cs = prev - current_time
             improvements.append({
                 'swimmer_id': sid,
                 'swimmer_name': swimmer.name,
@@ -510,10 +654,14 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'previous_best_date': prev_result.championship.date,
                 'improvement_cs': improvement_cs,
                 'improvement': self._format_time(improvement_cs),
+                'is_new_entry': False,
             })
 
-        improvements.sort(key=lambda x: -x['improvement_cs'])
-        return Response(improvements[:30])
+        # Improved swimmers first (sorted by biggest improvement), then new entries
+        improved = [x for x in improvements if not x.get('is_new_entry')]
+        new_entries = [x for x in improvements if x.get('is_new_entry')]
+        improved.sort(key=lambda x: -x['improvement_cs'])
+        return Response(improved[:30] + new_entries[:20])
 
     @action(detail=True, methods=['get'], url_path='compare')
     def compare(self, request, pk=None):
@@ -665,6 +813,76 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'deleted_results': count,
             'deleted_orphan_swimmers': orphans_deleted,
         })
+
+    @action(detail=True, methods=['post'], url_path='bulk-delete-result-ids')
+    def bulk_delete_result_ids(self, request, pk=None):
+        """Delete specific results by their IDs."""
+        championship = self.get_object()
+        result_ids = request.data.get('result_ids', [])
+        if not result_ids:
+            return Response({'error': 'result_ids required'}, status=400)
+        qs = championship.results.filter(id__in=result_ids)
+        # Gather swimmer ids before deleting so we can check for orphans
+        swimmer_ids = list(qs.values_list('swimmer_id', flat=True).distinct())
+        count = qs.count()
+        qs.delete()
+        from medals.utils import recompute_medals
+        recompute_medals(championship)
+        from swimmers.models import Swimmer
+        orphans = Swimmer.objects.filter(
+            id__in=swimmer_ids,
+            results__isnull=True,
+            medals__isnull=True,
+            records__isnull=True,
+            hall_of_fame_entries__isnull=True,
+        )
+        orphans_deleted = orphans.count()
+        orphans.delete()
+        return Response({
+            'deleted_results': count,
+            'deleted_orphan_swimmers': orphans_deleted,
+        })
+
+    @action(detail=True, methods=['get'], url_path='all-results')
+    def all_results(self, request, pk=None):
+        """All results for this championship, grouped by event+gender+round."""
+        from importer.parsers.base import format_centiseconds
+        championship = self.get_object()
+        results = championship.results.select_related(
+            'swimmer', 'swimmer__nationality', 'event'
+        ).order_by('event__sort_order', 'event__distance', 'swimmer__sex', 'round_type', 'time_centiseconds')
+        groups = {}
+        for r in results:
+            gender = r.swimmer.sex if r.swimmer else 'M'
+            gender_label = {'M': 'Men', 'F': 'Women', 'X': 'Mixed'}.get(gender, gender)
+            key = (r.event_id, gender, r.round_type or '')
+            if key not in groups:
+                round_label = r.round_type or 'Timed Finals'
+                groups[key] = {
+                    'event_id': r.event_id,
+                    'event_name': r.event.name,
+                    'gender': gender,
+                    'gender_label': gender_label,
+                    'round_type': r.round_type or '',
+                    'round_label': round_label,
+                    'label': f"{r.event.name} — {gender_label}" + (f" ({round_label})" if r.round_type else ''),
+                    'results': [],
+                }
+            groups[key]['results'].append({
+                'id': r.id,
+                'swimmer_id': r.swimmer_id,
+                'swimmer_name': r.swimmer.name if r.swimmer else '',
+                'nationality_code': r.swimmer.nationality.code if r.swimmer and r.swimmer.nationality else '',
+                'nationality_name': r.swimmer.nationality.name if r.swimmer and r.swimmer.nationality else '',
+                'flag_url': r.swimmer.nationality.flag_url if r.swimmer and r.swimmer.nationality else '',
+                'team': r.team or '',
+                'time': format_centiseconds(r.time_centiseconds),
+                'time_centiseconds': r.time_centiseconds,
+                'fina_points': r.fina_points,
+                'category': r.category or '',
+                'is_relay': r.swimmer.is_relay_team if r.swimmer else False,
+            })
+        return Response(list(groups.values()))
 
 
 class ResultViewSet(viewsets.ModelViewSet):

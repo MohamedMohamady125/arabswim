@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers, updateResult, deleteResult, getMostImproved, getChampionshipComparison } from '../api/championships'
-import { getMedals, getMedalSummary } from '../api/medals'
+import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers, getChampionshipClubSwimmers, updateResult, deleteResult, getMostImproved, getChampionshipComparison } from '../api/championships'
+import { getMedals, getMedalSummary, getMedalClubSummary } from '../api/medals'
 import { getOrCreateAlbumForChampionship } from '../api/media'
 import { uploadPhotos, createMediaItem, deleteMediaItem, updateMediaItem } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
 import AddResultsModal from '../components/championships/AddResultsModal'
+import MeetEditModal from '../components/championships/MeetEditModal'
 
 // Display categories oldest → youngest (bigger age first).
 // Extracts the highest age number from the category string for sorting.
@@ -158,18 +159,26 @@ function MostImprovedTable({ swimmers, navigate }) {
                   </td>
                   <td className="px-4 py-2 text-sm">{s.event_name}</td>
                   <td className="px-4 py-2 text-sm">
-                    <div className="font-mono text-gray-500">{s.previous_best}</div>
-                    <div className="flex items-center gap-1 mt-0.5 cursor-pointer group" onClick={(e) => { e.stopPropagation(); navigate(`/meets/${s.previous_best_meet_id}`) }}>
-                      <span className="text-[10px] text-sky-600 group-hover:text-sky-800 truncate max-w-[140px]" title={s.previous_best_meet}>
-                        📍 {s.previous_best_meet}
-                      </span>
-                      {s.previous_best_date && (
-                        <span className="text-[9px] text-gray-400">({new Date(s.previous_best_date).getFullYear()})</span>
-                      )}
-                    </div>
+                    {s.is_new_entry ? (
+                      <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full font-medium">New Entry</span>
+                    ) : (
+                      <>
+                        <div className="font-mono text-gray-500">{s.previous_best}</div>
+                        <div className="flex items-center gap-1 mt-0.5 cursor-pointer group" onClick={(e) => { e.stopPropagation(); navigate(`/meets/${s.previous_best_meet_id}`) }}>
+                          <span className="text-[10px] text-sky-600 group-hover:text-sky-800 truncate max-w-[140px]" title={s.previous_best_meet}>
+                            {s.previous_best_meet}
+                          </span>
+                          {s.previous_best_date && (
+                            <span className="text-[9px] text-gray-400">({new Date(s.previous_best_date).getFullYear()})</span>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </td>
                   <td className="px-4 py-2 text-sm font-mono font-semibold">{s.current_time}</td>
-                  <td className="px-4 py-2 text-sm font-mono font-bold text-green-600">-{s.improvement}</td>
+                  <td className="px-4 py-2 text-sm font-mono font-bold text-green-600">
+                    {s.is_new_entry ? <span className="text-gray-400 font-normal">—</span> : `-${s.improvement}`}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -198,15 +207,21 @@ export default function MeetDetailPage() {
   const [expandedCountry, setExpandedCountry] = useState(null)
   const [countrySwimmers, setCountrySwimmers] = useState({})   // countryId -> swimmers[]
   const [loadingCountry, setLoadingCountry] = useState(null)
+  const [expandedClub, setExpandedClub] = useState(null)
+  const [clubSwimmers, setClubSwimmers] = useState({})   // clubName -> swimmers[]
+  const [loadingClub, setLoadingClub] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editValues, setEditValues] = useState({ time: '', team: '' })
   const [selectedCategory, setSelectedCategory] = useState(null)  // null = all
+  const [genderFilter, setGenderFilter] = useState('')  // '' = all, 'M' = men, 'F' = women
 
   // Medals tab state
   const [medals, setMedals] = useState([])
   const [medalSummary, setMedalSummary] = useState([])
+  const [medalClubSummary, setMedalClubSummary] = useState([])
 
   // Statistics tab state
   const [mostImproved, setMostImproved] = useState([])
@@ -236,6 +251,7 @@ export default function MeetDetailPage() {
     if (activeTab === 'medals') {
       getMedalSummary({ championship: id }).then(res => setMedalSummary(res.data)).catch(() => {})
       getMedals({ championship: id }).then(res => setMedals(res.data.results || res.data)).catch(() => {})
+      getMedalClubSummary({ championship: id }).then(res => setMedalClubSummary(res.data)).catch(() => {})
     }
   }, [id, activeTab])
 
@@ -328,6 +344,24 @@ export default function MeetDetailPage() {
     }
   }
 
+  const handleClubClick = async (clubName) => {
+    if (expandedClub === clubName) {
+      setExpandedClub(null)
+      return
+    }
+    setExpandedClub(clubName)
+    if (!clubSwimmers[clubName]) {
+      setLoadingClub(clubName)
+      try {
+        const res = await getChampionshipClubSwimmers(id, clubName)
+        setClubSwimmers(prev => ({ ...prev, [clubName]: res.data }))
+      } catch {
+      } finally {
+        setLoadingClub(null)
+      }
+    }
+  }
+
   if (!meet || !stats) return <div className="text-center py-12 text-gray-400">Loading...</div>
 
   return (
@@ -351,12 +385,20 @@ export default function MeetDetailPage() {
               <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-medium">{meet.pool}</span>
             </div>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="shrink-0 flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-3.5 py-2 rounded-lg text-sm font-medium"
-          >
-            <span className="text-base leading-none">＋</span> Add Results
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-3.5 py-2 rounded-lg text-sm font-medium"
+            >
+              <span className="text-base leading-none">✎</span> Edit Meet
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-3.5 py-2 rounded-lg text-sm font-medium"
+            >
+              <span className="text-base leading-none">＋</span> Add Results
+            </button>
+          </div>
         </div>
 
         {/* Stats Row */}
@@ -491,15 +533,109 @@ export default function MeetDetailPage() {
             </div>
           </div>
 
+          {/* Clubs */}
+          {stats.clubs?.length > 0 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-3 border-b">
+                <h3 className="font-semibold text-sm">Clubs ({stats.clubs.length})</h3>
+              </div>
+              <div className="divide-y max-h-96 overflow-y-auto">
+                {stats.clubs.map((c, i) => {
+                  const clubName = c.team
+                  const isOpen = expandedClub === clubName
+                  const swimmers = clubSwimmers[clubName]
+                  return (
+                    <div key={clubName ?? i}>
+                      <button
+                        onClick={() => handleClubClick(clubName)}
+                        className={`w-full flex items-center justify-between px-3 py-2 transition-colors hover:bg-gray-50 ${
+                          isOpen ? 'bg-sky-50' : ''
+                        }`}
+                      >
+                        <span className="text-sm font-medium text-gray-800 truncate">{clubName}</span>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span><span className="font-medium text-gray-700">{c.swimmers_count}</span> swimmers</span>
+                          <svg
+                            className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </button>
+                      {isOpen && (
+                        <div className="bg-gray-50 border-t border-gray-100">
+                          {loadingClub === clubName ? (
+                            <div className="px-3 py-3 text-xs text-gray-400 text-center">Loading swimmers...</div>
+                          ) : (swimmers || []).length === 0 ? (
+                            <div className="px-3 py-3 text-xs text-gray-400 text-center">No swimmers</div>
+                          ) : (
+                            swimmers.map(s => (
+                              <button
+                                key={s.swimmer_id}
+                                onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white transition-colors group"
+                              >
+                                <div className="w-7 h-7 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center overflow-hidden shrink-0 text-[10px] font-bold">
+                                  {s.photo ? (
+                                    <img src={s.photo} alt="" className="w-full h-full object-cover" />
+                                  ) : (
+                                    s.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs font-medium text-gray-800 truncate group-hover:text-sky-600">
+                                    {s.name}
+                                  </div>
+                                  <div className="text-[11px] text-gray-400">
+                                    {s.events_count} {s.events_count === 1 ? 'event' : 'events'}
+                                    {s.best_fina > 0 && (
+                                      <> · best <span className="font-mono text-sky-600 font-semibold">{s.best_time}</span> ({s.best_event})</>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                  s.sex === 'F' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'
+                                }`}>
+                                  {s.sex}
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Events */}
           <div className="bg-white rounded-lg border">
             <div className="p-3 border-b">
-              <h3 className="font-semibold text-sm">Events ({stats.events.length})</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm">Events ({stats.events.length})</h3>
+              </div>
+              <div className="flex gap-1 mt-2 bg-gray-100 p-0.5 rounded-lg">
+                {[
+                  { key: '', label: 'All' },
+                  { key: 'M', label: 'Men' },
+                  { key: 'F', label: 'Women' },
+                ].map(opt => (
+                  <button key={opt.key} onClick={() => setGenderFilter(opt.key)}
+                    className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      genderFilter === opt.key ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="divide-y max-h-[500px] overflow-y-auto">
-              {stats.events.map((e, i) => {
+              {stats.events.filter(e => !genderFilter || e.gender === genderFilter).map((e, i, filtered) => {
                 const isSelected = selectedEvent?.event_id === e.event_id && selectedEvent?.gender === e.gender
-                const prevGender = i > 0 ? stats.events[i-1].gender : null
+                const prevGender = i > 0 ? filtered[i-1].gender : null
                 const showDivider = prevGender && prevGender !== e.gender
                 return (
                   <div key={`${e.event_id}-${e.gender}`}>
@@ -857,8 +993,111 @@ export default function MeetDetailPage() {
             </div>
           </div>
 
+          {/* Clubs Breakdown */}
+          {stats.clubs?.length > 0 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Clubs ({stats.clubs.length})</h3>
+              </div>
+              <div className="divide-y max-h-[500px] overflow-y-auto">
+                {stats.clubs.map((c, i) => (
+                  <div key={c.team ?? i} className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm font-medium text-gray-800">{c.team}</span>
+                    <div className="text-right text-sm text-gray-500">
+                      <span className="font-medium text-gray-700">{c.swimmers_count}</span> swimmers · <span className="font-medium text-gray-700">{c.results_count}</span> results
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Top Performers */}
           <TopPerformersTable performers={stats.top_performers} navigate={navigate} />
+
+          {/* Personal Bests */}
+          {stats.personal_bests?.length > 0 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Personal Bests Achieved</h3>
+                <p className="text-xs text-gray-500 mt-1">Swimmers who set their all-time best at this meet</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {stats.personal_bests.map((s, i) => (
+                      <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
+                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                        <td className="px-4 py-2 text-sm font-medium">{s.swimmer_name}</td>
+                        <td className="px-4 py-2 text-sm">
+                          <CountryFlag code={s.nationality_code} flagUrl={s.flag_url} name={s.nationality} />
+                        </td>
+                        <td className="px-4 py-2 text-sm">{s.event_name}</td>
+                        <td className="px-4 py-2 text-sm font-mono font-semibold">{s.time}</td>
+                        <td className="px-4 py-2 text-sm">
+                          {s.fina_points ? (
+                            <span className={`font-mono font-semibold ${s.fina_points >= 800 ? 'text-emerald-600' : s.fina_points >= 600 ? 'text-sky-600' : 'text-gray-600'}`}>{s.fina_points}</span>
+                          ) : <span className="text-gray-400">—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Records Broken */}
+          {stats.records_broken?.length > 0 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Records Broken</h3>
+                <p className="text-xs text-gray-500 mt-1">Records set or broken at this championship</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Record</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {stats.records_broken.map((r, i) => (
+                      <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${r.swimmer_id}`)}>
+                        <td className="px-4 py-2">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                            r.record_type === 'ARAB' ? 'bg-emerald-100 text-emerald-700' :
+                            r.record_type === 'GCC' ? 'bg-sky-100 text-sky-700' :
+                            'bg-purple-100 text-purple-700'
+                          }`}>{r.record_type}</span>
+                        </td>
+                        <td className="px-4 py-2 text-sm font-medium">{r.swimmer_name}</td>
+                        <td className="px-4 py-2 text-sm">
+                          <CountryFlag code={r.nationality_code} flagUrl={r.flag_url} name={r.nationality} />
+                        </td>
+                        <td className="px-4 py-2 text-sm">{r.event_name}</td>
+                        <td className="px-4 py-2 text-sm font-mono font-bold text-sky-600">{r.time}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Most Improved Swimmers */}
           {mostImproved.length > 0 && (
@@ -953,7 +1192,42 @@ export default function MeetDetailPage() {
             </div>
           )}
 
-          {/* Individual Medals */}
+          {/* Club Medal Tally */}
+          {medalClubSummary.length > 0 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Club Medal Tally</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Club</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
+                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
+                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {medalClubSummary.map((row, i) => (
+                      <tr key={i} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                        <td className="px-4 py-2 text-sm font-medium">{row.result__team}</td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
+                        <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Individual Medals — sorted Gold → Silver → Bronze */}
           {medals.length > 0 && (
             <div className="bg-white rounded-lg border">
               <div className="p-4 border-b">
@@ -970,7 +1244,10 @@ export default function MeetDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {medals.map((m, i) => (
+                    {[...medals].sort((a, b) => {
+                      const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
+                      return (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3)
+                    }).map((m, i) => (
                       <tr key={m.id || i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}>
                         <td className="px-4 py-2"><MedalIcon type={m.medal_type?.toLowerCase()} size={24} /></td>
                         <td className="px-4 py-2 text-sm font-medium">{m.swimmer_detail?.name}</td>
@@ -1112,6 +1389,18 @@ export default function MeetDetailPage() {
           championshipId={id}
           onClose={() => setShowAddModal(false)}
           onSaved={() => { refreshStats(); refreshResults() }}
+        />
+      )}
+
+      {showEditModal && (
+        <MeetEditModal
+          meet={meet}
+          onClose={() => setShowEditModal(false)}
+          onSaved={() => {
+            getChampionship(id).then(res => setMeet(res.data)).catch(() => {})
+            refreshStats()
+            refreshResults()
+          }}
         />
       )}
     </div>

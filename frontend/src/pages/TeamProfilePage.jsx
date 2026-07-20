@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getTeamProfile, getTeamTimes, getTeamMedals } from '../api/teams'
+import { getTeamProfile, getTeamTimes, getTeamMedals, getTeamProgression } from '../api/teams'
+import ProgressionChart from '../components/common/ProgressionChart'
 import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
 
@@ -15,6 +16,12 @@ export default function TeamProfilePage() {
   const [activeTab, setActiveTab] = useState('team')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [progStroke, setProgStroke] = useState('Freestyle')
+  const [progPool, setProgPool] = useState('LCM')
+  const [progLines, setProgLines] = useState([])
+  const [progLoading, setProgLoading] = useState(false)
+  const [progLoaded, setProgLoaded] = useState(false)
+  const [timesYear, setTimesYear] = useState('')
 
   useEffect(() => {
     setLoading(true)
@@ -35,13 +42,25 @@ export default function TeamProfilePage() {
   }, [id])
 
   useEffect(() => {
-    if (activeTab === 'times' && !timesLoaded) {
-      getTeamTimes(id).then(res => { setTimes(res.data); setTimesLoaded(true) }).catch(() => {})
+    if (activeTab === 'times') {
+      const params = {}
+      if (timesYear) params.year = timesYear
+      getTeamTimes(id, params).then(res => { setTimes(res.data); setTimesLoaded(true) }).catch(() => {})
     }
     if (activeTab === 'medals' && !medalsLoaded) {
       getTeamMedals(id).then(res => { setMedals(res.data); setMedalsLoaded(true) }).catch(() => {})
     }
-  }, [activeTab, id])
+  }, [activeTab, id, timesYear])
+
+  useEffect(() => {
+    if (activeTab === 'progression') {
+      setProgLoading(true)
+      getTeamProgression(id, { stroke: progStroke, pool: progPool })
+        .then(res => { setProgLines(res.data); setProgLoaded(true) })
+        .catch(() => setProgLines([]))
+        .finally(() => setProgLoading(false))
+    }
+  }, [activeTab, id, progStroke, progPool])
 
   if (loading) return <div className="text-center py-8 text-gray-500">Loading...</div>
   if (error) return <div className="max-w-5xl mx-auto"><div className="bg-red-50 text-red-700 p-4 rounded-lg">{error}</div></div>
@@ -142,12 +161,12 @@ export default function TeamProfilePage() {
 
           {/* Tabs */}
           <div className="flex gap-1 mb-4">
-            {['team', 'times', 'medals'].map(tab => (
+            {['team', 'times', 'medals', 'progression'].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={`px-6 py-2.5 rounded-lg text-sm font-semibold capitalize transition-colors ${
                   activeTab === tab ? 'bg-cyan-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}>
-                {tab === 'team' ? 'Team' : tab === 'times' ? 'Times' : 'Medals'}
+                {tab === 'team' ? 'Team' : tab === 'times' ? 'Times' : tab === 'medals' ? 'Medals' : 'Progression'}
               </button>
             ))}
           </div>
@@ -191,8 +210,20 @@ export default function TeamProfilePage() {
 
           {activeTab === 'times' && (
             <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
+              <div className="p-4 border-b flex items-center justify-between">
                 <h3 className="font-semibold">Times</h3>
+                <select
+                  value={timesYear}
+                  onChange={e => setTimesYear(e.target.value)}
+                  className="border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                >
+                  <option value="">All Years</option>
+                  {(() => {
+                    const years = []
+                    for (let y = new Date().getFullYear(); y >= 2000; y--) years.push(y)
+                    return years.map(y => <option key={y} value={y}>{y}</option>)
+                  })()}
+                </select>
               </div>
               {Object.keys(timesByEvent).length === 0 ? (
                 <div className="p-8 text-center text-gray-400">No times recorded for this team</div>
@@ -212,6 +243,7 @@ export default function TeamProfilePage() {
                           <thead>
                             <tr className="text-xs text-gray-500 border-b">
                               <th className="py-1 text-left">Swimmer</th>
+                              <th className="py-1 text-left">Club/Team</th>
                               <th className="py-1 text-left">Age</th>
                               <th className="py-1 text-left">Time</th>
                               <th className="py-1 text-left">Championship</th>
@@ -227,6 +259,7 @@ export default function TeamProfilePage() {
                                   onClick={() => navigate(`/swimmers/${r.swimmer_id}`)}>
                                   {r.swimmer_name}
                                 </td>
+                                <td className="py-1.5 text-gray-500">{r.team && r.team.toLowerCase() !== team.name.toLowerCase() ? r.team : ''}</td>
                                 <td className="py-1.5 text-gray-500">{r.age_at_competition || '-'}</td>
                                 <td className="py-1.5 font-mono font-semibold">{r.time}</td>
                                 <td className="py-1.5 text-gray-600">{r.championship_name}</td>
@@ -261,6 +294,9 @@ export default function TeamProfilePage() {
                         <div className="text-sm font-medium">{m.event_name}</div>
                         <div className="text-xs text-gray-500">
                           {m.swimmer_name} &middot; {m.championship_name}
+                          {m.team && m.team.toLowerCase() !== team.name.toLowerCase() && (
+                            <span className="ml-1 text-gray-400">({m.team})</span>
+                          )}
                         </div>
                       </div>
                       <div className="text-right text-xs text-gray-500">
@@ -270,6 +306,38 @@ export default function TeamProfilePage() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'progression' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                {['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley'].map(s => (
+                  <button key={s} onClick={() => setProgStroke(s)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      progStroke === s ? 'bg-cyan-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}>
+                    {s === 'Individual Medley' ? 'IM' : s}
+                  </button>
+                ))}
+                <div className="flex gap-1 ml-auto">
+                  {['LCM', 'SCM'].map(p => (
+                    <button key={p} onClick={() => setProgPool(p)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        progPool === p ? 'bg-cyan-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {progLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-8 h-8 border-2 border-cyan-200 border-t-cyan-600 rounded-full animate-spin" />
+                </div>
+              ) : (
+                <ProgressionChart lines={progLines} showSwimmer />
               )}
             </div>
           )}

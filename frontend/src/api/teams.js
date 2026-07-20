@@ -10,3 +10,4 @@ export const getTeamTimes = (id, params) => api.get(`/teams/${id}/times/`, { par
 export const getTeamMedals = (id) => api.get(`/teams/${id}/medals/`)
 export const uploadTeamLogo = (id, formData) => api.post(`/teams/${id}/upload_logo/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const uploadTeamBanner = (id, formData) => api.post(`/teams/${id}/upload_banner/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const getTeamProgression = (id, params) => api.get(`/teams/${id}/progression/`, { params })

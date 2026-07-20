@@ -581,6 +581,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     def transfer_history(self, request, pk=None):
         """Club transfer history and nationality changes for a swimmer."""
         from django.db.models import Min, Max, Count
+        from championships.models import Result
         from .models import NationalityChange
 
         swimmer = self.get_object()

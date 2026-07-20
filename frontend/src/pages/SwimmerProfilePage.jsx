@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getSwimmer, updateSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats, getSwimmerProgression, getSwimmerTransferHistory } from '../api/swimmers'
-import { getRecords } from '../api/records'
+import { getRecords, getComputedRecords } from '../api/records'
 import { getMediaItems } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 import ProgressionChart from '../components/common/ProgressionChart'
@@ -582,8 +582,24 @@ function RecordsTab({ swimmerId }) {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    getRecords({ swimmer: swimmerId, page_size: 200 }).then(res => {
-      setRecords(res.data.results || res.data || [])
+    // Fetch computed records for arab and gcc scopes, filter for this swimmer
+    Promise.all([
+      getComputedRecords({ scope: 'arab', pool: 'LCM' }),
+      getComputedRecords({ scope: 'arab', pool: 'SCM' }),
+      getComputedRecords({ scope: 'gcc', pool: 'LCM' }),
+      getComputedRecords({ scope: 'gcc', pool: 'SCM' }),
+    ]).then(([arabLCM, arabSCM, gccLCM, gccSCM]) => {
+      const all = []
+      const addRecords = (data, type, pool) => {
+        data.filter(r => r.swimmer_id === swimmerId).forEach(r => {
+          all.push({ ...r, record_type: type, pool, event_name: r.event_name, formatted_time: r.time, location: r.championship_name, result_date: r.date })
+        })
+      }
+      addRecords(arabLCM.data, 'ARAB', 'LCM')
+      addRecords(arabSCM.data, 'ARAB', 'SCM')
+      addRecords(gccLCM.data, 'GCC', 'LCM')
+      addRecords(gccSCM.data, 'GCC', 'SCM')
+      setRecords(all)
     }).catch(() => {}).finally(() => setLoading(false))
   }, [swimmerId])
 
@@ -650,13 +666,13 @@ function RecordsTab({ swimmerId }) {
             </div>
             <div className="divide-y divide-gray-50">
               {recs.map((r, ri) => (
-                <div key={r.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/80 transition-all duration-200 animate-fade-in-up" style={{ animationDelay: `${(ti * 3 + ri + 4) * 0.05}s` }}>
+                <div key={ri} className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/80 transition-all duration-200 animate-fade-in-up" style={{ animationDelay: `${(ti * 3 + ri + 4) * 0.05}s` }}>
                   <div className="flex-1">
                     <div className="text-sm font-semibold text-gray-800">{r.event_detail?.name || r.event_name}</div>
                     <div className="text-[11px] text-gray-400 mt-0.5">{r.location}{r.location && r.result_date ? ' \u00b7 ' : ''}{r.result_date}</div>
                   </div>
+                  {r.pool && <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${r.pool === 'LCM' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>{r.pool}</span>}
                   <div className="font-mono text-base font-black text-sky-600">{r.formatted_time}</div>
-                  {r.is_new && <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md uppercase tracking-wide">New</span>}
                 </div>
               ))}
             </div>

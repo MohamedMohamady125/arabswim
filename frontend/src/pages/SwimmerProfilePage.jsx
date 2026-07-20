@@ -873,9 +873,7 @@ function TransferHistoryTab({ swimmerId }) {
             {data.nationality_meet_counts.map((n, i) => (
               <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
                 <CountryFlag code={n.country_code} flagUrl={n.country_flag} name={n.country} />
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{n.country}</div>
-                </div>
+                <div className="flex-1" />
                 <div className="text-right">
                   <div className="text-lg font-bold text-gray-800">{n.meets}</div>
                   <div className="text-xs text-gray-400">meet{n.meets !== 1 ? 's' : ''}</div>

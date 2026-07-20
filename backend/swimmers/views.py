@@ -601,40 +601,45 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             )
             .order_by('first_meet_date')
         )
-        clubs = [
+
+        # Merge duplicate club names (e.g. "CN MARSEILLE" vs "CN MARSEILLE l")
+        import re
+        merged = {}
+        for c in club_history:
+            # Normalize: strip, collapse whitespace, remove single trailing char after space
+            name = c['team'].strip()
+            normalized = re.sub(r'\s+', ' ', name)
+            # If name ends with " X" where X is a single non-alpha char or single letter, strip it
+            candidate = re.sub(r'\s+\S$', '', normalized)
+            # Use the candidate as key if it already exists, otherwise use normalized
+            key = candidate if candidate in merged else normalized
+            if key in merged:
+                entry = merged[key]
+                entry['meets'] += c['meets']
+                entry['results'] += c['results']
+                if c['first_meet_date'] < entry['first_meet_date']:
+                    entry['first_meet_date'] = c['first_meet_date']
+                if c['last_meet_date'] > entry['last_meet_date']:
+                    entry['last_meet_date'] = c['last_meet_date']
+            else:
+                merged[normalized] = {
+                    'club': normalized,
+                    'first_meet_date': c['first_meet_date'],
+                    'last_meet_date': c['last_meet_date'],
+                    'meets': c['meets'],
+                    'results': c['results'],
+                }
+
+        clubs = sorted([
             {
-                'club': c['team'],
-                'first_meet': str(c['first_meet_date']),
-                'last_meet': str(c['last_meet_date']),
-                'meets': c['meets'],
-                'results': c['results'],
+                'club': v['club'],
+                'first_meet': str(v['first_meet_date']),
+                'last_meet': str(v['last_meet_date']),
+                'meets': v['meets'],
+                'results': v['results'],
             }
-            for c in club_history
-        ]
-
-        # Results with no team = national team representation
-        national_stats = (
-            all_results.filter(Q(team='') | Q(team__isnull=True))
-            .aggregate(
-                first_meet_date=Min('championship__date'),
-                last_meet_date=Max('championship__date'),
-                meets=Count('championship', distinct=True),
-                results=Count('id'),
-            )
-        )
-        if national_stats['results'] and national_stats['results'] > 0:
-            nat_name = swimmer.nationality.name if swimmer.nationality else 'National Team'
-            clubs.insert(0, {
-                'club': nat_name,
-                'is_national': True,
-                'first_meet': str(national_stats['first_meet_date']),
-                'last_meet': str(national_stats['last_meet_date']),
-                'meets': national_stats['meets'],
-                'results': national_stats['results'],
-            })
-
-        # Sort all entries by first_meet date
-        clubs.sort(key=lambda c: c['first_meet'])
+            for v in merged.values()
+        ], key=lambda c: c['first_meet'])
 
         # Nationality changes
         changes = NationalityChange.objects.filter(swimmer=swimmer).select_related(

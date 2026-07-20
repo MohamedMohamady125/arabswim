@@ -134,12 +134,17 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-xs sm:text-sm">
             <thead>
               <tr className="border-b bg-gray-50/80">
-                {['#', 'Age', 'Time', 'Round', 'Team', 'Championship', 'Date', 'FINA'].map(h => (
-                  <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">{h}</th>
-                ))}
+                <th className="px-2 sm:px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">#</th>
+                <th className="px-2 sm:px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Time</th>
+                <th className="px-2 sm:px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Age</th>
+                <th className="px-2 sm:px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Round</th>
+                <th className="px-2 sm:px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider hidden lg:table-cell">Team</th>
+                <th className="px-2 sm:px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Meet</th>
+                <th className="px-2 sm:px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Date</th>
+                <th className="px-2 sm:px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">FINA</th>
               </tr>
             </thead>
             <tbody>
@@ -148,35 +153,34 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                 return (
                   <tr key={h.id} className={`border-b border-gray-50 transition-colors hover:bg-sky-50/30 animate-fade-in-up`}
                     style={{ animationDelay: `${i * 0.03}s` }}>
-                    <td className="px-3 py-2.5 text-sm text-gray-300 font-medium">{i + 1}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-500">{h.age_at_competition || '-'}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-sm font-mono font-bold ${isBest ? 'text-emerald-600' : 'text-gray-800'}`}>{h.time}</span>
-                        {h.is_relay && h.split_time && <span className="text-[10px] text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded">Split: {h.split_time}</span>}
+                    <td className="px-2 sm:px-3 py-2 text-gray-300 font-medium">{i + 1}</td>
+                    <td className="px-2 sm:px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <span className={`font-mono font-bold whitespace-nowrap ${isBest ? 'text-emerald-600' : 'text-gray-800'}`}>{h.time}</span>
                         {!h.is_relay && isBest && (
-                          <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md tracking-wide">PB</span>
+                          <span className="text-[8px] sm:text-[9px] font-black bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded-md">PB</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-sm">
+                    <td className="px-2 sm:px-3 py-2 text-gray-500 hidden sm:table-cell">{h.age_at_competition || '-'}</td>
+                    <td className="px-2 sm:px-3 py-2 hidden md:table-cell">
                       {h.round_type ? (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
                           h.round_type === 'Finals' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
                         }`}>{h.round_type}</span>
                       ) : <span className="text-gray-300">-</span>}
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-500">{h.team || <span className="text-gray-300">-</span>}</td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-2 sm:px-3 py-2 text-gray-500 hidden lg:table-cell">{h.team || <span className="text-gray-300">-</span>}</td>
+                    <td className="px-2 sm:px-3 py-2">
                       <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${h.championship_id}`) }}
-                        className="text-sm text-sky-600 hover:text-sky-800 font-medium transition-colors">
+                        className="text-sky-600 hover:text-sky-800 font-medium transition-colors truncate max-w-[120px] sm:max-w-none block">
                         {h.championship_name}
                       </button>
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-400">{h.championship_date}</td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-2 sm:px-3 py-2 text-gray-400 hidden md:table-cell whitespace-nowrap">{h.championship_date}</td>
+                    <td className="px-2 sm:px-3 py-2 hidden sm:table-cell">
                       {h.fina_points ? (
-                        <span className={`text-sm font-mono font-semibold ${h.fina_points >= 800 ? 'text-emerald-600' : h.fina_points >= 600 ? 'text-sky-600' : 'text-gray-600'}`}>{h.fina_points}</span>
+                        <span className={`font-mono font-semibold ${h.fina_points >= 800 ? 'text-emerald-600' : h.fina_points >= 600 ? 'text-sky-600' : 'text-gray-600'}`}>{h.fina_points}</span>
                       ) : <span className="text-gray-300">-</span>}
                     </td>
                   </tr>
@@ -262,16 +266,16 @@ function MedalsTab({ stats, navigate }) {
   return (
     <div className="space-y-6">
       {/* Medal Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
         {[
           { type: 'GOLD', count: medals.gold, gradient: 'from-amber-50 to-amber-100/50', border: 'border-amber-200', text: 'text-amber-700', shadow: 'shadow-amber-100' },
           { type: 'SILVER', count: medals.silver, gradient: 'from-gray-50 to-gray-100/50', border: 'border-gray-200', text: 'text-gray-600', shadow: 'shadow-gray-100' },
           { type: 'BRONZE', count: medals.bronze, gradient: 'from-orange-50 to-orange-100/50', border: 'border-orange-200', text: 'text-orange-700', shadow: 'shadow-orange-100' },
           { type: 'TOTAL', count: medals.total, gradient: 'from-sky-50 to-sky-100/50', border: 'border-sky-200', text: 'text-sky-700', shadow: 'shadow-sky-100' },
         ].map((m, i) => (
-          <div key={m.type} className={`bg-gradient-to-br ${m.gradient} ${m.border} border rounded-2xl p-5 text-center shadow-sm ${m.shadow} animate-count-up stagger-${i + 1}`}>
-            <div className={`text-4xl font-black ${m.text}`}><AnimatedNumber value={m.count} /></div>
-            <div className="text-[11px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider">{m.type === 'TOTAL' ? 'Total' : MEDAL_LABELS[m.type]}</div>
+          <div key={m.type} className={`bg-gradient-to-br ${m.gradient} ${m.border} border rounded-xl sm:rounded-2xl p-2.5 sm:p-5 text-center shadow-sm ${m.shadow} animate-count-up stagger-${i + 1}`}>
+            <div className={`text-2xl sm:text-4xl font-black ${m.text}`}><AnimatedNumber value={m.count} /></div>
+            <div className="text-[9px] sm:text-[11px] font-bold text-gray-400 mt-1 sm:mt-1.5 uppercase tracking-wider">{m.type === 'TOTAL' ? 'Total' : MEDAL_LABELS[m.type]}</div>
           </div>
         ))}
       </div>
@@ -284,7 +288,7 @@ function MedalsTab({ stats, navigate }) {
           <div className="space-y-3.5">
             {medals_by_level.map((level, i) => (
               <div key={i} className="flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${(i + 5) * 0.08}s` }}>
-                <div className="w-28 text-sm font-semibold text-gray-600 shrink-0">{level.category}</div>
+                <div className="w-16 sm:w-28 text-[10px] sm:text-sm font-semibold text-gray-600 shrink-0 truncate">{level.category}</div>
                 <div className="flex-1">
                   <MedalBar gold={level.gold} silver={level.silver} bronze={level.bronze} animate />
                 </div>
@@ -403,9 +407,9 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
           const pct = maxCount > 0 ? (tier.count / maxCount) * 100 : 0
           return (
             <div key={tier.threshold} className="flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${(i + 6) * 0.08}s` }}>
-              <div className={`w-11 text-right text-xs font-black ${colors.text}`}>{tier.threshold}+</div>
-              <div className="flex-1 bg-gray-100 rounded-full h-7 overflow-hidden relative">
-                <div className={`bg-gradient-to-r ${colors.bar} h-full rounded-full animate-grow-width flex items-center justify-end pr-2.5`}
+              <div className={`w-8 sm:w-11 text-right text-[10px] sm:text-xs font-black ${colors.text}`}>{tier.threshold}+</div>
+              <div className="flex-1 bg-gray-100 rounded-full h-5 sm:h-7 overflow-hidden relative">
+                <div className={`bg-gradient-to-r ${colors.bar} h-full rounded-full animate-grow-width flex items-center justify-end pr-2`}
                   style={{ width: `${Math.max(pct, tier.count > 0 ? 10 : 0)}%`, animationDelay: `${(i + 6) * 0.1}s` }}>
                   {tier.count > 0 && pct > 18 && (
                     <span className="text-white text-xs font-black drop-shadow-sm">{tier.count}</span>
@@ -441,26 +445,26 @@ function StatsTab({ stats, events }) {
   return (
     <div className="space-y-6">
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {quickStats.map((s, i) => (
-          <div key={s.label} className={`bg-white rounded-2xl border shadow-sm p-5 group hover:shadow-md transition-all duration-300 animate-count-up stagger-${i + 1}`}>
-            <div className={`${s.color} mb-2 transition-transform group-hover:scale-110 duration-300`}>{s.icon}</div>
-            <div className="text-3xl font-black text-gray-800"><AnimatedNumber value={s.value} /></div>
-            <div className="text-[11px] text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">{s.label}</div>
+          <div key={s.label} className={`bg-white rounded-xl sm:rounded-2xl border shadow-sm p-3 sm:p-5 group hover:shadow-md transition-all duration-300 animate-count-up stagger-${i + 1}`}>
+            <div className={`${s.color} mb-1.5 sm:mb-2 transition-transform group-hover:scale-110 duration-300`}>{s.icon}</div>
+            <div className="text-2xl sm:text-3xl font-black text-gray-800"><AnimatedNumber value={s.value} /></div>
+            <div className="text-[9px] sm:text-[11px] text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Performance Index + Highlights */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         <PerformanceIndex finaDistribution={fina_distribution} bestFina={best_fina} />
         <div className="space-y-4">
           {best_fina && (
             <div className="bg-gradient-to-br from-sky-50 via-white to-sky-50/30 rounded-2xl border border-sky-200 p-5 shadow-sm animate-fade-in-up stagger-5 hover:shadow-md transition-shadow duration-300">
               <div className="text-[10px] font-bold text-sky-500 uppercase tracking-widest mb-2">Best FINA Points</div>
-              <div className="text-4xl font-black bg-gradient-to-r from-sky-600 to-sky-800 bg-clip-text text-transparent"><AnimatedNumber value={best_fina.points} /></div>
-              <div className="text-sm font-semibold text-gray-600 mt-2">{best_fina.event_name}</div>
-              <div className="text-xs text-gray-400 mt-0.5">{best_fina.championship_name}</div>
+              <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-sky-600 to-sky-800 bg-clip-text text-transparent"><AnimatedNumber value={best_fina.points} /></div>
+              <div className="text-xs sm:text-sm font-semibold text-gray-600 mt-1.5 sm:mt-2">{best_fina.event_name}</div>
+              <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{best_fina.championship_name}</div>
             </div>
           )}
           {best_event && (
@@ -516,19 +520,19 @@ function MeetsTab({ stats, navigate }) {
   return (
     <div className="space-y-4">
       {/* Overview */}
-      <div className="flex items-center gap-4 mb-2 animate-fade-in">
-        <div className="bg-white rounded-2xl border shadow-sm px-5 py-3 flex items-center gap-3">
-          <svg className="w-5 h-5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4 animate-fade-in">
+        <div className="bg-white rounded-xl sm:rounded-2xl border shadow-sm px-3 sm:px-5 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
           <div>
-            <div className="text-2xl font-black text-gray-800"><AnimatedNumber value={championships.length} /></div>
-            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Meets</div>
+            <div className="text-xl sm:text-2xl font-black text-gray-800"><AnimatedNumber value={championships.length} /></div>
+            <div className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">Meets</div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border shadow-sm px-5 py-3 flex items-center gap-3">
-          <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <div className="bg-white rounded-xl sm:rounded-2xl border shadow-sm px-3 sm:px-5 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           <div>
-            <div className="text-2xl font-black text-gray-800">{years.length}</div>
-            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Active Years</div>
+            <div className="text-xl sm:text-2xl font-black text-gray-800">{years.length}</div>
+            <div className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">Years</div>
           </div>
         </div>
       </div>
@@ -542,24 +546,21 @@ function MeetsTab({ stats, navigate }) {
             <span className="text-xs text-gray-400 font-medium">{byYear[year].length} meet{byYear[year].length !== 1 ? 's' : ''}</span>
             <div className="flex-1 h-px bg-gray-100" />
           </div>
-          <div className="space-y-2 ml-2 pl-5 border-l-2 border-gray-100">
+          <div className="space-y-2 ml-1 sm:ml-2 pl-3 sm:pl-5 border-l-2 border-gray-100">
             {byYear[year].map((c, ci) => (
               <button key={c.id} onClick={() => navigate(`/meets/${c.id}`)}
-                className="w-full text-left bg-white rounded-xl border shadow-sm px-4 py-3 hover:shadow-md hover:border-sky-200 flex items-center gap-3 transition-all duration-300 group animate-fade-in-up"
+                className="w-full text-left bg-white rounded-xl border shadow-sm px-3 sm:px-4 py-2.5 sm:py-3 hover:shadow-md hover:border-sky-200 flex items-center gap-2 sm:gap-3 transition-all duration-300 group animate-fade-in-up"
                 style={{ animationDelay: `${(yi * 3 + ci) * 0.05}s` }}>
-                {/* Dot on timeline */}
-                <div className="absolute -left-[9px] w-4 h-4 rounded-full bg-white border-2 border-sky-300 group-hover:border-sky-500 group-hover:bg-sky-50 transition-colors duration-200" style={{ position: 'relative', left: '-29px', marginRight: '-16px' }} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-gray-800 group-hover:text-sky-700 transition-colors">{c.name}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <CountryFlag code={c.country_code} flagUrl={c.flag_url} name={c.country} />
-                    <span className="text-[11px] text-gray-400">{new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  <div className="text-xs sm:text-sm font-semibold text-gray-800 group-hover:text-sky-700 transition-colors truncate">{c.name}</div>
+                  <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
+                    <CountryFlag code={c.country_code} flagUrl={c.flag_url} name={c.country} className="text-[10px] sm:text-xs" />
+                    <span className="text-[10px] sm:text-[11px] text-gray-400">{new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                   <PoolBadge pool={c.pool} />
-                  {c.category && <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md font-medium">{c.category}</span>}
-                  <svg className="w-4 h-4 text-gray-300 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-300 group-hover:text-sky-400 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </div>
               </button>
             ))}

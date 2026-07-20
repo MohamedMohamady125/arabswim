@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+html, body { overflow-x: hidden; max-width: 100vw; }
+
 @theme {
   /* Times use font-mono; system monospace fonts (Menlo/Monaco) draw a
      slashed zero that looks like an 8. Use the sans stack with tabular

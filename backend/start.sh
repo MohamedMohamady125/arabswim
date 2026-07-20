@@ -9,6 +9,7 @@ python manage.py fix_relay_event_names
 python manage.py split_merged_swimmers
 python manage.py strip_team_numbers
 python manage.py mark_relay_teams
+python manage.py fix_events --apply
 python manage.py recalculate_medals
 
 # Create admin user if not exists (password comes from the ADMIN_PASSWORD

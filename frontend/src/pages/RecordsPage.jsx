@@ -1,31 +1,20 @@
 import { useState, useEffect } from 'react'
 import { getComputedRecords } from '../api/records'
-import { getClassifications, getSubClassifications } from '../api/championships'
+import { getCountries } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
 import { POOL_TYPES, AGE_GROUPS } from '../utils/constants'
 
 export default function RecordsPage() {
   const [records, setRecords] = useState([])
-  const [classifications, setClassifications] = useState([])
-  const [subClassifications, setSubClassifications] = useState([])
+  const [countries, setCountries] = useState([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState({
-    scope: 'arab', gender: '', pool: 'LCM', age_group: 'OPEN',
-    classification: '', sub_classification: '',
+    scope: 'arab', country: '', gender: '', pool: 'LCM', age_group: 'OPEN',
   })
 
   useEffect(() => {
-    getClassifications().then(res => setClassifications(res.data.results || res.data)).catch(() => {})
+    getCountries().then(res => setCountries(res.data)).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    if (filters.classification) {
-      getSubClassifications(filters.classification).then(res => setSubClassifications(res.data.results || res.data)).catch(() => {})
-    } else {
-      setSubClassifications([])
-    }
-    setFilters(prev => ({ ...prev, sub_classification: '' }))
-  }, [filters.classification])
 
   useEffect(() => {
     setLoading(true)
@@ -37,7 +26,18 @@ export default function RecordsPage() {
   }, [filters])
 
   const updateFilter = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
+    setFilters(prev => {
+      const next = { ...prev, [key]: value }
+      if (key === 'scope' && prev.country) {
+        const selectedCountry = countries.find(c => c.id.toString() === prev.country.toString())
+        if (selectedCountry) {
+          const region = selectedCountry.region
+          if (value === 'gcc' && region !== 'GCC') next.country = ''
+          else if (value === 'arab' && region !== 'ARAB' && region !== 'GCC') next.country = ''
+        }
+      }
+      return next
+    })
   }
 
   const menRecords = records.filter(r => r.gender === 'M')
@@ -87,26 +87,25 @@ export default function RecordsPage() {
       <h1 className="text-2xl font-bold mb-6">Records</h1>
 
       <div className="flex gap-2 mb-4">
-        {['arab', 'gcc'].map(scope => (
-          <button key={scope} onClick={() => updateFilter('scope', scope)} className={`px-4 py-2 rounded-full text-sm font-medium ${filters.scope === scope ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
-            {scope.toUpperCase()}
+        {['national', 'arab', 'gcc'].map(scope => (
+          <button key={scope} onClick={() => updateFilter('scope', scope)} className={`px-4 py-2 rounded-full text-sm font-medium capitalize ${filters.scope === scope ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
+            {scope === 'national' ? 'National' : scope.toUpperCase()}
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Classification</label>
-          <select value={filters.classification} onChange={(e) => updateFilter('classification', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+          <label className="block text-sm font-medium mb-1">Country</label>
+          <select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
             <option value="">All</option>
-            {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Sub-classification</label>
-          <select value={filters.sub_classification} onChange={(e) => updateFilter('sub_classification', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm" disabled={!filters.classification}>
-            <option value="">All</option>
-            {subClassifications.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {countries
+              .filter(c => {
+                if (filters.scope === 'gcc') return c.region === 'GCC'
+                if (filters.scope === 'arab') return c.region === 'ARAB' || c.region === 'GCC'
+                return true
+              })
+              .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div>

@@ -207,6 +207,69 @@ class CountryViewSet(viewsets.ModelViewSet):
         })
 
 
+    @action(detail=True, methods=['get'])
+    def progression(self, request, pk=None):
+        """Time progression for a country's swimmers by stroke."""
+        country = self.get_object()
+        from championships.models import Result
+        from django.db.models import Min, Count
+
+        stroke = request.query_params.get('stroke', 'Freestyle')
+        pool = request.query_params.get('pool', 'LCM')
+
+        # Find events for this stroke with best times by this country's swimmers
+        event_stats = (
+            Result.objects.filter(
+                swimmer__nationality=country, swimmer__is_relay_team=False,
+                championship__pool=pool, event__is_relay=False,
+                event__stroke=stroke, time_centiseconds__gt=0,
+            )
+            .values('event_id', 'event__name', 'event__sort_order')
+            .annotate(count=Count('id'), best=Min('time_centiseconds'))
+            .order_by('event__sort_order', 'event__distance')
+        )
+
+        lines = []
+        for es in event_stats:
+            results = (
+                Result.objects.filter(
+                    swimmer__nationality=country, swimmer__is_relay_team=False,
+                    event_id=es['event_id'], championship__pool=pool,
+                    event__is_relay=False, time_centiseconds__gt=0,
+                )
+                .select_related('championship', 'swimmer')
+                .order_by('time_centiseconds')[:5]
+            )
+            # Get last 5 chronologically for progression
+            chrono_results = (
+                Result.objects.filter(
+                    swimmer__nationality=country, swimmer__is_relay_team=False,
+                    event_id=es['event_id'], championship__pool=pool,
+                    event__is_relay=False, time_centiseconds__gt=0,
+                )
+                .select_related('championship', 'swimmer')
+                .order_by('-championship__date')[:5]
+            )
+            points = []
+            for r in reversed(list(chrono_results)):
+                points.append({
+                    'date': r.championship.date.isoformat(),
+                    'time': _fmt_cs(r.time_centiseconds),
+                    'time_cs': r.time_centiseconds,
+                    'meet': r.championship.name,
+                    'swimmer': r.swimmer.name,
+                    'fina': r.fina_points,
+                })
+            if points:
+                lines.append({
+                    'event_id': es['event_id'],
+                    'event_name': es['event__name'],
+                    'points': points,
+                })
+
+        return Response(lines)
+
+
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer

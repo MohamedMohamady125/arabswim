@@ -44,7 +44,19 @@ export default function RankingsPage() {
   }, [page, filters])
 
   const updateFilter = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
+    setFilters(prev => {
+      const next = { ...prev, [key]: value }
+      // Clear country if scope changed and the selected country doesn't belong to the new region
+      if (key === 'scope' && prev.country) {
+        const selectedCountry = countries.find(c => c.id.toString() === prev.country.toString())
+        if (selectedCountry) {
+          const region = selectedCountry.region
+          if (value === 'gcc' && region !== 'GCC') next.country = ''
+          else if (value === 'arab' && region !== 'ARAB' && region !== 'GCC') next.country = ''
+        }
+      }
+      return next
+    })
     setPage(1)
   }
 
@@ -64,15 +76,19 @@ export default function RankingsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-        {filters.scope === 'national' && (
-          <div>
-            <label className="block text-sm font-medium mb-1">Country</label>
-            <select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
-              <option value="">Select...</option>
-              {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="block text-sm font-medium mb-1">Country</label>
+          <select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="">All</option>
+            {countries
+              .filter(c => {
+                if (filters.scope === 'gcc') return c.region === 'GCC'
+                if (filters.scope === 'arab') return c.region === 'ARAB' || c.region === 'GCC'
+                return true
+              })
+              .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
         <div>
           <label className="block text-sm font-medium mb-1">Gender</label>
           <select value={filters.gender} onChange={(e) => updateFilter('gender', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
@@ -97,7 +113,28 @@ export default function RankingsPage() {
           <label className="block text-sm font-medium mb-1">Event</label>
           <select value={filters.event} onChange={(e) => updateFilter('event', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
             <option value="">Select event</option>
-            {events.filter(e => !e.is_relay).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            {(() => {
+              const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
+              const individual = events.filter(e => !e.is_relay)
+              const grouped = {}
+              for (const e of individual) {
+                const stroke = e.stroke || 'Other'
+                if (!grouped[stroke]) grouped[stroke] = []
+                grouped[stroke].push(e)
+              }
+              // Sort each group by distance
+              Object.values(grouped).forEach(arr => arr.sort((a, b) => a.distance - b.distance))
+              const strokes = Object.keys(grouped).sort((a, b) => {
+                const ai = STROKE_ORDER.indexOf(a)
+                const bi = STROKE_ORDER.indexOf(b)
+                return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+              })
+              return strokes.map(stroke => (
+                <optgroup key={stroke} label={stroke}>
+                  {grouped[stroke].map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </optgroup>
+              ))
+            })()}
           </select>
         </div>
       </div>

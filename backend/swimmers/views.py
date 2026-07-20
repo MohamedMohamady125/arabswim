@@ -658,48 +658,16 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'notes': ch.notes,
             })
 
-        # Meets per nationality: count meets before/after each change date
-        nationality_meet_counts = []
-        if nationality_history:
-            # Build date ranges for each nationality
-            change_dates = [ch['effective_date'] for ch in nationality_history]
-            # First nationality: from beginning to first change
-            first_nat = nationality_history[0]
-            if first_nat['from_country']:
-                count = Result.objects.filter(
-                    swimmer=swimmer, championship__date__lt=change_dates[0]
-                ).values('championship').distinct().count()
-                nationality_meet_counts.append({
-                    'country': first_nat['from_country'],
-                    'country_code': first_nat['from_country_code'],
-                    'country_flag': first_nat['from_country_flag'],
-                    'meets': count,
-                })
-            # Each subsequent nationality
-            for i, ch in enumerate(nationality_history):
-                start = ch['effective_date']
-                end = change_dates[i + 1] if i + 1 < len(change_dates) else None
-                q = Result.objects.filter(swimmer=swimmer, championship__date__gte=start)
-                if end:
-                    q = q.filter(championship__date__lt=end)
-                count = q.values('championship').distinct().count()
-                nationality_meet_counts.append({
-                    'country': ch['to_country'],
-                    'country_code': ch['to_country_code'],
-                    'country_flag': ch['to_country_flag'],
-                    'meets': count,
-                })
-        else:
-            # No changes recorded — all meets under current nationality
-            total_meets = Result.objects.filter(
-                swimmer=swimmer
-            ).values('championship').distinct().count()
-            nationality_meet_counts.append({
-                'country': swimmer.nationality.name,
-                'country_code': swimmer.nationality.code,
-                'country_flag': swimmer.nationality.flag_url,
-                'meets': total_meets,
-            })
+        # Single nationality entry — just current nationality with total meets
+        total_meets = Result.objects.filter(
+            swimmer=swimmer
+        ).values('championship').distinct().count()
+        nationality_meet_counts = [{
+            'country': swimmer.nationality.name if swimmer.nationality else 'Unknown',
+            'country_code': swimmer.nationality.code if swimmer.nationality else '',
+            'country_flag': swimmer.nationality.flag_url if swimmer.nationality else '',
+            'meets': total_meets,
+        }]
 
         return Response({
             'clubs': clubs,

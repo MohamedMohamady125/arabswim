@@ -58,7 +58,7 @@ export default function CountryFlag({ code, flagUrl, name, className = '' }) {
         src={`https://flagcdn.com/w40/${alpha2}.png`}
         srcSet={`https://flagcdn.com/w80/${alpha2}.png 2x`}
         alt={name || code}
-        className="w-5 h-3.5 object-cover rounded-sm"
+        className="w-5 h-3.5 object-cover"
         onError={(e) => { e.target.style.display = 'none' }}
       />
       <span>{name}</span>

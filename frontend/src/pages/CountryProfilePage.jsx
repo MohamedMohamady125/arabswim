@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Users, Trophy, Medal, Timer, ListChecks, Shield, Award,
 } from 'lucide-react'
-import { getCountryProfile } from '../api/core'
+import { getCountryProfile, getCountryProgression } from '../api/core'
+import ProgressionChart from '../components/common/ProgressionChart'
 import MedalIcon from '../components/common/MedalIcon'
 import { CODE_TO_ALPHA2 } from '../components/common/CountryFlag'
 
@@ -43,11 +44,24 @@ export default function CountryProfilePage() {
   const [error, setError] = useState(false)
   const [btSex, setBtSex] = useState('')
   const [btPool, setBtPool] = useState('')
+  const [progStroke, setProgStroke] = useState('Freestyle')
+  const [progPool, setProgPool] = useState('LCM')
+  const [progLines, setProgLines] = useState([])
+  const [progLoading, setProgLoading] = useState(false)
 
   useEffect(() => {
     setData(null)
     getCountryProfile(id).then((res) => setData(res.data)).catch(() => setError(true))
   }, [id])
+
+  useEffect(() => {
+    if (!data) return
+    setProgLoading(true)
+    getCountryProgression(id, { stroke: progStroke, pool: progPool })
+      .then(res => setProgLines(res.data))
+      .catch(() => setProgLines([]))
+      .finally(() => setProgLoading(false))
+  }, [id, data, progStroke, progPool])
 
   if (error) return <div className="text-center text-gray-400 py-20">Failed to load country profile</div>
   if (!data) return <div className="text-center text-gray-400 py-20">Loading…</div>
@@ -72,7 +86,7 @@ export default function CountryProfilePage() {
         <img
           src={`https://flagcdn.com/w160/${alpha2}.png`}
           alt={country.name}
-          className="w-24 h-16 object-cover rounded-lg border border-gray-200 shadow-sm"
+          className="w-24 h-16 object-cover border border-gray-200 shadow-sm"
           onError={(e) => { e.target.style.display = 'none' }}
         />
         <div>
@@ -108,6 +122,42 @@ export default function CountryProfilePage() {
         <StatCard icon={Timer} label="Records" value={stats.records} />
         <StatCard icon={Trophy} label="Hosted" value={stats.championships_hosted} />
         <StatCard icon={Shield} label="Teams" value={stats.teams} />
+      </div>
+
+      {/* Performance Progression */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 flex-wrap">
+          <span className="font-semibold">Performance Progression</span>
+          <div className="flex gap-1 ml-auto">
+            {['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley'].map(s => (
+              <button key={s} onClick={() => setProgStroke(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  progStroke === s ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}>
+                {s === 'Individual Medley' ? 'IM' : s}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1">
+            {['LCM', 'SCM'].map(p => (
+              <button key={p} onClick={() => setProgPool(p)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  progPool === p ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}>
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="p-4">
+          {progLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+            </div>
+          ) : (
+            <ProgressionChart lines={progLines} showSwimmer />
+          )}
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">

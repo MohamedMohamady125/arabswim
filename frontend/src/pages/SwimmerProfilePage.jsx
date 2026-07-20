@@ -882,11 +882,11 @@ function TransferHistoryTab({ swimmerId }) {
             ))}
           </div>
         </div>
-        {data.nationality_changes.length > 0 && (
+        {data.nationality_changes.filter(ch => ch.from_country !== ch.to_country).length > 0 && (
           <div className="px-5 pb-4 border-t pt-4">
             <h4 className="text-sm font-semibold text-gray-700 mb-3">Nationality Changes</h4>
             <div className="space-y-3">
-              {data.nationality_changes.map((ch, i) => (
+              {data.nationality_changes.filter(ch => ch.from_country !== ch.to_country).map((ch, i) => (
                 <div key={i} className="flex items-center gap-3 text-sm">
                   {ch.from_country && (
                     <>

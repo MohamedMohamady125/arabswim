@@ -93,8 +93,8 @@ export default function CountryProfilePage() {
           <h1 className="text-3xl font-bold">{country.name}</h1>
           <div className="flex items-center gap-2 mt-1.5">
             <span className="text-gray-500 text-sm font-medium">{country.code}</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${REGION_STYLES[country.region] || REGION_STYLES.OTHER}`}>
-              {country.region}
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${country.region === 'OTHER' ? REGION_STYLES.OTHER : REGION_STYLES.ARAB}`}>
+              {country.region === 'OTHER' ? 'OTHER' : 'ARAB'}
             </span>
           </div>
         </div>

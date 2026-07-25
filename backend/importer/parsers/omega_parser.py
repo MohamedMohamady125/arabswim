@@ -41,6 +41,16 @@ INDIVIDUAL_PREFIX = re.compile(
     r'(?:(\d{4})\s+)?'            # optional birth year
     r'([A-Z]{3})\b'               # NOC code
 )
+# HC / EXH individual: same layout but HC prefix instead of rank number
+HC_INDIVIDUAL_PREFIX = re.compile(
+    r'^\s*(?:H\.?C\.?|EXH)\s+'    # HC/EXH prefix
+    r'(?:\d{1,2}\s+)?'            # optional heat number
+    r'(?:\d{1,2}\s+)?'            # optional lane number
+    r'([A-Z][A-Z\- ]+\s+\w[\w\- ]*?)\s+'  # name
+    r'(?:(\d{4})\s+)?'            # optional birth year
+    r'([A-Z]{3})\b',              # NOC code
+    re.IGNORECASE
+)
 # All time-like values on a line (split times + final time)
 _TIME_RE = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})')
 
@@ -51,6 +61,15 @@ RELAY_TEAM = re.compile(
     r'([A-Z]{3})\s+'              # NOC code
     r'-[A-Za-z ]+\s+'             # "-CountryName"
     r'(\d{1,2}:?\d{2}\.\d{2})'   # time
+)
+# HC relay team: "HC KUW -Kuwait 7:52.94"
+HC_RELAY_TEAM = re.compile(
+    r'^\s*(?:H\.?C\.?|EXH)\s+'   # HC/EXH prefix
+    r'(?:\d{1,2}\s+)?'            # optional lane
+    r'([A-Z]{3})\s+'              # NOC code
+    r'-[A-Za-z ]+\s+'             # "-CountryName"
+    r'(\d{1,2}:?\d{2}\.\d{2})',   # time
+    re.IGNORECASE
 )
 
 # Relay leg swimmer: "ALSHAMROUKH Sauod 27.07 56.48 1:26.97 1:57.20 (2) 1:57.20"

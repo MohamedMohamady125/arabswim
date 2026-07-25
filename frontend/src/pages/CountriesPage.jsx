@@ -124,8 +124,8 @@ export default function CountriesPage() {
         <select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm bg-white">
           <option value="">All Regions</option>
-          <option value="ARAB_ALL">Arab (All)</option>
-          {REGIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          <option value="ARAB_ALL">Arab</option>
+          <option value="OTHER">Other</option>
         </select>
       </div>
 
@@ -156,8 +156,8 @@ export default function CountriesPage() {
                   </td>
                   <td className="px-4 py-2.5 text-sm text-gray-500">{c.code}</td>
                   <td className="px-4 py-2.5">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${REGION_STYLES[c.region]}`}>
-                      {c.region}
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.region === 'OTHER' ? REGION_STYLES.OTHER : REGION_STYLES.ARAB}`}>
+                      {c.region === 'OTHER' ? 'OTHER' : 'ARAB'}
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-sm text-gray-500">{c.swimmers_count ?? '—'}</td>

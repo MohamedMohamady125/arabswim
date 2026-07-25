@@ -1,22 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { getMedals, getMedalSummary, getMedalSwimmerSummary } from '../api/medals'
+import { getMedalSummary, getMedalSwimmerSummary } from '../api/medals'
 import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
 import CountryFlag from '../components/common/CountryFlag'
-
-const MEDAL_COLORS = { GOLD: '#FFD700', SILVER: '#C0C0C0', BRONZE: '#CD7F32' }
-
-function MedalDot({ type, size = 28 }) {
-  const color = MEDAL_COLORS[type?.toUpperCase()] || '#ccc'
-  const label = type?.toUpperCase() === 'GOLD' ? '1st' : type?.toUpperCase() === 'SILVER' ? '2nd' : '3rd'
-  const textColor = type?.toUpperCase() === 'SILVER' ? '#555' : type?.toUpperCase() === 'GOLD' ? '#8B6914' : '#8B4513'
-  return (
-    <span className="inline-flex items-center justify-center rounded-full font-black"
-      style={{ width: size, height: size, backgroundColor: color + '35', color: textColor, fontSize: size * 0.36 }}>
-      {label}
-    </span>
-  )
-}
 
 export default function MedalsPage() {
   const [searchParams] = useSearchParams()
@@ -24,7 +10,6 @@ export default function MedalsPage() {
   const initialChampionship = searchParams.get('championship') || ''
   const [summary, setSummary] = useState([])
   const [swimmerSummary, setSwimmerSummary] = useState([])
-  const [medals, setMedals] = useState([])
   const [championships, setChampionships] = useState([])
   const [classifications, setClassifications] = useState([])
   const [subClassifications, setSubClassifications] = useState([])
@@ -63,7 +48,6 @@ export default function MedalsPage() {
     if (filterGender) params.gender = filterGender
     getMedalSummary(params).then(res => setSummary(res.data)).catch(() => {})
     getMedalSwimmerSummary(params).then(res => setSwimmerSummary(res.data)).catch(() => {})
-    getMedals(params).then(res => setMedals(res.data.results || res.data)).catch(() => {})
   }, [selectedChampionship, filterClassification, filterSub, filterGender])
 
   const totalGold = summary.reduce((s, r) => s + (r.gold || 0), 0)
@@ -75,14 +59,6 @@ export default function MedalsPage() {
   const clearFilters = () => {
     setFilterClassification(''); setFilterSub(''); setSelectedChampionship(''); setFilterGender('')
   }
-
-  // Group medals by event for the list view
-  const medalsByEvent = {}
-  medals.forEach(m => {
-    const eventName = m.event_detail?.name || 'Unknown'
-    if (!medalsByEvent[eventName]) medalsByEvent[eventName] = []
-    medalsByEvent[eventName].push(m)
-  })
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6">
@@ -160,7 +136,6 @@ export default function MedalsPage() {
         {[
           { key: 'summary', label: 'Country Tally' },
           { key: 'swimmers', label: 'Top Performers' },
-          { key: 'list', label: 'All Medals' },
         ].map(t => (
           <button key={t.key} onClick={() => setView(t.key)}
             className={`px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
@@ -297,46 +272,6 @@ export default function MedalsPage() {
         </div>
       )}
 
-      {/* All Medals View */}
-      {view === 'list' && (
-        <div className="space-y-4">
-          {Object.keys(medalsByEvent).length > 0 ? (
-            Object.entries(medalsByEvent).map(([eventName, eventMedals]) => (
-              <div key={eventName} className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-gray-700">{eventName}</h3>
-                  <span className="text-xs text-gray-400">{eventMedals.length} medal{eventMedals.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="divide-y">
-                  {eventMedals.sort((a, b) => {
-                    const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
-                    return (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3)
-                  }).map(m => (
-                    <div key={m.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                      <MedalDot type={m.medal_type} />
-                      <div className="flex-1 min-w-0">
-                        <button onClick={() => navigate(`/swimmers/${m.swimmer_detail?.id}`)}
-                          className="text-sm font-semibold text-gray-800 hover:text-sky-700 transition-colors">
-                          {m.swimmer_detail?.name}
-                        </button>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <CountryFlag code={m.swimmer_detail?.nationality_detail?.code} flagUrl={m.swimmer_detail?.nationality_detail?.flag_url} name={m.swimmer_detail?.nationality_detail?.name} />
-                        </div>
-                      </div>
-                      <button onClick={() => navigate(`/meets/${m.championship_detail?.id}`)}
-                        className="text-xs text-sky-600 hover:underline text-right shrink-0 max-w-[200px] truncate">
-                        {m.championship_detail?.name}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="bg-white rounded-xl border shadow-sm p-12 text-center text-gray-400">No medals found for the selected filters</div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

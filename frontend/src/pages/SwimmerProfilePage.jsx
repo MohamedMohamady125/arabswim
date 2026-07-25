@@ -200,71 +200,10 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
   )
 }
 
-/* ───────── Medal Bar ───────── */
-function MedalBar({ gold, silver, bronze, animate = false }) {
-  const total = gold + silver + bronze
-  if (!total) return <div className="h-5 bg-gray-100 rounded-full w-full" />
-  return (
-    <div className={`flex h-5 rounded-full overflow-hidden w-full ${animate ? 'animate-grow-width' : ''}`}>
-      {gold > 0 && <div className="transition-all duration-700" style={{ width: `${(gold / total) * 100}%`, backgroundColor: MEDAL_COLORS.GOLD }} />}
-      {silver > 0 && <div className="transition-all duration-700" style={{ width: `${(silver / total) * 100}%`, backgroundColor: MEDAL_COLORS.SILVER }} />}
-      {bronze > 0 && <div className="transition-all duration-700" style={{ width: `${(bronze / total) * 100}%`, backgroundColor: MEDAL_COLORS.BRONZE }} />}
-    </div>
-  )
-}
-
-/* ───────── Medal Counts Inline ───────── */
-function MedalCounts({ gold, silver, bronze, size = 'sm' }) {
-  const text = size === 'lg' ? 'text-sm' : 'text-[10px]'
-  return (
-    <div className={`flex gap-1.5 ${text} font-bold`}>
-      {gold > 0 && <span style={{ color: '#B8860B' }}>{gold}G</span>}
-      {silver > 0 && <span className="text-gray-500">{silver}S</span>}
-      {bronze > 0 && <span style={{ color: '#CD7F32' }}>{bronze}B</span>}
-    </div>
-  )
-}
-
-/* ───────── Medal Row ───────── */
-function MedalRow({ medal, navigate, delay = 0 }) {
-  return (
-    <div className="flex items-center gap-3 py-2.5 px-3 hover:bg-gray-50 rounded-xl transition-all duration-200 animate-fade-in-up"
-      style={{ animationDelay: `${delay}s` }}>
-      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 shadow-sm"
-        style={{ backgroundColor: MEDAL_COLORS[medal.medal_type] + '40', color: medal.medal_type === 'GOLD' ? '#8B6914' : medal.medal_type === 'SILVER' ? '#555' : '#8B4513' }}>
-        {medal.medal_type === 'GOLD' ? '1' : medal.medal_type === 'SILVER' ? '2' : '3'}
-      </div>
-      <div className="flex-1 min-w-0">
-        <span className="text-sm font-semibold text-gray-800">{medal.event_name}</span>
-        <button onClick={() => navigate(`/meets/${medal.championship_id}`)}
-          className="text-xs text-sky-600 hover:text-sky-800 block truncate transition-colors">
-          {medal.championship_name} ({new Date(medal.championship_date).getFullYear()})
-        </button>
-      </div>
-      <span className={`text-[10px] font-black px-2 py-1 rounded-full tracking-wide ${
-        medal.medal_type === 'GOLD' ? 'bg-amber-100 text-amber-800' : medal.medal_type === 'SILVER' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-800'
-      }`}>{MEDAL_LABELS[medal.medal_type]}</span>
-    </div>
-  )
-}
-
 /* ───────── Medals Tab ───────── */
 function MedalsTab({ stats, navigate }) {
   if (!stats) return null
-  const { medals, medals_by_level, medals_hierarchy } = stats
-  const [expandedCats, setExpandedCats] = useState(() => new Set((medals_hierarchy || []).map(c => c.name)))
-  const [expandedCls, setExpandedCls] = useState(() => {
-    const set = new Set()
-    ;(medals_hierarchy || []).forEach(cat => cat.classifications.forEach(cls => set.add(`${cat.name}/${cls.name}`)))
-    return set
-  })
-  const [expandedSubs, setExpandedSubs] = useState(new Set())
-
-  const toggle = (set, setter, key) => {
-    const next = new Set(set)
-    next.has(key) ? next.delete(key) : next.add(key)
-    setter(next)
-  }
+  const { medals, medals_hierarchy } = stats
 
   if (medals.total === 0) {
     return (
@@ -278,192 +217,83 @@ function MedalsTab({ stats, navigate }) {
     )
   }
 
-  // Collect all medals flat for the timeline
+  // Flatten hierarchy into a single medal list, then group by championship
   const allMedals = []
   ;(medals_hierarchy || []).forEach(cat => {
     cat.classifications.forEach(cls => {
-      cls.medals.forEach(m => allMedals.push({ ...m, category: cat.name, classification: cls.name }))
-      cls.sub_classifications.forEach(sub => {
-        sub.medals.forEach(m => allMedals.push({ ...m, category: cat.name, classification: cls.name, sub_classification: sub.name }))
-      })
+      cls.medals.forEach(m => allMedals.push(m))
+      cls.sub_classifications.forEach(sub => sub.medals.forEach(m => allMedals.push(m)))
     })
   })
+  allMedals.sort((a, b) => new Date(b.championship_date || 0) - new Date(a.championship_date || 0))
 
-  // Medal podium SVG
-  const Podium = () => {
-    const items = [
-      { type: 'SILVER', count: medals.silver, x: 20, barH: 70, color: '#C0C0C0', dark: '#8a8a8a' },
-      { type: 'GOLD', count: medals.gold, x: 95, barH: 95, color: '#FFD700', dark: '#b8860b' },
-      { type: 'BRONZE', count: medals.bronze, x: 170, barH: 55, color: '#CD7F32', dark: '#8b4513' },
-    ]
-    return (
-      <svg viewBox="0 0 260 140" className="w-full max-w-[280px] mx-auto">
-        {items.map((item, i) => {
-          const y = 130 - item.barH
-          return (
-            <g key={item.type}>
-              <rect x={item.x} y={y} width={70} height={item.barH} rx={8} fill={item.color + '30'} stroke={item.color} strokeWidth={1.5} className="animate-grow-width" style={{ animationDelay: `${i * 0.15}s` }} />
-              <text x={item.x + 35} y={y + item.barH / 2 - 6} textAnchor="middle" className="font-black" style={{ fontSize: '28px', fill: item.dark }}>{item.count}</text>
-              <text x={item.x + 35} y={y + item.barH / 2 + 14} textAnchor="middle" className="font-bold uppercase" style={{ fontSize: '9px', fill: item.dark, letterSpacing: '0.05em' }}>{MEDAL_LABELS[item.type]}</text>
-            </g>
-          )
-        })}
-      </svg>
-    )
-  }
+  const meets = []
+  const meetIndex = {}
+  allMedals.forEach(m => {
+    if (meetIndex[m.championship_id] === undefined) {
+      meetIndex[m.championship_id] = meets.length
+      meets.push({
+        id: m.championship_id, name: m.championship_name, date: m.championship_date,
+        gold: 0, silver: 0, bronze: 0, medals: [],
+      })
+    }
+    const meet = meets[meetIndex[m.championship_id]]
+    meet[m.medal_type.toLowerCase()] += 1
+    meet.medals.push(m)
+  })
+
+  const SUMMARY = [
+    { label: 'Gold', count: medals.gold, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
+    { label: 'Silver', count: medals.silver, bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600' },
+    { label: 'Bronze', count: medals.bronze, bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
+    { label: 'Total', count: medals.total, bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700' },
+  ]
 
   return (
     <div className="space-y-5">
-      {/* Podium + Total */}
-      <div className="bg-gradient-to-br from-gray-50 via-white to-amber-50/30 rounded-2xl border shadow-sm p-5 sm:p-6 animate-fade-in">
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex-1">
-            <Podium />
+      {/* Summary */}
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 animate-fade-in">
+        {SUMMARY.map(c => (
+          <div key={c.label} className={`${c.bg} ${c.border} border rounded-xl p-3 sm:p-4 text-center`}>
+            <div className={`text-2xl sm:text-3xl font-black ${c.text}`}><AnimatedNumber value={c.count} /></div>
+            <div className="text-[10px] sm:text-xs font-semibold text-gray-500 mt-1">{c.label}</div>
           </div>
-          <div className="text-center sm:text-right">
-            <div className="text-5xl sm:text-6xl font-black bg-gradient-to-r from-amber-500 via-gray-400 to-amber-700 bg-clip-text text-transparent">
-              <AnimatedNumber value={medals.total} />
-            </div>
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Total Medals</div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Medal Analytics */}
-      {medals_by_level.length > 0 && (
-        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up stagger-3">
-          <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-gray-50 to-white">
-            <h3 className="font-bold text-base text-gray-800">By Competition Level</h3>
-          </div>
-          <div className="p-4 sm:p-5 space-y-3">
-            {medals_by_level.map((level, i) => {
-              const total = level.gold + level.silver + level.bronze
-              return (
-                <div key={i} className="animate-fade-in-up" style={{ animationDelay: `${(i + 4) * 0.06}s` }}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-sm font-semibold text-gray-700">{level.category}</span>
-                    <span className="text-xs font-bold text-gray-400">{total}</span>
+      {/* Medals grouped by meet */}
+      <div className="space-y-3">
+        {meets.map((meet, mi) => (
+          <div key={meet.id} className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: `${mi * 0.05}s` }}>
+            <button onClick={() => navigate(`/meets/${meet.id}`)}
+              className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left">
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm text-gray-800 truncate">{meet.name}</div>
+                {meet.date && <div className="text-xs text-gray-400 mt-0.5">{new Date(meet.date).getFullYear()}</div>}
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                {meet.gold > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#FFD70030', color: '#8B6914' }}>{meet.gold}</span>}
+                {meet.silver > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#C0C0C040', color: '#555' }}>{meet.silver}</span>}
+                {meet.bronze > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#CD7F3230', color: '#8B4513' }}>{meet.bronze}</span>}
+              </div>
+            </button>
+            <div className="border-t divide-y divide-gray-50">
+              {meet.medals.map(m => (
+                <div key={m.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0"
+                    style={{ backgroundColor: MEDAL_COLORS[m.medal_type] + '40', color: m.medal_type === 'GOLD' ? '#8B6914' : m.medal_type === 'SILVER' ? '#555' : '#8B4513' }}>
+                    {m.medal_type === 'GOLD' ? '1' : m.medal_type === 'SILVER' ? '2' : '3'}
                   </div>
-                  <div className="flex h-7 rounded-lg overflow-hidden bg-gray-100">
-                    {level.gold > 0 && (
-                      <div className="flex items-center justify-center text-[10px] font-black text-amber-900 animate-grow-width"
-                        style={{ width: `${(level.gold / total) * 100}%`, backgroundColor: '#FFD70060', animationDelay: `${(i + 4) * 0.08}s` }}>
-                        {level.gold > 0 && level.gold}
-                      </div>
-                    )}
-                    {level.silver > 0 && (
-                      <div className="flex items-center justify-center text-[10px] font-black text-gray-600 animate-grow-width"
-                        style={{ width: `${(level.silver / total) * 100}%`, backgroundColor: '#C0C0C050', animationDelay: `${(i + 4) * 0.08 + 0.1}s` }}>
-                        {level.silver > 0 && level.silver}
-                      </div>
-                    )}
-                    {level.bronze > 0 && (
-                      <div className="flex items-center justify-center text-[10px] font-black text-orange-900 animate-grow-width"
-                        style={{ width: `${(level.bronze / total) * 100}%`, backgroundColor: '#CD7F3240', animationDelay: `${(i + 4) * 0.08 + 0.2}s` }}>
-                        {level.bronze > 0 && level.bronze}
-                      </div>
-                    )}
-                  </div>
+                  <span className="flex-1 text-sm font-semibold text-gray-700 truncate">{m.event_name}</span>
+                  <span className={`text-[10px] font-black px-2 py-1 rounded-full tracking-wide shrink-0 ${
+                    m.medal_type === 'GOLD' ? 'bg-amber-100 text-amber-800' : m.medal_type === 'SILVER' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-800'
+                  }`}>{MEDAL_LABELS[m.medal_type]}</span>
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Medals by Championship — collapsible hierarchy */}
-      {(medals_hierarchy || []).length > 0 && (
-        <div className="space-y-3">
-          {medals_hierarchy.map((cat, ci) => (
-            <div key={cat.name} className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: `${(ci + 5) * 0.06}s` }}>
-              <button onClick={() => toggle(expandedCats, setExpandedCats, cat.name)}
-                className="w-full flex items-center gap-3 p-4 hover:bg-gray-50/80 transition-all duration-200">
-                <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-300 ${expandedCats.has(cat.name) ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" /></svg>
-                <h3 className="flex-1 text-left font-bold text-base text-gray-800">{cat.name}</h3>
-                <div className="flex gap-1.5">
-                  {cat.gold > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#FFD70030', color: '#8B6914' }}>{cat.gold}</span>}
-                  {cat.silver > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#C0C0C040', color: '#555' }}>{cat.silver}</span>}
-                  {cat.bronze > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#CD7F3230', color: '#8B4513' }}>{cat.bronze}</span>}
-                </div>
-              </button>
-              {expandedCats.has(cat.name) && (
-                <div className="border-t animate-expand">
-                  {cat.classifications.map(cls => {
-                    const clsKey = `${cat.name}/${cls.name}`
-                    return (
-                      <div key={cls.name}>
-                        <button onClick={() => toggle(expandedCls, setExpandedCls, clsKey)}
-                          className="w-full flex items-center gap-3 px-7 py-3 hover:bg-gray-50/80 transition-all duration-200 border-b border-gray-50">
-                          <svg className={`w-3 h-3 text-gray-300 transition-transform duration-300 ${expandedCls.has(clsKey) ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" /></svg>
-                          <span className="flex-1 text-left text-sm font-semibold text-gray-600">{cls.name}</span>
-                          <MedalCounts gold={cls.gold} silver={cls.silver} bronze={cls.bronze} size="lg" />
-                        </button>
-                        {expandedCls.has(clsKey) && (
-                          <div className="bg-gray-50/30 animate-expand">
-                            {cls.sub_classifications.map(sub => {
-                              const subKey = `${clsKey}/${sub.name}`
-                              return (
-                                <div key={sub.name}>
-                                  <button onClick={() => toggle(expandedSubs, setExpandedSubs, subKey)}
-                                    className="w-full flex items-center gap-3 px-11 py-2.5 hover:bg-gray-100/50 transition-all duration-200">
-                                    <svg className={`w-2.5 h-2.5 text-gray-300 transition-transform duration-300 ${expandedSubs.has(subKey) ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" /></svg>
-                                    <span className="flex-1 text-left text-sm text-gray-500">{sub.name}</span>
-                                    <MedalCounts gold={sub.gold} silver={sub.silver} bronze={sub.bronze} />
-                                  </button>
-                                  {expandedSubs.has(subKey) && (
-                                    <div className="pl-12 pr-4 pb-2 animate-expand">
-                                      {sub.medals.map((m, mi) => <MedalRow key={m.id} medal={m} navigate={navigate} delay={mi * 0.04} />)}
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            })}
-                            {cls.medals.length > 0 && (
-                              <div className="pl-9 pr-4 py-2 animate-expand">
-                                {cls.medals.map((m, mi) => <MedalRow key={m.id} medal={m} navigate={navigate} delay={mi * 0.04} />)}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Recent Medals Timeline */}
-      {allMedals.length > 0 && (
-        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-          <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-gray-50 to-white">
-            <h3 className="font-bold text-base text-gray-800">Medal Collection</h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">{allMedals.length} medal{allMedals.length !== 1 ? 's' : ''} earned</p>
           </div>
-          <div className="p-3 sm:p-4 grid gap-2 sm:grid-cols-2">
-            {allMedals.map((m, i) => {
-              const medalColor = m.medal_type === 'GOLD' ? { bg: 'bg-amber-50', border: 'border-amber-200', ring: 'ring-amber-300', text: 'text-amber-800', icon: '\u{1F947}' }
-                : m.medal_type === 'SILVER' ? { bg: 'bg-gray-50', border: 'border-gray-200', ring: 'ring-gray-300', text: 'text-gray-700', icon: '\u{1F948}' }
-                : { bg: 'bg-orange-50', border: 'border-orange-200', ring: 'ring-orange-300', text: 'text-orange-800', icon: '\u{1F949}' }
-              return (
-                <div key={m.id}
-                  className={`${medalColor.bg} ${medalColor.border} border rounded-xl p-3 flex items-center gap-3 hover:ring-1 ${medalColor.ring} transition-all cursor-pointer animate-fade-in-up`}
-                  style={{ animationDelay: `${i * 0.04}s` }}
-                  onClick={() => navigate(`/meets/${m.championship_id}`)}>
-                  <span className="text-xl">{medalColor.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-gray-800 truncate">{m.event_name}</div>
-                    <div className="text-[11px] text-gray-500 truncate">{m.championship_name}</div>
-                    {m.championship_date && <div className="text-[10px] text-gray-400">{new Date(m.championship_date).getFullYear()}</div>}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   )
 }

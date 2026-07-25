@@ -262,6 +262,7 @@ def _parse_relay_table(table, event):
     """
     rows = table.find_all('tr')
     current_rank = 0
+    current_status = 'OK'
     current_swimmers = []
 
     for row in rows:
@@ -287,11 +288,18 @@ def _parse_relay_table(table, event):
         name = _nat2i_normalize_name(name_text)
 
         # Row with a rank = start of new team
+        relay_place = place_text.upper().replace('.', '').replace(' ', '')
         if place_text.isdigit():
             current_rank = int(place_text)
+            current_status = 'OK'
             current_swimmers = [name]
-        elif place_text.upper().replace('.', '') in ('NC', 'HC'):
+        elif relay_place in ('HC', 'EXH'):
             current_rank = 0
+            current_status = 'HC'
+            current_swimmers = [name]
+        elif relay_place == 'NC':
+            current_rank = 0
+            current_status = 'OK'
             current_swimmers = [name]
         else:
             # Continuation row (no rank)
@@ -319,6 +327,7 @@ def _parse_relay_table(table, event):
                 event_stroke=event.stroke,
                 gender=event.gender,
                 rank=current_rank,
+                status=current_status,
                 club=club,
                 fina_points=fina_points,
                 # "Name m:ss.xx" entries, each swimmer with their leg time
@@ -392,13 +401,16 @@ def _parse_result_table(table, event):
         if not name_text or not name_text.strip():
             continue
 
-        # Determine status. N.C ("non classé") / H.C ("hors concours")
-        # swimmers swam without a ranking — keep them as real results;
-        # rows with no/invalid time are filtered out downstream anyway.
+        # Determine status. H.C ("hors concours") swimmers swam but don't
+        # count in rankings. N.C ("non classé") may also mean HC in some meets.
         status = 'OK'
         rank = 0
+        place_upper = place_text.upper().replace('.', '').replace(' ', '')
         if place_text.isdigit():
             rank = int(place_text)
+        elif place_upper in ('HC', 'EXH'):
+            status = 'HC'
+            rank = 0
 
         # Check for DQ/forfeit in time
         if 'frf' in time_text.lower() or 'disq' in time_text.lower() or 'dsq' in time_text.lower():

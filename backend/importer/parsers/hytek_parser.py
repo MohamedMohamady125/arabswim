@@ -128,6 +128,8 @@ RELAY_SWIMMER_PART = re.compile(r'(\d)\)\s*(.+?)(?=\s+\d\)|\s*$)')
 
 # Rank at start of a result line
 RANK_PREFIX = re.compile(r'^\s*\*?(\d{1,3})\s+')
+# HC / EXH (hors concours / exhibition) prefix
+HC_PREFIX = re.compile(r'^\s*(?:H\.?C\.?|EXH)\s+', re.IGNORECASE)
 
 STATUS_MAP = {'DQ': 'DQ', 'DSQ': 'DQ', 'NS': 'DNS', 'DFS': 'DNS', 'DNF': 'DNF', 'SCR': 'DNS'}
 
@@ -427,9 +429,19 @@ def _parse_relay_line(line, event, comma_order, take_last_time=False):
     #          "1 Hong Kong China 3:56.76" (multi-word, one time)
     #          "1 Kazakhstan 3:28.58 q" (one time + qualifier)
     rank_m = RANK_PREFIX.match(line)
+    hc_m = HC_PREFIX.match(line) if not rank_m else None
+    relay_status = 'OK'
     if rank_m:
         rank = int(rank_m.group(1))
         rest = line[rank_m.end():]
+    elif hc_m:
+        rank = 0
+        relay_status = 'HC'
+        rest = line[hc_m.end():]
+    else:
+        rank = None
+        rest = None
+    if rest is not None:
         times = list(TIME_PATTERN.finditer(rest))
         if times:
             # Text before first time = team [+ relay letter] [+ NT]
@@ -482,6 +494,7 @@ def _parse_relay_line(line, event, comma_order, take_last_time=False):
                     fina_points=fina,
                     round_type=event.round_type,
                     age_group=event.age_group,
+                    status=relay_status,
                 ))
                 return True
 
@@ -615,10 +628,16 @@ def _parse_result_line(line, event, comma_order='last_first', take_last_time=Fal
     # ---- Parse BEFORE time: rank, name, age, team ----
     # Remove rank prefix
     rank = 0
+    hc_status = 'OK'
     rank_match = RANK_PREFIX.match(before_time)
+    hc_match = HC_PREFIX.match(before_time)
     if rank_match:
         rank = int(rank_match.group(1))
         before_time = before_time[rank_match.end():]
+    elif hc_match:
+        rank = 0
+        hc_status = 'HC'
+        before_time = before_time[hc_match.end():]
     else:
         # No rank — might not be a result line
         # Check if the line at least has enough structure
@@ -694,6 +713,7 @@ def _parse_result_line(line, event, comma_order='last_first', take_last_time=Fal
         event_stroke=event.stroke,
         gender=event.gender,
         rank=rank,
+        status=hc_status,
         age=age,
         club=team,
         fina_points=fina_points,

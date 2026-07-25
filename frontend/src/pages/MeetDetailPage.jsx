@@ -837,7 +837,7 @@ export default function MeetDetailPage() {
                         <td className="px-4 py-2 text-sm font-mono font-semibold">{s.time}</td>
                         <td className="px-4 py-2 text-sm">
                           {s.fina_points ? (
-                            <span className={`font-mono font-semibold ${s.fina_points >= 800 ? 'text-emerald-600' : s.fina_points >= 600 ? 'text-sky-600' : 'text-gray-600'}`}>{s.fina_points}</span>
+                            <span className={`font-mono font-semibold ${s.fina_points >= 1000 ? 'text-amber-600' : s.fina_points >= 900 ? 'text-emerald-600' : s.fina_points >= 800 ? 'text-sky-600' : s.fina_points >= 600 ? 'text-blue-600' : 'text-gray-600'}`}>{s.fina_points}</span>
                           ) : <span className="text-gray-400">—</span>}
                         </td>
                       </tr>

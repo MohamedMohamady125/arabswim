@@ -394,14 +394,16 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             .values_list('fina_points', flat=True)
         )
         tier_ranges = [
-            (900, 1000, 'Elite'),
-            (800, 899, 'World Class'),
-            (700, 799, 'International'),
-            (600, 699, 'National'),
-            (500, 599, 'Advanced'),
-            (400, 499, 'Competitive'),
-            (200, 399, 'Developing'),
-            (0, 199, 'Novice'),
+            (1000, 1200, 'World-Class'),
+            (900, 999, 'International Elite'),
+            (800, 899, 'Elite'),
+            (700, 799, 'High Performance'),
+            (600, 699, 'Advanced'),
+            (500, 599, 'Competitive'),
+            (400, 499, 'Developing'),
+            (300, 399, 'Foundation'),
+            (200, 299, 'Novice'),
+            (100, 199, 'Entry Level'),
         ]
         fina_distribution = []
         for low, high, label in tier_ranges:

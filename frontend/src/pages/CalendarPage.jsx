@@ -151,17 +151,6 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
     finally { setSaving(false) }
   }
 
-  const uploadPhoto = async (file) => {
-    setSaving(true)
-    try {
-      const data = new FormData()
-      data.append('meet_photo', file)
-      const res = await updateChampionship(c.id, data)
-      onUpdate({ ...c, meet_photo: res.data.meet_photo })
-    } catch { /* ignore */ }
-    finally { setSaving(false) }
-  }
-
   return (
     <div className="bg-gray-50 border border-cyan-500 border-t-0 rounded-b-xl px-6 py-4">
       {/* Meet Info */}
@@ -184,27 +173,6 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
           <div className="text-xs text-gray-500 mb-1">Location</div>
           <div className="text-sm font-medium">{c.location || '-'}</div>
         </div>
-      </div>
-
-      {/* Meet Photo */}
-      <div className="mb-5">
-        <div className="text-xs text-gray-500 mb-2 font-medium">Meet Photo</div>
-        {c.meet_photo ? (
-          <div className="flex items-center gap-3">
-            <img src={mediaUrl(c.meet_photo)} alt="" className="w-24 h-16 rounded-lg object-cover border" />
-            <label className="text-xs text-cyan-600 hover:text-cyan-800 cursor-pointer font-medium" onClick={e => e.stopPropagation()}>
-              Change photo
-              <input type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files[0]) uploadPhoto(e.target.files[0]) }} />
-            </label>
-          </div>
-        ) : (
-          <label className="inline-block cursor-pointer" onClick={e => e.stopPropagation()}>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-400 hover:border-cyan-400 hover:text-cyan-500">
-              + Upload Meet Photo
-            </div>
-            <input type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files[0]) uploadPhoto(e.target.files[0]) }} />
-          </label>
-        )}
       </div>
 
       {/* Three main sections */}

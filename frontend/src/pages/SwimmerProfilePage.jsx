@@ -184,7 +184,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                     <td className="px-2 sm:px-3 py-2 text-gray-400 hidden md:table-cell whitespace-nowrap">{h.championship_date}</td>
                     <td className="px-2 sm:px-3 py-2 hidden sm:table-cell">
                       {h.fina_points ? (
-                        <span className={`font-mono font-semibold ${h.fina_points >= 800 ? 'text-emerald-600' : h.fina_points >= 600 ? 'text-sky-600' : 'text-gray-600'}`}>{h.fina_points}</span>
+                        <span className={`font-mono font-semibold ${h.fina_points >= 1000 ? 'text-amber-600' : h.fina_points >= 900 ? 'text-emerald-600' : h.fina_points >= 800 ? 'text-sky-600' : h.fina_points >= 600 ? 'text-blue-600' : 'text-gray-600'}`}>{h.fina_points}</span>
                       ) : <span className="text-gray-300">-</span>}
                     </td>
                   </tr>
@@ -305,14 +305,16 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
   const maxCount = Math.max(...finaDistribution.map(d => d.count))
 
   const TIER_COLORS = {
-    'Elite':         { bar: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600' },
-    'World Class':   { bar: 'from-sky-400 to-sky-600', text: 'text-sky-600' },
-    'International': { bar: 'from-blue-400 to-blue-600', text: 'text-blue-600' },
-    'National':      { bar: 'from-violet-400 to-violet-600', text: 'text-violet-600' },
-    'Advanced':      { bar: 'from-indigo-400 to-indigo-600', text: 'text-indigo-600' },
-    'Competitive':   { bar: 'from-amber-400 to-amber-600', text: 'text-amber-600' },
-    'Developing':    { bar: 'from-orange-300 to-orange-500', text: 'text-orange-600' },
-    'Novice':        { bar: 'from-gray-300 to-gray-400', text: 'text-gray-500' },
+    'World-Class':          { bar: 'from-yellow-400 to-amber-500', text: 'text-amber-600' },
+    'International Elite':  { bar: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600' },
+    'Elite':                { bar: 'from-sky-400 to-sky-600', text: 'text-sky-600' },
+    'High Performance':     { bar: 'from-blue-400 to-blue-600', text: 'text-blue-600' },
+    'Advanced':             { bar: 'from-violet-400 to-violet-600', text: 'text-violet-600' },
+    'Competitive':          { bar: 'from-indigo-400 to-indigo-600', text: 'text-indigo-600' },
+    'Developing':           { bar: 'from-amber-300 to-amber-500', text: 'text-amber-500' },
+    'Foundation':           { bar: 'from-orange-300 to-orange-500', text: 'text-orange-600' },
+    'Novice':               { bar: 'from-gray-400 to-gray-500', text: 'text-gray-500' },
+    'Entry Level':          { bar: 'from-gray-200 to-gray-300', text: 'text-gray-400' },
   }
 
   return (

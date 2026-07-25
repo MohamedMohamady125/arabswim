@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getChampionships, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
-import { POOL_TYPES } from '../utils/constants'
+import { POOL_TYPES, mediaUrl } from '../utils/constants'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 dayjs.extend(customParseFormat)
@@ -132,7 +132,7 @@ export default function ChampionshipsPage() {
                     {/* Meet photo or date badge */}
                     {c.meet_photo ? (
                       <div className="w-24 h-20 rounded-xl overflow-hidden shrink-0 shadow">
-                        <img src={c.meet_photo} alt={c.name} className="w-full h-full object-cover" />
+                        <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
                       </div>
                     ) : (
                       <div className="w-20 h-20 bg-blue-600 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">

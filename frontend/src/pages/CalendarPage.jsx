@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { createCalendarEvent } from '../api/calendar'
 import { getChampionships, updateChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
-import { POOL_TYPES } from '../utils/constants'
+import { POOL_TYPES, mediaUrl } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
@@ -70,7 +70,7 @@ function FeaturedMeet({ meet: c, navigate }) {
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-blue-900 to-cyan-900">
         {c.meet_photo && (
-          <img src={c.meet_photo} alt="" className="w-full h-full object-cover opacity-40" />
+          <img src={mediaUrl(c.meet_photo)} alt="" className="w-full h-full object-cover opacity-40" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
       </div>
@@ -191,7 +191,7 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
         <div className="text-xs text-gray-500 mb-2 font-medium">Meet Photo</div>
         {c.meet_photo ? (
           <div className="flex items-center gap-3">
-            <img src={c.meet_photo} alt="" className="w-24 h-16 rounded-lg object-cover border" />
+            <img src={mediaUrl(c.meet_photo)} alt="" className="w-24 h-16 rounded-lg object-cover border" />
             <label className="text-xs text-cyan-600 hover:text-cyan-800 cursor-pointer font-medium" onClick={e => e.stopPropagation()}>
               Change photo
               <input type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files[0]) uploadPhoto(e.target.files[0]) }} />
@@ -438,7 +438,7 @@ export default function CalendarPage() {
                     {/* Meet photo or date badge */}
                     {c.meet_photo ? (
                       <div className="w-24 h-20 rounded-xl overflow-hidden shrink-0 shadow">
-                        <img src={c.meet_photo} alt={c.name} className="w-full h-full object-cover" />
+                        <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
                       </div>
                     ) : (
                       <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">

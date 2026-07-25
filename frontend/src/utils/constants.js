@@ -29,6 +29,14 @@ export const ARAB_COUNTRY_CODES = new Set([
   'UAE', 'ARE', 'YEM',
 ])
 
+// Resolve a media URL (e.g. /media/...) to the full backend URL
+const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/api\/v1\/?$/, '')
+export function mediaUrl(path) {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  return API_ORIGIN ? `${API_ORIGIN}${path}` : path
+}
+
 export function parseTime(timeStr) {
   const parts = timeStr.split(':')
   let minutes = 0, rest

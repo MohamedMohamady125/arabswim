@@ -4,7 +4,6 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'sponsors', views.SponsorViewSet)
-router.register(r'sponsor-tiers', views.SponsorTierViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

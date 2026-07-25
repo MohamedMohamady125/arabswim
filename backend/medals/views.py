@@ -20,12 +20,15 @@ class MedalViewSet(viewsets.ModelViewSet):
         championship = self.request.query_params.get('championship')
         classification = self.request.query_params.get('classification')
         sub_classification = self.request.query_params.get('sub_classification')
+        gender = self.request.query_params.get('gender')
         if championship:
             qs = qs.filter(championship_id=championship)
         if classification:
             qs = qs.filter(championship__classification_id=classification)
         if sub_classification:
             qs = qs.filter(championship__sub_classification_id=sub_classification)
+        if gender:
+            qs = qs.filter(swimmer__sex=gender)
         return qs
 
     def get_queryset(self):
@@ -42,6 +45,9 @@ class MedalViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def summary(self, request):
         qs = self._apply_filters(Medal.objects.all())
+        # Only restrict to Arab countries on the global medals page, not per-championship
+        if not request.query_params.get('championship'):
+            qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
         summary = qs.values(
             'swimmer__nationality__name', 'swimmer__nationality__code',
             'swimmer__nationality__flag_url'
@@ -51,6 +57,25 @@ class MedalViewSet(viewsets.ModelViewSet):
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
         ).order_by('-gold', '-silver', '-bronze')
+        return Response(list(summary))
+
+    @action(detail=False, methods=['get'], url_path='swimmer-summary')
+    def swimmer_summary(self, request):
+        """Top 10 swimmers by medal count."""
+        qs = self._apply_filters(Medal.objects.all())
+        # Only restrict to Arab countries on the global medals page, not per-championship
+        if not request.query_params.get('championship'):
+            qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
+        summary = qs.values(
+            'swimmer__id', 'swimmer__name',
+            'swimmer__nationality__name', 'swimmer__nationality__code',
+            'swimmer__nationality__flag_url',
+        ).annotate(
+            gold=Count('id', filter=Q(medal_type='GOLD')),
+            silver=Count('id', filter=Q(medal_type='SILVER')),
+            bronze=Count('id', filter=Q(medal_type='BRONZE')),
+            total=Count('id'),
+        ).order_by('-gold', '-silver', '-bronze')[:10]
         return Response(list(summary))
 
     @action(detail=False, methods=['get'], url_path='club-summary')

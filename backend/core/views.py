@@ -274,3 +274,10 @@ class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     pagination_class = None
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # ?has_results=true → only events that have at least one result
+        if self.request.query_params.get('has_results') == 'true':
+            qs = qs.filter(results__isnull=False).distinct()
+        return qs

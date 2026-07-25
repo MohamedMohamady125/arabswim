@@ -154,7 +154,7 @@ def _build_preview(parsed_meet):
         }
 
         for r in event.results:
-            if r.status not in ('OK', 'TLD') or r.time_centiseconds <= 0:
+            if r.status not in ('OK', 'HC', 'TLD') or r.time_centiseconds <= 0:
                 continue
 
             # Use club as nationality when it resolves to a country,
@@ -213,6 +213,7 @@ def _build_preview(parsed_meet):
                 'gender': gender_for_event,
                 'is_relay': is_relay,
                 'category': event.age_group or '',
+                'status': r.status,
             }
             if r.split_times:
                 result_data['split_times'] = r.split_times
@@ -713,6 +714,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 if time_cs < existing.time_centiseconds:
                     existing.time_centiseconds = time_cs
                     existing.fina_points = result_data.get('fina_points', 0) or existing.fina_points
+                    existing.is_hc = (result_data.get('status') == 'HC')
                     if team:
                         existing.team = team
                     existing.save()
@@ -772,6 +774,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     fina_points=fina_pts or None,
                     age_at_competition=age_at_comp or None,
                     relay_swimmers=relay_swimmers,
+                    is_hc=(result_data.get('status') == 'HC'),
                 )
                 claimed_results.add(new_result.id)
                 created_results += 1

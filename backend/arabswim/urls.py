@@ -22,6 +22,9 @@ urlpatterns = [
     path('api/v1/', include('academies.urls')),
     path('api/v1/', include('fame.urls')),
     path('api/v1/', include('media_app.urls')),
+    path('api/v1/', include('qualifying_times.urls')),
+    path('api/v1/', include('sponsors.urls')),
+    path('api/v1/', include('coaches.urls')),
 ]
 
 # Serve uploaded media in all environments (Railway stores it on local disk;

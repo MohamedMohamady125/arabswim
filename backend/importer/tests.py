@@ -1370,7 +1370,9 @@ class UnrankedSwimmerTests(TestCase):
             self.assertEqual(r.swimmer_name, 'Mahdi RAHMOUNI')
             self.assertEqual(r.rank, 0)  # unranked, not tied with prev rank
             self.assertEqual(r.time_centiseconds, 2823)
-            self.assertEqual(r.status, 'OK')
+            is_hc = prefix.lower().replace('.', '').startswith('hc')
+            self.assertEqual(r.status, 'HC' if is_hc else 'OK',
+                             f'prefix "{prefix}" should be {"HC" if is_hc else "OK"}')
 
     def test_splash_normal_names_still_parse_as_ties(self):
         from importer.parsers import splash_parser

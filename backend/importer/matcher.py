@@ -346,7 +346,7 @@ def match_all_results(parsed_meet, threshold=92):
 
     for event in parsed_meet.events:
         for result in event.results:
-            if result.status != 'OK':
+            if result.status not in ('OK', 'HC', 'TLD'):
                 continue
 
             cache_key = (

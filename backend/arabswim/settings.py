@@ -48,6 +48,9 @@ INSTALLED_APPS = [
     'academies',
     'fame',
     'media_app',
+    'qualifying_times',
+    'sponsors',
+    'coaches',
 ]
 
 MIDDLEWARE = [

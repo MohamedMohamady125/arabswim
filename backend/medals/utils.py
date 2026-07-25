@@ -24,6 +24,7 @@ def recompute_medals(championship):
     Medal.objects.filter(championship=championship, result__isnull=False).delete()
 
     results = (championship.results
+               .filter(is_hc=False)
                .select_related('swimmer')
                .order_by('time_centiseconds'))
 

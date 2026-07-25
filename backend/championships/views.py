@@ -578,7 +578,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         # Get best time per swimmer+event at this championship (individuals only)
         current = (
             championship.results
-            .filter(swimmer__is_relay_team=False)
+            .filter(swimmer__is_relay_team=False, is_hc=False)
             .values('swimmer_id', 'event_id')
             .annotate(best_time=Min('time_centiseconds'))
         )
@@ -605,6 +605,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     championship__pool=championship.pool,
                     championship__date__lt=championship.date,
                     swimmer__is_relay_team=False,
+                    is_hc=False,
                 )
                 .select_related('championship')
                 .order_by('time_centiseconds')

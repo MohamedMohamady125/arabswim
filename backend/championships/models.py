@@ -73,6 +73,7 @@ class Result(models.Model):
     fina_points = models.IntegerField(blank=True, null=True)
     age_at_competition = models.IntegerField(blank=True, null=True)
     relay_swimmers = models.JSONField(blank=True, null=True, help_text='List of {name, split_time} for relay results')
+    is_hc = models.BooleanField(default=False, help_text='Hors concours – valid time that does not count in rankings')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

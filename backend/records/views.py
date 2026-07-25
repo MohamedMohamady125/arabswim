@@ -73,7 +73,7 @@ class RecordViewSet(viewsets.ModelViewSet):
         qs = Result.objects.filter(
             championship__pool=pool,
             time_centiseconds__gt=0,
-            swimmer__is_relay_team=False,
+            is_hc=False,
         ).exclude(
             swimmer__nationality__region='OTHER',
         ).select_related(
@@ -150,6 +150,7 @@ class RecordViewSet(viewsets.ModelViewSet):
                     'gender': result.swimmer.sex,
                     'swimmer_name': result.swimmer.name,
                     'swimmer_id': result.swimmer_id,
+                    'is_relay_team': result.swimmer.is_relay_team,
                     'nationality': result.swimmer.nationality.name if result.swimmer.nationality else '',
                     'nationality_code': result.swimmer.nationality.code if result.swimmer.nationality else '',
                     'nationality_flag': result.swimmer.nationality.flag_url if result.swimmer.nationality else '',

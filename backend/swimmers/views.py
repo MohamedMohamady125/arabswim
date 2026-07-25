@@ -213,6 +213,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'championship_country': r.championship.country.name if r.championship.country else '',
                     'pool': r.championship.pool,
                     'age_at_competition': r.age_at_competition,
+                    'is_hc': r.is_hc,
                 })
         else:
             # Individual event
@@ -238,6 +239,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'championship_country': r.championship.country.name if r.championship.country else '',
                     'pool': r.championship.pool,
                     'age_at_competition': r.age_at_competition,
+                    'is_hc': r.is_hc,
                 })
         return Response(data)
 
@@ -674,6 +676,85 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'nationality_changes': nationality_history,
             'nationality_meet_counts': nationality_meet_counts,
         })
+
+    @action(detail=True, methods=['get'])
+    def rankings(self, request, pk=None):
+        """Return the swimmer's ranking per event across national/GCC/Arab scopes."""
+        from django.db.models import Min
+        from championships.models import Result
+        from importer.parsers.base import format_centiseconds
+
+        swimmer = self.get_object()
+        if not swimmer.nationality_id:
+            return Response([])
+
+        nat = swimmer.nationality
+        # Determine which scopes apply
+        scopes = {'national': {'swimmer__nationality_id': nat.id}}
+        if nat.region in ('GCC', 'ARAB'):
+            scopes['arab'] = {'swimmer__nationality__region__in': ['ARAB', 'GCC']}
+        if nat.region == 'GCC':
+            scopes['gcc'] = {'swimmer__nationality__region': 'GCC'}
+
+        # Best time per event+pool for this swimmer (individual, non-HC)
+        swimmer_bests = (
+            Result.objects.filter(
+                swimmer=swimmer,
+                swimmer__is_relay_team=False,
+                is_hc=False,
+                time_centiseconds__gt=0,
+            )
+            .values('event_id', 'championship__pool')
+            .annotate(best=Min('time_centiseconds'))
+        )
+
+        data = []
+        for row in swimmer_bests:
+            eid = row['event_id']
+            pool = row['championship__pool'] or ''
+            best = row['best']
+
+            ranks = {}
+            for scope_name, scope_filter in scopes.items():
+                # Count distinct swimmers with a strictly better best time
+                better_count = (
+                    Result.objects.filter(
+                        event_id=eid,
+                        championship__pool=pool,
+                        is_hc=False,
+                        time_centiseconds__gt=0,
+                        swimmer__is_relay_team=False,
+                        **scope_filter,
+                    )
+                    .values('swimmer_id')
+                    .annotate(pb=Min('time_centiseconds'))
+                    .filter(pb__lt=best)
+                    .count()
+                )
+                total = (
+                    Result.objects.filter(
+                        event_id=eid,
+                        championship__pool=pool,
+                        is_hc=False,
+                        time_centiseconds__gt=0,
+                        swimmer__is_relay_team=False,
+                        **scope_filter,
+                    )
+                    .values('swimmer_id')
+                    .distinct()
+                    .count()
+                )
+                ranks[scope_name] = {'rank': better_count + 1, 'total': total}
+
+            data.append({
+                'event_id': eid,
+                'pool': pool,
+                'best_time': format_centiseconds(best),
+                'best_time_centiseconds': best,
+                'rankings': ranks,
+            })
+
+        return Response(data)
 
     @action(detail=True, methods=['post'])
     def upload_photo(self, request, pk=None):

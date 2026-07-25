@@ -590,13 +590,18 @@ def _extract_birth_year(before_time):
 def _parse_result_line(line, event, is_international, prev_rank):
     """Try to parse a single individual result line."""
     m = re.match(r'^\s*(\d+)\.\s+(.*)$', line)
-    nc = None if m else re.match(r'^\s*[NnHh]\.?[Cc]\.?\s+(.+)$', line)
+    hc_match = None if m else re.match(r'^\s*[Hh]\.?[Cc]\.?\s+(.+)$', line)
+    nc = None if (m or hc_match) else re.match(r'^\s*[Nn]\.?[Cc]\.?\s+(.+)$', line)
     if m:
         rank = int(m.group(1))
         rest = m.group(2)
+    elif hc_match:
+        # "h.c." / "hc." (hors concours): time is valid but does not count
+        # in rankings (swimmer entered without team authorization).
+        rank = 0
+        rest = hc_match.group(1)
     elif nc:
-        # "n.c." (non classé) / "h.c." (hors concours): swam without a
-        # ranking but the time is real — keep the swimmer, rank 0.
+        # "n.c." (non classé): swam without a ranking but the time is real.
         rank = 0
         rest = nc.group(1)
     else:
@@ -663,6 +668,7 @@ def _parse_result_line(line, event, is_international, prev_rank):
         round_type=event.round_type,
         age_group=event.age_group,
         split_times=splits,
+        status='HC' if hc_match else 'OK',
     )
 
 

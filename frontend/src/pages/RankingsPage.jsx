@@ -115,8 +115,12 @@ export default function RankingsPage() {
             <option value="">Select event</option>
             {(() => {
               const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley', 'Freestyle Relay', 'Medley Relay']
+              // 100m IM only exists in SCM, not LCM
+              const filteredEvents = filters.pool === 'LCM'
+                ? events.filter(e => !(e.stroke === 'Individual Medley' && e.distance === 100))
+                : events
               const grouped = {}
-              for (const e of events) {
+              for (const e of filteredEvents) {
                 const stroke = e.stroke || 'Other'
                 if (!grouped[stroke]) grouped[stroke] = []
                 grouped[stroke].push(e)

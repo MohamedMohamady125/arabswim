@@ -474,12 +474,14 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
   const maxCount = Math.max(...finaDistribution.map(d => d.count))
 
   const TIER_COLORS = {
-    900: { bar: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600', label: 'Elite' },
-    800: { bar: 'from-sky-400 to-sky-600', text: 'text-sky-600', label: 'World Class' },
-    700: { bar: 'from-blue-400 to-blue-600', text: 'text-blue-600', label: 'Excellent' },
-    600: { bar: 'from-violet-400 to-violet-600', text: 'text-violet-600', label: 'Very Good' },
-    500: { bar: 'from-amber-400 to-amber-600', text: 'text-amber-600', label: 'Good' },
-    400: { bar: 'from-orange-300 to-orange-500', text: 'text-orange-600', label: 'Developing' },
+    'Elite':         { bar: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600' },
+    'World Class':   { bar: 'from-sky-400 to-sky-600', text: 'text-sky-600' },
+    'International': { bar: 'from-blue-400 to-blue-600', text: 'text-blue-600' },
+    'National':      { bar: 'from-violet-400 to-violet-600', text: 'text-violet-600' },
+    'Advanced':      { bar: 'from-indigo-400 to-indigo-600', text: 'text-indigo-600' },
+    'Competitive':   { bar: 'from-amber-400 to-amber-600', text: 'text-amber-600' },
+    'Developing':    { bar: 'from-orange-300 to-orange-500', text: 'text-orange-600' },
+    'Novice':        { bar: 'from-gray-300 to-gray-400', text: 'text-gray-500' },
   }
 
   return (
@@ -498,11 +500,12 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
       </div>
       <div className="space-y-3">
         {finaDistribution.map((tier, i) => {
-          const colors = TIER_COLORS[tier.threshold] || TIER_COLORS[400]
+          const colors = TIER_COLORS[tier.label] || TIER_COLORS['Novice']
           const pct = maxCount > 0 ? (tier.count / maxCount) * 100 : 0
+          const rangeLabel = tier.high >= 1000 ? `${tier.low}+` : `${tier.low}-${tier.high}`
           return (
-            <div key={tier.threshold} className="flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${(i + 6) * 0.08}s` }}>
-              <div className={`w-8 sm:w-11 text-right text-[10px] sm:text-xs font-black ${colors.text}`}>{tier.threshold}+</div>
+            <div key={tier.low} className="flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${(i + 6) * 0.08}s` }}>
+              <div className={`w-14 sm:w-16 text-right text-[10px] sm:text-xs font-black ${colors.text}`}>{rangeLabel}</div>
               <div className="flex-1 bg-gray-100 rounded-full h-5 sm:h-7 overflow-hidden relative">
                 <div className={`bg-gradient-to-r ${colors.bar} h-full rounded-full animate-grow-width flex items-center justify-end pr-2`}
                   style={{ width: `${Math.max(pct, tier.count > 0 ? 10 : 0)}%`, animationDelay: `${(i + 6) * 0.1}s` }}>
@@ -514,7 +517,7 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
                   <span className="absolute left-[calc(10%+6px)] top-1/2 -translate-y-1/2 text-xs font-black text-gray-500">{tier.count}</span>
                 )}
               </div>
-              <div className={`w-20 text-[10px] font-semibold ${colors.text} hidden md:block`}>{colors.label}</div>
+              <div className={`w-20 text-[10px] font-semibold ${colors.text} hidden md:block`}>{tier.label}</div>
             </div>
           )
         })}
@@ -868,14 +871,16 @@ function GalleryTab({ swimmerId }) {
 }
 
 /* ───────── Progression Tab ───────── */
-const STROKE_COLORS = {
-  Freestyle: { line: '#0ea5e9', bg: 'from-sky-50 to-white', badge: 'bg-sky-100 text-sky-700', dot: '#0284c7' },
-  Backstroke: { line: '#8b5cf6', bg: 'from-violet-50 to-white', badge: 'bg-violet-100 text-violet-700', dot: '#7c3aed' },
-  Butterfly: { line: '#f59e0b', bg: 'from-amber-50 to-white', badge: 'bg-amber-100 text-amber-700', dot: '#d97706' },
-  Breaststroke: { line: '#10b981', bg: 'from-emerald-50 to-white', badge: 'bg-emerald-100 text-emerald-700', dot: '#059669' },
-  'Individual Medley': { line: '#ec4899', bg: 'from-pink-50 to-white', badge: 'bg-pink-100 text-pink-700', dot: '#db2777' },
-}
-const DEFAULT_STROKE_COLOR = { line: '#6366f1', bg: 'from-indigo-50 to-white', badge: 'bg-indigo-100 text-indigo-700', dot: '#4f46e5' }
+const LINE_COLORS = [
+  { line: '#2563eb', label: 'text-blue-700', bg: 'bg-blue-500' },
+  { line: '#dc2626', label: 'text-red-700', bg: 'bg-red-500' },
+  { line: '#16a34a', label: 'text-green-700', bg: 'bg-green-500' },
+  { line: '#eab308', label: 'text-yellow-600', bg: 'bg-yellow-500' },
+  { line: '#ec4899', label: 'text-pink-700', bg: 'bg-pink-500' },
+  { line: '#8b5cf6', label: 'text-violet-700', bg: 'bg-violet-500' },
+  { line: '#f97316', label: 'text-orange-700', bg: 'bg-orange-500' },
+  { line: '#06b6d4', label: 'text-cyan-700', bg: 'bg-cyan-500' },
+]
 
 function formatTimeShort(cs) {
   if (!cs) return ''
@@ -886,119 +891,226 @@ function formatTimeShort(cs) {
   return `${seconds}.${String(centis).padStart(2, '0')}`
 }
 
-function EventProgressionCard({ line, index }) {
-  const colors = STROKE_COLORS[line.stroke] || DEFAULT_STROKE_COLOR
-  const points = line.points
-  if (!points.length) return null
+function formatTimeSeconds(cs) {
+  const minutes = Math.floor(cs / 6000)
+  const seconds = Math.floor((cs % 6000) / 100)
+  const centis = cs % 100
+  if (minutes) return `${minutes}:${String(seconds).padStart(2, '0')}`
+  return `${seconds}.${String(centis).padStart(2, '0')}`
+}
 
-  const best = Math.min(...points.map(p => p.time_cs))
-  const worst = Math.max(...points.map(p => p.time_cs))
-  const latest = points[points.length - 1]
-  const first = points[0]
-  const improved = latest.time_cs < first.time_cs
-  const diff = first.time_cs - latest.time_cs
+function CombinedProgressionChart({ lines }) {
+  if (!lines.length) return null
 
-  // SVG chart dimensions
-  const W = 600, H = 160, PX = 50, PY = 35, PB = 20
-  const chartW = W - PX * 2
-  const chartH = H - PY - PB
-  const range = worst - best || 1
-  const xStep = points.length > 1 ? chartW / (points.length - 1) : 0
+  // Collect all dates and compute global time range
+  const allDates = new Set()
+  lines.forEach(l => l.points.forEach(p => allDates.add(p.date)))
+  const sortedDates = [...allDates].sort()
 
-  const getX = (i) => PX + i * xStep
-  const getY = (cs) => PY + ((cs - best) / range) * chartH
+  let globalMin = Infinity, globalMax = -Infinity
+  lines.forEach(l => l.points.forEach(p => {
+    if (p.time_cs < globalMin) globalMin = p.time_cs
+    if (p.time_cs > globalMax) globalMax = p.time_cs
+  }))
 
-  // Build path
-  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${getX(i)},${getY(p.time_cs)}`).join(' ')
-  // Area fill
-  const areaD = `${pathD} L${getX(points.length - 1)},${H - PB} L${getX(0)},${H - PB} Z`
+  // Add 5% padding to range
+  const range = globalMax - globalMin || 1
+  const paddedMin = globalMin - range * 0.08
+  const paddedMax = globalMax + range * 0.08
+
+  // SVG dimensions
+  const W = 800, H = 400, PL = 65, PR = 30, PT = 50, PB = 45
+  const chartW = W - PL - PR
+  const chartH = H - PT - PB
+
+  const dateToX = (date) => {
+    if (sortedDates.length === 1) return PL + chartW / 2
+    const idx = sortedDates.indexOf(date)
+    return PL + (idx / (sortedDates.length - 1)) * chartW
+  }
+
+  const timeToY = (cs) => {
+    // Lower time = higher on chart (better)
+    return PT + ((cs - paddedMin) / (paddedMax - paddedMin)) * chartH
+  }
+
+  // Y-axis grid: 5-6 evenly spaced ticks
+  const tickCount = 6
+  const yTicks = []
+  for (let i = 0; i < tickCount; i++) {
+    const cs = paddedMin + (i / (tickCount - 1)) * (paddedMax - paddedMin)
+    yTicks.push(Math.round(cs))
+  }
+
+  // X-axis labels: show all dates if ≤ 8, else pick evenly spaced
+  const xLabels = sortedDates.length <= 10 ? sortedDates : sortedDates.filter((_, i) =>
+    i === 0 || i === sortedDates.length - 1 || i % Math.ceil(sortedDates.length / 8) === 0
+  )
+
+  // Tooltip state managed via hover
+  const [tooltip, setTooltip] = useState(null)
 
   return (
-    <div className={`bg-gradient-to-br ${colors.bg} rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up`}
-      style={{ animationDelay: `${index * 0.08}s` }}>
-      {/* Header */}
-      <div className="px-5 py-4 flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-gray-800 text-base">{line.event_name}</h4>
-          <div className="flex items-center gap-2 mt-1">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${colors.badge}`}>{line.stroke}</span>
-            {points.length > 1 && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${improved ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
-                {improved ? '\u2193' : '\u2191'} {formatTimeShort(Math.abs(diff))}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Best</div>
-          <div className="font-mono font-black text-lg" style={{ color: colors.dot }}>{formatTimeShort(best)}</div>
+    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+      {/* Title + Legend */}
+      <div className="px-5 pt-4 pb-2">
+        <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wide mb-3">
+          Swimming Progression by Event
+        </h4>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+          {lines.map((line, i) => {
+            const color = LINE_COLORS[i % LINE_COLORS.length]
+            return (
+              <div key={line.event_id} className="flex items-center gap-1.5">
+                <span className={`w-3 h-0.5 rounded ${color.bg}`} style={{ display: 'inline-block' }} />
+                <span className={`w-2 h-2 rounded-full ${color.bg}`} style={{ display: 'inline-block' }} />
+                <span className={`w-3 h-0.5 rounded ${color.bg}`} style={{ display: 'inline-block' }} />
+                <span className={`text-xs font-semibold ${color.label}`}>{line.event_name}</span>
+              </div>
+            )
+          })}
         </div>
       </div>
 
       {/* Chart */}
-      <div className="px-3 pb-4">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 'auto', maxHeight: '200px' }}>
-          {/* Area fill */}
-          <defs>
-            <linearGradient id={`grad-${line.event_id}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={colors.line} stopOpacity="0.15" />
-              <stop offset="100%" stopColor={colors.line} stopOpacity="0.02" />
-            </linearGradient>
-          </defs>
-          <path d={areaD} fill={`url(#grad-${line.event_id})`} />
+      <div className="px-3 pb-2">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 'auto', minHeight: '300px', maxHeight: '450px' }}>
+          {/* Background */}
+          <rect x={PL} y={PT} width={chartW} height={chartH} fill="#f8fafc" rx="4" />
 
-          {/* Grid lines */}
-          {[0, 0.5, 1].map(frac => {
-            const y = PY + frac * chartH
-            return <line key={frac} x1={PX} x2={W - PX} y1={y} y2={y} stroke="#e5e7eb" strokeDasharray="4 4" />
-          })}
-
-          {/* Line */}
-          <path d={pathD} fill="none" stroke={colors.line} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-
-          {/* Points with time labels */}
-          {points.map((p, i) => {
-            const x = getX(i)
-            const y = getY(p.time_cs)
-            const isBest = p.time_cs === best
+          {/* Y-axis grid lines + labels */}
+          {yTicks.map((cs, i) => {
+            const y = timeToY(cs)
             return (
               <g key={i}>
-                {/* Time label above point */}
-                <text
-                  x={x} y={y - 14}
-                  textAnchor="middle"
-                  className="font-mono"
-                  style={{ fontSize: '11px', fontWeight: 700, fill: isBest ? colors.dot : '#6b7280' }}
-                >
-                  {formatTimeShort(p.time_cs)}
-                </text>
-                {/* Dot */}
-                <circle cx={x} cy={y} r={isBest ? 6 : 4.5} fill="#fff" stroke={colors.line} strokeWidth="2.5" />
-                {isBest && <circle cx={x} cy={y} r={3} fill={colors.dot} />}
-                {/* Date label below */}
-                <text x={x} y={H - 4} textAnchor="middle" style={{ fontSize: '10px', fill: '#9ca3af' }}>
-                  {new Date(p.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                <line x1={PL} x2={PL + chartW} y1={y} y2={y} stroke="#e2e8f0" strokeDasharray="4 3" />
+                <text x={PL - 8} y={y + 4} textAnchor="end" style={{ fontSize: '11px', fill: '#64748b', fontFamily: 'monospace' }}>
+                  {formatTimeSeconds(cs)}
                 </text>
               </g>
             )
           })}
+
+          {/* Y-axis title */}
+          <text x={15} y={PT + chartH / 2} textAnchor="middle" transform={`rotate(-90, 15, ${PT + chartH / 2})`}
+            style={{ fontSize: '11px', fill: '#94a3b8', fontWeight: 600 }}>
+            Time (Seconds)
+          </text>
+
+          {/* X-axis labels */}
+          {xLabels.map(date => {
+            const x = dateToX(date)
+            const d = new Date(date)
+            return (
+              <g key={date}>
+                <line x1={x} x2={x} y1={PT} y2={PT + chartH} stroke="#e2e8f0" strokeDasharray="2 4" opacity="0.5" />
+                <text x={x} y={H - 8} textAnchor="middle" style={{ fontSize: '10px', fill: '#94a3b8' }}>
+                  {d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                </text>
+              </g>
+            )
+          })}
+
+          {/* Event lines */}
+          {lines.map((line, li) => {
+            const color = LINE_COLORS[li % LINE_COLORS.length]
+            const pts = line.points
+            if (pts.length === 0) return null
+
+            const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${dateToX(p.date)},${timeToY(p.time_cs)}`).join(' ')
+
+            return (
+              <g key={line.event_id}>
+                {/* Line */}
+                <path d={pathD} fill="none" stroke={color.line} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                {/* Points + time labels */}
+                {pts.map((p, i) => {
+                  const x = dateToX(p.date)
+                  const y = timeToY(p.time_cs)
+                  const isBest = p.time_cs === Math.min(...pts.map(pp => pp.time_cs))
+                  return (
+                    <g key={i}
+                      onMouseEnter={() => setTooltip({ x, y, line: line.event_name, ...p })}
+                      onMouseLeave={() => setTooltip(null)}
+                      style={{ cursor: 'pointer' }}>
+                      {/* Time label */}
+                      <text x={x} y={y - 12} textAnchor="middle"
+                        style={{ fontSize: '10px', fontWeight: 700, fill: color.line, fontFamily: 'monospace' }}>
+                        {formatTimeShort(p.time_cs)}
+                      </text>
+                      {/* Dot */}
+                      <circle cx={x} cy={y} r={isBest ? 5.5 : 4} fill="#fff" stroke={color.line} strokeWidth="2.5" />
+                      {isBest && <circle cx={x} cy={y} r={2.5} fill={color.line} />}
+                    </g>
+                  )
+                })}
+              </g>
+            )
+          })}
+
+          {/* Tooltip */}
+          {tooltip && (
+            <g>
+              <rect x={tooltip.x - 80} y={tooltip.y + 15} width="160" height="48" rx="6" fill="white" stroke="#e2e8f0" strokeWidth="1" />
+              <text x={tooltip.x} y={tooltip.y + 32} textAnchor="middle" style={{ fontSize: '11px', fontWeight: 700, fill: '#1e293b' }}>
+                {tooltip.line}
+              </text>
+              <text x={tooltip.x} y={tooltip.y + 48} textAnchor="middle" style={{ fontSize: '10px', fill: '#64748b' }}>
+                {formatTimeShort(tooltip.time_cs)} · {tooltip.meet?.substring(0, 25)}{tooltip.fina ? ` · ${tooltip.fina} FINA` : ''}
+              </text>
+            </g>
+          )}
         </svg>
       </div>
 
-      {/* Meet details */}
-      <div className="px-5 pb-4">
-        <div className="flex flex-wrap gap-2">
-          {points.map((p, i) => (
-            <div key={i} className="flex items-center gap-1.5 text-[11px] text-gray-500 bg-white/70 rounded-lg px-2.5 py-1 border border-gray-100">
-              <span className="font-mono font-bold text-gray-700">{formatTimeShort(p.time_cs)}</span>
-              <span className="text-gray-300">·</span>
-              <span className="truncate max-w-[120px]">{p.meet}</span>
-              {p.fina > 0 && <>
-                <span className="text-gray-300">·</span>
-                <span className="font-bold text-gray-500">{p.fina}</span>
-              </>}
-            </div>
-          ))}
+      {/* Details table below chart */}
+      <div className="px-5 pb-5">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2 pr-3 text-gray-400 font-semibold">Event</th>
+                <th className="text-left py-2 pr-3 text-gray-400 font-semibold">Best</th>
+                <th className="text-left py-2 pr-3 text-gray-400 font-semibold">Latest</th>
+                <th className="text-left py-2 pr-3 text-gray-400 font-semibold">Change</th>
+                <th className="text-left py-2 text-gray-400 font-semibold">Best Meet</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line, li) => {
+                const color = LINE_COLORS[li % LINE_COLORS.length]
+                const pts = line.points
+                if (!pts.length) return null
+                const best = Math.min(...pts.map(p => p.time_cs))
+                const bestPoint = pts.find(p => p.time_cs === best)
+                const latest = pts[pts.length - 1]
+                const first = pts[0]
+                const diff = first.time_cs - latest.time_cs
+                const improved = diff > 0
+                return (
+                  <tr key={line.event_id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="py-2 pr-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${color.bg}`} />
+                        <span className="font-semibold text-gray-800">{line.event_name}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3 font-mono font-bold" style={{ color: color.line }}>{formatTimeShort(best)}</td>
+                    <td className="py-2 pr-3 font-mono text-gray-600">{formatTimeShort(latest.time_cs)}</td>
+                    <td className="py-2 pr-3">
+                      {pts.length > 1 && (
+                        <span className={`font-mono font-bold ${improved ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {improved ? '\u2193' : '\u2191'} {formatTimeShort(Math.abs(diff))}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 text-gray-500 truncate max-w-[200px]">{bestPoint?.meet}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1043,11 +1155,7 @@ function ProgressionTab({ swimmerId }) {
           <p className="text-gray-400 font-medium">No progression data for {pool === 'LCM' ? 'Long Course' : 'Short Course'}</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {lines.map((line, i) => (
-            <EventProgressionCard key={line.event_id} line={line} index={i} />
-          ))}
-        </div>
+        <CombinedProgressionChart lines={lines} />
       )}
     </div>
   )

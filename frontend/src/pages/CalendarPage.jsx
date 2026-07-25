@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getCalendarEvents, createCalendarEvent } from '../api/calendar'
-import { getChampionships, updateChampionship, getClassifications, getSubClassifications } from '../api/championships'
+import { createCalendarEvent } from '../api/calendar'
+import { getChampionships, updateChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import { POOL_TYPES } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
@@ -11,6 +11,112 @@ dayjs.extend(customParseFormat)
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+function Countdown({ targetDate }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const diff = targetDate.getTime() - now
+  if (diff <= 0) return null
+
+  const days = Math.floor(diff / 86400000)
+  const hours = Math.floor((diff % 86400000) / 3600000)
+  const mins = Math.floor((diff % 3600000) / 60000)
+  const secs = Math.floor((diff % 60000) / 1000)
+
+  return (
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-widest text-white/70 mb-2 flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Starts in
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { val: days, label: 'Days' },
+          { val: hours, label: 'Hours' },
+          { val: mins, label: 'Min' },
+          { val: secs, label: 'Sec' },
+        ].map(({ val, label }) => (
+          <div key={label} className="bg-white/10 backdrop-blur-sm rounded-lg px-2 py-2 text-center border border-white/20">
+            <div className="text-2xl font-black text-white leading-none">{String(val).padStart(2, '0')}</div>
+            <div className="text-[9px] font-bold uppercase tracking-wider text-white/60 mt-1">{label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FeaturedMeet({ meet: c, navigate }) {
+  const d = dayjs(c.date, 'DD/MM/YYYY')
+  const endD = c.end_date ? dayjs(c.end_date, 'DD/MM/YYYY') : null
+  const targetDate = d.isValid() ? d.toDate() : null
+  const isUpcoming = targetDate && targetDate.getTime() > Date.now()
+
+  const dateStr = d.isValid()
+    ? (endD && endD.isValid() && endD.format('DD/MM/YYYY') !== d.format('DD/MM/YYYY')
+        ? `${d.date()}-${endD.date()} ${d.format('MMM')}. ${d.year()}`
+        : d.format('D MMM YYYY'))
+    : ''
+
+  return (
+    <div className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer group"
+      onClick={() => navigate(`/meets/${c.id}`)}>
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-blue-900 to-cyan-900">
+        {c.meet_photo && (
+          <img src={c.meet_photo} alt="" className="w-full h-full object-cover opacity-40" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+      </div>
+
+      <div className="relative px-6 sm:px-8 py-8 sm:py-10">
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full mb-5 border border-white/20">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="text-xs font-bold text-white uppercase tracking-wider">Featured Competition</span>
+        </div>
+
+        {/* Title */}
+        <h2 className="text-2xl sm:text-3xl font-black text-white mb-2 group-hover:text-cyan-200 transition-colors">{c.name}</h2>
+
+        {/* Subtitle */}
+        <p className="text-white/70 text-sm sm:text-base mb-5">
+          {c.pool === 'LCM' ? 'Long Course 50m' : 'Short Course 25m'}
+        </p>
+
+        {/* Location & Date */}
+        <div className="space-y-2 mb-6">
+          {c.location && (
+            <div className="flex items-center gap-2 text-white/80 text-sm">
+              <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+              </svg>
+              {c.location}{c.country_detail ? `, ${c.country_detail.name}` : ''}
+            </div>
+          )}
+          {dateStr && (
+            <div className="flex items-center gap-2 text-white/80 text-sm">
+              <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+              </svg>
+              {dateStr}
+            </div>
+          )}
+        </div>
+
+        {/* Countdown */}
+        {isUpcoming && targetDate && <Countdown targetDate={targetDate} />}
+      </div>
+    </div>
+  )
+}
 
 function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
   const [editingField, setEditingField] = useState(null)
@@ -45,6 +151,17 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
     finally { setSaving(false) }
   }
 
+  const uploadPhoto = async (file) => {
+    setSaving(true)
+    try {
+      const data = new FormData()
+      data.append('meet_photo', file)
+      const res = await updateChampionship(c.id, data)
+      onUpdate({ ...c, meet_photo: res.data.meet_photo })
+    } catch { /* ignore */ }
+    finally { setSaving(false) }
+  }
+
   return (
     <div className="bg-gray-50 border border-cyan-500 border-t-0 rounded-b-xl px-6 py-4">
       {/* Meet Info */}
@@ -67,6 +184,27 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
           <div className="text-xs text-gray-500 mb-1">Location</div>
           <div className="text-sm font-medium">{c.location || '-'}</div>
         </div>
+      </div>
+
+      {/* Meet Photo */}
+      <div className="mb-5">
+        <div className="text-xs text-gray-500 mb-2 font-medium">Meet Photo</div>
+        {c.meet_photo ? (
+          <div className="flex items-center gap-3">
+            <img src={c.meet_photo} alt="" className="w-24 h-16 rounded-lg object-cover border" />
+            <label className="text-xs text-cyan-600 hover:text-cyan-800 cursor-pointer font-medium" onClick={e => e.stopPropagation()}>
+              Change photo
+              <input type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files[0]) uploadPhoto(e.target.files[0]) }} />
+            </label>
+          </div>
+        ) : (
+          <label className="inline-block cursor-pointer" onClick={e => e.stopPropagation()}>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-400 hover:border-cyan-400 hover:text-cyan-500">
+              + Upload Meet Photo
+            </div>
+            <input type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files[0]) uploadPhoto(e.target.files[0]) }} />
+          </label>
+        )}
       </div>
 
       {/* Three main sections */}
@@ -190,12 +328,8 @@ export default function CalendarPage() {
   const navigate = useNavigate()
   const [championships, setChampionships] = useState([])
   const [countries, setCountries] = useState([])
-  const [classifications, setClassifications] = useState([])
-  const [subClassifications, setSubClassifications] = useState([])
   const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()))
   const [filterCountry, setFilterCountry] = useState('')
-  const [filterClassification, setFilterClassification] = useState('')
-  const [filterSub, setFilterSub] = useState('')
   const [selectedMeet, setSelectedMeet] = useState(null)
 
   // Add event
@@ -210,28 +344,23 @@ export default function CalendarPage() {
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
-    getClassifications().then(res => setClassifications(res.data)).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    setFilterSub('')
-    if (filterClassification) {
-      getSubClassifications(filterClassification).then(res => setSubClassifications(res.data)).catch(() => {})
-    } else {
-      setSubClassifications([])
-    }
-  }, [filterClassification])
 
   useEffect(() => {
     const params = { page_size: 500, ordering: 'date' }
     if (filterYear) params.year = filterYear
     if (filterCountry) params.country = filterCountry
-    if (filterClassification) params.classification = filterClassification
-    if (filterSub) params.sub_classification = filterSub
     getChampionships(params).then(res => {
       setChampionships(res.data.results || res.data)
     }).catch(() => {})
-  }, [filterYear, filterCountry, filterClassification, filterSub])
+  }, [filterYear, filterCountry])
+
+  // Find the next upcoming meet for the featured card
+  const now = new Date()
+  const upcomingMeet = championships.find(c => {
+    const d = dayjs(c.date, 'DD/MM/YYYY')
+    return d.isValid() && d.toDate() >= now
+  }) || (championships.length > 0 ? championships[championships.length - 1] : null)
 
   // Group championships by month
   const grouped = {}
@@ -251,67 +380,8 @@ export default function CalendarPage() {
 
   return (
     <div>
-      {/* Hero Banner */}
-      <div className="relative rounded-xl overflow-hidden mb-8 bg-gradient-to-br from-slate-800 to-cyan-900 text-white">
-        <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")'}} />
-        <div className="relative px-8 py-10">
-          <h1 className="text-3xl font-bold mb-2">Competition Calendar</h1>
-          <p className="text-slate-300 text-lg">Dates, status, and official results &mdash; the full competition schedule in one place.</p>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent rounded-b-xl" />
-      </div>
-
-      {/* Classification filters */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Browse by Classification</h2>
-          {(filterClassification || filterSub) && (
-            <button onClick={() => { setFilterClassification(''); setFilterSub('') }}
-              className="text-xs text-cyan-600 hover:text-cyan-800 font-medium">
-              Clear classification filters &times;
-            </button>
-          )}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Classification</label>
-            <select value={filterClassification} onChange={(e) => setFilterClassification(e.target.value)}
-              className="w-full border-2 border-cyan-500 rounded-lg px-4 py-2.5 text-sm bg-white font-medium">
-              <option value="">All Classifications</option>
-              {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Sub-classification</label>
-            <select value={filterSub} onChange={(e) => setFilterSub(e.target.value)}
-              disabled={!filterClassification}
-              className={`w-full border-2 rounded-lg px-4 py-2.5 text-sm font-medium ${
-                filterClassification ? 'border-cyan-500 bg-white' : 'border-gray-200 bg-gray-50 text-gray-400'
-              }`}>
-              <option value="">
-                {!filterClassification ? 'Pick a classification first' :
-                  subClassifications.length ? 'All Sub-classifications' : 'No sub-classifications'}
-              </option>
-              {subClassifications.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-        </div>
-        {(filterClassification || filterSub) && (
-          <div className="flex items-center gap-2 mt-3 text-sm">
-            <span className="text-gray-500">Showing:</span>
-            {filterClassification && (
-              <span className="bg-cyan-100 text-cyan-700 px-2.5 py-1 rounded-full text-xs font-semibold">
-                {classifications.find(c => String(c.id) === String(filterClassification))?.name}
-              </span>
-            )}
-            {filterSub && (
-              <span className="bg-teal-100 text-teal-700 px-2.5 py-1 rounded-full text-xs font-semibold">
-                {subClassifications.find(s => String(s.id) === String(filterSub))?.name}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Featured upcoming meet */}
+      {upcomingMeet && <FeaturedMeet meet={upcomingMeet} navigate={navigate} />}
 
       {/* Filters */}
       <div className="flex items-center justify-between mb-6">
@@ -365,11 +435,17 @@ export default function CalendarPage() {
                       isSelected ? 'border-cyan-500 shadow-md rounded-t-xl' : 'border-gray-200 rounded-xl'
                     }`}
                   >
-                    {/* Date badge */}
-                    <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
-                      <span className="text-3xl font-bold leading-none">{d.date()}</span>
-                      <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{MONTH_SHORT[d.month()]}</span>
-                    </div>
+                    {/* Meet photo or date badge */}
+                    {c.meet_photo ? (
+                      <div className="w-24 h-20 rounded-xl overflow-hidden shrink-0 shadow">
+                        <img src={c.meet_photo} alt={c.name} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
+                        <span className="text-3xl font-bold leading-none">{d.date()}</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{MONTH_SHORT[d.month()]}</span>
+                      </div>
+                    )}
 
                     {/* Meet info */}
                     <div className="flex-1 min-w-0">

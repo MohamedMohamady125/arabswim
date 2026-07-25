@@ -388,18 +388,28 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             .first()
         )
 
-        # FINA points distribution — count of results at each tier
+        # FINA points distribution — count of results in each tier range
         fina_results = list(
             Result.objects.filter(swimmer=swimmer, fina_points__isnull=False)
             .values_list('fina_points', flat=True)
         )
+        tier_ranges = [
+            (900, 1000, 'Elite'),
+            (800, 899, 'World Class'),
+            (700, 799, 'International'),
+            (600, 699, 'National'),
+            (500, 599, 'Advanced'),
+            (400, 499, 'Competitive'),
+            (200, 399, 'Developing'),
+            (0, 199, 'Novice'),
+        ]
         fina_distribution = []
-        for threshold in [900, 800, 700, 600, 500, 400]:
-            count = sum(1 for p in fina_results if p >= threshold)
-            if count > 0 or fina_distribution:
-                fina_distribution.append({'threshold': threshold, 'count': count})
-        # Only include tiers that the swimmer has actually reached
-        # (trim trailing zero tiers at the bottom)
+        for low, high, label in tier_ranges:
+            count = sum(1 for p in fina_results if low <= p <= high)
+            fina_distribution.append({'low': low, 'high': high, 'label': label, 'count': count})
+        # Trim empty tiers from top and bottom
+        while fina_distribution and fina_distribution[0]['count'] == 0:
+            fina_distribution.pop(0)
         while fina_distribution and fina_distribution[-1]['count'] == 0:
             fina_distribution.pop()
 

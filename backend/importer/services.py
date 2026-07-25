@@ -356,6 +356,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
 
     Returns: Summary of what was saved.
     """
+    from .matcher import invalidate_norm_cache
+    invalidate_norm_cache()
+
     meet_info = preview_data['meet']
 
     # Resolve the country for swimmers fallback

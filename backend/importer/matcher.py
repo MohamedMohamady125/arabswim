@@ -250,6 +250,39 @@ def _get_swimmer_birth_year(swimmer):
     return 0
 
 
+_norm_cache = None  # {normalized_name: [swimmer_id, ...], sorted_name: [swimmer_id, ...]}
+_norm_cache_version = None
+
+
+def _get_norm_cache():
+    """Build or return a cached index of normalized swimmer names.
+
+    The cache is rebuilt when the swimmer count changes (cheap staleness check).
+    """
+    global _norm_cache, _norm_cache_version
+    current_count = Swimmer.objects.filter(is_relay_team=False).count()
+    if _norm_cache is not None and _norm_cache_version == current_count:
+        return _norm_cache
+    norm_index = {}   # normalized_name -> [id, ...]
+    sorted_index = {}  # sorted_words -> [id, ...]
+    for sid, sname in Swimmer.objects.filter(
+            is_relay_team=False).values_list('id', 'name'):
+        norm = normalize_for_matching(sname)
+        norm_index.setdefault(norm, []).append(sid)
+        sorted_key = ' '.join(sorted(norm.split()))
+        sorted_index.setdefault(sorted_key, []).append(sid)
+    _norm_cache = (norm_index, sorted_index)
+    _norm_cache_version = current_count
+    return _norm_cache
+
+
+def invalidate_norm_cache():
+    """Call after creating/updating swimmers to force cache rebuild."""
+    global _norm_cache, _norm_cache_version
+    _norm_cache = None
+    _norm_cache_version = None
+
+
 def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=None):
     """
     Find the best matching swimmer in the database.
@@ -276,20 +309,10 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
     # Check both the raw name and the normalized version
     candidates = list(Swimmer.objects.filter(name__iexact=name, is_relay_team=False))
     if not candidates:
-        # Single pass over (id, name) pairs — much cheaper than hydrating
-        # full Swimmer objects. Exact-normalized matches are preferred over
-        # word-order matches ("Ali TAMER SAYED" vs "Ali SAYED TAMER").
+        # Use the cached normalized name index instead of scanning all swimmers
+        norm_index, sorted_index = _get_norm_cache()
         sorted_normalized = ' '.join(sorted(normalized.split()))
-        normalized_ids = []
-        word_order_ids = []
-        for sid, sname in Swimmer.objects.filter(
-                is_relay_team=False).values_list('id', 'name'):
-            norm = normalize_for_matching(sname)
-            if norm == normalized:
-                normalized_ids.append(sid)
-            elif ' '.join(sorted(norm.split())) == sorted_normalized:
-                word_order_ids.append(sid)
-        matched_ids = normalized_ids or word_order_ids
+        matched_ids = norm_index.get(normalized, []) or sorted_index.get(sorted_normalized, [])
         if matched_ids:
             candidates = list(Swimmer.objects.filter(id__in=matched_ids))
 

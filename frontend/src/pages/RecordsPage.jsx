@@ -40,10 +40,14 @@ export default function RecordsPage() {
     })
   }
 
-  const menRecords = records.filter(r => r.gender === 'M')
-  const womenRecords = records.filter(r => r.gender === 'F')
+  const individualRecords = records.filter(r => !r.is_relay)
+  const relayRecords = records.filter(r => r.is_relay)
+  const menRecords = individualRecords.filter(r => r.gender === 'M')
+  const womenRecords = individualRecords.filter(r => r.gender === 'F')
+  const menRelayRecords = relayRecords.filter(r => r.gender === 'M')
+  const womenRelayRecords = relayRecords.filter(r => r.gender === 'F')
 
-  const RecordTable = ({ title, data }) => (
+  const RecordTable = ({ title, data, isRelay }) => (
     <div className="mb-6 sm:mb-8">
       <h2 className="text-base sm:text-lg font-bold mb-2 sm:mb-3">{title}</h2>
       <div className="bg-white rounded-lg border overflow-hidden">
@@ -52,8 +56,8 @@ export default function RecordsPage() {
           <thead>
             <tr className="bg-gray-50 border-b">
               <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Event</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Swimmer</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden sm:table-cell">Nationality</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{isRelay ? 'Team' : 'Swimmer'}</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden sm:table-cell">{isRelay ? 'Country' : 'Nationality'}</th>
               <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Time</th>
               <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden md:table-cell">FINA</th>
               <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden lg:table-cell">Championship</th>
@@ -141,6 +145,8 @@ export default function RecordsPage() {
         <>
           {(!filters.gender || filters.gender === 'M') && <RecordTable title="Men" data={menRecords} />}
           {(!filters.gender || filters.gender === 'F') && <RecordTable title="Women" data={womenRecords} />}
+          {(!filters.gender || filters.gender === 'M') && menRelayRecords.length > 0 && <RecordTable title="Men Relay" data={menRelayRecords} isRelay />}
+          {(!filters.gender || filters.gender === 'F') && womenRelayRecords.length > 0 && <RecordTable title="Women Relay" data={womenRelayRecords} isRelay />}
         </>
       )}
     </div>

@@ -17,7 +17,7 @@ export default function RankingsPage() {
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
-    getEvents().then(res => {
+    getEvents({ has_results: true }).then(res => {
       setEvents(res.data)
       // Auto-select first non-relay event
       if (res.data.length && !filters.event) {
@@ -114,10 +114,9 @@ export default function RankingsPage() {
           <select value={filters.event} onChange={(e) => updateFilter('event', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
             <option value="">Select event</option>
             {(() => {
-              const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
-              const individual = events.filter(e => !e.is_relay)
+              const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley', 'Freestyle Relay', 'Medley Relay']
               const grouped = {}
-              for (const e of individual) {
+              for (const e of events) {
                 const stroke = e.stroke || 'Other'
                 if (!grouped[stroke]) grouped[stroke] = []
                 grouped[stroke].push(e)
@@ -147,14 +146,18 @@ export default function RankingsPage() {
         ))}
       </div>
 
+      {(() => {
+        const selectedEvent = events.find(e => e.id.toString() === filters.event)
+        const isRelay = selectedEvent?.is_relay
+        return (
       <div className="bg-white rounded-lg border overflow-hidden max-h-[700px] overflow-y-auto">
         <table className="w-full">
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50 border-b">
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Swimmer Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Age</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nationality</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isRelay ? 'Team' : 'Swimmer Name'}</th>
+              {!isRelay && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Age</th>}
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isRelay ? 'Country' : 'Nationality'}</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Championship Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
@@ -170,7 +173,7 @@ export default function RankingsPage() {
               <tr key={i} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{isTied ? '--' : r.rank}</td>
                 <td className="px-4 py-3 text-sm font-medium">{r.swimmer_name}</td>
-                <td className="px-4 py-3 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
+                {!isRelay && <td className="px-4 py-3 text-sm text-gray-500">{r.age_at_competition || '-'}</td>}
                 <td className="px-4 py-3 text-sm"><CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} name={r.nationality} /></td>
                 <td className="px-4 py-3 text-sm font-mono">{r.time}</td>
                 <td className="px-4 py-3 text-sm">{r.championship_name}</td>
@@ -181,13 +184,15 @@ export default function RankingsPage() {
               )
             })}
             {rankings.length === 0 && (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+              <tr><td colSpan={isRelay ? 8 : 9} className="px-4 py-8 text-center text-gray-500">
                 {filters.event ? 'No rankings found for these filters.' : 'Select an event above to view rankings.'}
               </td></tr>
             )}
           </tbody>
         </table>
       </div>
+        )
+      })()}
       {pagination.count > 0 && <Pagination {...pagination} currentPage={page} onPageChange={setPage} pageSize={50} />}
     </div>
   )

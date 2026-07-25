@@ -31,6 +31,10 @@ import AlbumDetailPage from './pages/AlbumDetailPage'
 import CountriesPage from './pages/CountriesPage'
 import CountryProfilePage from './pages/CountryProfilePage'
 import CompareSwimmersPage from './pages/CompareSwimmersPage'
+import QualifyingTimesPage from './pages/QualifyingTimesPage'
+import SponsorsPage from './pages/SponsorsPage'
+import CoachesPage from './pages/CoachesPage'
+import CoachFormPage from './pages/CoachFormPage'
 
 function ProtectedRoute({ children }) {
   const { token } = useAuth()
@@ -78,6 +82,11 @@ export default function App() {
         <Route path="media/albums/:id" element={<AlbumDetailPage />} />
         <Route path="countries" element={<CountriesPage />} />
         <Route path="countries/:id" element={<CountryProfilePage />} />
+        <Route path="qualifying-times" element={<QualifyingTimesPage />} />
+        <Route path="sponsors" element={<SponsorsPage />} />
+        <Route path="coaches" element={<CoachesPage />} />
+        <Route path="coaches/new" element={<CoachFormPage />} />
+        <Route path="coaches/:id/edit" element={<CoachFormPage />} />
         <Route path="import" element={<ImportPage />} />
       </Route>
     </Routes>

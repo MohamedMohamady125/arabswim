@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Trophy, CalendarDays, BarChart3, Medal, Award, Sparkles,
   Users, Shield, Crown, Newspaper, Image, ShoppingBag, School,
-  Globe, Upload,
+  Globe, Upload, Handshake, UserCheck,
 } from 'lucide-react'
 import api from '../api/client'
 
@@ -21,6 +21,8 @@ const SECTIONS = [
   { to: '/media', label: 'Media', icon: Image, countKey: 'albums' },
   { to: '/market', label: 'Market', icon: ShoppingBag, countKey: 'listings' },
   { to: '/academies', label: 'Academies', icon: School, countKey: 'academies' },
+  { to: '/sponsors', label: 'Sponsors', icon: Handshake, countKey: 'sponsors' },
+  { to: '/coaches', label: 'Coaches', icon: UserCheck, countKey: 'coaches' },
   { to: '/countries', label: 'Countries', icon: Globe, countKey: 'countries' },
   { to: '/import', label: 'Import', icon: Upload },
 ]
@@ -35,6 +37,8 @@ const COUNT_SOURCES = {
   albums: ['/media/albums/', 'array'],
   listings: ['/market/listings/', 'paginated'],
   academies: ['/academies/', 'paginated'],
+  sponsors: ['/sponsors/', 'paginated'],
+  coaches: ['/coaches/', 'paginated'],
   countries: ['/countries/', 'array'],
 }
 

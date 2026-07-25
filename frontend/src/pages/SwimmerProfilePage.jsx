@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { getSwimmer, updateSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats, getSwimmerProgression, getSwimmerTransferHistory } from '../api/swimmers'
+import { getSwimmer, updateSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats, getSwimmerProgression, getSwimmerTransferHistory, getSwimmerRankings } from '../api/swimmers'
 import { getRecords, getComputedRecords } from '../api/records'
 import { getMediaItems } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
-import ProgressionChart from '../components/common/ProgressionChart'
 
 const MEDAL_COLORS = { GOLD: '#FFD700', SILVER: '#C0C0C0', BRONZE: '#CD7F32' }
 const MEDAL_LABELS = { GOLD: 'Gold', SILVER: 'Silver', BRONZE: 'Bronze' }
@@ -114,7 +113,8 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
     )
   }
 
-  const bestCs = history.length ? Math.min(...history.map(x => x.time_centiseconds)) : null
+  const officialHistory = history.filter(x => !x.is_hc)
+  const bestCs = officialHistory.length ? Math.min(...officialHistory.map(x => x.time_centiseconds)) : null
 
   return (
     <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-slide-right">
@@ -159,6 +159,9 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                         <span className={`font-mono font-bold whitespace-nowrap ${isBest ? 'text-emerald-600' : 'text-gray-800'}`}>{h.time}</span>
                         {!h.is_relay && isBest && (
                           <span className="text-[8px] sm:text-[9px] font-black bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded-md">PB</span>
+                        )}
+                        {h.is_hc && (
+                          <span className="text-[8px] sm:text-[9px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded-md" title="Hors concours – does not count in rankings">HC</span>
                         )}
                       </div>
                     </td>
@@ -263,55 +266,124 @@ function MedalsTab({ stats, navigate }) {
     setter(next)
   }
 
+  if (medals.total === 0) {
+    return (
+      <div className="bg-white rounded-2xl border shadow-sm p-12 text-center animate-fade-in">
+        <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-gray-50 flex items-center justify-center">
+          <svg className="w-10 h-10 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+        </div>
+        <p className="text-gray-500 font-semibold text-lg">No medals yet</p>
+        <p className="text-gray-300 text-sm mt-1">Medals will appear here once earned</p>
+      </div>
+    )
+  }
+
+  // Collect all medals flat for the timeline
+  const allMedals = []
+  ;(medals_hierarchy || []).forEach(cat => {
+    cat.classifications.forEach(cls => {
+      cls.medals.forEach(m => allMedals.push({ ...m, category: cat.name, classification: cls.name }))
+      cls.sub_classifications.forEach(sub => {
+        sub.medals.forEach(m => allMedals.push({ ...m, category: cat.name, classification: cls.name, sub_classification: sub.name }))
+      })
+    })
+  })
+
+  // Medal podium SVG
+  const Podium = () => {
+    const items = [
+      { type: 'SILVER', count: medals.silver, x: 20, barH: 70, color: '#C0C0C0', dark: '#8a8a8a' },
+      { type: 'GOLD', count: medals.gold, x: 95, barH: 95, color: '#FFD700', dark: '#b8860b' },
+      { type: 'BRONZE', count: medals.bronze, x: 170, barH: 55, color: '#CD7F32', dark: '#8b4513' },
+    ]
+    return (
+      <svg viewBox="0 0 260 140" className="w-full max-w-[280px] mx-auto">
+        {items.map((item, i) => {
+          const y = 130 - item.barH
+          return (
+            <g key={item.type}>
+              <rect x={item.x} y={y} width={70} height={item.barH} rx={8} fill={item.color + '30'} stroke={item.color} strokeWidth={1.5} className="animate-grow-width" style={{ animationDelay: `${i * 0.15}s` }} />
+              <text x={item.x + 35} y={y + item.barH / 2 - 6} textAnchor="middle" className="font-black" style={{ fontSize: '28px', fill: item.dark }}>{item.count}</text>
+              <text x={item.x + 35} y={y + item.barH / 2 + 14} textAnchor="middle" className="font-bold uppercase" style={{ fontSize: '9px', fill: item.dark, letterSpacing: '0.05em' }}>{MEDAL_LABELS[item.type]}</text>
+            </g>
+          )
+        })}
+      </svg>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Medal Summary Cards */}
-      <div className="grid grid-cols-4 gap-2 sm:gap-3">
-        {[
-          { type: 'GOLD', count: medals.gold, gradient: 'from-amber-50 to-amber-100/50', border: 'border-amber-200', text: 'text-amber-700', shadow: 'shadow-amber-100' },
-          { type: 'SILVER', count: medals.silver, gradient: 'from-gray-50 to-gray-100/50', border: 'border-gray-200', text: 'text-gray-600', shadow: 'shadow-gray-100' },
-          { type: 'BRONZE', count: medals.bronze, gradient: 'from-orange-50 to-orange-100/50', border: 'border-orange-200', text: 'text-orange-700', shadow: 'shadow-orange-100' },
-          { type: 'TOTAL', count: medals.total, gradient: 'from-sky-50 to-sky-100/50', border: 'border-sky-200', text: 'text-sky-700', shadow: 'shadow-sky-100' },
-        ].map((m, i) => (
-          <div key={m.type} className={`bg-gradient-to-br ${m.gradient} ${m.border} border rounded-xl sm:rounded-2xl p-2.5 sm:p-5 text-center shadow-sm ${m.shadow} animate-count-up stagger-${i + 1}`}>
-            <div className={`text-2xl sm:text-4xl font-black ${m.text}`}><AnimatedNumber value={m.count} /></div>
-            <div className="text-[9px] sm:text-[11px] font-bold text-gray-400 mt-1 sm:mt-1.5 uppercase tracking-wider">{m.type === 'TOTAL' ? 'Total' : MEDAL_LABELS[m.type]}</div>
+    <div className="space-y-5">
+      {/* Podium + Total */}
+      <div className="bg-gradient-to-br from-gray-50 via-white to-amber-50/30 rounded-2xl border shadow-sm p-5 sm:p-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex-1">
+            <Podium />
           </div>
-        ))}
+          <div className="text-center sm:text-right">
+            <div className="text-5xl sm:text-6xl font-black bg-gradient-to-r from-amber-500 via-gray-400 to-amber-700 bg-clip-text text-transparent">
+              <AnimatedNumber value={medals.total} />
+            </div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Total Medals</div>
+          </div>
+        </div>
       </div>
 
-      {/* Medal Analytics Bar Chart */}
+      {/* Medal Analytics */}
       {medals_by_level.length > 0 && (
-        <div className="bg-white rounded-2xl border shadow-sm p-5 animate-fade-in-up stagger-4">
-          <h3 className="font-bold text-base mb-1 text-gray-800">Medal Analytics</h3>
-          <p className="text-[11px] text-gray-400 mb-4">Breakdown by competition level</p>
-          <div className="space-y-3.5">
-            {medals_by_level.map((level, i) => (
-              <div key={i} className="flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${(i + 5) * 0.08}s` }}>
-                <div className="w-16 sm:w-28 text-[10px] sm:text-sm font-semibold text-gray-600 shrink-0 truncate">{level.category}</div>
-                <div className="flex-1">
-                  <MedalBar gold={level.gold} silver={level.silver} bronze={level.bronze} animate />
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up stagger-3">
+          <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-gray-50 to-white">
+            <h3 className="font-bold text-base text-gray-800">By Competition Level</h3>
+          </div>
+          <div className="p-4 sm:p-5 space-y-3">
+            {medals_by_level.map((level, i) => {
+              const total = level.gold + level.silver + level.bronze
+              return (
+                <div key={i} className="animate-fade-in-up" style={{ animationDelay: `${(i + 4) * 0.06}s` }}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-semibold text-gray-700">{level.category}</span>
+                    <span className="text-xs font-bold text-gray-400">{total}</span>
+                  </div>
+                  <div className="flex h-7 rounded-lg overflow-hidden bg-gray-100">
+                    {level.gold > 0 && (
+                      <div className="flex items-center justify-center text-[10px] font-black text-amber-900 animate-grow-width"
+                        style={{ width: `${(level.gold / total) * 100}%`, backgroundColor: '#FFD70060', animationDelay: `${(i + 4) * 0.08}s` }}>
+                        {level.gold > 0 && level.gold}
+                      </div>
+                    )}
+                    {level.silver > 0 && (
+                      <div className="flex items-center justify-center text-[10px] font-black text-gray-600 animate-grow-width"
+                        style={{ width: `${(level.silver / total) * 100}%`, backgroundColor: '#C0C0C050', animationDelay: `${(i + 4) * 0.08 + 0.1}s` }}>
+                        {level.silver > 0 && level.silver}
+                      </div>
+                    )}
+                    {level.bronze > 0 && (
+                      <div className="flex items-center justify-center text-[10px] font-black text-orange-900 animate-grow-width"
+                        style={{ width: `${(level.bronze / total) * 100}%`, backgroundColor: '#CD7F3240', animationDelay: `${(i + 4) * 0.08 + 0.2}s` }}>
+                        {level.bronze > 0 && level.bronze}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <MedalCounts gold={level.gold} silver={level.silver} bronze={level.bronze} size="lg" />
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
 
-      {/* Medals by Classification Hierarchy */}
+      {/* Medals by Championship — collapsible hierarchy */}
       {(medals_hierarchy || []).length > 0 && (
         <div className="space-y-3">
           {medals_hierarchy.map((cat, ci) => (
-            <div key={cat.name} className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: `${(ci + 6) * 0.08}s` }}>
+            <div key={cat.name} className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: `${(ci + 5) * 0.06}s` }}>
               <button onClick={() => toggle(expandedCats, setExpandedCats, cat.name)}
                 className="w-full flex items-center gap-3 p-4 hover:bg-gray-50/80 transition-all duration-200">
                 <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-300 ${expandedCats.has(cat.name) ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" /></svg>
                 <h3 className="flex-1 text-left font-bold text-base text-gray-800">{cat.name}</h3>
                 <div className="flex gap-1.5">
-                  {cat.gold > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-sm" style={{ backgroundColor: '#FFD70030', color: '#8B6914' }}>{cat.gold}</span>}
-                  {cat.silver > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-sm" style={{ backgroundColor: '#C0C0C030', color: '#555' }}>{cat.silver}</span>}
-                  {cat.bronze > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-sm" style={{ backgroundColor: '#CD7F3230', color: '#8B4513' }}>{cat.bronze}</span>}
+                  {cat.gold > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#FFD70030', color: '#8B6914' }}>{cat.gold}</span>}
+                  {cat.silver > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#C0C0C040', color: '#555' }}>{cat.silver}</span>}
+                  {cat.bronze > 0 && <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#CD7F3230', color: '#8B4513' }}>{cat.bronze}</span>}
                 </div>
               </button>
               {expandedCats.has(cat.name) && (
@@ -363,10 +435,33 @@ function MedalsTab({ stats, navigate }) {
         </div>
       )}
 
-      {medals.total === 0 && (
-        <div className="bg-white rounded-2xl border shadow-sm p-12 text-center animate-fade-in">
-          <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-          <p className="text-gray-400 font-medium">No medals recorded yet</p>
+      {/* Recent Medals Timeline */}
+      {allMedals.length > 0 && (
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+          <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-gray-50 to-white">
+            <h3 className="font-bold text-base text-gray-800">Medal Collection</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">{allMedals.length} medal{allMedals.length !== 1 ? 's' : ''} earned</p>
+          </div>
+          <div className="p-3 sm:p-4 grid gap-2 sm:grid-cols-2">
+            {allMedals.map((m, i) => {
+              const medalColor = m.medal_type === 'GOLD' ? { bg: 'bg-amber-50', border: 'border-amber-200', ring: 'ring-amber-300', text: 'text-amber-800', icon: '\u{1F947}' }
+                : m.medal_type === 'SILVER' ? { bg: 'bg-gray-50', border: 'border-gray-200', ring: 'ring-gray-300', text: 'text-gray-700', icon: '\u{1F948}' }
+                : { bg: 'bg-orange-50', border: 'border-orange-200', ring: 'ring-orange-300', text: 'text-orange-800', icon: '\u{1F949}' }
+              return (
+                <div key={m.id}
+                  className={`${medalColor.bg} ${medalColor.border} border rounded-xl p-3 flex items-center gap-3 hover:ring-1 ${medalColor.ring} transition-all cursor-pointer animate-fade-in-up`}
+                  style={{ animationDelay: `${i * 0.04}s` }}
+                  onClick={() => navigate(`/meets/${m.championship_id}`)}>
+                  <span className="text-xl">{medalColor.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-gray-800 truncate">{m.event_name}</div>
+                    <div className="text-[11px] text-gray-500 truncate">{m.championship_name}</div>
+                    {m.championship_date && <div className="text-[10px] text-gray-400">{new Date(m.championship_date).getFullYear()}</div>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -773,6 +868,143 @@ function GalleryTab({ swimmerId }) {
 }
 
 /* ───────── Progression Tab ───────── */
+const STROKE_COLORS = {
+  Freestyle: { line: '#0ea5e9', bg: 'from-sky-50 to-white', badge: 'bg-sky-100 text-sky-700', dot: '#0284c7' },
+  Backstroke: { line: '#8b5cf6', bg: 'from-violet-50 to-white', badge: 'bg-violet-100 text-violet-700', dot: '#7c3aed' },
+  Butterfly: { line: '#f59e0b', bg: 'from-amber-50 to-white', badge: 'bg-amber-100 text-amber-700', dot: '#d97706' },
+  Breaststroke: { line: '#10b981', bg: 'from-emerald-50 to-white', badge: 'bg-emerald-100 text-emerald-700', dot: '#059669' },
+  'Individual Medley': { line: '#ec4899', bg: 'from-pink-50 to-white', badge: 'bg-pink-100 text-pink-700', dot: '#db2777' },
+}
+const DEFAULT_STROKE_COLOR = { line: '#6366f1', bg: 'from-indigo-50 to-white', badge: 'bg-indigo-100 text-indigo-700', dot: '#4f46e5' }
+
+function formatTimeShort(cs) {
+  if (!cs) return ''
+  const minutes = Math.floor(cs / 6000)
+  const seconds = Math.floor((cs % 6000) / 100)
+  const centis = cs % 100
+  if (minutes) return `${minutes}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`
+  return `${seconds}.${String(centis).padStart(2, '0')}`
+}
+
+function EventProgressionCard({ line, index }) {
+  const colors = STROKE_COLORS[line.stroke] || DEFAULT_STROKE_COLOR
+  const points = line.points
+  if (!points.length) return null
+
+  const best = Math.min(...points.map(p => p.time_cs))
+  const worst = Math.max(...points.map(p => p.time_cs))
+  const latest = points[points.length - 1]
+  const first = points[0]
+  const improved = latest.time_cs < first.time_cs
+  const diff = first.time_cs - latest.time_cs
+
+  // SVG chart dimensions
+  const W = 600, H = 160, PX = 50, PY = 35, PB = 20
+  const chartW = W - PX * 2
+  const chartH = H - PY - PB
+  const range = worst - best || 1
+  const xStep = points.length > 1 ? chartW / (points.length - 1) : 0
+
+  const getX = (i) => PX + i * xStep
+  const getY = (cs) => PY + ((cs - best) / range) * chartH
+
+  // Build path
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${getX(i)},${getY(p.time_cs)}`).join(' ')
+  // Area fill
+  const areaD = `${pathD} L${getX(points.length - 1)},${H - PB} L${getX(0)},${H - PB} Z`
+
+  return (
+    <div className={`bg-gradient-to-br ${colors.bg} rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up`}
+      style={{ animationDelay: `${index * 0.08}s` }}>
+      {/* Header */}
+      <div className="px-5 py-4 flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <h4 className="font-bold text-gray-800 text-base">{line.event_name}</h4>
+          <div className="flex items-center gap-2 mt-1">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${colors.badge}`}>{line.stroke}</span>
+            {points.length > 1 && (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${improved ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                {improved ? '\u2193' : '\u2191'} {formatTimeShort(Math.abs(diff))}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Best</div>
+          <div className="font-mono font-black text-lg" style={{ color: colors.dot }}>{formatTimeShort(best)}</div>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="px-3 pb-4">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 'auto', maxHeight: '200px' }}>
+          {/* Area fill */}
+          <defs>
+            <linearGradient id={`grad-${line.event_id}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={colors.line} stopOpacity="0.15" />
+              <stop offset="100%" stopColor={colors.line} stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          <path d={areaD} fill={`url(#grad-${line.event_id})`} />
+
+          {/* Grid lines */}
+          {[0, 0.5, 1].map(frac => {
+            const y = PY + frac * chartH
+            return <line key={frac} x1={PX} x2={W - PX} y1={y} y2={y} stroke="#e5e7eb" strokeDasharray="4 4" />
+          })}
+
+          {/* Line */}
+          <path d={pathD} fill="none" stroke={colors.line} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Points with time labels */}
+          {points.map((p, i) => {
+            const x = getX(i)
+            const y = getY(p.time_cs)
+            const isBest = p.time_cs === best
+            return (
+              <g key={i}>
+                {/* Time label above point */}
+                <text
+                  x={x} y={y - 14}
+                  textAnchor="middle"
+                  className="font-mono"
+                  style={{ fontSize: '11px', fontWeight: 700, fill: isBest ? colors.dot : '#6b7280' }}
+                >
+                  {formatTimeShort(p.time_cs)}
+                </text>
+                {/* Dot */}
+                <circle cx={x} cy={y} r={isBest ? 6 : 4.5} fill="#fff" stroke={colors.line} strokeWidth="2.5" />
+                {isBest && <circle cx={x} cy={y} r={3} fill={colors.dot} />}
+                {/* Date label below */}
+                <text x={x} y={H - 4} textAnchor="middle" style={{ fontSize: '10px', fill: '#9ca3af' }}>
+                  {new Date(p.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+
+      {/* Meet details */}
+      <div className="px-5 pb-4">
+        <div className="flex flex-wrap gap-2">
+          {points.map((p, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-[11px] text-gray-500 bg-white/70 rounded-lg px-2.5 py-1 border border-gray-100">
+              <span className="font-mono font-bold text-gray-700">{formatTimeShort(p.time_cs)}</span>
+              <span className="text-gray-300">·</span>
+              <span className="truncate max-w-[120px]">{p.meet}</span>
+              {p.fina > 0 && <>
+                <span className="text-gray-300">·</span>
+                <span className="font-bold text-gray-500">{p.fina}</span>
+              </>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ProgressionTab({ swimmerId }) {
   const [pool, setPool] = useState('LCM')
   const [lines, setLines] = useState([])
@@ -803,7 +1035,20 @@ function ProgressionTab({ swimmerId }) {
           ))}
         </div>
       </div>
-      <ProgressionChart lines={lines} title={`Top Events - ${pool === 'LCM' ? 'Long Course (50m)' : 'Short Course (25m)'}`} />
+      {lines.length === 0 ? (
+        <div className="bg-white rounded-2xl border p-12 text-center">
+          <svg className="w-14 h-14 mx-auto mb-3 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+          </svg>
+          <p className="text-gray-400 font-medium">No progression data for {pool === 'LCM' ? 'Long Course' : 'Short Course'}</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {lines.map((line, i) => (
+            <EventProgressionCard key={line.event_id} line={line} index={i} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -908,11 +1153,122 @@ function TransferHistoryTab({ swimmerId }) {
   )
 }
 
+/* ───────── Rankings Tab ───────── */
+function RankingsTab({ swimmerId }) {
+  const [rankings, setRankings] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [events, setEvents] = useState([])
+
+  useEffect(() => {
+    Promise.all([
+      getSwimmerRankings(swimmerId),
+      getSwimmerEvents(swimmerId),
+    ]).then(([rankRes, evRes]) => {
+      setRankings(rankRes.data)
+      setEvents(evRes.data)
+    }).finally(() => setLoading(false))
+  }, [swimmerId])
+
+  if (loading) return (
+    <div className="py-16 text-center"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin mx-auto" /></div>
+  )
+  if (!rankings || rankings.length === 0) return (
+    <div className="py-16 text-center text-gray-400 text-sm">No ranking data available</div>
+  )
+
+  // Build event name lookup from events list
+  const eventMap = {}
+  for (const e of events) {
+    eventMap[`${e.event_id}-${e.pool}`] = e.event_name
+  }
+
+  // Determine which scopes are present
+  const scopes = []
+  for (const r of rankings) {
+    for (const s of Object.keys(r.rankings)) {
+      if (!scopes.includes(s)) scopes.push(s)
+    }
+  }
+  const scopeOrder = ['national', 'gcc', 'arab']
+  scopes.sort((a, b) => scopeOrder.indexOf(a) - scopeOrder.indexOf(b))
+
+  const scopeLabel = { national: 'National', gcc: 'GCC', arab: 'Arab' }
+  const scopeColor = { national: 'text-purple-700 bg-purple-50', gcc: 'text-sky-700 bg-sky-50', arab: 'text-emerald-700 bg-emerald-50' }
+
+  // Sort: by pool (LCM first), then by event name
+  const sorted = [...rankings].sort((a, b) => {
+    if (a.pool !== b.pool) return a.pool === 'LCM' ? -1 : 1
+    const nameA = eventMap[`${a.event_id}-${a.pool}`] || ''
+    const nameB = eventMap[`${b.event_id}-${b.pool}`] || ''
+    return nameA.localeCompare(nameB)
+  })
+
+  // Group by pool
+  const lcm = sorted.filter(r => r.pool === 'LCM')
+  const scm = sorted.filter(r => r.pool !== 'LCM')
+
+  const renderTable = (rows, poolLabel) => {
+    if (rows.length === 0) return null
+    return (
+      <div className="mb-6">
+        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-2">{poolLabel}</h4>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs sm:text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50/80">
+                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Event</th>
+                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Best Time</th>
+                {scopes.map(s => (
+                  <th key={s} className="px-3 py-2 text-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">{scopeLabel[s]}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={`${r.event_id}-${r.pool}`} className="border-b border-gray-50 hover:bg-sky-50/30 animate-fade-in-up" style={{ animationDelay: `${i * 0.03}s` }}>
+                  <td className="px-3 py-2.5 font-medium text-gray-800">{eventMap[`${r.event_id}-${r.pool}`] || `Event ${r.event_id}`}</td>
+                  <td className="px-3 py-2.5 font-mono font-bold text-sky-600">{r.best_time}</td>
+                  {scopes.map(s => {
+                    const rank = r.rankings[s]
+                    if (!rank) return <td key={s} className="px-3 py-2.5 text-center text-gray-300">-</td>
+                    const isTop3 = rank.rank <= 3
+                    return (
+                      <td key={s} className="px-3 py-2.5 text-center">
+                        <span className={`inline-flex items-center gap-0.5 font-bold ${isTop3 ? 'text-amber-600' : 'text-gray-700'}`}>
+                          {isTop3 && <span className="text-amber-500">{rank.rank === 1 ? '\u{1F947}' : rank.rank === 2 ? '\u{1F948}' : '\u{1F949}'}</span>}
+                          <span className="tabular-nums">{rank.rank}</span>
+                          <span className="text-gray-400 font-normal">/{rank.total}</span>
+                        </span>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+      <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
+        <h3 className="font-bold text-base text-gray-800">Rankings</h3>
+        <p className="text-[11px] text-gray-400 mt-0.5">Based on personal best times across all competitions</p>
+      </div>
+      {renderTable(lcm, 'Long Course (LCM)')}
+      {renderTable(scm, 'Short Course (SCM)')}
+    </div>
+  )
+}
+
 /* ───────── TAB CONFIG ───────── */
 const TABS = [
   { key: 'times', label: 'Times', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
   { key: 'meets', label: 'Meets', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg> },
   { key: 'medals', label: 'Medals', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012.75 10.5h-1.5A3.375 3.375 0 007.5 13.875v4.875" /></svg> },
+  { key: 'rankings', label: 'Rankings', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5-7.5L16.5 13.5m0 0L12 9m4.5 4.5V3" /></svg> },
   { key: 'records', label: 'Records', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg> },
   { key: 'progression', label: 'Progression', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg> },
   { key: 'stats', label: 'Stats', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg> },
@@ -1122,6 +1478,7 @@ export default function SwimmerProfilePage() {
         )}
         {activeTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
         {activeTab === 'medals' && <MedalsTab stats={stats} navigate={navigate} />}
+        {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} />}
         {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} />}
         {activeTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
         {activeTab === 'stats' && <StatsTab stats={stats} events={events} />}

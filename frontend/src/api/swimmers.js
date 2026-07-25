@@ -14,3 +14,4 @@ export const getSwimmerProfileStats = (id) => api.get(`/swimmers/${id}/profile-s
 export const compareSwimmers = (ids) => api.get('/swimmers/compare/', { params: { ids: ids.join(',') } })
 export const getSwimmerProgression = (id, pool) => api.get(`/swimmers/${id}/progression/`, { params: { pool } })
 export const getSwimmerTransferHistory = (id) => api.get(`/swimmers/${id}/transfer-history/`)
+export const getSwimmerRankings = (id) => api.get(`/swimmers/${id}/rankings/`)

@@ -48,6 +48,8 @@ export default function CountryProfilePage() {
   const [progPool, setProgPool] = useState('LCM')
   const [progLines, setProgLines] = useState([])
   const [progLoading, setProgLoading] = useState(false)
+  const [openChamp, setOpenChamp] = useState(null)
+  const [showSwimmers, setShowSwimmers] = useState(null)
 
   useEffect(() => {
     setData(null)
@@ -67,8 +69,6 @@ export default function CountryProfilePage() {
   if (!data) return <div className="text-center text-gray-400 py-20">Loading…</div>
 
   const { country, stats, medals, top_swimmers, top_medalists, best_times, records, championships_hosted, championships_participated, teams } = data
-  const [openChamp, setOpenChamp] = useState(null)
-  const [showSwimmers, setShowSwimmers] = useState(null)
   const alpha2 = country.flag_url || CODE_TO_ALPHA2[country.code?.toUpperCase()] || (country.code || '').toLowerCase().slice(0, 2)
   const filteredBest = best_times.filter((b) =>
     (!btSex || b.sex === btSex) && (!btPool || b.pool === btPool))

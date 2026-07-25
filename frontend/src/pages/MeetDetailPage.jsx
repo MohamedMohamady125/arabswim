@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers, getChampionshipClubSwimmers, updateResult, deleteResult, getMostImproved, getChampionshipComparison } from '../api/championships'
-import { getMedals, getMedalSummary, getMedalClubSummary } from '../api/medals'
+import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import { getOrCreateAlbumForChampionship } from '../api/media'
 import { uploadPhotos, createMediaItem, deleteMediaItem, updateMediaItem } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
@@ -222,6 +222,7 @@ export default function MeetDetailPage() {
   const [medals, setMedals] = useState([])
   const [medalSummary, setMedalSummary] = useState([])
   const [medalClubSummary, setMedalClubSummary] = useState([])
+  const [medalSwimmerSummary, setMedalSwimmerSummary] = useState([])
 
   // Statistics tab state
   const [mostImproved, setMostImproved] = useState([])
@@ -252,6 +253,7 @@ export default function MeetDetailPage() {
       getMedalSummary({ championship: id }).then(res => setMedalSummary(res.data)).catch(() => {})
       getMedals({ championship: id }).then(res => setMedals(res.data.results || res.data)).catch(() => {})
       getMedalClubSummary({ championship: id }).then(res => setMedalClubSummary(res.data)).catch(() => {})
+      getMedalSwimmerSummary({ championship: id }).then(res => setMedalSwimmerSummary(res.data)).catch(() => {})
     }
   }, [id, activeTab])
 
@@ -450,89 +452,8 @@ export default function MeetDetailPage() {
 
       {/* Results Tab */}
       {activeTab === 'results' && <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        {/* Left: Countries + Events */}
+        {/* Left: Clubs + Events */}
         <div className="space-y-4">
-          {/* Countries */}
-          <div className="bg-white rounded-lg border">
-            <div className="p-3 border-b">
-              <h3 className="font-semibold text-sm">Countries ({stats.countries.length})</h3>
-            </div>
-            <div className="divide-y max-h-96 overflow-y-auto">
-              {stats.countries.map((c, i) => {
-                const countryId = c.swimmer__nationality__id
-                const isOpen = expandedCountry === countryId
-                const swimmers = countrySwimmers[countryId]
-                return (
-                  <div key={countryId ?? i}>
-                    <button
-                      onClick={() => handleCountryClick(countryId)}
-                      className={`w-full flex items-center justify-between px-3 py-2 transition-colors hover:bg-gray-50 ${
-                        isOpen ? 'bg-sky-50' : ''
-                      }`}
-                    >
-                      <CountryFlag
-                        code={c.swimmer__nationality__code}
-                        flagUrl={c.swimmer__nationality__flag_url}
-                        name={c.swimmer__nationality__name}
-                        className="text-sm"
-                      />
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span><span className="font-medium text-gray-700">{c.swimmers_count}</span> swimmers</span>
-                        <svg
-                          className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </button>
-                    {isOpen && (
-                      <div className="bg-gray-50 border-t border-gray-100">
-                        {loadingCountry === countryId ? (
-                          <div className="px-3 py-3 text-xs text-gray-400 text-center">Loading swimmers...</div>
-                        ) : (swimmers || []).length === 0 ? (
-                          <div className="px-3 py-3 text-xs text-gray-400 text-center">No individual swimmers</div>
-                        ) : (
-                          swimmers.map(s => (
-                            <button
-                              key={s.swimmer_id}
-                              onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white transition-colors group"
-                            >
-                              <div className="w-7 h-7 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center overflow-hidden shrink-0 text-[10px] font-bold">
-                                {s.photo ? (
-                                  <img src={s.photo} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                  s.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
-                                )}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-xs font-medium text-gray-800 truncate group-hover:text-sky-600">
-                                  {s.name}
-                                </div>
-                                <div className="text-[11px] text-gray-400">
-                                  {s.events_count} {s.events_count === 1 ? 'event' : 'events'}
-                                  {s.best_fina > 0 && (
-                                    <> · best <span className="font-mono text-sky-600 font-semibold">{s.best_time}</span> ({s.best_event})</>
-                                  )}
-                                </div>
-                              </div>
-                              <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                                s.sex === 'F' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'
-                              }`}>
-                                {s.sex}
-                              </span>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
           {/* Clubs */}
           {stats.clubs?.length > 0 && (
             <div className="bg-white rounded-lg border">
@@ -794,9 +715,14 @@ export default function MeetDetailPage() {
                         const catFiltered = selectedCategory === null
                           ? roundResults
                           : roundResults.filter(r => (r.category || '') === selectedCategory)
+                        // Sort HC results to the bottom within each category
+                        const sorted = [...catFiltered].sort((a, b) => {
+                          if (a.is_hc !== b.is_hc) return a.is_hc ? 1 : -1
+                          return a.time_centiseconds - b.time_centiseconds
+                        })
                         const order = []
                         const byCat = new Map()
-                        for (const r of catFiltered) {
+                        for (const r of sorted) {
                           const cat = r.category || ''
                           if (!byCat.has(cat)) { byCat.set(cat, []); order.push(cat) }
                           byCat.get(cat).push(r)
@@ -808,8 +734,9 @@ export default function MeetDetailPage() {
                         const isRelay = selectedEvent?.event_name?.toLowerCase().includes('relay')
 
                         const renderRow = (r, i, arr) => {
-                          // Competition ranking: tied times share a rank (1,2,2,4)
-                          const rank = arr.findIndex(x => x.time_centiseconds === r.time_centiseconds) + 1
+                          // Competition ranking: tied times share a rank (1,2,2,4); HC results are unranked
+                          const ranked = arr.filter(x => !x.is_hc)
+                          const rank = r.is_hc ? 0 : ranked.findIndex(x => x.time_centiseconds === r.time_centiseconds) + 1
                           const isBest = rank === 1
                           const isExpanded = expandedRelay === r.id
                           const swimmers = r.relay_swimmers || []
@@ -828,10 +755,14 @@ export default function MeetDetailPage() {
                                 }}
                               >
                                 <td className="px-4 py-2 text-sm">
-                                  {showMedals && rank === 1 && <MedalIcon type="gold" size={22} />}
-                                  {showMedals && rank === 2 && <MedalIcon type="silver" size={22} />}
-                                  {showMedals && rank === 3 && <MedalIcon type="bronze" size={22} />}
-                                  {(!showMedals || rank > 3) && <span className="text-gray-500">{rank}</span>}
+                                  {r.is_hc ? (
+                                    <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md" title="Hors concours">HC</span>
+                                  ) : (<>
+                                    {showMedals && rank === 1 && <MedalIcon type="gold" size={22} />}
+                                    {showMedals && rank === 2 && <MedalIcon type="silver" size={22} />}
+                                    {showMedals && rank === 3 && <MedalIcon type="bronze" size={22} />}
+                                    {(!showMedals || rank > 3) && <span className="text-gray-500">{rank}</span>}
+                                  </>)}
                                 </td>
                                 <td className="px-4 py-2 text-sm font-medium">
                                   {r.swimmer_detail?.name}
@@ -866,7 +797,7 @@ export default function MeetDetailPage() {
                                       className="w-24 border rounded px-1.5 py-1 text-sm font-mono"
                                       autoFocus
                                     />
-                                  ) : r.formatted_time}
+                                  ) : <span className="flex items-center gap-1">{r.formatted_time}{r.is_hc && <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded-md" title="Hors concours">HC</span>}</span>}
                                 </td>
                                 <td className="px-4 py-2 text-sm">{r.fina_points || '-'}</td>
                                 {editMode && (
@@ -951,45 +882,22 @@ export default function MeetDetailPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Countries Breakdown */}
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Countries ({stats.countries.length})</h3>
-              </div>
-              <div className="divide-y max-h-[500px] overflow-y-auto">
-                {stats.countries.map((c, i) => (
-                  <div key={c.swimmer__nationality__id ?? i} className="flex items-center justify-between px-4 py-3">
-                    <CountryFlag
-                      code={c.swimmer__nationality__code}
-                      flagUrl={c.swimmer__nationality__flag_url}
-                      name={c.swimmer__nationality__name}
-                    />
-                    <span className="text-sm font-medium text-gray-600">{c.swimmers_count} swimmers</span>
-                  </div>
-                ))}
-              </div>
+          {/* Countries Breakdown */}
+          <div className="bg-white rounded-lg border">
+            <div className="p-4 border-b">
+              <h3 className="font-semibold">Countries ({stats.countries.length})</h3>
             </div>
-
-            {/* Events Breakdown */}
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Events ({stats.events.length})</h3>
-              </div>
-              <div className="divide-y max-h-[500px] overflow-y-auto">
-                {stats.events.map(e => (
-                  <div key={`${e.event_id}-${e.gender}`} className="flex items-center justify-between px-4 py-3">
-                    <div>
-                      <div className="text-sm font-medium">{e.event_name}</div>
-                      <div className="text-xs text-gray-400">{e.gender_label}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500">{e.results_count} results</div>
-                      <div className="text-sm font-mono font-semibold text-sky-600">{e.best_time}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="divide-y max-h-[500px] overflow-y-auto">
+              {stats.countries.map((c, i) => (
+                <div key={c.swimmer__nationality__id ?? i} className="flex items-center justify-between px-4 py-3">
+                  <CountryFlag
+                    code={c.swimmer__nationality__code}
+                    flagUrl={c.swimmer__nationality__flag_url}
+                    name={c.swimmer__nationality__name}
+                  />
+                  <span className="text-sm font-medium text-gray-600">{c.swimmers_count} swimmers</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1153,13 +1061,15 @@ export default function MeetDetailPage() {
       )}
 
       {/* Medals Tab */}
-      {activeTab === 'medals' && (
+      {activeTab === 'medals' && (() => {
+        const isNational = stats.countries.length <= 1
+        return (
         <div className="space-y-6">
-          {/* Medal Tally */}
-          {medalSummary.length > 0 && (
+          {/* Country Medal Tally (international) or Club Medal Tally (national) */}
+          {!isNational && medalSummary.length > 0 && (
             <div className="bg-white rounded-lg border">
               <div className="p-4 border-b">
-                <h3 className="font-semibold">Medal Tally</h3>
+                <h3 className="font-semibold">Country Medal Tally</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -1192,8 +1102,7 @@ export default function MeetDetailPage() {
             </div>
           )}
 
-          {/* Club Medal Tally */}
-          {medalClubSummary.length > 0 && (
+          {isNational && medalClubSummary.length > 0 && (
             <div className="bg-white rounded-lg border">
               <div className="p-4 border-b">
                 <h3 className="font-semibold">Club Medal Tally</h3>
@@ -1227,7 +1136,46 @@ export default function MeetDetailPage() {
             </div>
           )}
 
-          {/* Individual Medals — sorted Gold → Silver → Bronze */}
+          {/* Top Swimmers by Medals */}
+          {medalSwimmerSummary.length > 0 && (
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Top Swimmers</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
+                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
+                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {medalSwimmerSummary.map((row, i) => (
+                      <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${row.swimmer__id}`)}>
+                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                        <td className="px-4 py-2 text-sm font-medium">{row.swimmer__name}</td>
+                        <td className="px-4 py-2 text-sm">
+                          <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
+                        </td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
+                        <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* All Medals — sorted Gold → Silver → Bronze */}
           {medals.length > 0 && (
             <div className="bg-white rounded-lg border">
               <div className="p-4 border-b">
@@ -1267,7 +1215,7 @@ export default function MeetDetailPage() {
             </div>
           )}
 
-          {medalSummary.length === 0 && medals.length === 0 && (
+          {medalSummary.length === 0 && medalClubSummary.length === 0 && medals.length === 0 && (
             <div className="bg-white rounded-lg border p-12 text-center text-gray-400">
               <div className="text-5xl mb-3">🏅</div>
               <p className="text-lg font-medium">No medals yet</p>
@@ -1275,7 +1223,8 @@ export default function MeetDetailPage() {
             </div>
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* Gallery Tab */}
       {activeTab === 'gallery' && (

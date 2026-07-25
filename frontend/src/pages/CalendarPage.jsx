@@ -394,20 +394,6 @@ export default function CalendarPage() {
                       </div>
                     </div>
 
-                    {/* Stats badges */}
-                    <div className="flex items-center gap-3 shrink-0">
-                      {c.results_count > 0 && (
-                        <span className="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-sm font-medium">
-                          {c.results_count} results
-                        </span>
-                      )}
-                      {c.swimmers_count > 0 && (
-                        <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
-                          {c.swimmers_count} swimmers
-                        </span>
-                      )}
-                    </div>
-
                     {/* Arrow */}
                     <span className={`text-gray-400 text-lg transition-transform ${isSelected ? 'rotate-90' : ''}`}>&#x276F;</span>
                   </div>

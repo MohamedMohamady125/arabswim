@@ -77,41 +77,47 @@ def _parse_pdf(file_path, filename=''):
     """Extract text from PDF and route to correct parser."""
     import gc
     with pdfplumber.open(file_path) as pdf:
-        # First pass: simple extraction for format detection
-        text_parts = []
-        for page in pdf.pages:
-            text_parts.append(page.extract_text() or '')
+        num_pages = len(pdf.pages)
+        # For format detection, only read the first few pages (saves time on large PDFs)
+        detect_limit = min(num_pages, 5)
+        detect_parts = []
+        for page in pdf.pages[:detect_limit]:
+            detect_parts.append(page.extract_text() or '')
             page.flush_cache()
-        simple_text = '\n'.join(text_parts)
-        del text_parts
+        detect_text = '\n'.join(detect_parts)
+        del detect_parts
         gc.collect()
 
-    if not simple_text.strip():
+    if not detect_text.strip():
         raise ValueError('Could not extract text from PDF. The file may be image-based.')
 
     # Detect pool from text + filename
-    pool = detect_pool(simple_text, filename)
+    pool = detect_pool(detect_text, filename)
 
     # Splash is more specific than HY-TEK — check Splash first
     # (some Splash PDFs also contain "meet manager" which triggers HY-TEK detection)
-    if splash_parser.detect_format(simple_text):
+    if splash_parser.detect_format(detect_text):
         # Splash PDFs often have overlapping club/time columns that garble
         # character order in default extraction ("D'Ora1n:00.89").
         # use_text_flow follows the PDF stream order and keeps them separate.
         full_text = _extract_text_flow(file_path)
         meet = splash_parser.parse(full_text)
-    elif hytek_parser.detect_format(simple_text):
+    elif hytek_parser.detect_format(detect_text):
         full_text = _extract_columns(file_path)
         meet = hytek_parser.parse(full_text)
-    elif omega_parser.detect_format(simple_text):
-        meet = omega_parser.parse(simple_text)
-    elif frmn_parser.detect_format(simple_text):
+    elif omega_parser.detect_format(detect_text):
+        full_text = _extract_simple(file_path)
+        meet = omega_parser.parse(full_text)
+    elif frmn_parser.detect_format(detect_text):
         # FRMN PDFs lay out fine with default extraction; text-flow order
         # actually breaks their result-line structure.
-        meet = frmn_parser.parse(simple_text)
-    elif ffn_parser.detect_format(simple_text):
-        meet = ffn_parser.parse(simple_text)
+        full_text = _extract_simple(file_path)
+        meet = frmn_parser.parse(full_text)
+    elif ffn_parser.detect_format(detect_text):
+        full_text = _extract_simple(file_path)
+        meet = ffn_parser.parse(full_text)
     else:
+        simple_text = _extract_simple(file_path)
         # Try each parser and pick the one that extracts the most results
         results = []
         for parser in [splash_parser, hytek_parser, omega_parser, frmn_parser, ffn_parser]:
@@ -140,6 +146,20 @@ def _parse_pdf(file_path, filename=''):
     # Override pool with the smarter detection
     meet.pool = pool
     return meet
+
+
+def _extract_simple(file_path):
+    """Extract PDF text with default (position-sorted) extraction."""
+    import gc
+    parts = []
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            parts.append(page.extract_text() or '')
+            page.flush_cache()
+    text = '\n'.join(parts)
+    del parts
+    gc.collect()
+    return text
 
 
 def _extract_text_flow(file_path):

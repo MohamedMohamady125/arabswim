@@ -36,13 +36,14 @@ EVENT_HEADER = re.compile(
 # "--- BESSARD Maeline (2008) FRA GRENOBLE ALP'38 DNS dec"
 # OCR variants: "FR A" (space in code), "(200N5)" (letter in year)
 RESULT_LINE = re.compile(
-    r'^(\d+|---)\s+'                       # rank or ---
+    r'^(\d+|---|H\.?C\.?|EXH)\s+'          # rank, ---, or HC/EXH
     r'(.+?)\s+'                            # name
     r'\((\d[\d\w]{3})\)\s+'                # birth year (may have OCR letter e.g. 200N5)
     r'([A-Z]{2,3}(?:\s+[A-Z])?)\s+'       # nationality code (may have space: "FR A")
     r'(.+?)\s+'                            # club
     r'(\d{2}:\d{2}\.\d{2}|DNS\s*\w*|DQ\s*\w*|DNF\s*\w*|DSQ\s*\w*|Forfait)'  # time or status
-    r'(?:\s*(\d+)\s*pts)?'                 # optional FINA points
+    r'(?:\s*(\d+)\s*pts)?',                # optional FINA points
+    re.IGNORECASE
 )
 
 # Split line: "50m : 00:25.77 (00:25.77) 100m : 00:53.96 (00:28.19)"
@@ -257,6 +258,11 @@ def parse(text):
             time_text = ''
             time_cs = 0
 
+            # Check if rank indicates HC/EXH
+            rank_upper = rank_str.upper().replace('.', '')
+            if rank_upper in ('HC', 'EXH'):
+                status = 'HC'
+
             if time_raw.upper().startswith('DNS') or time_raw.upper().startswith('FORFAIT'):
                 status = 'DNS'
             elif time_raw.upper().startswith('DQ') or time_raw.upper().startswith('DSQ'):
@@ -267,7 +273,7 @@ def parse(text):
                 time_text = _clean_ocr_time(time_raw)
                 time_cs = parse_time_to_centiseconds(time_text)
 
-            rank = int(rank_str) if rank_str != '---' else 0
+            rank = int(rank_str) if rank_str.isdigit() else 0
             fina_points = int(fina_str) if fina_str else 0
 
             result = ParsedResult(

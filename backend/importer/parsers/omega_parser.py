@@ -206,10 +206,21 @@ def parse(text):
         if in_relay:
             # Relay team line
             rm = RELAY_TEAM.match(stripped)
+            relay_status = 'OK'
+            if not rm:
+                hc_rm = HC_RELAY_TEAM.match(stripped)
+                if hc_rm:
+                    relay_status = 'HC'
+                    rm = hc_rm
             if rm:
-                rank = int(rm.group(1))
-                noc = rm.group(2)
-                time_text = rm.group(3)
+                if relay_status == 'HC':
+                    rank = 0
+                    noc = rm.group(1)
+                    time_text = rm.group(2)
+                else:
+                    rank = int(rm.group(1))
+                    noc = rm.group(2)
+                    time_text = rm.group(3)
                 time_cs = parse_time_to_centiseconds(time_text)
                 current_event.results.append(ParsedResult(
                     swimmer_name=f'{noc} A',
@@ -223,6 +234,7 @@ def parse(text):
                     nationality_code=noc,
                     round_type=current_event.round_type,
                     age_group=current_event.age_group,
+                    status=relay_status,
                 ))
                 continue
 
@@ -240,11 +252,23 @@ def parse(text):
         else:
             # Individual result — match prefix then grab first real time after NOC
             im = INDIVIDUAL_PREFIX.match(stripped)
+            ind_status = 'OK'
+            if not im:
+                hc_im = HC_INDIVIDUAL_PREFIX.match(stripped)
+                if hc_im:
+                    ind_status = 'HC'
+                    im = hc_im
             if im:
-                rank = int(im.group(1))
-                name_raw = im.group(2).strip()
-                birth_year = int(im.group(3)) if im.group(3) else 0
-                noc = im.group(4)
+                if ind_status == 'HC':
+                    rank = 0
+                    name_raw = im.group(1).strip()
+                    birth_year = int(im.group(2)) if im.group(2) else 0
+                    noc = im.group(3)
+                else:
+                    rank = int(im.group(1))
+                    name_raw = im.group(2).strip()
+                    birth_year = int(im.group(3)) if im.group(3) else 0
+                    noc = im.group(4)
 
                 # Text after the NOC code contains optional reaction (.NNN),
                 # optional splits, actual time, and optional time-behind.
@@ -275,6 +299,7 @@ def parse(text):
                     nationality_code=noc,
                     round_type=current_event.round_type,
                     age_group=current_event.age_group,
+                    status=ind_status,
                 ))
                 continue
 

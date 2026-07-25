@@ -89,6 +89,21 @@ RELAY_DQ_LINE = re.compile(
     re.IGNORECASE
 )
 
+# HC relay lines: "h.c. ALG ALG 3:39.22" or "h.c. Club Name 4:10.23 382"
+HC_RELAY_INTL_LINE = re.compile(
+    r'^\s*[Hh]\.?[Cc]\.?\s+'
+    r'([A-Z]{3})\s+'
+    r'(\S+)\s+'
+    r'(\d{1,2}:\d{2}\.\d{2})\s*'
+    r'(\d+)?'
+)
+HC_RELAY_TEAM_LINE = re.compile(
+    r'^\s*[Hh]\.?[Cc]\.?\s+'
+    r'(.+?)\s*'
+    r'(\d{1,2}:\d{2}\.\d{2})\s*'
+    r'(\d+)?\s*[QqRr?*]*\s*$'
+)
+
 COUNTRY_CODE = re.compile(r'^[A-Z]{3}$')
 
 ROUND_PATTERNS = {
@@ -463,6 +478,58 @@ def _parse_relay_line(line, event, is_international):
                 round_type=event.round_type,
                 age_group=event.age_group,
             ))
+        return True
+
+    # HC relay lines
+    hc_m = HC_RELAY_INTL_LINE.match(line) if is_international else None
+    if not hc_m:
+        hc_m_team = HC_RELAY_TEAM_LINE.match(line)
+        if hc_m_team:
+            team_name = _collapse_team_repetition(hc_m_team.group(1).strip())
+            time_text = hc_m_team.group(2)
+            fina = int(hc_m_team.group(3)) if hc_m_team.group(3) else 0
+            nat_code = ''
+            tokens = team_name.split()
+            if tokens and COUNTRY_CODE.match(tokens[0]) and is_international:
+                nat_code = tokens[0]
+            event.results.append(ParsedResult(
+                swimmer_name=team_name,
+                time_text=time_text,
+                time_centiseconds=parse_time_to_centiseconds(time_text),
+                event_name=event.event_name,
+                event_distance=event.distance,
+                event_stroke=event.stroke,
+                gender=event.gender,
+                rank=0,
+                nationality_code=nat_code,
+                club=team_name,
+                fina_points=fina,
+                round_type=event.round_type,
+                age_group=event.age_group,
+                status='HC',
+            ))
+            return True
+    else:
+        nat_code = hc_m.group(1)
+        team_name = hc_m.group(2)
+        time_text = hc_m.group(3)
+        fina = int(hc_m.group(4)) if hc_m.group(4) else 0
+        event.results.append(ParsedResult(
+            swimmer_name=f'{nat_code} {team_name}',
+            time_text=time_text,
+            time_centiseconds=parse_time_to_centiseconds(time_text),
+            event_name=event.event_name,
+            event_distance=event.distance,
+            event_stroke=event.stroke,
+            gender=event.gender,
+            rank=0,
+            nationality_code=nat_code,
+            club=f'{nat_code} {team_name}',
+            fina_points=fina,
+            round_type=event.round_type,
+            age_group=event.age_group,
+            status='HC',
+        ))
         return True
 
     # Relay swimmer detail lines (names with reaction times + splits)

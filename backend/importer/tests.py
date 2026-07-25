@@ -1346,7 +1346,7 @@ class UnrankedSwimmerTests(TestCase):
         meet = nat2i_parser.parse(html)
         self.assertEqual(len(meet.events), 1)
         kept = [r for r in meet.events[0].results
-                if r.status == 'OK' and r.time_centiseconds > 0]
+                if r.status in ('OK', 'HC') and r.time_centiseconds > 0]
         self.assertEqual(
             {r.swimmer_name for r in kept},
             {'Youssef TRABELSI', 'Karim BEN AHMED', 'Sami DOUMA'})
@@ -1354,6 +1354,7 @@ class UnrankedSwimmerTests(TestCase):
         self.assertEqual(by_name['Karim BEN AHMED'].rank, 0)
         self.assertEqual(by_name['Karim BEN AHMED'].time_centiseconds, 6300)
         self.assertEqual(by_name['Sami DOUMA'].rank, 0)
+        self.assertEqual(by_name['Sami DOUMA'].status, 'HC')
         # The forfeit row must not come back as an OK result
         self.assertNotIn('Amine ABSENT', {r.swimmer_name for r in kept})
 

@@ -71,14 +71,15 @@ RELAY_HEADER = re.compile(
 # Club can be any number of words (e.g. Spanish "CLUB NATACIO SANT ANDREU"),
 # so anchor on NAT+year before it and the time after it instead of counting words.
 RESULT_LINE = re.compile(
-    r'^(?:(\d+)|TLD|Frf)\.\s*'  # rank or TLD/Frf
+    r'^(?:(\d+)|TLD|Frf|H\.?C\.?|EXH)\.\s*'  # rank or TLD/Frf/HC/EXH
     r'(.+?)\s+'                  # name
     r'([A-Z]{3})\s+'             # nationality
     r'(\d{4})\s+'                # birth year (4 digits)
     r'(.+?)\s+'                  # club (any number of words)
     r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})'  # time
     r'(?:\s+(\d+))?'             # points (optional)
-    r'(?:\s+\d+)?\s*$'           # trailing reaction/obs field (optional)
+    r'(?:\s+\d+)?\s*$',          # trailing reaction/obs field (optional)
+    re.IGNORECASE
 )
 
 # Relay result line: "1. CLUB NAME 3:39.22 839"
@@ -421,6 +422,13 @@ def _parse_result_line(line, event):
 
     time_cs = parse_time_to_centiseconds(time_text)
 
+    # Detect HC/EXH prefix (rank group is None when prefix is HC/EXH/TLD/Frf)
+    status = 'OK'
+    if not match.group(1):
+        prefix = line.lstrip().split('.')[0].upper().replace('.', '')
+        if prefix in ('HC', 'EXH'):
+            status = 'HC'
+
     return ParsedResult(
         swimmer_name=name,
         time_text=time_text,
@@ -435,6 +443,7 @@ def _parse_result_line(line, event):
         club=club,
         fina_points=pts,
         age_group=event.age_group,
+        status=status,
     )
 
 

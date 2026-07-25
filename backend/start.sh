@@ -11,6 +11,7 @@ python manage.py strip_team_numbers
 python manage.py mark_relay_teams
 python manage.py fix_events --apply
 python manage.py recalculate_medals
+python manage.py createcachetable --database default 2>/dev/null || true
 
 # Create admin user if not exists (password comes from the ADMIN_PASSWORD
 # env var — never hardcode credentials in the repo)

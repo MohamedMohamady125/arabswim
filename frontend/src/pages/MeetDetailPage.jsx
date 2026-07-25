@@ -444,6 +444,7 @@ export default function MeetDetailPage() {
                   { key: '', label: 'All' },
                   { key: 'M', label: 'Men' },
                   { key: 'F', label: 'Women' },
+                  { key: 'X', label: 'Mixed' },
                 ].map(opt => (
                   <button key={opt.key} onClick={() => setGenderFilter(opt.key)}
                     className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${

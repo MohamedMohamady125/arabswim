@@ -115,6 +115,10 @@ def _parse_qualifying_pdf(file_obj):
                             continue
                         # Detect gender headers
                         lower = row_text.lower()
+                        # Dual-gender header (e.g. "Men's ... Event ... Women's")
+                        if 'men' in lower and 'women' in lower:
+                            current_gender = None  # let cell-level logic split
+                            continue
                         if 'men' in lower and 'women' not in lower:
                             current_gender = 'M'
                             continue
@@ -157,9 +161,11 @@ def _extract_from_cells(cells, gender, results):
     time_pattern = re.compile(r'^\d{1,2}:\d{2}\.\d{2}$|^\d{1,3}\.\d{2}$')
     event_parts = []
     times = []
-    for c in cells:
+    time_positions = []
+    for i, c in enumerate(cells):
         if time_pattern.match(c):
             times.append(c)
+            time_positions.append(i)
         elif not re.match(r'^\d+$', c):  # skip pure numbers (ranks etc)
             event_parts.append(c)
 
@@ -169,6 +175,51 @@ def _extract_from_cells(cells, gender, results):
     event_text = ' '.join(event_parts).strip()
     if not event_text:
         return
+
+    # Handle "Men's | Event | Women's" layout: event in middle with 4 times
+    # (men_A, men_B, women_A, women_B) — split into two gendered entries
+    if len(times) == 4 and not gender:
+        # Find event position to split left (men) vs right (women) times
+        event_idx = None
+        for i, c in enumerate(cells):
+            c_stripped = str(c).strip()
+            if c_stripped and not time_pattern.match(c_stripped) and not re.match(r'^\d+$', c_stripped):
+                if re.search(r'\d+m\s', c_stripped):
+                    event_idx = i
+                    break
+        if event_idx is not None:
+            left_times = [t for t, p in zip(times, time_positions) if p < event_idx]
+            right_times = [t for t, p in zip(times, time_positions) if p > event_idx]
+        else:
+            # Fallback: first 2 = men, last 2 = women
+            left_times = times[:2]
+            right_times = times[2:]
+        if len(left_times) >= 1:
+            results.append({'event_text': event_text, 'gender': 'M', 'cut': 'A', 'time_text': left_times[0]})
+        if len(left_times) >= 2:
+            results.append({'event_text': event_text, 'gender': 'M', 'cut': 'B', 'time_text': left_times[1]})
+        if len(right_times) >= 1:
+            results.append({'event_text': event_text, 'gender': 'F', 'cut': 'A', 'time_text': right_times[0]})
+        if len(right_times) >= 2:
+            results.append({'event_text': event_text, 'gender': 'F', 'cut': 'B', 'time_text': right_times[1]})
+        return
+
+    # Handle "Men's | Event | Women's" layout with 2 times (one per gender, no A/B)
+    if len(times) == 2 and not gender:
+        event_idx = None
+        for i, c in enumerate(cells):
+            c_stripped = str(c).strip()
+            if c_stripped and not time_pattern.match(c_stripped) and not re.match(r'^\d+$', c_stripped):
+                if re.search(r'\d+m\s', c_stripped):
+                    event_idx = i
+                    break
+        if event_idx is not None:
+            left_times = [t for t, p in zip(times, time_positions) if p < event_idx]
+            right_times = [t for t, p in zip(times, time_positions) if p > event_idx]
+            if len(left_times) == 1 and len(right_times) == 1:
+                results.append({'event_text': event_text, 'gender': 'M', 'cut': 'A', 'time_text': left_times[0]})
+                results.append({'event_text': event_text, 'gender': 'F', 'cut': 'A', 'time_text': right_times[0]})
+                return
 
     # Detect gender from event text if not set
     g = gender

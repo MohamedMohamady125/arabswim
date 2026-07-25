@@ -191,6 +191,176 @@ function MostImprovedTable({ swimmers, navigate }) {
   )
 }
 
+function MedalsTab({ stats, medals, medalSummary, medalClubSummary, medalSwimmerSummary, navigate }) {
+  const isNational = (stats?.countries?.length || 0) <= 1
+  const safeMedals = Array.isArray(medals) ? medals : []
+  const safeSummary = Array.isArray(medalSummary) ? medalSummary : []
+  const safeClubSummary = Array.isArray(medalClubSummary) ? medalClubSummary : []
+  const safeSwimmerSummary = Array.isArray(medalSwimmerSummary) ? medalSwimmerSummary : []
+
+  return (
+    <div className="space-y-6">
+      {/* Country Medal Tally (international) or Club Medal Tally (national) */}
+      {!isNational && safeSummary.length > 0 && (
+        <div className="bg-white rounded-lg border">
+          <div className="p-4 border-b">
+            <h3 className="font-semibold">Country Medal Tally</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Country</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
+                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
+                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {safeSummary.map((row, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
+                    </td>
+                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
+                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
+                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
+                    <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {isNational && safeClubSummary.length > 0 && (
+        <div className="bg-white rounded-lg border">
+          <div className="p-4 border-b">
+            <h3 className="font-semibold">Club Medal Tally</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Club</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
+                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
+                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {safeClubSummary.map((row, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                    <td className="px-4 py-2 text-sm font-medium">{row.result__team}</td>
+                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
+                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
+                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
+                    <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Top Swimmers by Medals */}
+      {safeSwimmerSummary.length > 0 && (
+        <div className="bg-white rounded-lg border">
+          <div className="p-4 border-b">
+            <h3 className="font-semibold">Top Swimmers</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
+                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
+                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {safeSwimmerSummary.map((row, i) => (
+                  <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${row.swimmer__id}`)}>
+                    <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                    <td className="px-4 py-2 text-sm font-medium">{row.swimmer__name}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
+                    </td>
+                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
+                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
+                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
+                    <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* All Medals — sorted Gold > Silver > Bronze */}
+      {safeMedals.length > 0 && (
+        <div className="bg-white rounded-lg border">
+          <div className="p-4 border-b">
+            <h3 className="font-semibold">All Medals</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Medal</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {[...safeMedals].sort((a, b) => {
+                  const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
+                  return (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3)
+                }).map((m, i) => (
+                  <tr key={m.id || i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}>
+                    <td className="px-4 py-2"><MedalIcon type={m.medal_type?.toLowerCase()} size={24} /></td>
+                    <td className="px-4 py-2 text-sm font-medium">{m.swimmer_detail?.name}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <CountryFlag
+                        code={m.swimmer_detail?.nationality_detail?.code}
+                        flagUrl={m.swimmer_detail?.nationality_detail?.flag_url}
+                        name={m.swimmer_detail?.nationality_detail?.name}
+                      />
+                    </td>
+                    <td className="px-4 py-2 text-sm">{m.event_detail?.name}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {safeSummary.length === 0 && safeClubSummary.length === 0 && safeMedals.length === 0 && (
+        <div className="bg-white rounded-lg border p-12 text-center text-gray-400">
+          <div className="text-5xl mb-3">🏅</div>
+          <p className="text-lg font-medium">No medals yet</p>
+          <p className="text-sm mt-1">Medals are computed from results automatically</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MeetDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -944,170 +1114,16 @@ export default function MeetDetailPage() {
       )}
 
       {/* Medals Tab */}
-      {activeTab === 'medals' && (() => {
-        const isNational = (stats?.countries?.length || 0) <= 1
-        return (
-        <div className="space-y-6">
-          {/* Country Medal Tally (international) or Club Medal Tally (national) */}
-          {!isNational && medalSummary.length > 0 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Country Medal Tally</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Country</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {medalSummary.map((row, i) => (
-                      <tr key={i} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                        <td className="px-4 py-2 text-sm">
-                          <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
-                        </td>
-                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
-                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
-                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
-                        <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {isNational && medalClubSummary.length > 0 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Club Medal Tally</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Club</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {medalClubSummary.map((row, i) => (
-                      <tr key={i} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                        <td className="px-4 py-2 text-sm font-medium">{row.result__team}</td>
-                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
-                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
-                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
-                        <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Top Swimmers by Medals */}
-          {medalSwimmerSummary.length > 0 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Top Swimmers</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {medalSwimmerSummary.map((row, i) => (
-                      <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${row.swimmer__id}`)}>
-                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                        <td className="px-4 py-2 text-sm font-medium">{row.swimmer__name}</td>
-                        <td className="px-4 py-2 text-sm">
-                          <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
-                        </td>
-                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
-                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
-                        <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
-                        <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* All Medals — sorted Gold → Silver → Bronze */}
-          {medals.length > 0 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">All Medals</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Medal</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {[...medals].sort((a, b) => {
-                      const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
-                      return (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3)
-                    }).map((m, i) => (
-                      <tr key={m.id || i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}>
-                        <td className="px-4 py-2"><MedalIcon type={m.medal_type?.toLowerCase()} size={24} /></td>
-                        <td className="px-4 py-2 text-sm font-medium">{m.swimmer_detail?.name}</td>
-                        <td className="px-4 py-2 text-sm">
-                          <CountryFlag
-                            code={m.swimmer_detail?.nationality_detail?.code}
-                            flagUrl={m.swimmer_detail?.nationality_detail?.flag_url}
-                            name={m.swimmer_detail?.nationality_detail?.name}
-                          />
-                        </td>
-                        <td className="px-4 py-2 text-sm">{m.event_detail?.name}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {medalSummary.length === 0 && medalClubSummary.length === 0 && medals.length === 0 && (
-            <div className="bg-white rounded-lg border p-12 text-center text-gray-400">
-              <div className="text-5xl mb-3">🏅</div>
-              <p className="text-lg font-medium">No medals yet</p>
-              <p className="text-sm mt-1">Medals are computed from results automatically</p>
-            </div>
-          )}
-        </div>
-        )
-      })()}
+      {activeTab === 'medals' && (
+        <MedalsTab
+          stats={stats}
+          medals={medals}
+          medalSummary={medalSummary}
+          medalClubSummary={medalClubSummary}
+          medalSwimmerSummary={medalSwimmerSummary}
+          navigate={navigate}
+        />
+      )}
 
       {/* Gallery Tab */}
       {activeTab === 'gallery' && (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers, getChampionshipClubSwimmers, updateResult, deleteResult, getMostImproved, getChampionshipComparison } from '../api/championships'
+import { getChampionship, getChampionshipResults, getChampionshipStats, getChampionshipCountrySwimmers, updateResult, deleteResult, getMostImproved, getChampionshipComparison } from '../api/championships'
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import { getOrCreateAlbumForChampionship } from '../api/media'
 import { uploadPhotos, createMediaItem, deleteMediaItem, updateMediaItem } from '../api/media'
@@ -207,9 +207,6 @@ export default function MeetDetailPage() {
   const [expandedCountry, setExpandedCountry] = useState(null)
   const [countrySwimmers, setCountrySwimmers] = useState({})   // countryId -> swimmers[]
   const [loadingCountry, setLoadingCountry] = useState(null)
-  const [expandedClub, setExpandedClub] = useState(null)
-  const [clubSwimmers, setClubSwimmers] = useState({})   // clubName -> swimmers[]
-  const [loadingClub, setLoadingClub] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -346,24 +343,6 @@ export default function MeetDetailPage() {
     }
   }
 
-  const handleClubClick = async (clubName) => {
-    if (expandedClub === clubName) {
-      setExpandedClub(null)
-      return
-    }
-    setExpandedClub(clubName)
-    if (!clubSwimmers[clubName]) {
-      setLoadingClub(clubName)
-      try {
-        const res = await getChampionshipClubSwimmers(id, clubName)
-        setClubSwimmers(prev => ({ ...prev, [clubName]: res.data }))
-      } catch {
-      } finally {
-        setLoadingClub(null)
-      }
-    }
-  }
-
   if (!meet || !stats) return <div className="text-center py-12 text-gray-400">Loading...</div>
 
   return (
@@ -452,86 +431,8 @@ export default function MeetDetailPage() {
 
       {/* Results Tab */}
       {activeTab === 'results' && <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        {/* Left: Clubs + Events */}
+        {/* Left: Events */}
         <div className="space-y-4">
-          {/* Clubs */}
-          {stats.clubs?.length > 0 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-3 border-b">
-                <h3 className="font-semibold text-sm">Clubs ({stats.clubs.length})</h3>
-              </div>
-              <div className="divide-y max-h-96 overflow-y-auto">
-                {stats.clubs.map((c, i) => {
-                  const clubName = c.team
-                  const isOpen = expandedClub === clubName
-                  const swimmers = clubSwimmers[clubName]
-                  return (
-                    <div key={clubName ?? i}>
-                      <button
-                        onClick={() => handleClubClick(clubName)}
-                        className={`w-full flex items-center justify-between px-3 py-2 transition-colors hover:bg-gray-50 ${
-                          isOpen ? 'bg-sky-50' : ''
-                        }`}
-                      >
-                        <span className="text-sm font-medium text-gray-800 truncate">{clubName}</span>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <span><span className="font-medium text-gray-700">{c.swimmers_count}</span> swimmers</span>
-                          <svg
-                            className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </button>
-                      {isOpen && (
-                        <div className="bg-gray-50 border-t border-gray-100">
-                          {loadingClub === clubName ? (
-                            <div className="px-3 py-3 text-xs text-gray-400 text-center">Loading swimmers...</div>
-                          ) : (swimmers || []).length === 0 ? (
-                            <div className="px-3 py-3 text-xs text-gray-400 text-center">No swimmers</div>
-                          ) : (
-                            swimmers.map(s => (
-                              <button
-                                key={s.swimmer_id}
-                                onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white transition-colors group"
-                              >
-                                <div className="w-7 h-7 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center overflow-hidden shrink-0 text-[10px] font-bold">
-                                  {s.photo ? (
-                                    <img src={s.photo} alt="" className="w-full h-full object-cover" />
-                                  ) : (
-                                    s.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-xs font-medium text-gray-800 truncate group-hover:text-sky-600">
-                                    {s.name}
-                                  </div>
-                                  <div className="text-[11px] text-gray-400">
-                                    {s.events_count} {s.events_count === 1 ? 'event' : 'events'}
-                                    {s.best_fina > 0 && (
-                                      <> · best <span className="font-mono text-sky-600 font-semibold">{s.best_time}</span> ({s.best_event})</>
-                                    )}
-                                  </div>
-                                </div>
-                                <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                                  s.sex === 'F' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'
-                                }`}>
-                                  {s.sex}
-                                </span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Events */}
           <div className="bg-white rounded-lg border">
             <div className="p-3 border-b">
@@ -900,25 +801,6 @@ export default function MeetDetailPage() {
               ))}
             </div>
           </div>
-
-          {/* Clubs Breakdown */}
-          {stats.clubs?.length > 0 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Clubs ({stats.clubs.length})</h3>
-              </div>
-              <div className="divide-y max-h-[500px] overflow-y-auto">
-                {stats.clubs.map((c, i) => (
-                  <div key={c.team ?? i} className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm font-medium text-gray-800">{c.team}</span>
-                    <div className="text-right text-sm text-gray-500">
-                      <span className="font-medium text-gray-700">{c.swimmers_count}</span> swimmers · <span className="font-medium text-gray-700">{c.results_count}</span> results
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Top Performers */}
           <TopPerformersTable performers={stats.top_performers} navigate={navigate} />

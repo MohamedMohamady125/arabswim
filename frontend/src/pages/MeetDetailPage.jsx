@@ -248,7 +248,7 @@ export default function MeetDetailPage() {
   useEffect(() => {
     if (activeTab === 'medals') {
       getMedalSummary({ championship: id }).then(res => setMedalSummary(res.data)).catch(() => {})
-      getMedals({ championship: id }).then(res => setMedals(res.data.results || res.data)).catch(() => {})
+      getMedals({ championship: id }).then(res => setMedals(res.data?.results || res.data || [])).catch(() => {})
       getMedalClubSummary({ championship: id }).then(res => setMedalClubSummary(res.data)).catch(() => {})
       getMedalSwimmerSummary({ championship: id }).then(res => setMedalSwimmerSummary(res.data)).catch(() => {})
     }
@@ -945,7 +945,7 @@ export default function MeetDetailPage() {
 
       {/* Medals Tab */}
       {activeTab === 'medals' && (() => {
-        const isNational = stats.countries.length <= 1
+        const isNational = (stats?.countries?.length || 0) <= 1
         return (
         <div className="space-y-6">
           {/* Country Medal Tally (international) or Club Medal Tally (national) */}

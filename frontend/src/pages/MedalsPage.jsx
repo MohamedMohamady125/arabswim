@@ -4,6 +4,8 @@ import { getMedalSummary, getMedalSwimmerSummary } from '../api/medals'
 import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
 import CountryFlag from '../components/common/CountryFlag'
 
+const MEDAL_COLORS = { GOLD: '#FFD700', SILVER: '#C0C0C0', BRONZE: '#CD7F32' }
+
 export default function MedalsPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createCalendarEvent } from '../api/calendar'
-import { getChampionships, updateChampionship } from '../api/championships'
+import { getChampionships, createChampionship, updateChampionship, getClassificationCategories, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries } from '../api/core'
 import { POOL_TYPES, mediaUrl } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
@@ -303,16 +302,38 @@ export default function CalendarPage() {
   // Add event
   const [showAddEvent, setShowAddEvent] = useState(false)
   const [newEvent, setNewEvent] = useState({
-    title: '', date: '', end_date: '', event_type: 'CHAMPIONSHIP',
-    description: '', location: '', pool: 'LCM',
+    name: '', date: '', end_date: '', pool: 'LCM', country: '',
+    location: '', website: '', live_results_url: '', registration_url: '',
+    classification_category: '', classification: '', sub_classification: '',
   })
+  const [categories, setCategories] = useState([])
+  const [classificationsList, setClassificationsList] = useState([])
+  const [subClassificationsList, setSubClassificationsList] = useState([])
+  const [addLoading, setAddLoading] = useState(false)
 
   const years = []
   for (let y = new Date().getFullYear() + 2; y >= 2000; y--) years.push(y)
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
+    getClassificationCategories().then(res => setCategories(res.data)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (newEvent.classification_category) {
+      getClassifications(newEvent.classification_category).then(res => setClassificationsList(res.data)).catch(() => {})
+    } else {
+      setClassificationsList([])
+    }
+  }, [newEvent.classification_category])
+
+  useEffect(() => {
+    if (newEvent.classification) {
+      getSubClassifications(newEvent.classification).then(res => setSubClassificationsList(res.data)).catch(() => {})
+    } else {
+      setSubClassificationsList([])
+    }
+  }, [newEvent.classification])
 
   useEffect(() => {
     const params = { page_size: 500, ordering: 'date' }
@@ -341,9 +362,25 @@ export default function CalendarPage() {
 
   const handleAddEvent = async (e) => {
     e.preventDefault()
-    await createCalendarEvent(newEvent)
-    setNewEvent({ title: '', date: '', end_date: '', event_type: 'CHAMPIONSHIP', description: '', location: '', pool: 'LCM' })
-    setShowAddEvent(false)
+    setAddLoading(true)
+    try {
+      const data = new FormData()
+      Object.entries(newEvent).forEach(([k, v]) => {
+        if (v !== '' && v !== null) data.append(k, v)
+      })
+      await createChampionship(data)
+      setNewEvent({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', website: '', live_results_url: '', registration_url: '', classification_category: '', classification: '', sub_classification: '' })
+      setShowAddEvent(false)
+      // Refresh championships list
+      const params = { page_size: 500, ordering: 'date' }
+      if (filterYear) params.year = filterYear
+      if (filterCountry) params.country = filterCountry
+      getChampionships(params).then(res => setChampionships(res.data.results || res.data)).catch(() => {})
+    } catch (err) {
+      alert('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
+    } finally {
+      setAddLoading(false)
+    }
   }
 
   return (
@@ -457,23 +494,31 @@ export default function CalendarPage() {
 
       {/* Add Event Modal */}
       {showAddEvent && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowAddEvent(false)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold mb-4">Add Calendar Event</h2>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center overflow-y-auto py-8" onClick={() => setShowAddEvent(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-4">Add Competition</h2>
             <form onSubmit={handleAddEvent} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Title *</label>
-                <input type="text" value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" required />
+                <label className="block text-sm font-medium mb-1">Name *</label>
+                <input type="text" value={newEvent.name} onChange={(e) => setNewEvent({ ...newEvent, name: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Arab Swimming Championship 2026" required />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Type</label>
-                <select value={newEvent.event_type} onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm">
-                  <option value="CHAMPIONSHIP">Championship</option>
-                  <option value="MEET">Meet</option>
-                  <option value="CUSTOM">Custom</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Country *</label>
+                  <select value={newEvent.country} onChange={(e) => setNewEvent({ ...newEvent, country: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm" required>
+                    <option value="">Select country</option>
+                    {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Pool *</label>
+                  <select value={newEvent.pool} onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm">
+                    {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -490,24 +535,68 @@ export default function CalendarPage() {
               <div>
                 <label className="block text-sm font-medium mb-1">Location</label>
                 <input type="text" value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="City / Country" />
+                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="City / Venue" />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Pool</label>
-                <select value={newEvent.pool} onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm">
-                  {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
+
+              {/* Classification */}
+              <div className="border-t pt-3 mt-3">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Classification</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Category</label>
+                    <select value={newEvent.classification_category} onChange={(e) => setNewEvent({ ...newEvent, classification_category: e.target.value, classification: '', sub_classification: '' })}
+                      className="w-full border rounded-lg px-2 py-1.5 text-sm">
+                      <option value="">--</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Classification</label>
+                    <select value={newEvent.classification} onChange={(e) => setNewEvent({ ...newEvent, classification: e.target.value, sub_classification: '' })}
+                      className="w-full border rounded-lg px-2 py-1.5 text-sm" disabled={!classificationsList.length}>
+                      <option value="">--</option>
+                      {classificationsList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Sub</label>
+                    <select value={newEvent.sub_classification} onChange={(e) => setNewEvent({ ...newEvent, sub_classification: e.target.value })}
+                      className="w-full border rounded-lg px-2 py-1.5 text-sm" disabled={!subClassificationsList.length}>
+                      <option value="">--</option>
+                      {subClassificationsList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
-                <textarea value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" rows={2} />
+
+              {/* Links */}
+              <div className="border-t pt-3 mt-3">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Links</h3>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Website</label>
+                    <input type="url" value={newEvent.website} onChange={(e) => setNewEvent({ ...newEvent, website: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-1.5 text-sm" placeholder="https://..." />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Live Results URL</label>
+                    <input type="url" value={newEvent.live_results_url} onChange={(e) => setNewEvent({ ...newEvent, live_results_url: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-1.5 text-sm" placeholder="https://..." />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Registration URL</label>
+                    <input type="url" value={newEvent.registration_url} onChange={(e) => setNewEvent({ ...newEvent, registration_url: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-1.5 text-sm" placeholder="https://..." />
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-3 pt-2">
+
+              <div className="flex gap-3 pt-3">
                 <button type="button" onClick={() => setShowAddEvent(false)} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
-                <button type="submit" disabled={!newEvent.title || !newEvent.date}
-                  className="flex-1 bg-cyan-600 text-white rounded-lg py-2 text-sm hover:bg-cyan-700 disabled:opacity-50">Save</button>
+                <button type="submit" disabled={!newEvent.name || !newEvent.date || !newEvent.country || addLoading}
+                  className="flex-1 bg-cyan-600 text-white rounded-lg py-2 text-sm hover:bg-cyan-700 disabled:opacity-50">
+                  {addLoading ? 'Saving...' : 'Save'}
+                </button>
               </div>
             </form>
           </div>

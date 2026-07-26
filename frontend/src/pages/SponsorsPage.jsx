@@ -29,10 +29,10 @@ function SponsorModal({ sponsor, onClose, onSaved }) {
       if (logoFile) fd.append('logo', logoFile)
       if (isEdit) await updateSponsor(sponsor.id, fd)
       else await createSponsor(fd)
-      toast.success(isEdit ? 'Sponsor updated' : 'Sponsor created')
+      toast.success(isEdit ? 'Partner updated' : 'Partner created')
       onSaved()
     } catch {
-      toast.error('Failed to save sponsor')
+      toast.error('Failed to save partner')
     } finally {
       setSaving(false)
     }
@@ -42,7 +42,7 @@ function SponsorModal({ sponsor, onClose, onSaved }) {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="p-5 border-b">
-          <h2 className="text-lg font-bold">{isEdit ? 'Edit Sponsor' : 'Add Sponsor'}</h2>
+          <h2 className="text-lg font-bold">{isEdit ? 'Edit Partner' : 'Add Partner'}</h2>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* Logo */}
@@ -61,7 +61,7 @@ function SponsorModal({ sponsor, onClose, onSaved }) {
             <div className="flex-1">
               <label className="block text-sm font-medium mb-1">Name *</label>
               <input type="text" value={form.name} onChange={set('name')}
-                className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Sponsor name" />
+                className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Partner name" />
             </div>
           </div>
 
@@ -83,7 +83,7 @@ function SponsorModal({ sponsor, onClose, onSaved }) {
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>
             <textarea value={form.description} onChange={set('description')} rows={3}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Brief description of the sponsor..." />
+              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Brief description of the partner..." />
           </div>
 
           <div>
@@ -96,7 +96,7 @@ function SponsorModal({ sponsor, onClose, onSaved }) {
             <button type="button" onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
             <button type="submit" disabled={saving}
               className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Sponsor'}
+              {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Partner'}
             </button>
           </div>
         </form>
@@ -119,11 +119,11 @@ export default function SponsorsPage() {
   useEffect(() => { load() }, [])
 
   const handleDelete = async (s) => {
-    if (!window.confirm(`Delete sponsor "${s.name}"?`)) return
+    if (!window.confirm(`Delete partner "${s.name}"?`)) return
     try {
       await deleteSponsor(s.id)
       setSponsors(prev => prev.filter(x => x.id !== s.id))
-      toast.success('Sponsor deleted')
+      toast.success('Partner deleted')
     } catch {
       toast.error('Failed to delete')
     }
@@ -134,12 +134,12 @@ export default function SponsorsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Handshake size={24} className="text-blue-600" /> Sponsors & Partners
+          <Handshake size={24} className="text-blue-600" /> Partnerships
           <span className="text-gray-400 text-lg font-normal">({sponsors.length})</span>
         </h1>
         <button onClick={() => setShowSponsorModal({})}
           className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-          <Plus size={16} /> Add Sponsor
+          <Plus size={16} /> Add Partner
         </button>
       </div>
 
@@ -147,8 +147,8 @@ export default function SponsorsPage() {
       {sponsors.length === 0 ? (
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
           <Handshake size={48} className="mx-auto mb-3 opacity-30" />
-          <p className="text-lg font-medium">No sponsors yet</p>
-          <p className="text-sm mt-1">Add your first sponsor or partner above</p>
+          <p className="text-lg font-medium">No partnerships yet</p>
+          <p className="text-sm mt-1">Add your first partner above</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">

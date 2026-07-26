@@ -34,7 +34,7 @@ const GROUPS = [
       { to: '/media', label: 'Media', icon: Image },
       { to: '/market', label: 'Market', icon: ShoppingBag },
       { to: '/academies', label: 'Academies', icon: School },
-      { to: '/sponsors', label: 'Sponsors', icon: Handshake },
+      { to: '/sponsors', label: 'Partnerships', icon: Handshake },
       { to: '/coaches', label: 'Coaches', icon: UserCheck },
     ],
   },

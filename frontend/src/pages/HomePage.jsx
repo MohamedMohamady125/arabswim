@@ -21,7 +21,7 @@ const SECTIONS = [
   { to: '/media', label: 'Media', icon: Image, countKey: 'albums' },
   { to: '/market', label: 'Market', icon: ShoppingBag, countKey: 'listings' },
   { to: '/academies', label: 'Academies', icon: School, countKey: 'academies' },
-  { to: '/sponsors', label: 'Sponsors', icon: Handshake, countKey: 'sponsors' },
+  { to: '/sponsors', label: 'Partnerships', icon: Handshake, countKey: 'sponsors' },
   { to: '/coaches', label: 'Coaches', icon: UserCheck, countKey: 'coaches' },
   { to: '/countries', label: 'Countries', icon: Globe, countKey: 'countries' },
   { to: '/import', label: 'Import', icon: Upload },

@@ -362,8 +362,19 @@ export default function CalendarPage() {
       Object.entries(newEvent).forEach(([k, v]) => {
         if (v !== '' && v !== null) data.append(k, v)
       })
-      await createChampionship(data)
-      await refreshList()
+      const res = await createChampionship(data)
+      // Immediately add the new championship to local state so it never disappears
+      const created = res.data
+      const country = countries.find(c => String(c.id) === String(newEvent.country))
+      // Format date to DD/MM/YYYY to match list serializer output
+      const fmtDate = (d) => { if (!d) return null; const [y,m,dd] = d.split('-'); return `${dd}/${m}/${y}` }
+      const localEntry = {
+        ...created,
+        date: fmtDate(newEvent.date) || created.date,
+        end_date: newEvent.end_date ? fmtDate(newEvent.end_date) : null,
+        country_detail: country ? { id: country.id, name: country.name, code: country.code, flag_url: country.flag_url } : null,
+      }
+      setChampionships(prev => [...prev, localEntry])
       setNewEvent({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', website: '', live_results_url: '', registration_url: '', classification: '', sub_classification: '' })
       setShowAddEvent(false)
     } catch (err) {

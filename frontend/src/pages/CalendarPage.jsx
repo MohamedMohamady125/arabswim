@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getChampionships, createChampionship, updateChampionship, getClassificationCategories, getClassifications, getSubClassifications } from '../api/championships'
+import { getChampionships, createChampionship, updateChampionship, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries } from '../api/core'
 import { POOL_TYPES, mediaUrl } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
@@ -304,9 +304,8 @@ export default function CalendarPage() {
   const [newEvent, setNewEvent] = useState({
     name: '', date: '', end_date: '', pool: 'LCM', country: '',
     location: '', website: '', live_results_url: '', registration_url: '',
-    classification_category: '', classification: '', sub_classification: '',
+    classification: '', sub_classification: '',
   })
-  const [categories, setCategories] = useState([])
   const [classificationsList, setClassificationsList] = useState([])
   const [subClassificationsList, setSubClassificationsList] = useState([])
   const [addLoading, setAddLoading] = useState(false)
@@ -316,16 +315,8 @@ export default function CalendarPage() {
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
-    getClassificationCategories().then(res => setCategories(res.data)).catch(() => {})
+    getClassifications().then(res => setClassificationsList(res.data)).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    if (newEvent.classification_category) {
-      getClassifications(newEvent.classification_category).then(res => setClassificationsList(res.data)).catch(() => {})
-    } else {
-      setClassificationsList([])
-    }
-  }, [newEvent.classification_category])
 
   useEffect(() => {
     if (newEvent.classification) {
@@ -369,7 +360,7 @@ export default function CalendarPage() {
         if (v !== '' && v !== null) data.append(k, v)
       })
       await createChampionship(data)
-      setNewEvent({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', website: '', live_results_url: '', registration_url: '', classification_category: '', classification: '', sub_classification: '' })
+      setNewEvent({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', website: '', live_results_url: '', registration_url: '', classification: '', sub_classification: '' })
       setShowAddEvent(false)
       // Refresh championships list
       const params = { page_size: 500, ordering: 'date' }
@@ -523,12 +514,18 @@ export default function CalendarPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-1">Start Date *</label>
-                  <input type="date" value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                  <input type="date" value={newEvent.date} onChange={(e) => {
+                    const d = e.target.value
+                    const updates = { date: d }
+                    if (newEvent.end_date && newEvent.end_date < d) updates.end_date = d
+                    setNewEvent({ ...newEvent, ...updates })
+                  }}
                     className="w-full border rounded-lg px-3 py-2 text-sm" required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">End Date</label>
                   <input type="date" value={newEvent.end_date} onChange={(e) => setNewEvent({ ...newEvent, end_date: e.target.value })}
+                    min={newEvent.date || undefined}
                     className="w-full border rounded-lg px-3 py-2 text-sm" />
                 </div>
               </div>
@@ -541,28 +538,20 @@ export default function CalendarPage() {
               {/* Classification */}
               <div className="border-t pt-3 mt-3">
                 <h3 className="text-sm font-medium text-gray-600 mb-2">Classification</h3>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Category</label>
-                    <select value={newEvent.classification_category} onChange={(e) => setNewEvent({ ...newEvent, classification_category: e.target.value, classification: '', sub_classification: '' })}
-                      className="w-full border rounded-lg px-2 py-1.5 text-sm">
-                      <option value="">--</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Classification</label>
                     <select value={newEvent.classification} onChange={(e) => setNewEvent({ ...newEvent, classification: e.target.value, sub_classification: '' })}
-                      className="w-full border rounded-lg px-2 py-1.5 text-sm" disabled={!classificationsList.length}>
-                      <option value="">--</option>
+                      className="w-full border rounded-lg px-2 py-1.5 text-sm">
+                      <option value="">Select classification</option>
                       {classificationsList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Sub</label>
+                    <label className="block text-xs text-gray-500 mb-1">Sub Classification</label>
                     <select value={newEvent.sub_classification} onChange={(e) => setNewEvent({ ...newEvent, sub_classification: e.target.value })}
                       className="w-full border rounded-lg px-2 py-1.5 text-sm" disabled={!subClassificationsList.length}>
-                      <option value="">--</option>
+                      <option value="">Select sub</option>
                       {subClassificationsList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>

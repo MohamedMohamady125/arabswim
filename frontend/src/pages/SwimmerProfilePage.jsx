@@ -360,7 +360,14 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
 }
 
 /* ───────── Stats Tab ───────── */
-function StatsTab({ stats, events, qualifyingGaps }) {
+function StatsTab({ stats, events, swimmerId }) {
+  const [qualifyingGaps, setQualifyingGaps] = useState([])
+  useEffect(() => {
+    if (swimmerId) {
+      getSwimmerQualifyingGaps(swimmerId).then(res => setQualifyingGaps(res.data || [])).catch(() => {})
+    }
+  }, [swimmerId])
+
   if (!stats) return null
   const { medals, best_fina, best_event, total_championships, records, total_records, fina_distribution } = stats
   const totalEvents = new Set(events.map(e => e.event_id)).size
@@ -1212,7 +1219,6 @@ export default function SwimmerProfilePage() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
-  const [qualifyingGaps, setQualifyingGaps] = useState([])
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -1220,7 +1226,6 @@ export default function SwimmerProfilePage() {
       getSwimmer(id).then(res => setSwimmer(res.data)),
       getSwimmerEvents(id).then(res => setEvents(res.data)),
       getSwimmerProfileStats(id).then(res => setStats(res.data)),
-      getSwimmerQualifyingGaps(id).then(res => setQualifyingGaps(res.data)).catch(() => {}),
     ]).finally(() => setLoaded(true))
   }, [id])
 
@@ -1406,7 +1411,7 @@ export default function SwimmerProfilePage() {
         {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} onEventClick={(eventId, pool) => { setActiveTab('times'); handleEventClick({ event_id: eventId, pool }) }} />}
         {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
         {activeTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
-        {activeTab === 'stats' && <StatsTab stats={stats} events={events} qualifyingGaps={qualifyingGaps} />}
+        {activeTab === 'stats' && <StatsTab stats={stats} events={events} swimmerId={parseInt(id)} />}
         {activeTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}
         {activeTab === 'gallery' && <GalleryTab swimmerId={parseInt(id)} />}
       </div>

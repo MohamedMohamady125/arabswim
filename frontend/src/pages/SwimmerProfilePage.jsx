@@ -389,7 +389,7 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
         {finaDistribution.map((tier, i) => {
           const colors = TIER_COLORS[tier.label] || TIER_COLORS['Novice']
           const pct = maxCount > 0 ? (tier.count / maxCount) * 100 : 0
-          const rangeLabel = tier.high >= 1000 ? `${tier.low}+` : `${tier.low}-${tier.high}`
+          const rangeLabel = `${tier.low}+`
           return (
             <div key={tier.low} className="flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${(i + 6) * 0.08}s` }}>
               <div className={`w-14 sm:w-16 text-right text-[10px] sm:text-xs font-black ${colors.text}`}>{rangeLabel}</div>

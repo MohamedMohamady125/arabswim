@@ -877,23 +877,23 @@ def canonical_relay_name(event_name, distance=0, stroke='', gender=''):
 
 
 STROKE_ORDER = {
-    'Freestyle': 100,
-    'Backstroke': 200,
-    'Breaststroke': 300,
-    'Butterfly': 400,
-    'Individual Medley': 500,
-    'Freestyle Relay': 600,
-    'Medley Relay': 700,
+    'Freestyle': 1000,
+    'Backstroke': 2000,
+    'Breaststroke': 3000,
+    'Butterfly': 4000,
+    'Individual Medley': 5000,
+    'Freestyle Relay': 6000,
+    'Medley Relay': 7000,
 }
 
 
 def _compute_sort_order(stroke, distance, is_relay=False):
     """Compute a sort order that produces standard swimming program order."""
-    base = STROKE_ORDER.get(stroke, 800)
+    base = STROKE_ORDER.get(stroke, 8000)
     if is_relay:
-        base = max(base, 600)
+        base = max(base, 6000)
     # Within each stroke, sort by distance
-    return base + (distance // 10)
+    return base + distance
 
 
 def _find_event(event_data, event_cache):

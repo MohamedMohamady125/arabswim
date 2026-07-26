@@ -206,7 +206,7 @@ function StandardDetail({ standardId, onBack }) {
     setUploadResult(null)
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('pool', poolFilter)
+    // Don't send pool — let backend auto-detect from PDF content
     try {
       const res = await uploadQualifyingPdf(standardId, formData)
       setUploadResult(res.data)
@@ -325,6 +325,9 @@ function StandardDetail({ standardId, onBack }) {
           ) : (
             <div className="space-y-1">
               <p className="font-bold">Import complete: {uploadResult.created} created, {uploadResult.updated} updated</p>
+              {uploadResult.pools_used && (
+                <p className="text-xs">Pool{uploadResult.pools_used.length > 1 ? 's' : ''} detected: {uploadResult.pools_used.map(p => <span key={p} className="inline-block ml-1 px-2 py-0.5 rounded bg-emerald-100 font-bold">{p}</span>)}</p>
+              )}
               {uploadResult.skipped?.length > 0 && (
                 <details className="text-xs">
                   <summary className="cursor-pointer font-semibold">{uploadResult.skipped.length} skipped</summary>

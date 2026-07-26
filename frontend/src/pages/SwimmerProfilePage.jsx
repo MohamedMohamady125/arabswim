@@ -624,9 +624,12 @@ function RecordsTab({ swimmerId, swimmer }) {
   const gccCount = (byType['GCC'] || []).length
   const totalCount = records.length
 
+  const alpha2 = swimmer?.nationality_detail?.flag_url || (swimmer?.nationality_detail?.code || '').toLowerCase().slice(0, 2)
+  const genderLabel = swimmer?.sex === 'M' ? "MEN'S" : "WOMEN'S"
+
   if (totalCount === 0) {
     return (
-      <div className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-[#0a1628] to-[#122240] p-12 text-center animate-fade-in">
+      <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] p-12 text-center animate-fade-in">
         <svg className="w-16 h-16 mx-auto mb-4 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
         <p className="text-white/30 font-bold">No records held</p>
         <p className="text-white/15 text-sm mt-1">Records will appear here when this swimmer sets Arab, GCC, or National records</p>
@@ -635,47 +638,67 @@ function RecordsTab({ swimmerId, swimmer }) {
   }
 
   const typeConfig = {
-    NATIONAL: { label: 'National', accent: 'text-purple-400', ring: 'ring-purple-400/30 bg-purple-500/15' },
-    ARAB: { label: 'Arab', accent: 'text-emerald-400', ring: 'ring-emerald-400/30 bg-emerald-500/15' },
+    NATIONAL: { label: 'NATIONAL', accent: 'text-purple-400', ring: 'ring-purple-400/30 bg-purple-500/15' },
+    ARAB: { label: 'ARAB', accent: 'text-emerald-400', ring: 'ring-emerald-400/30 bg-emerald-500/15' },
     GCC: { label: 'GCC', accent: 'text-sky-400', ring: 'ring-sky-400/30 bg-sky-500/15' },
   }
 
   const filtered = activeType === 'ALL' ? records : (byType[activeType] || [])
 
+  // Find a "featured" record — first one in filtered list
+  const featuredRecord = filtered[0]
+
   return (
-    <div className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-[#0a1628] to-[#122240] animate-fade-in">
-      {/* Header */}
-      <SportCardHeader
-        swimmer={swimmer}
-        badge="Record Holder"
-        badgeBg="bg-amber-500/80"
-      />
+    <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] animate-fade-in">
+      {/* Event badge */}
+      <div className="px-6 pt-6 pb-2 flex justify-center">
+        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-amber-400/50 bg-amber-500/10">
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-300">{genderLabel} RECORD HOLDER · {totalCount} RECORD{totalCount !== 1 ? 'S' : ''}</span>
+        </div>
+      </div>
+
+      {/* Swimmer name + flag */}
+      <div className="px-6 pt-3 pb-1">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">{swimmer?.name}</h2>
+          {alpha2 && (
+            <img
+              src={`https://flagcdn.com/w40/${alpha2}.png`}
+              alt={swimmer?.nationality_detail?.name || ''}
+              className="w-7 h-5 object-cover rounded-sm"
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Hero stat */}
-      <div className="px-5 py-4 border-t border-white/5">
-        <div className="flex items-baseline gap-6">
-          <div className="text-center">
-            <div className="text-5xl sm:text-6xl font-black text-white tracking-tight"><AnimatedNumber value={totalCount} /></div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-white/30 mt-1">Total Records</div>
+      <div className="px-6 py-5">
+        <div className="flex items-end gap-5">
+          <div>
+            <div className="flex items-start">
+              <span className="text-7xl sm:text-8xl font-black text-white leading-none"><AnimatedNumber value={totalCount} /></span>
+            </div>
+            <div className="text-sm font-black uppercase tracking-widest text-amber-400 mt-1">TOTAL RECORDS</div>
           </div>
-          <div className="h-12 w-px bg-white/10" />
-          <div className="flex gap-5">
+          <div className="h-16 w-px bg-white/15 mx-2" />
+          <div className="flex gap-6">
             {nationalCount > 0 && (
-              <div className="text-center">
-                <div className="text-3xl font-black text-purple-400"><AnimatedNumber value={nationalCount} /></div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-purple-400/50 mt-0.5">National</div>
+              <div>
+                <div className="text-4xl sm:text-5xl font-black text-purple-400 leading-none"><AnimatedNumber value={nationalCount} /></div>
+                <div className="text-[11px] font-black uppercase tracking-widest text-purple-400/50 mt-1">National</div>
               </div>
             )}
             {arabCount > 0 && (
-              <div className="text-center">
-                <div className="text-3xl font-black text-emerald-400"><AnimatedNumber value={arabCount} /></div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400/50 mt-0.5">Arab</div>
+              <div>
+                <div className="text-4xl sm:text-5xl font-black text-emerald-400 leading-none"><AnimatedNumber value={arabCount} /></div>
+                <div className="text-[11px] font-black uppercase tracking-widest text-emerald-400/50 mt-1">Arab</div>
               </div>
             )}
             {gccCount > 0 && (
-              <div className="text-center">
-                <div className="text-3xl font-black text-sky-400"><AnimatedNumber value={gccCount} /></div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-sky-400/50 mt-0.5">GCC</div>
+              <div>
+                <div className="text-4xl sm:text-5xl font-black text-sky-400 leading-none"><AnimatedNumber value={gccCount} /></div>
+                <div className="text-[11px] font-black uppercase tracking-widest text-sky-400/50 mt-1">GCC</div>
               </div>
             )}
           </div>
@@ -683,36 +706,46 @@ function RecordsTab({ swimmerId, swimmer }) {
       </div>
 
       {/* Filter toggles */}
-      <div className="px-5 pb-3 flex gap-1 bg-white/5 mx-5 rounded-lg p-0.5 w-fit">
-        {[{ key: 'ALL', label: 'All', count: totalCount }, ...(nationalCount > 0 ? [{ key: 'NATIONAL', label: 'National', count: nationalCount }] : []), ...(arabCount > 0 ? [{ key: 'ARAB', label: 'Arab', count: arabCount }] : []), ...(gccCount > 0 ? [{ key: 'GCC', label: 'GCC', count: gccCount }] : [])].map(f => (
-          <button key={f.key} onClick={() => setActiveType(f.key)}
-            className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
-              activeType === f.key ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-white/40 hover:text-white/70'
-            }`}>
-            {f.label} <span className="opacity-60">({f.count})</span>
-          </button>
-        ))}
+      <div className="px-6 pb-3">
+        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 w-fit">
+          {[{ key: 'ALL', label: 'All', count: totalCount }, ...(nationalCount > 0 ? [{ key: 'NATIONAL', label: 'National', count: nationalCount }] : []), ...(arabCount > 0 ? [{ key: 'ARAB', label: 'Arab', count: arabCount }] : []), ...(gccCount > 0 ? [{ key: 'GCC', label: 'GCC', count: gccCount }] : [])].map(f => (
+            <button key={f.key} onClick={() => setActiveType(f.key)}
+              className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
+                activeType === f.key ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-white/40 hover:text-white/70'
+              }`}>
+              {f.label} <span className="opacity-60">({f.count})</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Record rows */}
-      <div className="px-3 pb-4 mt-2">
+      <div className="px-4 pb-5 mt-1 space-y-1">
         {filtered.map((r, i) => {
           const cfg = typeConfig[r.record_type] || typeConfig.ARAB
+          const isFeatured = i === 0
           return (
             <div key={i}
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl mb-1 transition-all duration-300 hover:bg-white/5 animate-fade-in-up`}
+              className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 animate-fade-in-up ${
+                isFeatured ? 'bg-cyan-400 text-[#0b1a30]' : 'hover:bg-white/5'
+              }`}
               style={{ animationDelay: `${i * 0.04}s` }}>
-              <StrokeIcon eventName={r.event_name} />
+              <StrokeIcon eventName={r.event_name} className="w-10 h-10" dark={isFeatured} />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-white/90 tracking-tight truncate">{r.event_detail?.name || r.event_name}</div>
-                <div className="text-[10px] text-white/25 mt-0.5 truncate">{r.location}{r.location && r.result_date ? ' \u00b7 ' : ''}{r.result_date}</div>
+                <div className={`text-[15px] font-black uppercase tracking-wide truncate ${isFeatured ? 'text-[#0b1a30]' : 'text-white/90'}`}>{r.event_detail?.name || r.event_name}</div>
+                {!isFeatured && <div className="text-[10px] text-white/25 mt-0.5 truncate">{r.location}{r.location && r.result_date ? ' \u00b7 ' : ''}{r.result_date}</div>}
+                {isFeatured && <div className="text-[10px] text-[#0b1a30]/50 mt-0.5 truncate">{r.location}{r.location && r.result_date ? ' \u00b7 ' : ''}{r.result_date}</div>}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ring-1 ${cfg.ring}`}>
-                  <span className={cfg.accent}>{cfg.label}</span>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                  isFeatured ? 'bg-[#0b1a30]/15 text-[#0b1a30]/70' : `ring-1 ${cfg.ring}`
+                }`}>
+                  <span className={isFeatured ? '' : cfg.accent}>{cfg.label}</span>
                 </span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${r.pool === 'LCM' ? 'bg-sky-500/15 text-sky-400/70' : 'bg-amber-500/15 text-amber-400/70'}`}>{r.pool}</span>
-                <span className="font-mono font-black text-base text-white tabular-nums min-w-[70px] text-right">{r.formatted_time}</span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                  isFeatured ? 'bg-[#0b1a30]/10 text-[#0b1a30]/60' : r.pool === 'LCM' ? 'bg-sky-500/15 text-sky-400/70' : 'bg-amber-500/15 text-amber-400/70'
+                }`}>{r.pool}</span>
+                <span className={`font-mono font-black text-lg tabular-nums min-w-[75px] text-right ${isFeatured ? 'text-[#0b1a30]' : 'text-white'}`}>{r.formatted_time}</span>
               </div>
             </div>
           )
@@ -956,8 +989,7 @@ function TransferHistoryTab({ swimmerId }) {
 }
 
 /* ───────── Stroke icon for sport-card rows ───────── */
-function StrokeIcon({ eventName, className = 'w-9 h-9' }) {
-  // Determine stroke from event name
+function StrokeIcon({ eventName, className = 'w-9 h-9', dark = false }) {
   const name = (eventName || '').toLowerCase()
   let stroke = 'freestyle'
   if (name.includes('backstroke') || name.includes('back')) stroke = 'backstroke'
@@ -974,48 +1006,10 @@ function StrokeIcon({ eventName, className = 'w-9 h-9' }) {
   }
 
   return (
-    <div className={`${className} rounded-full border-2 border-white/20 flex items-center justify-center shrink-0 bg-white/5`}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-sky-300">
+    <div className={`${className} rounded-full border-2 ${dark ? 'border-[#0b1a30]/20 bg-[#0b1a30]/10' : 'border-white/20 bg-white/5'} flex items-center justify-center shrink-0`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={`w-5 h-5 ${dark ? 'text-[#0b1a30]/60' : 'text-white/70'}`}>
         <path d={paths[stroke]} />
       </svg>
-    </div>
-  )
-}
-
-/* ───────── Sport-card header (swimmer photo/name/flag) ───────── */
-function SportCardHeader({ swimmer, badge, badgeBg = 'bg-sky-500/90' }) {
-  const alpha2 = swimmer?.nationality_detail?.flag_url || (swimmer?.nationality_detail?.code || '').toLowerCase().slice(0, 2)
-  return (
-    <div className="relative px-5 pt-5 pb-4">
-      <div className="flex items-center gap-3">
-        {/* Photo */}
-        <div className="w-14 h-14 rounded-xl bg-white/10 overflow-hidden shrink-0 ring-2 ring-white/10">
-          {swimmer?.photo ? (
-            <img src={swimmer.photo} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <svg className="w-7 h-7 text-white/20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          {badge && (
-            <span className={`inline-block text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-md mb-1 ${badgeBg} text-white`}>{badge}</span>
-          )}
-          <h3 className="text-lg font-black text-white tracking-tight truncate">{swimmer?.name}</h3>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            {alpha2 && (
-              <img
-                src={`https://flagcdn.com/w40/${alpha2}.png`}
-                alt={swimmer?.nationality_detail?.name || ''}
-                className="w-5 h-3.5 object-cover rounded-sm"
-                onError={(e) => { e.target.style.display = 'none' }}
-              />
-            )}
-            <span className="text-white/60 text-xs font-medium">{swimmer?.nationality_detail?.name}</span>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
@@ -1035,7 +1029,6 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
     ]).then(([rankRes, evRes]) => {
       setRankings(rankRes.data)
       setEvents(evRes.data)
-      // Auto-select best scope
       const scopes = new Set()
       for (const r of (rankRes.data || [])) {
         for (const s of Object.keys(r.rankings)) scopes.add(s)
@@ -1050,7 +1043,10 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
     <div className="py-16 text-center"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin mx-auto" /></div>
   )
   if (!rankings || rankings.length === 0) return (
-    <div className="py-16 text-center text-gray-400 text-sm">No ranking data available</div>
+    <div className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] p-12 text-center animate-fade-in">
+      <svg className="w-16 h-16 mx-auto mb-4 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5-7.5L16.5 13.5m0 0L12 9m4.5 4.5V3" /></svg>
+      <p className="text-white/30 font-bold">No ranking data available</p>
+    </div>
   )
 
   const eventMap = {}
@@ -1059,7 +1055,6 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
     eventMap[`${e.event_id}`] = e.event_name
   }
 
-  // Determine which scopes are present
   const scopeSet = new Set()
   for (const r of rankings) {
     for (const s of Object.keys(r.rankings)) scopeSet.add(s)
@@ -1067,14 +1062,12 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
   const scopeOrder = ['national', 'gcc', 'arab']
   const scopes = scopeOrder.filter(s => scopeSet.has(s))
   const scopeLabel = { national: 'National', gcc: 'GCC', arab: 'Arab' }
+  const scopeLabelUpper = { national: 'NATIONALLY', gcc: 'IN GCC', arab: 'IN ARAB' }
   const currentScope = activeScope || scopes[0]
 
-  // Determine which pools have data
   const availablePools = [...new Set(rankings.map(r => r.pool))].sort((a, b) => a === 'LCM' ? -1 : 1)
-  // Auto-select first available pool if current has no data
   const effectivePool = availablePools.includes(activePool) ? activePool : availablePools[0]
 
-  // Filter by pool and sort by rank in active scope
   const poolRows = rankings
     .filter(r => r.pool === effectivePool)
     .sort((a, b) => {
@@ -1083,7 +1076,6 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
       return ra - rb
     })
 
-  // Find the best (top) ranking for the hero card
   const bestRow = poolRows[0]
   const bestRank = bestRow?.rankings[currentScope]
   const bestEventName = bestRow ? (eventMap[`${bestRow.event_id}-${bestRow.pool}`] || eventMap[`${bestRow.event_id}`] || `Event ${bestRow.event_id}`) : ''
@@ -1097,23 +1089,41 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
     return 'TH'
   }
 
+  const genderLabel = swimmer?.sex === 'M' ? "MEN'S" : "WOMEN'S"
+  const alpha2 = swimmer?.nationality_detail?.flag_url || (swimmer?.nationality_detail?.code || '').toLowerCase().slice(0, 2)
+
   return (
-    <div className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-[#0a1628] to-[#122240] animate-fade-in">
-      {/* Header */}
-      <SportCardHeader
-        swimmer={swimmer}
-        badge={`${swimmer?.sex === 'M' ? "Men's" : "Women's"} Rankings`}
-        badgeBg="bg-sky-500/80"
-      />
+    <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] animate-fade-in">
+      {/* Event badge */}
+      <div className="px-6 pt-6 pb-2 flex justify-center">
+        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-cyan-400/50 bg-cyan-500/10">
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-300">{genderLabel} {bestEventName?.toUpperCase()} · {effectivePool}</span>
+        </div>
+      </div>
+
+      {/* Swimmer name + flag */}
+      <div className="px-6 pt-3 pb-1">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">{swimmer?.name}</h2>
+          {alpha2 && (
+            <img
+              src={`https://flagcdn.com/w40/${alpha2}.png`}
+              alt={swimmer?.nationality_detail?.name || ''}
+              className="w-7 h-5 object-cover rounded-sm"
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Pool + Scope toggles */}
-      <div className="px-5 pb-3 flex flex-wrap items-center gap-2">
+      <div className="px-6 pb-3 pt-2 flex flex-wrap items-center gap-2">
         {availablePools.length > 1 && (
           <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
             {availablePools.map(p => (
               <button key={p} onClick={() => setActivePool(p)}
                 className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
-                  effectivePool === p ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-white/40 hover:text-white/70'
+                  effectivePool === p ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/30' : 'text-white/40 hover:text-white/70'
                 }`}>
                 {p === 'LCM' ? 'Long Course' : 'Short Course'}
               </button>
@@ -1124,7 +1134,7 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
           {scopes.map(s => (
             <button key={s} onClick={() => setActiveScope(s)}
               className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
-                currentScope === s ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'text-white/40 hover:text-white/70'
+                currentScope === s ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/30' : 'text-white/40 hover:text-white/70'
               }`}>
               {scopeLabel[s]}
             </button>
@@ -1134,50 +1144,48 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
 
       {/* Hero stat — best ranking */}
       {bestRank && (
-        <div className="px-5 py-4 border-t border-white/5">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-sky-400/70 mb-2">{bestEventName}</div>
-          <div className="flex items-baseline gap-4">
-            <div className="flex items-baseline">
-              <span className="text-5xl sm:text-6xl font-black text-white tracking-tight">{bestRank.rank}</span>
-              <span className="text-xl sm:text-2xl font-black text-sky-400 ml-0.5">{ordinalSuffix(bestRank.rank)}</span>
-            </div>
-            <div className="h-12 w-px bg-white/10" />
+        <div className="px-6 py-5">
+          <div className="flex items-end gap-5">
             <div>
-              <div className="text-3xl sm:text-4xl font-black text-white font-mono tracking-tight">{bestRow.best_time}</div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-white/30 mt-0.5">Best Time</div>
+              <div className="flex items-start">
+                <span className="text-7xl sm:text-8xl font-black text-white leading-none">{bestRank.rank}</span>
+                <span className="text-2xl sm:text-3xl font-black text-white mt-1 ml-0.5">{ordinalSuffix(bestRank.rank)}</span>
+              </div>
+              <div className="text-sm font-black uppercase tracking-widest text-cyan-400 mt-1">{scopeLabelUpper[currentScope]}</div>
             </div>
-          </div>
-          <div className="text-[11px] font-bold text-white/30 mt-1">
-            out of {bestRank.total} {scopeLabel[currentScope]} swimmers
+            <div className="h-16 w-px bg-white/15 mx-2" />
+            <div>
+              <div className="text-6xl sm:text-7xl font-black text-white font-mono leading-none tracking-tight">{bestRow.best_time}</div>
+              <div className="text-sm font-black uppercase tracking-widest text-cyan-400 mt-1">BEST TIME</div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Event rows */}
-      <div className="px-3 pb-4 mt-1">
+      <div className="px-4 pb-5 mt-1 space-y-1">
         {poolRows.map((r, i) => {
           const rank = r.rankings[currentScope]
           const eName = eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`
-          const isTop = i === 0
-          const isTop3 = rank && rank.rank <= 3
+          const isBest = i === 0
           return (
             <div key={`${r.event_id}-${r.pool}`}
               onClick={() => onEventClick && onEventClick(r.event_id, r.pool)}
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl mb-1 transition-all duration-300 animate-fade-in-up cursor-pointer ${
-                isTop ? 'bg-sky-500/20 ring-1 ring-sky-400/30' : 'hover:bg-white/5'
+              className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 animate-fade-in-up cursor-pointer ${
+                isBest ? 'bg-cyan-400 text-[#0b1a30]' : 'hover:bg-white/5'
               }`}
               style={{ animationDelay: `${i * 0.05}s` }}>
-              <StrokeIcon eventName={eName} />
+              <StrokeIcon eventName={eName} className="w-10 h-10" dark={isBest} />
               <div className="flex-1 min-w-0">
-                <div className={`text-sm font-bold tracking-tight truncate ${isTop ? 'text-sky-300' : 'text-white/90'}`}>{eName}</div>
+                <div className={`text-[15px] font-black uppercase tracking-wide truncate ${isBest ? 'text-[#0b1a30]' : 'text-white/90'}`}>{eName}</div>
               </div>
-              <div className="text-right shrink-0 flex items-center gap-3">
+              <div className="flex items-center gap-5 shrink-0">
                 {rank ? (
                   <>
-                    <span className={`font-bold text-sm tabular-nums ${isTop3 ? 'text-amber-400' : 'text-white/50'}`}>
-                      {rank.rank}<span className="text-white/20">/{rank.total}</span>
+                    <span className={`font-black text-[15px] tabular-nums ${isBest ? 'text-[#0b1a30]/70' : 'text-white/40'}`}>
+                      {rank.rank}<span className={isBest ? 'text-[#0b1a30]/40' : 'text-white/20'}>/{rank.total}</span>
                     </span>
-                    <span className="font-mono font-black text-base text-white tabular-nums min-w-[70px] text-right">{r.best_time}</span>
+                    <span className={`font-mono font-black text-lg tabular-nums min-w-[75px] text-right ${isBest ? 'text-[#0b1a30]' : 'text-white'}`}>{r.best_time}</span>
                   </>
                 ) : (
                   <span className="text-white/20 text-sm">-</span>

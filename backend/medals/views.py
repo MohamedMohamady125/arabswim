@@ -1,15 +1,23 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django.db.models import Count, Q
 from .models import Medal
 from .serializers import MedalSerializer, MedalCreateSerializer
+
+
+class MedalPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 10000
 
 
 class MedalViewSet(viewsets.ModelViewSet):
     queryset = Medal.objects.select_related(
         'swimmer', 'swimmer__nationality', 'championship', 'championship__country', 'event'
     )
+    pagination_class = MedalPagination
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -66,6 +74,8 @@ class MedalViewSet(viewsets.ModelViewSet):
     def swimmer_summary(self, request):
         """Top 10 swimmers by medal count."""
         qs = self._apply_filters(Medal.objects.all())
+        # Exclude relay teams — they are not individual swimmers
+        qs = qs.filter(swimmer__is_relay_team=False)
         # Only restrict to Arab countries on the global medals page, not per-championship
         if not request.query_params.get('championship'):
             qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])

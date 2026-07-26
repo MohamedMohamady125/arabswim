@@ -635,32 +635,39 @@ export default function MeetDetailPage() {
                     <span className="text-xs text-gray-400">{genderEvents.length} events</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {genderEvents.map(e => (
-                      <button
-                        key={`${e.event_id}-${e.gender}`}
-                        onClick={() => handleEventClick(e)}
-                        className="bg-white rounded-xl border border-gray-200 p-4 text-left hover:border-sky-400 hover:shadow-md transition-all group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="font-semibold text-gray-900 group-hover:text-sky-700 transition-colors">{e.event_name}</div>
-                          <span className="text-gray-400 group-hover:text-sky-500 transition-colors text-lg ml-2">&#x276F;</span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-2.5">
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-1.997M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                            </svg>
-                            {e.results_count} results
+                    {genderEvents.map(e => {
+                      const isActive = selectedEvent?.event_id === e.event_id && selectedEvent?.gender === e.gender
+                      return (
+                        <button
+                          key={`${e.event_id}-${e.gender}`}
+                          onClick={() => handleEventClick(e)}
+                          className={`rounded-xl p-4 text-left transition-all duration-300 ${
+                            isActive
+                              ? 'bg-sky-600 text-white shadow-lg shadow-sky-200 scale-[1.02] border border-sky-600'
+                              : 'bg-white border border-gray-200 hover:border-sky-400 hover:shadow-md'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className={`font-semibold transition-colors duration-300 ${isActive ? 'text-white' : 'text-gray-900'}`}>{e.event_name}</div>
+                            <span className={`text-lg ml-2 transition-all duration-300 ${isActive ? 'text-white/70 translate-x-0.5' : 'text-gray-400'}`}>&#x276F;</span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-sky-600">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {e.best_time}
+                          <div className="flex items-center gap-3 mt-2.5">
+                            <div className={`flex items-center gap-1.5 text-xs transition-colors duration-300 ${isActive ? 'text-sky-100' : 'text-gray-500'}`}>
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-1.997M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                              </svg>
+                              {e.results_count} results
+                            </div>
+                            <div className={`flex items-center gap-1.5 text-xs font-mono font-semibold transition-colors duration-300 ${isActive ? 'text-white' : 'text-sky-600'}`}>
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {e.best_time}
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               )

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getChampionships, createChampionship, updateChampionship, getClassifications, getSubClassifications } from '../api/championships'
+import { createCalendarEvent, getCalendarEvents, deleteCalendarEvent } from '../api/calendar'
+import { getChampionships, updateChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import { POOL_TYPES, mediaUrl } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
@@ -294,6 +295,7 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
 export default function CalendarPage() {
   const navigate = useNavigate()
   const [championships, setChampionships] = useState([])
+  const [calendarEvents, setCalendarEvents] = useState([])
   const [countries, setCountries] = useState([])
   const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()))
   const [filterCountry, setFilterCountry] = useState('')
@@ -301,13 +303,7 @@ export default function CalendarPage() {
 
   // Add event
   const [showAddEvent, setShowAddEvent] = useState(false)
-  const [newEvent, setNewEvent] = useState({
-    name: '', date: '', end_date: '', pool: 'LCM', country: '',
-    location: '', website: '', live_results_url: '', registration_url: '',
-    classification: '', sub_classification: '',
-  })
-  const [classificationsList, setClassificationsList] = useState([])
-  const [subClassificationsList, setSubClassificationsList] = useState([])
+  const [newEvent, setNewEvent] = useState({ title: '', date: '', end_date: '', event_type: 'CUSTOM', description: '' })
   const [addLoading, setAddLoading] = useState(false)
 
   const years = []
@@ -315,27 +311,18 @@ export default function CalendarPage() {
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
-    getClassifications().then(res => setClassificationsList(res.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
-    if (newEvent.classification) {
-      getSubClassifications(newEvent.classification).then(res => setSubClassificationsList(res.data)).catch(() => {})
-    } else {
-      setSubClassificationsList([])
-    }
-  }, [newEvent.classification])
-
-  const refreshList = async () => {
+    // Load championships
     const params = { page_size: 500, ordering: 'date' }
     if (filterYear) params.year = filterYear
     if (filterCountry) params.country = filterCountry
-    const res = await getChampionships(params)
-    setChampionships(res.data.results || res.data)
-  }
-
-  useEffect(() => {
-    refreshList().catch(() => {})
+    getChampionships(params).then(res => setChampionships(res.data.results || res.data)).catch(() => {})
+    // Load calendar events
+    const calParams = {}
+    if (filterYear) { calParams.year = filterYear }
+    getCalendarEvents(calParams).then(res => setCalendarEvents(res.data || [])).catch(() => {})
   }, [filterYear, filterCountry])
 
   // Find the next upcoming meet for the featured card
@@ -345,43 +332,53 @@ export default function CalendarPage() {
     return d.isValid() && d.toDate() >= now
   }) || (championships.length > 0 ? championships[championships.length - 1] : null)
 
-  // Group championships by month
+  // Group all items (championships + calendar events) by month
   const grouped = {}
   championships.forEach(c => {
     const d = dayjs(c.date, 'DD/MM/YYYY')
+    if (!d.isValid()) return
     const key = `${d.year()}-${String(d.month() + 1).padStart(2, '0')}`
-    if (!grouped[key]) grouped[key] = { year: d.year(), month: d.month(), events: [] }
-    grouped[key].events.push(c)
+    if (!grouped[key]) grouped[key] = { year: d.year(), month: d.month(), meets: [], events: [] }
+    grouped[key].meets.push(c)
+  })
+  calendarEvents.forEach(ev => {
+    const d = dayjs(ev.date)
+    if (!d.isValid()) return
+    if (filterYear && String(d.year()) !== filterYear) return
+    const key = `${d.year()}-${String(d.month() + 1).padStart(2, '0')}`
+    if (!grouped[key]) grouped[key] = { year: d.year(), month: d.month(), meets: [], events: [] }
+    grouped[key].events.push(ev)
   })
 
   const handleAddEvent = async (e) => {
     e.preventDefault()
     setAddLoading(true)
     try {
-      const data = new FormData()
-      Object.entries(newEvent).forEach(([k, v]) => {
-        if (v !== '' && v !== null) data.append(k, v)
-      })
-      const res = await createChampionship(data)
-      // Immediately add the new championship to local state so it never disappears
-      const created = res.data
-      const country = countries.find(c => String(c.id) === String(newEvent.country))
-      // Format date to DD/MM/YYYY to match list serializer output
-      const fmtDate = (d) => { if (!d) return null; const [y,m,dd] = d.split('-'); return `${dd}/${m}/${y}` }
-      const localEntry = {
-        ...created,
-        date: fmtDate(newEvent.date) || created.date,
-        end_date: newEvent.end_date ? fmtDate(newEvent.end_date) : null,
-        country_detail: country ? { id: country.id, name: country.name, code: country.code, flag_url: country.flag_url } : null,
-      }
-      setChampionships(prev => [...prev, localEntry])
-      setNewEvent({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', website: '', live_results_url: '', registration_url: '', classification: '', sub_classification: '' })
+      const payload = { ...newEvent }
+      if (!payload.end_date) delete payload.end_date
+      const res = await createCalendarEvent(payload)
+      setCalendarEvents(prev => [...prev, res.data])
+      setNewEvent({ title: '', date: '', end_date: '', event_type: 'CUSTOM', description: '' })
       setShowAddEvent(false)
     } catch (err) {
       alert('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
     } finally {
       setAddLoading(false)
     }
+  }
+
+  const handleDeleteEvent = async (evId) => {
+    if (!confirm('Delete this event?')) return
+    try {
+      await deleteCalendarEvent(evId)
+      setCalendarEvents(prev => prev.filter(e => e.id !== evId))
+    } catch { /* ignore */ }
+  }
+
+  const EVENT_TYPE_COLORS = {
+    CHAMPIONSHIP: 'bg-cyan-100 text-cyan-700',
+    MEET: 'bg-blue-100 text-blue-700',
+    CUSTOM: 'bg-purple-100 text-purple-700',
   }
 
   return (
@@ -409,7 +406,7 @@ export default function CalendarPage() {
         </button>
       </div>
 
-      {/* Events grouped by month */}
+      {/* Events grouped by month — latest first */}
       {Object.keys(grouped).length === 0 && (
         <div className="text-center py-16 text-gray-400">
           <div className="text-5xl mb-3">&#x1F4C5;</div>
@@ -417,7 +414,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([key, group]) => (
+      {Object.entries(grouped).sort(([a], [b]) => b.localeCompare(a)).map(([key, group]) => (
         <div key={key} className="mb-8">
           {/* Month header */}
           <div className="flex items-center gap-3 mb-4">
@@ -427,9 +424,43 @@ export default function CalendarPage() {
             <div className="flex-1 h-px bg-cyan-200" />
           </div>
 
+          {/* Calendar events for this month */}
+          {group.events.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {group.events.map(ev => {
+                const d = dayjs(ev.date)
+                return (
+                  <div key={`ev-${ev.id}`} className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-5">
+                    <div className="w-14 h-14 bg-purple-500 rounded-lg flex flex-col items-center justify-center text-white shrink-0">
+                      <span className="text-xl font-bold leading-none">{d.date()}</span>
+                      <span className="text-[9px] font-semibold uppercase">{MONTH_SHORT[d.month()]}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900 truncate">{ev.title}</h3>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${EVENT_TYPE_COLORS[ev.event_type] || EVENT_TYPE_COLORS.CUSTOM}`}>
+                          {ev.event_type}
+                        </span>
+                      </div>
+                      {ev.description && <p className="text-sm text-gray-500 mt-0.5 truncate">{ev.description}</p>}
+                      {ev.end_date && ev.end_date !== ev.date && (
+                        <p className="text-xs text-gray-400 mt-0.5">{ev.date} to {ev.end_date}</p>
+                      )}
+                    </div>
+                    <button onClick={() => handleDeleteEvent(ev.id)} className="text-gray-300 hover:text-red-500 shrink-0" title="Delete">
+                      <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           {/* Meet cards */}
           <div className="space-y-3">
-            {group.events.map(c => {
+            {group.meets.map(c => {
               const d = dayjs(c.date, 'DD/MM/YYYY')
               const isSelected = selectedMeet?.id === c.id
 
@@ -495,31 +526,23 @@ export default function CalendarPage() {
 
       {/* Add Event Modal */}
       {showAddEvent && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center overflow-y-auto py-8" onClick={() => setShowAddEvent(false)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold mb-4">Add Competition</h2>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowAddEvent(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-4">Add Calendar Event</h2>
             <form onSubmit={handleAddEvent} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Name *</label>
-                <input type="text" value={newEvent.name} onChange={(e) => setNewEvent({ ...newEvent, name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Arab Swimming Championship 2026" required />
+                <label className="block text-sm font-medium mb-1">Title *</label>
+                <input type="text" value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Team Meeting, Deadline..." required />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Country *</label>
-                  <select value={newEvent.country} onChange={(e) => setNewEvent({ ...newEvent, country: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 text-sm" required>
-                    <option value="">Select country</option>
-                    {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Pool *</label>
-                  <select value={newEvent.pool} onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 text-sm">
-                    {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Type</label>
+                <select value={newEvent.event_type} onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm">
+                  <option value="CUSTOM">Custom Event</option>
+                  <option value="MEET">Meet</option>
+                  <option value="CHAMPIONSHIP">Championship</option>
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -540,59 +563,13 @@ export default function CalendarPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Location</label>
-                <input type="text" value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="City / Venue" />
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <textarea value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" rows={2} placeholder="Optional details..." />
               </div>
-
-              {/* Classification */}
-              <div className="border-t pt-3 mt-3">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">Classification</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Classification</label>
-                    <select value={newEvent.classification} onChange={(e) => setNewEvent({ ...newEvent, classification: e.target.value, sub_classification: '' })}
-                      className="w-full border rounded-lg px-2 py-1.5 text-sm">
-                      <option value="">Select classification</option>
-                      {classificationsList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Sub Classification</label>
-                    <select value={newEvent.sub_classification} onChange={(e) => setNewEvent({ ...newEvent, sub_classification: e.target.value })}
-                      className="w-full border rounded-lg px-2 py-1.5 text-sm" disabled={!subClassificationsList.length}>
-                      <option value="">Select sub</option>
-                      {subClassificationsList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Links */}
-              <div className="border-t pt-3 mt-3">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">Links</h3>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Website</label>
-                    <input type="url" value={newEvent.website} onChange={(e) => setNewEvent({ ...newEvent, website: e.target.value })}
-                      className="w-full border rounded-lg px-3 py-1.5 text-sm" placeholder="https://..." />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Live Results URL</label>
-                    <input type="url" value={newEvent.live_results_url} onChange={(e) => setNewEvent({ ...newEvent, live_results_url: e.target.value })}
-                      className="w-full border rounded-lg px-3 py-1.5 text-sm" placeholder="https://..." />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Registration URL</label>
-                    <input type="url" value={newEvent.registration_url} onChange={(e) => setNewEvent({ ...newEvent, registration_url: e.target.value })}
-                      className="w-full border rounded-lg px-3 py-1.5 text-sm" placeholder="https://..." />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-3">
+              <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddEvent(false)} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
-                <button type="submit" disabled={!newEvent.name || !newEvent.date || !newEvent.country || addLoading}
+                <button type="submit" disabled={!newEvent.title || !newEvent.date || addLoading}
                   className="flex-1 bg-cyan-600 text-white rounded-lg py-2 text-sm hover:bg-cyan-700 disabled:opacity-50">
                   {addLoading ? 'Saving...' : 'Save'}
                 </button>

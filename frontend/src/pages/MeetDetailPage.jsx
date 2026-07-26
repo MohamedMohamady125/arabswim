@@ -605,7 +605,7 @@ export default function MeetDetailPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-lg">Events ({stats.events.length})</h3>
-            <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+            <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl">
               {[
                 { key: '', label: 'All' },
                 { key: 'M', label: 'Men' },
@@ -613,8 +613,10 @@ export default function MeetDetailPage() {
                 { key: 'X', label: 'Mixed' },
               ].map(opt => (
                 <button key={opt.key} onClick={() => setGenderFilter(opt.key)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    genderFilter === opt.key ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-300 ${
+                    genderFilter === opt.key
+                      ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                   }`}>
                   {opt.label}
                 </button>

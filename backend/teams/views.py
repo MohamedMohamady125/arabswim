@@ -304,6 +304,85 @@ class TeamViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Banner uploaded successfully', 'banner': team.banner.url})
 
 
+    @action(detail=False, methods=['post'], url_path='merge')
+    def merge_teams(self, request):
+        """Merge two duplicate teams. Keeps one, transfers everything from the other.
+        POST /api/v1/teams/merge/
+        Body: { keep_id: int, remove_id: int }
+        """
+        keep_id = request.data.get('keep_id')
+        remove_id = request.data.get('remove_id')
+        if not keep_id or not remove_id:
+            return Response({'error': 'keep_id and remove_id required'}, status=400)
+        if int(keep_id) == int(remove_id):
+            return Response({'error': 'Cannot merge a team with itself'}, status=400)
+
+        try:
+            keep = Team.objects.get(id=keep_id)
+            remove = Team.objects.get(id=remove_id)
+        except Team.DoesNotExist:
+            return Response({'error': 'Team not found'}, status=404)
+
+        remove_name = remove.name
+
+        # 1. Update all Result.team strings that match the removed team's name
+        results_updated = Result.objects.filter(team__iexact=remove.name).update(team=keep.name)
+
+        # 2. Update all Swimmer.club strings that match the removed team's name
+        swimmers_updated = Swimmer.objects.filter(club__iexact=remove.name).update(club=keep.name)
+
+        # 3. Transfer trophies from remove to keep
+        trophies_transferred = Trophy.objects.filter(team=remove).update(team=keep)
+
+        # 4. Fill missing fields on keep from remove
+        fill_fields = ['logo', 'banner', 'founded_year', 'website', 'address', 'email', 'phone']
+        for field in fill_fields:
+            keep_val = getattr(keep, field)
+            remove_val = getattr(remove, field)
+            if not keep_val and remove_val:
+                setattr(keep, field, remove_val)
+        # If keep is not national but remove is, promote
+        if not keep.is_national_team and remove.is_national_team:
+            keep.is_national_team = True
+        keep.save()
+
+        # 5. Delete the removed team
+        remove.delete()
+
+        return Response({
+            'message': f'Merged "{remove_name}" into "{keep.name}"',
+            'team_id': keep.id,
+            'results_updated': results_updated,
+            'swimmers_updated': swimmers_updated,
+            'trophies_transferred': trophies_transferred,
+        })
+
+    @action(detail=False, methods=['get'], url_path='find-duplicates')
+    def find_duplicates(self, request):
+        """Find teams with similar names for merge suggestions."""
+        from django.db.models.functions import Lower
+        teams = Team.objects.select_related('country').order_by('name')
+        # Also find Result.team values that don't match any Team.name
+        team_names_lower = set(t.name.lower() for t in teams)
+        orphan_clubs = (
+            Result.objects.exclude(team='')
+            .exclude(team__isnull=True)
+            .values('team')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+        orphans = [
+            {'name': o['team'], 'result_count': o['count']}
+            for o in orphan_clubs
+            if o['team'].lower() not in team_names_lower
+        ]
+
+        return Response({
+            'teams': TeamListSerializer(teams, many=True).data,
+            'orphan_clubs': orphans[:50],
+        })
+
+
 class TrophyViewSet(viewsets.ModelViewSet):
     queryset = Trophy.objects.all()
     serializer_class = TrophySerializer

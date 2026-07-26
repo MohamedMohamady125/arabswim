@@ -1043,9 +1043,14 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
   const scopeLabel = { national: 'National', gcc: 'GCC', arab: 'Arab' }
   const currentScope = activeScope || scopes[0]
 
+  // Determine which pools have data
+  const availablePools = [...new Set(rankings.map(r => r.pool))].sort((a, b) => a === 'LCM' ? -1 : 1)
+  // Auto-select first available pool if current has no data
+  const effectivePool = availablePools.includes(activePool) ? activePool : availablePools[0]
+
   // Filter by pool and sort by rank in active scope
   const poolRows = rankings
-    .filter(r => r.pool === activePool)
+    .filter(r => r.pool === effectivePool)
     .sort((a, b) => {
       const ra = a.rankings[currentScope]?.rank ?? 9999
       const rb = b.rankings[currentScope]?.rank ?? 9999
@@ -1077,17 +1082,19 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
 
       {/* Pool + Scope toggles */}
       <div className="px-5 pb-3 flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-          {['LCM', 'SCM'].map(p => (
-            <button key={p} onClick={() => setActivePool(p)}
-              className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
-                activePool === p ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-white/40 hover:text-white/70'
-              }`}>
-              {p === 'LCM' ? 'Long Course' : 'Short Course'}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 ml-auto">
+        {availablePools.length > 1 && (
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+            {availablePools.map(p => (
+              <button key={p} onClick={() => setActivePool(p)}
+                className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
+                  effectivePool === p ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-white/40 hover:text-white/70'
+                }`}>
+                {p === 'LCM' ? 'Long Course' : 'Short Course'}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className={`flex gap-1 bg-white/5 rounded-lg p-0.5 ${availablePools.length > 1 ? 'ml-auto' : ''}`}>
           {scopes.map(s => (
             <button key={s} onClick={() => setActiveScope(s)}
               className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${

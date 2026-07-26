@@ -101,6 +101,7 @@ function AddTimeModal({ standardId, events, onClose, onAdded }) {
   const [eventId, setEventId] = useState('')
   const [gender, setGender] = useState('M')
   const [cut, setCut] = useState('A')
+  const [pool, setPool] = useState('LCM')
   const [timeText, setTimeText] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -111,7 +112,7 @@ function AddTimeModal({ standardId, events, onClose, onAdded }) {
     if (!eventId || !timeText.trim()) return
     setSaving(true)
     try {
-      await addQualifyingTime(standardId, { event: eventId, gender, cut, time_text: timeText.trim() })
+      await addQualifyingTime(standardId, { event: eventId, gender, cut, pool, time_text: timeText.trim() })
       onAdded()
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to add time')
@@ -132,7 +133,7 @@ function AddTimeModal({ standardId, events, onClose, onAdded }) {
             {individualEvents.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Gender</label>
             <select value={gender} onChange={e => setGender(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
@@ -145,6 +146,13 @@ function AddTimeModal({ standardId, events, onClose, onAdded }) {
             <select value={cut} onChange={e => setCut(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
               <option value="A">A Standard</option>
               <option value="B">B Standard</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pool</label>
+            <select value={pool} onChange={e => setPool(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+              <option value="LCM">LCM (50m)</option>
+              <option value="SCM">SCM (25m)</option>
             </select>
           </div>
         </div>
@@ -174,6 +182,7 @@ function StandardDetail({ standardId, onBack }) {
   const [uploading, setUploading] = useState(false)
   const [uploadResult, setUploadResult] = useState(null)
   const [genderFilter, setGenderFilter] = useState('M')
+  const [poolFilter, setPoolFilter] = useState('LCM')
   const fileRef = useRef()
 
   const refresh = () => {
@@ -197,6 +206,7 @@ function StandardDetail({ standardId, onBack }) {
     setUploadResult(null)
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('pool', poolFilter)
     try {
       const res = await uploadQualifyingPdf(standardId, formData)
       setUploadResult(res.data)
@@ -219,7 +229,7 @@ function StandardDetail({ standardId, onBack }) {
   if (!standard) return null
 
   const compType = COMP_TYPES.find(t => t.value === standard.competition_type)
-  const times = (standard.times || []).filter(t => t.gender === genderFilter)
+  const times = (standard.times || []).filter(t => t.gender === genderFilter && t.pool === poolFilter)
 
   // Group times by event
   const byEvent = {}
@@ -283,6 +293,15 @@ function StandardDetail({ standardId, onBack }) {
             </button>
           ))}
         </div>
+        {/* Pool Toggle */}
+        <div className="flex rounded-xl border overflow-hidden">
+          {[{ v: 'LCM', l: 'LCM (50m)' }, { v: 'SCM', l: 'SCM (25m)' }].map(p => (
+            <button key={p.v} onClick={() => setPoolFilter(p.v)}
+              className={`px-4 py-2 text-xs font-bold transition-all ${poolFilter === p.v ? 'bg-sky-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+              {p.l}
+            </button>
+          ))}
+        </div>
 
         <div className="flex gap-2 ml-auto">
           <button onClick={() => setShowAddTime(true)}
@@ -323,7 +342,7 @@ function StandardDetail({ standardId, onBack }) {
           <svg className="w-14 h-14 mx-auto mb-3 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-gray-400 font-medium">No qualifying times for {genderFilter === 'M' ? 'Men' : 'Women'} yet</p>
+          <p className="text-gray-400 font-medium">No qualifying times for {genderFilter === 'M' ? 'Men' : 'Women'} ({poolFilter}) yet</p>
           <p className="text-gray-300 text-sm mt-1">Import a PDF or add times manually</p>
         </div>
       ) : (

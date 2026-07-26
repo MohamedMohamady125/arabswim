@@ -429,9 +429,10 @@ function StatsTab({ stats, events, swimmerId }) {
               return (
                 <div key={g.event_id} className="px-5 py-4 animate-fade-in-up" style={{ animationDelay: `${(i + 8) * 0.06}s` }}>
                   <div className="flex items-center justify-between mb-2">
-                    <div>
+                    <div className="flex items-center gap-1.5">
                       <span className="text-sm font-bold text-gray-800">{g.event_name}</span>
-                      <span className="text-[10px] ml-2 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{g.cut} Cut</span>
+                      {g.pool && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${g.pool === 'SCM' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'}`}>{g.pool}</span>}
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{g.cut} Cut</span>
                     </div>
                     {g.qualified ? (
                       <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">QUALIFIED</span>

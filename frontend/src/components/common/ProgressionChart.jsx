@@ -81,10 +81,10 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
   )
 
   return (
-    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+    <div className="rounded-2xl shadow-sm overflow-hidden" style={{ background: 'linear-gradient(180deg, #e0f4fe 0%, #bae6fd 30%, #7dd3fc 70%, #38bdf8 100%)' }}>
       {/* Title + Legend */}
       <div className="px-5 pt-4 pb-2">
-        {title && <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wide mb-3">{title}</h4>}
+        {title && <h4 className="font-bold text-white text-sm uppercase tracking-wide mb-3" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>{title}</h4>}
         <div className="flex flex-wrap gap-x-4 gap-y-1.5">
           {lines.map((line, i) => {
             const color = LINE_COLORS[i % LINE_COLORS.length]
@@ -93,7 +93,7 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
                 <span className={`w-3 h-0.5 rounded ${color.bg}`} style={{ display: 'inline-block' }} />
                 <span className={`w-2 h-2 rounded-full ${color.bg}`} style={{ display: 'inline-block' }} />
                 <span className={`w-3 h-0.5 rounded ${color.bg}`} style={{ display: 'inline-block' }} />
-                <span className={`text-xs font-semibold ${color.label}`}>{line.event_name}</span>
+                <span className="text-xs font-semibold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>{line.event_name}</span>
               </div>
             )
           })}
@@ -103,14 +103,31 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
       {/* Chart */}
       <div className="px-3 pb-2">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 'auto', minHeight: '300px', maxHeight: '450px' }}>
-          <rect x={PL} y={PT} width={chartW} height={chartH} fill="#f8fafc" rx="4" />
+          <defs>
+            <linearGradient id="poolBg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#e0f7fa" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#b2ebf2" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#80deea" stopOpacity="0.8" />
+            </linearGradient>
+            {/* Pool lane lines */}
+            <pattern id="laneLines" x="0" y="0" width={chartW} height="40" patternUnits="userSpaceOnUse">
+              <line x1="0" y1="20" x2={chartW} y2="20" stroke="#00bcd4" strokeWidth="0.5" strokeOpacity="0.2" />
+            </pattern>
+            {/* Water ripple pattern */}
+            <pattern id="waterRipple" x="0" y="0" width="120" height="20" patternUnits="userSpaceOnUse">
+              <path d="M0 10 Q15 5 30 10 Q45 15 60 10 Q75 5 90 10 Q105 15 120 10" fill="none" stroke="#00acc1" strokeWidth="0.6" strokeOpacity="0.12" />
+            </pattern>
+          </defs>
+          <rect x={PL} y={PT} width={chartW} height={chartH} fill="url(#poolBg)" rx="4" />
+          <rect x={PL} y={PT} width={chartW} height={chartH} fill="url(#laneLines)" rx="4" />
+          <rect x={PL} y={PT} width={chartW} height={chartH} fill="url(#waterRipple)" rx="4" />
 
           {yTicks.map((cs, i) => {
             const y = timeToY(cs)
             return (
               <g key={i}>
-                <line x1={PL} x2={PL + chartW} y1={y} y2={y} stroke="#e2e8f0" strokeDasharray="4 3" />
-                <text x={PL - 8} y={y + 4} textAnchor="end" style={{ fontSize: '11px', fill: '#64748b', fontFamily: 'monospace' }}>
+                <line x1={PL} x2={PL + chartW} y1={y} y2={y} stroke="#0097a7" strokeDasharray="4 3" strokeOpacity="0.25" />
+                <text x={PL - 8} y={y + 4} textAnchor="end" style={{ fontSize: '11px', fill: '#0277bd', fontFamily: 'monospace', fontWeight: 600 }}>
                   {formatTimeSeconds(cs)}
                 </text>
               </g>
@@ -118,7 +135,7 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
           })}
 
           <text x={15} y={PT + chartH / 2} textAnchor="middle" transform={`rotate(-90, 15, ${PT + chartH / 2})`}
-            style={{ fontSize: '11px', fill: '#94a3b8', fontWeight: 600 }}>
+            style={{ fontSize: '11px', fill: '#0277bd', fontWeight: 700 }}>
             Time
           </text>
 
@@ -127,8 +144,8 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
             const d = new Date(date)
             return (
               <g key={date}>
-                <line x1={x} x2={x} y1={PT} y2={PT + chartH} stroke="#e2e8f0" strokeDasharray="2 4" opacity="0.5" />
-                <text x={x} y={H - 8} textAnchor="middle" style={{ fontSize: '10px', fill: '#94a3b8' }}>
+                <line x1={x} x2={x} y1={PT} y2={PT + chartH} stroke="#0097a7" strokeDasharray="2 4" opacity="0.2" />
+                <text x={x} y={H - 8} textAnchor="middle" style={{ fontSize: '10px', fill: '#0277bd', fontWeight: 600 }}>
                   {d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
                 </text>
               </g>
@@ -142,6 +159,8 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
             const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${dateToX(p.date)},${timeToY(p.time_cs)}`).join(' ')
             return (
               <g key={line.event_id || line.event_name}>
+                {/* Line shadow/glow for contrast */}
+                <path d={pathD} fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.4" />
                 <path d={pathD} fill="none" stroke={color.line} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 {pts.map((p, i) => {
                   const x = dateToX(p.date)
@@ -153,9 +172,11 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
                       onMouseLeave={() => setTooltip(null)}
                       style={{ cursor: 'pointer' }}>
                       <text x={x} y={y - 12} textAnchor="middle"
-                        style={{ fontSize: '10px', fontWeight: 700, fill: color.line, fontFamily: 'monospace' }}>
+                        style={{ fontSize: '10px', fontWeight: 700, fill: '#fff', fontFamily: 'monospace', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
                         {formatTimeShort(p.time_cs)}
                       </text>
+                      {/* Glow behind point */}
+                      <circle cx={x} cy={y} r={isBest ? 10 : 7} fill={color.line} fillOpacity="0.15" />
                       <circle cx={x} cy={y} r={isBest ? 5.5 : 4} fill="#fff" stroke={color.line} strokeWidth="2.5" />
                       {isBest && <circle cx={x} cy={y} r={2.5} fill={color.line} />}
                     </g>
@@ -167,15 +188,15 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
 
           {tooltip && (
             <g>
-              <rect x={tooltip.x - 90} y={tooltip.y + 15} width="180" height={showSwimmer && tooltip.swimmer ? 62 : 48} rx="6" fill="white" stroke="#e2e8f0" strokeWidth="1" />
-              <text x={tooltip.x} y={tooltip.y + 32} textAnchor="middle" style={{ fontSize: '11px', fontWeight: 700, fill: '#1e293b' }}>
+              <rect x={tooltip.x - 90} y={tooltip.y + 15} width="180" height={showSwimmer && tooltip.swimmer ? 62 : 48} rx="8" fill="white" fillOpacity="0.92" stroke="#b2ebf2" strokeWidth="1" />
+              <text x={tooltip.x} y={tooltip.y + 32} textAnchor="middle" style={{ fontSize: '11px', fontWeight: 700, fill: '#0277bd' }}>
                 {tooltip.line}
               </text>
-              <text x={tooltip.x} y={tooltip.y + 48} textAnchor="middle" style={{ fontSize: '10px', fill: '#64748b' }}>
+              <text x={tooltip.x} y={tooltip.y + 48} textAnchor="middle" style={{ fontSize: '10px', fill: '#37474f' }}>
                 {formatTimeShort(tooltip.time_cs)} · {(tooltip.meet || '').substring(0, 25)}{tooltip.fina ? ` · ${tooltip.fina} FINA` : ''}
               </text>
               {showSwimmer && tooltip.swimmer && (
-                <text x={tooltip.x} y={tooltip.y + 60} textAnchor="middle" style={{ fontSize: '10px', fill: '#94a3b8' }}>
+                <text x={tooltip.x} y={tooltip.y + 60} textAnchor="middle" style={{ fontSize: '10px', fill: '#546e7a' }}>
                   {tooltip.swimmer}
                 </text>
               )}
@@ -186,15 +207,15 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
 
       {/* Details table */}
       <div className="px-5 pb-5">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl" style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)' }}>
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b">
-                <th className="text-left py-2 pr-3 text-gray-400 font-semibold">Event</th>
-                <th className="text-left py-2 pr-3 text-gray-400 font-semibold">Best</th>
-                <th className="text-left py-2 pr-3 text-gray-400 font-semibold">Latest</th>
-                <th className="text-left py-2 pr-3 text-gray-400 font-semibold">Change</th>
-                <th className="text-left py-2 text-gray-400 font-semibold">{showSwimmer ? 'Best Swimmer' : 'Best Meet'}</th>
+              <tr style={{ borderBottom: '2px solid #b2ebf2' }}>
+                <th className="text-left py-2.5 px-3 text-cyan-800 font-bold">Event</th>
+                <th className="text-left py-2.5 px-3 text-cyan-800 font-bold">Best</th>
+                <th className="text-left py-2.5 px-3 text-cyan-800 font-bold">Latest</th>
+                <th className="text-left py-2.5 px-3 text-cyan-800 font-bold">Change</th>
+                <th className="text-left py-2.5 px-3 text-cyan-800 font-bold">{showSwimmer ? 'Best Swimmer' : 'Best Meet'}</th>
               </tr>
             </thead>
             <tbody>
@@ -209,23 +230,23 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
                 const diff = first.time_cs - latest.time_cs
                 const improved = diff > 0
                 return (
-                  <tr key={line.event_id || line.event_name} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="py-2 pr-3">
+                  <tr key={line.event_id || line.event_name} style={{ borderBottom: '1px solid #e0f7fa' }} className="hover:bg-cyan-50/50">
+                    <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
                         <span className={`w-2.5 h-2.5 rounded-full ${color.bg}`} />
                         <span className="font-semibold text-gray-800">{line.event_name}</span>
                       </div>
                     </td>
-                    <td className="py-2 pr-3 font-mono font-bold" style={{ color: color.line }}>{formatTimeShort(best)}</td>
-                    <td className="py-2 pr-3 font-mono text-gray-600">{formatTimeShort(latest.time_cs)}</td>
-                    <td className="py-2 pr-3">
+                    <td className="py-2.5 px-3 font-mono font-bold" style={{ color: color.line }}>{formatTimeShort(best)}</td>
+                    <td className="py-2.5 px-3 font-mono text-gray-600">{formatTimeShort(latest.time_cs)}</td>
+                    <td className="py-2.5 px-3">
                       {pts.length > 1 && (
                         <span className={`font-mono font-bold ${improved ? 'text-emerald-600' : 'text-red-500'}`}>
                           {improved ? '\u2193' : '\u2191'} {formatTimeShort(Math.abs(diff))}
                         </span>
                       )}
                     </td>
-                    <td className="py-2 text-gray-500 truncate max-w-[200px]">
+                    <td className="py-2.5 px-3 text-gray-500 truncate max-w-[200px]">
                       {showSwimmer && bestPoint?.swimmer ? bestPoint.swimmer : bestPoint?.meet}
                     </td>
                   </tr>

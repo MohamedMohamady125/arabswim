@@ -154,71 +154,74 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='qualifying-gaps')
     def qualifying_gaps(self, request, pk=None):
-        """Return the swimmer's closest 4 events to qualifying standards."""
+        """Return the swimmer's closest 4 events to qualifying standards per pool."""
         swimmer = self.get_object()
         from championships.models import Result
         from qualifying_times.models import QualifyingTime, QualifyingStandard
         from django.db.models import Min
         from importer.parsers.base import format_centiseconds
 
-        # Get swimmer's LCM best times per event (qualifying times are LCM)
-        bests = (
-            Result.objects.filter(
-                swimmer=swimmer,
-                championship__pool='LCM',
-                time_centiseconds__gt=0,
-                event__is_relay=False,
-            )
-            .values('event__id', 'event__name')
-            .annotate(best_cs=Min('time_centiseconds'))
-        )
-        best_by_event = {b['event__id']: b for b in bests}
-
-        if not best_by_event:
-            return Response([])
-
         # Get the latest qualifying standard
         standard = QualifyingStandard.objects.first()
         if not standard:
             return Response([])
 
-        # Get qualifying times for swimmer's gender and events
-        qt_qs = QualifyingTime.objects.filter(
-            standard=standard,
-            gender=swimmer.sex,
-            event_id__in=best_by_event.keys(),
-        ).select_related('event')
-
         gaps = []
-        for qt in qt_qs:
-            best = best_by_event.get(qt.event_id)
-            if not best:
+        # Check both LCM and SCM qualifying times
+        for pool in ('LCM', 'SCM'):
+            # Get swimmer's best times per event for this pool
+            bests = (
+                Result.objects.filter(
+                    swimmer=swimmer,
+                    championship__pool=pool,
+                    time_centiseconds__gt=0,
+                    event__is_relay=False,
+                )
+                .values('event__id', 'event__name')
+                .annotate(best_cs=Min('time_centiseconds'))
+            )
+            best_by_event = {b['event__id']: b for b in bests}
+            if not best_by_event:
                 continue
-            gap_cs = best['best_cs'] - qt.time_centiseconds  # positive = slower
-            pct = round((best['best_cs'] / qt.time_centiseconds - 1) * 100, 2) if qt.time_centiseconds else 0
-            gaps.append({
-                'event_id': qt.event_id,
-                'event_name': best['event__name'],
-                'cut': qt.cut,
-                'standard_name': standard.name,
-                'swimmer_best_cs': best['best_cs'],
-                'swimmer_best': format_centiseconds(best['best_cs']),
-                'qualifying_cs': qt.time_centiseconds,
-                'qualifying_time': format_centiseconds(qt.time_centiseconds),
-                'gap_cs': gap_cs,
-                'gap_time': format_centiseconds(abs(gap_cs)),
-                'gap_pct': pct,
-                'qualified': gap_cs <= 0,
-            })
 
-        # Sort by gap (closest first) and take 4 closest unique events
-        # Prefer A cut over B cut for same event
+            # Get qualifying times for swimmer's gender, this pool, and matching events
+            qt_qs = QualifyingTime.objects.filter(
+                standard=standard,
+                gender=swimmer.sex,
+                pool=pool,
+                event_id__in=best_by_event.keys(),
+            ).select_related('event')
+
+            for qt in qt_qs:
+                best = best_by_event.get(qt.event_id)
+                if not best:
+                    continue
+                gap_cs = best['best_cs'] - qt.time_centiseconds
+                pct = round((best['best_cs'] / qt.time_centiseconds - 1) * 100, 2) if qt.time_centiseconds else 0
+                gaps.append({
+                    'event_id': qt.event_id,
+                    'event_name': best['event__name'],
+                    'cut': qt.cut,
+                    'pool': pool,
+                    'standard_name': standard.name,
+                    'swimmer_best_cs': best['best_cs'],
+                    'swimmer_best': format_centiseconds(best['best_cs']),
+                    'qualifying_cs': qt.time_centiseconds,
+                    'qualifying_time': format_centiseconds(qt.time_centiseconds),
+                    'gap_cs': gap_cs,
+                    'gap_time': format_centiseconds(abs(gap_cs)),
+                    'gap_pct': pct,
+                    'qualified': gap_cs <= 0,
+                })
+
+        # Sort by gap (closest first) and take 4 closest unique event+pool combos
         gaps.sort(key=lambda g: (g['gap_cs'], g['cut']))
-        seen_events = set()
+        seen = set()
         top = []
         for g in gaps:
-            if g['event_id'] not in seen_events:
-                seen_events.add(g['event_id'])
+            key = (g['event_id'], g['pool'])
+            if key not in seen:
+                seen.add(key)
                 top.append(g)
             if len(top) >= 4:
                 break

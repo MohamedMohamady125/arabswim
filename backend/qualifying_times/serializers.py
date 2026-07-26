@@ -11,7 +11,7 @@ class QualifyingTimeSerializer(serializers.ModelSerializer):
     class Meta:
         model = QualifyingTime
         fields = ['id', 'standard', 'event', 'event_name', 'event_distance',
-                  'event_stroke', 'gender', 'cut', 'time_centiseconds', 'formatted_time']
+                  'event_stroke', 'gender', 'cut', 'pool', 'time_centiseconds', 'formatted_time']
 
 
 class QualifyingStandardSerializer(serializers.ModelSerializer):

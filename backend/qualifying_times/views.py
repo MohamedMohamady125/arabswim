@@ -300,6 +300,9 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
         """Parse a qualifying times PDF and import times into this standard."""
         standard = self.get_object()
         file = request.FILES.get('file')
+        pool = request.data.get('pool', 'LCM')
+        if pool not in ('LCM', 'SCM'):
+            return Response({'error': 'pool must be LCM or SCM'}, status=400)
         if not file:
             return Response({'error': 'No file provided'}, status=400)
 
@@ -329,6 +332,7 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
                 event=event,
                 gender=entry['gender'],
                 cut=entry['cut'],
+                pool=pool,
                 defaults={'time_centiseconds': cs},
             )
             if was_created:
@@ -353,6 +357,10 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
         if not all([event_id, gender, cut, time_text]):
             return Response({'error': 'event, gender, cut, and time_text are required'}, status=400)
 
+        pool = request.data.get('pool', 'LCM')
+        if pool not in ('LCM', 'SCM'):
+            return Response({'error': 'pool must be LCM or SCM'}, status=400)
+
         try:
             event = Event.objects.get(id=event_id, is_relay=False)
         except Event.DoesNotExist:
@@ -367,6 +375,7 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
             event=event,
             gender=gender,
             cut=cut,
+            pool=pool,
             defaults={'time_centiseconds': cs},
         )
         return Response(QualifyingTimeSerializer(qt).data,

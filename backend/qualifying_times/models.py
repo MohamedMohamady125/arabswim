@@ -25,16 +25,18 @@ class QualifyingStandard(models.Model):
 class QualifyingTime(models.Model):
     GENDER_CHOICES = [('M', 'Male'), ('F', 'Female')]
     CUT_CHOICES = [('A', 'A Standard'), ('B', 'B Standard')]
+    POOL_CHOICES = [('LCM', 'Long Course (50m)'), ('SCM', 'Short Course (25m)')]
 
     standard = models.ForeignKey(QualifyingStandard, on_delete=models.CASCADE, related_name='times')
     event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name='qualifying_times')
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     cut = models.CharField(max_length=1, choices=CUT_CHOICES)
+    pool = models.CharField(max_length=3, choices=POOL_CHOICES, default='LCM')
     time_centiseconds = models.IntegerField(help_text='Qualifying time in centiseconds')
 
     class Meta:
         ordering = ['event__sort_order', 'event__distance', 'gender', 'cut']
-        unique_together = ['standard', 'event', 'gender', 'cut']
+        unique_together = ['standard', 'event', 'gender', 'cut', 'pool']
 
     def __str__(self):
         return f'{self.standard.name} - {self.event.name} {self.get_gender_display()} {self.cut}'

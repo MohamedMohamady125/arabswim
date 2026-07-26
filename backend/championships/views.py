@@ -909,11 +909,30 @@ class ResultViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         result = serializer.save()
+        self._auto_fina(result)
         self._recompute(result.championship)
 
     def perform_update(self, serializer):
         result = serializer.save()
+        self._auto_fina(result)
         self._recompute(result.championship)
+
+    @staticmethod
+    def _auto_fina(result):
+        """Calculate and save FINA points if not already set."""
+        if result.time_centiseconds and result.time_centiseconds > 0:
+            from importer.points import calculate_points
+            gender = result.swimmer.sex if result.swimmer else 'M'
+            pool = result.championship.pool if result.championship else 'LCM'
+            pts = calculate_points(
+                result.time_centiseconds,
+                result.event.name,
+                gender,
+                pool,
+            )
+            if pts and pts > 0:
+                result.fina_points = pts
+                result.save(update_fields=['fina_points'])
 
     def perform_destroy(self, instance):
         championship = instance.championship

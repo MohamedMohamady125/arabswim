@@ -793,6 +793,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             .annotate(best=Min('time_centiseconds'))
         )
 
+        gender = swimmer.sex  # rank within same gender
+
         data = []
         for row in swimmer_bests:
             eid = row['event_id']
@@ -801,7 +803,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
             ranks = {}
             for scope_name, scope_filter in scopes.items():
-                # Count distinct swimmers with a strictly better best time
+                # Count distinct swimmers of same gender with a strictly better best time
                 better_count = (
                     Result.objects.filter(
                         event_id=eid,
@@ -809,6 +811,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                         is_hc=False,
                         time_centiseconds__gt=0,
                         swimmer__is_relay_team=False,
+                        swimmer__sex=gender,
                         **scope_filter,
                     )
                     .values('swimmer_id')
@@ -823,6 +826,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                         is_hc=False,
                         time_centiseconds__gt=0,
                         swimmer__is_relay_team=False,
+                        swimmer__sex=gender,
                         **scope_filter,
                     )
                     .values('swimmer_id')

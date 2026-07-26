@@ -572,14 +572,22 @@ function RecordsTab({ swimmerId, swimmer }) {
   const [loading, setLoading] = useState(true)
   const [activeType, setActiveType] = useState('ALL')
   useEffect(() => {
-    Promise.all([
+    const natId = swimmer?.nationality
+    const fetches = [
       getComputedRecords({ scope: 'arab', pool: 'LCM' }),
       getComputedRecords({ scope: 'arab', pool: 'SCM' }),
       getComputedRecords({ scope: 'gcc', pool: 'LCM' }),
       getComputedRecords({ scope: 'gcc', pool: 'SCM' }),
-    ]).then(([arabLCM, arabSCM, gccLCM, gccSCM]) => {
+    ]
+    if (natId) {
+      fetches.push(getComputedRecords({ scope: 'national', country: natId, pool: 'LCM' }))
+      fetches.push(getComputedRecords({ scope: 'national', country: natId, pool: 'SCM' }))
+    }
+    Promise.all(fetches).then((results) => {
+      const [arabLCM, arabSCM, gccLCM, gccSCM, natLCM, natSCM] = results
       const all = []
       const addRecords = (data, type, pool) => {
+        if (!data) return
         data.filter(r => r.swimmer_id === swimmerId).forEach(r => {
           all.push({ ...r, record_type: type, pool, event_name: r.event_name, formatted_time: r.time, location: r.championship_name, result_date: r.date })
         })
@@ -588,9 +596,11 @@ function RecordsTab({ swimmerId, swimmer }) {
       addRecords(arabSCM.data, 'ARAB', 'SCM')
       addRecords(gccLCM.data, 'GCC', 'LCM')
       addRecords(gccSCM.data, 'GCC', 'SCM')
+      if (natLCM) addRecords(natLCM.data, 'NATIONAL', 'LCM')
+      if (natSCM) addRecords(natSCM.data, 'NATIONAL', 'SCM')
       setRecords(all)
     }).catch(() => {}).finally(() => setLoading(false))
-  }, [swimmerId])
+  }, [swimmerId, swimmer?.nationality])
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
 
@@ -601,6 +611,7 @@ function RecordsTab({ swimmerId, swimmer }) {
     byType[type].push(r)
   })
 
+  const nationalCount = (byType['NATIONAL'] || []).length
   const arabCount = (byType['ARAB'] || []).length
   const gccCount = (byType['GCC'] || []).length
   const totalCount = records.length
@@ -616,8 +627,9 @@ function RecordsTab({ swimmerId, swimmer }) {
   }
 
   const typeConfig = {
-    ARAB: { label: 'Arab', glow: 'from-emerald-500/20 to-emerald-500/5', accent: 'text-emerald-400', badge: 'bg-emerald-500/80', ring: 'ring-emerald-400/30 bg-emerald-500/15' },
-    GCC: { label: 'GCC', glow: 'from-sky-500/20 to-sky-500/5', accent: 'text-sky-400', badge: 'bg-sky-500/80', ring: 'ring-sky-400/30 bg-sky-500/15' },
+    NATIONAL: { label: 'National', accent: 'text-purple-400', ring: 'ring-purple-400/30 bg-purple-500/15' },
+    ARAB: { label: 'Arab', accent: 'text-emerald-400', ring: 'ring-emerald-400/30 bg-emerald-500/15' },
+    GCC: { label: 'GCC', accent: 'text-sky-400', ring: 'ring-sky-400/30 bg-sky-500/15' },
   }
 
   const filtered = activeType === 'ALL' ? records : (byType[activeType] || [])
@@ -640,6 +652,12 @@ function RecordsTab({ swimmerId, swimmer }) {
           </div>
           <div className="h-12 w-px bg-white/10" />
           <div className="flex gap-5">
+            {nationalCount > 0 && (
+              <div className="text-center">
+                <div className="text-3xl font-black text-purple-400"><AnimatedNumber value={nationalCount} /></div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-purple-400/50 mt-0.5">National</div>
+              </div>
+            )}
             {arabCount > 0 && (
               <div className="text-center">
                 <div className="text-3xl font-black text-emerald-400"><AnimatedNumber value={arabCount} /></div>
@@ -658,7 +676,7 @@ function RecordsTab({ swimmerId, swimmer }) {
 
       {/* Filter toggles */}
       <div className="px-5 pb-3 flex gap-1 bg-white/5 mx-5 rounded-lg p-0.5 w-fit">
-        {[{ key: 'ALL', label: 'All', count: totalCount }, ...(arabCount > 0 ? [{ key: 'ARAB', label: 'Arab', count: arabCount }] : []), ...(gccCount > 0 ? [{ key: 'GCC', label: 'GCC', count: gccCount }] : [])].map(f => (
+        {[{ key: 'ALL', label: 'All', count: totalCount }, ...(nationalCount > 0 ? [{ key: 'NATIONAL', label: 'National', count: nationalCount }] : []), ...(arabCount > 0 ? [{ key: 'ARAB', label: 'Arab', count: arabCount }] : []), ...(gccCount > 0 ? [{ key: 'GCC', label: 'GCC', count: gccCount }] : [])].map(f => (
           <button key={f.key} onClick={() => setActiveType(f.key)}
             className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
               activeType === f.key ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-white/40 hover:text-white/70'

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { getSwimmer, updateSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats, getSwimmerProgression, getSwimmerTransferHistory, getSwimmerRankings } from '../api/swimmers'
+import { getSwimmer, updateSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats, getSwimmerProgression, getSwimmerTransferHistory, getSwimmerRankings, getSwimmerQualifyingGaps } from '../api/swimmers'
 import { getRecords, getComputedRecords } from '../api/records'
 import { getMediaItems } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
@@ -360,7 +360,7 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
 }
 
 /* ───────── Stats Tab ───────── */
-function StatsTab({ stats, events }) {
+function StatsTab({ stats, events, qualifyingGaps }) {
   if (!stats) return null
   const { medals, best_fina, best_event, total_championships, records, total_records, fina_distribution } = stats
   const totalEvents = new Set(events.map(e => e.event_id)).size
@@ -407,6 +407,63 @@ function StatsTab({ stats, events }) {
           )}
         </div>
       </div>
+
+      {/* Qualifying Gaps */}
+      {qualifyingGaps && qualifyingGaps.length > 0 && (
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up stagger-7">
+          <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
+            <h3 className="font-bold text-base text-gray-800">Qualifying Standards Gap</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">{qualifyingGaps[0]?.standard_name} — Closest 4 events to qualifying</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {qualifyingGaps.map((g, i) => {
+              const maxGap = Math.max(...qualifyingGaps.map(x => Math.abs(x.gap_cs)))
+              const barPct = maxGap > 0 ? (Math.abs(g.gap_cs) / maxGap) * 100 : 0
+              return (
+                <div key={g.event_id} className="px-5 py-4 animate-fade-in-up" style={{ animationDelay: `${(i + 8) * 0.06}s` }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span className="text-sm font-bold text-gray-800">{g.event_name}</span>
+                      <span className="text-[10px] ml-2 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{g.cut} Cut</span>
+                    </div>
+                    {g.qualified ? (
+                      <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">QUALIFIED</span>
+                    ) : (
+                      <span className="text-xs font-bold text-gray-500">+{g.gap_pct}%</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-[10px] font-semibold mb-1">
+                        <span className="text-gray-400">Your Best</span>
+                        <span className="text-gray-400">Qualifying</span>
+                      </div>
+                      <div className="relative h-6 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${g.qualified ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : 'bg-gradient-to-r from-sky-400 to-sky-500'}`}
+                          style={{ width: `${g.qualified ? 100 : Math.max(100 - barPct * 0.6, 15)}%` }}
+                        />
+                        {!g.qualified && (
+                          <div className="absolute right-0 top-0 h-full border-l-2 border-dashed border-amber-400" style={{ width: `${barPct * 0.6}%` }}>
+                            <div className="absolute -top-0.5 -left-1 w-2 h-7 bg-amber-400 rounded-full opacity-60" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-bold text-sky-600">{g.swimmer_best}</span>
+                    <span className={`font-mono text-xs font-bold ${g.qualified ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {g.qualified ? '-' : '+'}{g.gap_time}
+                    </span>
+                    <span className="font-mono text-sm font-bold text-amber-600">{g.qualifying_time}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Records Held */}
       {total_records > 0 && (
@@ -984,6 +1041,7 @@ export default function SwimmerProfilePage() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [qualifyingGaps, setQualifyingGaps] = useState([])
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -991,6 +1049,7 @@ export default function SwimmerProfilePage() {
       getSwimmer(id).then(res => setSwimmer(res.data)),
       getSwimmerEvents(id).then(res => setEvents(res.data)),
       getSwimmerProfileStats(id).then(res => setStats(res.data)),
+      getSwimmerQualifyingGaps(id).then(res => setQualifyingGaps(res.data)).catch(() => {}),
     ]).finally(() => setLoaded(true))
   }, [id])
 
@@ -1176,7 +1235,7 @@ export default function SwimmerProfilePage() {
         {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} />}
         {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} />}
         {activeTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
-        {activeTab === 'stats' && <StatsTab stats={stats} events={events} />}
+        {activeTab === 'stats' && <StatsTab stats={stats} events={events} qualifyingGaps={qualifyingGaps} />}
         {activeTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}
         {activeTab === 'gallery' && <GalleryTab swimmerId={parseInt(id)} />}
       </div>

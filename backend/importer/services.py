@@ -167,7 +167,7 @@ def _build_preview(parsed_meet):
             # with country codes (Estonia) and produce wrong nationalities.
             nat_code = r.nationality_code
             club_is_country = False
-            if not nat_code and r.club and is_international:
+            if not nat_code and r.club and is_international and len(r.club) > 3:
                 club_country = resolve_country(r.club)
                 if club_country:
                     nat_code = club_country.code

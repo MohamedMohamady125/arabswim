@@ -22,8 +22,6 @@ import NewsPage from './pages/NewsPage'
 import NewsFormPage from './pages/NewsFormPage'
 import MarketPage from './pages/MarketPage'
 import MarketFormPage from './pages/MarketFormPage'
-import AcademiesPage from './pages/AcademiesPage'
-import AcademyFormPage from './pages/AcademyFormPage'
 import HallOfFamePage from './pages/HallOfFamePage'
 import InducteeFormPage from './pages/InducteeFormPage'
 import MediaPage from './pages/MediaPage'
@@ -72,9 +70,6 @@ export default function App() {
         <Route path="market" element={<MarketPage />} />
         <Route path="market/new" element={<MarketFormPage />} />
         <Route path="market/:id/edit" element={<MarketFormPage />} />
-        <Route path="academies" element={<AcademiesPage />} />
-        <Route path="academies/new" element={<AcademyFormPage />} />
-        <Route path="academies/:id/edit" element={<AcademyFormPage />} />
         <Route path="hall-of-fame" element={<HallOfFamePage />} />
         <Route path="hall-of-fame/new" element={<InducteeFormPage />} />
         <Route path="hall-of-fame/:id/edit" element={<InducteeFormPage />} />

@@ -342,19 +342,3 @@ def _check_meet_duplicates(preview):
         warnings.append(warning)
 
     return warnings
-
-
-class FixEventsView(APIView):
-    """Temporary endpoint to run fix_events management command remotely."""
-
-    def post(self, request):
-        from rest_framework.permissions import IsAdminUser
-        if not (request.user and request.user.is_staff):
-            return Response({'error': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
-
-        from django.core.management import call_command
-        from io import StringIO
-        out = StringIO()
-        apply_flag = request.data.get('apply', False)
-        call_command('fix_events', apply=apply_flag, stdout=out)
-        return Response({'output': out.getvalue()})

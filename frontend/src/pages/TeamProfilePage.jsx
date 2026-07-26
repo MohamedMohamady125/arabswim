@@ -279,34 +279,141 @@ export default function TeamProfilePage() {
           )}
 
           {activeTab === 'medals' && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Medals ({medals.length})</h3>
-              </div>
-              {medals.length === 0 ? (
-                <div className="p-8 text-center text-gray-400">No medals recorded for this team</div>
-              ) : (
-                <div className="divide-y">
-                  {medals.map(m => (
-                    <div key={m.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
-                      {medalIcon(m.medal_type)}
-                      <div className="flex-1">
-                        <div className="text-sm font-medium">{m.event_name}</div>
-                        <div className="text-xs text-gray-500">
-                          {m.swimmer_name} &middot; {m.championship_name}
-                          {m.team && m.team.toLowerCase() !== team.name.toLowerCase() && (
-                            <span className="ml-1 text-gray-400">({m.team})</span>
-                          )}
-                        </div>
+            <div className="space-y-4">
+              {/* National vs International Analysis */}
+              {(() => {
+                const natTotal = profile.medal_counts.national.GOLD + profile.medal_counts.national.SILVER + profile.medal_counts.national.BRONZE
+                const intTotal = profile.medal_counts.international.GOLD + profile.medal_counts.international.SILVER + profile.medal_counts.international.BRONZE
+                const grandTotal = natTotal + intTotal
+                if (grandTotal === 0) return null
+                const barMax = Math.max(natTotal, intTotal, 1)
+                return (
+                  <div className="bg-white rounded-lg border p-5">
+                    <h3 className="font-bold text-base mb-4">Medal Analysis</h3>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-3 gap-3 mb-5">
+                      <div className="bg-blue-50 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-blue-700">{grandTotal}</div>
+                        <div className="text-xs text-blue-600 font-medium">Total Medals</div>
                       </div>
-                      <div className="text-right text-xs text-gray-500">
-                        <div>{m.championship_location || m.championship_country}</div>
-                        <div>{m.championship_date}</div>
+                      <div className="bg-green-50 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-green-700">{intTotal}</div>
+                        <div className="text-xs text-green-600 font-medium">International</div>
+                      </div>
+                      <div className="bg-purple-50 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-purple-700">{natTotal}</div>
+                        <div className="text-xs text-purple-600 font-medium">National</div>
                       </div>
                     </div>
-                  ))}
+                    {/* National vs International Bar Chart */}
+                    <div className="space-y-3">
+                      {[
+                        { label: 'International', counts: profile.medal_counts.international, total: intTotal, color: 'green' },
+                        { label: 'National', counts: profile.medal_counts.national, total: natTotal, color: 'purple' },
+                      ].map(cat => (
+                        <div key={cat.label}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-semibold text-gray-700">{cat.label}</span>
+                            <span className="text-sm font-bold text-gray-900">{cat.total}</span>
+                          </div>
+                          <div className="flex h-7 rounded-lg overflow-hidden bg-gray-100">
+                            {cat.counts.GOLD > 0 && (
+                              <div className="bg-yellow-400 h-full flex items-center justify-center text-[10px] font-bold text-yellow-800 transition-all duration-500"
+                                style={{ width: `${(cat.counts.GOLD / barMax) * 100}%`, minWidth: cat.counts.GOLD > 0 ? '24px' : 0 }}>
+                                {cat.counts.GOLD}
+                              </div>
+                            )}
+                            {cat.counts.SILVER > 0 && (
+                              <div className="bg-gray-400 h-full flex items-center justify-center text-[10px] font-bold text-white transition-all duration-500"
+                                style={{ width: `${(cat.counts.SILVER / barMax) * 100}%`, minWidth: cat.counts.SILVER > 0 ? '24px' : 0 }}>
+                                {cat.counts.SILVER}
+                              </div>
+                            )}
+                            {cat.counts.BRONZE > 0 && (
+                              <div className="bg-orange-400 h-full flex items-center justify-center text-[10px] font-bold text-orange-800 transition-all duration-500"
+                                style={{ width: `${(cat.counts.BRONZE / barMax) * 100}%`, minWidth: cat.counts.BRONZE > 0 ? '24px' : 0 }}>
+                                {cat.counts.BRONZE}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
+                            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block" /> {cat.counts.GOLD} Gold</span>
+                            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-400 inline-block" /> {cat.counts.SILVER} Silver</span>
+                            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block" /> {cat.counts.BRONZE} Bronze</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Classification Breakdown */}
+                    {profile.classification_breakdown && profile.classification_breakdown.length > 0 && (
+                      <div className="mt-5 pt-4 border-t">
+                        <h4 className="font-semibold text-sm mb-3 text-gray-700">Medals by Classification</h4>
+                        <div className="space-y-2">
+                          {profile.classification_breakdown.map(cls => {
+                            const clsTotal = cls.GOLD + cls.SILVER + cls.BRONZE
+                            return (
+                              <div key={cls.name} className="flex items-center gap-3">
+                                <span className="text-xs font-medium text-gray-600 w-28 truncate" title={cls.name}>{cls.name}</span>
+                                <div className="flex-1 flex h-5 rounded overflow-hidden bg-gray-100">
+                                  {cls.GOLD > 0 && (
+                                    <div className="bg-yellow-400 h-full transition-all duration-500"
+                                      style={{ width: `${(cls.GOLD / clsTotal) * 100}%` }} />
+                                  )}
+                                  {cls.SILVER > 0 && (
+                                    <div className="bg-gray-400 h-full transition-all duration-500"
+                                      style={{ width: `${(cls.SILVER / clsTotal) * 100}%` }} />
+                                  )}
+                                  {cls.BRONZE > 0 && (
+                                    <div className="bg-orange-400 h-full transition-all duration-500"
+                                      style={{ width: `${(cls.BRONZE / clsTotal) * 100}%` }} />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[11px] text-gray-500 w-24 justify-end shrink-0">
+                                  <MedalIcon type="gold" size={14} /><span>{cls.GOLD}</span>
+                                  <MedalIcon type="silver" size={14} /><span>{cls.SILVER}</span>
+                                  <MedalIcon type="bronze" size={14} /><span>{cls.BRONZE}</span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* All Medals List */}
+              <div className="bg-white rounded-lg border">
+                <div className="p-4 border-b">
+                  <h3 className="font-semibold">All Medals ({medals.length})</h3>
                 </div>
-              )}
+                {medals.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">No medals recorded for this team</div>
+                ) : (
+                  <div className="divide-y">
+                    {medals.map(m => (
+                      <div key={m.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
+                        {medalIcon(m.medal_type)}
+                        <div className="flex-1">
+                          <div className="text-sm font-medium">{m.event_name}</div>
+                          <div className="text-xs text-gray-500">
+                            {m.swimmer_name} &middot; {m.championship_name}
+                            {m.team && m.team.toLowerCase() !== team.name.toLowerCase() && (
+                              <span className="ml-1 text-gray-400">({m.team})</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right text-xs text-gray-500">
+                          <div>{m.championship_location || m.championship_country}</div>
+                          <div>{m.championship_date}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

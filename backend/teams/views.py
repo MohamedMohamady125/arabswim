@@ -109,12 +109,18 @@ class TeamViewSet(viewsets.ModelViewSet):
             for s in best_swimmers
         ]
 
-        # Medal breakdown
+        # Medal breakdown — exclude "Other" classification entirely
         team_medals = self._full_report_medals(team).select_related(
-            'championship', 'championship__classification_category')
+            'championship', 'championship__classification_category',
+            'championship__classification')
+        # Exclude medals from "Other" classification
+        team_medals = team_medals.exclude(
+            championship__classification__name__iexact='other')
 
         medal_counts = {'national': {'GOLD': 0, 'SILVER': 0, 'BRONZE': 0},
                         'international': {'GOLD': 0, 'SILVER': 0, 'BRONZE': 0}}
+        # Detailed breakdown by classification name
+        classification_breakdown = {}
         for m in team_medals:
             cat = 'international'
             if m.championship.classification_category:
@@ -123,11 +129,28 @@ class TeamViewSet(viewsets.ModelViewSet):
                     cat = 'national'
             medal_counts[cat][m.medal_type] += 1
 
+            # Track by classification name
+            cls_name = (m.championship.classification.name
+                        if m.championship.classification else 'Uncategorized')
+            if cls_name not in classification_breakdown:
+                classification_breakdown[cls_name] = {'GOLD': 0, 'SILVER': 0, 'BRONZE': 0}
+            classification_breakdown[cls_name][m.medal_type] += 1
+
+        # Convert to sorted list
+        classification_list = [
+            {'name': name, **counts}
+            for name, counts in sorted(
+                classification_breakdown.items(),
+                key=lambda x: -(x[1]['GOLD'] + x[1]['SILVER'] + x[1]['BRONZE'])
+            )
+        ]
+
         return Response({
             'team': serializer.data,
             'roster': roster_data,
             'best_swimmers': best_list,
             'medal_counts': medal_counts,
+            'classification_breakdown': classification_list,
         })
 
     @action(detail=True, methods=['get'])

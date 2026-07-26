@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Home, Trophy, CalendarDays, BarChart3, Medal, Award, Sparkles,
-  Users, Shield, Crown, Newspaper, Image, ShoppingBag, School,
+  Users, Shield, Crown, Newspaper, Image, ShoppingBag,
   Globe, Upload, Menu, X, Target, Handshake, UserCheck,
 } from 'lucide-react'
 
@@ -33,7 +33,6 @@ const GROUPS = [
       { to: '/news', label: 'News', icon: Newspaper },
       { to: '/media', label: 'Media', icon: Image },
       { to: '/market', label: 'Market', icon: ShoppingBag },
-      { to: '/academies', label: 'Academies', icon: School },
       { to: '/sponsors', label: 'Partnerships', icon: Handshake },
       { to: '/coaches', label: 'Coaches', icon: UserCheck },
     ],

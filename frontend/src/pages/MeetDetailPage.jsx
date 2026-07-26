@@ -192,50 +192,104 @@ function MostImprovedTable({ swimmers, navigate }) {
 }
 
 function MedalsTab({ stats, medals, medalSummary, medalClubSummary, medalSwimmerSummary, navigate }) {
+  const [medalFilter, setMedalFilter] = useState('ALL')
+  const [tallyFilter, setTallyFilter] = useState('ALL')
   const isNational = (stats?.countries?.length || 0) <= 1
   const safeMedals = Array.isArray(medals) ? medals : []
   const safeSummary = Array.isArray(medalSummary) ? medalSummary : []
   const safeClubSummary = Array.isArray(medalClubSummary) ? medalClubSummary : []
   const safeSwimmerSummary = Array.isArray(medalSwimmerSummary) ? medalSwimmerSummary : []
 
+  const goldCount = safeMedals.filter(m => m.medal_type === 'GOLD').length
+  const silverCount = safeMedals.filter(m => m.medal_type === 'SILVER').length
+  const bronzeCount = safeMedals.filter(m => m.medal_type === 'BRONZE').length
+
+  const filteredMedals = medalFilter === 'ALL'
+    ? [...safeMedals].sort((a, b) => {
+        const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
+        return (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3)
+      })
+    : safeMedals.filter(m => m.medal_type === medalFilter)
+
   return (
     <div className="space-y-6">
-      {/* Country Medal Tally (international) or Club Medal Tally (national) */}
-      {!isNational && safeSummary.length > 0 && (
-        <div className="bg-white rounded-lg border">
-          <div className="p-4 border-b">
-            <h3 className="font-semibold">Country Medal Tally</h3>
+      {/* Medal Count Cards */}
+      {safeMedals.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4 text-center">
+            <MedalIcon type="gold" size={32} />
+            <div className="text-3xl font-black text-amber-700 mt-1">{goldCount}</div>
+            <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Gold</div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Country</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
-                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
-                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {safeSummary.map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                    <td className="px-4 py-2 text-sm">
-                      <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
-                    </td>
-                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
-                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
-                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
-                    <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-4 text-center">
+            <MedalIcon type="silver" size={32} />
+            <div className="text-3xl font-black text-gray-600 mt-1">{silverCount}</div>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Silver</div>
+          </div>
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 text-center">
+            <MedalIcon type="bronze" size={32} />
+            <div className="text-3xl font-black text-orange-700 mt-1">{bronzeCount}</div>
+            <div className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Bronze</div>
           </div>
         </div>
       )}
+
+      {/* Country Medal Tally (international) or Club Medal Tally (national) */}
+      {!isNational && safeSummary.length > 0 && (() => {
+        const filteredSummary = tallyFilter === 'ARAB'
+          ? safeSummary.filter(r => r.swimmer__nationality__region === 'ARAB' || r.swimmer__nationality__region === 'GCC')
+          : safeSummary
+        return (
+          <div className="bg-white rounded-lg border">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="font-semibold">Country Medal Tally</h3>
+              <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl">
+                {[
+                  { key: 'ALL', label: 'Overall' },
+                  { key: 'ARAB', label: 'Arab' },
+                ].map(opt => (
+                  <button key={opt.key} onClick={() => setTallyFilter(opt.key)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
+                      tallyFilter === opt.key
+                        ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Country</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
+                    <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
+                    <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {filteredSummary.map((row, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
+                      <td className="px-4 py-2 text-sm">
+                        <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
+                      </td>
+                      <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
+                      <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
+                      <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
+                      <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      })()}
 
       {isNational && safeClubSummary.length > 0 && (
         <div className="bg-white rounded-lg border">
@@ -310,11 +364,28 @@ function MedalsTab({ stats, medals, medalSummary, medalClubSummary, medalSwimmer
         </div>
       )}
 
-      {/* All Medals — sorted Gold > Silver > Bronze */}
+      {/* All Medals with filter buttons */}
       {safeMedals.length > 0 && (
         <div className="bg-white rounded-lg border">
-          <div className="p-4 border-b">
-            <h3 className="font-semibold">All Medals</h3>
+          <div className="p-4 border-b flex items-center justify-between">
+            <h3 className="font-semibold">All Medals ({filteredMedals.length})</h3>
+            <div className="flex gap-1.5">
+              {[
+                { key: 'ALL', label: 'All', color: 'bg-sky-600 text-white shadow-md shadow-sky-200', count: safeMedals.length },
+                { key: 'GOLD', label: 'Gold', color: 'bg-amber-500 text-white shadow-md shadow-amber-200', count: goldCount },
+                { key: 'SILVER', label: 'Silver', color: 'bg-gray-400 text-white shadow-md shadow-gray-200', count: silverCount },
+                { key: 'BRONZE', label: 'Bronze', color: 'bg-orange-600 text-white shadow-md shadow-orange-200', count: bronzeCount },
+              ].map(opt => (
+                <button key={opt.key} onClick={() => setMedalFilter(opt.key)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
+                    medalFilter === opt.key
+                      ? opt.color
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}>
+                  {opt.label} ({opt.count})
+                </button>
+              ))}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -327,10 +398,7 @@ function MedalsTab({ stats, medals, medalSummary, medalClubSummary, medalSwimmer
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {[...safeMedals].sort((a, b) => {
-                  const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
-                  return (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3)
-                }).map((m, i) => (
+                {filteredMedals.map((m, i) => (
                   <tr key={m.id || i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}>
                     <td className="px-4 py-2"><MedalIcon type={m.medal_type?.toLowerCase()} size={24} /></td>
                     <td className="px-4 py-2 text-sm font-medium">{m.swimmer_detail?.name}</td>
@@ -418,7 +486,7 @@ export default function MeetDetailPage() {
   useEffect(() => {
     if (activeTab === 'medals') {
       getMedalSummary({ championship: id }).then(res => setMedalSummary(res.data)).catch(() => {})
-      getMedals({ championship: id }).then(res => setMedals(res.data?.results || res.data || [])).catch(() => {})
+      getMedals({ championship: id, page_size: 500 }).then(res => setMedals(res.data?.results || res.data || [])).catch(() => {})
       getMedalClubSummary({ championship: id }).then(res => setMedalClubSummary(res.data)).catch(() => {})
       getMedalSwimmerSummary({ championship: id }).then(res => setMedalSwimmerSummary(res.data)).catch(() => {})
     }
@@ -1021,7 +1089,7 @@ export default function MeetDetailPage() {
           {/* Countries Breakdown */}
           <div className="bg-white rounded-lg border">
             <div className="p-4 border-b">
-              <h3 className="font-semibold">Countries ({stats.countries.length})</h3>
+              <h3 className="font-semibold">Federations ({stats.countries.length})</h3>
             </div>
             <div className="divide-y max-h-[500px] overflow-y-auto">
               {stats.countries.map((c, i) => (

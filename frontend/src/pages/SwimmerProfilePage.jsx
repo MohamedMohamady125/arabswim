@@ -567,11 +567,11 @@ function MeetsTab({ stats, navigate }) {
 
 /* ───────── TAB CONFIG ───────── */
 /* ───────── Records Tab ───────── */
-function RecordsTab({ swimmerId }) {
+function RecordsTab({ swimmerId, swimmer }) {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activeType, setActiveType] = useState('ALL')
   useEffect(() => {
-    // Fetch computed records for arab and gcc scopes, filter for this swimmer
     Promise.all([
       getComputedRecords({ scope: 'arab', pool: 'LCM' }),
       getComputedRecords({ scope: 'arab', pool: 'SCM' }),
@@ -594,7 +594,6 @@ function RecordsTab({ swimmerId }) {
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
 
-  // Group by record type
   const byType = {}
   records.forEach(r => {
     const type = r.record_type || 'OTHER'
@@ -602,72 +601,97 @@ function RecordsTab({ swimmerId }) {
     byType[type].push(r)
   })
 
-  const TYPE_STYLES = {
-    ARAB: { bg: 'from-emerald-50 to-emerald-100/30', border: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-700', header: 'text-emerald-800', label: 'Arab Records' },
-    GCC: { bg: 'from-sky-50 to-sky-100/30', border: 'border-sky-200', badge: 'bg-sky-100 text-sky-700', header: 'text-sky-800', label: 'GCC Records' },
-    NATIONAL: { bg: 'from-purple-50 to-purple-100/30', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', header: 'text-purple-800', label: 'National Records' },
-    OTHER: { bg: 'from-gray-50 to-gray-100/30', border: 'border-gray-200', badge: 'bg-gray-100 text-gray-700', header: 'text-gray-800', label: 'Other Records' },
-  }
+  const arabCount = (byType['ARAB'] || []).length
+  const gccCount = (byType['GCC'] || []).length
+  const totalCount = records.length
 
-  const types = Object.keys(byType).sort((a, b) => {
-    const order = { ARAB: 0, GCC: 1, NATIONAL: 2 }
-    return (order[a] ?? 3) - (order[b] ?? 3)
-  })
-
-  if (types.length === 0) {
+  if (totalCount === 0) {
     return (
-      <div className="bg-white rounded-2xl border shadow-sm p-12 text-center animate-fade-in">
-        <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
-        <p className="text-gray-400 font-medium">No records held</p>
-        <p className="text-gray-300 text-sm mt-1">Records will appear here when this swimmer sets Arab, GCC, or National records</p>
+      <div className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-[#0a1628] to-[#122240] p-12 text-center animate-fade-in">
+        <svg className="w-16 h-16 mx-auto mb-4 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
+        <p className="text-white/30 font-bold">No records held</p>
+        <p className="text-white/15 text-sm mt-1">Records will appear here when this swimmer sets Arab, GCC, or National records</p>
       </div>
     )
   }
 
+  const typeConfig = {
+    ARAB: { label: 'Arab', glow: 'from-emerald-500/20 to-emerald-500/5', accent: 'text-emerald-400', badge: 'bg-emerald-500/80', ring: 'ring-emerald-400/30 bg-emerald-500/15' },
+    GCC: { label: 'GCC', glow: 'from-sky-500/20 to-sky-500/5', accent: 'text-sky-400', badge: 'bg-sky-500/80', ring: 'ring-sky-400/30 bg-sky-500/15' },
+  }
+
+  const filtered = activeType === 'ALL' ? records : (byType[activeType] || [])
+
   return (
-    <div className="space-y-5">
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-3 animate-fade-in-up">
-        {['ARAB', 'GCC', 'NATIONAL'].map((type, i) => {
-          const count = (byType[type] || []).length
-          const style = TYPE_STYLES[type]
+    <div className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-[#0a1628] to-[#122240] animate-fade-in">
+      {/* Header */}
+      <SportCardHeader
+        swimmer={swimmer}
+        badge="Record Holder"
+        badgeBg="bg-amber-500/80"
+      />
+
+      {/* Hero stat */}
+      <div className="px-5 py-4 border-t border-white/5">
+        <div className="flex items-baseline gap-6">
+          <div className="text-center">
+            <div className="text-5xl sm:text-6xl font-black text-white tracking-tight"><AnimatedNumber value={totalCount} /></div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-white/30 mt-1">Total Records</div>
+          </div>
+          <div className="h-12 w-px bg-white/10" />
+          <div className="flex gap-5">
+            {arabCount > 0 && (
+              <div className="text-center">
+                <div className="text-3xl font-black text-emerald-400"><AnimatedNumber value={arabCount} /></div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400/50 mt-0.5">Arab</div>
+              </div>
+            )}
+            {gccCount > 0 && (
+              <div className="text-center">
+                <div className="text-3xl font-black text-sky-400"><AnimatedNumber value={gccCount} /></div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-sky-400/50 mt-0.5">GCC</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Filter toggles */}
+      <div className="px-5 pb-3 flex gap-1 bg-white/5 mx-5 rounded-lg p-0.5 w-fit">
+        {[{ key: 'ALL', label: 'All', count: totalCount }, ...(arabCount > 0 ? [{ key: 'ARAB', label: 'Arab', count: arabCount }] : []), ...(gccCount > 0 ? [{ key: 'GCC', label: 'GCC', count: gccCount }] : [])].map(f => (
+          <button key={f.key} onClick={() => setActiveType(f.key)}
+            className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
+              activeType === f.key ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-white/40 hover:text-white/70'
+            }`}>
+            {f.label} <span className="opacity-60">({f.count})</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Record rows */}
+      <div className="px-3 pb-4 mt-2">
+        {filtered.map((r, i) => {
+          const cfg = typeConfig[r.record_type] || typeConfig.ARAB
           return (
-            <div key={type} className={`bg-gradient-to-br ${style.bg} ${style.border} border rounded-2xl p-5 text-center shadow-sm animate-count-up stagger-${i + 1}`}>
-              <div className={`text-4xl font-black ${style.header}`}><AnimatedNumber value={count} /></div>
-              <div className="text-[11px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider">{style.label}</div>
+            <div key={i}
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl mb-1 transition-all duration-300 hover:bg-white/5 animate-fade-in-up`}
+              style={{ animationDelay: `${i * 0.04}s` }}>
+              <StrokeIcon eventName={r.event_name} />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-white/90 tracking-tight truncate">{r.event_detail?.name || r.event_name}</div>
+                <div className="text-[10px] text-white/25 mt-0.5 truncate">{r.location}{r.location && r.result_date ? ' \u00b7 ' : ''}{r.result_date}</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ring-1 ${cfg.ring}`}>
+                  <span className={cfg.accent}>{cfg.label}</span>
+                </span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${r.pool === 'LCM' ? 'bg-sky-500/15 text-sky-400/70' : 'bg-amber-500/15 text-amber-400/70'}`}>{r.pool}</span>
+                <span className="font-mono font-black text-base text-white tabular-nums min-w-[70px] text-right">{r.formatted_time}</span>
+              </div>
             </div>
           )
         })}
       </div>
-
-      {/* Records by category */}
-      {types.map((type, ti) => {
-        const style = TYPE_STYLES[type] || TYPE_STYLES.OTHER
-        const recs = byType[type]
-        return (
-          <div key={type} className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up" style={{ animationDelay: `${(ti + 3) * 0.08}s` }}>
-            <div className={`p-4 border-b bg-gradient-to-r ${style.bg}`}>
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${style.badge}`}>{type}</span>
-                <h3 className={`font-bold text-base ${style.header}`}>{style.label}</h3>
-                <span className="ml-auto text-sm font-bold text-gray-400">{recs.length}</span>
-              </div>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {recs.map((r, ri) => (
-                <div key={ri} className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/80 transition-all duration-200 animate-fade-in-up" style={{ animationDelay: `${(ti * 3 + ri + 4) * 0.05}s` }}>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-gray-800">{r.event_detail?.name || r.event_name}</div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">{r.location}{r.location && r.result_date ? ' \u00b7 ' : ''}{r.result_date}</div>
-                  </div>
-                  {r.pool && <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${r.pool === 'LCM' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>{r.pool}</span>}
-                  <div className="font-mono text-base font-black text-sky-600">{r.formatted_time}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -905,11 +929,78 @@ function TransferHistoryTab({ swimmerId }) {
   )
 }
 
+/* ───────── Stroke icon for sport-card rows ───────── */
+function StrokeIcon({ eventName, className = 'w-9 h-9' }) {
+  // Determine stroke from event name
+  const name = (eventName || '').toLowerCase()
+  let stroke = 'freestyle'
+  if (name.includes('backstroke') || name.includes('back')) stroke = 'backstroke'
+  else if (name.includes('breaststroke') || name.includes('breast')) stroke = 'breaststroke'
+  else if (name.includes('butterfly') || name.includes('fly')) stroke = 'butterfly'
+  else if (name.includes('medley') || name.includes('im')) stroke = 'medley'
+
+  const paths = {
+    freestyle: 'M4 16c1.5-2 3-3 5-1s3.5 1 5-1 3-3 5-1M7 10a3 3 0 100-6 3 3 0 000 6zM14 18l3-5',
+    backstroke: 'M4 14c1.5 2 3 3 5 1s3.5-1 5 1 3 3 5 1M7 10a3 3 0 100-6 3 3 0 000 6zM16 8l-3 5',
+    breaststroke: 'M4 15c2-2 4-2 6 0s4 2 6 0M7 10a3 3 0 100-6 3 3 0 000 6zM13 12l4-2M13 12l4 2',
+    butterfly: 'M4 14c1.5-2 3-2.5 5-.5s3 2 5 .5 3-2.5 5-.5M7 10a3 3 0 100-6 3 3 0 000 6zM14 8c1 2 3 4 5 3',
+    medley: 'M4 16c1.2-1.5 2.5-2 4-.8s3 1 4.5-.2 2.5-2 4-.8M7 10a3 3 0 100-6 3 3 0 000 6zM15 9l2 4M17 9l-2 4',
+  }
+
+  return (
+    <div className={`${className} rounded-full border-2 border-white/20 flex items-center justify-center shrink-0 bg-white/5`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-sky-300">
+        <path d={paths[stroke]} />
+      </svg>
+    </div>
+  )
+}
+
+/* ───────── Sport-card header (swimmer photo/name/flag) ───────── */
+function SportCardHeader({ swimmer, badge, badgeBg = 'bg-sky-500/90' }) {
+  const alpha2 = swimmer?.nationality_detail?.flag_url || (swimmer?.nationality_detail?.code || '').toLowerCase().slice(0, 2)
+  return (
+    <div className="relative px-5 pt-5 pb-4">
+      <div className="flex items-center gap-3">
+        {/* Photo */}
+        <div className="w-14 h-14 rounded-xl bg-white/10 overflow-hidden shrink-0 ring-2 ring-white/10">
+          {swimmer?.photo ? (
+            <img src={swimmer.photo} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <svg className="w-7 h-7 text-white/20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          {badge && (
+            <span className={`inline-block text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-md mb-1 ${badgeBg} text-white`}>{badge}</span>
+          )}
+          <h3 className="text-lg font-black text-white tracking-tight truncate">{swimmer?.name}</h3>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {alpha2 && (
+              <img
+                src={`https://flagcdn.com/w40/${alpha2}.png`}
+                alt={swimmer?.nationality_detail?.name || ''}
+                className="w-5 h-3.5 object-cover rounded-sm"
+                onError={(e) => { e.target.style.display = 'none' }}
+              />
+            )}
+            <span className="text-white/60 text-xs font-medium">{swimmer?.nationality_detail?.name}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ───────── Rankings Tab ───────── */
-function RankingsTab({ swimmerId }) {
+function RankingsTab({ swimmerId, swimmer }) {
   const [rankings, setRankings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState([])
+  const [activePool, setActivePool] = useState('LCM')
+  const [activeScope, setActiveScope] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -918,6 +1009,14 @@ function RankingsTab({ swimmerId }) {
     ]).then(([rankRes, evRes]) => {
       setRankings(rankRes.data)
       setEvents(evRes.data)
+      // Auto-select best scope
+      const scopes = new Set()
+      for (const r of (rankRes.data || [])) {
+        for (const s of Object.keys(r.rankings)) scopes.add(s)
+      }
+      if (scopes.has('arab')) setActiveScope('arab')
+      else if (scopes.has('gcc')) setActiveScope('gcc')
+      else if (scopes.has('national')) setActiveScope('national')
     }).finally(() => setLoading(false))
   }, [swimmerId])
 
@@ -928,89 +1027,135 @@ function RankingsTab({ swimmerId }) {
     <div className="py-16 text-center text-gray-400 text-sm">No ranking data available</div>
   )
 
-  // Build event name lookup from events list
   const eventMap = {}
   for (const e of events) {
     eventMap[`${e.event_id}-${e.pool}`] = e.event_name
+    eventMap[`${e.event_id}`] = e.event_name
   }
 
   // Determine which scopes are present
-  const scopes = []
+  const scopeSet = new Set()
   for (const r of rankings) {
-    for (const s of Object.keys(r.rankings)) {
-      if (!scopes.includes(s)) scopes.push(s)
-    }
+    for (const s of Object.keys(r.rankings)) scopeSet.add(s)
   }
   const scopeOrder = ['national', 'gcc', 'arab']
-  scopes.sort((a, b) => scopeOrder.indexOf(a) - scopeOrder.indexOf(b))
-
+  const scopes = scopeOrder.filter(s => scopeSet.has(s))
   const scopeLabel = { national: 'National', gcc: 'GCC', arab: 'Arab' }
-  const scopeColor = { national: 'text-purple-700 bg-purple-50', gcc: 'text-sky-700 bg-sky-50', arab: 'text-emerald-700 bg-emerald-50' }
+  const currentScope = activeScope || scopes[0]
 
-  // Sort: by pool (LCM first), then by event name
-  const sorted = [...rankings].sort((a, b) => {
-    if (a.pool !== b.pool) return a.pool === 'LCM' ? -1 : 1
-    const nameA = eventMap[`${a.event_id}-${a.pool}`] || ''
-    const nameB = eventMap[`${b.event_id}-${b.pool}`] || ''
-    return nameA.localeCompare(nameB)
-  })
+  // Filter by pool and sort by rank in active scope
+  const poolRows = rankings
+    .filter(r => r.pool === activePool)
+    .sort((a, b) => {
+      const ra = a.rankings[currentScope]?.rank ?? 9999
+      const rb = b.rankings[currentScope]?.rank ?? 9999
+      return ra - rb
+    })
 
-  // Group by pool
-  const lcm = sorted.filter(r => r.pool === 'LCM')
-  const scm = sorted.filter(r => r.pool !== 'LCM')
+  // Find the best (top) ranking for the hero card
+  const bestRow = poolRows[0]
+  const bestRank = bestRow?.rankings[currentScope]
+  const bestEventName = bestRow ? (eventMap[`${bestRow.event_id}-${bestRow.pool}`] || eventMap[`${bestRow.event_id}`] || `Event ${bestRow.event_id}`) : ''
 
-  const renderTable = (rows, poolLabel) => {
-    if (rows.length === 0) return null
-    return (
-      <div className="mb-6">
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-2">{poolLabel}</h4>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50/80">
-                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Event</th>
-                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Best Time</th>
-                {scopes.map(s => (
-                  <th key={s} className="px-3 py-2 text-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">{scopeLabel[s]}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={`${r.event_id}-${r.pool}`} className="border-b border-gray-50 hover:bg-sky-50/30 animate-fade-in-up" style={{ animationDelay: `${i * 0.03}s` }}>
-                  <td className="px-3 py-2.5 font-medium text-gray-800">{eventMap[`${r.event_id}-${r.pool}`] || `Event ${r.event_id}`}</td>
-                  <td className="px-3 py-2.5 font-mono font-bold text-sky-600">{r.best_time}</td>
-                  {scopes.map(s => {
-                    const rank = r.rankings[s]
-                    if (!rank) return <td key={s} className="px-3 py-2.5 text-center text-gray-300">-</td>
-                    const isTop3 = rank.rank <= 3
-                    return (
-                      <td key={s} className="px-3 py-2.5 text-center">
-                        <span className={`inline-flex items-center gap-0.5 font-bold ${isTop3 ? 'text-amber-600' : 'text-gray-700'}`}>
-                          {isTop3 && <span className="text-amber-500">{rank.rank === 1 ? '\u{1F947}' : rank.rank === 2 ? '\u{1F948}' : '\u{1F949}'}</span>}
-                          <span className="tabular-nums">{rank.rank}</span>
-                          <span className="text-gray-400 font-normal">/{rank.total}</span>
-                        </span>
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )
+  const ordinalSuffix = (n) => {
+    if (n % 100 >= 11 && n % 100 <= 13) return 'TH'
+    const last = n % 10
+    if (last === 1) return 'ST'
+    if (last === 2) return 'ND'
+    if (last === 3) return 'RD'
+    return 'TH'
   }
 
   return (
-    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-      <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
-        <h3 className="font-bold text-base text-gray-800">Rankings</h3>
-        <p className="text-[11px] text-gray-400 mt-0.5">Based on personal best times across all competitions</p>
+    <div className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-[#0a1628] to-[#122240] animate-fade-in">
+      {/* Header */}
+      <SportCardHeader
+        swimmer={swimmer}
+        badge={`${swimmer?.sex === 'M' ? "Men's" : "Women's"} Rankings`}
+        badgeBg="bg-sky-500/80"
+      />
+
+      {/* Pool + Scope toggles */}
+      <div className="px-5 pb-3 flex flex-wrap items-center gap-2">
+        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+          {['LCM', 'SCM'].map(p => (
+            <button key={p} onClick={() => setActivePool(p)}
+              className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
+                activePool === p ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-white/40 hover:text-white/70'
+              }`}>
+              {p === 'LCM' ? 'Long Course' : 'Short Course'}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 ml-auto">
+          {scopes.map(s => (
+            <button key={s} onClick={() => setActiveScope(s)}
+              className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
+                currentScope === s ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'text-white/40 hover:text-white/70'
+              }`}>
+              {scopeLabel[s]}
+            </button>
+          ))}
+        </div>
       </div>
-      {renderTable(lcm, 'Long Course (LCM)')}
-      {renderTable(scm, 'Short Course (SCM)')}
+
+      {/* Hero stat — best ranking */}
+      {bestRank && (
+        <div className="px-5 py-4 border-t border-white/5">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-sky-400/70 mb-2">{bestEventName}</div>
+          <div className="flex items-baseline gap-4">
+            <div className="flex items-baseline">
+              <span className="text-5xl sm:text-6xl font-black text-white tracking-tight">{bestRank.rank}</span>
+              <span className="text-xl sm:text-2xl font-black text-sky-400 ml-0.5">{ordinalSuffix(bestRank.rank)}</span>
+            </div>
+            <div className="h-12 w-px bg-white/10" />
+            <div>
+              <div className="text-3xl sm:text-4xl font-black text-white font-mono tracking-tight">{bestRow.best_time}</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-white/30 mt-0.5">Best Time</div>
+            </div>
+          </div>
+          <div className="text-[11px] font-bold text-white/30 mt-1">
+            out of {bestRank.total} {scopeLabel[currentScope]} swimmers
+          </div>
+        </div>
+      )}
+
+      {/* Event rows */}
+      <div className="px-3 pb-4 mt-1">
+        {poolRows.map((r, i) => {
+          const rank = r.rankings[currentScope]
+          const eName = eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`
+          const isTop = i === 0
+          const isTop3 = rank && rank.rank <= 3
+          return (
+            <div key={`${r.event_id}-${r.pool}`}
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl mb-1 transition-all duration-300 animate-fade-in-up ${
+                isTop ? 'bg-sky-500/20 ring-1 ring-sky-400/30' : 'hover:bg-white/5'
+              }`}
+              style={{ animationDelay: `${i * 0.05}s` }}>
+              <StrokeIcon eventName={eName} />
+              <div className="flex-1 min-w-0">
+                <div className={`text-sm font-bold tracking-tight truncate ${isTop ? 'text-sky-300' : 'text-white/90'}`}>{eName}</div>
+              </div>
+              <div className="text-right shrink-0 flex items-center gap-3">
+                {rank ? (
+                  <>
+                    <span className={`font-bold text-sm tabular-nums ${isTop3 ? 'text-amber-400' : 'text-white/50'}`}>
+                      {rank.rank}<span className="text-white/20">/{rank.total}</span>
+                    </span>
+                    <span className="font-mono font-black text-base text-white tabular-nums min-w-[70px] text-right">{r.best_time}</span>
+                  </>
+                ) : (
+                  <span className="text-white/20 text-sm">-</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+        {poolRows.length === 0 && (
+          <div className="text-center py-8 text-white/20 text-sm">No rankings for this pool</div>
+        )}
+      </div>
     </div>
   )
 }
@@ -1232,8 +1377,8 @@ export default function SwimmerProfilePage() {
         )}
         {activeTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
         {activeTab === 'medals' && <MedalsTab stats={stats} navigate={navigate} />}
-        {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} />}
-        {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} />}
+        {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
+        {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
         {activeTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
         {activeTab === 'stats' && <StatsTab stats={stats} events={events} qualifyingGaps={qualifyingGaps} />}
         {activeTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}

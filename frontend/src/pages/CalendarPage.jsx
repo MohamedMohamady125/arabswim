@@ -326,13 +326,16 @@ export default function CalendarPage() {
     }
   }, [newEvent.classification])
 
-  useEffect(() => {
+  const refreshList = async () => {
     const params = { page_size: 500, ordering: 'date' }
     if (filterYear) params.year = filterYear
     if (filterCountry) params.country = filterCountry
-    getChampionships(params).then(res => {
-      setChampionships(res.data.results || res.data)
-    }).catch(() => {})
+    const res = await getChampionships(params)
+    setChampionships(res.data.results || res.data)
+  }
+
+  useEffect(() => {
+    refreshList().catch(() => {})
   }, [filterYear, filterCountry])
 
   // Find the next upcoming meet for the featured card
@@ -360,13 +363,9 @@ export default function CalendarPage() {
         if (v !== '' && v !== null) data.append(k, v)
       })
       await createChampionship(data)
+      await refreshList()
       setNewEvent({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', website: '', live_results_url: '', registration_url: '', classification: '', sub_classification: '' })
       setShowAddEvent(false)
-      // Refresh championships list
-      const params = { page_size: 500, ordering: 'date' }
-      if (filterYear) params.year = filterYear
-      if (filterCountry) params.country = filterCountry
-      getChampionships(params).then(res => setChampionships(res.data.results || res.data)).catch(() => {})
     } catch (err) {
       alert('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
     } finally {

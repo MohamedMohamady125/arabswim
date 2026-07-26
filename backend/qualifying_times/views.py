@@ -74,7 +74,9 @@ def _resolve_event(text):
     # Try alias lookup
     canonical = EVENT_ALIASES.get(text)
     if canonical:
-        return Event.objects.filter(name__iexact=canonical, is_relay=False).first()
+        ev = Event.objects.filter(name__iexact=canonical, is_relay=False).first()
+        if ev:
+            return ev
     # Try direct DB match
     ev = Event.objects.filter(name__iexact=text, is_relay=False).first()
     if ev:
@@ -85,6 +87,18 @@ def _resolve_event(text):
         dist = int(m.group(1))
         stroke = m.group(2).strip()
         ev = Event.objects.filter(distance=dist, stroke__iexact=stroke, is_relay=False).first()
+        if ev:
+            return ev
+    # Try with "N M Stroke" format (DB uses "50 M Freestyle" style names)
+    m = re.match(r'(\d+)\s*m?\s+(.+)', text)
+    if m:
+        spaced = f"{m.group(1)} M {m.group(2).strip().title()}"
+        ev = Event.objects.filter(name__iexact=spaced, is_relay=False).first()
+        if ev:
+            return ev
+        # Also try "NM Stroke" without space
+        nospace = f"{m.group(1)}M {m.group(2).strip().title()}"
+        ev = Event.objects.filter(name__iexact=nospace, is_relay=False).first()
         if ev:
             return ev
     return None

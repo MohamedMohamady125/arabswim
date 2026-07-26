@@ -995,7 +995,7 @@ function SportCardHeader({ swimmer, badge, badgeBg = 'bg-sky-500/90' }) {
 }
 
 /* ───────── Rankings Tab ───────── */
-function RankingsTab({ swimmerId, swimmer }) {
+function RankingsTab({ swimmerId, swimmer, onEventClick }) {
   const [rankings, setRankings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState([])
@@ -1129,7 +1129,8 @@ function RankingsTab({ swimmerId, swimmer }) {
           const isTop3 = rank && rank.rank <= 3
           return (
             <div key={`${r.event_id}-${r.pool}`}
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl mb-1 transition-all duration-300 animate-fade-in-up ${
+              onClick={() => onEventClick && onEventClick(r.event_id, r.pool)}
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl mb-1 transition-all duration-300 animate-fade-in-up cursor-pointer ${
                 isTop ? 'bg-sky-500/20 ring-1 ring-sky-400/30' : 'hover:bg-white/5'
               }`}
               style={{ animationDelay: `${i * 0.05}s` }}>
@@ -1377,7 +1378,7 @@ export default function SwimmerProfilePage() {
         )}
         {activeTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
         {activeTab === 'medals' && <MedalsTab stats={stats} navigate={navigate} />}
-        {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
+        {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} onEventClick={(eventId, pool) => { setActiveTab('times'); handleEventClick({ event_id: eventId, pool }) }} />}
         {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
         {activeTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
         {activeTab === 'stats' && <StatsTab stats={stats} events={events} qualifyingGaps={qualifyingGaps} />}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createCalendarEvent, getCalendarEvents, deleteCalendarEvent } from '../api/calendar'
+import { createCalendarEvent, getCalendarEvents, updateCalendarEvent, deleteCalendarEvent } from '../api/calendar'
 import { getChampionships, createChampionship, updateChampionship, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import { POOL_TYPES, mediaUrl } from '../utils/constants'
@@ -309,6 +309,11 @@ export default function CalendarPage() {
   const [featuredMeet, setFeaturedMeet] = useState(null)
   const [featuredEvent, setFeaturedEvent] = useState(null)
 
+  // Upgrade an old meet-type event (no championship behind it) to a full meet
+  const [upgradingEvent, setUpgradingEvent] = useState(null)
+  const [upgradeForm, setUpgradeForm] = useState({ country: '', pool: 'LCM', location: '' })
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
+
   // Add event
   const [showAddEvent, setShowAddEvent] = useState(false)
   const [newEvent, setNewEvent] = useState({ title: '', date: '', end_date: '', event_type: 'CUSTOM', description: '', country: '', location: '', pool: 'LCM' })
@@ -438,6 +443,34 @@ export default function CalendarPage() {
     }
   }
 
+  const handleUpgradeEvent = async (e) => {
+    e.preventDefault()
+    if (!upgradingEvent || !upgradeForm.country) return
+    setUpgradeLoading(true)
+    try {
+      const fd = new FormData()
+      fd.append('name', upgradingEvent.title)
+      fd.append('date', upgradingEvent.date)
+      if (upgradingEvent.end_date) fd.append('end_date', upgradingEvent.end_date)
+      fd.append('pool', upgradeForm.pool || 'LCM')
+      fd.append('country', upgradeForm.country)
+      if (upgradeForm.location) fd.append('location', upgradeForm.location)
+      fd.append('is_calendar_only', 'true')
+      const champRes = await createChampionship(fd)
+      await updateCalendarEvent(upgradingEvent.id, { championship: champRes.data.id })
+      setCalendarEvents(prev => prev.map(ev => ev.id === upgradingEvent.id ? { ...ev, championship: champRes.data.id } : ev))
+      loadChampionships()
+      loadFeatured()
+      setSelectedMeet({ id: champRes.data.id })
+      setUpgradingEvent(null)
+      setUpgradeForm({ country: '', pool: 'LCM', location: '' })
+    } catch (err) {
+      alert('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
+
   const handleDeleteCalendarMeet = async (c) => {
     if (!confirm(`Delete "${c.name}" from the calendar?`)) return
     try {
@@ -529,8 +562,11 @@ export default function CalendarPage() {
                   // Meet/championship calendar event — styled like a meet card
                   return (
                     <div key={`ev-${ev.id}`}
-                      onClick={() => { if (ev.championship) navigate(`/meets/${ev.championship}`) }}
-                      className={`bg-white border border-gray-200 rounded-xl px-6 py-5 flex items-center gap-6 transition-all hover:shadow-md ${ev.championship ? 'cursor-pointer' : ''}`}>
+                      onClick={() => {
+                        if (ev.championship) navigate(`/meets/${ev.championship}`)
+                        else setUpgradingEvent(ev)
+                      }}
+                      className="bg-white border border-gray-200 rounded-xl px-6 py-5 flex items-center gap-6 transition-all hover:shadow-md cursor-pointer">
                       <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
                         <span className="text-3xl font-bold leading-none">{d.date()}</span>
                         <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{MONTH_SHORT[d.month()]}</span>
@@ -641,6 +677,48 @@ export default function CalendarPage() {
           </div>
         </div>
       ))}
+
+      {/* Upgrade old meet-type event Modal */}
+      {upgradingEvent && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setUpgradingEvent(null)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-1">{upgradingEvent.title}</h2>
+            <p className="text-sm text-gray-500 mb-4">Complete the meet details to unlock the full meet card (live results, entry pack, registration...)</p>
+            <form onSubmit={handleUpgradeEvent} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Country *</label>
+                  <select value={upgradeForm.country} onChange={(e) => setUpgradeForm({ ...upgradeForm, country: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm" required>
+                    <option value="">Select country</option>
+                    {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Pool</label>
+                  <select value={upgradeForm.pool} onChange={(e) => setUpgradeForm({ ...upgradeForm, pool: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm">
+                    <option value="LCM">Long Course (50m)</option>
+                    <option value="SCM">Short Course (25m)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Location</label>
+                <input type="text" value={upgradeForm.location} onChange={(e) => setUpgradeForm({ ...upgradeForm, location: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="City / venue" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setUpgradingEvent(null)} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
+                <button type="submit" disabled={!upgradeForm.country || upgradeLoading}
+                  className="flex-1 bg-cyan-600 text-white rounded-lg py-2 text-sm hover:bg-cyan-700 disabled:opacity-50">
+                  {upgradeLoading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add Event Modal */}
       {showAddEvent && (

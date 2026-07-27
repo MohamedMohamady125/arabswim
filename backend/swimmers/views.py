@@ -814,14 +814,29 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def rankings(self, request, pk=None):
-        """Return the swimmer's ranking per event across national/GCC/Arab scopes."""
-        from django.db.models import Min
+        """Return the swimmer's ranking per event across national/GCC/Arab scopes.
+
+        Each scope carries an OPEN rank plus an age-group rank (e.g. U17,
+        derived from the swimmer's birth year: peers born the same year or
+        later).
+        """
+        from datetime import date
+        from django.db.models import Min, Q
         from championships.models import Result
         from importer.parsers.base import format_centiseconds
 
         swimmer = self.get_object()
         if not swimmer.nationality_id:
             return Response([])
+
+        birth_year = (swimmer.date_of_birth.year if swimmer.date_of_birth
+                      else swimmer.birth_year)
+        age_label = None
+        age_q = None
+        if birth_year:
+            age_label = f'U{date.today().year - birth_year + 1}'
+            age_q = (Q(swimmer__date_of_birth__year__gte=birth_year) |
+                     Q(swimmer__date_of_birth__isnull=True, swimmer__birth_year__gte=birth_year))
 
         nat = swimmer.nationality
         # Determine which scopes apply
@@ -853,37 +868,32 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
             ranks = {}
             for scope_name, scope_filter in scopes.items():
-                # Count distinct swimmers of same gender with a strictly better best time
-                better_count = (
-                    Result.objects.filter(
-                        event_id=eid,
-                        championship__pool=pool,
-                        is_hc=False,
-                        time_centiseconds__gt=0,
-                        swimmer__is_relay_team=False,
-                        swimmer__sex=gender,
-                        **scope_filter,
-                    )
-                    .values('swimmer_id')
-                    .annotate(pb=Min('time_centiseconds'))
-                    .filter(pb__lt=best)
-                    .count()
+                base_qs = Result.objects.filter(
+                    event_id=eid,
+                    championship__pool=pool,
+                    is_hc=False,
+                    time_centiseconds__gt=0,
+                    swimmer__is_relay_team=False,
+                    swimmer__sex=gender,
+                    **scope_filter,
                 )
-                total = (
-                    Result.objects.filter(
-                        event_id=eid,
-                        championship__pool=pool,
-                        is_hc=False,
-                        time_centiseconds__gt=0,
-                        swimmer__is_relay_team=False,
-                        swimmer__sex=gender,
-                        **scope_filter,
+
+                def _rank(qs):
+                    # Count distinct swimmers with a strictly better best time
+                    better_count = (
+                        qs.values('swimmer_id')
+                        .annotate(pb=Min('time_centiseconds'))
+                        .filter(pb__lt=best)
+                        .count()
                     )
-                    .values('swimmer_id')
-                    .distinct()
-                    .count()
-                )
-                ranks[scope_name] = {'rank': better_count + 1, 'total': total}
+                    total = qs.values('swimmer_id').distinct().count()
+                    return {'rank': better_count + 1, 'total': total}
+
+                ranks[scope_name] = _rank(base_qs)
+                if age_q is not None:
+                    age_rank = _rank(base_qs.filter(age_q))
+                    age_rank['label'] = age_label
+                    ranks[scope_name]['age'] = age_rank
 
             data.append({
                 'event_id': eid,

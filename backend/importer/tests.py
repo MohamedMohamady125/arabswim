@@ -1430,6 +1430,50 @@ class SplashStandaloneRoundTests(SimpleTestCase):
         self.assertEqual(club, 'KUW')
 
 
+class SplashDomesticClubCodeTests(SimpleTestCase):
+    """Regression: Tunisian club 'EST' repeated on every row must NOT flip
+    the meet to international (EST = Estonia IOC code). International
+    detection needs several DISTINCT country codes."""
+
+    def test_repeated_club_code_stays_domestic(self):
+        from importer.parsers import splash_parser
+        rows = '\n'.join(
+            f'{i}. SWIMMER{i}, Ahmed 0{i} EST 5{i}.4{i} 500' for i in range(1, 9)
+        )
+        text = (
+            'CHAMPIONNAT DE TUNISIE 2026\n'
+            'TUNIS, 15/07/2026\n'
+            'Epreuve 1 Messieurs, 100m Nage Libre\n'
+            + rows + '\n'
+        )
+        self.assertFalse(splash_parser._detect_international(text))
+        meet = splash_parser.parse(text)
+        results = [r for ev in meet.events for r in ev.results]
+        self.assertTrue(results)
+        for r in results:
+            self.assertEqual(r.nationality_code, '')
+            self.assertEqual(r.club, 'EST')
+
+    def test_many_distinct_codes_still_international(self):
+        from importer.parsers import splash_parser
+        text = (
+            'CHAMPIONNAT ARABE 2026\n'
+            'ALGER, 15/07/2026\n'
+            'Epreuve 1 Messieurs, 100m Nage Libre\n'
+            '1. HAFNAOUI, Ahmed 02 TUN 52.10 800\n'
+            '2. SAHNOUNE, Oussama 92 ALG 52.50 780\n'
+            '3. ELKAMASH, Marwan 93 EGY 52.90 760\n'
+            '4. BENLEKHAL, Ali 01 MAR 53.10 750\n'
+            '5. ALZAMIL, Ali 03 KUW 53.40 740\n'
+            '6. ALOBAIDLY, Noah 04 QAT 53.80 730\n'
+        )
+        self.assertTrue(splash_parser._detect_international(text))
+        meet = splash_parser.parse(text)
+        nats = {r.nationality_code for ev in meet.events for r in ev.results}
+        self.assertIn('TUN', nats)
+        self.assertIn('ALG', nats)
+
+
 class Nat2iRelaySplitTests(TestCase):
     """Relay passage times must be turned into per-swimmer leg splits."""
 

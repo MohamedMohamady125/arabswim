@@ -619,10 +619,15 @@ KNOWN_COUNTRY_CODES = {
 
 
 def _detect_international(text):
-    """Detect if this is an international meet (has country codes instead of clubs)."""
+    """Detect if this is an international meet (has country codes instead of clubs).
+
+    Requires several DISTINCT country codes, not just many occurrences of
+    one: domestic meets can have a club abbreviation that collides with an
+    IOC code (e.g. Tunisian club "EST" vs Estonia) repeated on every row.
+    """
     codes = re.findall(r'\b([A-Z]{3})\b', text)
-    country_count = sum(1 for c in codes if c in KNOWN_COUNTRY_CODES)
-    return country_count > 5
+    hits = [c for c in codes if c in KNOWN_COUNTRY_CODES]
+    return len(hits) > 5 and len(set(hits)) >= 3
 
 
 def _extract_birth_year(before_time):

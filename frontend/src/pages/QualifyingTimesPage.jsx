@@ -372,8 +372,11 @@ function StandardDetail({ standardId, onBack }) {
     if (!byEvent[key]) byEvent[key] = { event_name: t.event_name, distance: t.event_distance, stroke: t.event_stroke, time: t }
     else byEvent[key].time = t
   }
+  const STROKE_ORDER = { Freestyle: 0, Backstroke: 1, Breaststroke: 2, Butterfly: 3, 'Individual Medley': 4 }
   const eventRows = Object.values(byEvent).sort((a, b) => {
-    if (a.stroke !== b.stroke) return a.stroke.localeCompare(b.stroke)
+    const sa = STROKE_ORDER[a.stroke] ?? 99
+    const sb = STROKE_ORDER[b.stroke] ?? 99
+    if (sa !== sb) return sa - sb
     return a.distance - b.distance
   })
 

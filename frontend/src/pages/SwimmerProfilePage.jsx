@@ -1965,6 +1965,15 @@ export default function SwimmerProfilePage() {
   // Clubs the swimmer currently represents (excluding national teams)
   const currentClubs = clubHistory.filter(c => c.is_current && !c.is_national)
 
+  // Non-Arab swimmers keep a normal profile but Records and Rankings are
+  // Arab-only features (their scopes are national/Arab/GCC)
+  const isNonArab = swimmer?.nationality_detail?.region === 'OTHER'
+  const visibleTabs = isNonArab
+    ? TABS.filter(t => !['records', 'rankings'].includes(t.key))
+    : TABS
+  const effectiveTab = isNonArab && ['records', 'rankings'].includes(activeTab)
+    ? 'times' : activeTab
+
   const handleEventClick = async (event) => {
     setSelectedEvent(event)
     setLoadingHistory(true)
@@ -2147,10 +2156,10 @@ export default function SwimmerProfilePage() {
 
       {/* Tabs */}
       <div className="bg-white rounded-2xl border shadow-sm p-1 sm:p-1.5 mb-4 sm:mb-6 flex gap-0.5 sm:gap-1 overflow-x-auto animate-fade-in-up stagger-4 scrollbar-hide">
-        {TABS.map(tab => (
+        {visibleTabs.map(tab => (
           <button key={tab.key} onClick={() => tab.key === 'compare' ? navigate(`/swimmers/compare?ids=${id}`) : setActiveTab(tab.key)}
             className={`relative flex items-center gap-1 sm:gap-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
-              activeTab === tab.key
+              effectiveTab === tab.key
                 ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}>
@@ -2161,21 +2170,21 @@ export default function SwimmerProfilePage() {
       </div>
 
       {/* Tab Content */}
-      <div key={activeTab} className="animate-fade-in">
-        {activeTab === 'times' && (
+      <div key={effectiveTab} className="animate-fade-in">
+        {effectiveTab === 'times' && (
           <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
             <PersonalBestsTable events={events} onEventClick={handleEventClick} selectedEvent={selectedEvent} />
             <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} navigate={navigate} />
           </div>
         )}
-        {activeTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
-        {activeTab === 'medals' && <MedalsTab stats={stats} />}
-        {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
-        {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
-        {activeTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
-        {activeTab === 'stats' && <StatsTab stats={stats} events={events} swimmerId={parseInt(id)} />}
-        {activeTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}
-        {activeTab === 'gallery' && <GalleryTab swimmerId={parseInt(id)} />}
+        {effectiveTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
+        {effectiveTab === 'medals' && <MedalsTab stats={stats} />}
+        {effectiveTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
+        {effectiveTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
+        {effectiveTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
+        {effectiveTab === 'stats' && <StatsTab stats={stats} events={events} swimmerId={parseInt(id)} />}
+        {effectiveTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}
+        {effectiveTab === 'gallery' && <GalleryTab swimmerId={parseInt(id)} />}
       </div>
     </div>
   )

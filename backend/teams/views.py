@@ -304,6 +304,19 @@ class TeamViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Banner uploaded successfully', 'banner': team.banner.url})
 
 
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete(self, request):
+        """Delete several teams at once.
+        POST /api/v1/teams/bulk-delete/  Body: { ids: [int, ...] }
+        Only Team records (and their trophies) are removed — results and
+        swimmers keep their club names as plain text.
+        """
+        ids = request.data.get('ids', [])
+        if not isinstance(ids, list) or not ids:
+            return Response({'error': 'ids (non-empty list) required'}, status=400)
+        deleted, _ = Team.objects.filter(id__in=ids).delete()
+        return Response({'deleted': deleted})
+
     @action(detail=False, methods=['post'], url_path='merge')
     def merge_teams(self, request):
         """Merge two duplicate teams. Keeps one, transfers everything from the other.

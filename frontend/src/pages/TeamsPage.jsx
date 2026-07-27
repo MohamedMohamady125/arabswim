@@ -1,9 +1,126 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getTeams, deleteTeam, mergeTeams, findDuplicateTeams } from '../api/teams'
+import { getTeams, deleteTeam, mergeTeams, findDuplicateTeams, autoDedupeTeams } from '../api/teams'
 import { getCountries } from '../api/core'
 import DataTable from '../components/common/DataTable'
 import CountryFlag from '../components/common/CountryFlag'
+
+/* ───────── Auto-Clean Duplicates Modal ───────── */
+function AutoCleanModal({ onClose, onCleaned }) {
+  const [plan, setPlan] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [applying, setApplying] = useState(false)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    autoDedupeTeams({ dry_run: true })
+      .then(res => setPlan(res.data))
+      .catch(err => setError(err.response?.data?.error || 'Failed to scan for duplicates'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleApply = async () => {
+    if (!window.confirm(`Merge ${plan.groups.length} duplicate group(s)?\n\nAll results, swimmers and trophies will be transferred to the kept team in each group. This cannot be undone.`)) return
+    setApplying(true)
+    setError('')
+    try {
+      const res = await autoDedupeTeams({ dry_run: false })
+      setResult(res.data)
+    } catch (err) {
+      setError(err.response?.data?.error || 'Auto-clean failed')
+    } finally {
+      setApplying(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl my-4 sm:my-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b">
+          <div>
+            <h2 className="text-lg font-bold text-gray-800">Auto-Clean Duplicate Teams</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Finds name variants (case, dashes, squad letters, national teams) and merges them</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+
+        <div className="p-4 sm:p-6 space-y-4">
+          {loading ? (
+            <div className="py-10 text-center">
+              <div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-gray-400 mt-3">Scanning all teams for duplicates...</p>
+            </div>
+          ) : result ? (
+            <>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
+                <svg className="w-12 h-12 mx-auto mb-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <p className="font-bold text-emerald-800">Cleanup complete</p>
+                <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-4 text-sm">
+                  <div className="text-center"><div className="text-2xl font-black text-emerald-600">{result.teams_merged}</div><div className="text-emerald-600/60 text-xs font-semibold">Teams merged</div></div>
+                  <div className="text-center"><div className="text-2xl font-black text-emerald-600">{result.results_updated}</div><div className="text-emerald-600/60 text-xs font-semibold">Results moved</div></div>
+                  <div className="text-center"><div className="text-2xl font-black text-emerald-600">{result.swimmers_updated}</div><div className="text-emerald-600/60 text-xs font-semibold">Swimmers updated</div></div>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={() => { onCleaned(); onClose() }}
+                  className="px-4 py-2 text-sm rounded-lg bg-sky-600 text-white hover:bg-sky-700">Done</button>
+              </div>
+            </>
+          ) : (
+            <>
+              {plan?.groups?.length ? (
+                <>
+                  <div className="text-xs font-semibold text-gray-500">{plan.groups.length} duplicate group(s) found — review before applying:</div>
+                  <div className="max-h-[45vh] overflow-y-auto space-y-2 border rounded-xl p-3">
+                    {plan.groups.map((g, i) => (
+                      <div key={i} className="bg-gray-50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-emerald-700">{g.final_name}</span>
+                          {g.national_team && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">NATIONAL TEAM</span>}
+                          {g.keep !== g.final_name && <span className="text-[10px] text-gray-400">(renamed from "{g.keep}")</span>}
+                        </div>
+                        {g.remove.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {g.remove.map(name => (
+                              <span key={name} className="inline-flex items-center gap-1 text-[11px] bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded-lg">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="py-8 text-center text-gray-400 text-sm">No duplicate teams found — everything is clean 🎉</div>
+              )}
+
+              {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>}
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button onClick={onClose} className="px-4 py-2.5 text-sm rounded-xl border text-gray-500 hover:bg-gray-50">Cancel</button>
+                {plan?.groups?.length > 0 && (
+                  <button onClick={handleApply} disabled={applying}
+                    className="flex-1 sm:flex-none justify-center px-6 py-2.5 text-sm rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-2">
+                    {applying ? (
+                      <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Cleaning...</>
+                    ) : (
+                      <>Apply {plan.groups.length} merge(s)</>
+                    )}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /* ───────── Merge Teams Modal ───────── */
 function MergeTeamsModal({ onClose, onMerged }) {
@@ -250,6 +367,7 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState([])
   const [countries, setCountries] = useState([])
   const [showMerge, setShowMerge] = useState(false)
+  const [showAutoClean, setShowAutoClean] = useState(false)
 
   const [search, setSearch] = useState('')
   const [countryFilter, setCountryFilter] = useState('')
@@ -315,9 +433,14 @@ export default function TeamsPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold">Teams</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowAutoClean(true)}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" /></svg>
+            Auto-Clean
+          </button>
           <button onClick={() => setShowMerge(true)}
             className="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-600 flex items-center gap-1.5">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
@@ -351,6 +474,7 @@ export default function TeamsPage() {
       />
 
       {showMerge && <MergeTeamsModal onClose={() => setShowMerge(false)} onMerged={refresh} />}
+      {showAutoClean && <AutoCleanModal onClose={() => setShowAutoClean(false)} onCleaned={refresh} />}
     </div>
   )
 }

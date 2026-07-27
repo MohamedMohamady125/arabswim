@@ -22,6 +22,87 @@ def strip_squad_number(name):
     return _SQUAD_NUMBER_RE.sub('', (name or '').strip())
 
 
+# Punctuation that varies between meet files for the same club
+# ("Al-Ahly" / "Al Ahly" / "AL.AHLY" / "- Al Ahly").
+_PUNCT_RE = re.compile(r"[-_.,/\\'’`´&()]+")
+
+
+def normalize_team_key(name):
+    """Canonical matching key for a team name.
+
+    Case-, punctuation- and squad-suffix-insensitive so all import
+    variants of the same club collapse to one key. Display names are
+    never changed — this is only used for matching.
+    """
+    if not name:
+        return ''
+    key = _PUNCT_RE.sub(' ', str(name)).casefold()
+    key = re.sub(r'\s+', ' ', key).strip()
+    prev = None
+    while prev != key:
+        prev = key
+        key = re.sub(r'\s+national team$', '', key).strip()
+        key = re.sub(r'\s+team\s+[a-d]$', '', key).strip()
+        key = re.sub(r'\s+team$', '', key).strip()
+        # Trailing squad letter/number ("mc alger b", "bahia nautique 2")
+        key = re.sub(r'\s+[a-d]$', '', key).strip()
+        key = re.sub(r'\s+\d{1,2}$', '', key).strip()
+    return key
+
+
+def national_team_country(name):
+    """Return the Country if this team name is a national-team variant
+    ("Bahrain", "Bahrain Team A", "BRN Bahrain", "Bahrain National Team")."""
+    key = normalize_team_key(name)
+    if not key:
+        return None
+    for c in Country.objects.all():
+        ckey = normalize_team_key(c.name)
+        code = c.code.casefold()
+        if key in {ckey, code, f'{code} {ckey}', f'{ckey} {code}'}:
+            return c
+    return None
+
+
+def merge_team_records(keep, remove):
+    """Transfer everything from `remove` into `keep` and delete `remove`.
+
+    Shared by the manual merge endpoint and the auto-dedupe tool.
+    """
+    from teams.models import Trophy
+    from championships.models import Result
+
+    results_updated = Result.objects.filter(team__iexact=remove.name).update(team=keep.name)
+    swimmers_updated = Swimmer.objects.filter(club__iexact=remove.name).update(club=keep.name)
+    trophies_transferred = Trophy.objects.filter(team=remove).update(team=keep)
+
+    for field in ['logo', 'banner', 'founded_year', 'website', 'address', 'email', 'phone']:
+        if not getattr(keep, field) and getattr(remove, field):
+            setattr(keep, field, getattr(remove, field))
+    if not keep.is_national_team and remove.is_national_team:
+        keep.is_national_team = True
+    keep.save()
+    remove.delete()
+
+    return {
+        'results_updated': results_updated,
+        'swimmers_updated': swimmers_updated,
+        'trophies_transferred': trophies_transferred,
+    }
+
+
+def rename_team(team, new_name):
+    """Rename a team and keep Result/Swimmer club strings in sync."""
+    from championships.models import Result
+    old_name = team.name
+    if old_name == new_name:
+        return
+    Result.objects.filter(team__iexact=old_name).update(team=new_name)
+    Swimmer.objects.filter(club__iexact=old_name).update(club=new_name)
+    team.name = new_name
+    team.save()
+
+
 def clean_relay_team_name(name):
     """Clean relay team placeholder name for consistent matching.
 
@@ -100,20 +181,29 @@ def auto_create_teams():
         club = swimmer.club.strip()
         if not club or club in skip_names or not is_valid_team_name(club):
             continue
+        # National-team variants never become club teams
+        if normalize_team_key(club) in skip_names:
+            continue
 
-        if club not in club_data:
-            club_data[club] = {'count': 0, 'nationalities': {}}
-        club_data[club]['count'] += 1
+        # Dedupe club variants within this scan by normalized key
+        club_key = normalize_team_key(club)
+        if club_key not in club_data:
+            club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}}
+        club_data[club_key]['count'] += 1
 
         nat_code = swimmer.nationality.code if swimmer.nationality else ''
         if nat_code:
-            club_data[club]['nationalities'][nat_code] = \
-                club_data[club]['nationalities'].get(nat_code, 0) + 1
+            club_data[club_key]['nationalities'][nat_code] = \
+                club_data[club_key]['nationalities'].get(nat_code, 0) + 1
+
+    # Existing teams indexed by normalized key so import variants
+    # ("Al-Ahly", "AL AHLY 2") match instead of creating duplicates
+    existing_keys = {normalize_team_key(t.name) for t in Team.objects.all()}
 
     created = 0
-    for club_name, data in club_data.items():
-        # Skip if team already exists (case-insensitive)
-        if Team.objects.filter(name__iexact=club_name).exists():
+    for club_key, data in club_data.items():
+        club_name = data['name']
+        if club_key in existing_keys:
             continue
 
         # Determine country from most common nationality
@@ -150,10 +240,13 @@ def ensure_team_exists(club_name, country=None):
     skip_names = _get_skip_names()
     if club_name in skip_names or not is_valid_team_name(club_name):
         return None
+    if normalize_team_key(club_name) in skip_names:
+        return None
 
-    team = Team.objects.filter(name__iexact=club_name).first()
-    if team:
-        return team
+    club_key = normalize_team_key(club_name)
+    for t in Team.objects.all():
+        if normalize_team_key(t.name) == club_key:
+            return t
 
     if not country:
         country = Country.objects.first()
@@ -169,16 +262,18 @@ def ensure_team_exists(club_name, country=None):
 
 
 def _get_skip_names():
-    """Names to skip when auto-creating teams."""
+    """Names to skip when auto-creating teams (raw + normalized keys)."""
     skip = set()
 
     # Country names and relay placeholders
     for c in Country.objects.all():
-        skip.add(c.name)
-        skip.add(c.code)
-        skip.add(f'{c.code} {c.code}')
-        skip.add(f'{c.code} {c.name}')
-        skip.add(f'{c.name} National Team')
-        skip.add(f'{c.code} National Team')
+        variants = [
+            c.name, c.code,
+            f'{c.code} {c.code}', f'{c.code} {c.name}', f'{c.name} {c.code}',
+            f'{c.name} National Team', f'{c.code} National Team',
+        ]
+        for v in variants:
+            skip.add(v)
+            skip.add(normalize_team_key(v))
 
     return skip

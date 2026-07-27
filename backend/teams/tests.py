@@ -6,7 +6,121 @@ from core.models import Country, Event
 from swimmers.models import Swimmer
 from championships.models import Championship, Result
 from teams.models import Team
-from teams.utils import strip_squad_number
+from teams.utils import strip_squad_number, normalize_team_key, national_team_country
+
+
+class NormalizeTeamKeyTests(TestCase):
+    def test_punctuation_and_case_variants_match(self):
+        self.assertEqual(normalize_team_key('Al-Ahly'), normalize_team_key('AL AHLY'))
+        self.assertEqual(normalize_team_key('- Al Ahly'), normalize_team_key('al ahly'))
+        self.assertEqual(normalize_team_key("Mouloudia Club D'Alger"),
+                         normalize_team_key('Mouloudia Club D Alger'))
+
+    def test_squad_suffixes_collapse(self):
+        self.assertEqual(normalize_team_key('MC ALGER 2'), normalize_team_key('MC ALGER'))
+        self.assertEqual(normalize_team_key('BAHIA NAUTIQUE B'), normalize_team_key('Bahia Nautique'))
+
+    def test_national_team_suffixes_collapse(self):
+        self.assertEqual(normalize_team_key('Bahrain Team A'), 'bahrain')
+        self.assertEqual(normalize_team_key('Bahrain National Team'), 'bahrain')
+
+    def test_distinct_clubs_stay_distinct(self):
+        self.assertNotEqual(normalize_team_key('CS KOLEA'), normalize_team_key('CR BELOUIZDAD'))
+        # Long numbers are part of the name, not squad numbers
+        self.assertNotEqual(normalize_team_key('Club 2000'), normalize_team_key('Club'))
+
+
+class NationalTeamCountryTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.bah = Country.objects.create(name='Bahrain', code='BRN', region='GCC')
+
+    def test_detects_variants(self):
+        for name in ['Bahrain', 'Bahrain Team A', 'BRN', 'BRN Bahrain', 'Bahrain National Team']:
+            self.assertEqual(national_team_country(name), self.bah, name)
+
+    def test_ignores_clubs(self):
+        self.assertIsNone(national_team_country('Al Ahly'))
+
+
+class AutoDedupeTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.country = Country.objects.create(name='Bahrain', code='BRN', region='GCC')
+        cls.event = Event.objects.create(name='100 M Freestyle', distance=100,
+                                         stroke='Freestyle', is_relay=False)
+        cls.champ = Championship.objects.create(
+            name='Gulf Champs', date='2026-06-01', pool='LCM', country=cls.country)
+
+    def setUp(self):
+        self.client.force_login(self._admin())
+
+    def _admin(self):
+        from django.contrib.auth import get_user_model
+        return get_user_model().objects.create_user('admin', password='x', is_staff=True)
+
+    def _result(self, team_name):
+        sw = Swimmer.objects.create(name=f'Swimmer {team_name}', sex='M',
+                                    nationality=self.country, club=team_name)
+        Result.objects.create(swimmer=sw, championship=self.champ, event=self.event,
+                              round_type='Finals', category='', team=team_name,
+                              time_centiseconds=5500)
+
+    def test_dry_run_changes_nothing(self):
+        Team.objects.create(name='Al Ahly', country=self.country)
+        Team.objects.create(name='AL-AHLY', country=self.country)
+        res = self.client.post('/api/v1/teams/auto-dedupe/', {'dry_run': True},
+                               content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()['groups']), 1)
+        self.assertEqual(Team.objects.count(), 2)
+
+    def test_merges_punctuation_variants(self):
+        keep = Team.objects.create(name='Al Ahly', country=self.country)
+        Team.objects.create(name='AL-AHLY', country=self.country)
+        self._result('Al Ahly')
+        self._result('Al Ahly')
+        self._result('AL-AHLY')
+        res = self.client.post('/api/v1/teams/auto-dedupe/', {'dry_run': False},
+                               content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(Team.objects.count(), 1)
+        self.assertEqual(Team.objects.get().name, 'Al Ahly')
+        # All results/swimmers now point at the kept name
+        self.assertEqual(Result.objects.filter(team='Al Ahly').count(), 3)
+        self.assertEqual(Swimmer.objects.filter(club='Al Ahly').count(), 3)
+
+    def test_consolidates_national_team_variants(self):
+        Team.objects.create(name='Bahrain', country=self.country)
+        Team.objects.create(name='Bahrain Team A', country=self.country)
+        Team.objects.create(name='BRN Bahrain', country=self.country)
+        self._result('Bahrain Team A')
+        res = self.client.post('/api/v1/teams/auto-dedupe/', {'dry_run': False},
+                               content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(Team.objects.count(), 1)
+        team = Team.objects.get()
+        self.assertEqual(team.name, 'Bahrain')
+        self.assertTrue(team.is_national_team)
+        self.assertEqual(Result.objects.filter(team='Bahrain').count(), 1)
+
+    def test_lone_national_variant_renamed(self):
+        Team.objects.create(name='Bahrain Team A', country=self.country)
+        self.client.post('/api/v1/teams/auto-dedupe/', {'dry_run': False},
+                         content_type='application/json')
+        team = Team.objects.get()
+        self.assertEqual(team.name, 'Bahrain')
+        self.assertTrue(team.is_national_team)
+
+    def test_idempotent(self):
+        Team.objects.create(name='Al Ahly', country=self.country)
+        Team.objects.create(name='AL-AHLY', country=self.country)
+        self.client.post('/api/v1/teams/auto-dedupe/', {'dry_run': False},
+                         content_type='application/json')
+        res = self.client.post('/api/v1/teams/auto-dedupe/', {'dry_run': False},
+                               content_type='application/json')
+        self.assertEqual(res.json()['groups'], [])
+        self.assertEqual(Team.objects.count(), 1)
 
 
 class StripSquadNumberTests(TestCase):

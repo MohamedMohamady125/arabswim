@@ -323,39 +323,92 @@ class TeamViewSet(viewsets.ModelViewSet):
         except Team.DoesNotExist:
             return Response({'error': 'Team not found'}, status=404)
 
+        from .utils import merge_team_records
         remove_name = remove.name
-
-        # 1. Update all Result.team strings that match the removed team's name
-        results_updated = Result.objects.filter(team__iexact=remove.name).update(team=keep.name)
-
-        # 2. Update all Swimmer.club strings that match the removed team's name
-        swimmers_updated = Swimmer.objects.filter(club__iexact=remove.name).update(club=keep.name)
-
-        # 3. Transfer trophies from remove to keep
-        trophies_transferred = Trophy.objects.filter(team=remove).update(team=keep)
-
-        # 4. Fill missing fields on keep from remove
-        fill_fields = ['logo', 'banner', 'founded_year', 'website', 'address', 'email', 'phone']
-        for field in fill_fields:
-            keep_val = getattr(keep, field)
-            remove_val = getattr(remove, field)
-            if not keep_val and remove_val:
-                setattr(keep, field, remove_val)
-        # If keep is not national but remove is, promote
-        if not keep.is_national_team and remove.is_national_team:
-            keep.is_national_team = True
-        keep.save()
-
-        # 5. Delete the removed team
-        remove.delete()
+        stats = merge_team_records(keep, remove)
 
         return Response({
             'message': f'Merged "{remove_name}" into "{keep.name}"',
             'team_id': keep.id,
-            'results_updated': results_updated,
-            'swimmers_updated': swimmers_updated,
-            'trophies_transferred': trophies_transferred,
+            **stats,
         })
+
+    @action(detail=False, methods=['post'], url_path='auto-dedupe')
+    def auto_dedupe(self, request):
+        """Find and merge all duplicate teams in one pass.
+
+        Groups teams by a normalized name key (case/punctuation/squad-suffix
+        insensitive) and consolidates national-team variants ("Bahrain Team A",
+        "BRN Bahrain") into a single "<Country>" national team.
+
+        POST /api/v1/teams/auto-dedupe/  Body: { dry_run: bool }
+        dry_run=true returns the merge plan without changing anything.
+        """
+        from .utils import normalize_team_key, national_team_country, merge_team_records, rename_team
+
+        dry_run = bool(request.data.get('dry_run'))
+
+        # Group every team by its dedupe key
+        groups = {}
+        nat_countries = {}
+        for t in Team.objects.select_related('country'):
+            country = national_team_country(t.name)
+            if country:
+                key = f'__national__{country.code}'
+                nat_countries[key] = country
+            else:
+                key = normalize_team_key(t.name)
+            if not key:
+                continue
+            groups.setdefault(key, []).append(t)
+
+        def team_weight(t):
+            linked = (Result.objects.filter(team__iexact=t.name).count()
+                      + Swimmer.objects.filter(club__iexact=t.name).count())
+            return (linked, 1 if t.logo else 0, -t.id)
+
+        plan = []
+        totals = {'teams_merged': 0, 'results_updated': 0, 'swimmers_updated': 0, 'trophies_transferred': 0}
+
+        for key, teams in groups.items():
+            country = nat_countries.get(key)
+            if len(teams) < 2 and not country:
+                continue
+
+            teams_sorted = sorted(teams, key=team_weight, reverse=True)
+            keep = teams_sorted[0]
+            if country:
+                # Prefer the team already named exactly after the country
+                exact = [t for t in teams if t.name.strip().lower() == country.name.lower()]
+                if exact:
+                    keep = exact[0]
+            removes = [t for t in teams_sorted if t.id != keep.id]
+
+            final_name = country.name if country else keep.name
+            if not removes and keep.name == final_name and (not country or keep.is_national_team):
+                continue
+
+            plan.append({
+                'keep': keep.name,
+                'keep_id': keep.id,
+                'final_name': final_name,
+                'remove': [t.name for t in removes],
+                'national_team': country.name if country else None,
+            })
+
+            if not dry_run:
+                for r in removes:
+                    stats = merge_team_records(keep, r)
+                    totals['teams_merged'] += 1
+                    for k in ('results_updated', 'swimmers_updated', 'trophies_transferred'):
+                        totals[k] += stats[k]
+                if country:
+                    rename_team(keep, country.name)
+                    if not keep.is_national_team:
+                        keep.is_national_team = True
+                        keep.save()
+
+        return Response({'dry_run': dry_run, 'groups': plan, **totals})
 
     @action(detail=False, methods=['get'], url_path='find-duplicates')
     def find_duplicates(self, request):

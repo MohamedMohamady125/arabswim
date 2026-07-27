@@ -69,6 +69,20 @@ def normalize_swimmer_name(text):
     return normalize_name(text)
 
 
+def normalize_club_name(text):
+    """Normalize a club/team name: clean whitespace, keep original casing.
+
+    Club names must NOT be title-cased — many are acronyms or official
+    all-caps names ('MC ALGER', 'ASPTT', 'CN Marseille'). Re-casing them
+    created duplicate-looking clubs ('Mc Alger' vs 'MC ALGER'); matching
+    is already case-insensitive (normalize_team_key / __iexact), so the
+    original casing is safe to keep.
+    """
+    if not text or not isinstance(text, str):
+        return text or ''
+    return re.sub(r'\s+', ' ', text).strip()
+
+
 def normalize_name(text):
     """Normalize text to title case for consistency.
     Handles ALL CAPS, all lower, and mixed cases.
@@ -556,12 +570,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             nationality = Country.objects.first()
 
                         swimmer_map[relay_key] = Swimmer.objects.create(
-                            name=normalize_name(parsed_name),
+                            name=normalize_club_name(parsed_name),
                             date_of_birth=None,
                             birth_year=None,
                             nationality=nationality,
                             sex=relay_gender,
-                            club=normalize_name(parsed_name),
+                            club=normalize_club_name(parsed_name),
                             is_relay_team=True,
                         )
                         created_swimmers += 1
@@ -657,7 +671,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             if is_relay or result_data.get('is_relay', False):
                 # Use original swimmer_name (e.g. "MC ALGER 2") as team, not
                 # the cleaned parsed_name which has the squad number stripped.
-                team = normalize_name(result_data['swimmer_name'])
+                team = normalize_club_name(result_data['swimmer_name'])
             else:
                 from teams.utils import strip_squad_number
                 raw_club = strip_squad_number(result_data.get('club', '')).strip()
@@ -667,13 +681,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     # as a real club.
                     team = 'LP'
                 else:
-                    team = normalize_name(raw_club)
+                    team = normalize_club_name(raw_club)
 
             # Update swimmer's club if they don't have one yet
             if team and team != 'LP' and not swimmer.club and not (is_relay or result_data.get('is_relay', False)):
                 from teams.utils import is_valid_team_name
                 if is_valid_team_name(team):
-                    swimmer.club = normalize_name(team)
+                    swimmer.club = normalize_club_name(team)
                     swimmer.save(update_fields=['club'])
 
             round_type = event_data.get('round_type', '') or ''
@@ -901,7 +915,7 @@ def _create_swimmer(result_data, fallback_country=None):
         birth_year=birth_year,
         nationality=nationality,
         sex=gender,
-        club=normalize_name(club),
+        club=normalize_club_name(club),
     )
 
     return swimmer

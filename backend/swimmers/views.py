@@ -714,20 +714,22 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             .order_by('first_meet_date')
         )
 
-        # Merge duplicate club names, case-insensitively
-        # (e.g. "CN MARSEILLE" vs "CN MARSEILLE l", "OLYMPICA" vs "Olympica")
+        # Merge duplicate club names using the canonical team key
+        # (case-, punctuation- and squad-suffix-insensitive), so
+        # "MC ALGER" / "Mc Alger" / "MC ALGER 2" / "Al-Ahly" / "AL AHLY"
+        # all collapse into one club entry.
         import re
+        from teams.utils import normalize_team_key, strip_squad_number
         merged = {}
         for c in club_history:
-            # Normalize: strip, collapse whitespace, remove single trailing char after space
-            name = c['team'].strip()
+            # Normalize: strip, collapse whitespace, drop squad numbers
+            name = strip_squad_number(c['team'].strip())
             normalized = re.sub(r'\s+', ' ', name)
-            # If name ends with " X" where X is a single non-alpha char or single letter, strip it
+            # If name ends with " X" where X is a single stray char, strip it
             candidate = re.sub(r'\s+\S$', '', normalized)
-            # Case-insensitive keys: use the candidate if it already exists, otherwise normalized
-            cand_key = candidate.casefold()
-            norm_key = normalized.casefold()
-            key = cand_key if cand_key in merged else norm_key
+            cand_key = normalize_team_key(candidate)
+            norm_key = normalize_team_key(normalized) or normalized.casefold()
+            key = cand_key if cand_key and cand_key in merged else norm_key
             if key in merged:
                 entry = merged[key]
                 entry['meets'] += c['meets']

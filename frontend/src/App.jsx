@@ -10,6 +10,7 @@ import ChampionshipFormPage from './pages/ChampionshipFormPage'
 import CalendarPage from './pages/CalendarPage'
 import NewRecordsPage from './pages/NewRecordsPage'
 import RecordsPage from './pages/RecordsPage'
+import RecordFormPage from './pages/RecordFormPage'
 import MedalsPage from './pages/MedalsPage'
 import RankingsPage from './pages/RankingsPage'
 import ImportPage from './pages/ImportPage'
@@ -58,6 +59,8 @@ export default function App() {
         <Route path="meets/:id" element={<MeetDetailPage />} />
         <Route path="new-records" element={<NewRecordsPage />} />
         <Route path="records" element={<RecordsPage />} />
+        <Route path="records/new" element={<RecordFormPage />} />
+        <Route path="records/:id/edit" element={<RecordFormPage />} />
         <Route path="medals" element={<MedalsPage />} />
         <Route path="rankings" element={<RankingsPage />} />
         <Route path="teams" element={<TeamsPage />} />

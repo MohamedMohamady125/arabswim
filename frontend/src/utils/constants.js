@@ -3,13 +3,23 @@ export const POOL_TYPES = [
   { value: 'SCM', label: 'Short Course (25m)' },
 ]
 
-export const AGE_GROUPS = ['U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'U19', 'OPEN']
+export const AGE_GROUPS = ['U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'OPEN']
 
 export const RECORD_TYPES = [
   { value: 'ARAB', label: 'Arab' },
   { value: 'NATIONAL', label: 'National' },
   { value: 'GCC', label: 'GCC' },
+  { value: 'AFRICAN', label: 'African' },
+  { value: 'ASIAN', label: 'Asian' },
+  { value: 'MEDITERRANEAN', label: 'Mediterranean' },
+  { value: 'ISLAMIC', label: 'Islamic' },
+  { value: 'WORLD', label: 'World' },
 ]
+
+// Record scopes stored manually in the Record table (not computed from results)
+export const MANUAL_RECORD_SCOPES = RECORD_TYPES.filter(
+  t => !['ARAB', 'NATIONAL', 'GCC'].includes(t.value)
+)
 
 export function formatTime(centiseconds) {
   const minutes = Math.floor(centiseconds / 6000)

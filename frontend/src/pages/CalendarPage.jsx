@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createCalendarEvent, getCalendarEvents, deleteCalendarEvent } from '../api/calendar'
-import { getChampionships, updateChampionship } from '../api/championships'
+import { getChampionships, createChampionship, updateChampionship, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import { POOL_TYPES, mediaUrl } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
@@ -118,7 +118,7 @@ function FeaturedMeet({ meet: c, navigate }) {
   )
 }
 
-function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
+function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete }) {
   const [editingField, setEditingField] = useState(null)
   const [fieldValue, setFieldValue] = useState('')
   const [saving, setSaving] = useState(false)
@@ -287,6 +287,12 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate }) {
             <span>&#x1F4C4;</span> Nashra (Policy)
           </a>
         )}
+        {c.is_calendar_only && onDelete && (
+          <button onClick={(e) => { e.stopPropagation(); onDelete(c) }}
+            className="ml-auto border border-red-200 text-red-500 px-4 py-2 rounded-lg text-sm hover:bg-red-50 inline-flex items-center gap-1.5">
+            Delete Meet
+          </button>
+        )}
       </div>
     </div>
   )
@@ -305,7 +311,7 @@ export default function CalendarPage() {
 
   // Add event
   const [showAddEvent, setShowAddEvent] = useState(false)
-  const [newEvent, setNewEvent] = useState({ title: '', date: '', end_date: '', event_type: 'CUSTOM', description: '' })
+  const [newEvent, setNewEvent] = useState({ title: '', date: '', end_date: '', event_type: 'CUSTOM', description: '', country: '', location: '', pool: 'LCM' })
   const [addLoading, setAddLoading] = useState(false)
 
   const years = []
@@ -316,7 +322,7 @@ export default function CalendarPage() {
   }, [])
 
   const loadChampionships = () => {
-    const params = { page_size: 500, ordering: 'date' }
+    const params = { page_size: 500, ordering: 'date', include_calendar_only: 1 }
     if (filterYear) params.year = filterYear
     if (filterCountry) params.country = filterCountry
     getChampionships(params).then(res => setChampionships(res.data.results || res.data)).catch(() => {})
@@ -324,7 +330,7 @@ export default function CalendarPage() {
 
   // Nearest upcoming meet/event, independent of year/country filters
   const loadFeatured = () => {
-    getChampionships({ upcoming: 1, ordering: 'date', page_size: 1 })
+    getChampionships({ upcoming: 1, ordering: 'date', page_size: 1, include_calendar_only: 1 })
       .then(res => setFeaturedMeet((res.data.results || res.data)[0] || null))
       .catch(() => {})
     getCalendarEvents({})
@@ -376,7 +382,11 @@ export default function CalendarPage() {
     grouped[key].meets.push(c)
   })
   const todayStart = dayjs().startOf('day')
+  const loadedChampIds = new Set(championships.map(c => c.id))
   calendarEvents.forEach(ev => {
+    // Meet-type events backed by a championship render as full meet
+    // cards (from the championships list) — skip the duplicate.
+    if (ev.event_type !== 'CUSTOM' && ev.championship && loadedChampIds.has(ev.championship)) return
     const d = dayjs(ev.date)
     if (!d.isValid()) return
     // Future events always stay visible regardless of the year filter
@@ -390,18 +400,58 @@ export default function CalendarPage() {
     e.preventDefault()
     setAddLoading(true)
     try {
-      const payload = { ...newEvent }
-      if (!payload.end_date) delete payload.end_date
+      const isMeetType = newEvent.event_type !== 'CUSTOM'
+      let championshipId = null
+      if (isMeetType) {
+        // Create a calendar-only championship so the meet gets the full
+        // expandable card (live results, entry pack, registration...).
+        // It stays hidden from the meets list until real results exist.
+        const fd = new FormData()
+        fd.append('name', newEvent.title)
+        fd.append('date', newEvent.date)
+        if (newEvent.end_date) fd.append('end_date', newEvent.end_date)
+        fd.append('pool', newEvent.pool || 'LCM')
+        fd.append('country', newEvent.country)
+        if (newEvent.location) fd.append('location', newEvent.location)
+        fd.append('is_calendar_only', 'true')
+        const champRes = await createChampionship(fd)
+        championshipId = champRes.data.id
+      }
+      const payload = {
+        title: newEvent.title,
+        date: newEvent.date,
+        event_type: newEvent.event_type,
+        description: newEvent.description,
+      }
+      if (newEvent.end_date) payload.end_date = newEvent.end_date
+      if (championshipId) payload.championship = championshipId
       const res = await createCalendarEvent(payload)
       setCalendarEvents(prev => [...prev, res.data])
+      loadChampionships()
       loadFeatured()
-      setNewEvent({ title: '', date: '', end_date: '', event_type: 'CUSTOM', description: '' })
+      setNewEvent({ title: '', date: '', end_date: '', event_type: 'CUSTOM', description: '', country: '', location: '', pool: 'LCM' })
       setShowAddEvent(false)
     } catch (err) {
       alert('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
     } finally {
       setAddLoading(false)
     }
+  }
+
+  const handleDeleteCalendarMeet = async (c) => {
+    if (!confirm(`Delete "${c.name}" from the calendar?`)) return
+    try {
+      await deleteChampionship(c.id)
+      // Remove the linked calendar event(s) too
+      const linked = calendarEvents.filter(ev => ev.championship === c.id)
+      for (const ev of linked) {
+        try { await deleteCalendarEvent(ev.id) } catch { /* ignore */ }
+      }
+      setChampionships(prev => prev.filter(ch => ch.id !== c.id))
+      setCalendarEvents(prev => prev.filter(ev => ev.championship !== c.id))
+      setSelectedMeet(null)
+      loadFeatured()
+    } catch { /* ignore */ }
   }
 
   const handleDeleteEvent = async (evId) => {
@@ -583,7 +633,7 @@ export default function CalendarPage() {
                   {isSelected && (
                     <MeetExpandedPanel meet={c} navigate={navigate} onUpdate={(updated) => {
                       setChampionships(prev => prev.map(ch => ch.id === updated.id ? { ...ch, ...updated } : ch))
-                    }} />
+                    }} onDelete={handleDeleteCalendarMeet} />
                   )}
                 </div>
               )
@@ -630,6 +680,33 @@ export default function CalendarPage() {
                     className="w-full border rounded-lg px-3 py-2 text-sm" />
                 </div>
               </div>
+              {newEvent.event_type !== 'CUSTOM' && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Country *</label>
+                      <select value={newEvent.country} onChange={(e) => setNewEvent({ ...newEvent, country: e.target.value })}
+                        className="w-full border rounded-lg px-3 py-2 text-sm" required>
+                        <option value="">Select country</option>
+                        {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Pool</label>
+                      <select value={newEvent.pool} onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })}
+                        className="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="LCM">Long Course (50m)</option>
+                        <option value="SCM">Short Course (25m)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Location</label>
+                    <input type="text" value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="City / venue" />
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-1">Description</label>
                 <textarea value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
@@ -637,7 +714,7 @@ export default function CalendarPage() {
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddEvent(false)} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
-                <button type="submit" disabled={!newEvent.title || !newEvent.date || addLoading}
+                <button type="submit" disabled={!newEvent.title || !newEvent.date || (newEvent.event_type !== 'CUSTOM' && !newEvent.country) || addLoading}
                   className="flex-1 bg-cyan-600 text-white rounded-lg py-2 text-sm hover:bg-cyan-700 disabled:opacity-50">
                   {addLoading ? 'Saving...' : 'Save'}
                 </button>

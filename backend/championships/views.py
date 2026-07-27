@@ -70,6 +70,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if self.action != 'list':
             return qs
         from django.db.models import Count, Q
+        # Calendar-only meets (added from the calendar, no results yet)
+        # stay out of the meets list unless explicitly requested.
+        if not self.request.query_params.get('include_calendar_only'):
+            qs = qs.filter(is_calendar_only=False)
         qs = qs.annotate(
             results_count_annotated=Count('results'),
             swimmers_count_annotated=Count(
@@ -176,6 +180,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             serializer = ResultCreateSerializer(data=data)
             serializer.is_valid(raise_exception=True)
             result = serializer.save(championship=championship)
+            if championship.is_calendar_only:
+                championship.is_calendar_only = False
+                championship.save(update_fields=['is_calendar_only'])
             # Auto-compute age at competition from the swimmer's stored
             # birth data when the caller didn't supply it
             sw = result.swimmer
@@ -329,6 +336,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if created or updated:
             from medals.utils import recompute_medals
             recompute_medals(championship)
+            if championship.is_calendar_only:
+                championship.is_calendar_only = False
+                championship.save(update_fields=['is_calendar_only'])
 
         return Response({
             'created': created,

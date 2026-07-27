@@ -47,6 +47,9 @@ class Championship(models.Model):
     meet_guide_pdf = models.FileField(upload_to='championships/guides/', blank=True, null=True)
     meet_photo = models.ImageField(upload_to='championships/photos/', blank=True, null=True)
     registration_url = models.URLField(max_length=500, blank=True, default='')
+    # Created from the calendar for a future meet: hidden from the meets
+    # list until it gets real results.
+    is_calendar_only = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

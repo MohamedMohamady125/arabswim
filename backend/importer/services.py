@@ -403,6 +403,10 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     # Get or create championship
     if championship_id:
         championship = Championship.objects.get(id=championship_id)
+        if championship.is_calendar_only:
+            # Real results are being imported: promote from calendar-only
+            championship.is_calendar_only = False
+            championship.save(update_fields=['is_calendar_only'])
     elif championship_details:
         # Use user-provided details from the form
         champ_date = _parse_date(championship_details.get('date', ''))

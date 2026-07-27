@@ -1078,14 +1078,18 @@ function RecordsTab({ swimmerId, swimmer }) {
       getHeldRecords({ swimmer: swimmerId }),
       getRecordGaps({ swimmer: swimmerId }),
     ]).then(([res, gapsRes]) => {
-      const all = (res.data || []).map(r => ({
-        ...r,
-        record_type: (r.scope || '').toUpperCase(),
-        formatted_time: r.time,
-        location: r.championship_name,
-        result_date: r.date,
-        categories: r.categories || [],
-      }))
+      // One entry per age category (U16, U17, OPEN...) — even when the same
+      // swim holds the record in several categories, list each separately.
+      const all = (res.data || []).flatMap(r =>
+        ((r.categories && r.categories.length > 0) ? r.categories : ['OPEN']).map(cat => ({
+          ...r,
+          record_type: (r.scope || '').toUpperCase(),
+          formatted_time: r.time,
+          location: r.championship_name,
+          result_date: r.date,
+          categories: [cat],
+        }))
+      )
       setRecords(all)
       setGaps(gapsRes.data || [])
     }).catch(() => {}).finally(() => setLoading(false))
@@ -1338,7 +1342,10 @@ function RecordsTab({ swimmerId, swimmer }) {
                       {r.event_detail?.name || r.event_name}
                     </div>
                     <div className="text-[11px] sm:text-xs font-bold mt-0.5 truncate" style={{ color: '#1450b8' }}>{r.location}</div>
-                    <div className="text-[10px] sm:text-[11px] font-bold mt-0.5" style={{ color: navy }}>{fmtDate(r.result_date)}</div>
+                    <div className="text-[10px] sm:text-[11px] font-bold mt-0.5 flex items-center gap-1.5" style={{ color: navy }}>
+                      {fmtDate(r.result_date)}
+                      <span className="sm:hidden border border-blue-400 text-blue-500 rounded px-1 py-px text-[9px] font-black uppercase">{compressCategories(r.categories)[0]}</span>
+                    </div>
                   </div>
                   {/* Badges */}
                   <div className="hidden sm:flex items-center gap-2.5 shrink-0">
@@ -1623,14 +1630,13 @@ function StrokeIcon({ eventName, className = 'w-9 h-9', dark = false }) {
   )
 }
 
-/* ───────── Rankings Tab ───────── */
+/* ───────── Rankings Tab — broadcast infographic style ───────── */
+const RANK_BLUE = '#1e3fa4'
 function RankingsTab({ swimmerId, swimmer }) {
   const [rankings, setRankings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState([])
   const [activePool, setActivePool] = useState('LCM')
-  const [activeScope, setActiveScope] = useState(null)
-  const [selectedKey, setSelectedKey] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -1639,13 +1645,6 @@ function RankingsTab({ swimmerId, swimmer }) {
     ]).then(([rankRes, evRes]) => {
       setRankings(rankRes.data)
       setEvents(evRes.data)
-      const scopes = new Set()
-      for (const r of (rankRes.data || [])) {
-        for (const s of Object.keys(r.rankings)) scopes.add(s)
-      }
-      if (scopes.has('arab')) setActiveScope('arab')
-      else if (scopes.has('gcc')) setActiveScope('gcc')
-      else if (scopes.has('national')) setActiveScope('national')
     }).finally(() => setLoading(false))
   }, [swimmerId])
 
@@ -1653,9 +1652,9 @@ function RankingsTab({ swimmerId, swimmer }) {
     <div className="py-16 text-center"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin mx-auto" /></div>
   )
   if (!rankings || rankings.length === 0) return (
-    <div className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] p-12 text-center animate-fade-in">
-      <svg className="w-16 h-16 mx-auto mb-4 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5-7.5L16.5 13.5m0 0L12 9m4.5 4.5V3" /></svg>
-      <p className="text-white/30 font-bold">No ranking data available</p>
+    <div className="rounded-2xl bg-white border-2 p-12 text-center animate-fade-in" style={{ borderColor: RANK_BLUE }}>
+      <svg className="w-16 h-16 mx-auto mb-4 opacity-15" style={{ color: RANK_BLUE }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5-7.5L16.5 13.5m0 0L12 9m4.5 4.5V3" /></svg>
+      <p className="font-bold" style={{ color: RANK_BLUE }}>No ranking data available</p>
     </div>
   )
 
@@ -1669,26 +1668,12 @@ function RankingsTab({ swimmerId, swimmer }) {
   for (const r of rankings) {
     for (const s of Object.keys(r.rankings)) scopeSet.add(s)
   }
-  const scopeOrder = ['national', 'gcc', 'arab']
+  const scopeOrder = ['arab', 'gcc', 'national']
   const scopes = scopeOrder.filter(s => scopeSet.has(s))
-  const scopeLabel = { national: 'National', gcc: 'GCC', arab: 'Arab' }
-  const scopeLabelUpper = { national: 'NATIONALLY', gcc: 'IN GCC', arab: 'IN ARAB' }
-  const currentScope = activeScope || scopes[0]
+  const scopeLabel = { arab: 'ARAB', gcc: 'GCC', national: 'NATIONAL' }
 
   const availablePools = [...new Set(rankings.map(r => r.pool))].sort((a, b) => a === 'LCM' ? -1 : 1)
   const effectivePool = availablePools.includes(activePool) ? activePool : availablePools[0]
-
-  const poolRows = rankings
-    .filter(r => r.pool === effectivePool)
-    .sort((a, b) => {
-      const ra = a.rankings[currentScope]?.rank ?? 9999
-      const rb = b.rankings[currentScope]?.rank ?? 9999
-      return ra - rb
-    })
-
-  const selectedRow = poolRows.find(r => `${r.event_id}-${r.pool}` === selectedKey) || poolRows[0]
-  const selectedRank = selectedRow?.rankings[currentScope]
-  const selectedEventName = selectedRow ? (eventMap[`${selectedRow.event_id}-${selectedRow.pool}`] || eventMap[`${selectedRow.event_id}`] || `Event ${selectedRow.event_id}`) : ''
 
   const ordinalSuffix = (n) => {
     if (n % 100 >= 11 && n % 100 <= 13) return 'TH'
@@ -1702,94 +1687,74 @@ function RankingsTab({ swimmerId, swimmer }) {
   const genderLabel = swimmer?.sex === 'M' ? "MEN'S" : "WOMEN'S"
 
   return (
-    <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] animate-fade-in">
-      {/* Event badge */}
-      <div className="px-6 pt-6 pb-2 flex justify-center">
-        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-cyan-400/50 bg-cyan-500/10">
-          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-300">{genderLabel} {selectedEventName?.toUpperCase()} · {effectivePool}</span>
-        </div>
-      </div>
-
-      {/* Pool + Scope toggles */}
-      <div className="px-6 pb-3 pt-2 flex flex-wrap items-center gap-2">
-        {availablePools.length > 1 && (
-          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+    <div className="rounded-2xl bg-white p-3 sm:p-5 shadow-xl animate-fade-in" style={{ border: `3px solid ${RANK_BLUE}` }}>
+      {/* Pool toggle */}
+      {availablePools.length > 1 && (
+        <div className="flex justify-center mb-4">
+          <div className="inline-flex rounded-full overflow-hidden" style={{ border: `2px solid ${RANK_BLUE}` }}>
             {availablePools.map(p => (
               <button key={p} onClick={() => setActivePool(p)}
-                className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
-                  effectivePool === p ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/30' : 'text-white/40 hover:text-white/70'
-                }`}>
-                {p === 'LCM' ? 'Long Course' : 'Short Course'}
+                className="px-4 py-1.5 text-[11px] sm:text-xs font-black tracking-wider transition-colors"
+                style={effectivePool === p ? { background: RANK_BLUE, color: 'white' } : { background: 'white', color: RANK_BLUE }}>
+                {p === 'LCM' ? '50M POOL' : '25M POOL'}
               </button>
             ))}
-          </div>
-        )}
-        <div className={`flex gap-1 bg-white/5 rounded-lg p-0.5 ${availablePools.length > 1 ? 'ml-auto' : ''}`}>
-          {scopes.map(s => (
-            <button key={s} onClick={() => setActiveScope(s)}
-              className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
-                currentScope === s ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/30' : 'text-white/40 hover:text-white/70'
-              }`}>
-              {scopeLabel[s]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Hero stat — selected event ranking */}
-      {selectedRank && (
-        <div className="px-6 py-5">
-          <div className="flex items-end gap-5">
-            <div>
-              <div className="flex items-start">
-                <span className="text-7xl sm:text-8xl font-black text-white leading-none">{selectedRank.rank}</span>
-                <span className="text-2xl sm:text-3xl font-black text-white mt-1 ml-0.5">{ordinalSuffix(selectedRank.rank)}</span>
-              </div>
-              <div className="text-sm font-black uppercase tracking-widest text-cyan-400 mt-1">{scopeLabelUpper[currentScope]}</div>
-            </div>
-            <div className="h-16 w-px bg-white/15 mx-2" />
-            <div>
-              <div className="text-7xl sm:text-8xl font-black text-white font-mono leading-none tracking-tight">{selectedRow.best_time}</div>
-              <div className="text-sm font-black uppercase tracking-widest text-cyan-400 mt-1">{selectedEventName?.toUpperCase()} · PERSONAL BEST</div>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Event rows */}
-      <div className="px-4 pb-5 mt-1 space-y-1">
-        {poolRows.map((r, i) => {
-          const rank = r.rankings[currentScope]
-          const eName = eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`
-          const isSelected = selectedRow && `${r.event_id}-${r.pool}` === `${selectedRow.event_id}-${selectedRow.pool}`
+      <div className="space-y-6">
+        {scopes.map(scope => {
+          const rows = rankings
+            .filter(r => r.pool === effectivePool && r.rankings[scope])
+            .sort((a, b) => a.rankings[scope].rank - b.rankings[scope].rank)
+          if (rows.length === 0) return null
           return (
-            <div key={`${r.event_id}-${r.pool}`}
-              onClick={() => setSelectedKey(`${r.event_id}-${r.pool}`)}
-              className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 animate-fade-in-up cursor-pointer ${
-                isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-white/5'
-              }`}
-              style={{ animationDelay: `${i * 0.05}s` }}>
-              <StrokeIcon eventName={eName} className="w-10 h-10" dark={isSelected} />
-              <div className="flex-1 min-w-0">
-                <div className={`text-[15px] font-black uppercase tracking-wide truncate ${isSelected ? 'text-white' : 'text-white/90'}`}>{eName}</div>
+            <div key={scope}>
+              {/* Section banner */}
+              <div className="text-center text-white font-black uppercase py-2.5 sm:py-3.5 px-3 mb-3 sm:mb-4 text-2xl sm:text-[2.6rem] leading-none tracking-tight"
+                style={{ background: RANK_BLUE }}>
+                {scopeLabel[scope]} {genderLabel} RANKING
               </div>
-              <div className="flex items-center gap-5 shrink-0">
-                {rank ? (
-                  <>
-                    <span className={`font-black text-[15px] tabular-nums ${isSelected ? 'text-white/80' : 'text-white/40'}`}>
-                      {rank.rank}<span className={isSelected ? 'text-white/50' : 'text-white/20'}>/{rank.total}</span>
-                    </span>
-                    <span className={`font-mono font-black text-lg tabular-nums min-w-[75px] text-right text-white`}>{r.best_time}</span>
-                  </>
-                ) : (
-                  <span className="text-white/20 text-sm">-</span>
-                )}
+
+              {/* Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                {rows.map((r, i) => {
+                  const rank = r.rankings[scope]
+                  const eName = (eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`).toUpperCase()
+                  return (
+                    <div key={`${scope}-${r.event_id}-${r.pool}`}
+                      className="bg-white p-2.5 sm:p-3.5 animate-fade-in-up"
+                      style={{ border: `2px solid ${RANK_BLUE}`, animationDelay: `${i * 0.04}s` }}>
+                      {/* Event pill */}
+                      <div className="text-center text-white font-extrabold uppercase rounded-full py-1.5 px-3 mb-2.5 sm:mb-3 text-[10px] sm:text-[13px] tracking-wide leading-tight"
+                        style={{ background: RANK_BLUE }}>
+                        {genderLabel} {eName} &bull; OPEN
+                      </div>
+                      <div className="flex gap-2.5 sm:gap-3 items-stretch">
+                        {/* Rank square */}
+                        <div className="flex items-center justify-center text-white px-3 sm:px-4 py-2 shrink-0"
+                          style={{ background: RANK_BLUE }}>
+                          <span className="text-5xl sm:text-6xl font-black leading-none tabular-nums">{rank.rank}</span>
+                          <span className="text-sm sm:text-lg font-black self-center ml-0.5 mt-2">{ordinalSuffix(rank.rank)}</span>
+                        </div>
+                        {/* Time box */}
+                        <div className="flex-1 flex items-center justify-center py-2 min-w-0"
+                          style={{ border: `4px solid ${RANK_BLUE}` }}>
+                          <span className="text-3xl sm:text-5xl font-black tabular-nums tracking-tight" style={{ color: RANK_BLUE }}>
+                            {r.best_time}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )
         })}
-        {poolRows.length === 0 && (
-          <div className="text-center py-8 text-white/20 text-sm">No rankings for this pool</div>
+        {scopes.every(scope => rankings.filter(r => r.pool === effectivePool && r.rankings[scope]).length === 0) && (
+          <div className="text-center py-8 text-sm font-bold" style={{ color: RANK_BLUE }}>No rankings for this pool</div>
         )}
       </div>
     </div>

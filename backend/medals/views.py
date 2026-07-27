@@ -82,7 +82,7 @@ class MedalViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='swimmer-summary')
     def swimmer_summary(self, request):
-        """Top 10 swimmers by medal count."""
+        """Swimmers by medal count (top 10 by default, ?limit=all for all)."""
         qs = self._apply_filters(Medal.objects.all())
         # Exclude relay teams — they are not individual swimmers
         qs = qs.filter(swimmer__is_relay_team=False)
@@ -98,7 +98,13 @@ class MedalViewSet(viewsets.ModelViewSet):
             silver=Count('id', filter=Q(medal_type='SILVER')),
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
-        ).order_by('-gold', '-silver', '-bronze')[:10]
+        ).order_by('-gold', '-silver', '-bronze')
+        limit = request.query_params.get('limit', '10')
+        if limit != 'all':
+            try:
+                summary = summary[:max(int(limit), 1)]
+            except (TypeError, ValueError):
+                summary = summary[:10]
         return Response(list(summary))
 
     @action(detail=False, methods=['get'], url_path='club-summary')

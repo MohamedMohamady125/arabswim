@@ -192,10 +192,13 @@ function MostImprovedTable({ swimmers, navigate }) {
   )
 }
 
-function MedalsTab({ stats, medals, medalSummary, medalClubSummary, medalSwimmerSummary, navigate }) {
+function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalSwimmerSummary, navigate }) {
   const [medalFilter, setMedalFilter] = useState('ALL')
   const [tallyFilter, setTallyFilter] = useState('ALL')
-  const isNational = (stats?.countries?.length || 0) <= 1
+  // National/Other meets: no country tally — clubs + swimmers tallies instead
+  const isNational = meet?.classification_name
+    ? ['National', 'Other'].includes(meet.classification_name)
+    : (stats?.countries?.length || 0) <= 1
   const safeMedals = Array.isArray(medals) ? medals : []
   const safeSummary = Array.isArray(medalSummary) ? medalSummary : []
   const safeClubSummary = Array.isArray(medalClubSummary) ? medalClubSummary : []
@@ -330,7 +333,7 @@ function MedalsTab({ stats, medals, medalSummary, medalClubSummary, medalSwimmer
       {safeSwimmerSummary.length > 0 && (
         <div className="bg-white rounded-lg border">
           <div className="p-4 border-b">
-            <h3 className="font-semibold">Top Swimmers</h3>
+            <h3 className="font-semibold">{isNational ? 'Swimmer Medal Tally' : 'Top Swimmers'}</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -486,12 +489,15 @@ export default function MeetDetailPage() {
   // Load medals when medals tab is active
   useEffect(() => {
     if (activeTab === 'medals') {
+      const isNationalMeet = ['National', 'Other'].includes(meet?.classification_name)
       getMedalSummary({ championship: id }).then(res => setMedalSummary(res.data)).catch(() => {})
       getMedals({ championship: id, page_size: 500 }).then(res => setMedals(res.data?.results || res.data || [])).catch(() => {})
       getMedalClubSummary({ championship: id }).then(res => setMedalClubSummary(res.data)).catch(() => {})
-      getMedalSwimmerSummary({ championship: id }).then(res => setMedalSwimmerSummary(res.data)).catch(() => {})
+      // National/Other meets show a full swimmers tally, not just top 10
+      getMedalSwimmerSummary({ championship: id, ...(isNationalMeet ? { limit: 'all' } : {}) })
+        .then(res => setMedalSwimmerSummary(res.data)).catch(() => {})
     }
-  }, [id, activeTab])
+  }, [id, activeTab, meet?.classification_name])
 
   // Load gallery when gallery tab is active
   useEffect(() => {
@@ -1277,6 +1283,7 @@ export default function MeetDetailPage() {
       {activeTab === 'medals' && (
         <MedalsTab
           stats={stats}
+          meet={meet}
           medals={medals}
           medalSummary={medalSummary}
           medalClubSummary={medalClubSummary}

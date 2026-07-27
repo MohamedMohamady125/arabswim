@@ -1998,3 +1998,59 @@ class CleanupJunkEventsMigrationTests(TestCase):
                              stroke='Medley Relay', is_relay=True)
         self._run()
         self.assertEqual(Event.objects.count(), 2)
+
+
+# ---------------------------------------------------------------------------
+# FINA points: base-time coverage and event-name normalization
+# ---------------------------------------------------------------------------
+
+from importer.points import calculate_points, BASE_TIMES_SCM
+
+
+class CalculatePointsCoverageTests(SimpleTestCase):
+    """Regression: relays and 100 IM must never score 0 points."""
+
+    def test_100_im_lcm_falls_back_to_scm_base(self):
+        # LCM has no official 100 IM base time — SCM base is used instead
+        pts = calculate_points(6000, '100 M Individual Medley', 'M', 'LCM')
+        self.assertGreater(pts, 0)
+        self.assertEqual(
+            pts, calculate_points(6000, '100 M Individual Medley', 'M', 'SCM'))
+
+    def test_4x50_relays_lcm_fall_back_to_scm_base(self):
+        for name in ('4x50 M Freestyle Relay', '4x50 M Medley Relay'):
+            for g in ('M', 'F', 'X'):
+                self.assertGreater(
+                    calculate_points(11000, name, g, 'LCM'), 0,
+                    f'{name} {g} scored 0 at LCM')
+
+    def test_mixed_relay_name_uses_x_base(self):
+        # Placeholder relay swimmers carry sex M/F, but a 'Mixed' event
+        # name must use the mixed base time
+        base_x = BASE_TIMES_SCM['4x50 M Freestyle Relay']['X']
+        pts = calculate_points(10000, '4x50 M Freestyle Relay Mixed', 'M', 'SCM')
+        self.assertEqual(pts, int(1000.0 * (base_x / 100.0) ** 3))
+
+    def test_name_variants_normalize(self):
+        expected = calculate_points(20000, '4x100 M Freestyle Relay', 'M', 'LCM')
+        self.assertGreater(expected, 0)
+        for variant in ('4×100 M Freestyle Relay', '4 x 100 M Freestyle Relay',
+                        '4x100m Freestyle Relay', '4x100 M Freestyle Relay Men'):
+            self.assertEqual(
+                calculate_points(20000, variant, 'M', 'LCM'), expected,
+                f'variant {variant!r} did not normalize')
+
+    def test_bare_medley_normalizes_to_individual_medley(self):
+        expected = calculate_points(13000, '200 M Individual Medley', 'F', 'LCM')
+        self.assertGreater(expected, 0)
+        self.assertEqual(
+            calculate_points(13000, '200 M Medley', 'F', 'LCM'), expected)
+        self.assertEqual(
+            calculate_points(13000, '200 M IM', 'F', 'LCM'), expected)
+
+    def test_all_base_table_events_score_in_both_pools(self):
+        for name in BASE_TIMES_SCM:
+            for pool in ('LCM', 'SCM'):
+                self.assertGreater(
+                    calculate_points(3000, name, 'M', pool), 0,
+                    f'{name} scored 0 at {pool}')

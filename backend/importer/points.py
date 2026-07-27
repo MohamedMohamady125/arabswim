@@ -66,19 +66,42 @@ BASE_TIMES_LCM = {
 
 def _normalize_event_for_lookup(event_name):
     """Normalize event name to match base times keys.
+
     Handles variations like '200 M IM' → '200 M Individual Medley',
-    relay gender suffixes like '4x100 M Freestyle Relay Men' → '4x100 M Freestyle Relay'.
+    relay gender suffixes ('4x100 M Freestyle Relay Men'), unicode
+    multiplication signs ('4×100'), spaced relay notation ('4 x 100'),
+    lowercase/attached meter markers ('100m Freestyle') and bare
+    'Medley' on individual events ('100 M Medley').
+
+    Returns (lookup_name, is_mixed) — is_mixed is True when the name
+    carried a 'Mixed' gender marker.
     """
     import re
     name = event_name.strip()
 
-    # Remove gender suffixes from relay names
-    name = re.sub(r'\s+(Men|Women|Mixed)$', '', name, flags=re.IGNORECASE)
+    # Unify multiplication sign and spacing: '4×100' / '4 x 100' → '4x100'
+    name = re.sub(r'(\d)\s*[x×X]\s*(\d)', r'\1x\2', name)
+
+    # Unify meter marker: '100m', '100 m', '100 Meter(s)' → '100 M'
+    name = re.sub(r'(\d)\s*(?:m|M|[Mm]eters?|[Mm]etres?)\b\.?', r'\1 M', name)
+
+    # Detect and remove gender suffixes
+    is_mixed = bool(re.search(r'\bMixed\b', name, flags=re.IGNORECASE))
+    name = re.sub(r'\s+(Men|Women|Mixed|Male|Female|Boys|Girls)$', '', name,
+                  flags=re.IGNORECASE)
 
     # Normalize IM → Individual Medley
     name = re.sub(r'\bIM\b', 'Individual Medley', name)
 
-    return name
+    # Individual (non-relay) 'Medley' → 'Individual Medley'
+    if 'Relay' not in name:
+        name = re.sub(r'\bMedley\b', 'Individual Medley', name)
+        name = re.sub(r'Individual Individual', 'Individual', name)
+
+    # Collapse duplicate whitespace
+    name = re.sub(r'\s{2,}', ' ', name).strip()
+
+    return name, is_mixed
 
 
 def calculate_points(time_centiseconds, event_name, gender, pool):
@@ -98,9 +121,17 @@ def calculate_points(time_centiseconds, event_name, gender, pool):
         return 0
 
     base_times = BASE_TIMES_LCM if pool == 'LCM' else BASE_TIMES_SCM
-    lookup_name = _normalize_event_for_lookup(event_name)
+    fallback_times = BASE_TIMES_SCM if pool == 'LCM' else BASE_TIMES_LCM
+    lookup_name, is_mixed = _normalize_event_for_lookup(event_name)
 
-    event_bases = base_times.get(lookup_name)
+    # Mixed relays should use the mixed ('X') base time when available
+    if is_mixed and gender in ('M', 'F'):
+        gender = 'X'
+
+    # World Aquatics does not publish base times for every event in both
+    # pools (e.g. 100 IM and 4x50 relays are SCM-only). Fall back to the
+    # other pool's table rather than returning 0 points.
+    event_bases = base_times.get(lookup_name) or fallback_times.get(lookup_name)
     if not event_bases:
         return 0
 

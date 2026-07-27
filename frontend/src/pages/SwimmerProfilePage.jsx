@@ -358,7 +358,7 @@ function PercentRing({ pct, tone, title, desc, icon }) {
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="font-black" style={{ color: MEDAL_NAVY }}>
-            <span className="text-3xl sm:text-4xl">{pct}</span><span className="text-lg">%</span>
+            <span className="text-4xl sm:text-5xl">{pct}</span><span className="text-xl">%</span>
           </span>
         </div>
       </div>
@@ -458,7 +458,7 @@ function MedalsTab({ stats }) {
                 <div className="text-xs sm:text-sm font-black" style={{ color: MEDAL_NAVY }}>MEDALS</div>
               </div>
               <div className="my-2">{c.graphic}</div>
-              <div className="w-full rounded-xl text-center text-white text-2xl sm:text-3xl font-black py-1.5" style={{ background: c.badge }}>
+              <div className="w-full rounded-xl text-center text-white text-3xl sm:text-4xl font-black py-1.5" style={{ background: c.badge }}>
                 <AnimatedNumber value={c.n} />
               </div>
             </div>
@@ -479,7 +479,7 @@ function MedalsTab({ stats }) {
                 ))}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl sm:text-4xl font-black leading-none" style={{ color: MEDAL_NAVY }}><AnimatedNumber value={medals.total} /></span>
+                <span className="text-4xl sm:text-5xl font-black leading-none" style={{ color: MEDAL_NAVY }}><AnimatedNumber value={medals.total} /></span>
                 <span className="text-[10px] sm:text-xs font-black tracking-widest" style={{ color: MEDAL_NAVY }}>TOTAL</span>
               </div>
             </div>
@@ -493,9 +493,9 @@ function MedalsTab({ stats }) {
                   <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full shrink-0" style={{ background: row.color }} />
                   <div className="flex-1 leading-tight">
                     <div className="text-sm sm:text-base font-black" style={{ color: row.text }}>{row.label}</div>
-                    <div className="text-sm font-black" style={{ color: MEDAL_NAVY }}>{row.n}</div>
+                    <div className="text-lg sm:text-xl font-black" style={{ color: MEDAL_NAVY }}>{row.n}</div>
                   </div>
-                  <div className="text-lg sm:text-2xl font-black" style={{ color: row.text }}>{pctOf(row.n)}%</div>
+                  <div className="text-2xl sm:text-3xl font-black" style={{ color: row.text }}>{pctOf(row.n)}%</div>
                 </div>
               ))}
             </div>
@@ -514,9 +514,9 @@ function MedalsTab({ stats }) {
                   </span>
                   <div className="flex-1 min-w-0 text-[11px] sm:text-sm font-black truncate" style={{ color: MEDAL_NAVY }}>{comp.label}</div>
                   <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
-                    <span className="flex items-center gap-1">{miniMedal(MEDAL_GOLD)}<span className="text-sm font-black w-5 text-right" style={{ color: MEDAL_NAVY }}>{cc.gold}</span></span>
-                    <span className="flex items-center gap-1">{miniMedal(MEDAL_SILVER)}<span className="text-sm font-black w-5 text-right" style={{ color: MEDAL_NAVY }}>{cc.silver}</span></span>
-                    <span className="flex items-center gap-1">{miniMedal(MEDAL_BRONZE)}<span className="text-sm font-black w-5 text-right" style={{ color: MEDAL_NAVY }}>{cc.bronze}</span></span>
+                    <span className="flex items-center gap-1">{miniMedal(MEDAL_GOLD)}<span className="text-base sm:text-lg font-black w-6 text-right" style={{ color: MEDAL_NAVY }}>{cc.gold}</span></span>
+                    <span className="flex items-center gap-1">{miniMedal(MEDAL_SILVER)}<span className="text-base sm:text-lg font-black w-6 text-right" style={{ color: MEDAL_NAVY }}>{cc.silver}</span></span>
+                    <span className="flex items-center gap-1">{miniMedal(MEDAL_BRONZE)}<span className="text-base sm:text-lg font-black w-6 text-right" style={{ color: MEDAL_NAVY }}>{cc.bronze}</span></span>
                   </div>
                 </div>
               )
@@ -536,7 +536,7 @@ function MedalsTab({ stats }) {
                   const cc = compCounts[comp.match]
                   const bar = (n, color) => (
                     <div className="flex flex-col items-center justify-end w-4 sm:w-6">
-                      {n > 0 && <span className="text-[9px] sm:text-[11px] font-black mb-0.5" style={{ color: MEDAL_NAVY }}>{n}</span>}
+                      {n > 0 && <span className="text-[11px] sm:text-sm font-black mb-0.5" style={{ color: MEDAL_NAVY }}>{n}</span>}
                       <div className="w-full rounded-t-sm" style={{ height: `${(n / chartMax) * 130}px`, background: color, minHeight: n > 0 ? '4px' : '0' }} />
                     </div>
                   )
@@ -637,7 +637,7 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
         </div>
         {bestFina && (
           <div className="text-right animate-count-up stagger-6">
-            <div className="text-3xl font-black bg-gradient-to-r from-sky-500 to-sky-700 bg-clip-text text-transparent">{bestFina.points}</div>
+            <div className="text-4xl font-black bg-gradient-to-r from-sky-500 to-sky-700 bg-clip-text text-transparent">{bestFina.points}</div>
             <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Peak FINA</div>
           </div>
         )}
@@ -710,7 +710,7 @@ function StatsTab({ stats, events, swimmerId }) {
         {quickStats.map((s, i) => (
           <div key={s.label} className={`bg-white rounded-xl sm:rounded-2xl border shadow-sm p-3 sm:p-5 group hover:shadow-md transition-all duration-300 animate-count-up stagger-${i + 1}`}>
             <div className={`${s.color} mb-1.5 sm:mb-2 transition-transform group-hover:scale-110 duration-300`}>{s.icon}</div>
-            <div className="text-2xl sm:text-3xl font-black text-gray-800"><AnimatedNumber value={s.value} /></div>
+            <div className="text-3xl sm:text-4xl font-black text-gray-800"><AnimatedNumber value={s.value} /></div>
             <div className="text-[9px] sm:text-[11px] text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">{s.label}</div>
           </div>
         ))}
@@ -723,7 +723,7 @@ function StatsTab({ stats, events, swimmerId }) {
           {best_fina && (
             <div className="bg-gradient-to-br from-sky-50 via-white to-sky-50/30 rounded-2xl border border-sky-200 p-5 shadow-sm animate-fade-in-up stagger-5 hover:shadow-md transition-shadow duration-300">
               <div className="text-[10px] font-bold text-sky-500 uppercase tracking-widest mb-2">Best FINA Points</div>
-              <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-sky-600 to-sky-800 bg-clip-text text-transparent"><AnimatedNumber value={best_fina.points} /></div>
+              <div className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-sky-600 to-sky-800 bg-clip-text text-transparent"><AnimatedNumber value={best_fina.points} /></div>
               <div className="text-xs sm:text-sm font-semibold text-gray-600 mt-1.5 sm:mt-2">{best_fina.event_name}</div>
               <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{best_fina.championship_name}</div>
             </div>
@@ -731,7 +731,7 @@ function StatsTab({ stats, events, swimmerId }) {
           {season_best_fina && (
             <div className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 rounded-2xl border border-emerald-200 p-5 shadow-sm animate-fade-in-up stagger-5 hover:shadow-md transition-shadow duration-300">
               <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2">Season Best FINA Points · {season_best_fina.year}</div>
-              <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-emerald-600 to-emerald-800 bg-clip-text text-transparent"><AnimatedNumber value={season_best_fina.points} /></div>
+              <div className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-emerald-600 to-emerald-800 bg-clip-text text-transparent"><AnimatedNumber value={season_best_fina.points} /></div>
               <div className="text-xs sm:text-sm font-semibold text-gray-600 mt-1.5 sm:mt-2">{season_best_fina.event_name}</div>
               <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{season_best_fina.championship_name}</div>
             </div>
@@ -739,7 +739,7 @@ function StatsTab({ stats, events, swimmerId }) {
           {best_event && (
             <div className="bg-gradient-to-br from-amber-50 via-white to-amber-50/30 rounded-2xl border border-amber-200 p-5 shadow-sm animate-fade-in-up stagger-6 hover:shadow-md transition-shadow duration-300">
               <div className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2">Signature Event</div>
-              <div className="text-2xl font-black text-amber-700">{best_event}</div>
+              <div className="text-3xl font-black text-amber-700">{best_event}</div>
               <div className="text-xs text-gray-400 mt-1">Highest FINA points across all events</div>
             </div>
           )}

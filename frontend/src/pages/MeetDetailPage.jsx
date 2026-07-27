@@ -964,10 +964,10 @@ export default function MeetDetailPage() {
                                   {r.is_hc ? (
                                     <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</span>
                                   ) : (<>
-                                    {showMedals && rank === 1 && <MedalIcon type="gold" size={22} />}
-                                    {showMedals && rank === 2 && <MedalIcon type="silver" size={22} />}
-                                    {showMedals && rank === 3 && <MedalIcon type="bronze" size={22} />}
-                                    {(!showMedals || rank > 3) && <span className="text-gray-500">{rank}</span>}
+                                    {showMedals && !r.is_manual && rank === 1 && <MedalIcon type="gold" size={22} />}
+                                    {showMedals && !r.is_manual && rank === 2 && <MedalIcon type="silver" size={22} />}
+                                    {showMedals && !r.is_manual && rank === 3 && <MedalIcon type="bronze" size={22} />}
+                                    {(!showMedals || r.is_manual || rank > 3) && <span className="text-gray-500">{rank}</span>}
                                   </>)}
                                 </td>
                                 <td className="px-4 py-2 text-sm font-medium">

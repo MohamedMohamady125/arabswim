@@ -1785,19 +1785,21 @@ function RankingsTab({ swimmerId, swimmer }) {
                 {scopeLabel[scope]} {genderLabel} RANKING
               </div>
 
-              {/* Cards */}
+              {/* Cards — one OPEN + one age-group per event */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {rows.map((r, i) => {
-                  const rank = r.rankings[scope]
+                {rows.flatMap((r, i) => {
+                  const open = r.rankings[scope]
                   const eName = (eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`).toUpperCase()
-                  return (
-                    <div key={`${scope}-${r.event_id}-${r.pool}`}
+                  const cards = [{ tag: 'OPEN', rank: open }]
+                  if (open.age) cards.push({ tag: open.age.label, rank: open.age })
+                  return cards.map(({ tag, rank }) => (
+                    <div key={`${scope}-${r.event_id}-${r.pool}-${tag}`}
                       className="bg-white p-2.5 sm:p-3.5 animate-fade-in-up"
                       style={{ border: `2px solid ${RANK_BLUE}`, animationDelay: `${i * 0.04}s` }}>
                       {/* Event pill */}
                       <div className="text-center text-white font-extrabold uppercase rounded-full py-1.5 px-3 mb-2.5 sm:mb-3 text-[10px] sm:text-[13px] tracking-wide leading-tight"
                         style={{ background: RANK_BLUE }}>
-                        {genderLabel} {eName} &bull; OPEN
+                        {genderLabel} {eName} &bull; {tag}
                       </div>
                       <div className="flex gap-2.5 sm:gap-3 items-stretch">
                         {/* Rank square */}
@@ -1815,7 +1817,7 @@ function RankingsTab({ swimmerId, swimmer }) {
                         </div>
                       </div>
                     </div>
-                  )
+                  ))
                 })}
               </div>
             </div>

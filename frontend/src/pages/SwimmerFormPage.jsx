@@ -13,7 +13,7 @@ export default function SwimmerFormPage() {
   const [photoBlob, setPhotoBlob] = useState(null)
   const [form, setForm] = useState({
     name: '', date_of_birth: '', nationality: '', sex: 'M',
-    club: '', email: '', phone: '', nicknames: [],
+    club: '', email: '', phone: '', instagram_url: '', facebook_url: '', nicknames: [],
   })
   const [nicknameInput, setNicknameInput] = useState('')
 
@@ -25,6 +25,7 @@ export default function SwimmerFormPage() {
         setForm({
           name: s.name, date_of_birth: s.date_of_birth, nationality: s.nationality,
           sex: s.sex, club: s.club || '', email: s.email || '', phone: s.phone || '',
+          instagram_url: s.instagram_url || '', facebook_url: s.facebook_url || '',
           nicknames: s.nicknames?.map(n => n.nickname) || [],
           photo: s.photo,
         })
@@ -169,6 +170,20 @@ export default function SwimmerFormPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Phone Number</label>
               <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Enter phone number (optional)" className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t pt-4">
+          <h3 className="font-medium mb-4">Social Media</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Instagram Link</label>
+              <input type="url" value={form.instagram_url} onChange={(e) => setForm({ ...form, instagram_url: e.target.value })} placeholder="https://instagram.com/... (optional)" className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Facebook Link</label>
+              <input type="url" value={form.facebook_url} onChange={(e) => setForm({ ...form, facebook_url: e.target.value })} placeholder="https://facebook.com/... (optional)" className="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
         </div>

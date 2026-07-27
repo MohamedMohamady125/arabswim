@@ -1066,6 +1066,17 @@ function MeetsTab({ stats, navigate }) {
 
 /* ───────── TAB CONFIG ───────── */
 /* ───────── Records Tab ───────── */
+// Standard motivation tiers based on % away from the record
+function gapMotivation(pct) {
+  const p = parseFloat(pct)
+  if (isNaN(p) || p < 0) return null
+  if (p <= 1) return { badge: 'RECORD IN SIGHT', msg: 'Less than 1% away — one great swim and it\u2019s yours!', cls: 'bg-red-50 text-red-600 ring-1 ring-red-200' }
+  if (p <= 2) return { badge: 'SO CLOSE', msg: 'Under 2% off the record — keep attacking!', cls: 'bg-orange-50 text-orange-600 ring-1 ring-orange-200' }
+  if (p <= 5) return { badge: 'CLOSING IN', msg: 'Within 5% of the record — it\u2019s getting nervous.', cls: 'bg-amber-50 text-amber-600 ring-1 ring-amber-200' }
+  if (p <= 10) return { badge: 'ON THE HUNT', msg: 'Within 10% — stay on this trajectory and it will fall.', cls: 'bg-sky-50 text-sky-600 ring-1 ring-sky-200' }
+  return { badge: 'BUILDING', msg: 'Every swim closes the gap — keep pushing.', cls: 'bg-gray-50 text-gray-500 ring-1 ring-gray-200' }
+}
+
 function RecordsTab({ swimmerId, swimmer }) {
   const [records, setRecords] = useState([])
   const [gaps, setGaps] = useState([])
@@ -1171,7 +1182,12 @@ function RecordsTab({ swimmerId, swimmer }) {
                       {g.holds ? (
                         <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">RECORD HOLDER</span>
                       ) : (
-                        <span className="text-xs font-bold text-gray-500">+{g.gap_pct}%</span>
+                        <span className="flex items-center gap-1.5">
+                          {gapMotivation(g.gap_pct) && (
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${gapMotivation(g.gap_pct).cls}`}>{gapMotivation(g.gap_pct).badge}</span>
+                          )}
+                          <span className="text-xs font-bold text-gray-500">+{g.gap_pct}%</span>
+                        </span>
                       )}
                     </div>
                     <div className="flex items-center gap-3 mb-2">
@@ -1200,6 +1216,11 @@ function RecordsTab({ swimmerId, swimmer }) {
                       </span>
                       <span className="font-mono text-sm font-bold text-amber-600">{g.record_time}</span>
                     </div>
+                    {!g.holds && gapMotivation(g.gap_pct) && (
+                      <div className={`mt-2 text-[11px] font-semibold px-3 py-1.5 rounded-lg ${gapMotivation(g.gap_pct).cls}`}>
+                        {gapMotivation(g.gap_pct).msg}
+                      </div>
+                    )}
                     {!g.holds && g.record_holder && (
                       <div className="text-[10px] text-gray-400 mt-1 text-right">Record: {g.record_holder}</div>
                     )}
@@ -1505,6 +1526,14 @@ function ProgressionTab({ swimmerId }) {
 }
 
 /* ───────── Transfer History Tab ───────── */
+const TH_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function fmtMonthYear(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (isNaN(d)) return dateStr
+  return `${TH_MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
 function TransferHistoryTab({ swimmerId }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1540,12 +1569,20 @@ function TransferHistoryTab({ swimmerId }) {
                     <span className="text-xs font-bold text-sky-700">{i + 1}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm text-gray-900">{club.club}</span>
+                      {club.country && (
+                        <CountryFlag code={club.country_code} flagUrl={club.country_flag} name={club.country} className="text-xs text-gray-500" />
+                      )}
                       {club.is_national && <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">National Team</span>}
+                      {club.is_current && <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Current</span>}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                      <span>{club.first_meet} &rarr; {club.last_meet}</span>
+                      <span>
+                        {club.is_current
+                          ? <>From <span className="font-semibold text-gray-700">{fmtMonthYear(club.first_meet)}</span> to <span className="font-semibold text-emerald-600">now</span></>
+                          : <>From <span className="font-semibold text-gray-700">{fmtMonthYear(club.first_meet)}</span> to <span className="font-semibold text-gray-700">{fmtMonthYear(club.last_meet)}</span></>}
+                      </span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -1819,6 +1856,7 @@ export default function SwimmerProfilePage() {
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [clubHistory, setClubHistory] = useState([])
 
   useEffect(() => {
     Promise.all([
@@ -1826,7 +1864,11 @@ export default function SwimmerProfilePage() {
       getSwimmerEvents(id).then(res => setEvents(res.data)),
       getSwimmerProfileStats(id).then(res => setStats(res.data)),
     ]).finally(() => setLoaded(true))
+    getSwimmerTransferHistory(id).then(res => setClubHistory(res.data.clubs || [])).catch(() => setClubHistory([]))
   }, [id])
+
+  // Clubs the swimmer currently represents (excluding national teams)
+  const currentClubs = clubHistory.filter(c => c.is_current && !c.is_national)
 
   const handleEventClick = async (event) => {
     setSelectedEvent(event)
@@ -1935,9 +1977,35 @@ export default function SwimmerProfilePage() {
                     {swimmer.sex === 'M' ? 'Male' : 'Female'}
                   </span>
                 )}
-                {swimmer.club && (
+                {currentClubs.length > 1 ? (
+                  currentClubs.map((c, i) => (
+                    <span key={i} className="bg-white/10 backdrop-blur-sm text-white/80 text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium">
+                      Club <span className="text-white font-semibold">{c.club}</span>
+                      {c.country && <span className="text-sky-200 font-semibold"> &middot; {c.country}</span>}
+                    </span>
+                  ))
+                ) : swimmer.club ? (
                   <span className="bg-white/10 backdrop-blur-sm text-white/80 text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium">
                     Club <span className="text-white font-semibold">{swimmer.club}</span>
+                    {currentClubs.length === 1 && currentClubs[0].country && (
+                      <span className="text-sky-200 font-semibold"> &middot; {currentClubs[0].country}</span>
+                    )}
+                  </span>
+                ) : null}
+                {(swimmer.instagram_url || swimmer.facebook_url) && (
+                  <span className="flex items-center gap-1.5">
+                    {swimmer.instagram_url && (
+                      <a href={swimmer.instagram_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                        className="bg-white/10 hover:bg-white/25 backdrop-blur-sm text-white p-1.5 sm:p-2 rounded-lg transition-colors" title="Instagram">
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zm0 10.162a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                      </a>
+                    )}
+                    {swimmer.facebook_url && (
+                      <a href={swimmer.facebook_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                        className="bg-white/10 hover:bg-white/25 backdrop-blur-sm text-white p-1.5 sm:p-2 rounded-lg transition-colors" title="Facebook">
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                      </a>
+                    )}
                   </span>
                 )}
               </div>

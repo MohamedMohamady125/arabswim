@@ -245,6 +245,7 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
           {[
             { key: 'main', label: isNational ? 'Club Medal Tally' : 'Country Medal Tally' },
+            ...(!isNational && safeClubSummary.length > 0 ? [{ key: 'clubs', label: 'Club Medal Tally' }] : []),
             { key: 'swimmers', label: 'Swimmer Medal Tally' },
           ].map(t => (
             <button key={t.key} onClick={() => setTallySection(t.key)}
@@ -312,7 +313,7 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
         )
       })()}
 
-      {tallySection === 'main' && isNational && safeClubSummary.length > 0 && (
+      {(tallySection === 'clubs' || (tallySection === 'main' && isNational)) && safeClubSummary.length > 0 && (
         <div className="bg-white rounded-lg border">
           <div className="p-4 border-b">
             <h3 className="font-semibold">Club Medal Tally</h3>

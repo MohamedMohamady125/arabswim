@@ -121,4 +121,27 @@ class MedalViewSet(viewsets.ModelViewSet):
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
         ).order_by('-gold', '-silver', '-bronze')
-        return Response(list(summary))
+        # Merge club-name variants ('MC ALGER' / 'Mc Alger' / 'MC ALGER 2')
+        # into one row via the canonical team key
+        from teams.utils import normalize_team_key, strip_squad_number
+        merged = {}
+        for row in summary:
+            name = strip_squad_number((row['result__team'] or '').strip())
+            key = normalize_team_key(name) or name.casefold()
+            entry = merged.get(key)
+            if entry:
+                entry['gold'] += row['gold']
+                entry['silver'] += row['silver']
+                entry['bronze'] += row['bronze']
+                entry['total'] += row['total']
+                if name.isupper() and not entry['result__team'].isupper():
+                    entry['result__team'] = name
+            else:
+                merged[key] = {
+                    'result__team': name,
+                    'gold': row['gold'], 'silver': row['silver'],
+                    'bronze': row['bronze'], 'total': row['total'],
+                }
+        out = sorted(merged.values(),
+                     key=lambda r: (-r['gold'], -r['silver'], -r['bronze']))
+        return Response(out)

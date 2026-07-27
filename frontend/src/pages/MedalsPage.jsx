@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { getMedalSummary, getMedalSwimmerSummary } from '../api/medals'
+import { getMedalSummary, getMedalSwimmerSummary, getMedalClubSummary } from '../api/medals'
 import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
 import CountryFlag from '../components/common/CountryFlag'
 
@@ -12,6 +12,7 @@ export default function MedalsPage() {
   const initialChampionship = searchParams.get('championship') || ''
   const [summary, setSummary] = useState([])
   const [swimmerSummary, setSwimmerSummary] = useState([])
+  const [clubSummary, setClubSummary] = useState([])
   const [championships, setChampionships] = useState([])
   const [classifications, setClassifications] = useState([])
   const [subClassifications, setSubClassifications] = useState([])
@@ -49,8 +50,22 @@ export default function MedalsPage() {
     if (!selectedChampionship && filterSub) params.sub_classification = filterSub
     if (filterGender) params.gender = filterGender
     getMedalSummary(params).then(res => setSummary(res.data)).catch(() => {})
-    getMedalSwimmerSummary(params).then(res => setSwimmerSummary(res.data)).catch(() => {})
+    // Full swimmer tally within a championship; capped list globally
+    getMedalSwimmerSummary({ ...params, limit: selectedChampionship ? 'all' : 100 })
+      .then(res => setSwimmerSummary(res.data)).catch(() => {})
+    getMedalClubSummary(params).then(res => setClubSummary(res.data)).catch(() => {})
   }, [selectedChampionship, filterClassification, filterSub, filterGender])
+
+  // Country tally is meaningless for National/Other contexts — clubs compete, not countries
+  const selectedChampObj = championships.find(c => String(c.id) === String(selectedChampionship))
+  const selectedClassObj = classifications.find(c => String(c.id) === String(filterClassification))
+  const isNationalContext = selectedChampionship
+    ? ['National', 'Other'].includes(selectedChampObj?.classification_name)
+    : ['National', 'Other'].includes(selectedClassObj?.name)
+
+  useEffect(() => {
+    if (isNationalContext && view === 'summary') setView('clubs')
+  }, [isNationalContext])
 
   const totalGold = summary.reduce((s, r) => s + (r.gold || 0), 0)
   const totalSilver = summary.reduce((s, r) => s + (r.silver || 0), 0)
@@ -136,8 +151,9 @@ export default function MedalsPage() {
       {/* View Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
         {[
-          { key: 'summary', label: 'Country Tally' },
-          { key: 'swimmers', label: 'Top Performers' },
+          ...(!isNationalContext ? [{ key: 'summary', label: 'Country Tally' }] : []),
+          { key: 'clubs', label: 'By Club' },
+          { key: 'swimmers', label: 'By Swimmer' },
         ].map(t => (
           <button key={t.key} onClick={() => setView(t.key)}
             className={`px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
@@ -212,7 +228,64 @@ export default function MedalsPage() {
         </div>
       )}
 
-      {/* Top Performers View */}
+      {/* By Club View */}
+      {view === 'clubs' && (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          {clubSummary.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-500 w-10">#</th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-500">Club</th>
+                    <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold text-gray-500 w-16">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black" style={{ backgroundColor: '#FFD70035', color: '#8B6914' }}>G</span>
+                    </th>
+                    <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold text-gray-500 w-16">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black" style={{ backgroundColor: '#C0C0C035', color: '#555' }}>S</span>
+                    </th>
+                    <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold text-gray-500 w-16">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black" style={{ backgroundColor: '#CD7F3235', color: '#8B4513' }}>B</span>
+                    </th>
+                    <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold text-gray-500 w-16">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {clubSummary.map((row, i) => {
+                    const total = (row.gold || 0) + (row.silver || 0) + (row.bronze || 0)
+                    return (
+                      <tr key={i} className={`hover:bg-gray-50 ${i < 3 ? 'bg-amber-50/30' : ''}`}>
+                        <td className="px-3 sm:px-4 py-3">
+                          <span className={`text-sm font-bold ${i === 0 ? 'text-amber-600' : i === 1 ? 'text-gray-500' : i === 2 ? 'text-orange-700' : 'text-gray-400'}`}>{i + 1}</span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3">
+                          <span className="text-sm font-semibold text-gray-800">{row.result__team}</span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-center">
+                          <span className={`font-bold text-sm ${row.gold ? 'text-amber-700' : 'text-gray-300'}`}>{row.gold || 0}</span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-center">
+                          <span className={`font-bold text-sm ${row.silver ? 'text-gray-600' : 'text-gray-300'}`}>{row.silver || 0}</span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-center">
+                          <span className={`font-bold text-sm ${row.bronze ? 'text-orange-700' : 'text-gray-300'}`}>{row.bronze || 0}</span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-center">
+                          <span className="font-black text-sm text-gray-800">{total}</span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-12 text-center text-gray-400">No club medals found for the selected filters</div>
+          )}
+        </div>
+      )}
+
+      {/* By Swimmer View */}
       {view === 'swimmers' && (
         <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
           {swimmerSummary.length > 0 ? (

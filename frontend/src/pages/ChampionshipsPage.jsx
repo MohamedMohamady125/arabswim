@@ -144,46 +144,65 @@ export default function ChampionshipsPage() {
 
                     {/* Meet info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-sm sm:text-lg text-gray-900 truncate">{c.name}</h3>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-500 mt-1.5">
-                        {c.location && (
-                          <span className="flex items-center gap-1">
-                            <span className="text-gray-400">&#x1F4CD;</span> {c.location}
-                          </span>
-                        )}
+                      <h3 className="font-bold text-sm sm:text-lg text-gray-900 leading-snug line-clamp-2 sm:truncate">{c.name}</h3>
+                      {/* Date */}
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                        </svg>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {formatDate(c.date)}{c.end_date && c.end_date !== c.date ? ` \u2014 ${formatDate(c.end_date)}` : ''}
+                        </span>
+                      </div>
+                      {/* Country / location / pool */}
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs sm:text-sm text-gray-500 mt-1">
                         {c.country_detail && (
                           <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
                         )}
-                        <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-lg font-medium">{c.pool === 'LCM' ? '50m' : '25m'}</span>
+                        {c.location && (
+                          <span className="flex items-center gap-1 min-w-0 max-w-full">
+                            <span className="text-gray-400 shrink-0">&#x1F4CD;</span>
+                            <span className="truncate">{c.location}</span>
+                          </span>
+                        )}
+                        <span className="text-[10px] sm:text-xs bg-gray-100 px-2 py-0.5 rounded-lg font-medium shrink-0">{c.pool === 'LCM' ? '50m' : '25m'}</span>
                       </div>
-                      {c.end_date && c.end_date !== c.date && (
-                        <div className="mt-1.5 flex items-center gap-1.5">
-                          <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                          </svg>
-                          <span className="text-xs text-gray-400">{formatDate(c.date)} &mdash; {formatDate(c.end_date)}</span>
-                        </div>
-                      )}
+                      {/* Stats — inline on mobile so nothing stacks in a squeezed side column */}
+                      <div className="flex sm:hidden flex-wrap items-center gap-1.5 mt-1.5">
+                        {c.results_count > 0 && (
+                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap">
+                            {c.results_count} results
+                          </span>
+                        )}
+                        {c.swimmers_count > 0 && (
+                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap">
+                            {c.swimmers_count} swimmers
+                          </span>
+                        )}
+                        {!c.results_count && (
+                          <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap">No results</span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Stats */}
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-2 shrink-0">
+                    {/* Stats — side column on desktop only */}
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
                       {c.results_count > 0 && (
-                        <span className="bg-green-100 text-green-700 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-semibold sm:font-medium whitespace-nowrap">
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
                           {c.results_count} results
                         </span>
                       )}
                       {c.swimmers_count > 0 && (
-                        <span className="bg-blue-100 text-blue-700 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-semibold sm:font-medium whitespace-nowrap">
+                        <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
                           {c.swimmers_count} swimmers
                         </span>
                       )}
                       {!c.results_count && (
-                        <span className="bg-gray-100 text-gray-500 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm whitespace-nowrap">No results</span>
+                        <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-sm whitespace-nowrap">No results</span>
                       )}
                     </div>
 
-                    <span className={`text-gray-400 text-lg transition-transform ${isExpanded ? 'rotate-90' : ''}`}>&#x276F;</span>
+                    <span className={`text-gray-400 text-lg transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`}>&#x276F;</span>
                   </div>
 
                   {/* Expanded */}

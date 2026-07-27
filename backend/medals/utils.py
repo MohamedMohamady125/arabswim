@@ -31,7 +31,7 @@ def recompute_medals(championship):
     )
 
     results = (championship.results
-               .filter(is_hc=False)
+               .filter(is_hc=False, is_manual=False)
                .select_related('swimmer')
                .order_by('time_centiseconds'))
 

@@ -179,7 +179,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             data['championship'] = championship.id
             serializer = ResultCreateSerializer(data=data)
             serializer.is_valid(raise_exception=True)
-            result = serializer.save(championship=championship)
+            # Manual single-result entries never receive automatic medals —
+            # only the medal explicitly assigned in the form (if any).
+            result = serializer.save(championship=championship, is_manual=True)
             if championship.is_calendar_only:
                 championship.is_calendar_only = False
                 championship.save(update_fields=['is_calendar_only'])

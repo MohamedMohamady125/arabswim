@@ -340,12 +340,20 @@ export default function ManualEntryForm({ onComplete }) {
               </div>
               <div>
                 <input type="date" value={newChamp.date}
-                  onChange={(e) => setNewChamp({ ...newChamp, date: e.target.value })}
+                  onChange={(e) => {
+                    const date = e.target.value
+                    // Pre-fill end date with the start date so the end-date
+                    // picker opens in the same month (adjust the day only)
+                    setNewChamp(prev => ({
+                      ...prev, date,
+                      end_date: (!prev.end_date || prev.end_date < date) ? date : prev.end_date,
+                    }))
+                  }}
                   className="w-full border rounded-lg px-3 py-2 text-sm" />
                 <span className="text-xs text-gray-400">Start Date *</span>
               </div>
               <div>
-                <input type="date" value={newChamp.end_date}
+                <input type="date" value={newChamp.end_date} min={newChamp.date || undefined}
                   onChange={(e) => setNewChamp({ ...newChamp, end_date: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 text-sm" />
                 <span className="text-xs text-gray-400">End Date</span>

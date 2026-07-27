@@ -79,6 +79,7 @@ class Result(models.Model):
     relay_swimmers = models.JSONField(blank=True, null=True, help_text='List of {name, split_time} for relay results')
     splits = models.JSONField(blank=True, null=True, help_text='List of {distance, time} cumulative splits for individual results (when available in source PDF)')
     is_hc = models.BooleanField(default=False, help_text='Hors concours – valid time that does not count in rankings')
+    is_manual = models.BooleanField(default=False, help_text='Manually entered result – excluded from automatic medal awards')
     hc_type = models.CharField(max_length=8, blank=True, default='', help_text="Source marking for unranked swims: 'HC' or 'TLD' (time limit exceeded)")
     created_at = models.DateTimeField(auto_now_add=True)
 

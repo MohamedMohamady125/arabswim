@@ -27,8 +27,8 @@ class SwimmerDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Swimmer
         fields = ['id', 'name', 'date_of_birth', 'birth_year', 'nationality', 'nationality_detail',
-                  'sex', 'club', 'photo', 'email', 'phone', 'age', 'nicknames',
-                  'is_relay_team', 'is_retired', 'created_at', 'updated_at']
+                  'sex', 'club', 'photo', 'email', 'phone', 'instagram_url', 'facebook_url',
+                  'age', 'nicknames', 'is_relay_team', 'is_retired', 'created_at', 'updated_at']
 
 
 class SwimmerCreateUpdateSerializer(serializers.ModelSerializer):
@@ -37,7 +37,8 @@ class SwimmerCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Swimmer
         fields = ['id', 'name', 'date_of_birth', 'birth_year', 'nationality', 'sex',
-                  'club', 'photo', 'email', 'phone', 'nicknames', 'is_retired']
+                  'club', 'photo', 'email', 'phone', 'instagram_url', 'facebook_url',
+                  'nicknames', 'is_retired']
 
     def create(self, validated_data):
         nicknames = validated_data.pop('nicknames', [])

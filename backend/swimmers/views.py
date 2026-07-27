@@ -753,11 +753,30 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'club': v['club'],
                 'first_meet': str(v['first_meet_date']),
                 'last_meet': str(v['last_meet_date']),
+                'last_meet_date': v['last_meet_date'],
                 'meets': v['meets'],
                 'results': v['results'],
             }
             for v in merged.values()
         ], key=lambda c: c['first_meet'])
+
+        # Attach club country info from Team records (matched by normalized name)
+        from teams.models import Team
+        from teams.utils import normalize_team_key
+        team_by_key = {}
+        for t in Team.objects.select_related('country'):
+            team_by_key.setdefault(normalize_team_key(t.name), t)
+        latest_date = max((c['last_meet_date'] for c in clubs), default=None)
+        for c in clubs:
+            t = team_by_key.get(normalize_team_key(c['club']))
+            c['country'] = t.country.name if t else None
+            c['country_code'] = t.country.code if t else None
+            c['country_flag'] = t.country.flag_url if t else None
+            c['is_national'] = bool(t and t.is_national_team)
+            # "Current" = swam for this club within a year of the swimmer's latest meet
+            c['is_current'] = bool(
+                latest_date and (latest_date - c['last_meet_date']).days <= 365)
+            del c['last_meet_date']
 
         # Nationality changes
         changes = NationalityChange.objects.filter(swimmer=swimmer).select_related(

@@ -961,13 +961,74 @@ def _compute_sort_order(stroke, distance, is_relay=False):
     return base + distance
 
 
+_VALID_STROKES = {
+    'Freestyle', 'Backstroke', 'Butterfly', 'Breaststroke',
+    'Individual Medley', 'Medley Relay', 'Freestyle Relay',
+}
+_VALID_INDIVIDUAL_DISTANCES = {25, 50, 100, 200, 400, 800, 1500}
+_VALID_RELAY_DISTANCES = {50, 100, 200, 400, 800}
+
+
+def repair_stroke(stroke, is_relay=False):
+    """Repair corrupted stroke text from PDF extraction / French sources.
+
+    Handles ligature artifacts ('Butter(cid:976)ly'), broken spacing
+    ('Li bre') and French stroke names. Returns a valid stroke or ''.
+    """
+    s = re.sub(r'\(cid:\d+\)', '', stroke or '')
+    s = re.sub(r'[^A-Za-z ]', ' ', s)
+    s = re.sub(r'\s+', ' ', s).strip()
+    if s in _VALID_STROKES:
+        return s
+    key = s.replace(' ', '').lower()
+    if 'relay' in key or is_relay:
+        if 'medley' in key or 'nage' in key:
+            return 'Medley Relay' if 'relay' in key else 'Individual Medley'
+        if 'free' in key or 'libre' in key or 'nl' == key:
+            return 'Freestyle Relay' if 'relay' in key else 'Freestyle'
+    if 'butter' in key or 'papillon' in key or key == 'fly':
+        return 'Butterfly'
+    if 'back' in key or 'dos' in key:
+        return 'Backstroke'
+    if 'breast' in key or 'brasse' in key:
+        return 'Breaststroke'
+    if 'medley' in key or 'nages' in key or key == 'im':
+        return 'Individual Medley'
+    if 'free' in key or 'libre' in key or key == 'nl':
+        return 'Freestyle'
+    return ''
+
+
+def repair_distance(distance, is_relay=False):
+    """Sanity-check a parsed event distance; repair known glitches.
+
+    '4 x 100' sometimes gets read as the number 4100 (→ leg 100).
+    Returns a valid distance or 0.
+    """
+    try:
+        d = int(distance)
+    except (TypeError, ValueError):
+        return 0
+    if not is_relay:
+        return d if d in _VALID_INDIVIDUAL_DISTANCES else 0
+    if d in _VALID_RELAY_DISTANCES:
+        return d
+    # "4100" / "450" / "4200" = '4' + leg distance glued together
+    s = str(d)
+    if s.startswith('4') and s[1:].isdigit() and int(s[1:]) in {50, 100, 200}:
+        return 4 * int(s[1:])
+    return 0
+
+
 def _find_event(event_data, event_cache):
     """Find a matching Event in the database."""
     event_name = event_data.get('event_name', '')
     is_relay = event_data.get('is_relay', False) or 'relay' in event_name.lower() or '4x' in event_name.lower() or '4×' in event_name.lower()
 
-    distance = event_data.get('distance', 0)
-    stroke = event_data.get('stroke', '')
+    # Repair corrupted stroke/distance so we never create junk events
+    # like '100 M Butter(cid:976)ly' or '4x1025 M Freestyle Relay'.
+    distance = repair_distance(event_data.get('distance', 0), is_relay)
+    stroke = repair_stroke(event_data.get('stroke', ''), is_relay)
 
     if is_relay:
         event_name = canonical_relay_name(
@@ -986,7 +1047,7 @@ def _find_event(event_data, event_cache):
     # Try partial match (but don't match relay to individual or vice versa)
     # Skip partial matching for relay events — they need exact name match
     # because Mixed relays are a different event from single-sex ones
-    if not is_relay:
+    if not is_relay and distance and stroke:
         for db_name, db_event in event_cache.items():
             if str(distance) in db_name and stroke.upper() in db_name:
                 if not db_event.is_relay:

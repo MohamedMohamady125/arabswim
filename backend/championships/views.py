@@ -332,12 +332,13 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 time_centiseconds=time_cs,
                 fina_points=fina or None,
                 age_at_competition=age,
+                is_manual=True,
             )
             created += 1
 
+        # Manual entries NEVER receive automatic medals — medals are only
+        # auto-awarded during meet imports, or assigned explicitly by hand.
         if created or updated:
-            from medals.utils import recompute_medals
-            recompute_medals(championship)
             if championship.is_calendar_only:
                 championship.is_calendar_only = False
                 championship.save(update_fields=['is_calendar_only'])

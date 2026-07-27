@@ -1876,3 +1876,125 @@ class MissingAgeLineTests(SimpleTestCase):
         self.assertEqual(r.swimmer_name, 'Hadi ALABED')
         self.assertEqual(r.age, 19)
         self.assertEqual(r.club, 'ORTH')
+
+
+class RepairEventTests(TestCase):
+    """Corrupted stroke/distance from PDF extraction must be repaired,
+    never stored as junk Event records."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        global Event, Country
+        from core.models import Event, Country
+
+    def test_repair_stroke_pdf_ligatures(self):
+        from importer.services import repair_stroke
+        self.assertEqual(repair_stroke('Butter(cid:976)ly'), 'Butterfly')
+        self.assertEqual(repair_stroke('Li bre'), 'Freestyle')
+
+    def test_repair_stroke_french(self):
+        from importer.services import repair_stroke
+        self.assertEqual(repair_stroke('Papillon'), 'Butterfly')
+        self.assertEqual(repair_stroke('Dos'), 'Backstroke')
+        self.assertEqual(repair_stroke('Brasse'), 'Breaststroke')
+        self.assertEqual(repair_stroke('4 Nages'), 'Individual Medley')
+
+    def test_repair_stroke_valid_passthrough(self):
+        from importer.services import repair_stroke
+        for s in ['Freestyle', 'Backstroke', 'Butterfly', 'Breaststroke',
+                  'Individual Medley', 'Medley Relay', 'Freestyle Relay']:
+            self.assertEqual(repair_stroke(s), s)
+
+    def test_repair_stroke_garbage_rejected(self):
+        from importer.services import repair_stroke
+        self.assertEqual(repair_stroke('xyzzy'), '')
+        self.assertEqual(repair_stroke(''), '')
+
+    def test_repair_distance(self):
+        from importer.services import repair_distance
+        self.assertEqual(repair_distance(100), 100)
+        self.assertEqual(repair_distance(1500), 1500)
+        self.assertEqual(repair_distance(999), 0)
+        # '4 x 100' read as 4100 -> 400 total
+        self.assertEqual(repair_distance(4100, is_relay=True), 400)
+        self.assertEqual(repair_distance(450, is_relay=True), 200)
+        self.assertEqual(repair_distance(400, is_relay=True), 400)
+
+    def test_find_event_repairs_corrupted_stroke(self):
+        from importer.services import _find_event
+        good = Event.objects.create(name='100 M Butterfly', distance=100,
+                                    stroke='Butterfly', is_relay=False)
+        cache = {e.name.upper(): e for e in Event.objects.all()}
+        found = _find_event({'event_name': '100 M Butter(cid:976)ly',
+                             'distance': 100, 'stroke': 'Butter(cid:976)ly'}, cache)
+        self.assertEqual(found, good)
+        self.assertEqual(Event.objects.count(), 1)
+
+    def test_find_event_never_creates_junk(self):
+        from importer.services import _find_event
+        found = _find_event({'event_name': '999 M Xyzzy',
+                             'distance': 999, 'stroke': 'Xyzzy'}, {})
+        self.assertIsNone(found)
+        self.assertEqual(Event.objects.count(), 0)
+
+
+class CleanupJunkEventsMigrationTests(TestCase):
+    """The 0002 core migration must fold junk events into canonical ones."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        global Event, Country
+        from core.models import Event, Country
+
+    def _run(self):
+        from django.apps import apps as real_apps
+        from core.migrations import __path__  # noqa: F401
+        import importlib
+        mod = importlib.import_module('core.migrations.0002_cleanup_junk_events')
+        mod.cleanup_junk_events(real_apps, None)
+
+    def test_merges_ligature_event_into_canonical(self):
+        from championships.models import Championship, Result
+        from swimmers.models import Swimmer
+        country = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        good = Event.objects.create(name='100 M Butterfly', distance=100,
+                                    stroke='Butterfly', is_relay=False)
+        junk = Event.objects.create(name='100 M Butter(cid:976)ly', distance=100,
+                                    stroke='Butter(cid:976)ly', is_relay=False)
+        champ = Championship.objects.create(name='Champs', date='2026-06-01',
+                                            pool='LCM', country=country)
+        sw = Swimmer.objects.create(name='Ali', sex='M', nationality=country)
+        r = Result.objects.create(swimmer=sw, championship=champ, event=junk,
+                                  round_type='Finals', category='',
+                                  time_centiseconds=5500)
+        self._run()
+        r.refresh_from_db()
+        self.assertEqual(r.event, good)
+        self.assertFalse(Event.objects.filter(name__contains='(cid:').exists())
+
+    def test_renames_when_no_canonical_exists(self):
+        Event.objects.create(name='1500 M Li bre', distance=1500,
+                             stroke='Li bre', is_relay=False)
+        self._run()
+        ev = Event.objects.get()
+        self.assertEqual(ev.name, '1500 M Freestyle')
+        self.assertEqual(ev.stroke, 'Freestyle')
+
+    def test_fixes_glued_relay_distance(self):
+        good = Event.objects.create(name='4x100 M Freestyle Relay', distance=400,
+                                    stroke='Freestyle Relay', is_relay=True)
+        Event.objects.create(name='4x1025 M Freestyle Relay', distance=4100,
+                            stroke='Freestyle', is_relay=True)
+        self._run()
+        self.assertEqual(Event.objects.count(), 1)
+        self.assertEqual(Event.objects.get(), good)
+
+    def test_leaves_valid_events_alone(self):
+        Event.objects.create(name='50 M Freestyle', distance=50,
+                             stroke='Freestyle', is_relay=False)
+        Event.objects.create(name='4x100 M Medley Relay Mixed', distance=400,
+                             stroke='Medley Relay', is_relay=True)
+        self._run()
+        self.assertEqual(Event.objects.count(), 2)

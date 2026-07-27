@@ -1772,7 +1772,7 @@ function RankingsTab({ swimmerId, swimmer }) {
                         {/* Time box */}
                         <div className="flex-1 flex items-center justify-center py-2 min-w-0"
                           style={{ border: `4px solid ${RANK_BLUE}` }}>
-                          <span className="text-3xl sm:text-5xl font-black tabular-nums tracking-tight" style={{ color: RANK_BLUE }}>
+                          <span className="text-4xl sm:text-6xl font-black tabular-nums tracking-tight" style={{ color: RANK_BLUE }}>
                             <AnimatedTime time={r.best_time} />
                           </span>
                         </div>

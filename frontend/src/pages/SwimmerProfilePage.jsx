@@ -1932,6 +1932,10 @@ export default function SwimmerProfilePage() {
               }`}>
               {swimmer.is_retired ? 'Active' : 'Retired'}
             </button>
+            <button onClick={() => navigate(`/swimmers/compare?ids=${id}`)}
+              className="bg-sky-500/20 hover:bg-sky-500/30 backdrop-blur-sm text-sky-100 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 ring-1 ring-sky-400/30 hover:ring-sky-400/50">
+              Compare
+            </button>
             <button onClick={() => navigate(`/swimmers/${id}/edit`)}
               className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20">
               Edit

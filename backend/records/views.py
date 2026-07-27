@@ -24,8 +24,14 @@ class RecordViewSet(viewsets.ModelViewSet):
         event = self.request.query_params.get('event')
         swimmer = self.request.query_params.get('swimmer')
         is_new = self.request.query_params.get('is_new')
+        pool = self.request.query_params.get('pool')
+        gender = self.request.query_params.get('gender')
         if record_type:
             qs = qs.filter(record_type=record_type)
+        if pool:
+            qs = qs.filter(pool=pool)
+        if gender:
+            qs = qs.filter(swimmer__sex=gender)
         if event:
             qs = qs.filter(event_id=event)
         if swimmer:

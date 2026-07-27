@@ -5,10 +5,17 @@ from championships.models import Result
 
 
 class Record(models.Model):
-    RECORD_TYPE_CHOICES = [('ARAB', 'Arab'), ('NATIONAL', 'National'), ('GCC', 'GCC')]
+    RECORD_TYPE_CHOICES = [
+        ('ARAB', 'Arab'), ('NATIONAL', 'National'), ('GCC', 'GCC'),
+        ('AFRICAN', 'African'), ('ASIAN', 'Asian'),
+        ('MEDITERRANEAN', 'Mediterranean'), ('ISLAMIC', 'Islamic'),
+        ('WORLD', 'World'),
+    ]
+    POOL_CHOICES = [('LCM', 'LCM'), ('SCM', 'SCM')]
     swimmer = models.ForeignKey(Swimmer, on_delete=models.CASCADE, related_name='records')
     event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name='records')
     record_type = models.CharField(max_length=20, choices=RECORD_TYPE_CHOICES)
+    pool = models.CharField(max_length=3, choices=POOL_CHOICES, default='LCM')
     time_centiseconds = models.IntegerField()
     location = models.CharField(max_length=200, blank=True, default='')
     result_date = models.DateField()

@@ -22,7 +22,7 @@ const SECTIONS = [
   { to: '/market', label: 'Market', icon: ShoppingBag, countKey: 'listings' },
   { to: '/sponsors', label: 'Partnerships', icon: Handshake, countKey: 'sponsors' },
   { to: '/coaches', label: 'Coaches', icon: UserCheck, countKey: 'coaches' },
-  { to: '/countries', label: 'Countries', icon: Globe, countKey: 'countries' },
+  { to: '/countries', label: 'Federations', icon: Globe, countKey: 'countries' },
   { to: '/import', label: 'Import', icon: Upload },
 ]
 

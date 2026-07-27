@@ -40,7 +40,7 @@ const GROUPS = [
   {
     label: 'Data',
     items: [
-      { to: '/countries', label: 'Countries', icon: Globe },
+      { to: '/countries', label: 'Federations', icon: Globe },
       { to: '/import', label: 'Import', icon: Upload },
     ],
   },

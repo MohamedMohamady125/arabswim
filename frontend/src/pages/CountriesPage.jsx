@@ -108,7 +108,7 @@ export default function CountriesPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Globe size={24} className="text-blue-600" /> Countries
+          <Globe size={24} className="text-blue-600" /> Federations
           <span className="text-gray-400 text-lg font-normal">({filtered.length})</span>
         </h1>
         <button onClick={() => { setEditingId('new'); setDraft(EMPTY) }}

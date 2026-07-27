@@ -1117,7 +1117,7 @@ export default function MeetDetailPage() {
           {/* Countries Breakdown */}
           <div className="bg-white rounded-lg border">
             <div className="p-4 border-b">
-              <h3 className="font-semibold">Federations ({stats.countries.length})</h3>
+              <h3 className="font-semibold">Countries ({stats.countries.length})</h3>
             </div>
             <div className="divide-y max-h-[500px] overflow-y-auto">
               {stats.countries.map((c, i) => (

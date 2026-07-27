@@ -29,7 +29,7 @@ function Triangle({ x, y, color }) {
   return <polygon points={pts} fill={color} stroke="#0b1f38" strokeWidth={1.2} strokeLinejoin="round" />
 }
 
-function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' }) {
+function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', tint = '#2f90ff' }) {
   const [tooltip, setTooltip] = useState(null)
 
   // Collect all dates, dedup to best time per date per line
@@ -113,8 +113,9 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
         fontFamily="Arial, Helvetica, sans-serif">
         <defs>
           <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#ffffff" />
-            <stop offset="1" stopColor="#ffffff" />
+            <stop offset="0" stopColor={tint} stopOpacity="0.07" />
+            <stop offset="0.5" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="1" stopColor={tint} stopOpacity="0.04" />
           </linearGradient>
           <pattern id={stripesId} width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)">
             <line x1="0" y1="0" x2="0" y2="26" stroke="#123a66" strokeOpacity="0.03" strokeWidth="2.4" />
@@ -335,7 +336,8 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
     <div className="space-y-6">
       {/* Collective chart — all events together */}
       {coloredLines.length > 1 && (
-        <div className="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-200">
+        <div className="rounded-2xl overflow-hidden shadow-lg border"
+          style={{ background: 'linear-gradient(135deg, #2f90ff12 0%, #ffffff 45%, #2f90ff08 100%)', borderColor: '#2f90ff33' }}>
           <div className="px-5 pt-4 pb-2">
             <BroadcastChart lines={coloredLines} title={title || 'All Events Progression'} showSwimmer={showSwimmer} chartId="collective" />
           </div>
@@ -349,13 +351,15 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
       {coloredLines.map((line, i) => {
         if (!line.points || line.points.length === 0) return null
         return (
-          <div key={line.event_id || line.event_name} className="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-200">
+          <div key={line.event_id || line.event_name} className="rounded-2xl overflow-hidden shadow-lg border"
+            style={{ background: `linear-gradient(135deg, ${line.color}12 0%, #ffffff 45%, ${line.color}08 100%)`, borderColor: `${line.color}33` }}>
             <div className="px-5 pt-4 pb-2">
               <BroadcastChart
                 lines={[line]}
                 title={line.event_name}
                 showSwimmer={showSwimmer}
                 chartId={`single-${i}`}
+                tint={line.color}
               />
             </div>
             <div className="px-5 pb-5">

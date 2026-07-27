@@ -134,6 +134,94 @@ class RecordViewSet(viewsets.ModelViewSet):
         return Response(results)
 
     @action(detail=False, methods=['get'])
+    def gaps(self, request):
+        """Gap between a swimmer's all-time best times and the current records
+        for every scope (national/gcc/arab) and pool the swimmer has swum.
+
+        Query params:
+          swimmer – swimmer id (required)
+        """
+        from championships.models import Result
+        from swimmers.models import Swimmer
+        from django.db.models import Min
+
+        swimmer_id = request.query_params.get('swimmer')
+        try:
+            swimmer = Swimmer.objects.select_related('nationality').get(id=int(swimmer_id))
+        except (Swimmer.DoesNotExist, TypeError, ValueError):
+            return Response([])
+
+        region = swimmer.nationality.region if swimmer.nationality else None
+
+        def fmt(cs):
+            minutes, seconds, centis = cs // 6000, (cs % 6000) // 100, cs % 100
+            return f'{minutes}:{seconds:02d}.{centis:02d}' if minutes else f'{seconds}.{centis:02d}'
+
+        out = []
+        for pool in ('LCM', 'SCM'):
+            bests = (
+                Result.objects.filter(
+                    swimmer=swimmer, championship__pool=pool,
+                    time_centiseconds__gt=0, event__is_relay=False,
+                )
+                .values('event_id', 'event__name', 'event__sort_order', 'event__distance')
+                .annotate(best=Min('time_centiseconds'))
+            )
+            best_by_event = {b['event_id']: b for b in bests}
+            if not best_by_event:
+                continue
+
+            rows = list(Result.objects.filter(
+                championship__pool=pool,
+                time_centiseconds__gt=0,
+                is_hc=False,
+                swimmer__sex=swimmer.sex,
+                swimmer__nationality__region__in=['ARAB', 'GCC'],
+                event_id__in=best_by_event.keys(),
+            ).values(
+                'event_id', 'swimmer_id', 'swimmer__name',
+                'swimmer__nationality_id', 'swimmer__nationality__region',
+                'time_centiseconds',
+            ))
+
+            scopes = [('arab', rows)]
+            if region == 'GCC':
+                scopes.append(('gcc', [r for r in rows if r['swimmer__nationality__region'] == 'GCC']))
+            if swimmer.nationality_id:
+                scopes.append(('national', [r for r in rows if r['swimmer__nationality_id'] == swimmer.nationality_id]))
+
+            for scope, subset in scopes:
+                best_rec = {}
+                for r in subset:
+                    b = best_rec.get(r['event_id'])
+                    if b is None or r['time_centiseconds'] < b['time_centiseconds']:
+                        best_rec[r['event_id']] = r
+                for ev_id, rec in best_rec.items():
+                    b = best_by_event[ev_id]
+                    gap_cs = b['best'] - rec['time_centiseconds']
+                    record_cs = rec['time_centiseconds']
+                    out.append({
+                        'scope': scope,
+                        'pool': pool,
+                        'event_id': ev_id,
+                        'event_name': b['event__name'],
+                        'event_sort_order': b['event__sort_order'],
+                        'event_distance': b['event__distance'],
+                        'swimmer_best_cs': b['best'],
+                        'swimmer_best': fmt(b['best']),
+                        'record_cs': record_cs,
+                        'record_time': fmt(record_cs),
+                        'record_holder': rec['swimmer__name'],
+                        'gap_cs': gap_cs,
+                        'gap_time': fmt(abs(gap_cs)),
+                        'gap_pct': round((b['best'] / record_cs - 1) * 100, 2) if record_cs else 0,
+                        'holds': rec['swimmer_id'] == swimmer.id,
+                    })
+
+        out.sort(key=lambda g: (g['scope'], g['pool'], g['gap_cs']))
+        return Response(out)
+
+    @action(detail=False, methods=['get'])
     def computed(self, request):
         """Return the fastest time per event+gender from existing Result data.
 

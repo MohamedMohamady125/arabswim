@@ -46,6 +46,29 @@ MEET_COUNTRY_KEYWORDS = {
 }
 
 
+def normalize_swimmer_name(text):
+    """Normalize a swimmer name while preserving parser-formatted surnames.
+
+    Parsers (FRMN, Nat2i, ...) already emit names as "First LASTNAME" with the
+    surname in uppercase. Title-casing those would destroy the convention and
+    leave the database with a mix of "Malak MEQDAR" (matched, kept as-is) and
+    "Malak Meqdar" (newly created, title-cased). If the name already mixes an
+    uppercase word with a non-uppercase word, keep the casing and only clean
+    whitespace; otherwise fall back to normalize_name().
+    """
+    if not text or not isinstance(text, str):
+        return text or ''
+    text = re.sub(r'\s+', ' ', text).strip()
+    if not text:
+        return ''
+    words = text.split()
+    has_upper_word = any(w.isupper() and len(w) > 1 for w in words)
+    has_mixed_word = any(not w.isupper() and any(c.isalpha() for c in w) for w in words)
+    if has_upper_word and has_mixed_word:
+        return text
+    return normalize_name(text)
+
+
 def normalize_name(text):
     """Normalize text to title case for consistency.
     Handles ALL CAPS, all lower, and mixed cases.
@@ -633,10 +656,17 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 team = normalize_name(result_data['swimmer_name'])
             else:
                 from teams.utils import strip_squad_number
-                team = normalize_name(strip_squad_number(result_data.get('club', '')))
+                raw_club = strip_squad_number(result_data.get('club', '')).strip()
+                if raw_club.upper() == 'LP':
+                    # "LP" (libre passage) = no club, swimmer is transferring.
+                    # Keep the marker verbatim on the result; never treat it
+                    # as a real club.
+                    team = 'LP'
+                else:
+                    team = normalize_name(raw_club)
 
             # Update swimmer's club if they don't have one yet
-            if team and not swimmer.club and not (is_relay or result_data.get('is_relay', False)):
+            if team and team != 'LP' and not swimmer.club and not (is_relay or result_data.get('is_relay', False)):
                 from teams.utils import is_valid_team_name
                 if is_valid_team_name(team):
                     swimmer.club = normalize_name(team)
@@ -718,6 +748,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     existing.time_centiseconds = time_cs
                     existing.fina_points = result_data.get('fina_points', 0) or existing.fina_points
                     existing.is_hc = (result_data.get('status') in ('HC', 'TLD'))
+                    existing.hc_type = result_data.get('status') if result_data.get('status') in ('HC', 'TLD') else ''
                     if team:
                         existing.team = team
                     existing.save()
@@ -740,6 +771,34 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             else:
                 # Parse relay swimmer splits into structured data
                 relay_swimmers = None
+                splits = None
+                if not (is_relay or result_data.get('is_relay', False)):
+                    raw_splits = result_data.get('split_times', [])
+                    if raw_splits:
+                        import re as _re
+                        splits = []
+                        for split_str in raw_splits:
+                            s = str(split_str).strip()
+                            # "50m: 00:25.77" / "50m : 25.77" → labeled split
+                            m = _re.match(r'^(\d{2,4})m\s*:?\s*(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})$', s)
+                            if m:
+                                dist, t = int(m.group(1)), m.group(2)
+                            elif _re.match(r'^(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})$', s):
+                                dist, t = None, s
+                            else:
+                                continue
+                            # Strip leading zero-minutes: "00:25.77" → "25.77"
+                            t = _re.sub(r'^0?0:', '', t)
+                            splits.append({'distance': dist, 'time': t})
+                        # Infer distances when the source gave bare times
+                        if splits and any(sp['distance'] is None for sp in splits):
+                            ev_dist = event_data.get('event_distance') or getattr(db_event, 'distance', 0) or 0
+                            if ev_dist and ev_dist % len(splits) == 0:
+                                seg = ev_dist // len(splits)
+                                for i, sp in enumerate(splits):
+                                    if sp['distance'] is None:
+                                        sp['distance'] = seg * (i + 1)
+                        splits = splits or None
                 if is_relay or result_data.get('is_relay', False):
                     raw_splits = result_data.get('split_times', [])
                     if raw_splits:
@@ -777,7 +836,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     fina_points=fina_pts or None,
                     age_at_competition=age_at_comp or None,
                     relay_swimmers=relay_swimmers,
+                    splits=splits,
                     is_hc=(result_data.get('status') in ('HC', 'TLD')),
+                    hc_type=result_data.get('status') if result_data.get('status') in ('HC', 'TLD') else '',
                 )
                 claimed_results.add(new_result.id)
                 created_results += 1
@@ -823,11 +884,11 @@ def _create_swimmer(result_data, fallback_country=None):
 
     from teams.utils import is_valid_team_name
     club = result_data.get('club', '').strip()
-    if club and not is_valid_team_name(club):
+    if club and (club.upper() == 'LP' or not is_valid_team_name(club)):
         club = ''
 
     swimmer = Swimmer.objects.create(
-        name=normalize_name(result_data['swimmer_name']),
+        name=normalize_swimmer_name(result_data['swimmer_name']),
         date_of_birth=None,
         birth_year=birth_year,
         nationality=nationality,

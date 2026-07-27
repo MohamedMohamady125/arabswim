@@ -113,6 +113,16 @@ export default function ManualEntryForm({ onComplete }) {
     }, 300)
   }
 
+  const extractError = (err, fallback) => {
+    const d = err.response?.data
+    if (!d || typeof d === 'string') return fallback
+    if (d.detail) return d.detail
+    if (Array.isArray(d.non_field_errors)) return d.non_field_errors[0]
+    const k = Object.keys(d)[0]
+    if (k && Array.isArray(d[k])) return `${k}: ${d[k][0]}`
+    return fallback
+  }
+
   const handleCreateSwimmer = async () => {
     setError('')
     try {
@@ -121,7 +131,7 @@ export default function ManualEntryForm({ onComplete }) {
       setShowNewSwimmer(false)
       setSwimmerQuery('')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create swimmer')
+      setError(extractError(err, 'Failed to create swimmer'))
     }
   }
 
@@ -135,7 +145,7 @@ export default function ManualEntryForm({ onComplete }) {
       setShowNewChamp(false)
       setChampQuery('')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create championship')
+      setError(extractError(err, 'Failed to create championship'))
     }
   }
 
@@ -163,7 +173,7 @@ export default function ManualEntryForm({ onComplete }) {
         time: resultForm.time,
       })
     } catch (err) {
-      setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to add result')
+      setError(extractError(err, 'Failed to add result'))
     } finally {
       setLoading(false)
     }

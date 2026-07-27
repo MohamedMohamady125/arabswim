@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getSwimmer, updateSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats, getSwimmerProgression, getSwimmerTransferHistory, getSwimmerRankings, getSwimmerQualifyingGaps } from '../api/swimmers'
-import { getHeldRecords } from '../api/records'
+import { getHeldRecords, getRecordGaps } from '../api/records'
+import { getQualifyingStandards } from '../api/qualifyingTimes'
 import { getMediaItems } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 import ProgressionChart from '../components/common/ProgressionChart'
 
 
 /* ───────── Animated number counter ───────── */
-function AnimatedNumber({ value, duration = 800 }) {
+function AnimatedNumber({ value, duration = 800, pad = 0 }) {
   const [display, setDisplay] = useState(0)
   const ref = useRef()
   useEffect(() => {
@@ -23,7 +24,7 @@ function AnimatedNumber({ value, duration = 800 }) {
     ref.current = requestAnimationFrame(step)
     return () => cancelAnimationFrame(ref.current)
   }, [value, duration])
-  return <>{display}</>
+  return <>{pad ? String(display).padStart(pad, '0') : display}</>
 }
 
 /* ───────── Pool badge ───────── */
@@ -100,6 +101,7 @@ function PersonalBestsTable({ events, onEventClick, selectedEvent }) {
 
 /* ───────── Time History ───────── */
 function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) {
+  const [expandedSplits, setExpandedSplits] = useState(null)
   if (!selectedEvent) {
     return (
       <div className="bg-white rounded-2xl border shadow-sm flex items-center justify-center min-h-[400px] animate-fade-in">
@@ -149,8 +151,11 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
             <tbody>
               {history.map((h, i) => {
                 const isBest = h.time_centiseconds === bestCs
+                const splits = h.splits || []
+                const showSplits = expandedSplits === h.id
                 return (
-                  <tr key={h.id} className={`border-b border-gray-50 transition-colors hover:bg-sky-50/30 animate-fade-in-up`}
+                  <Fragment key={h.id}>
+                  <tr className={`border-b border-gray-50 transition-colors hover:bg-sky-50/30 animate-fade-in-up`}
                     style={{ animationDelay: `${i * 0.03}s` }}>
                     <td className="px-2 sm:px-3 py-2 text-gray-300 font-medium">{i + 1}</td>
                     <td className="px-2 sm:px-3 py-2">
@@ -160,7 +165,15 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                           <span className="text-[8px] sm:text-[9px] font-black bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded-md">PB</span>
                         )}
                         {h.is_hc && (
-                          <span className="text-[8px] sm:text-[9px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded-md" title="Hors concours – does not count in rankings">HC</span>
+                          <span className="text-[8px] sm:text-[9px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded-md" title={h.hc_type === 'TLD' ? 'Time limit exceeded – does not count in rankings' : 'Hors concours – does not count in rankings'}>{h.hc_type || 'HC'}</span>
+                        )}
+                        {splits.length > 0 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setExpandedSplits(showSplits ? null : h.id) }}
+                            className={`text-[8px] sm:text-[9px] font-black px-1 py-0.5 rounded-md transition-colors ${showSplits ? 'bg-sky-600 text-white' : 'bg-sky-50 text-sky-600 hover:bg-sky-100'}`}
+                            title="Show split times">
+                            SPLITS {showSplits ? '▲' : '▼'}
+                          </button>
                         )}
                       </div>
                     </td>
@@ -172,7 +185,11 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                         }`}>{h.round_type}</span>
                       ) : <span className="text-gray-300">-</span>}
                     </td>
-                    <td className="px-2 sm:px-3 py-2 text-gray-500 hidden lg:table-cell">{h.team || <span className="text-gray-300">-</span>}</td>
+                    <td className="px-2 sm:px-3 py-2 text-gray-500 hidden lg:table-cell">
+                      {(h.team || '').toUpperCase() === 'LP' ? (
+                        <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-md" title="No club — transferring (libre passage)">LP</span>
+                      ) : (h.team || <span className="text-gray-300">-</span>)}
+                    </td>
                     <td className="px-2 sm:px-3 py-2">
                       <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${h.championship_id}`) }}
                         className="text-sky-600 hover:text-sky-800 font-medium transition-colors truncate max-w-[120px] sm:max-w-none block">
@@ -186,6 +203,21 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                       ) : <span className="text-gray-300">-</span>}
                     </td>
                   </tr>
+                  {showSplits && (
+                    <tr className="bg-sky-50/60 border-b border-gray-50">
+                      <td colSpan={8} className="px-3 py-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          {splits.map((s, j) => (
+                            <span key={j} className="inline-flex items-center gap-1.5 bg-white border border-sky-100 rounded-lg px-2 py-1 shadow-sm">
+                              <span className="text-[9px] font-bold text-gray-400">{s.distance ? `${s.distance}m` : `#${j + 1}`}</span>
+                              <span className="text-[11px] font-mono font-semibold text-gray-700">{s.time}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 )
               })}
               {history.length === 0 && (
@@ -629,11 +661,21 @@ function StatsTab({ stats, events, swimmerId }) {
   const [qualifyingGaps, setQualifyingGaps] = useState([])
   const [gapPool, setGapPool] = useState('LCM')
   const [gapCut, setGapCut] = useState('A')
+  const [standards, setStandards] = useState([])
+  const [gapStandard, setGapStandard] = useState(null)
   useEffect(() => {
-    if (swimmerId) {
-      getSwimmerQualifyingGaps(swimmerId).then(res => setQualifyingGaps(res.data || [])).catch(() => {})
+    getQualifyingStandards().then(res => {
+      const list = res.data.results || res.data || []
+      setStandards(list)
+      if (list.length > 0) setGapStandard(prev => prev ?? list[0].id)
+    }).catch(() => {})
+  }, [])
+  useEffect(() => {
+    if (swimmerId && gapStandard) {
+      getSwimmerQualifyingGaps(swimmerId, { standard: gapStandard })
+        .then(res => setQualifyingGaps(res.data || [])).catch(() => {})
     }
-  }, [swimmerId])
+  }, [swimmerId, gapStandard])
 
   if (!stats) return null
   const { medals, best_fina, season_best_fina, best_event, total_championships, records, total_records, fina_distribution } = stats
@@ -691,15 +733,16 @@ function StatsTab({ stats, events, swimmerId }) {
       </div>
 
       {/* Qualifying Gaps */}
-      {qualifyingGaps && qualifyingGaps.length > 0 && (() => {
-        const filteredGaps = qualifyingGaps.filter(g => g.pool === gapPool && g.cut === gapCut)
+      {standards.length > 0 && (() => {
+        const filteredGaps = (qualifyingGaps || []).filter(g => g.pool === gapPool && g.cut === gapCut)
+        const activeStandard = standards.find(s => s.id === gapStandard)
         return (
         <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up stagger-7">
           <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h3 className="font-bold text-base text-gray-800">Qualifying Standards Gap</h3>
-                <p className="text-[11px] text-gray-400 mt-0.5">{qualifyingGaps[0]?.standard_name} — Based on {new Date().getFullYear()} best times</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{activeStandard?.name || qualifyingGaps[0]?.standard_name} — Based on {new Date().getFullYear()} best times</p>
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex rounded-lg overflow-hidden border">
@@ -719,6 +762,19 @@ function StatsTab({ stats, events, swimmerId }) {
                   ))}
                 </div>
               </div>
+            </div>
+            {/* Standard selector rectangle */}
+            <div className="mt-3 rounded-xl border border-gray-200 bg-white p-2 flex flex-wrap gap-1.5">
+              {standards.map(s => (
+                <button key={s.id} onClick={() => setGapStandard(s.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    gapStandard === s.id
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                  }`}>
+                  {s.name}
+                </button>
+              ))}
             </div>
           </div>
           {filteredGaps.length === 0 ? (
@@ -879,13 +935,13 @@ function InternationalParticipation({ championships }) {
             const n = counts[t.match] || 0
             return (
               <div key={t.label} className="flex rounded-xl overflow-hidden bg-white shadow-md animate-fade-in-up" style={{ animationDelay: `${i * 0.04}s` }}>
-                <div className="w-[42%] shrink-0 flex items-center justify-center py-5 sm:py-6" style={{ background: t.grad }}>
+                <div className="w-[42%] shrink-0 flex items-center justify-center py-6 sm:py-7 [&_svg]:scale-[1.35] sm:[&_svg]:scale-150" style={{ background: t.grad }}>
                   {t.icon}
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center gap-1.5 px-1 py-3">
                   <div className="text-[10px] sm:text-sm font-extrabold tracking-wide text-center leading-tight" style={{ color: '#0b1f5e' }}>{t.label}</div>
-                  <div className="text-white text-sm sm:text-xl font-black px-2.5 sm:px-3 py-0.5 rounded-lg" style={{ background: t.badge }}>
-                    {String(n).padStart(2, '0')}
+                  <div className="text-white text-2xl sm:text-4xl font-black px-3 sm:px-4 py-1 rounded-lg tabular-nums" style={{ background: t.badge }}>
+                    <AnimatedNumber value={n} pad={2} />
                   </div>
                 </div>
               </div>
@@ -948,7 +1004,7 @@ function MeetsTab({ stats, navigate }) {
         <div className="bg-white rounded-xl sm:rounded-2xl border shadow-sm px-3 sm:px-5 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
           <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           <div>
-            <div className="text-xl sm:text-2xl font-black text-gray-800">{years.length}</div>
+            <div className="text-xl sm:text-2xl font-black text-gray-800"><AnimatedNumber value={years.length} /></div>
             <div className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">Years</div>
           </div>
         </div>
@@ -998,9 +1054,16 @@ function MeetsTab({ stats, navigate }) {
 /* ───────── Records Tab ───────── */
 function RecordsTab({ swimmerId, swimmer }) {
   const [records, setRecords] = useState([])
+  const [gaps, setGaps] = useState([])
   const [loading, setLoading] = useState(true)
+  const [view, setView] = useState('records')
+  const [gapScope, setGapScope] = useState(null)
+  const [gapPool, setGapPool] = useState('LCM')
   useEffect(() => {
-    getHeldRecords({ swimmer: swimmerId }).then((res) => {
+    Promise.all([
+      getHeldRecords({ swimmer: swimmerId }),
+      getRecordGaps({ swimmer: swimmerId }),
+    ]).then(([res, gapsRes]) => {
       const all = (res.data || []).map(r => ({
         ...r,
         record_type: (r.scope || '').toUpperCase(),
@@ -1010,10 +1073,127 @@ function RecordsTab({ swimmerId, swimmer }) {
         categories: r.categories || [],
       }))
       setRecords(all)
+      setGaps(gapsRes.data || [])
     }).catch(() => {}).finally(() => setLoading(false))
   }, [swimmerId])
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
+
+  const scopeLabels = { national: 'NATIONAL', gcc: 'GCC', arab: 'ARAB' }
+  const availableScopes = ['national', 'gcc', 'arab'].filter(s => gaps.some(g => g.scope === s))
+  const activeScope = gapScope && availableScopes.includes(gapScope) ? gapScope : availableScopes[0]
+
+  const subTabs = (
+    <div className="flex justify-center mb-4">
+      <div className="flex rounded-xl overflow-hidden border bg-white shadow-sm">
+        {[['records', 'Records'], ['gaps', 'Record Gaps']].map(([key, label]) => (
+          <button key={key} onClick={() => setView(key)}
+            className={`px-5 py-2 text-sm font-bold transition-colors ${view === key ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  if (view === 'gaps') {
+    const filteredGaps = gaps.filter(g => g.scope === activeScope && g.pool === gapPool)
+    return (
+      <div className="animate-fade-in">
+        {subTabs}
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up">
+          <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h3 className="font-bold text-base text-gray-800">Record Gaps</h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">Distance between all-time bests and current {scopeLabels[activeScope] || ''} records</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg overflow-hidden border">
+                  {['LCM', 'SCM'].map(p => (
+                    <button key={p} onClick={() => setGapPool(p)}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${gapPool === p ? (p === 'LCM' ? 'bg-sky-500 text-white' : 'bg-amber-500 text-white') : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Scope selector rectangle */}
+            {availableScopes.length > 0 && (
+              <div className="mt-3 rounded-xl border border-gray-200 bg-white p-2 flex flex-wrap gap-1.5">
+                {availableScopes.map(s => (
+                  <button key={s} onClick={() => setGapScope(s)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      activeScope === s
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}>
+                    {scopeLabels[s]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {filteredGaps.length === 0 ? (
+            <div className="p-8 text-center text-gray-400 text-sm">No record gaps for {scopeLabels[activeScope] || ''} {gapPool}</div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {filteredGaps.map((g, i) => {
+                const maxGap = Math.max(...filteredGaps.map(x => Math.abs(x.gap_cs)))
+                const barPct = maxGap > 0 ? (Math.abs(g.gap_cs) / maxGap) * 100 : 0
+                return (
+                  <div key={`${g.event_id}-${g.pool}`} className="px-5 py-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.06}s` }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-gray-800">{g.event_name}</span>
+                        {g.pool && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${g.pool === 'SCM' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'}`}>{g.pool}</span>}
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{scopeLabels[g.scope]}</span>
+                      </div>
+                      {g.holds ? (
+                        <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">RECORD HOLDER</span>
+                      ) : (
+                        <span className="text-xs font-bold text-gray-500">+{g.gap_pct}%</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="flex-1">
+                        <div className="flex justify-between text-[10px] font-semibold mb-1">
+                          <span className="text-gray-400">Your Best</span>
+                          <span className="text-gray-400">Record</span>
+                        </div>
+                        <div className="relative h-6 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${g.holds ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : 'bg-gradient-to-r from-sky-400 to-sky-500'}`}
+                            style={{ width: `${g.holds ? 100 : Math.max(100 - barPct * 0.6, 15)}%` }}
+                          />
+                          {!g.holds && (
+                            <div className="absolute right-0 top-0 h-full border-l-2 border-dashed border-amber-400" style={{ width: `${barPct * 0.6}%` }}>
+                              <div className="absolute -top-0.5 -left-1 w-2 h-7 bg-amber-400 rounded-full opacity-60" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-sm font-bold text-sky-600">{g.swimmer_best}</span>
+                      <span className={`font-mono text-xs font-bold ${g.holds ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {g.holds ? 'RECORD' : `+${g.gap_time}`}
+                      </span>
+                      <span className="font-mono text-sm font-bold text-amber-600">{g.record_time}</span>
+                    </div>
+                    {!g.holds && g.record_holder && (
+                      <div className="text-[10px] text-gray-400 mt-1 text-right">Record: {g.record_holder}</div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   const byType = {}
   records.forEach(r => {
@@ -1027,10 +1207,13 @@ function RecordsTab({ swimmerId, swimmer }) {
 
   if (totalCount === 0) {
     return (
+      <div>
+      {subTabs}
       <div className="rounded-2xl bg-white border shadow-sm p-12 text-center animate-fade-in">
         <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
         <p className="text-gray-400 font-bold">No records held</p>
         <p className="text-gray-300 text-sm mt-1">Records will appear here when this swimmer sets Arab, GCC, or National records</p>
+      </div>
       </div>
     )
   }
@@ -1073,6 +1256,8 @@ function RecordsTab({ swimmerId, swimmer }) {
   }
 
   return (
+    <div>
+    {subTabs}
     <div className="rounded-2xl overflow-hidden shadow-xl bg-[#f6f7fa] p-4 sm:p-8 animate-fade-in">
       {/* Header banner pill */}
       <div className="flex justify-center mb-6 sm:mb-8">
@@ -1160,6 +1345,7 @@ function RecordsTab({ swimmerId, swimmer }) {
           </div>
         )
       })}
+    </div>
     </div>
   )
 }

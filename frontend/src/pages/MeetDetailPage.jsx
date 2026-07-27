@@ -944,6 +944,8 @@ export default function MeetDetailPage() {
                           const isBest = rank === 1
                           const isExpanded = expandedRelay === r.id
                           const swimmers = r.relay_swimmers || []
+                          const splits = r.splits || []
+                          const hasSplits = !isRelay && splits.length > 0
                           const isEditing = editingId === r.id
                           return (
                             <React.Fragment key={r.id}>
@@ -960,7 +962,7 @@ export default function MeetDetailPage() {
                               >
                                 <td className="px-4 py-2 text-sm">
                                   {r.is_hc ? (
-                                    <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md" title="Hors concours">HC</span>
+                                    <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</span>
                                   ) : (<>
                                     {showMedals && rank === 1 && <MedalIcon type="gold" size={22} />}
                                     {showMedals && rank === 2 && <MedalIcon type="silver" size={22} />}
@@ -970,6 +972,9 @@ export default function MeetDetailPage() {
                                 </td>
                                 <td className="px-4 py-2 text-sm font-medium">
                                   {r.swimmer_detail?.name}
+                                  {!isRelay && (r.team || '').toUpperCase() === 'LP' && (
+                                    <span className="ml-1.5 text-[9px] font-black bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-md align-middle" title="No club — transferring (libre passage)">LP</span>
+                                  )}
                                   {isRelay && swimmers.length > 0 && (
                                     <span className="ml-2 text-xs text-gray-400">{isExpanded ? '▲' : '▼'}</span>
                                   )}
@@ -1001,7 +1006,15 @@ export default function MeetDetailPage() {
                                       className="w-24 border rounded px-1.5 py-1 text-sm font-mono"
                                       autoFocus
                                     />
-                                  ) : <span className="flex items-center gap-1">{r.formatted_time}{r.is_hc && <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded-md" title="Hors concours">HC</span>}</span>}
+                                  ) : <span className="flex items-center gap-1">{r.formatted_time}{r.is_hc && <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded-md" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</span>}
+                                  {hasSplits && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setExpandedRelay(isExpanded ? null : r.id) }}
+                                      className={`text-[9px] font-black px-1.5 py-0.5 rounded-md transition-colors ${isExpanded ? 'bg-sky-600 text-white' : 'bg-sky-50 text-sky-600 hover:bg-sky-100'}`}
+                                      title="Show split times">
+                                      SPLITS {isExpanded ? '▲' : '▼'}
+                                    </button>
+                                  )}</span>}
                                 </td>
                                 <td className="px-4 py-2 text-sm">{r.fina_points || '-'}</td>
                                 {editMode && (
@@ -1020,6 +1033,20 @@ export default function MeetDetailPage() {
                                   </td>
                                 )}
                               </tr>
+                              {hasSplits && isExpanded && (
+                                <tr className="bg-sky-50/60">
+                                  <td colSpan={editMode ? 8 : 7} className="px-4 py-2">
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {splits.map((s, j) => (
+                                        <span key={j} className="inline-flex items-center gap-1.5 bg-white border border-sky-100 rounded-lg px-2 py-1 shadow-sm">
+                                          <span className="text-[9px] font-bold text-gray-400">{s.distance ? `${s.distance}m` : `#${j + 1}`}</span>
+                                          <span className="text-xs font-mono font-semibold text-gray-700">{s.time}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
                               {isRelay && isExpanded && swimmers.map((s, j) => (
                                 <tr key={`${r.id}-${j}`} className="bg-blue-50">
                                   <td className="px-4 py-1.5 text-sm text-gray-400 text-right">{j + 1}</td>

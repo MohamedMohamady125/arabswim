@@ -93,6 +93,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             qs = qs.filter(classification_id=classification)
         if sub_classification:
             qs = qs.filter(sub_classification_id=sub_classification)
+        if self.request.query_params.get('upcoming'):
+            from datetime import date as _date
+            qs = qs.filter(date__gte=_date.today())
         return qs
 
     def destroy(self, request, *args, **kwargs):
@@ -168,7 +171,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             serializer = ResultSerializer(results, many=True)
             return Response(serializer.data)
         else:
-            serializer = ResultCreateSerializer(data=request.data)
+            data = request.data.copy()
+            data['championship'] = championship.id
+            serializer = ResultCreateSerializer(data=data)
             serializer.is_valid(raise_exception=True)
             serializer.save(championship=championship)
             return Response(serializer.data, status=201)
@@ -882,6 +887,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'fina_points': r.fina_points,
                 'category': r.category or '',
                 'is_relay': r.swimmer.is_relay_team if r.swimmer else False,
+                'splits': r.splits or [],
             })
         return Response(list(groups.values()))
 

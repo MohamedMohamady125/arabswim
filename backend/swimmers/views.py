@@ -162,8 +162,13 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         from importer.parsers.base import format_centiseconds
 
-        # Get the latest qualifying standard
-        standard = QualifyingStandard.objects.first()
+        # Use the requested standard, or fall back to the latest one
+        standard_id = request.query_params.get('standard')
+        standard = None
+        if standard_id:
+            standard = QualifyingStandard.objects.filter(id=standard_id).first()
+        if not standard:
+            standard = QualifyingStandard.objects.first()
         if not standard:
             return Response([])
 
@@ -311,6 +316,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'pool': r.championship.pool,
                     'age_at_competition': r.age_at_competition,
                     'is_hc': r.is_hc,
+                    'hc_type': r.hc_type,
+                    'splits': r.splits or [],
                 })
         return Response(data)
 

@@ -1176,10 +1176,11 @@ class NonArabImportTests(_MeetFixtureMixin, TestCase):
             }],
         }
         confirm_import(preview, {})
-        pieter = Swimmer.objects.get(name='Pieter Coetze')
+        # Parser-formatted "First LASTNAME" casing is preserved on creation
+        pieter = Swimmer.objects.get(name='Pieter COETZE')
         self.assertEqual(pieter.nationality.code, 'RSA')
         self.assertEqual(pieter.results.count(), 1)
-        self.assertTrue(Swimmer.objects.filter(name='Ahmed Hafnaoui').exists())
+        self.assertTrue(Swimmer.objects.filter(name='Ahmed HAFNAOUI').exists())
 
     def test_non_arab_relay_team_is_imported(self):
         from importer.services import confirm_import

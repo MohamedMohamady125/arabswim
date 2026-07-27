@@ -48,8 +48,11 @@ def _frmn_normalize_name(name):
         last = ' '.join(last_parts).upper()
         first = ' '.join(first_parts).title()
         return f'{first} {last}'
-    else:
-        return name.upper()
+    # Couldn't split (whole name single-case). FRMN order is "First LAST",
+    # so treat the final word as the surname.
+    if len(words) >= 2:
+        return ' '.join(w.title() for w in words[:-1]) + ' ' + words[-1].upper()
+    return name.upper()
 
 
 # Event header: "1. 200 m 4 NAGES DAMES" or "2. 200 m 4 NAGES MESSIEURS"

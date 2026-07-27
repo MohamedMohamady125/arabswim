@@ -15,4 +15,4 @@ export const compareSwimmers = (ids) => api.get('/swimmers/compare/', { params: 
 export const getSwimmerProgression = (id, pool) => api.get(`/swimmers/${id}/progression/`, { params: { pool } })
 export const getSwimmerTransferHistory = (id) => api.get(`/swimmers/${id}/transfer-history/`)
 export const getSwimmerRankings = (id) => api.get(`/swimmers/${id}/rankings/`)
-export const getSwimmerQualifyingGaps = (id) => api.get(`/swimmers/${id}/qualifying-gaps/`)
+export const getSwimmerQualifyingGaps = (id, params) => api.get(`/swimmers/${id}/qualifying-gaps/`, { params })

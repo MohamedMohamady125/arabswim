@@ -145,8 +145,97 @@ def parse_file(file_path=None, uploaded_file=None):
     return _build_preview(parsed)
 
 
+def _letters_key(name):
+    """Uppercase letters/digits only — spaces and punctuation dropped."""
+    return re.sub(r'[^A-Z0-9À-ÖØ-Þ]', '', (name or '').upper())
+
+
+def _edit_distance_le_1(a, b):
+    """True when a and b differ by at most one insert/delete/substitute."""
+    if a == b:
+        return True
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la > lb:
+        a, b, la, lb = b, a, lb, la
+    # a is the shorter (or equal) string
+    i = j = edits = 0
+    while i < la and j < lb:
+        if a[i] == b[j]:
+            i += 1
+            j += 1
+            continue
+        edits += 1
+        if edits > 1:
+            return False
+        if la == lb:
+            i += 1  # substitution
+        j += 1      # insertion in b
+    edits += (la - i) + (lb - j)
+    return edits <= 1
+
+
+def canonicalize_parsed_clubs(parsed_meet):
+    """Collapse club-name variants corrupted by PDF text overlap.
+
+    Some PDFs (e.g. FFN) render record markers ('R', floating 'l'/'s'/'u')
+    on top of the results line, so extraction yields variants like
+    'RSTADE OLYMPIQUE CHAMBÉRY', 'STADE OLYMP IQUE CHAMBÉRY' or
+    'OLYMPICs NICE NATATION' next to the real club. Each variant would
+    become its own club/team. Merge them into the most frequent spelling:
+    exact matches once spaces/punctuation are dropped, plus rare variants
+    (≤2 results) one edit away from a clearly more frequent club.
+    """
+    from collections import Counter
+    counts = Counter()
+    for ev in parsed_meet.events:
+        for r in ev.results:
+            c = (r.club or '').strip()
+            if c:
+                counts[c] += 1
+    if len(counts) < 2:
+        return {}
+
+    # Most frequent spelling per letters-only key
+    by_key = {}
+    for name, n in counts.items():
+        k = _letters_key(name)
+        if k and (k not in by_key or counts[by_key[k]] < n):
+            by_key[k] = name
+
+    mapping = {}
+    for name, n in counts.items():
+        k = _letters_key(name)
+        canon = by_key.get(k)
+        if canon and canon != name:
+            mapping[name] = canon
+            continue
+        if n > 2:
+            continue
+        # Rare variant: absorb into a much more frequent near-identical club
+        best = None
+        for other, m in counts.items():
+            if other == name or m < max(3, n * 3):
+                continue
+            ko = _letters_key(other)
+            if _edit_distance_le_1(k, ko) and (best is None or m > counts[best]):
+                best = other
+        if best:
+            mapping[name] = best
+
+    if mapping:
+        for ev in parsed_meet.events:
+            for r in ev.results:
+                c = (r.club or '').strip()
+                if c in mapping:
+                    r.club = mapping[c]
+    return mapping
+
+
 def _build_preview(parsed_meet):
     """Convert ParsedMeet to a JSON-serializable preview dict."""
+    canonicalize_parsed_clubs(parsed_meet)
     events = []
     all_swimmers = {}  # unique swimmers by normalized name
 

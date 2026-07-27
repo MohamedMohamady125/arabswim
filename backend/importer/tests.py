@@ -2078,3 +2078,60 @@ class SplashMinimaLineTests(SimpleTestCase):
             self.assertNotIn('MINIMA', n.upper())
         # No junk events created from minima lines
         self.assertEqual(len(meet.events), 1)
+
+
+class CanonicalizeParsedClubsTests(TestCase):
+    """PDF text-overlap artifacts ('RSTADE', 'OLYMPICs', 'CHA MBÉRY') must
+    collapse into the real club instead of creating duplicate teams."""
+
+    @staticmethod
+    def _meet(club_counts):
+        from importer.parsers.base import ParsedMeet, ParsedEvent, ParsedResult
+        ev = ParsedEvent(event_name='100 M Freestyle', distance=100, stroke='Freestyle')
+        i = 0
+        for club, n in club_counts.items():
+            for _ in range(n):
+                i += 1
+                ev.results.append(ParsedResult(
+                    swimmer_name=f'Swimmer {i}', time_text='1:00.00',
+                    time_centiseconds=6000, club=club))
+        return ParsedMeet(meet_name='Test', events=[ev])
+
+    def _clubs(self, meet):
+        return {r.club for ev in meet.events for r in ev.results}
+
+    def test_overlap_artifacts_merge_into_real_club(self):
+        from importer.services import canonicalize_parsed_clubs
+        meet = self._meet({
+            'STADE OLYMPIQUE CHAMBÉRY': 46,
+            'STADE OLYMP IQUE CHAMBÉRY': 1,   # inserted space
+            'STADE OLYMPIQUE CHAMBlÉRY': 1,   # inserted letter
+            'RSTADE OLYMPIQUE CHAMBÉRY': 1,   # record marker prefix
+            'OLYMPIC NICE NATATION': 59,
+            'OLYMPICs NICE NATATION': 2,
+            'OLYMPIC NICE NAuTATION': 2,
+        })
+        canonicalize_parsed_clubs(meet)
+        self.assertEqual(self._clubs(meet),
+                         {'STADE OLYMPIQUE CHAMBÉRY', 'OLYMPIC NICE NATATION'})
+
+    def test_genuinely_different_clubs_survive(self):
+        from importer.services import canonicalize_parsed_clubs
+        meet = self._meet({
+            'BIARRITZ OLYMPIQUE': 4,
+            'THANN OLYMPIC N': 3,
+            'OLYMPIQUE NOUMÉA': 5,
+            'OLYMPIC NICE NATATION': 59,
+        })
+        canonicalize_parsed_clubs(meet)
+        self.assertEqual(self._clubs(meet),
+                         {'BIARRITZ OLYMPIQUE', 'THANN OLYMPIC N',
+                          'OLYMPIQUE NOUMÉA', 'OLYMPIC NICE NATATION'})
+
+    def test_frequent_variants_only_merge_on_exact_key(self):
+        from importer.services import canonicalize_parsed_clubs
+        # Both spellings frequent and one edit apart: keep both (could be
+        # two real clubs), unless identical once spaces are dropped.
+        meet = self._meet({'CN ALGER': 20, 'CS ALGER': 15, 'CN  ALGER': 4})
+        canonicalize_parsed_clubs(meet)
+        self.assertEqual(self._clubs(meet), {'CN ALGER', 'CS ALGER'})

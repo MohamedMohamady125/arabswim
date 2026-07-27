@@ -8,6 +8,7 @@ import CountryFlag from '../components/common/CountryFlag'
 import ProgressionChart from '../components/common/ProgressionChart'
 import { AFRICA_PATH, ASIA_PATH, ARAB_PATH, GCC_PATH } from '../assets/mapPaths'
 import { FaSchoolFlag, FaGraduationCap, FaLandmarkFlag } from 'react-icons/fa6'
+import { formatDate } from '../utils/constants'
 
 
 /* ───────── Animated number counter ───────── */
@@ -198,7 +199,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                         {h.championship_name}
                       </button>
                     </td>
-                    <td className="px-2 sm:px-3 py-2 text-gray-400 hidden md:table-cell whitespace-nowrap">{h.championship_date}</td>
+                    <td className="px-2 sm:px-3 py-2 text-gray-400 hidden md:table-cell whitespace-nowrap">{formatDate(h.championship_date)}</td>
                     <td className="px-2 sm:px-3 py-2 hidden sm:table-cell">
                       {h.fina_points ? (
                         <span className={`font-mono font-semibold ${h.fina_points >= 1000 ? 'text-amber-600' : h.fina_points >= 900 ? 'text-emerald-600' : h.fina_points >= 800 ? 'text-sky-600' : h.fina_points >= 600 ? 'text-blue-600' : 'text-gray-600'}`}>{h.fina_points}</span>
@@ -862,7 +863,7 @@ function StatsTab({ stats, events, swimmerId }) {
                 }`}>{r.record_type}</span>
                 <div className="flex-1">
                   <div className="text-sm font-semibold text-gray-800">{r.event_name}</div>
-                  <div className="text-[11px] text-gray-400">{r.location}{r.location && r.date ? ' \u00b7 ' : ''}{r.date}</div>
+                  <div className="text-[11px] text-gray-400">{r.location}{r.location && r.date ? ' \u00b7 ' : ''}{formatDate(r.date)}</div>
                 </div>
                 <div className="font-mono text-sm font-black text-sky-600">{r.time}</div>
               </div>
@@ -1042,7 +1043,7 @@ function MeetsTab({ stats, navigate }) {
                   <div className="text-xs sm:text-sm font-semibold text-gray-800 group-hover:text-sky-700 transition-colors truncate">{c.name}</div>
                   <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
                     <CountryFlag code={c.country_code} flagUrl={c.flag_url} name={c.country} className="text-[10px] sm:text-xs" />
-                    <span className="text-[10px] sm:text-[11px] text-gray-400">{new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    <span className="text-[10px] sm:text-[11px] text-gray-400">{formatDate(c.date)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -1629,7 +1630,7 @@ function TransferHistoryTab({ swimmerId }) {
                     </>
                   )}
                   <CountryFlag code={ch.to_country_code} flagUrl={ch.to_country_flag} name={ch.to_country} />
-                  <span className="text-gray-500 text-xs">{ch.effective_date}</span>
+                  <span className="text-gray-500 text-xs">{formatDate(ch.effective_date)}</span>
                   {ch.notes && <span className="text-gray-400 text-xs">({ch.notes})</span>}
                 </div>
               ))}
@@ -1961,7 +1962,7 @@ export default function SwimmerProfilePage() {
               <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 sm:gap-3 mt-2 sm:mt-3">
                 {swimmer.date_of_birth && (
                   <span className="bg-white/10 backdrop-blur-sm text-white/80 text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium">
-                    DOB <span className="text-white font-semibold">{swimmer.date_of_birth}</span>
+                    DOB <span className="text-white font-semibold">{formatDate(swimmer.date_of_birth)}</span>
                   </span>
                 )}
                 {!swimmer.date_of_birth && swimmer.birth_year && (

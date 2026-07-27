@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Newspaper, Plus, Pencil, Trash2 } from 'lucide-react'
 import { getArticles, deleteArticle } from '../api/news'
 import { useToast } from '../context/ToastContext'
+import { formatDate } from '../utils/constants'
 
 const STATUS_TABS = [
   { value: '', label: 'All' },
@@ -88,7 +89,7 @@ export default function NewsPage() {
                   }`}>
                     {a.status === 'PUBLISHED' ? 'Published' : 'Draft'}
                   </span>
-                  {a.published_at && <span className="text-xs text-gray-400">{a.published_at}</span>}
+                  {a.published_at && <span className="text-xs text-gray-400">{formatDate(a.published_at)}</span>}
                   {a.country_detail && <span className="text-xs text-gray-400">· {a.country_detail.name}</span>}
                 </div>
                 <h3 className="font-semibold text-sm leading-snug cursor-pointer hover:text-blue-600 line-clamp-2"

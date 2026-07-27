@@ -21,6 +21,31 @@ export const MANUAL_RECORD_SCOPES = RECORD_TYPES.filter(
   t => !['ARAB', 'NATIONAL', 'GCC'].includes(t.value)
 )
 
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+// Site-wide date format: day month year (e.g. "5 Jun 2026")
+export function formatDate(value) {
+  if (!value) return ''
+  const s = String(value)
+  let match = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (match) {
+    return `${parseInt(match[3])} ${MONTHS_SHORT[parseInt(match[2]) - 1]} ${match[1]}`
+  }
+  match = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  if (match) {
+    return `${parseInt(match[1])} ${MONTHS_SHORT[parseInt(match[2]) - 1]} ${match[3]}`
+  }
+  const dt = new Date(s)
+  if (Number.isNaN(dt.getTime())) return s
+  return `${dt.getDate()} ${MONTHS_SHORT[dt.getMonth()]} ${dt.getFullYear()}`
+}
+
+export function formatDateRange(start, end) {
+  if (!start) return ''
+  if (!end || end === start) return formatDate(start)
+  return `${formatDate(start)} — ${formatDate(end)}`
+}
+
 export function formatTime(centiseconds) {
   const minutes = Math.floor(centiseconds / 6000)
   const seconds = Math.floor((centiseconds % 6000) / 100)

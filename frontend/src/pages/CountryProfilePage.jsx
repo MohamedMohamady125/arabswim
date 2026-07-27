@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { getCountryProfile, getCountryProgression } from '../api/core'
 import ProgressionChart from '../components/common/ProgressionChart'
+import { formatDate } from '../utils/constants'
 import MedalIcon from '../components/common/MedalIcon'
 import { CODE_TO_ALPHA2 } from '../components/common/CountryFlag'
 
@@ -267,7 +268,7 @@ export default function CountryProfilePage() {
                   </td>
                   <td className="px-4 py-2 text-gray-500">{b.age_at_competition || '-'}</td>
                   <td className="px-4 py-2 text-gray-500">{b.championship}</td>
-                  <td className="px-4 py-2 text-gray-500">{b.date}</td>
+                  <td className="px-4 py-2 text-gray-500">{formatDate(b.date)}</td>
                 </tr>
               ))}
               {filteredBest.length === 0 && (
@@ -310,7 +311,7 @@ export default function CountryProfilePage() {
                       <Link to={`/swimmers/${r.swimmer_id}`} className="text-blue-600 hover:underline">{r.swimmer}</Link>
                     </td>
                     <td className="px-4 py-2 text-gray-500">{r.location || '—'}</td>
-                    <td className="px-4 py-2 text-gray-500">{r.date}</td>
+                    <td className="px-4 py-2 text-gray-500">{formatDate(r.date)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -334,7 +335,7 @@ export default function CountryProfilePage() {
                   >
                     <div className="flex-1">
                       <div className="font-medium">{c.name}</div>
-                      <div className="text-gray-400 text-xs mt-0.5">{c.date} · {c.pool} {c.location ? `· ${c.location}` : ''}</div>
+                      <div className="text-gray-400 text-xs mt-0.5">{formatDate(c.date)} · {c.pool} {c.location ? `· ${c.location}` : ''}</div>
                     </div>
                     <div className="flex items-center gap-3">
                       <button
@@ -396,7 +397,7 @@ export default function CountryProfilePage() {
                   <div className="text-gray-400 text-xs">{c.location}</div>
                 </div>
                 <div className="text-right text-gray-500 text-xs">
-                  <div>{c.date}</div>
+                  <div>{formatDate(c.date)}</div>
                   <div>{c.pool}</div>
                 </div>
               </Link>

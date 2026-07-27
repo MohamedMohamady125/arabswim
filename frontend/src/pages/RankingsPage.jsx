@@ -3,7 +3,7 @@ import { getRankings } from '../api/rankings'
 import { getCountries, getEvents } from '../api/core'
 import Pagination from '../components/common/Pagination'
 import CountryFlag from '../components/common/CountryFlag'
-import { POOL_TYPES, AGE_GROUPS } from '../utils/constants'
+import { POOL_TYPES, AGE_GROUPS, formatDate } from '../utils/constants'
 
 export default function RankingsPage() {
   const [rankings, setRankings] = useState([])
@@ -182,7 +182,7 @@ export default function RankingsPage() {
                 <td className="px-4 py-3 text-sm font-mono">{r.time}</td>
                 <td className="px-4 py-3 text-sm">{r.championship_name}</td>
                 <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} flagUrl={r.championship_country_flag} name={r.championship_country} /></td>
-                <td className="px-4 py-3 text-sm">{r.date}</td>
+                <td className="px-4 py-3 text-sm">{formatDate(r.date)}</td>
                 <td className="px-4 py-3 text-sm">{r.fina_points || '-'}</td>
               </tr>
               )

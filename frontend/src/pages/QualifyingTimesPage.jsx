@@ -5,6 +5,7 @@ import {
   uploadQualifyingPdf, addQualifyingTime, deleteQualifyingTime,
 } from '../api/qualifyingTimes'
 import { getEvents } from '../api/core'
+import { formatDate } from '../utils/constants'
 
 const COMP_TYPES = [
   { value: 'olympics', label: 'Olympics', color: 'bg-amber-100 text-amber-800', icon: '\u{1F3C5}' },
@@ -416,7 +417,7 @@ function StandardDetail({ standardId, onBack }) {
             <span className={`px-2.5 py-1 rounded-lg font-bold ${compType?.color}`}>{compType?.label}</span>
             {standard.qualifying_period_start && standard.qualifying_period_end && (
               <span className="text-gray-400">
-                Qualifying: {new Date(standard.qualifying_period_start).toLocaleDateString()} - {new Date(standard.qualifying_period_end).toLocaleDateString()}
+                Qualifying: {formatDate(standard.qualifying_period_start)} - {formatDate(standard.qualifying_period_end)}
               </span>
             )}
           </div>

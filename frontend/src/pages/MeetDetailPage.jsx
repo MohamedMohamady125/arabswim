@@ -6,6 +6,7 @@ import { getOrCreateAlbumForChampionship } from '../api/media'
 import { uploadPhotos, createMediaItem, deleteMediaItem, updateMediaItem } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
+import { formatDate } from '../utils/constants'
 import AddResultsModal from '../components/championships/AddResultsModal'
 import MeetEditModal from '../components/championships/MeetEditModal'
 
@@ -600,7 +601,7 @@ export default function MeetDetailPage() {
                 <CountryFlag code={meet.country_detail.code} flagUrl={meet.country_detail.flag_url} name={meet.country_detail.name} className="text-sky-100" />
               )}
               {meet.location && <span>{meet.location}</span>}
-              <span>{meet.date}{meet.end_date ? ` to ${meet.end_date}` : ''}</span>
+              <span>{formatDate(meet.date)}{meet.end_date ? ` to ${formatDate(meet.end_date)}` : ''}</span>
               <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium">{meet.pool}</span>
             </div>
           </div>

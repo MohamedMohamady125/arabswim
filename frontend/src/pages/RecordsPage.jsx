@@ -4,7 +4,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { getComputedRecords, getRecords, deleteRecord } from '../api/records'
 import { getCountries } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
-import { POOL_TYPES, AGE_GROUPS, MANUAL_RECORD_SCOPES } from '../utils/constants'
+import { POOL_TYPES, AGE_GROUPS, MANUAL_RECORD_SCOPES, formatDate } from '../utils/constants'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
@@ -114,7 +114,7 @@ export default function RecordsPage() {
                 <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell">{r.fina_points || '-'}</td>
                 <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell">{r.championship_name}</td>
                 <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell"><CountryFlag code={r.championship_country_code} flagUrl={r.championship_country_flag} name={r.championship_country} /></td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell">{r.date}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell">{formatDate(r.date)}</td>
               </tr>
             ))}
             {data.length === 0 && (
@@ -162,7 +162,7 @@ export default function RecordsPage() {
                 </td>
                 <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-mono font-medium whitespace-nowrap">{r.formatted_time}</td>
                 <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell">{r.location || '-'}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell whitespace-nowrap">{r.result_date}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell whitespace-nowrap">{formatDate(r.result_date)}</td>
                 {token && (
                   <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-right whitespace-nowrap">
                     <button onClick={() => navigate(`/records/${r.id}/edit`)} className="text-gray-400 hover:text-blue-600 mr-2" title="Edit">

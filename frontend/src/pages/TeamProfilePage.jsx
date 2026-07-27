@@ -4,6 +4,7 @@ import { getTeamProfile, getTeamTimes, getTeamMedals, getTeamProgression } from 
 import ProgressionChart from '../components/common/ProgressionChart'
 import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
+import { formatDate } from '../utils/constants'
 
 export default function TeamProfilePage() {
   const { id } = useParams()
@@ -264,7 +265,7 @@ export default function TeamProfilePage() {
                                 <td className="py-1.5 font-mono font-semibold">{r.time}</td>
                                 <td className="py-1.5 text-gray-600">{r.championship_name}</td>
                                 <td className="py-1.5 text-gray-500">{r.championship_location || r.championship_country}</td>
-                                <td className="py-1.5 text-gray-500">{r.championship_date}</td>
+                                <td className="py-1.5 text-gray-500">{formatDate(r.championship_date)}</td>
                                 <td className="py-1.5">{r.fina_points || '-'}</td>
                               </tr>
                             ))}
@@ -407,7 +408,7 @@ export default function TeamProfilePage() {
                         </div>
                         <div className="text-right text-xs text-gray-500">
                           <div>{m.championship_location || m.championship_country}</div>
-                          <div>{m.championship_date}</div>
+                          <div>{formatDate(m.championship_date)}</div>
                         </div>
                       </div>
                     ))}

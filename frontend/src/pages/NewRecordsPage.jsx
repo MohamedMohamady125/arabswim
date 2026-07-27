@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { getRecords } from '../api/records'
 import DataTable from '../components/common/DataTable'
 import CountryFlag from '../components/common/CountryFlag'
-import { RECORD_TYPES, formatTime } from '../utils/constants'
+import { RECORD_TYPES, formatTime, formatDate } from '../utils/constants'
 
 export default function NewRecordsPage() {
   const [records, setRecords] = useState([])
@@ -28,7 +28,7 @@ export default function NewRecordsPage() {
     { key: 'record', label: 'Record', render: (row) => row.formatted_time },
     { key: 'location', label: 'Location' },
     { key: 'record_type', label: 'Type' },
-    { key: 'result_date', label: 'Result Date' },
+    { key: 'result_date', label: 'Result Date', render: (row) => formatDate(row.result_date) },
   ]
 
   return (

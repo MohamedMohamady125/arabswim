@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { createCalendarEvent, getCalendarEvents, updateCalendarEvent, deleteCalendarEvent } from '../api/calendar'
 import { getChampionships, getChampionship, createChampionship, updateChampionship, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
-import { POOL_TYPES, mediaUrl } from '../utils/constants'
+import { POOL_TYPES, mediaUrl, formatDate } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
@@ -157,7 +157,7 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         <div>
           <div className="text-xs text-gray-500 mb-1">Date</div>
-          <div className="text-sm font-medium">{c.date}{c.end_date && c.end_date !== c.date ? ` to ${c.end_date}` : ''}</div>
+          <div className="text-sm font-medium">{formatDate(c.date)}{c.end_date && c.end_date !== c.date ? ` to ${formatDate(c.end_date)}` : ''}</div>
         </div>
         <div>
           <div className="text-xs text-gray-500 mb-1">Pool</div>
@@ -476,7 +476,7 @@ export default function CalendarPage() {
             <div className="flex items-center gap-3 text-sm text-gray-400 mt-1.5">
               <span>{c.pool === 'LCM' ? '50m Pool' : '25m Pool'}</span>
               {c.end_date && c.end_date !== c.date && (
-                <span>&mdash; {c.date} to {c.end_date}</span>
+                <span>&mdash; {formatDate(c.date)} to {formatDate(c.end_date)}</span>
               )}
             </div>
           </div>
@@ -719,7 +719,7 @@ export default function CalendarPage() {
                         <div className="flex items-center gap-3 text-sm text-gray-400 mt-1.5">
                           <span>50m Pool</span>
                           {ev.end_date && ev.end_date !== ev.date && (
-                            <span>&mdash; {dayjs(ev.date).format('DD/MM/YYYY')} to {dayjs(ev.end_date).format('DD/MM/YYYY')}</span>
+                            <span>&mdash; {formatDate(ev.date)} to {formatDate(ev.end_date)}</span>
                           )}
                         </div>
                       </div>
@@ -743,7 +743,7 @@ export default function CalendarPage() {
                       </div>
                       {ev.description && <p className="text-sm text-gray-500 mt-0.5 truncate">{ev.description}</p>}
                       {ev.end_date && ev.end_date !== ev.date && (
-                        <p className="text-xs text-gray-400 mt-0.5">{ev.date} to {ev.end_date}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{formatDate(ev.date)} to {formatDate(ev.end_date)}</p>
                       )}
                     </div>
                     {deleteBtn}

@@ -78,7 +78,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
   const H = mobile ? 560 + legendRows * 24 : 700
   const pL = mobile ? 76 : 110
   const pR = mobile ? 20 : 60
-  const pT = mobile ? (title ? 60 : 30) + legendRows * 24 : (title ? 90 : 50)
+  const pT = mobile ? (title ? 74 : 30) + legendRows * 24 : (title ? 104 : 50)
   const pB = mobile ? 58 : 60
   const plotL = pL, plotR = W - pR, plotT = pT, plotB = H - pB
   const pW = plotR - plotL, pH = plotB - plotT
@@ -155,7 +155,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
 
         {/* Title */}
         {title && (
-          <text x={W / 2} y={mobile ? 34 : 40} textAnchor="middle" fill="#0b1f38" fontSize={mobile ? 18 : 19} fontWeight="bold" letterSpacing="1">
+          <text x={W / 2} y={mobile ? 40 : 48} textAnchor="middle" fill="#0b1f38" fontSize={mobile ? 27 : 32} fontWeight="bold" letterSpacing="1">
             {title.toUpperCase()}
           </text>
         )}
@@ -166,7 +166,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
             const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
             const col = li % 2, row = Math.floor(li / 2)
             const x = pL + col * ((W - pL - pR) / 2)
-            const y = (title ? 52 : 20) + row * 24
+            const y = (title ? 62 : 20) + row * 24
             return (
               <g key={li}>
                 <line x1={x} y1={y} x2={x + 26} y2={y} stroke={color} strokeWidth="2.6" />
@@ -184,9 +184,9 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
             lx += line.event_name.length * 8 + 70
             return (
               <g key={li}>
-                <line x1={x} y1={title ? 64 : 24} x2={x + 36} y2={title ? 64 : 24} stroke={color} strokeWidth="2.6" />
-                <Triangle x={x + 18} y={title ? 64 : 24} color={color} />
-                <text x={x + 44} y={(title ? 64 : 24) + 4} fill="#0b1f38" fontSize="12" fontWeight="bold">{line.event_name}</text>
+                <line x1={x} y1={title ? 76 : 24} x2={x + 36} y2={title ? 76 : 24} stroke={color} strokeWidth="2.6" />
+                <Triangle x={x + 18} y={title ? 76 : 24} color={color} />
+                <text x={x + 44} y={(title ? 76 : 24) + 4} fill="#0b1f38" fontSize="12" fontWeight="bold">{line.event_name}</text>
               </g>
             )
           })

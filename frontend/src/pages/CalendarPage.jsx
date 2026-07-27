@@ -435,6 +435,66 @@ export default function CalendarPage() {
     grouped[key].events.push(ev)
   })
 
+  const renderMeetCard = (c) => {
+    const d = dayjs(c.date, 'DD/MM/YYYY')
+    const isSelected = selectedMeet?.id === c.id
+    return (
+      <div key={c.id}>
+        <div
+          onClick={() => setSelectedMeet(isSelected ? null : c)}
+          className={`bg-white border px-6 py-5 flex items-center gap-6 cursor-pointer transition-all hover:shadow-md ${
+            isSelected ? 'border-cyan-500 shadow-md rounded-t-xl' : 'border-gray-200 rounded-xl'
+          }`}
+        >
+          {/* Meet photo or date badge */}
+          {c.meet_photo ? (
+            <div className="w-24 h-20 rounded-xl overflow-hidden shrink-0 shadow">
+              <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
+              <span className="text-3xl font-bold leading-none">{d.date()}</span>
+              <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{MONTH_SHORT[d.month()]}</span>
+            </div>
+          )}
+
+          {/* Meet info */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-lg text-gray-900 truncate">{c.name}</h3>
+            <div className="flex items-center gap-3 text-sm text-gray-500 mt-1.5">
+              {c.location && (
+                <span className="flex items-center gap-1">
+                  <span className="text-gray-400">&#x1F4CD;</span>
+                  {c.location}
+                  {c.country_detail && <span>, {c.country_detail.name}</span>}
+                </span>
+              )}
+              {!c.location && c.country_detail && (
+                <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-sm text-gray-400 mt-1.5">
+              <span>{c.pool === 'LCM' ? '50m Pool' : '25m Pool'}</span>
+              {c.end_date && c.end_date !== c.date && (
+                <span>&mdash; {c.date} to {c.end_date}</span>
+              )}
+            </div>
+          </div>
+
+          {/* Arrow */}
+          <span className={`text-gray-400 text-lg transition-transform ${isSelected ? 'rotate-90' : ''}`}>&#x276F;</span>
+        </div>
+
+        {/* Expanded meet details */}
+        {isSelected && (
+          <MeetExpandedPanel meet={c} navigate={navigate} countries={countries} onUpdate={(updated) => {
+            setChampionships(prev => prev.map(ch => ch.id === updated.id ? { ...ch, ...updated } : ch))
+          }} onDelete={handleDeleteCalendarMeet} />
+        )}
+      </div>
+    )
+  }
+
   const handleAddEvent = async (e) => {
     e.preventDefault()
     setAddLoading(true)
@@ -584,10 +644,14 @@ export default function CalendarPage() {
             <div className="flex-1 h-px bg-cyan-200" />
           </div>
 
-          {/* Calendar events for this month */}
-          {group.events.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {group.events.map(ev => {
+          {/* Events + meets for this month — latest first */}
+          <div className="space-y-3">
+              {[...group.events.map(item => ({ kind: 'event', ts: dayjs(item.date).valueOf(), item })),
+                ...group.meets.map(item => ({ kind: 'meet', ts: dayjs(item.date, 'DD/MM/YYYY').valueOf(), item }))]
+                .sort((a, b) => b.ts - a.ts)
+                .map(({ kind, item }) => {
+                if (kind === 'meet') return renderMeetCard(item)
+                const ev = item
                 const d = dayjs(ev.date)
                 const isMeetType = ev.event_type !== 'CUSTOM'
                 const deleteBtn = (
@@ -686,71 +750,6 @@ export default function CalendarPage() {
                   </div>
                 )
               })}
-            </div>
-          )}
-
-          {/* Meet cards */}
-          <div className="space-y-3">
-            {group.meets.map(c => {
-              const d = dayjs(c.date, 'DD/MM/YYYY')
-              const isSelected = selectedMeet?.id === c.id
-
-              return (
-                <div key={c.id}>
-                  <div
-                    onClick={() => setSelectedMeet(isSelected ? null : c)}
-                    className={`bg-white border px-6 py-5 flex items-center gap-6 cursor-pointer transition-all hover:shadow-md ${
-                      isSelected ? 'border-cyan-500 shadow-md rounded-t-xl' : 'border-gray-200 rounded-xl'
-                    }`}
-                  >
-                    {/* Meet photo or date badge */}
-                    {c.meet_photo ? (
-                      <div className="w-24 h-20 rounded-xl overflow-hidden shrink-0 shadow">
-                        <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
-                        <span className="text-3xl font-bold leading-none">{d.date()}</span>
-                        <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{MONTH_SHORT[d.month()]}</span>
-                      </div>
-                    )}
-
-                    {/* Meet info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-lg text-gray-900 truncate">{c.name}</h3>
-                      <div className="flex items-center gap-3 text-sm text-gray-500 mt-1.5">
-                        {c.location && (
-                          <span className="flex items-center gap-1">
-                            <span className="text-gray-400">&#x1F4CD;</span>
-                            {c.location}
-                            {c.country_detail && <span>, {c.country_detail.name}</span>}
-                          </span>
-                        )}
-                        {!c.location && c.country_detail && (
-                          <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-gray-400 mt-1.5">
-                        <span>{c.pool === 'LCM' ? '50m Pool' : '25m Pool'}</span>
-                        {c.end_date && c.end_date !== c.date && (
-                          <span>&mdash; {c.date} to {c.end_date}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Arrow */}
-                    <span className={`text-gray-400 text-lg transition-transform ${isSelected ? 'rotate-90' : ''}`}>&#x276F;</span>
-                  </div>
-
-                  {/* Expanded meet details */}
-                  {isSelected && (
-                    <MeetExpandedPanel meet={c} navigate={navigate} countries={countries} onUpdate={(updated) => {
-                      setChampionships(prev => prev.map(ch => ch.id === updated.id ? { ...ch, ...updated } : ch))
-                    }} onDelete={handleDeleteCalendarMeet} />
-                  )}
-                </div>
-              )
-            })}
           </div>
         </div>
       ))}

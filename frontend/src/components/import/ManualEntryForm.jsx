@@ -25,7 +25,7 @@ export default function ManualEntryForm({ onComplete }) {
 
   // Result state
   const [events, setEvents] = useState([])
-  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '' })
+  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', age: '' })
 
   // Reference data
   const [countries, setCountries] = useState([])
@@ -80,6 +80,25 @@ export default function ManualEntryForm({ onComplete }) {
       }).catch(() => {})
     }, 400)
   }, [resultForm.time, resultForm.event, selectedSwimmer, selectedChamp])
+
+  // Auto-fill age at competition from swimmer DOB + meet date (editable)
+  useEffect(() => {
+    if (!selectedSwimmer?.date_of_birth || !selectedChamp?.date) return
+    const dob = new Date(selectedSwimmer.date_of_birth)
+    let champDate
+    const ds = String(selectedChamp.date)
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(ds)) {
+      const [dd, mm, yy] = ds.split('/')
+      champDate = new Date(`${yy}-${mm}-${dd}`)
+    } else {
+      champDate = new Date(ds)
+    }
+    if (isNaN(dob.getTime()) || isNaN(champDate.getTime())) return
+    let age = champDate.getFullYear() - dob.getFullYear()
+    const m = champDate.getMonth() - dob.getMonth()
+    if (m < 0 || (m === 0 && champDate.getDate() < dob.getDate())) age--
+    if (age > 0 && age < 100) setResultForm(f => ({ ...f, age: String(age) }))
+  }, [selectedSwimmer, selectedChamp])
 
   useEffect(() => {
     if (newChamp.classification) {
@@ -165,6 +184,7 @@ export default function ManualEntryForm({ onComplete }) {
         time_centiseconds: timeCentiseconds,
         team: resultForm.team || '',
         fina_points: resultForm.fina_points ? parseInt(resultForm.fina_points) : null,
+        age_at_competition: resultForm.age ? parseInt(resultForm.age) : null,
       })
       setSuccess({
         swimmer_name: selectedSwimmer.name,
@@ -180,7 +200,7 @@ export default function ManualEntryForm({ onComplete }) {
   }
 
   const handleAddAnother = () => {
-    setResultForm({ event: '', time: '', team: '', fina_points: '' })
+    setResultForm(f => ({ event: '', time: '', team: '', fina_points: '', age: f.age }))
     setSuccess(null)
   }
 
@@ -424,6 +444,11 @@ export default function ManualEntryForm({ onComplete }) {
             <label className="block text-sm font-medium mb-1">FINA <span className="text-xs text-gray-400">(auto-calculated)</span></label>
             <input type="number" value={resultForm.fina_points} onChange={(e) => setResultForm({ ...resultForm, fina_points: e.target.value })}
               className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50 font-medium" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Age <span className="text-xs text-gray-400">(at competition)</span></label>
+            <input type="number" min="4" max="99" value={resultForm.age} onChange={(e) => setResultForm({ ...resultForm, age: e.target.value })}
+              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. 16" />
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium mb-1">Team / Club</label>

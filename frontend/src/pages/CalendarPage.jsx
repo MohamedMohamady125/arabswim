@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { createCalendarEvent, getCalendarEvents, updateCalendarEvent, deleteCalendarEvent } from '../api/calendar'
 import { getChampionships, getChampionship, createChampionship, updateChampionship, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
+import { getSwimmerBirthdays } from '../api/swimmers'
 import { POOL_TYPES, mediaUrl, formatDate } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
 import dayjs from 'dayjs'
@@ -332,6 +333,36 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = 
   )
 }
 
+function TodayBirthdays({ navigate }) {
+  const [birthdays, setBirthdays] = useState([])
+
+  useEffect(() => {
+    const today = new Date()
+    getSwimmerBirthdays(today.getMonth() + 1)
+      .then(res => setBirthdays((res.data || []).filter(s => s.day === today.getDate())))
+      .catch(() => {})
+  }, [])
+
+  if (birthdays.length === 0) return null
+
+  return (
+    <div className="bg-gradient-to-r from-pink-50 to-amber-50 border border-pink-200 rounded-xl p-4 mb-5">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-lg">🎂</span>
+        <h3 className="font-bold text-sm text-gray-800">Birthdays Today</h3>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {birthdays.map(s => (
+          <button key={s.id} onClick={() => navigate(`/swimmers/${s.id}`)}
+            className="bg-white border border-pink-200 rounded-full px-3 py-1 text-sm font-medium text-gray-700 hover:border-pink-400 hover:text-pink-700 transition-colors">
+            {s.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function CalendarPage() {
   const navigate = useNavigate()
   const [championships, setChampionships] = useState([])
@@ -605,6 +636,9 @@ export default function CalendarPage() {
     <div>
       {/* Featured upcoming meet */}
       {upcomingMeet && <FeaturedMeet meet={upcomingMeet} navigate={navigate} />}
+
+      {/* Today's birthdays */}
+      <TodayBirthdays navigate={navigate} />
 
       {/* Filters */}
       <div className="flex items-center justify-between mb-6">

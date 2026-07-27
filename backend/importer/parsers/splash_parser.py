@@ -125,7 +125,14 @@ SKIP_KEYWORDS = (
     'splash meet manager', 'registered to', 'liste résultats',
     'liste resultats',
 )
-SKIP_PREFIXES = ('points:', 'rang ', 'rang\t')
+SKIP_PREFIXES = ('points:', 'rang ', 'rang\t', 'minima')
+
+# Qualifying-time ("MINIMA") lines in Algerian PDFs, e.g.
+# "MINIMA 13 - 14: 30.57; 15 - 16: 29.67; 17 - 18: 27.28".
+# They are time limits, not results; also match wrapped continuation
+# lines that are just "age - age: time" pairs.
+_MINIMA_PAIRS_RE = re.compile(
+    r'^(\d{1,2}\s*-\s*\d{1,2}\s*:\s*\d{1,2}[:.]\d{2}(\.\d{2})?[;,\s]*)+$')
 
 
 def normalize_name_splash(name):
@@ -324,6 +331,9 @@ def parse(text):
         if any(lower.startswith(p) for p in SKIP_PREFIXES):
             continue
         if re.match(r'^=+\s*PAGE', line):
+            continue
+        # Qualifying-time limits, not results
+        if 'minima' in lower or _MINIMA_PAIRS_RE.match(line):
             continue
 
         # Standalone category line

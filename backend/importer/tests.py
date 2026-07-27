@@ -2054,3 +2054,27 @@ class CalculatePointsCoverageTests(SimpleTestCase):
                 self.assertGreater(
                     calculate_points(3000, name, 'M', pool), 0,
                     f'{name} scored 0 at {pool}')
+
+
+class SplashMinimaLineTests(SimpleTestCase):
+    """Algerian PDFs list qualifying-time limits as 'MINIMA' lines. They are
+    time limits, not results, and must never be parsed as swimmers/teams."""
+
+    def test_minima_lines_are_skipped(self):
+        from importer.parsers import splash_parser
+        text = (
+            'CHAMPIONNAT TEST 2026\n'
+            'ORAN, 28/06/2026\n'
+            'Epreuve 1 Messieurs, 50m Nage Libre\n'
+            'MINIMA 13 - 14: 30.57; 15 - 16: 29.67; 17 - 18: 27.28\n'
+            '13 - 14: 30.57; 15 - 16: 29.67\n'
+            '1. BENBARA, MEHDI NAZIM 98 MC ALGER 22.67 703\n'
+            '2. ARDJOUNE, ABDELLAH 01 MC ALGER 23.45 650\n'
+        )
+        meet = splash_parser.parse(text)
+        names = {r.swimmer_name for ev in meet.events for r in ev.results}
+        self.assertEqual(names, {'Mehdi Nazim BENBARA', 'Abdellah ARDJOUNE'})
+        for n in names:
+            self.assertNotIn('MINIMA', n.upper())
+        # No junk events created from minima lines
+        self.assertEqual(len(meet.events), 1)

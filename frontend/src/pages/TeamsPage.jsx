@@ -69,11 +69,11 @@ function MergeTeamsModal({ onClose, onMerged }) {
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl my-4 sm:my-8" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b">
           <div>
             <h2 className="text-lg font-bold text-gray-800">Merge Teams</h2>
             <p className="text-xs text-gray-400 mt-0.5">Select two teams to merge — all data transfers to the kept team</p>
@@ -82,7 +82,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
         </div>
 
         {result ? (
-          <div className="p-6 space-y-4">
+          <div className="p-4 sm:p-6 space-y-4">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
               <svg className="w-12 h-12 mx-auto mb-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               <p className="font-bold text-emerald-800 text-lg">{result.message}</p>
@@ -109,7 +109,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
             </div>
           </div>
         ) : (
-          <div className="p-6 space-y-5">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
             {/* Selection area */}
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-start">
               {/* KEEP team */}
@@ -132,7 +132,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
                   <div>
                     <input value={searchKeep} onChange={e => setSearchKeep(e.target.value)} placeholder="Search team to keep..."
                       className="w-full border rounded-lg px-3 py-2 text-sm mb-2" />
-                    <div className="max-h-48 overflow-y-auto border rounded-lg divide-y">
+                    <div className="max-h-40 sm:max-h-48 overflow-y-auto border rounded-lg divide-y">
                       {filteredKeep.slice(0, 50).map(t => (
                         <button key={t.id} onClick={() => setKeepId(t.id)}
                           className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-emerald-50 text-left transition-colors">
@@ -152,7 +152,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
               </div>
 
               {/* Swap + arrow */}
-              <div className="flex md:flex-col items-center justify-center gap-2 py-4">
+              <div className="flex md:flex-col items-center justify-center gap-2 py-0 md:py-4">
                 {keepId && removeId && (
                   <button onClick={handleSwap} className="p-2 rounded-lg border hover:bg-gray-50 transition-colors" title="Swap">
                     <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
@@ -182,7 +182,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
                   <div>
                     <input value={searchRemove} onChange={e => setSearchRemove(e.target.value)} placeholder="Search team to remove..."
                       className="w-full border rounded-lg px-3 py-2 text-sm mb-2" />
-                    <div className="max-h-48 overflow-y-auto border rounded-lg divide-y">
+                    <div className="max-h-40 sm:max-h-48 overflow-y-auto border rounded-lg divide-y">
                       {filteredRemove.slice(0, 50).map(t => (
                         <button key={t.id} onClick={() => setRemoveId(t.id)}
                           className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-red-50 text-left transition-colors">
@@ -227,7 +227,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
             <div className="flex justify-end gap-2 pt-2 border-t">
               <button onClick={onClose} className="px-4 py-2.5 text-sm rounded-xl border text-gray-500 hover:bg-gray-50">Cancel</button>
               <button onClick={handleMerge} disabled={!keepId || !removeId || merging}
-                className="px-6 py-2.5 text-sm rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                className="flex-1 sm:flex-none justify-center px-6 py-2.5 text-sm rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
                 {merging ? (
                   <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Merging...</>
                 ) : (

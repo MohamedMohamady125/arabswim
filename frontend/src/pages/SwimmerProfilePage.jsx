@@ -103,6 +103,104 @@ function PersonalBestsTable({ events, onEventClick, selectedEvent }) {
 }
 
 /* ───────── Time History ───────── */
+/* ───────── Splits breakdown (chart + table with lap diffs) ───────── */
+function splitTimeToCs(t) {
+  if (!t) return null
+  const m = String(t).trim().match(/^(?:(\d{1,2}):)?(\d{1,2})\.(\d{1,2})$/)
+  if (!m) return null
+  return (parseInt(m[1] || 0, 10) * 60 + parseInt(m[2], 10)) * 100 + parseInt(m[3].padEnd(2, '0'), 10)
+}
+
+function csToSplitTime(cs) {
+  if (cs == null) return '-'
+  const neg = cs < 0
+  const a = Math.abs(cs)
+  const min = Math.floor(a / 6000)
+  const sec = Math.floor((a % 6000) / 100)
+  const hun = a % 100
+  const body = min > 0
+    ? `${min}:${String(sec).padStart(2, '0')}.${String(hun).padStart(2, '0')}`
+    : `${sec}.${String(hun).padStart(2, '0')}`
+  return neg ? `-${body}` : body
+}
+
+function SplitsBreakdown({ splits, eventName }) {
+  // splits are cumulative {distance, time}; derive lap times + diffs
+  const stroke = (eventName || '').replace(/^\d+\s*[Mm]?\s*/, '').trim() || ''
+  const rows = []
+  let prevCum = 0
+  let prevLap = null
+  for (let i = 0; i < splits.length; i++) {
+    const cumCs = splitTimeToCs(splits[i].time)
+    const lapCs = cumCs != null ? cumCs - prevCum : null
+    const diffCs = lapCs != null && prevLap != null ? lapCs - prevLap : null
+    rows.push({ distance: splits[i].distance, cum: splits[i].time, cumCs, lapCs, diffCs })
+    if (cumCs != null) prevCum = cumCs
+    if (lapCs != null) prevLap = lapCs
+  }
+  const laps = rows.filter(r => r.lapCs != null)
+  const totalCum = rows.length ? rows[rows.length - 1].cum : null
+
+  // Mini line chart of lap times
+  let chart = null
+  if (laps.length >= 2) {
+    const W = 460, H = 130, PX = 34, PY = 22
+    const min = Math.min(...laps.map(r => r.lapCs))
+    const max = Math.max(...laps.map(r => r.lapCs))
+    const range = Math.max(max - min, 50)
+    const x = (i) => PX + (i * (W - 2 * PX)) / (laps.length - 1)
+    const y = (v) => PY + ((v - min) / range) * (H - 2 * PY)
+    const pts = laps.map((r, i) => `${x(i)},${y(r.lapCs)}`).join(' ')
+    chart = (
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[460px] h-auto">
+        <polyline points={pts} fill="none" stroke="#0284c7" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {laps.map((r, i) => (
+          <g key={i}>
+            <circle cx={x(i)} cy={y(r.lapCs)} r="3.5" fill="#0284c7" />
+            <text x={x(i)} y={y(r.lapCs) - 8} textAnchor="middle" className="fill-sky-700" style={{ fontSize: 10, fontWeight: 700, fontFamily: 'ui-monospace, monospace' }}>{csToSplitTime(r.lapCs)}</text>
+            <text x={x(i)} y={H - 4} textAnchor="middle" className="fill-gray-400" style={{ fontSize: 9, fontWeight: 600 }}>{r.distance ? `${r.distance}m` : `#${i + 1}`}</text>
+          </g>
+        ))}
+      </svg>
+    )
+  }
+
+  return (
+    <div className="max-w-md">
+      {chart && <div className="mb-2">{chart}</div>}
+      <table className="w-full text-xs">
+        <thead>
+          <tr>
+            <th className="py-1 pr-2 text-left text-[9px] font-bold text-gray-400 uppercase tracking-wider"></th>
+            <th className="py-1 px-2 text-right text-[9px] font-bold text-gray-400 uppercase tracking-wider">Split</th>
+            <th className="py-1 px-2 text-right text-[9px] font-bold text-gray-400 uppercase tracking-wider">Diff</th>
+            <th className="py-1 pl-2 text-right text-[9px] font-bold text-gray-400 uppercase tracking-wider">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t border-sky-100/70">
+              <td className="py-1.5 pr-2 font-semibold text-gray-600 whitespace-nowrap">{r.distance ? `${r.distance} ${stroke}`.trim() : `Split ${i + 1}`}</td>
+              <td className="py-1.5 px-2 text-right font-mono font-bold text-gray-800">{r.lapCs != null ? csToSplitTime(r.lapCs) : '-'}</td>
+              <td className={`py-1.5 px-2 text-right font-mono font-semibold ${r.diffCs == null ? 'text-gray-300' : r.diffCs > 0 ? 'text-red-500' : r.diffCs < 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
+                {r.diffCs == null ? '—' : `${r.diffCs > 0 ? '+' : r.diffCs < 0 ? '-' : ''}${csToSplitTime(Math.abs(r.diffCs))}`}
+              </td>
+              <td className="py-1.5 pl-2 text-right font-mono text-gray-500">{r.cum}</td>
+            </tr>
+          ))}
+          {totalCum && (
+            <tr className="border-t-2 border-sky-200">
+              <td className="py-1.5 pr-2 font-black text-gray-700">Total</td>
+              <td></td><td></td>
+              <td className="py-1.5 pl-2 text-right font-mono font-black text-gray-800">{totalCum}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) {
   const [expandedSplits, setExpandedSplits] = useState(null)
   if (!selectedEvent) {
@@ -208,15 +306,8 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                   </tr>
                   {showSplits && (
                     <tr className="bg-sky-50/60 border-b border-gray-50">
-                      <td colSpan={8} className="px-3 py-2">
-                        <div className="flex flex-wrap gap-1.5">
-                          {splits.map((s, j) => (
-                            <span key={j} className="inline-flex items-center gap-1.5 bg-white border border-sky-100 rounded-lg px-2 py-1 shadow-sm">
-                              <span className="text-[9px] font-bold text-gray-400">{s.distance ? `${s.distance}m` : `#${j + 1}`}</span>
-                              <span className="text-[11px] font-mono font-semibold text-gray-700">{s.time}</span>
-                            </span>
-                          ))}
-                        </div>
+                      <td colSpan={8} className="px-3 py-3">
+                        <SplitsBreakdown splits={splits} eventName={selectedEvent.event_name} />
                       </td>
                     </tr>
                   )}
@@ -1841,6 +1932,7 @@ const TABS = [
   { key: 'records', label: 'Records', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg> },
   { key: 'progression', label: 'Progression', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg> },
   { key: 'stats', label: 'Stats', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg> },
+  { key: 'compare', label: 'Compare', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /></svg> },
   { key: 'transfers', label: 'Transfers', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg> },
   { key: 'gallery', label: 'Gallery', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H3.75A2.25 2.25 0 001.5 6v12.75c0 1.243 1.007 2.25 2.25 2.25z" /></svg> },
 ]
@@ -1932,11 +2024,7 @@ export default function SwimmerProfilePage() {
               }`}>
               {swimmer.is_retired ? 'Active' : 'Retired'}
             </button>
-            <button onClick={() => navigate(`/swimmers/compare?ids=${id}`)}
-              className="bg-sky-500/20 hover:bg-sky-500/30 backdrop-blur-sm text-sky-100 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 ring-1 ring-sky-400/30 hover:ring-sky-400/50">
-              Compare
-            </button>
-            <button onClick={() => navigate(`/swimmers/${id}/edit`)}
+<button onClick={() => navigate(`/swimmers/${id}/edit`)}
               className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20">
               Edit
             </button>
@@ -2060,7 +2148,7 @@ export default function SwimmerProfilePage() {
       {/* Tabs */}
       <div className="bg-white rounded-2xl border shadow-sm p-1 sm:p-1.5 mb-4 sm:mb-6 flex gap-0.5 sm:gap-1 overflow-x-auto animate-fade-in-up stagger-4 scrollbar-hide">
         {TABS.map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+          <button key={tab.key} onClick={() => tab.key === 'compare' ? navigate(`/swimmers/compare?ids=${id}`) : setActiveTab(tab.key)}
             className={`relative flex items-center gap-1 sm:gap-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
               activeTab === tab.key
                 ? 'bg-sky-600 text-white shadow-md shadow-sky-200'

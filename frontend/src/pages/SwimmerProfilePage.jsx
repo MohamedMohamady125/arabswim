@@ -6,6 +6,8 @@ import { getQualifyingStandards } from '../api/qualifyingTimes'
 import { getMediaItems } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 import ProgressionChart from '../components/common/ProgressionChart'
+import { AFRICA_PATH, ASIA_PATH, ARAB_PATH, GCC_PATH } from '../assets/mapPaths'
+import { FaSchoolFlag, FaGraduationCap, FaLandmarkFlag } from 'react-icons/fa6'
 
 
 /* ───────── Animated number counter ───────── */
@@ -244,33 +246,33 @@ const MEDAL_COMPS = [
   // World: wireframe globe over waves
   { label: 'WORLD', match: 'World', color: '#2b52c9', fg: 'white',
     icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="9" r="6.3"/><ellipse cx="12" cy="9" rx="2.8" ry="6.3"/><path d="M5.9 9h12.2M6.6 5.7h10.8M6.6 12.3h10.8" strokeWidth="1.1"/><path d="M3.5 18.4c2.2-1.7 4.3-1.7 6.5 0s4.3 1.7 6.5 0" strokeWidth="1.8" strokeLinecap="round"/><path d="M5.5 21.4c1.8-1.4 3.6-1.4 5.4 0s3.6 1.4 5.4 0" strokeWidth="1.8" strokeLinecap="round"/></svg> },
-  // Arab: Arab world map (North Africa + Arabian peninsula)
+  // Arab: geographically accurate Arab world map (Natural Earth data)
   { label: 'ARAB', match: 'Arab', color: '#f2960f', fg: 'white',
-    icon: <svg viewBox="0 0 32 24" className="w-5 h-4" fill="currentColor"><path d="M2.5 8.5l2.6-2.2 3.4.4 2.2-1.2 3 .6 1.6-1.4 2.6 1 .6 2.2 2 .4 1.6-1.4 2.4 1.2-.4 2.4 1.8 1.6 2.6-.6 1.4 2-1.8 2.4.6 2.2-2.4 1.8-1.6-.8-1.4 2.6-2.4-.6-.8-2.4-2.6.2-1.2 2.2-2-.4-.8-2.6-2.8-.4-1.4 1.6-2.6-2.6-2.2.4-1.4-2.4 1-2-1.6-2.2z"/><path d="M23.5 13.5l1.8 1.2-.6 2-1.8.8-1-1.6.6-1.8z" opacity="0"/></svg> },
-  // Asian: Asia continent silhouette
+    icon: <svg viewBox="0 0 64 64" className="w-5 h-5"><path d={ARAB_PATH} fill="currentColor"/></svg> },
+  // Asian: geographically accurate Asia map (Natural Earth data)
   { label: 'ASIAN', match: 'Asian', color: '#12939e', fg: 'white',
-    icon: <svg viewBox="0 0 32 28" className="w-5 h-4" fill="currentColor"><path d="M3 9l2.6-3.4 4-1.6 4.6-1 5.4.4 4.6 1.2 3.6 2 2.2 3-1 3.2 1 2.6-2.2 1.4-1.8-.8-1.4 2.8-2.6.6-1.2 3-1.8 3.4-1.6-2.6-.6-3.2-2.4-.6-1.2 2.4-2-.6-.6-3-2.2-1.2-1.6-2.6-2-.8-1-2.6 1.4-2z"/><path d="M23.5 21.5l1.6 1.2-.8 2.2-1.8.6-.8-1.8 1-1.6z"/><path d="M27 19.5l1.4.8-.4 1.6-1.4.2-.4-1.4z"/></svg> },
-  // African: Africa continent silhouette
+    icon: <svg viewBox="0 0 64 64" className="w-5 h-5"><path d={ASIA_PATH} fill="currentColor"/></svg> },
+  // African: geographically accurate Africa map (Natural Earth data)
   { label: 'AFRICAN', match: 'African', color: '#2aa63f', fg: 'white',
-    icon: <svg viewBox="0 0 24 28" className="w-4 h-5" fill="currentColor"><path d="M8 2.5l3.4-.8 2.6.8 3.2.2 2.2 2.2-.6 2.6 1.6 2.4-1.2 1.6 1 2.2-2.4 1.4-.4 3.4-2.2 2.4-.6 3.6-2.2 2.6-1.8-.4-1-3-2-2-.8-3.2.4-2.8-2.2-2-.6-2.8 1.4-2.4-.6-2.2 2.4-1.4z"/><ellipse cx="19.6" cy="21.5" rx="1.5" ry="2.6" transform="rotate(24 19.6 21.5)"/></svg> },
-  // GCC: Arabian peninsula silhouette
+    icon: <svg viewBox="0 0 64 64" className="w-5 h-5"><path d={AFRICA_PATH} fill="currentColor"/></svg> },
+  // GCC: geographically accurate Gulf states map (Natural Earth data)
   { label: 'GCC', match: 'GCC', color: '#8b46d9', fg: 'white',
-    icon: <svg viewBox="0 0 24 28" className="w-4 h-5" fill="currentColor"><path d="M5 3l4.6 1.4 2.8-1.2 4.2 2.6 1.2 3.6 2.6 1.8-.8 3-2.4 2.2.4 3-3.4 2.4-1.6 3.6-3.4-1.8-.8-4.2-2.4-2.2-1.2-3.4 1.2-3.8-.6-3.6z"/></svg> },
+    icon: <svg viewBox="0 0 64 64" className="w-5 h-5"><path d={GCC_PATH} fill="currentColor"/></svg> },
   // Mediterranean: sea waves
   { label: 'MEDITERRANEAN', match: 'Mediterranean', color: '#2196e8', fg: 'white',
     icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M3 8c2.5-2 5-2 7.5 0s5 2 7.5 0"/><path d="M3 13c2.5-2 5-2 7.5 0s5 2 7.5 0"/><path d="M3 18c2.5-2 5-2 7.5 0s5 2 7.5 0"/></svg> },
   // Islamic: interlaced eight-pointed star pattern
   { label: 'ISLAMIC', match: 'Islamic', color: '#d9a218', fg: 'white',
     icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="6.3" y="6.3" width="11.4" height="11.4"/><rect x="6.3" y="6.3" width="11.4" height="11.4" transform="rotate(45 12 12)"/><circle cx="12" cy="12" r="3.6"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg> },
-  // School: schoolhouse with flag and clock
+  // School: schoolhouse with flag (FontAwesome)
   { label: 'SCHOOL', match: 'School', color: '#e34040', fg: 'white',
-    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><rect x="11.6" y="2" width="0.9" height="4"/><path d="M12.5 2h3.4l-1.1 1.2 1.1 1.2h-3.4z"/><path d="M4.5 12L12 6l7.5 6v1.4h-15z"/><circle cx="12" cy="10.8" r="1.5" fill="#e34040"/><circle cx="12" cy="10.8" r="1.5" fill="none" stroke="white" strokeWidth="0.7"/><path d="M12 9.9v.9l.6.4" stroke="white" strokeWidth="0.6" fill="none"/><rect x="5" y="14" width="14" height="6.5"/><rect x="6.8" y="15.4" width="2.2" height="2.6" fill="#e34040"/><rect x="15" y="15.4" width="2.2" height="2.6" fill="#e34040"/><path d="M10.8 20.5v-3c0-.8.5-1.4 1.2-1.4s1.2.6 1.2 1.4v3z" fill="#e34040"/><rect x="3.5" y="20.5" width="17" height="1.3"/></svg> },
-  // University: graduation cap with tassel
+    icon: <FaSchoolFlag className="w-4 h-4" /> },
+  // University: graduation cap (FontAwesome)
   { label: 'UNIVERSITY', match: 'University', color: '#e8447a', fg: 'white',
-    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 4L2 9l10 5 10-5-10-5z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5l-6 3-6-3z"/><path d="M20.6 9.6v5.2h1.1V9.6z"/><circle cx="21.15" cy="15.6" r="1"/></svg> },
-  // National: government building with flag
+    icon: <FaGraduationCap className="w-4 h-4" /> },
+  // National: government landmark with flag (FontAwesome)
   { label: 'NATIONAL', match: 'National', color: '#1d4ed8', fg: 'white',
-    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><rect x="11.6" y="1.5" width="0.9" height="4"/><path d="M12.5 1.5h3.2l-1 1.1 1 1.1h-3.2z"/><path d="M4.5 10L12 5.5l7.5 4.5v1.2h-15z"/><rect x="5.5" y="12" width="1.9" height="6"/><rect x="9.1" y="12" width="1.9" height="6"/><rect x="13" y="12" width="1.9" height="6"/><rect x="16.6" y="12" width="1.9" height="6"/><rect x="4" y="18.7" width="16" height="1.6"/><rect x="3" y="20.9" width="18" height="1.4"/></svg> },
+    icon: <FaLandmarkFlag className="w-4 h-4" /> },
   // Other: star in a circle
   { label: 'OTHER', match: 'Other', color: '#79838f', fg: 'white',
     icon: <svg viewBox="0 0 24 24" className="w-4 h-4"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.8"/><path d="M12 6.8l1.5 3.1 3.4.5-2.5 2.4.6 3.4-3-1.6-3 1.6.6-3.4-2.5-2.4 3.4-.5z" fill="currentColor"/></svg> },

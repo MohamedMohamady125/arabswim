@@ -16,6 +16,7 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-easy-crop": "^6.0.2",
+    "react-icons": "^5.7.0",
     "react-router-dom": "^7.18.0",
     "recharts": "^3.9.2"
   },
@@ -25,11 +26,14 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "d3-geo": "^3.1.1",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
     "tailwindcss": "^4.3.1",
-    "vite": "^8.0.12"
+    "topojson-client": "^3.1.0",
+    "vite": "^8.0.12",
+    "world-atlas": "^2.0.2"
   }
 }

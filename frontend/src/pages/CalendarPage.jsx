@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createCalendarEvent, getCalendarEvents, updateCalendarEvent, deleteCalendarEvent } from '../api/calendar'
-import { getChampionships, createChampionship, updateChampionship, deleteChampionship } from '../api/championships'
+import { getChampionships, getChampionship, createChampionship, updateChampionship, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import { POOL_TYPES, mediaUrl } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
@@ -459,6 +459,11 @@ export default function CalendarPage() {
       const champRes = await createChampionship(fd)
       await updateCalendarEvent(upgradingEvent.id, { championship: champRes.data.id })
       setCalendarEvents(prev => prev.map(ev => ev.id === upgradingEvent.id ? { ...ev, championship: champRes.data.id } : ev))
+      // Show the new meet card immediately (even if the year filter would hide it)
+      const champ = { ...champRes.data }
+      if (/^\d{4}-/.test(champ.date || '')) champ.date = dayjs(champ.date).format('DD/MM/YYYY')
+      if (/^\d{4}-/.test(champ.end_date || '')) champ.end_date = dayjs(champ.end_date).format('DD/MM/YYYY')
+      setChampionships(prev => prev.some(c => c.id === champ.id) ? prev : [...prev, champ])
       loadChampionships()
       loadFeatured()
       setSelectedMeet({ id: champRes.data.id })
@@ -559,12 +564,25 @@ export default function CalendarPage() {
                   </button>
                 )
                 if (isMeetType) {
-                  // Meet/championship calendar event — styled like a meet card
+                  // Meet/championship calendar event — rendered exactly like a
+                  // meet card. Clicking loads the linked championship (or asks
+                  // for the missing details) then expands the full meet panel.
                   return (
                     <div key={`ev-${ev.id}`}
-                      onClick={() => {
-                        if (ev.championship) navigate(`/meets/${ev.championship}`)
-                        else setUpgradingEvent(ev)
+                      onClick={async () => {
+                        if (ev.championship) {
+                          try {
+                            const res = await getChampionship(ev.championship)
+                            const champ = { ...res.data }
+                            // Detail endpoint returns ISO dates; meet cards expect DD/MM/YYYY
+                            if (/^\d{4}-/.test(champ.date || '')) champ.date = dayjs(champ.date).format('DD/MM/YYYY')
+                            if (/^\d{4}-/.test(champ.end_date || '')) champ.end_date = dayjs(champ.end_date).format('DD/MM/YYYY')
+                            setChampionships(prev => prev.some(c => c.id === champ.id) ? prev : [...prev, champ])
+                            setSelectedMeet({ id: champ.id })
+                          } catch {
+                            navigate(`/meets/${ev.championship}`)
+                          }
+                        } else setUpgradingEvent(ev)
                       }}
                       className="bg-white border border-gray-200 rounded-xl px-6 py-5 flex items-center gap-6 transition-all hover:shadow-md cursor-pointer">
                       <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
@@ -572,18 +590,24 @@ export default function CalendarPage() {
                         <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{MONTH_SHORT[d.month()]}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-lg text-gray-900 truncate">{ev.title}</h3>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${EVENT_TYPE_COLORS[ev.event_type] || EVENT_TYPE_COLORS.CUSTOM}`}>
-                            {ev.event_type}
-                          </span>
-                        </div>
-                        {ev.description && <p className="text-sm text-gray-500 mt-1.5 truncate">{ev.description}</p>}
-                        {ev.end_date && ev.end_date !== ev.date && (
-                          <p className="text-sm text-gray-400 mt-1.5">{dayjs(ev.date).format('DD/MM/YYYY')} to {dayjs(ev.end_date).format('DD/MM/YYYY')}</p>
+                        <h3 className="font-bold text-lg text-gray-900 truncate">{ev.title}</h3>
+                        {ev.description && (
+                          <div className="flex items-center gap-3 text-sm text-gray-500 mt-1.5">
+                            <span className="flex items-center gap-1">
+                              <span className="text-gray-400">&#x1F4CD;</span>
+                              {ev.description}
+                            </span>
+                          </div>
                         )}
+                        <div className="flex items-center gap-3 text-sm text-gray-400 mt-1.5">
+                          <span>50m Pool</span>
+                          {ev.end_date && ev.end_date !== ev.date && (
+                            <span>&mdash; {dayjs(ev.date).format('DD/MM/YYYY')} to {dayjs(ev.end_date).format('DD/MM/YYYY')}</span>
+                          )}
+                        </div>
                       </div>
                       {deleteBtn}
+                      <span className="text-gray-400 text-lg">&#x276F;</span>
                     </div>
                   )
                 }

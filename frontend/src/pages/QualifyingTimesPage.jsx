@@ -152,7 +152,7 @@ function AddTimeModal({ standardId, events, onClose, onAdded }) {
             {individualEvents.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Gender</label>
             <select value={gender} onChange={e => setGender(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">

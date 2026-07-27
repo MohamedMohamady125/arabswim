@@ -186,7 +186,7 @@ export default function CompareSwimmersPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-gray-50/80">
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider w-40">Metric</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider w-24 sm:w-40">Metric</th>
                     {data.map(s => (
                       <th key={s.id} className="px-4 py-3 text-center">
                         <button onClick={() => navigate(`/swimmers/${s.id}`)} className="hover:text-sky-600 transition-colors">

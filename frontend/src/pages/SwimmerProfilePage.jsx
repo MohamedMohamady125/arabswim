@@ -472,7 +472,7 @@ function MedalsTab({ stats }) {
           <NavyBar>MEDAL DISTRIBUTION</NavyBar>
           <div className="flex items-center gap-4 sm:gap-6 mt-5">
             <div className="relative shrink-0">
-              <svg viewBox="0 0 120 120" className="w-36 h-36 sm:w-44 sm:h-44 -rotate-90">
+              <svg viewBox="0 0 120 120" className="w-28 h-28 sm:w-44 sm:h-44 -rotate-90">
                 {donutSegs.map(s => s.n > 0 && (
                   <circle key={s.key} cx="60" cy="60" r={donutR} fill="none" stroke={s.color} strokeWidth="22"
                     strokeDasharray={`${s.dash} ${donutC}`} strokeDashoffset={s.offset} />
@@ -1282,7 +1282,7 @@ function RecordsTab({ swimmerId, swimmer }) {
         <div className="inline-flex items-center gap-3 sm:gap-4 px-6 sm:px-10 py-3 rounded-full shadow-lg"
           style={{ background: 'linear-gradient(180deg, #1450b8 0%, #0b2a6b 60%, #071d4d 100%)', border: '2px solid #3b82f6' }}>
           <span className="text-white text-lg sm:text-xl leading-none">&#9733;</span>
-          <span className="text-white font-black uppercase tracking-[0.12em] text-sm sm:text-xl whitespace-nowrap">
+          <span className="text-white font-black uppercase tracking-[0.06em] sm:tracking-[0.12em] text-xs sm:text-xl">
             {genderLabel} RECORD HOLDER <span className="mx-1">&bull;</span> {totalCount} RECORD{totalCount !== 1 ? 'S' : ''}
           </span>
           <span className="text-white text-lg sm:text-xl leading-none">&#9733;</span>

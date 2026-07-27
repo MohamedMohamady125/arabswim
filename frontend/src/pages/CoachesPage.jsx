@@ -79,7 +79,7 @@ export default function CoachesPage() {
       <div className="flex gap-3 mb-5 flex-wrap">
         <input type="text" placeholder="Search by name, club, specialty..." value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] border rounded-lg px-3 py-2 text-sm bg-white" />
+          className="w-full sm:w-auto sm:flex-1 sm:min-w-[200px] border rounded-lg px-3 py-2 text-sm bg-white" />
         <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm bg-white">
           <option value="">All Countries</option>

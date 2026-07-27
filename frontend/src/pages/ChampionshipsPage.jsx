@@ -72,7 +72,7 @@ export default function ChampionshipsPage() {
         <div className="flex flex-wrap gap-2 flex-1">
           <input type="text" placeholder="Search..." value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 min-w-[120px] border-2 border-blue-500 rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-sm" />
+            className="flex-1 min-w-0 sm:min-w-[120px] border-2 border-blue-500 rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-sm" />
           <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}
             className="border-2 border-blue-500 rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-sm bg-white font-medium">
             <option value="">Year</option>
@@ -125,26 +125,26 @@ export default function ChampionshipsPage() {
                 <div key={c.id}>
                   <div
                     onClick={() => setExpandedId(isExpanded ? null : c.id)}
-                    className={`bg-white border px-6 py-5 flex items-center gap-6 cursor-pointer transition-all hover:shadow-md ${
+                    className={`bg-white border px-3 py-3 sm:px-6 sm:py-5 flex items-center gap-3 sm:gap-6 cursor-pointer transition-all hover:shadow-md ${
                       isExpanded ? 'border-blue-500 shadow-md rounded-t-xl' : 'border-gray-200 rounded-xl'
                     }`}
                   >
                     {/* Meet photo or date badge */}
                     {c.meet_photo ? (
-                      <div className="w-36 h-28 rounded-xl overflow-hidden shrink-0 shadow">
+                      <div className="w-20 h-16 sm:w-36 sm:h-28 rounded-xl overflow-hidden shrink-0 shadow">
                         <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="w-20 h-20 bg-blue-600 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
-                        <span className="text-3xl font-bold leading-none">{d.isValid() ? d.date() : '?'}</span>
+                      <div className="w-14 h-14 sm:w-20 sm:h-20 bg-blue-600 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
+                        <span className="text-xl sm:text-3xl font-bold leading-none">{d.isValid() ? d.date() : '?'}</span>
                         <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{d.isValid() ? MONTH_SHORT[d.month()] : ''}</span>
                       </div>
                     )}
 
                     {/* Meet info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-lg text-gray-900 truncate">{c.name}</h3>
-                      <div className="flex items-center gap-3 text-sm text-gray-500 mt-1.5">
+                      <h3 className="font-bold text-sm sm:text-lg text-gray-900 truncate">{c.name}</h3>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-500 mt-1.5">
                         {c.location && (
                           <span className="flex items-center gap-1">
                             <span className="text-gray-400">&#x1F4CD;</span> {c.location}
@@ -163,19 +163,19 @@ export default function ChampionshipsPage() {
                     </div>
 
                     {/* Stats */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-2 shrink-0">
                       {c.results_count > 0 && (
-                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-sm font-medium whitespace-nowrap">
                           {c.results_count} results
                         </span>
                       )}
                       {c.swimmers_count > 0 && (
-                        <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-sm font-medium whitespace-nowrap">
                           {c.swimmers_count} swimmers
                         </span>
                       )}
                       {!c.results_count && (
-                        <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-sm">No results</span>
+                        <span className="bg-gray-100 text-gray-500 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-sm whitespace-nowrap">No results</span>
                       )}
                     </div>
 

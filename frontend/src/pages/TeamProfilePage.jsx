@@ -140,12 +140,12 @@ export default function TeamProfilePage() {
         <div>
           {/* Team Info */}
           <div className="bg-white rounded-lg border p-5 mb-4">
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm break-words">
               {team.founded_year && (
                 <div><span className="text-gray-500">Founded:</span> <span className="font-medium">{team.founded_year}</span></div>
               )}
               {team.website && (
-                <div><span className="text-gray-500">Website:</span> <a href={team.website} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">{team.website}</a></div>
+                <div className="min-w-0"><span className="text-gray-500">Website:</span> <a href={team.website} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium break-all">{team.website}</a></div>
               )}
               {team.address && (
                 <div className="col-span-2"><span className="text-gray-500">Address:</span> <span className="font-medium">{team.address}</span></div>
@@ -238,8 +238,8 @@ export default function TeamProfilePage() {
                         </div>
                         <span className="text-xs text-gray-400">{group.results.length} result{group.results.length !== 1 ? 's' : ''}</span>
                       </summary>
-                      <div className="px-4 pb-3">
-                        <table className="w-full">
+                      <div className="px-4 pb-3 overflow-x-auto">
+                        <table className="w-full min-w-[560px] sm:min-w-0">
                           <thead>
                             <tr className="text-xs text-gray-500 border-b">
                               <th className="py-1 text-left">Swimmer</th>

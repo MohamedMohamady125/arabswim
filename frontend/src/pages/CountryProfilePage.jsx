@@ -82,7 +82,7 @@ export default function CountryProfilePage() {
       </Link>
 
       {/* Header */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center gap-5">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 flex flex-wrap items-center gap-3 sm:gap-5">
         <img
           src={`https://flagcdn.com/w160/${alpha2}.png`}
           alt={country.name}
@@ -90,7 +90,7 @@ export default function CountryProfilePage() {
           onError={(e) => { e.target.style.display = 'none' }}
         />
         <div>
-          <h1 className="text-3xl font-bold">{country.name}</h1>
+          <h1 className="text-xl sm:text-3xl font-bold">{country.name}</h1>
           <div className="flex items-center gap-2 mt-1.5">
             <span className="text-gray-500 text-sm font-medium">{country.code}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${country.region === 'OTHER' ? REGION_STYLES.OTHER : REGION_STYLES.ARAB}`}>
@@ -99,7 +99,7 @@ export default function CountryProfilePage() {
           </div>
         </div>
         {/* Medal summary */}
-        <div className="ml-auto flex items-center gap-4">
+        <div className="sm:ml-auto flex items-center gap-3 sm:gap-4">
           {[['GOLD', medals.gold], ['SILVER', medals.silver], ['BRONZE', medals.bronze]].map(([t, n]) => (
             <div key={t} className="text-center">
               <MedalIcon type={t} />
@@ -128,7 +128,7 @@ export default function CountryProfilePage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 flex-wrap">
           <span className="font-semibold">Performance Progression</span>
-          <div className="flex gap-1 ml-auto">
+          <div className="flex flex-wrap gap-1 sm:ml-auto">
             {['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley'].map(s => (
               <button key={s} onClick={() => setProgStroke(s)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -239,8 +239,8 @@ export default function CountryProfilePage() {
             <option value="SCM">SCM (25m)</option>
           </select>
         </div>
-        <div className="max-h-[28rem] overflow-y-auto">
-          <table className="w-full text-left text-sm">
+        <div className="max-h-[28rem] overflow-y-auto overflow-x-auto">
+          <table className="w-full min-w-[640px] sm:min-w-0 text-left text-sm">
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase sticky top-0">
               <tr>
                 <th className="px-4 py-2">Event</th>
@@ -282,7 +282,8 @@ export default function CountryProfilePage() {
       {[['Records Held', currentRecords], ['New Records', newRecords]].map(([title, list]) => (
         list.length > 0 && (
           <Section title={title} count={list.length} key={title}>
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] sm:min-w-0 text-left text-sm">
               <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                 <tr>
                   <th className="px-4 py-2">Type</th>
@@ -314,6 +315,7 @@ export default function CountryProfilePage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </Section>
         )
       ))}

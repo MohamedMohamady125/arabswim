@@ -34,7 +34,7 @@ export default function NewRecordsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">New Records</h1>
-      <div className="flex gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
           <option value="">All Types</option>
           {RECORD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}

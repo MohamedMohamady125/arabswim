@@ -98,7 +98,7 @@ export default function SwimmerFormPage() {
 
         <div className="border-t pt-4">
           <h3 className="font-medium mb-4">Basic Information</h3>
-          <div className="grid grid-cols-[auto_1fr] gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 sm:gap-6">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Profile Photo</label>
               <PhotoUpload currentPhoto={form.photo} onPhotoChange={setPhotoBlob} />

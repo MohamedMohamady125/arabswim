@@ -106,7 +106,7 @@ export default function MediaPage() {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <form onSubmit={handleCreate} className="bg-white rounded-xl p-6 w-[440px] max-w-[90vw] space-y-4">
+          <form onSubmit={handleCreate} className="bg-white rounded-xl p-4 sm:p-6 w-[440px] max-w-[92vw] space-y-4">
             <h3 className="text-lg font-semibold">New Album</h3>
             <div>
               <label className="block text-sm font-medium mb-1">Title *</label>

@@ -71,7 +71,7 @@ export default function MedalsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-2 sm:gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
         {[
           { label: 'Gold', count: totalGold, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
           { label: 'Silver', count: totalSilver, bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600' },

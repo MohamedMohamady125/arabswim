@@ -48,13 +48,13 @@ export default function NewsPage() {
         </button>
       </div>
 
-      <div className="flex gap-3 mb-5">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-5">
         <input
           type="text" placeholder="Search articles..." value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 border rounded-lg px-3 py-2 text-sm bg-white"
         />
-        <div className="flex rounded-lg border bg-white overflow-hidden">
+        <div className="flex rounded-lg border bg-white overflow-x-auto">
           {STATUS_TABS.map((t) => (
             <button key={t.value} onClick={() => setStatusFilter(t.value)}
               className={`px-4 py-2 text-sm ${statusFilter === t.value ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>

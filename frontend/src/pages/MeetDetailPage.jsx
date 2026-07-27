@@ -215,21 +215,21 @@ function MedalsTab({ stats, medals, medalSummary, medalClubSummary, medalSwimmer
     <div className="space-y-6">
       {/* Medal Count Cards */}
       {safeMedals.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4 text-center">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-2 sm:p-4 text-center">
             <MedalIcon type="gold" size={32} />
-            <div className="text-3xl font-black text-amber-700 mt-1">{goldCount}</div>
-            <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Gold</div>
+            <div className="text-2xl sm:text-3xl font-black text-amber-700 mt-1">{goldCount}</div>
+            <div className="text-[10px] sm:text-xs font-semibold text-amber-600 uppercase tracking-wide">Gold</div>
           </div>
-          <div className="bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-4 text-center">
+          <div className="bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-2 sm:p-4 text-center">
             <MedalIcon type="silver" size={32} />
-            <div className="text-3xl font-black text-gray-600 mt-1">{silverCount}</div>
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Silver</div>
+            <div className="text-2xl sm:text-3xl font-black text-gray-600 mt-1">{silverCount}</div>
+            <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">Silver</div>
           </div>
-          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 text-center">
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-2 sm:p-4 text-center">
             <MedalIcon type="bronze" size={32} />
-            <div className="text-3xl font-black text-orange-700 mt-1">{bronzeCount}</div>
-            <div className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Bronze</div>
+            <div className="text-2xl sm:text-3xl font-black text-orange-700 mt-1">{bronzeCount}</div>
+            <div className="text-[10px] sm:text-xs font-semibold text-orange-600 uppercase tracking-wide">Bronze</div>
           </div>
         </div>
       )}

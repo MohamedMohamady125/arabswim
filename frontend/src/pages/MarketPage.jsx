@@ -77,7 +77,7 @@ export default function MarketPage() {
       <div className="flex gap-3 mb-5 flex-wrap">
         <input type="text" placeholder="Search listings..." value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 border rounded-lg px-3 py-2 text-sm bg-white" />
+          className="w-full sm:w-auto sm:flex-1 sm:min-w-48 border rounded-lg px-3 py-2 text-sm bg-white" />
         <div className="flex rounded-lg border bg-white overflow-hidden">
           {STATUS_TABS.map((t) => (
             <button key={t.value} onClick={() => setStatusFilter(t.value)}

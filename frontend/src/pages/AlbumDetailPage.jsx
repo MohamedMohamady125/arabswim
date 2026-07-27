@@ -93,7 +93,7 @@ export default function AlbumDetailPage() {
           <form onSubmit={addVideo} className="flex gap-2">
             <input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
               placeholder="YouTube / Instagram link..."
-              className="border rounded-lg px-3 py-2 text-sm bg-white w-56" />
+              className="border rounded-lg px-3 py-2 text-sm bg-white w-36 sm:w-56 min-w-0" />
             <button type="submit" className="flex items-center gap-1.5 border border-gray-300 bg-white px-3 py-2 rounded-lg text-sm hover:bg-gray-50">
               <Video size={14} /> Add
             </button>

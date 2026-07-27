@@ -9,7 +9,6 @@ import customParseFormat from 'dayjs/plugin/customParseFormat'
 dayjs.extend(customParseFormat)
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
 export default function ChampionshipsPage() {
   const navigate = useNavigate()
@@ -118,7 +117,6 @@ export default function ChampionshipsPage() {
           {/* Meet cards */}
           <div className="space-y-3">
             {group.events.map(c => {
-              const d = dayjs(c.date, 'DD/MM/YYYY')
               const isExpanded = expandedId === c.id
 
               return (
@@ -129,15 +127,18 @@ export default function ChampionshipsPage() {
                       isExpanded ? 'border-blue-500 shadow-md rounded-t-xl' : 'border-gray-200 rounded-xl'
                     }`}
                   >
-                    {/* Meet photo or date badge */}
+                    {/* Meet photo/logo (never a date — that's for the calendar) */}
                     {c.meet_photo ? (
-                      <div className="w-20 h-16 sm:w-36 sm:h-28 rounded-xl overflow-hidden shrink-0 shadow">
+                      <div className="w-24 h-20 sm:w-44 sm:h-32 rounded-xl overflow-hidden shrink-0 shadow">
                         <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="w-14 h-14 sm:w-20 sm:h-20 bg-blue-600 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
-                        <span className="text-xl sm:text-3xl font-bold leading-none">{d.isValid() ? d.date() : '?'}</span>
-                        <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{d.isValid() ? MONTH_SHORT[d.month()] : ''}</span>
+                      <div className="w-24 h-20 sm:w-44 sm:h-32 bg-gradient-to-br from-blue-600 to-sky-500 rounded-xl flex items-center justify-center shrink-0 shadow">
+                        <svg className="w-10 h-10 sm:w-14 sm:h-14 text-white/80" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="16.5" cy="6.5" r="2.2" />
+                          <path d="M3 13l8-4 4 3.2-4.5 2.3L3 13z" />
+                          <path d="M2 18c2.2-1.6 4.4-1.6 6.6 0s4.4 1.6 6.6 0 4.4-1.6 6.6 0v2.4c-2.2 1.6-4.4 1.6-6.6 0s-4.4-1.6-6.6 0-4.4 1.6-6.6 0V18z" opacity="0.9" />
+                        </svg>
                       </div>
                     )}
 

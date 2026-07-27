@@ -278,23 +278,28 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
 
         {/* Tooltip */}
         {tooltip && (() => {
-          const tw = 190
+          const line1 = tooltip.line || ''
+          const line2 = `${formatTimeShort(tooltip.time_cs)} · ${(tooltip.meet || '').substring(0, 22)}${tooltip.fina ? ` · ${tooltip.fina}pts` : ''}`
+          const line3 = showSwimmer && tooltip.swimmer ? tooltip.swimmer : ''
+          const f1 = mobile ? 13 : 12, f2 = mobile ? 11.5 : 10.5, f3 = mobile ? 11 : 10
+          // Size the box to the longest line (~0.62em avg char width for bold, 0.56 regular)
+          const tw = Math.min(W - 12, Math.max(160, line1.length * f1 * 0.62, line2.length * f2 * 0.56, line3.length * f3 * 0.56) + 28)
           const tx = Math.max(6, Math.min(tooltip.x - tw / 2, W - tw - 6))
           const tcx = tx + tw / 2
           return (
             <g>
               <rect x={tx} y={tooltip.y + 18} width={tw}
-                height={showSwimmer && tooltip.swimmer ? 66 : 50} rx="8"
+                height={line3 ? 66 : 50} rx="8"
                 fill="#0b1f38" fillOpacity="0.9" stroke="#ffffff" strokeOpacity="0.3" strokeWidth="1" />
-              <text x={tcx} y={tooltip.y + 35} textAnchor="middle" fill="#ffffff" fontSize={mobile ? 13 : 12} fontWeight="bold">
-                {tooltip.line}
+              <text x={tcx} y={tooltip.y + 35} textAnchor="middle" fill="#ffffff" fontSize={f1} fontWeight="bold">
+                {line1}
               </text>
-              <text x={tcx} y={tooltip.y + 52} textAnchor="middle" fill="#eaf2ff" fontSize={mobile ? 11.5 : 10.5}>
-                {formatTimeShort(tooltip.time_cs)} · {(tooltip.meet || '').substring(0, 22)}{tooltip.fina ? ` · ${tooltip.fina}pts` : ''}
+              <text x={tcx} y={tooltip.y + 52} textAnchor="middle" fill="#eaf2ff" fontSize={f2}>
+                {line2}
               </text>
-              {showSwimmer && tooltip.swimmer && (
-                <text x={tcx} y={tooltip.y + 66} textAnchor="middle" fill="#94b8db" fontSize={mobile ? 11 : 10}>
-                  {tooltip.swimmer}
+              {line3 && (
+                <text x={tcx} y={tooltip.y + 66} textAnchor="middle" fill="#94b8db" fontSize={f3}>
+                  {line3}
                 </text>
               )}
             </g>

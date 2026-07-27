@@ -25,7 +25,7 @@ export default function ManualEntryForm({ onComplete }) {
 
   // Result state
   const [events, setEvents] = useState([])
-  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', age: '' })
+  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', medal: '' })
 
   // Reference data
   const [countries, setCountries] = useState([])
@@ -80,36 +80,6 @@ export default function ManualEntryForm({ onComplete }) {
       }).catch(() => {})
     }, 400)
   }, [resultForm.time, resultForm.event, selectedSwimmer, selectedChamp])
-
-  // Auto-fill age at competition from the swimmer's stored birth data
-  // (exact DOB when known, else birth year) + meet date. Editable.
-  useEffect(() => {
-    if (!selectedSwimmer || !selectedChamp?.date) return
-    let champDate
-    const ds = String(selectedChamp.date)
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(ds)) {
-      const [dd, mm, yy] = ds.split('/')
-      champDate = new Date(`${yy}-${mm}-${dd}`)
-    } else {
-      champDate = new Date(ds)
-    }
-    if (isNaN(champDate.getTime())) return
-    let age = null
-    if (selectedSwimmer.date_of_birth) {
-      const dob = new Date(selectedSwimmer.date_of_birth)
-      if (!isNaN(dob.getTime())) {
-        age = champDate.getFullYear() - dob.getFullYear()
-        const m = champDate.getMonth() - dob.getMonth()
-        if (m < 0 || (m === 0 && champDate.getDate() < dob.getDate())) age--
-      }
-    }
-    if (age === null && selectedSwimmer.birth_year) {
-      age = champDate.getFullYear() - selectedSwimmer.birth_year
-    }
-    if (age !== null && age > 0 && age < 100) {
-      setResultForm(f => ({ ...f, age: String(age) }))
-    }
-  }, [selectedSwimmer, selectedChamp])
 
   useEffect(() => {
     if (newChamp.classification) {
@@ -195,7 +165,7 @@ export default function ManualEntryForm({ onComplete }) {
         time_centiseconds: timeCentiseconds,
         team: resultForm.team || '',
         fina_points: resultForm.fina_points ? parseInt(resultForm.fina_points) : null,
-        age_at_competition: resultForm.age ? parseInt(resultForm.age) : null,
+        medal: resultForm.medal || '',
       })
       setSuccess({
         swimmer_name: selectedSwimmer.name,
@@ -211,7 +181,7 @@ export default function ManualEntryForm({ onComplete }) {
   }
 
   const handleAddAnother = () => {
-    setResultForm(f => ({ event: '', time: '', team: '', fina_points: '', age: f.age }))
+    setResultForm({ event: '', time: '', team: '', fina_points: '', medal: '' })
     setSuccess(null)
   }
 
@@ -457,9 +427,14 @@ export default function ManualEntryForm({ onComplete }) {
               className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50 font-medium" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Age <span className="text-xs text-gray-400">(at competition)</span></label>
-            <input type="number" min="4" max="99" value={resultForm.age} onChange={(e) => setResultForm({ ...resultForm, age: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. 16" />
+            <label className="block text-sm font-medium mb-1">Medal <span className="text-xs text-gray-400">(optional)</span></label>
+            <select value={resultForm.medal} onChange={(e) => setResultForm({ ...resultForm, medal: e.target.value })}
+              className="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="">No medal</option>
+              <option value="GOLD">&#x1F947; Gold</option>
+              <option value="SILVER">&#x1F948; Silver</option>
+              <option value="BRONZE">&#x1F949; Bronze</option>
+            </select>
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium mb-1">Team / Club</label>

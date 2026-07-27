@@ -23,6 +23,13 @@ def recompute_medals(championship):
     """
     Medal.objects.filter(championship=championship, result__isnull=False).delete()
 
+    # Manually entered medals (result is NULL) take precedence: don't
+    # auto-award a second medal to the same swimmer for the same event.
+    manual = set(
+        Medal.objects.filter(championship=championship, result__isnull=True)
+        .values_list('swimmer_id', 'event_id')
+    )
+
     results = (championship.results
                .filter(is_hc=False)
                .select_related('swimmer')
@@ -48,6 +55,8 @@ def recompute_medals(championship):
             medal_type = _MEDAL_BY_RANK.get(rank)
             if medal_type is None:
                 break  # rows are time-sorted; no more medals in this group
+            if (r.swimmer_id, r.event_id) in manual:
+                continue
             medals.append(Medal(
                 swimmer=r.swimmer, championship=championship,
                 event_id=r.event_id, medal_type=medal_type, result=r,

@@ -108,8 +108,10 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
   const waveYs = [plotT + pH * 0.15, plotT + pH * 0.35, plotT + pH * 0.55, plotT + pH * 0.75, plotT + pH * 0.9]
 
   return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ display: 'block', height: 'auto' }}
+    <div className="relative overflow-x-auto sm:overflow-visible">
+      {/* On phones the chart keeps a large minimum width (scroll to pan) so
+          times/labels stay readable; on sm+ it fits the container as before. */}
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[1000px] sm:min-w-0" style={{ display: 'block', height: 'auto' }}
         fontFamily="Arial, Helvetica, sans-serif">
         <defs>
           <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">

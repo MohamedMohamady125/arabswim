@@ -14,7 +14,7 @@ const CATEGORY_SUGGESTIONS = [
   'Poussins', 'Open', '13-14', '15-16', '17-18',
 ]
 
-const emptyRow = () => ({ name: '', birth_year: '', age: '', country: '', team: '', time: '' })
+const emptyRow = () => ({ name: '', birth_year: '', country: '', team: '', time: '' })
 
 export default function AddResultsModal({ championshipId, onClose, onSaved }) {
   const [events, setEvents] = useState([])
@@ -67,7 +67,6 @@ export default function AddResultsModal({ championshipId, onClose, onSaved }) {
       row.time = parts[parts.length - 1]
       for (const p of parts.slice(1, -1)) {
         if (/^\d{4}$/.test(p)) row.birth_year = p
-        else if (/^\d{1,2}$/.test(p)) row.age = p
         else if (/^[A-Za-z]{3}$/.test(p)) row.country = p.toUpperCase()
         else row.team = p
       }
@@ -237,7 +236,6 @@ export default function AddResultsModal({ championshipId, onClose, onSaved }) {
                         <th className="px-2 py-1.5 text-left w-8">#</th>
                         <th className="px-2 py-1.5 text-left">{selectedEvent?.is_relay ? 'Team' : 'Name'} *</th>
                         <th className="px-2 py-1.5 text-left w-20">Born</th>
-                        <th className="px-2 py-1.5 text-left w-16">Age</th>
                         <th className="px-2 py-1.5 text-left w-20">Country</th>
                         <th className="px-2 py-1.5 text-left w-32">Club</th>
                         <th className="px-2 py-1.5 text-left w-28">Time *</th>
@@ -256,11 +254,6 @@ export default function AddResultsModal({ championshipId, onClose, onSaved }) {
                           <td className="px-1 py-1">
                             <input value={r.birth_year} onChange={e => setRow(i, 'birth_year', e.target.value)}
                                    placeholder="2008" maxLength={4}
-                                   className="w-full border-0 focus:ring-1 focus:ring-sky-400 rounded px-1.5 py-1 text-sm bg-transparent" />
-                          </td>
-                          <td className="px-1 py-1">
-                            <input value={r.age} onChange={e => setRow(i, 'age', e.target.value)}
-                                   placeholder="16" maxLength={2}
                                    className="w-full border-0 focus:ring-1 focus:ring-sky-400 rounded px-1.5 py-1 text-sm bg-transparent" />
                           </td>
                           <td className="px-1 py-1">

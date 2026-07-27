@@ -183,7 +183,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         """Bulk-add results for one event/round (manual data entry).
 
         Payload: {event, gender, round_type, category, rows: [
-            {name, birth_year, country, team, time, age?}, ...]}
+            {name, birth_year, country, team, time}, ...]}
+        Age at competition is computed from the swimmer's stored birth data.
         Swimmers are matched with the same rules as the PDF importer
         (exact name + birth year / age band), created when new.
         """
@@ -259,14 +260,18 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 created_swimmers += 1
 
             fina = calculate_points(time_cs, event.name, gender, championship.pool)
-            # Explicit per-row age wins; otherwise derive from birth year
+            # Age at competition, computed automatically from the swimmer's
+            # stored birth data (exact DOB when known, else birth year)
             age = None
-            try:
-                age = int(row.get('age') or 0) or None
-            except (TypeError, ValueError):
-                pass
-            if not age and birth_year and championship.date:
-                age = championship.date.year - birth_year
+            if championship.date and not event.is_relay:
+                dob = getattr(swimmer, 'date_of_birth', None)
+                by = birth_year or getattr(swimmer, 'birth_year', None) or 0
+                if dob:
+                    age = championship.date.year - dob.year - (
+                        (championship.date.month, championship.date.day) <
+                        (dob.month, dob.day))
+                elif by:
+                    age = championship.date.year - by
 
             existing = Result.objects.filter(
                 swimmer=swimmer, championship=championship, event=event,

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   getQualifyingStandards, getQualifyingStandard,
-  createQualifyingStandard, deleteQualifyingStandard,
+  createQualifyingStandard, updateQualifyingStandard, deleteQualifyingStandard,
   uploadQualifyingPdf, addQualifyingTime, deleteQualifyingTime,
 } from '../api/qualifyingTimes'
 import { getEvents } from '../api/core'
@@ -115,6 +115,93 @@ function CreateModal({ onClose, onCreated }) {
   )
 }
 
+/* ───────── Edit Standard Modal ───────── */
+function EditStandardModal({ standard, onClose, onSaved }) {
+  const isKnownType = COMP_TYPES.some(t => t.value === standard.competition_type)
+  const [name, setName] = useState(standard.name)
+  const [type, setType] = useState(isKnownType ? standard.competition_type : '__custom__')
+  const [customType, setCustomType] = useState(isKnownType ? '' : (standard.competition_type || ''))
+  const [year, setYear] = useState(standard.year)
+  const [periodStart, setPeriodStart] = useState(standard.qualifying_period_start || '')
+  const [periodEnd, setPeriodEnd] = useState(standard.qualifying_period_end || '')
+  const [saving, setSaving] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!name.trim()) return
+    if (type === '__custom__' && !customType.trim()) return
+    setSaving(true)
+    try {
+      await updateQualifyingStandard(standard.id, {
+        name: name.trim(),
+        competition_type: type === '__custom__'
+          ? customType.trim().toLowerCase().replace(/\s+/g, '_')
+          : type,
+        year,
+        qualifying_period_start: periodStart || null,
+        qualifying_period_end: periodEnd || null,
+      })
+      onSaved()
+    } catch {
+      alert('Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <form onSubmit={handleSubmit} className="relative bg-white rounded-2xl shadow-xl p-4 sm:p-6 w-full max-w-md space-y-4">
+        <h2 className="text-lg font-bold text-gray-800">Edit Standard</h2>
+        <div>
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Competition Name</label>
+          <input value={name} onChange={e => setName(e.target.value)}
+            className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" autoFocus required />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Type</label>
+            <select value={type} onChange={e => setType(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+              {COMP_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              <option value="__custom__">Custom...</option>
+            </select>
+            {type === '__custom__' && (
+              <input value={customType} onChange={e => setCustomType(e.target.value)}
+                placeholder="e.g. Mediterranean Games"
+                className="w-full mt-2 px-3 py-2 border rounded-lg text-sm" required />
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Year</label>
+            <input type="number" value={year} onChange={e => setYear(parseInt(e.target.value))}
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Period Start</label>
+            <input type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)}
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Period End</label>
+            <input type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)}
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
+          </div>
+        </div>
+        <div className="flex gap-2 pt-2">
+          <button type="submit" disabled={saving}
+            className="flex-1 bg-sky-600 text-white font-bold py-2.5 rounded-xl hover:bg-sky-700 disabled:opacity-50 text-sm">
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button type="button" onClick={onClose} className="px-4 py-2.5 border rounded-xl text-sm text-gray-500 hover:bg-gray-50">Cancel</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 /* ───────── Add Time Modal ───────── */
 function AddTimeModal({ standardId, events, onClose, onAdded }) {
   const [eventId, setEventId] = useState('')
@@ -198,6 +285,10 @@ function StandardDetail({ standardId, onBack }) {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddTime, setShowAddTime] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [editingTimeId, setEditingTimeId] = useState(null)
+  const [editTimeText, setEditTimeText] = useState('')
+  const [savingTime, setSavingTime] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadResult, setUploadResult] = useState(null)
   const [genderFilter, setGenderFilter] = useState('M')
@@ -245,6 +336,29 @@ function StandardDetail({ standardId, onBack }) {
     refresh()
   }
 
+  const startEditTime = (t) => {
+    setEditingTimeId(t.id)
+    setEditTimeText(t.formatted_time)
+  }
+
+  const handleSaveTime = async (t) => {
+    const text = editTimeText.trim()
+    if (!text) return
+    setSavingTime(true)
+    try {
+      // add-time upserts on (event, gender, cut, pool) — same keys = update
+      await addQualifyingTime(standardId, {
+        event: t.event, gender: t.gender, cut: t.cut, pool: t.pool, time_text: text,
+      })
+      setEditingTimeId(null)
+      refresh()
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to save time')
+    } finally {
+      setSavingTime(false)
+    }
+  }
+
   if (loading) return <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
   if (!standard) return null
 
@@ -290,6 +404,10 @@ function StandardDetail({ standardId, onBack }) {
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xl">{compType?.icon}</span>
             <h1 className="text-xl sm:text-2xl font-black text-gray-800">{standard.name}</h1>
+            <button onClick={() => setShowEdit(true)} title="Edit standard"
+              className="p-1.5 rounded-lg text-gray-400 hover:text-sky-600 hover:bg-sky-50 transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" /></svg>
+            </button>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className={`px-2.5 py-1 rounded-lg font-bold ${compType?.color}`}>{compType?.label}</span>
@@ -403,13 +521,32 @@ function StandardDetail({ standardId, onBack }) {
                         <td className="px-4 py-2.5 font-semibold text-gray-800">{row.event_name}</td>
                         <td className="px-4 py-2.5 text-center">
                           {row.time ? (
-                            <span className={`font-mono font-bold px-2.5 py-1 rounded-lg text-xs ${cutFilter === 'A' ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50'}`}>
-                              {row.time.formatted_time}
-                            </span>
+                            editingTimeId === row.time.id ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <input value={editTimeText} onChange={e => setEditTimeText(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') { e.preventDefault(); handleSaveTime(row.time) }
+                                    if (e.key === 'Escape') setEditingTimeId(null)
+                                  }}
+                                  className="w-24 font-mono font-bold text-xs border-2 border-sky-400 rounded-lg px-2 py-1 text-center"
+                                  autoFocus />
+                                <button onClick={() => handleSaveTime(row.time)} disabled={savingTime}
+                                  className="px-2 py-1 bg-sky-600 text-white rounded-lg text-[10px] font-bold hover:bg-sky-700 disabled:opacity-50">
+                                  {savingTime ? '...' : 'Save'}
+                                </button>
+                                <button onClick={() => setEditingTimeId(null)}
+                                  className="px-1.5 py-1 text-gray-400 hover:text-gray-600 text-[10px] font-bold">✕</button>
+                              </span>
+                            ) : (
+                              <button onClick={() => startEditTime(row.time)} title="Tap to edit"
+                                className={`font-mono font-bold px-2.5 py-1 rounded-lg text-xs cursor-pointer hover:ring-2 hover:ring-sky-300 transition-all ${cutFilter === 'A' ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50'}`}>
+                                {row.time.formatted_time}
+                              </button>
+                            )
                           ) : <span className="text-gray-300">-</span>}
                         </td>
                         <td className="px-4 py-2.5">
-                          {row.time && (
+                          {row.time && editingTimeId !== row.time.id && (
                             <button onClick={() => handleDeleteTime(row.time.id)} className="text-gray-300 hover:text-red-500 transition-colors">
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                             </button>
@@ -425,6 +562,7 @@ function StandardDetail({ standardId, onBack }) {
         </div>
       )}
 
+      {showEdit && <EditStandardModal standard={standard} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); refresh() }} />}
       {showAddTime && <AddTimeModal standardId={standardId} events={events} onClose={() => setShowAddTime(false)} onAdded={() => { setShowAddTime(false); refresh() }} />}
     </div>
   )

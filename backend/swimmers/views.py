@@ -154,11 +154,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='qualifying-gaps')
     def qualifying_gaps(self, request, pk=None):
-        """Return the swimmer's closest 4 events to qualifying standards per pool."""
+        """Return the swimmer's qualifying gaps using current-year best times."""
         swimmer = self.get_object()
         from championships.models import Result
         from qualifying_times.models import QualifyingTime, QualifyingStandard
         from django.db.models import Min
+        from django.utils import timezone
         from importer.parsers.base import format_centiseconds
 
         # Get the latest qualifying standard
@@ -166,14 +167,17 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         if not standard:
             return Response([])
 
+        current_year = timezone.now().year
+
         gaps = []
         # Check both LCM and SCM qualifying times
         for pool in ('LCM', 'SCM'):
-            # Get swimmer's best times per event for this pool
+            # Get swimmer's best times per event for this pool in the current year
             bests = (
                 Result.objects.filter(
                     swimmer=swimmer,
                     championship__pool=pool,
+                    championship__date__year=current_year,
                     time_centiseconds__gt=0,
                     event__is_relay=False,
                 )
@@ -214,19 +218,10 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'qualified': gap_cs <= 0,
                 })
 
-        # Sort by gap (closest first) and take 4 closest unique event+pool combos
-        gaps.sort(key=lambda g: (g['gap_cs'], g['cut']))
-        seen = set()
-        top = []
-        for g in gaps:
-            key = (g['event_id'], g['pool'])
-            if key not in seen:
-                seen.add(key)
-                top.append(g)
-            if len(top) >= 4:
-                break
+        # Sort by gap (closest first)
+        gaps.sort(key=lambda g: (g['pool'], g['cut'], g['gap_cs']))
 
-        return Response(top)
+        return Response(gaps)
 
     @action(detail=True, methods=['get'], url_path='events/(?P<event_id>[^/.]+)/history')
     def event_history(self, request, pk=None, event_id=None):

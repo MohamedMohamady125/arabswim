@@ -416,6 +416,8 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
 /* ───────── Stats Tab ───────── */
 function StatsTab({ stats, events, swimmerId }) {
   const [qualifyingGaps, setQualifyingGaps] = useState([])
+  const [gapPool, setGapPool] = useState('LCM')
+  const [gapCut, setGapCut] = useState('A')
   useEffect(() => {
     if (swimmerId) {
       getSwimmerQualifyingGaps(swimmerId).then(res => setQualifyingGaps(res.data || [])).catch(() => {})
@@ -470,15 +472,42 @@ function StatsTab({ stats, events, swimmerId }) {
       </div>
 
       {/* Qualifying Gaps */}
-      {qualifyingGaps && qualifyingGaps.length > 0 && (
+      {qualifyingGaps && qualifyingGaps.length > 0 && (() => {
+        const filteredGaps = qualifyingGaps.filter(g => g.pool === gapPool && g.cut === gapCut)
+        return (
         <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-fade-in-up stagger-7">
           <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
-            <h3 className="font-bold text-base text-gray-800">Qualifying Standards Gap</h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">{qualifyingGaps[0]?.standard_name} — Closest 4 events to qualifying</p>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h3 className="font-bold text-base text-gray-800">Qualifying Standards Gap</h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">{qualifyingGaps[0]?.standard_name} — Based on {new Date().getFullYear()} best times</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg overflow-hidden border">
+                  {['LCM', 'SCM'].map(p => (
+                    <button key={p} onClick={() => setGapPool(p)}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${gapPool === p ? (p === 'LCM' ? 'bg-sky-500 text-white' : 'bg-amber-500 text-white') : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex rounded-lg overflow-hidden border">
+                  {['A', 'B'].map(c => (
+                    <button key={c} onClick={() => setGapCut(c)}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${gapCut === c ? (c === 'A' ? 'bg-green-500 text-white' : 'bg-amber-500 text-white') : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                      {c} Cut
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
+          {filteredGaps.length === 0 ? (
+            <div className="p-8 text-center text-gray-400 text-sm">No qualifying gaps for {gapPool} {gapCut} Cut</div>
+          ) : (
           <div className="divide-y divide-gray-50">
-            {qualifyingGaps.map((g, i) => {
-              const maxGap = Math.max(...qualifyingGaps.map(x => Math.abs(x.gap_cs)))
+            {filteredGaps.map((g, i) => {
+              const maxGap = Math.max(...filteredGaps.map(x => Math.abs(x.gap_cs)))
               const barPct = maxGap > 0 ? (Math.abs(g.gap_cs) / maxGap) * 100 : 0
               return (
                 <div key={g.event_id} className="px-5 py-4 animate-fade-in-up" style={{ animationDelay: `${(i + 8) * 0.06}s` }}>
@@ -524,8 +553,10 @@ function StatsTab({ stats, events, swimmerId }) {
               )
             })}
           </div>
+          )}
         </div>
-      )}
+        )
+      })()}
 
       {/* Records Held */}
       {total_records > 0 && (

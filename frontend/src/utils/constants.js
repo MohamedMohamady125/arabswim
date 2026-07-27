@@ -13,7 +13,6 @@ export const RECORD_TYPES = [
   { value: 'ASIAN', label: 'Asian' },
   { value: 'MEDITERRANEAN', label: 'Mediterranean' },
   { value: 'ISLAMIC', label: 'Islamic' },
-  { value: 'WORLD', label: 'World' },
 ]
 
 // Record scopes stored manually in the Record table (not computed from results)

@@ -195,6 +195,8 @@ function MostImprovedTable({ swimmers, navigate }) {
 function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalSwimmerSummary, navigate }) {
   const [medalFilter, setMedalFilter] = useState('ALL')
   const [tallyFilter, setTallyFilter] = useState('ALL')
+  const [tallySection, setTallySection] = useState('main')   // 'main' = country/club tally, 'swimmers'
+  const [swimmerGender, setSwimmerGender] = useState('ALL')
   // National/Other meets: no country tally — clubs + swimmers tallies instead
   const isNational = meet?.classification_name
     ? ['National', 'Other'].includes(meet.classification_name)
@@ -238,8 +240,23 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
         </div>
       )}
 
+      {/* Tally switcher: Country/Club Medal Tally vs Swimmer Medal Tally */}
+      {(safeSummary.length > 0 || safeClubSummary.length > 0 || safeSwimmerSummary.length > 0) && (
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+          {[
+            { key: 'main', label: isNational ? 'Club Medal Tally' : 'Country Medal Tally' },
+            { key: 'swimmers', label: 'Swimmer Medal Tally' },
+          ].map(t => (
+            <button key={t.key} onClick={() => setTallySection(t.key)}
+              className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                tallySection === t.key ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}>{t.label}</button>
+          ))}
+        </div>
+      )}
+
       {/* Country Medal Tally (international) or Club Medal Tally (national) */}
-      {!isNational && safeSummary.length > 0 && (() => {
+      {tallySection === 'main' && !isNational && safeSummary.length > 0 && (() => {
         const filteredSummary = tallyFilter === 'ARAB'
           ? safeSummary.filter(r => r.swimmer__nationality__region === 'ARAB' || r.swimmer__nationality__region === 'GCC')
           : safeSummary
@@ -295,7 +312,7 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
         )
       })()}
 
-      {isNational && safeClubSummary.length > 0 && (
+      {tallySection === 'main' && isNational && safeClubSummary.length > 0 && (
         <div className="bg-white rounded-lg border">
           <div className="p-4 border-b">
             <h3 className="font-semibold">Club Medal Tally</h3>
@@ -329,11 +346,27 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
         </div>
       )}
 
-      {/* Top Swimmers by Medals */}
-      {safeSwimmerSummary.length > 0 && (
+      {/* Swimmer Medal Tally */}
+      {tallySection === 'swimmers' && safeSwimmerSummary.length > 0 && (
         <div className="bg-white rounded-lg border">
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex items-center justify-between">
             <h3 className="font-semibold">Swimmer Medal Tally</h3>
+            <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl">
+              {[
+                { key: 'ALL', label: 'All' },
+                { key: 'M', label: 'Men' },
+                { key: 'F', label: 'Women' },
+              ].map(opt => (
+                <button key={opt.key} onClick={() => setSwimmerGender(opt.key)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
+                    swimmerGender === opt.key
+                      ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -349,7 +382,10 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {safeSwimmerSummary.map((row, i) => (
+                {(swimmerGender === 'ALL'
+                  ? safeSwimmerSummary
+                  : safeSwimmerSummary.filter(r => r.swimmer__sex === swimmerGender)
+                ).map((row, i) => (
                   <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${row.swimmer__id}`)}>
                     <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
                     <td className="px-4 py-2 text-sm font-medium">{row.swimmer__name}</td>

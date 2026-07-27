@@ -90,7 +90,7 @@ class MedalViewSet(viewsets.ModelViewSet):
         if not request.query_params.get('championship'):
             qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
         summary = qs.values(
-            'swimmer__id', 'swimmer__name',
+            'swimmer__id', 'swimmer__name', 'swimmer__sex',
             'swimmer__nationality__name', 'swimmer__nationality__code',
             'swimmer__nationality__flag_url',
         ).annotate(

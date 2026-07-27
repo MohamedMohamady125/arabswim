@@ -1632,6 +1632,37 @@ function StrokeIcon({ eventName, className = 'w-9 h-9', dark = false }) {
 
 /* ───────── Rankings Tab — broadcast infographic style ───────── */
 const RANK_BLUE = '#1e3fa4'
+
+/* Counts a swim time up from 0 to its final value (e.g. 2:07.35) */
+function AnimatedTime({ time, duration = 1000 }) {
+  const [display, setDisplay] = useState('')
+  const ref = useRef()
+  useEffect(() => {
+    const m = String(time || '').match(/^(?:(\d+):)?(\d+)\.(\d+)$/)
+    if (!m) { setDisplay(time); return }
+    const hasMinutes = m[1] != null
+    const target = (parseInt(m[1] || 0) * 60 + parseInt(m[2])) * 100 + parseInt(m[3])
+    const fmt = (cs) => {
+      const minutes = Math.floor(cs / 6000)
+      const seconds = Math.floor((cs % 6000) / 100)
+      const centis = cs % 100
+      return hasMinutes
+        ? `${minutes}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`
+        : `${seconds}.${String(centis).padStart(2, '0')}`
+    }
+    let start = 0
+    const step = (ts) => {
+      if (!start) start = ts
+      const progress = Math.min((ts - start) / duration, 1)
+      setDisplay(fmt(Math.round(progress * target)))
+      if (progress < 1) ref.current = requestAnimationFrame(step)
+    }
+    ref.current = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(ref.current)
+  }, [time, duration])
+  return <>{display}</>
+}
+
 function RankingsTab({ swimmerId, swimmer }) {
   const [rankings, setRankings] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1735,14 +1766,14 @@ function RankingsTab({ swimmerId, swimmer }) {
                         {/* Rank square */}
                         <div className="flex items-center justify-center text-white px-3 sm:px-4 py-2 shrink-0"
                           style={{ background: RANK_BLUE }}>
-                          <span className="text-5xl sm:text-6xl font-black leading-none tabular-nums">{rank.rank}</span>
+                          <span className="text-5xl sm:text-6xl font-black leading-none tabular-nums"><AnimatedNumber value={rank.rank} /></span>
                           <span className="text-sm sm:text-lg font-black self-center ml-0.5 mt-2">{ordinalSuffix(rank.rank)}</span>
                         </div>
                         {/* Time box */}
                         <div className="flex-1 flex items-center justify-center py-2 min-w-0"
                           style={{ border: `4px solid ${RANK_BLUE}` }}>
                           <span className="text-3xl sm:text-5xl font-black tabular-nums tracking-tight" style={{ color: RANK_BLUE }}>
-                            {r.best_time}
+                            <AnimatedTime time={r.best_time} />
                           </span>
                         </div>
                       </div>

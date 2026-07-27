@@ -46,6 +46,15 @@ MEET_COUNTRY_KEYWORDS = {
 }
 
 
+def source_rank(value):
+    """Coerce a parsed rank/place ('1', '1.', 'DSQ', '') to int or None."""
+    try:
+        rank = int(re.sub(r'[^\d]', '', str(value or '')) or 0)
+    except (TypeError, ValueError):
+        return None
+    return rank or None
+
+
 def normalize_swimmer_name(text):
     """Normalize a swimmer name while preserving parser-formatted surnames.
 
@@ -742,6 +751,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     from .points import calculate_points
                     gender_code = result_data.get('gender', 'M') or 'M'
                     same_team.time_centiseconds = time_cs
+                    same_team.original_rank = source_rank(result_data.get('rank'))
                     same_team.team = team  # normalize team name
                     same_team.fina_points = calculate_points(
                         time_cs, event_data.get('event_name', db_event.name),
@@ -764,6 +774,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 # Keep the better time
                 if time_cs < existing.time_centiseconds:
                     existing.time_centiseconds = time_cs
+                    existing.original_rank = source_rank(result_data.get('rank'))
                     existing.fina_points = result_data.get('fina_points', 0) or existing.fina_points
                     existing.is_hc = (result_data.get('status') in ('HC', 'TLD'))
                     existing.hc_type = result_data.get('status') if result_data.get('status') in ('HC', 'TLD') else ''
@@ -851,6 +862,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     category=category,
                     team=team,
                     time_centiseconds=time_cs,
+                    original_rank=source_rank(result_data.get('rank')),
                     fina_points=fina_pts or None,
                     age_at_competition=age_at_comp or None,
                     relay_swimmers=relay_swimmers,

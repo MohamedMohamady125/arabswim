@@ -65,6 +65,33 @@ class RecomputeMedalsTests(TestCase):
         self.assertEqual(self._medals(),
                          {('A', 'GOLD'), ('B', 'GOLD'), ('C', 'GOLD')})
 
+    def test_source_rank_beats_recomputed_rank(self):
+        # International meet: non-Arab results were deleted, the remaining
+        # Arab swimmers keep their original PDF placements.
+        r1 = self._result(self._swimmer('A'), 5000)   # placed 5th at the meet
+        r2 = self._result(self._swimmer('B'), 5100)   # placed 8th
+        r1.original_rank, r2.original_rank = 5, 8
+        r1.save(); r2.save()
+        recompute_medals(self.champ)
+        self.assertEqual(self._medals(), set())
+
+    def test_source_rank_awards_real_podium(self):
+        r1 = self._result(self._swimmer('A'), 5000)
+        r2 = self._result(self._swimmer('B'), 5100)
+        r3 = self._result(self._swimmer('C'), 5200)
+        r1.original_rank, r2.original_rank, r3.original_rank = 2, 3, 6
+        r1.save(); r2.save(); r3.save()
+        recompute_medals(self.champ)
+        self.assertEqual(self._medals(), {('A', 'SILVER'), ('B', 'BRONZE')})
+
+    def test_rows_without_source_rank_get_nothing_when_group_has_ranks(self):
+        r1 = self._result(self._swimmer('A'), 5000)
+        r1.original_rank = 4
+        r1.save()
+        self._result(self._swimmer('B'), 5100)  # no source rank
+        recompute_medals(self.champ)
+        self.assertEqual(self._medals(), set())
+
     def test_finals_decide_when_prelims_present(self):
         a, b = self._swimmer('A'), self._swimmer('B')
         self._result(a, 4900, round_type='Prelims')

@@ -10,6 +10,7 @@ python manage.py split_merged_swimmers
 python manage.py strip_team_numbers
 python manage.py mark_relay_teams
 python manage.py fix_events --apply
+python manage.py backfill_original_ranks
 python manage.py recalculate_medals
 python manage.py createcachetable --database default 2>/dev/null || true
 

@@ -118,7 +118,7 @@ function FeaturedMeet({ meet: c, navigate }) {
   )
 }
 
-function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete }) {
+function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = [] }) {
   const [editingField, setEditingField] = useState(null)
   const [fieldValue, setFieldValue] = useState('')
   const [saving, setSaving] = useState(false)
@@ -166,12 +166,46 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete }) {
         <div>
           <div className="text-xs text-gray-500 mb-1">Country</div>
           <div className="text-sm font-medium">
-            {c.country_detail && <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />}
+            {editingField === 'country' ? (
+              <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                <select value={fieldValue} onChange={e => setFieldValue(e.target.value)} autoFocus
+                  className="border rounded-lg px-2 py-1 text-xs max-w-[140px]">
+                  <option value="">Select country</option>
+                  {countries.map(co => <option key={co.id} value={co.id}>{co.name}</option>)}
+                </select>
+                <button disabled={saving || !fieldValue} onClick={async () => {
+                  await saveField('country', fieldValue)
+                  const co = countries.find(x => String(x.id) === String(fieldValue))
+                  if (co) onUpdate({ ...c, country: co.id, country_detail: co })
+                }} className="text-xs text-cyan-600 font-semibold disabled:opacity-50">Save</button>
+                <button onClick={() => setEditingField(null)} className="text-xs text-gray-400">Cancel</button>
+              </div>
+            ) : c.country_detail ? (
+              <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
+            ) : (
+              <button onClick={(e) => { e.stopPropagation(); startEdit('country', '') }}
+                className="text-xs text-gray-400 border border-dashed border-gray-300 rounded-lg px-2 py-1 hover:border-cyan-400 hover:text-cyan-600">+ Set country</button>
+            )}
           </div>
         </div>
         <div>
           <div className="text-xs text-gray-500 mb-1">Location</div>
-          <div className="text-sm font-medium">{c.location || '-'}</div>
+          <div className="text-sm font-medium">
+            {editingField === 'location' ? (
+              <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                <input value={fieldValue} onChange={e => setFieldValue(e.target.value)} autoFocus
+                  placeholder="City / venue" className="border rounded-lg px-2 py-1 text-xs max-w-[140px]" />
+                <button disabled={saving} onClick={() => saveField('location', fieldValue)}
+                  className="text-xs text-cyan-600 font-semibold disabled:opacity-50">Save</button>
+                <button onClick={() => setEditingField(null)} className="text-xs text-gray-400">Cancel</button>
+              </div>
+            ) : c.location ? (
+              <span onClick={(e) => { e.stopPropagation(); startEdit('location', c.location) }} className="cursor-pointer hover:text-cyan-600" title="Edit">{c.location}</span>
+            ) : (
+              <button onClick={(e) => { e.stopPropagation(); startEdit('location', '') }}
+                className="text-xs text-gray-400 border border-dashed border-gray-300 rounded-lg px-2 py-1 hover:border-cyan-400 hover:text-cyan-600">+ Set location</button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -582,7 +616,26 @@ export default function CalendarPage() {
                           } catch {
                             navigate(`/meets/${ev.championship}`)
                           }
-                        } else setUpgradingEvent(ev)
+                        } else {
+                          // Old event without a meet behind it — silently create a
+                          // calendar-only meet so the full panel opens right away.
+                          try {
+                            const fd = new FormData()
+                            fd.append('name', ev.title)
+                            fd.append('date', ev.date)
+                            if (ev.end_date) fd.append('end_date', ev.end_date)
+                            fd.append('pool', 'LCM')
+                            fd.append('is_calendar_only', 'true')
+                            const champRes = await createChampionship(fd)
+                            await updateCalendarEvent(ev.id, { championship: champRes.data.id })
+                            setCalendarEvents(prev => prev.map(e2 => e2.id === ev.id ? { ...e2, championship: champRes.data.id } : e2))
+                            const champ = { ...champRes.data }
+                            if (/^\d{4}-/.test(champ.date || '')) champ.date = dayjs(champ.date).format('DD/MM/YYYY')
+                            if (/^\d{4}-/.test(champ.end_date || '')) champ.end_date = dayjs(champ.end_date).format('DD/MM/YYYY')
+                            setChampionships(prev => prev.some(c => c.id === champ.id) ? prev : [...prev, champ])
+                            setSelectedMeet({ id: champ.id })
+                          } catch { /* not admin — card stays as-is */ }
+                        }
                       }}
                       className="bg-white border border-gray-200 rounded-xl px-6 py-5 flex items-center gap-6 transition-all hover:shadow-md cursor-pointer">
                       <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
@@ -691,7 +744,7 @@ export default function CalendarPage() {
 
                   {/* Expanded meet details */}
                   {isSelected && (
-                    <MeetExpandedPanel meet={c} navigate={navigate} onUpdate={(updated) => {
+                    <MeetExpandedPanel meet={c} navigate={navigate} countries={countries} onUpdate={(updated) => {
                       setChampionships(prev => prev.map(ch => ch.id === updated.id ? { ...ch, ...updated } : ch))
                     }} onDelete={handleDeleteCalendarMeet} />
                   )}

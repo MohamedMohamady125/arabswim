@@ -112,7 +112,7 @@ export default function ChampionshipsPage() {
               {MONTHS[group.month]} {group.year}
             </h2>
             <div className="flex-1 h-px bg-blue-200" />
-            <span className="text-sm text-gray-400">{group.events.length} meet{group.events.length !== 1 ? 's' : ''}</span>
+            <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-sm font-semibold sm:bg-transparent sm:text-gray-400 sm:px-0 sm:py-0 sm:font-normal whitespace-nowrap">{group.events.length} meet{group.events.length !== 1 ? 's' : ''}</span>
           </div>
 
           {/* Meet cards */}
@@ -165,17 +165,17 @@ export default function ChampionshipsPage() {
                     {/* Stats */}
                     <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-2 shrink-0">
                       {c.results_count > 0 && (
-                        <span className="bg-green-100 text-green-700 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-sm font-medium whitespace-nowrap">
+                        <span className="bg-green-100 text-green-700 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-semibold sm:font-medium whitespace-nowrap">
                           {c.results_count} results
                         </span>
                       )}
                       {c.swimmers_count > 0 && (
-                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-sm font-medium whitespace-nowrap">
+                        <span className="bg-blue-100 text-blue-700 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-semibold sm:font-medium whitespace-nowrap">
                           {c.swimmers_count} swimmers
                         </span>
                       )}
                       {!c.results_count && (
-                        <span className="bg-gray-100 text-gray-500 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-sm whitespace-nowrap">No results</span>
+                        <span className="bg-gray-100 text-gray-500 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm whitespace-nowrap">No results</span>
                       )}
                     </div>
 

@@ -1,4 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+/* Tracks whether the viewport is phone-sized so charts can use a
+   phone-native canvas (narrower, proportionally bigger text). */
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const fn = e => setMobile(e.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [])
+  return mobile
+}
 
 const LINE_COLORS = [
   '#2f90ff', '#ff4d4d', '#37c86a', '#ffd21f',
@@ -31,6 +44,7 @@ function Triangle({ x, y, color }) {
 
 function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', tint = '#2f90ff' }) {
   const [tooltip, setTooltip] = useState(null)
+  const mobile = useIsMobile()
 
   // Collect all dates, dedup to best time per date per line
   const allDates = new Set()
@@ -57,8 +71,15 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
   const paddedMin = globalMin - range * 0.08
   const paddedMax = globalMax + range * 0.08
 
-  const W = 1280, H = 700
-  const pL = 110, pR = 60, pT = title ? 90 : 50, pB = 60
+  // Phone-native canvas: narrower viewBox so text renders proportionally
+  // larger on small screens; desktop keeps the original broadcast geometry.
+  const legendRows = mobile && processedLines.length > 1 ? Math.ceil(processedLines.length / 2) : 0
+  const W = mobile ? 460 : 1280
+  const H = mobile ? 560 + legendRows * 24 : 700
+  const pL = mobile ? 76 : 110
+  const pR = mobile ? 20 : 60
+  const pT = mobile ? (title ? 60 : 30) + legendRows * 24 : (title ? 90 : 50)
+  const pB = mobile ? 58 : 60
   const plotL = pL, plotR = W - pR, plotT = pT, plotB = H - pB
   const pW = plotR - plotL, pH = plotB - plotT
 
@@ -72,16 +93,17 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
   const timeToY = (cs) => plotB - ((cs - paddedMin) / (paddedMax - paddedMin)) * pH
 
   // Y-axis ticks
-  const tickCount = Math.min(8, Math.max(4, Math.ceil((paddedMax - paddedMin) / 100)))
+  const tickCount = Math.min(mobile ? 6 : 8, Math.max(4, Math.ceil((paddedMax - paddedMin) / 100)))
   const yTicks = []
   for (let i = 0; i < tickCount; i++) {
     const cs = paddedMin + (i / (tickCount - 1)) * (paddedMax - paddedMin)
     yTicks.push(Math.round(cs))
   }
 
-  // X labels
-  const xLabels = sortedDates.length <= 12 ? sortedDates : sortedDates.filter((_, i) =>
-    i === 0 || i === sortedDates.length - 1 || i % Math.ceil(sortedDates.length / 10) === 0
+  // X labels (phones show at most ~5 so they never overlap)
+  const maxXLabels = mobile ? 5 : 12
+  const xLabels = sortedDates.length <= maxXLabels ? sortedDates : sortedDates.filter((_, i) =>
+    i === 0 || i === sortedDates.length - 1 || i % Math.ceil(sortedDates.length / (mobile ? 4 : 10)) === 0
   )
 
   // Label collision detection
@@ -108,10 +130,8 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
   const waveYs = [plotT + pH * 0.15, plotT + pH * 0.35, plotT + pH * 0.55, plotT + pH * 0.75, plotT + pH * 0.9]
 
   return (
-    <div className="relative overflow-x-auto sm:overflow-visible">
-      {/* On phones the chart keeps a large minimum width (scroll to pan) so
-          times/labels stay readable; on sm+ it fits the container as before. */}
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[1000px] sm:min-w-0" style={{ display: 'block', height: 'auto' }}
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ display: 'block', height: 'auto' }}
         fontFamily="Arial, Helvetica, sans-serif">
         <defs>
           <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
@@ -135,13 +155,27 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
 
         {/* Title */}
         {title && (
-          <text x={W / 2} y={40} textAnchor="middle" fill="#0b1f38" fontSize="19" fontWeight="bold" letterSpacing="1">
+          <text x={W / 2} y={mobile ? 34 : 40} textAnchor="middle" fill="#0b1f38" fontSize={mobile ? 18 : 19} fontWeight="bold" letterSpacing="1">
             {title.toUpperCase()}
           </text>
         )}
 
-        {/* Legend (top area) */}
-        {processedLines.length > 1 && (() => {
+        {/* Legend (top area) — single centered row on desktop, 2-col rows on phones */}
+        {processedLines.length > 1 && (mobile ? (
+          processedLines.map((line, li) => {
+            const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
+            const col = li % 2, row = Math.floor(li / 2)
+            const x = pL + col * ((W - pL - pR) / 2)
+            const y = (title ? 52 : 20) + row * 24
+            return (
+              <g key={li}>
+                <line x1={x} y1={y} x2={x + 26} y2={y} stroke={color} strokeWidth="2.6" />
+                <Triangle x={x + 13} y={y} color={color} />
+                <text x={x + 34} y={y + 4.5} fill="#0b1f38" fontSize="13" fontWeight="bold">{line.event_name}</text>
+              </g>
+            )
+          })
+        ) : (() => {
           const legendW = processedLines.reduce((s, l) => s + l.event_name.length * 8 + 70, 0)
           let lx = W / 2 - legendW / 2
           return processedLines.map((line, li) => {
@@ -156,7 +190,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
               </g>
             )
           })
-        })()}
+        })())}
 
         {/* Horizontal grid + Y labels */}
         {yTicks.map((cs, i) => {
@@ -164,7 +198,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
           return (
             <g key={i}>
               <line x1={plotL} y1={y} x2={plotR} y2={y} stroke="#123a66" strokeOpacity="0.14" strokeWidth="1" />
-              <text x={plotL - 12} y={y + 4} textAnchor="end" fill="#33475e" fontSize="12.5">{formatTimeShort(cs)}</text>
+              <text x={plotL - (mobile ? 8 : 12)} y={y + 4} textAnchor="end" fill="#33475e" fontSize={mobile ? 13.5 : 12.5}>{formatTimeShort(cs)}</text>
             </g>
           )
         })}
@@ -176,7 +210,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
           return (
             <g key={date}>
               <line x1={x} y1={plotT} x2={x} y2={plotB} stroke="#123a66" strokeOpacity="0.14" strokeWidth="1" />
-              <text x={x} y={plotB + 22} textAnchor="middle" fill="#33475e" fontSize="12" fontWeight="bold">
+              <text x={x} y={plotB + (mobile ? 20 : 22)} textAnchor="middle" fill="#33475e" fontSize={mobile ? 12.5 : 12} fontWeight="bold">
                 {d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
               </text>
             </g>
@@ -187,11 +221,11 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
         <rect x={plotL} y={plotT} width={pW} height={pH} fill="none" stroke="#123a66" strokeOpacity="0.4" strokeWidth="1.4" />
 
         {/* Axis titles */}
-        <text x={30} y={plotT + pH / 2} transform={`rotate(-90 30 ${plotT + pH / 2})`}
-          textAnchor="middle" fill="#0b1f38" fontSize="14" fontWeight="bold" letterSpacing="1">
+        <text x={mobile ? 18 : 30} y={plotT + pH / 2} transform={`rotate(-90 ${mobile ? 18 : 30} ${plotT + pH / 2})`}
+          textAnchor="middle" fill="#0b1f38" fontSize={mobile ? 13.5 : 14} fontWeight="bold" letterSpacing="1">
           TIME
         </text>
-        <text x={plotL + pW / 2} y={plotB + 48} textAnchor="middle" fill="#0b1f38" fontSize="14" fontWeight="bold" letterSpacing="1">
+        <text x={plotL + pW / 2} y={plotB + (mobile ? 44 : 48)} textAnchor="middle" fill="#0b1f38" fontSize={mobile ? 13.5 : 14} fontWeight="bold" letterSpacing="1">
           DATE
         </text>
 
@@ -235,32 +269,37 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
             const lbl = formatTimeShort(p.time_cs)
             return (
               <g key={`lbl${li}-${i}`}>
-                <text x={x} y={y} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#ffffff" stroke="#ffffff" strokeWidth="2.4" strokeLinejoin="round" opacity="0.85">{lbl}</text>
-                <text x={x} y={y} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0b1f38">{lbl}</text>
+                <text x={x} y={y} textAnchor="middle" fontSize={mobile ? 13 : 11} fontWeight="bold" fill="#ffffff" stroke="#ffffff" strokeWidth="2.4" strokeLinejoin="round" opacity="0.85">{lbl}</text>
+                <text x={x} y={y} textAnchor="middle" fontSize={mobile ? 13 : 11} fontWeight="bold" fill="#0b1f38">{lbl}</text>
               </g>
             )
           })
         })}
 
         {/* Tooltip */}
-        {tooltip && (
-          <g>
-            <rect x={Math.min(tooltip.x - 95, W - 200)} y={tooltip.y + 18} width="190"
-              height={showSwimmer && tooltip.swimmer ? 66 : 50} rx="8"
-              fill="#0b1f38" fillOpacity="0.9" stroke="#ffffff" strokeOpacity="0.3" strokeWidth="1" />
-            <text x={Math.min(tooltip.x, W - 105)} y={tooltip.y + 35} textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="bold">
-              {tooltip.line}
-            </text>
-            <text x={Math.min(tooltip.x, W - 105)} y={tooltip.y + 52} textAnchor="middle" fill="#eaf2ff" fontSize="10.5">
-              {formatTimeShort(tooltip.time_cs)} · {(tooltip.meet || '').substring(0, 22)}{tooltip.fina ? ` · ${tooltip.fina}pts` : ''}
-            </text>
-            {showSwimmer && tooltip.swimmer && (
-              <text x={Math.min(tooltip.x, W - 105)} y={tooltip.y + 66} textAnchor="middle" fill="#94b8db" fontSize="10">
-                {tooltip.swimmer}
+        {tooltip && (() => {
+          const tw = 190
+          const tx = Math.max(6, Math.min(tooltip.x - tw / 2, W - tw - 6))
+          const tcx = tx + tw / 2
+          return (
+            <g>
+              <rect x={tx} y={tooltip.y + 18} width={tw}
+                height={showSwimmer && tooltip.swimmer ? 66 : 50} rx="8"
+                fill="#0b1f38" fillOpacity="0.9" stroke="#ffffff" strokeOpacity="0.3" strokeWidth="1" />
+              <text x={tcx} y={tooltip.y + 35} textAnchor="middle" fill="#ffffff" fontSize={mobile ? 13 : 12} fontWeight="bold">
+                {tooltip.line}
               </text>
-            )}
-          </g>
-        )}
+              <text x={tcx} y={tooltip.y + 52} textAnchor="middle" fill="#eaf2ff" fontSize={mobile ? 11.5 : 10.5}>
+                {formatTimeShort(tooltip.time_cs)} · {(tooltip.meet || '').substring(0, 22)}{tooltip.fina ? ` · ${tooltip.fina}pts` : ''}
+              </text>
+              {showSwimmer && tooltip.swimmer && (
+                <text x={tcx} y={tooltip.y + 66} textAnchor="middle" fill="#94b8db" fontSize={mobile ? 11 : 10}>
+                  {tooltip.swimmer}
+                </text>
+              )}
+            </g>
+          )
+        })()}
       </svg>
     </div>
   )

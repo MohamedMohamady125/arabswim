@@ -45,6 +45,95 @@ class RecordViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
+    def held(self, request):
+        """All computed records held by one swimmer, across every scope
+        (national/gcc/arab), pool (LCM/SCM) and age group (U10..U19, OPEN).
+
+        Query params:
+          swimmer – swimmer id (required)
+
+        Records that are identical across several age groups (same swim) are
+        merged into one entry with a `categories` list.
+        """
+        from championships.models import Result
+        from swimmers.models import Swimmer
+
+        swimmer_id = request.query_params.get('swimmer')
+        try:
+            swimmer = Swimmer.objects.select_related('nationality').get(id=int(swimmer_id))
+        except (Swimmer.DoesNotExist, TypeError, ValueError):
+            return Response([])
+
+        region = swimmer.nationality.region if swimmer.nationality else None
+        age_groups = [f'U{n}' for n in range(10, 20)] + ['OPEN']
+
+        held = []
+        for pool in ('LCM', 'SCM'):
+            rows = list(Result.objects.filter(
+                championship__pool=pool,
+                time_centiseconds__gt=0,
+                is_hc=False,
+                swimmer__sex=swimmer.sex,
+                swimmer__nationality__region__in=['ARAB', 'GCC'],
+            ).values(
+                'event_id', 'event__name', 'event__sort_order', 'event__distance',
+                'swimmer_id', 'swimmer__nationality_id', 'swimmer__nationality__region',
+                'age_at_competition', 'time_centiseconds',
+                'championship__name', 'championship__date',
+            ))
+            if not rows:
+                continue
+
+            scopes = [('arab', [r for r in rows])]
+            if region == 'GCC':
+                scopes.append(('gcc', [r for r in rows if r['swimmer__nationality__region'] == 'GCC']))
+            if swimmer.nationality_id:
+                scopes.append(('national', [r for r in rows if r['swimmer__nationality_id'] == swimmer.nationality_id]))
+
+            for scope, subset in scopes:
+                for ag in age_groups:
+                    if ag == 'OPEN':
+                        pool_rows = subset
+                    else:
+                        max_age = int(ag[1:])
+                        pool_rows = [r for r in subset
+                                     if r['age_at_competition'] is not None and r['age_at_competition'] <= max_age]
+                    best = {}
+                    for r in pool_rows:
+                        b = best.get(r['event_id'])
+                        if b is None or (r['time_centiseconds'], r['championship__date']) < (b['time_centiseconds'], b['championship__date']):
+                            best[r['event_id']] = r
+                    for r in best.values():
+                        if r['swimmer_id'] == swimmer.id:
+                            held.append({'scope': scope, 'pool': pool, 'age_group': ag, 'row': r})
+
+        # Merge identical records (same swim holding several age categories)
+        merged = {}
+        order = []
+        for h in held:
+            r = h['row']
+            key = (h['scope'], h['pool'], r['event_id'], r['time_centiseconds'], r['championship__date'])
+            if key not in merged:
+                cs = r['time_centiseconds']
+                minutes, seconds, centis = cs // 6000, (cs % 6000) // 100, cs % 100
+                time_str = f'{minutes}:{seconds:02d}.{centis:02d}' if minutes else f'{seconds}.{centis:02d}'
+                merged[key] = {
+                    'scope': h['scope'], 'pool': h['pool'],
+                    'event_id': r['event_id'], 'event_name': r['event__name'],
+                    'event_sort_order': r['event__sort_order'], 'event_distance': r['event__distance'],
+                    'time': time_str, 'time_centiseconds': cs,
+                    'championship_name': r['championship__name'],
+                    'date': r['championship__date'].isoformat() if r['championship__date'] else '',
+                    'categories': [],
+                }
+                order.append(key)
+            merged[key]['categories'].append(h['age_group'])
+
+        results = [merged[k] for k in order]
+        results.sort(key=lambda r: (r['scope'], r['pool'], r['event_sort_order'], r['event_distance']))
+        return Response(results)
+
+    @action(detail=False, methods=['get'])
     def computed(self, request):
         """Return the fastest time per event+gender from existing Result data.
 

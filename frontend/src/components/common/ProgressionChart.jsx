@@ -142,7 +142,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
           const legendW = processedLines.reduce((s, l) => s + l.event_name.length * 8 + 70, 0)
           let lx = W / 2 - legendW / 2
           return processedLines.map((line, li) => {
-            const color = LINE_COLORS[li % LINE_COLORS.length]
+            const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
             const x = lx
             lx += line.event_name.length * 8 + 70
             return (
@@ -194,7 +194,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
 
         {/* Series lines */}
         {processedLines.map((line, li) => {
-          const color = LINE_COLORS[li % LINE_COLORS.length]
+          const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
           const pts = line.points
           if (pts.length === 0) return null
           // Only draw lines if we have more than one unique date
@@ -211,7 +211,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
 
         {/* Triangle markers */}
         {processedLines.map((line, li) => {
-          const color = LINE_COLORS[li % LINE_COLORS.length]
+          const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
           return line.points.map((p, i) => (
             <g key={`m${li}-${i}`}
               onMouseEnter={() => setTooltip({ x: dateToX(p.date), y: timeToY(p.time_cs), line: line.event_name, ...p })}
@@ -224,7 +224,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
 
         {/* Time labels (dark halo + white text) */}
         {processedLines.map((line, li) => {
-          const color = LINE_COLORS[li % LINE_COLORS.length]
+          const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
           return line.points.map((p, i) => {
             const x = dateToX(p.date)
             const key = `${li}-${p.time_cs}-${Math.round(x)}`
@@ -278,7 +278,7 @@ function SummaryTable({ lines, showSwimmer }) {
         </thead>
         <tbody>
           {lines.map((line, li) => {
-            const color = LINE_COLORS[li % LINE_COLORS.length]
+            const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
             const pts = line.points
             if (!pts.length) return null
             const best = Math.min(...pts.map(p => p.time_cs))
@@ -328,22 +328,25 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
     )
   }
 
+  // Assign each event a fixed color so single charts match the collective chart
+  const coloredLines = lines.map((l, i) => ({ ...l, color: LINE_COLORS[i % LINE_COLORS.length] }))
+
   return (
     <div className="space-y-6">
       {/* Collective chart — all events together */}
-      {lines.length > 1 && (
+      {coloredLines.length > 1 && (
         <div className="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-200">
           <div className="px-5 pt-4 pb-2">
-            <BroadcastChart lines={lines} title={title || 'All Events Progression'} showSwimmer={showSwimmer} chartId="collective" />
+            <BroadcastChart lines={coloredLines} title={title || 'All Events Progression'} showSwimmer={showSwimmer} chartId="collective" />
           </div>
           <div className="px-5 pb-5">
-            <SummaryTable lines={lines} showSwimmer={showSwimmer} />
+            <SummaryTable lines={coloredLines} showSwimmer={showSwimmer} />
           </div>
         </div>
       )}
 
       {/* Individual event charts */}
-      {lines.map((line, i) => {
+      {coloredLines.map((line, i) => {
         if (!line.points || line.points.length === 0) return null
         return (
           <div key={line.event_id || line.event_name} className="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-200">

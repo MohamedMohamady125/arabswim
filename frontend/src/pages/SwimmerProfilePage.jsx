@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getSwimmer, updateSwimmer, getSwimmerEvents, getSwimmerEventHistory, getSwimmerProfileStats, getSwimmerProgression, getSwimmerTransferHistory, getSwimmerRankings, getSwimmerQualifyingGaps } from '../api/swimmers'
-import { getRecords, getComputedRecords } from '../api/records'
+import { getHeldRecords } from '../api/records'
 import { getMediaItems } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 import ProgressionChart from '../components/common/ProgressionChart'
@@ -1000,35 +1000,18 @@ function RecordsTab({ swimmerId, swimmer }) {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    const natId = swimmer?.nationality
-    const fetches = [
-      getComputedRecords({ scope: 'arab', pool: 'LCM' }),
-      getComputedRecords({ scope: 'arab', pool: 'SCM' }),
-      getComputedRecords({ scope: 'gcc', pool: 'LCM' }),
-      getComputedRecords({ scope: 'gcc', pool: 'SCM' }),
-    ]
-    if (natId) {
-      fetches.push(getComputedRecords({ scope: 'national', country: natId, pool: 'LCM' }))
-      fetches.push(getComputedRecords({ scope: 'national', country: natId, pool: 'SCM' }))
-    }
-    Promise.all(fetches).then((results) => {
-      const [arabLCM, arabSCM, gccLCM, gccSCM, natLCM, natSCM] = results
-      const all = []
-      const addRecords = (data, type, pool) => {
-        if (!data) return
-        data.filter(r => r.swimmer_id === swimmerId).forEach(r => {
-          all.push({ ...r, record_type: type, pool, event_name: r.event_name, formatted_time: r.time, location: r.championship_name, result_date: r.date })
-        })
-      }
-      addRecords(arabLCM.data, 'ARAB', 'LCM')
-      addRecords(arabSCM.data, 'ARAB', 'SCM')
-      addRecords(gccLCM.data, 'GCC', 'LCM')
-      addRecords(gccSCM.data, 'GCC', 'SCM')
-      if (natLCM) addRecords(natLCM.data, 'NATIONAL', 'LCM')
-      if (natSCM) addRecords(natSCM.data, 'NATIONAL', 'SCM')
+    getHeldRecords({ swimmer: swimmerId }).then((res) => {
+      const all = (res.data || []).map(r => ({
+        ...r,
+        record_type: (r.scope || '').toUpperCase(),
+        formatted_time: r.time,
+        location: r.championship_name,
+        result_date: r.date,
+        categories: r.categories || [],
+      }))
       setRecords(all)
     }).catch(() => {}).finally(() => setLoading(false))
-  }, [swimmerId, swimmer?.nationality])
+  }, [swimmerId])
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
 
@@ -1069,6 +1052,24 @@ function RecordsTab({ swimmerId, swimmer }) {
     const parts = String(d).split('-')
     if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`
     return d
+  }
+
+  // Compress age categories: ['U14','U15','U16','OPEN'] -> ['U14–U16', 'OPEN']
+  const compressCategories = (cats) => {
+    if (!cats || cats.length === 0) return ['OPEN']
+    const hasOpen = cats.includes('OPEN')
+    const ages = cats.filter(c => c !== 'OPEN').map(c => parseInt(c.slice(1))).sort((a, b) => a - b)
+    const out = []
+    let start = null, prev = null
+    ages.forEach(n => {
+      if (start === null) { start = prev = n; return }
+      if (n === prev + 1) { prev = n; return }
+      out.push(start === prev ? `U${start}` : `U${start}\u2013U${prev}`)
+      start = prev = n
+    })
+    if (start !== null) out.push(start === prev ? `U${start}` : `U${start}\u2013U${prev}`)
+    if (hasOpen) out.push('OPEN')
+    return out
   }
 
   return (
@@ -1143,7 +1144,9 @@ function RecordsTab({ swimmerId, swimmer }) {
                   {/* Badges */}
                   <div className="hidden sm:flex items-center gap-2.5 shrink-0">
                     <span className={`border-2 rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] bg-white ${cfg.badge}`}>{cfg.label}</span>
-                    <span className="border-2 border-blue-400 text-blue-500 rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] bg-white">{r.category || 'OPEN'}</span>
+                    {compressCategories(r.categories).map(cat => (
+                      <span key={cat} className="border-2 border-blue-400 text-blue-500 rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] bg-white">{cat}</span>
+                    ))}
                     <span className={`border-2 rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] bg-white ${r.pool === 'SCM' ? 'border-orange-400 text-orange-500' : 'border-blue-400 text-blue-500'}`}>{r.pool}</span>
                   </div>
                   {/* Divider + time */}
@@ -1546,7 +1549,7 @@ function RankingsTab({ swimmerId, swimmer }) {
             </div>
             <div className="h-16 w-px bg-white/15 mx-2" />
             <div>
-              <div className="text-6xl sm:text-7xl font-black text-white font-mono leading-none tracking-tight">{selectedRow.best_time}</div>
+              <div className="text-7xl sm:text-8xl font-black text-white font-mono leading-none tracking-tight">{selectedRow.best_time}</div>
               <div className="text-sm font-black uppercase tracking-widest text-cyan-400 mt-1">{selectedEventName?.toUpperCase()} · PERSONAL BEST</div>
             </div>
           </div>

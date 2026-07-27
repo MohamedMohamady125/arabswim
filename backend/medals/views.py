@@ -2,7 +2,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Exists, OuterRef
 from .models import Medal
 from .serializers import MedalSerializer, MedalCreateSerializer
 
@@ -39,6 +39,15 @@ class MedalViewSet(viewsets.ModelViewSet):
             qs = qs.filter(swimmer__sex=gender)
         return qs
 
+    @staticmethod
+    def _dedupe_relay_placeholders(qs):
+        """A relay medal exists both on the relay-team placeholder and on
+        each individual athlete. In tallies the relay counts once per
+        athlete, so drop the placeholder row when individual rows exist."""
+        individual = Medal.objects.filter(
+            result=OuterRef('result'), swimmer__is_relay_team=False)
+        return qs.exclude(Q(swimmer__is_relay_team=True) & Q(Exists(individual)))
+
     def get_queryset(self):
         qs = super().get_queryset()
         qs = self._apply_filters(qs)
@@ -56,6 +65,7 @@ class MedalViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def summary(self, request):
         qs = self._apply_filters(Medal.objects.all())
+        qs = self._dedupe_relay_placeholders(qs)
         # Only restrict to Arab countries on the global medals page, not per-championship
         if not request.query_params.get('championship'):
             qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
@@ -94,6 +104,7 @@ class MedalViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='club-summary')
     def club_summary(self, request):
         qs = self._apply_filters(Medal.objects.all())
+        qs = self._dedupe_relay_placeholders(qs)
         # Only include medals that have a team/club via result
         qs = qs.filter(
             result__isnull=False,

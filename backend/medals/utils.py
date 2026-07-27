@@ -16,6 +16,21 @@ from .models import Medal
 _MEDAL_BY_RANK = {1: 'GOLD', 2: 'SILVER', 3: 'BRONZE'}
 
 
+def _match_relay_swimmer(name, nationality_id):
+    """Find the real Swimmer record for a relay leg name, preferring the
+    relay team's nationality when several swimmers share a name."""
+    from swimmers.models import Swimmer
+    name = (name or '').strip()
+    if not name:
+        return None
+    qs = Swimmer.objects.filter(is_relay_team=False, name__iexact=name)
+    if nationality_id:
+        match = qs.filter(nationality_id=nationality_id).first()
+        if match:
+            return match
+    return qs.first()
+
+
 def recompute_medals(championship):
     """Delete and re-award all result-backed medals for a championship.
 
@@ -61,6 +76,22 @@ def recompute_medals(championship):
                 swimmer=r.swimmer, championship=championship,
                 event_id=r.event_id, medal_type=medal_type, result=r,
             ))
+            # Relays: each athlete on the squad also gets an individual
+            # medal, so a relay counts once per swimmer in personal and
+            # team/country tallies.
+            if r.swimmer.is_relay_team:
+                seen = set()
+                for leg in (r.relay_swimmers or []):
+                    s = _match_relay_swimmer(leg.get('name'), r.swimmer.nationality_id)
+                    if not s or s.id in seen:
+                        continue
+                    if (s.id, r.event_id) in manual:
+                        continue
+                    seen.add(s.id)
+                    medals.append(Medal(
+                        swimmer=s, championship=championship,
+                        event_id=r.event_id, medal_type=medal_type, result=r,
+                    ))
 
     Medal.objects.bulk_create(medals)
     return len(medals)

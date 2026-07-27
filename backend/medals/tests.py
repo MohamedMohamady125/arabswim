@@ -108,3 +108,62 @@ class RecomputeMedalsTests(TestCase):
         recompute_medals(self.champ)
         recompute_medals(self.champ)
         self.assertEqual(Medal.objects.filter(championship=self.champ).count(), 1)
+
+
+class RelayMedalTests(TestCase):
+    """Relay medals: one per athlete on the squad plus the placeholder row."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.country = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        cls.relay_event = Event.objects.create(
+            name='4x100 M Freestyle Relay', distance=400,
+            stroke='Freestyle Relay', is_relay=True)
+        cls.champ = Championship.objects.create(
+            name='Relay Meet', date='2026-06-01', pool='LCM', country=cls.country)
+
+    def _relay_result(self, team_name, time_cs, leg_names):
+        placeholder = Swimmer.objects.create(
+            name=team_name, sex='M', nationality=self.country, is_relay_team=True)
+        return Result.objects.create(
+            swimmer=placeholder, championship=self.champ, event=self.relay_event,
+            round_type='Finals', time_centiseconds=time_cs,
+            relay_swimmers=[{'name': n, 'split_time': ''} for n in leg_names])
+
+    def test_each_relay_athlete_gets_a_medal(self):
+        names = ['Ali TAMER', 'Omar SAYED', 'Ziad KAMAL', 'Hassan NOUR']
+        for n in names:
+            Swimmer.objects.create(name=n, sex='M', nationality=self.country)
+        self._relay_result('Egypt Relay', 20000, names)
+        recompute_medals(self.champ)
+        golds = Medal.objects.filter(championship=self.champ, medal_type='GOLD')
+        self.assertEqual(golds.count(), 5)  # placeholder + 4 athletes
+        self.assertEqual(
+            golds.filter(swimmer__is_relay_team=False).count(), 4)
+
+    def test_unmatched_leg_names_are_skipped(self):
+        Swimmer.objects.create(name='Ali TAMER', sex='M', nationality=self.country)
+        self._relay_result('Egypt Relay', 20000, ['Ali TAMER', 'Unknown GUY'])
+        recompute_medals(self.champ)
+        self.assertEqual(
+            Medal.objects.filter(championship=self.champ).count(), 2)
+
+    def test_relay_medals_idempotent(self):
+        Swimmer.objects.create(name='Ali TAMER', sex='M', nationality=self.country)
+        self._relay_result('Egypt Relay', 20000, ['Ali TAMER'])
+        recompute_medals(self.champ)
+        recompute_medals(self.champ)
+        self.assertEqual(
+            Medal.objects.filter(championship=self.champ).count(), 2)
+
+    def test_summary_counts_athletes_not_placeholder(self):
+        names = ['Ali TAMER', 'Omar SAYED']
+        for n in names:
+            Swimmer.objects.create(name=n, sex='M', nationality=self.country)
+        self._relay_result('Egypt Relay', 20000, names)
+        recompute_medals(self.champ)
+        res = self.client.get(f'/api/v1/medals/summary/?championship={self.champ.id}')
+        self.assertEqual(res.status_code, 200)
+        row = next(r for r in res.json()
+                   if r['swimmer__nationality__code'] == 'EGY')
+        self.assertEqual(row['gold'], 2)  # athletes only, placeholder excluded

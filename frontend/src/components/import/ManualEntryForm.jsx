@@ -81,10 +81,10 @@ export default function ManualEntryForm({ onComplete }) {
     }, 400)
   }, [resultForm.time, resultForm.event, selectedSwimmer, selectedChamp])
 
-  // Auto-fill age at competition from swimmer DOB + meet date (editable)
+  // Auto-fill age at competition from the swimmer's stored birth data
+  // (exact DOB when known, else birth year) + meet date. Editable.
   useEffect(() => {
-    if (!selectedSwimmer?.date_of_birth || !selectedChamp?.date) return
-    const dob = new Date(selectedSwimmer.date_of_birth)
+    if (!selectedSwimmer || !selectedChamp?.date) return
     let champDate
     const ds = String(selectedChamp.date)
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(ds)) {
@@ -93,11 +93,22 @@ export default function ManualEntryForm({ onComplete }) {
     } else {
       champDate = new Date(ds)
     }
-    if (isNaN(dob.getTime()) || isNaN(champDate.getTime())) return
-    let age = champDate.getFullYear() - dob.getFullYear()
-    const m = champDate.getMonth() - dob.getMonth()
-    if (m < 0 || (m === 0 && champDate.getDate() < dob.getDate())) age--
-    if (age > 0 && age < 100) setResultForm(f => ({ ...f, age: String(age) }))
+    if (isNaN(champDate.getTime())) return
+    let age = null
+    if (selectedSwimmer.date_of_birth) {
+      const dob = new Date(selectedSwimmer.date_of_birth)
+      if (!isNaN(dob.getTime())) {
+        age = champDate.getFullYear() - dob.getFullYear()
+        const m = champDate.getMonth() - dob.getMonth()
+        if (m < 0 || (m === 0 && champDate.getDate() < dob.getDate())) age--
+      }
+    }
+    if (age === null && selectedSwimmer.birth_year) {
+      age = champDate.getFullYear() - selectedSwimmer.birth_year
+    }
+    if (age !== null && age > 0 && age < 100) {
+      setResultForm(f => ({ ...f, age: String(age) }))
+    }
   }, [selectedSwimmer, selectedChamp])
 
   useEffect(() => {

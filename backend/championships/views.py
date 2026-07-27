@@ -175,8 +175,22 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             data['championship'] = championship.id
             serializer = ResultCreateSerializer(data=data)
             serializer.is_valid(raise_exception=True)
-            serializer.save(championship=championship)
-            return Response(serializer.data, status=201)
+            result = serializer.save(championship=championship)
+            # Auto-compute age at competition from the swimmer's stored
+            # birth data when the caller didn't supply it
+            sw = result.swimmer
+            if (result.age_at_competition is None and championship.date
+                    and not sw.is_relay_team):
+                d = championship.date
+                if sw.date_of_birth:
+                    result.age_at_competition = d.year - sw.date_of_birth.year - (
+                        (d.month, d.day) <
+                        (sw.date_of_birth.month, sw.date_of_birth.day))
+                elif sw.birth_year:
+                    result.age_at_competition = d.year - sw.birth_year
+                if result.age_at_competition is not None:
+                    result.save(update_fields=['age_at_competition'])
+            return Response(ResultCreateSerializer(result).data, status=201)
 
     @action(detail=True, methods=['post'], url_path='add-results')
     def add_results(self, request, pk=None):

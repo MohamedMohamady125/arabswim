@@ -253,3 +253,71 @@ class StripTeamNumbersCommandTests(TestCase):
         call_command('strip_team_numbers')
         self.assertEqual(Swimmer.objects.count(), 1)
         self.assertEqual(Result.objects.count(), 1)
+
+
+class ApplySubclassificationCountryTests(TestCase):
+    """National/Other meets force club countries to the sub-classification."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from championships.models import Classification, SubClassification
+        cls.france = Country.objects.create(name='France', code='FRA', region='EUR')
+        cls.belgium = Country.objects.create(name='Belgium', code='BEL', region='EUR')
+        cls.event = Event.objects.create(name='100 M Freestyle', distance=100,
+                                         stroke='Freestyle', is_relay=False)
+        other = Classification.objects.create(name='Other')
+        cls.sub_france = SubClassification.objects.create(
+            classification=other, name='France')
+        cls.champ = Championship.objects.create(
+            name='French Nationals', date='2026-06-01', pool='LCM',
+            country=cls.france, classification=other,
+            sub_classification=cls.sub_france)
+
+    def _result(self, club, swimmer_club=''):
+        s = Swimmer.objects.create(name=f'S {club}', sex='M',
+                                   nationality=self.france, club=swimmer_club)
+        return Result.objects.create(
+            swimmer=s, championship=self.champ, event=self.event,
+            round_type='Finals', time_centiseconds=5000, team=club)
+
+    def test_wrong_country_club_is_fixed(self):
+        from teams.utils import apply_subclassification_country
+        team = Team.objects.create(name='CN Marseille', country=self.belgium)
+        self._result('CN Marseille')
+        self.assertEqual(apply_subclassification_country(self.champ), 1)
+        team.refresh_from_db()
+        self.assertEqual(team.country, self.france)
+
+    def test_swimmer_club_names_also_matched(self):
+        from teams.utils import apply_subclassification_country
+        team = Team.objects.create(name='Dauphins de Paris', country=self.belgium)
+        self._result('', swimmer_club='Dauphins de Paris')
+        apply_subclassification_country(self.champ)
+        team.refresh_from_db()
+        self.assertEqual(team.country, self.france)
+
+    def test_national_teams_untouched(self):
+        from teams.utils import apply_subclassification_country
+        team = Team.objects.create(name='Belgium', country=self.belgium,
+                                   is_national_team=True)
+        self._result('Belgium')
+        apply_subclassification_country(self.champ)
+        team.refresh_from_db()
+        self.assertEqual(team.country, self.belgium)
+
+    def test_non_national_classification_ignored(self):
+        from championships.models import Classification, SubClassification
+        from teams.utils import apply_subclassification_country
+        arab = Classification.objects.create(name='Arab')
+        sub = SubClassification.objects.create(classification=arab, name='Arab Games')
+        champ = Championship.objects.create(
+            name='Arab Games', date='2026-07-01', pool='LCM',
+            country=self.france, classification=arab, sub_classification=sub)
+        team = Team.objects.create(name='CN Lyon', country=self.belgium)
+        s = Swimmer.objects.create(name='X', sex='M', nationality=self.france)
+        Result.objects.create(swimmer=s, championship=champ, event=self.event,
+                              round_type='Finals', time_centiseconds=5000,
+                              team='CN Lyon')
+        self.assertEqual(apply_subclassification_country(champ), 0)
+        team.refresh_from_db()
+        self.assertEqual(team.country, self.belgium)

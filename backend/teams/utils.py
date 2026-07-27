@@ -261,6 +261,50 @@ def ensure_team_exists(club_name, country=None):
     return None
 
 
+def apply_subclassification_country(championship):
+    """
+    For meets classified as National/Other the sub-classification names the
+    country the meet belongs to (e.g. classification=Other, sub=France means
+    a French national-level meet). Every club that swam in such a meet is
+    from that country, so force the matching Team records onto it.
+
+    Fixes clubs whose country was mis-inferred from swimmer nationalities
+    (e.g. a French club tagged as Belgian). Returns count of teams updated.
+    """
+    from importer.matcher import resolve_country
+
+    classification = championship.classification
+    sub = championship.sub_classification
+    if not classification or not sub:
+        return 0
+    if classification.name not in ('National', 'Other'):
+        return 0
+
+    country = resolve_country(sub.name)
+    if not country:
+        country = Country.objects.filter(name__iexact=sub.name.strip()).first()
+    if not country:
+        return 0
+
+    club_names = set(
+        championship.results.exclude(team='').values_list('team', flat=True))
+    club_names |= set(
+        championship.results.exclude(swimmer__club='')
+        .exclude(swimmer__club__isnull=True)
+        .values_list('swimmer__club', flat=True))
+    keys = {normalize_team_key(n) for n in club_names if n and n.strip()}
+    if not keys:
+        return 0
+
+    updated = 0
+    for team in Team.objects.filter(is_national_team=False).exclude(country=country):
+        if normalize_team_key(team.name) in keys:
+            team.country = country
+            team.save(update_fields=['country'])
+            updated += 1
+    return updated
+
+
 def _get_skip_names():
     """Names to skip when auto-creating teams (raw + normalized keys)."""
     skip = set()

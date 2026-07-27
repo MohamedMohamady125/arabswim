@@ -848,8 +848,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 created_results += 1
 
     # Auto-create teams from club names found in this import
-    from teams.utils import auto_create_teams
+    from teams.utils import auto_create_teams, apply_subclassification_country
     teams_created = auto_create_teams()
+
+    # National/Other meets: sub-classification names the meet's country,
+    # so every club in this meet belongs to that country.
+    apply_subclassification_country(championship)
 
     # Re-award medals with Olympic tie rules
     from medals.utils import recompute_medals

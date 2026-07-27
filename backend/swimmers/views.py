@@ -328,7 +328,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         champ_ids = Result.objects.filter(swimmer=swimmer).values_list(
             'championship_id', flat=True).distinct()
         championships = Championship.objects.filter(id__in=champ_ids).select_related(
-            'country', 'classification_category').order_by('-date')
+            'country', 'classification_category', 'classification').order_by('-date')
         champs_data = [{
             'id': c.id, 'name': c.name, 'date': c.date,
             'pool': c.pool,
@@ -336,6 +336,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'country_code': c.country.code if c.country else '',
             'flag_url': c.country.flag_url if c.country else '',
             'category': c.classification_category.name if c.classification_category else '',
+            'classification': c.classification.name if c.classification else '',
         } for c in championships]
 
         # Medal summary
@@ -439,6 +440,23 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'championship_id': best_fina_result.championship.id,
             }
 
+        # Best FINA points this season (current year)
+        from datetime import date as _date
+        season_year = _date.today().year
+        season_best_result = Result.objects.filter(
+            swimmer=swimmer, fina_points__isnull=False,
+            championship__date__year=season_year,
+        ).select_related('event', 'championship').order_by('-fina_points').first()
+        season_best_fina = None
+        if season_best_result:
+            season_best_fina = {
+                'points': season_best_result.fina_points,
+                'event_name': season_best_result.event.name,
+                'championship_name': season_best_result.championship.name,
+                'championship_id': season_best_result.championship.id,
+                'year': season_year,
+            }
+
         # Records held
         records = [{
             'id': r.id,
@@ -488,11 +506,13 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
         return Response({
             'total_championships': len(champs_data),
+            'total_races': Result.objects.filter(swimmer=swimmer).count(),
             'championships': champs_data,
             'medals': medal_counts,
             'medals_by_level': medals_by_level,
             'medals_hierarchy': medals_hierarchy,
             'best_fina': best_fina,
+            'season_best_fina': season_best_fina,
             'best_event': best_event_agg['event__name'] if best_event_agg else None,
             'records': records,
             'total_records': len(records),
@@ -687,7 +707,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             .order_by('first_meet_date')
         )
 
-        # Merge duplicate club names (e.g. "CN MARSEILLE" vs "CN MARSEILLE l")
+        # Merge duplicate club names, case-insensitively
+        # (e.g. "CN MARSEILLE" vs "CN MARSEILLE l", "OLYMPICA" vs "Olympica")
         import re
         merged = {}
         for c in club_history:
@@ -696,8 +717,10 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             normalized = re.sub(r'\s+', ' ', name)
             # If name ends with " X" where X is a single non-alpha char or single letter, strip it
             candidate = re.sub(r'\s+\S$', '', normalized)
-            # Use the candidate as key if it already exists, otherwise use normalized
-            key = candidate if candidate in merged else normalized
+            # Case-insensitive keys: use the candidate if it already exists, otherwise normalized
+            cand_key = candidate.casefold()
+            norm_key = normalized.casefold()
+            key = cand_key if cand_key in merged else norm_key
             if key in merged:
                 entry = merged[key]
                 entry['meets'] += c['meets']
@@ -706,8 +729,11 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     entry['first_meet_date'] = c['first_meet_date']
                 if c['last_meet_date'] > entry['last_meet_date']:
                     entry['last_meet_date'] = c['last_meet_date']
+                # Prefer the uppercase/longer display form
+                if normalized.isupper() and not entry['club'].isupper():
+                    entry['club'] = normalized
             else:
-                merged[normalized] = {
+                merged[norm_key] = {
                     'club': normalized,
                     'first_meet_date': c['first_meet_date'],
                     'last_meet_date': c['last_meet_date'],

@@ -4,12 +4,10 @@ from core.models import Event
 
 class QualifyingStandard(models.Model):
     """A set of qualifying times for a competition (e.g. 2024 Olympics, 2025 Worlds)."""
-    COMPETITION_TYPE_CHOICES = [
-        ('olympics', 'Olympics'),
-        ('world_championships', 'World Championships'),
-    ]
     name = models.CharField(max_length=200, help_text='e.g. Paris 2024 Olympics')
-    competition_type = models.CharField(max_length=30, choices=COMPETITION_TYPE_CHOICES)
+    competition_type = models.CharField(
+        max_length=100,
+        help_text='e.g. olympics, world_championships, mediterranean_games, or any custom type')
     year = models.IntegerField()
     qualifying_period_start = models.DateField(blank=True, null=True)
     qualifying_period_end = models.DateField(blank=True, null=True)

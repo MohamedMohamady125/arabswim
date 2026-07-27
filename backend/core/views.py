@@ -14,6 +14,23 @@ def me(request):
     return Response(UserSerializer(request.user).data)
 
 
+@api_view(['GET'])
+def fina_points_preview(request):
+    """Preview World Aquatics points for a time/event/gender/pool combo."""
+    from importer.points import calculate_points
+    try:
+        time_cs = int(request.query_params.get('time_cs', 0))
+        event_id = int(request.query_params.get('event', 0))
+    except (TypeError, ValueError):
+        return Response({'points': 0})
+    gender = request.query_params.get('gender', 'M')
+    pool = request.query_params.get('pool', 'LCM')
+    event = Event.objects.filter(id=event_id).first()
+    if not event or time_cs <= 0:
+        return Response({'points': 0})
+    return Response({'points': calculate_points(time_cs, event.name, gender, pool)})
+
+
 def _fmt_cs(cs):
     minutes = cs // 6000
     seconds = (cs % 6000) // 100

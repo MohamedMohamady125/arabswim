@@ -26,7 +26,7 @@ function wavePath(W, baseY, amp, wl) {
 function Triangle({ x, y, color }) {
   const a = 7
   const pts = `${x},${y - a} ${x - a * 0.9},${y + a * 0.65} ${x + a * 0.9},${y + a * 0.65}`
-  return <polygon points={pts} fill={color} stroke="#ffffff" strokeWidth={1.2} strokeLinejoin="round" />
+  return <polygon points={pts} fill={color} stroke="#0b1f38" strokeWidth={1.2} strokeLinejoin="round" />
 }
 
 function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' }) {
@@ -113,12 +113,11 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
         fontFamily="Arial, Helvetica, sans-serif">
         <defs>
           <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#1a4a7a" />
-            <stop offset="0.55" stopColor="#164272" />
-            <stop offset="1" stopColor="#123a66" />
+            <stop offset="0" stopColor="#ffffff" />
+            <stop offset="1" stopColor="#ffffff" />
           </linearGradient>
           <pattern id={stripesId} width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)">
-            <line x1="0" y1="0" x2="0" y2="26" stroke="#ffffff" strokeOpacity="0.045" strokeWidth="2.4" />
+            <line x1="0" y1="0" x2="0" y2="26" stroke="#123a66" strokeOpacity="0.03" strokeWidth="2.4" />
           </pattern>
         </defs>
 
@@ -128,12 +127,12 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
 
         {/* Faint waves */}
         {waveYs.map((y, k) => (
-          <path key={k} d={wavePath(W, y, 13, 300)} fill="none" stroke="#ffffff" strokeOpacity="0.05" strokeWidth="1.4" />
+          <path key={k} d={wavePath(W, y, 13, 300)} fill="none" stroke="#123a66" strokeOpacity="0.05" strokeWidth="1.4" />
         ))}
 
         {/* Title */}
         {title && (
-          <text x={W / 2} y={40} textAnchor="middle" fill="#ffffff" fontSize="19" fontWeight="bold" letterSpacing="1">
+          <text x={W / 2} y={40} textAnchor="middle" fill="#0b1f38" fontSize="19" fontWeight="bold" letterSpacing="1">
             {title.toUpperCase()}
           </text>
         )}
@@ -150,7 +149,7 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
               <g key={li}>
                 <line x1={x} y1={title ? 64 : 24} x2={x + 36} y2={title ? 64 : 24} stroke={color} strokeWidth="2.6" />
                 <Triangle x={x + 18} y={title ? 64 : 24} color={color} />
-                <text x={x + 44} y={(title ? 64 : 24) + 4} fill="#ffffff" fontSize="12" fontWeight="bold">{line.event_name}</text>
+                <text x={x + 44} y={(title ? 64 : 24) + 4} fill="#0b1f38" fontSize="12" fontWeight="bold">{line.event_name}</text>
               </g>
             )
           })
@@ -161,8 +160,8 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
           const y = timeToY(cs)
           return (
             <g key={i}>
-              <line x1={plotL} y1={y} x2={plotR} y2={y} stroke="#ffffff" strokeOpacity="0.16" strokeWidth="1" />
-              <text x={plotL - 12} y={y + 4} textAnchor="end" fill="#eaf2ff" fontSize="12.5">{formatTimeShort(cs)}</text>
+              <line x1={plotL} y1={y} x2={plotR} y2={y} stroke="#123a66" strokeOpacity="0.14" strokeWidth="1" />
+              <text x={plotL - 12} y={y + 4} textAnchor="end" fill="#33475e" fontSize="12.5">{formatTimeShort(cs)}</text>
             </g>
           )
         })}
@@ -173,8 +172,8 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
           const d = new Date(date)
           return (
             <g key={date}>
-              <line x1={x} y1={plotT} x2={x} y2={plotB} stroke="#ffffff" strokeOpacity="0.16" strokeWidth="1" />
-              <text x={x} y={plotB + 22} textAnchor="middle" fill="#eaf2ff" fontSize="12" fontWeight="bold">
+              <line x1={x} y1={plotT} x2={x} y2={plotB} stroke="#123a66" strokeOpacity="0.14" strokeWidth="1" />
+              <text x={x} y={plotB + 22} textAnchor="middle" fill="#33475e" fontSize="12" fontWeight="bold">
                 {d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
               </text>
             </g>
@@ -182,14 +181,14 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
         })}
 
         {/* Plot border */}
-        <rect x={plotL} y={plotT} width={pW} height={pH} fill="none" stroke="#ffffff" strokeOpacity="0.5" strokeWidth="1.4" />
+        <rect x={plotL} y={plotT} width={pW} height={pH} fill="none" stroke="#123a66" strokeOpacity="0.4" strokeWidth="1.4" />
 
         {/* Axis titles */}
         <text x={30} y={plotT + pH / 2} transform={`rotate(-90 30 ${plotT + pH / 2})`}
-          textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold" letterSpacing="1">
+          textAnchor="middle" fill="#0b1f38" fontSize="14" fontWeight="bold" letterSpacing="1">
           TIME
         </text>
-        <text x={plotL + pW / 2} y={plotB + 48} textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold" letterSpacing="1">
+        <text x={plotL + pW / 2} y={plotB + 48} textAnchor="middle" fill="#0b1f38" fontSize="14" fontWeight="bold" letterSpacing="1">
           DATE
         </text>
 
@@ -233,8 +232,8 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
             const lbl = formatTimeShort(p.time_cs)
             return (
               <g key={`lbl${li}-${i}`}>
-                <text x={x} y={y} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0b1f38" stroke="#0b1f38" strokeWidth="2.4" strokeLinejoin="round" opacity="0.55">{lbl}</text>
-                <text x={x} y={y} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#ffffff">{lbl}</text>
+                <text x={x} y={y} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#ffffff" stroke="#ffffff" strokeWidth="2.4" strokeLinejoin="round" opacity="0.85">{lbl}</text>
+                <text x={x} y={y} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0b1f38">{lbl}</text>
               </g>
             )
           })
@@ -266,15 +265,15 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main' })
 
 function SummaryTable({ lines, showSwimmer }) {
   return (
-    <div className="overflow-x-auto rounded-xl mt-3" style={{ background: 'rgba(11,31,56,0.85)', backdropFilter: 'blur(8px)' }}>
+    <div className="overflow-x-auto rounded-xl mt-3 bg-white border border-gray-200">
       <table className="w-full text-xs">
         <thead>
-          <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.15)' }}>
-            <th className="text-left py-2.5 px-3 text-sky-200 font-bold">Event</th>
-            <th className="text-left py-2.5 px-3 text-sky-200 font-bold">Best</th>
-            <th className="text-left py-2.5 px-3 text-sky-200 font-bold">Latest</th>
-            <th className="text-left py-2.5 px-3 text-sky-200 font-bold">Change</th>
-            <th className="text-left py-2.5 px-3 text-sky-200 font-bold">{showSwimmer ? 'Best Swimmer' : 'Best Meet'}</th>
+          <tr style={{ borderBottom: '2px solid rgba(18,58,102,0.15)' }}>
+            <th className="text-left py-2.5 px-3 text-blue-900 font-bold">Event</th>
+            <th className="text-left py-2.5 px-3 text-blue-900 font-bold">Best</th>
+            <th className="text-left py-2.5 px-3 text-blue-900 font-bold">Latest</th>
+            <th className="text-left py-2.5 px-3 text-blue-900 font-bold">Change</th>
+            <th className="text-left py-2.5 px-3 text-blue-900 font-bold">{showSwimmer ? 'Best Swimmer' : 'Best Meet'}</th>
           </tr>
         </thead>
         <tbody>
@@ -289,23 +288,23 @@ function SummaryTable({ lines, showSwimmer }) {
             const diff = first.time_cs - latest.time_cs
             const improved = diff > 0
             return (
-              <tr key={line.event_id || line.event_name} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }} className="hover:bg-white/5">
+              <tr key={line.event_id || line.event_name} style={{ borderBottom: '1px solid rgba(18,58,102,0.08)' }} className="hover:bg-gray-50">
                 <td className="py-2.5 px-3">
                   <div className="flex items-center gap-2">
                     <svg width="10" height="10"><polygon points="5,0 0,8.5 10,8.5" fill={color} /></svg>
-                    <span className="font-semibold text-white">{line.event_name}</span>
+                    <span className="font-semibold text-gray-900">{line.event_name}</span>
                   </div>
                 </td>
                 <td className="py-2.5 px-3 font-mono font-bold" style={{ color }}>{formatTimeShort(best)}</td>
-                <td className="py-2.5 px-3 font-mono text-gray-300">{formatTimeShort(latest.time_cs)}</td>
+                <td className="py-2.5 px-3 font-mono text-gray-600">{formatTimeShort(latest.time_cs)}</td>
                 <td className="py-2.5 px-3">
                   {pts.length > 1 && (
-                    <span className={`font-mono font-bold ${improved ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`font-mono font-bold ${improved ? 'text-emerald-600' : 'text-red-500'}`}>
                       {improved ? '\u2193' : '\u2191'} {formatTimeShort(Math.abs(diff))}
                     </span>
                   )}
                 </td>
-                <td className="py-2.5 px-3 text-gray-400 truncate max-w-[200px]">
+                <td className="py-2.5 px-3 text-gray-500 truncate max-w-[200px]">
                   {showSwimmer && bestPoint?.swimmer ? bestPoint.swimmer : bestPoint?.meet}
                 </td>
               </tr>
@@ -333,7 +332,7 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
     <div className="space-y-6">
       {/* Collective chart — all events together */}
       {lines.length > 1 && (
-        <div className="rounded-2xl overflow-hidden shadow-lg" style={{ background: '#123a66' }}>
+        <div className="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-200">
           <div className="px-5 pt-4 pb-2">
             <BroadcastChart lines={lines} title={title || 'All Events Progression'} showSwimmer={showSwimmer} chartId="collective" />
           </div>
@@ -347,7 +346,7 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
       {lines.map((line, i) => {
         if (!line.points || line.points.length === 0) return null
         return (
-          <div key={line.event_id || line.event_name} className="rounded-2xl overflow-hidden shadow-lg" style={{ background: '#123a66' }}>
+          <div key={line.event_id || line.event_name} className="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-200">
             <div className="px-5 pt-4 pb-2">
               <BroadcastChart
                 lines={[line]}

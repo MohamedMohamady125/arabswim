@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { searchSwimmers, createSwimmer } from '../../api/swimmers'
 import { getChampionships, createChampionship, addChampionshipResult } from '../../api/championships'
-import { getCountries, getEvents } from '../../api/core'
+import { getCountries, getEvents, getFinaPointsPreview } from '../../api/core'
 import { getClassifications, getSubClassifications } from '../../api/championships'
 import { POOL_TYPES, parseTime } from '../../utils/constants'
 
@@ -38,6 +38,7 @@ export default function ManualEntryForm({ onComplete }) {
 
   const swimmerDebounce = useRef(null)
   const champDebounce = useRef(null)
+  const finaDebounce = useRef(null)
   const swimmerDropdownRef = useRef(null)
   const champDropdownRef = useRef(null)
 
@@ -60,6 +61,25 @@ export default function ManualEntryForm({ onComplete }) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Auto-calculate FINA points when time + event are filled
+  useEffect(() => {
+    if (finaDebounce.current) clearTimeout(finaDebounce.current)
+    const timeCs = resultForm.time ? parseTime(resultForm.time) : null
+    if (!timeCs || !resultForm.event) return
+    finaDebounce.current = setTimeout(() => {
+      getFinaPointsPreview({
+        time_cs: timeCs,
+        event: resultForm.event,
+        gender: selectedSwimmer?.sex || 'M',
+        pool: selectedChamp?.pool || 'LCM',
+      }).then(res => {
+        if (res.data.points > 0) {
+          setResultForm(f => ({ ...f, fina_points: String(res.data.points) }))
+        }
+      }).catch(() => {})
+    }, 400)
+  }, [resultForm.time, resultForm.event, selectedSwimmer, selectedChamp])
 
   useEffect(() => {
     if (newChamp.classification) {
@@ -391,9 +411,9 @@ export default function ManualEntryForm({ onComplete }) {
               className="w-full border rounded-lg px-3 py-2 text-sm font-mono" placeholder="0:00.00" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">FINA</label>
+            <label className="block text-sm font-medium mb-1">FINA <span className="text-xs text-gray-400">(auto-calculated)</span></label>
             <input type="number" value={resultForm.fina_points} onChange={(e) => setResultForm({ ...resultForm, fina_points: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50 font-medium" />
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium mb-1">Team / Club</label>

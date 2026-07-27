@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getChampionships, deleteChampionship, updateChampionship } from '../api/championships'
+import { getChampionships, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
 import { POOL_TYPES, mediaUrl } from '../utils/constants'
@@ -20,7 +20,6 @@ export default function ChampionshipsPage() {
   const [filterCountry, setFilterCountry] = useState('')
   const [filterYear, setFilterYear] = useState('')
   const [expandedId, setExpandedId] = useState(null)
-  const [uploading, setUploading] = useState(null)
 
   const years = []
   for (let y = new Date().getFullYear() + 2; y >= 2000; y--) years.push(y)
@@ -132,7 +131,7 @@ export default function ChampionshipsPage() {
                   >
                     {/* Meet photo or date badge */}
                     {c.meet_photo ? (
-                      <div className="w-24 h-20 rounded-xl overflow-hidden shrink-0 shadow">
+                      <div className="w-36 h-28 rounded-xl overflow-hidden shrink-0 shadow">
                         <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
                       </div>
                     ) : (
@@ -205,44 +204,6 @@ export default function ChampionshipsPage() {
                           <div className="text-xs text-gray-500 mb-1">Location</div>
                           <div className="text-sm font-medium">{c.location || '-'}</div>
                         </div>
-                      </div>
-                      {/* Meet Photo */}
-                      <div className="mb-4">
-                        <div className="text-xs text-gray-500 mb-2 font-medium">Meet Photo</div>
-                        {c.meet_photo ? (
-                          <div className="flex items-center gap-3">
-                            <img src={mediaUrl(c.meet_photo)} alt="" className="w-24 h-16 rounded-lg object-cover border" />
-                            <label className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onClick={e => e.stopPropagation()}>
-                              Change photo
-                              <input type="file" accept="image/*" className="hidden" onChange={async e => {
-                                if (!e.target.files[0]) return
-                                setUploading(c.id)
-                                try {
-                                  const fd = new FormData(); fd.append('meet_photo', e.target.files[0])
-                                  const res = await updateChampionship(c.id, fd)
-                                  setChampionships(prev => prev.map(x => x.id === c.id ? { ...x, meet_photo: res.data.meet_photo } : x))
-                                } catch {}
-                                finally { setUploading(null) }
-                              }} />
-                            </label>
-                          </div>
-                        ) : (
-                          <label className="inline-block cursor-pointer" onClick={e => e.stopPropagation()}>
-                            <div className={`border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-400 hover:border-blue-400 hover:text-blue-500 ${uploading === c.id ? 'opacity-50' : ''}`}>
-                              {uploading === c.id ? 'Uploading...' : '+ Upload Meet Photo'}
-                            </div>
-                            <input type="file" accept="image/*" className="hidden" onChange={async e => {
-                              if (!e.target.files[0]) return
-                              setUploading(c.id)
-                              try {
-                                const fd = new FormData(); fd.append('meet_photo', e.target.files[0])
-                                const res = await updateChampionship(c.id, fd)
-                                setChampionships(prev => prev.map(x => x.id === c.id ? { ...x, meet_photo: res.data.meet_photo } : x))
-                              } catch {}
-                              finally { setUploading(null) }
-                            }} />
-                          </label>
-                        )}
                       </div>
                       <div className="flex flex-wrap gap-3">
                         {c.results_count > 0 && (

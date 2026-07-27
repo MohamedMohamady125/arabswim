@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getChampionship, createChampionship, updateChampionship, getClassificationCategories, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries } from '../api/core'
-import { POOL_TYPES } from '../utils/constants'
+import { POOL_TYPES, mediaUrl } from '../utils/constants'
 
 export default function ChampionshipFormPage() {
   const { id } = useParams()
@@ -16,6 +16,8 @@ export default function ChampionshipFormPage() {
   const [form, setForm] = useState({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', classification_category: '', classification: '', sub_classification: '', website: '', live_results_url: '', registration_url: '' })
   const [policyPdf, setPolicyPdf] = useState(null)
   const [meetGuidePdf, setMeetGuidePdf] = useState(null)
+  const [meetPhoto, setMeetPhoto] = useState(null)
+  const [currentPhoto, setCurrentPhoto] = useState(null)
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
@@ -24,6 +26,7 @@ export default function ChampionshipFormPage() {
       getChampionship(id).then(res => {
         const c = res.data
         setForm({ name: c.name, date: c.date, end_date: c.end_date || '', pool: c.pool, country: c.country, location: c.location || '', classification_category: c.classification_category || '', classification: c.classification || '', sub_classification: c.sub_classification || '', website: c.website || '', live_results_url: c.live_results_url || '', registration_url: c.registration_url || '' })
+        setCurrentPhoto(c.meet_photo || null)
       }).catch(() => {})
     }
   }, [id, isEdit])
@@ -54,6 +57,7 @@ export default function ChampionshipFormPage() {
       })
       if (policyPdf) data.append('policy_pdf', policyPdf)
       if (meetGuidePdf) data.append('meet_guide_pdf', meetGuidePdf)
+      if (meetPhoto) data.append('meet_photo', meetPhoto)
       if (isEdit) {
         await updateChampionship(id, data)
       } else {
@@ -130,6 +134,16 @@ export default function ChampionshipFormPage() {
             <div className="col-span-2">
               <label className="block text-sm font-medium mb-1">Meet Guide PDF</label>
               <input type="file" accept=".pdf" onChange={(e) => setMeetGuidePdf(e.target.files[0])} className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium mb-1">Meet Photo</label>
+              {currentPhoto && !meetPhoto && (
+                <img src={mediaUrl(currentPhoto)} alt="Current meet" className="w-32 h-20 rounded-lg object-cover border mb-2" />
+              )}
+              {meetPhoto && (
+                <img src={URL.createObjectURL(meetPhoto)} alt="New meet" className="w-32 h-20 rounded-lg object-cover border mb-2" />
+              )}
+              <input type="file" accept="image/*" onChange={(e) => setMeetPhoto(e.target.files[0])} className="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
         </div>

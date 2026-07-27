@@ -11,6 +11,15 @@ const COMP_TYPES = [
   { value: 'world_championships', label: 'World Championships', color: 'bg-sky-100 text-sky-800', icon: '\u{1F30D}' },
 ]
 
+// Resolve any competition_type (including custom ones) to a display config
+function getCompType(value) {
+  const known = COMP_TYPES.find(t => t.value === value)
+  if (known) return known
+  if (!value) return { value: '', label: 'Standard', color: 'bg-gray-100 text-gray-600', icon: '\u{1F3C6}' }
+  const label = value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  return { value, label, color: 'bg-violet-100 text-violet-800', icon: '\u{1F3C6}' }
+}
+
 function formatTime(cs) {
   if (!cs) return ''
   const minutes = Math.floor(cs / 6000)
@@ -24,6 +33,7 @@ function formatTime(cs) {
 function CreateModal({ onClose, onCreated }) {
   const [name, setName] = useState('')
   const [type, setType] = useState('olympics')
+  const [customType, setCustomType] = useState('')
   const [year, setYear] = useState(new Date().getFullYear())
   const [periodStart, setPeriodStart] = useState('')
   const [periodEnd, setPeriodEnd] = useState('')
@@ -32,11 +42,14 @@ function CreateModal({ onClose, onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) return
+    if (type === '__custom__' && !customType.trim()) return
     setSaving(true)
     try {
       await createQualifyingStandard({
         name: name.trim(),
-        competition_type: type,
+        competition_type: type === '__custom__'
+          ? customType.trim().toLowerCase().replace(/\s+/g, '_')
+          : type,
         year,
         qualifying_period_start: periodStart || null,
         qualifying_period_end: periodEnd || null,
@@ -64,7 +77,13 @@ function CreateModal({ onClose, onCreated }) {
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Type</label>
             <select value={type} onChange={e => setType(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
               {COMP_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              <option value="__custom__">Custom...</option>
             </select>
+            {type === '__custom__' && (
+              <input value={customType} onChange={e => setCustomType(e.target.value)}
+                placeholder="e.g. Mediterranean Games"
+                className="w-full mt-2 px-3 py-2 border rounded-lg text-sm" required />
+            )}
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Year</label>
@@ -183,6 +202,7 @@ function StandardDetail({ standardId, onBack }) {
   const [uploadResult, setUploadResult] = useState(null)
   const [genderFilter, setGenderFilter] = useState('M')
   const [poolFilter, setPoolFilter] = useState('LCM')
+  const [cutFilter, setCutFilter] = useState('A')
   const fileRef = useRef()
 
   const refresh = () => {
@@ -228,15 +248,15 @@ function StandardDetail({ standardId, onBack }) {
   if (loading) return <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
   if (!standard) return null
 
-  const compType = COMP_TYPES.find(t => t.value === standard.competition_type)
-  const times = (standard.times || []).filter(t => t.gender === genderFilter && t.pool === poolFilter)
+  const compType = getCompType(standard.competition_type)
+  const times = (standard.times || []).filter(t => t.gender === genderFilter && t.pool === poolFilter && t.cut === cutFilter)
 
-  // Group times by event
+  // Group times by event for the selected cut
   const byEvent = {}
   for (const t of times) {
     const key = t.event
-    if (!byEvent[key]) byEvent[key] = { event_name: t.event_name, distance: t.event_distance, stroke: t.event_stroke, a: null, b: null }
-    byEvent[key][t.cut.toLowerCase()] = t
+    if (!byEvent[key]) byEvent[key] = { event_name: t.event_name, distance: t.event_distance, stroke: t.event_stroke, time: t }
+    else byEvent[key].time = t
   }
   const eventRows = Object.values(byEvent).sort((a, b) => {
     if (a.stroke !== b.stroke) return a.stroke.localeCompare(b.stroke)
@@ -302,6 +322,15 @@ function StandardDetail({ standardId, onBack }) {
             </button>
           ))}
         </div>
+        {/* Cut Toggle */}
+        <div className="flex rounded-xl border overflow-hidden">
+          {[{ v: 'A', l: 'A Cut', color: 'bg-emerald-600' }, { v: 'B', l: 'B Cut', color: 'bg-amber-600' }].map(c => (
+            <button key={c.v} onClick={() => setCutFilter(c.v)}
+              className={`px-4 py-2 text-xs font-bold transition-all ${cutFilter === c.v ? `${c.color} text-white` : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+              {c.l}
+            </button>
+          ))}
+        </div>
 
         <div className="flex gap-2 ml-auto">
           <button onClick={() => setShowAddTime(true)}
@@ -362,8 +391,9 @@ function StandardDetail({ standardId, onBack }) {
                   <thead>
                     <tr className={`${colors.bg} border-b ${colors.border}`}>
                       <th className="px-4 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Event</th>
-                      <th className="px-4 py-2 text-center text-[10px] font-bold uppercase tracking-wider" style={{ color: '#059669' }}>A Cut</th>
-                      <th className="px-4 py-2 text-center text-[10px] font-bold uppercase tracking-wider" style={{ color: '#d97706' }}>B Cut</th>
+                      <th className="px-4 py-2 text-center text-[10px] font-bold uppercase tracking-wider" style={{ color: cutFilter === 'A' ? '#059669' : '#d97706' }}>
+                        {cutFilter === 'A' ? 'A Standard' : 'B Standard'}
+                      </th>
                       <th className="px-4 py-2 w-10" />
                     </tr>
                   </thead>
@@ -372,26 +402,18 @@ function StandardDetail({ standardId, onBack }) {
                       <tr key={i} className={`border-b ${colors.border} last:border-0 hover:${colors.bg} transition-colors`}>
                         <td className="px-4 py-2.5 font-semibold text-gray-800">{row.event_name}</td>
                         <td className="px-4 py-2.5 text-center">
-                          {row.a ? (
-                            <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs">
-                              {row.a.formatted_time}
-                            </span>
-                          ) : <span className="text-gray-300">-</span>}
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          {row.b ? (
-                            <span className="font-mono font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg text-xs">
-                              {row.b.formatted_time}
+                          {row.time ? (
+                            <span className={`font-mono font-bold px-2.5 py-1 rounded-lg text-xs ${cutFilter === 'A' ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50'}`}>
+                              {row.time.formatted_time}
                             </span>
                           ) : <span className="text-gray-300">-</span>}
                         </td>
                         <td className="px-4 py-2.5">
-                          <button onClick={() => {
-                            if (row.a) handleDeleteTime(row.a.id)
-                            if (row.b) handleDeleteTime(row.b.id)
-                          }} className="text-gray-300 hover:text-red-500 transition-colors">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                          </button>
+                          {row.time && (
+                            <button onClick={() => handleDeleteTime(row.time.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -463,7 +485,7 @@ export default function QualifyingTimesPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {standards.map((s, i) => {
-            const compType = COMP_TYPES.find(t => t.value === s.competition_type)
+            const compType = getCompType(s.competition_type)
             return (
               <div key={s.id} className="bg-white rounded-2xl border shadow-sm p-5 text-left hover:shadow-md hover:border-sky-200 transition-all group animate-fade-in-up"
                 style={{ animationDelay: `${i * 0.06}s` }}>

@@ -6,8 +6,6 @@ import { getMediaItems } from '../api/media'
 import CountryFlag from '../components/common/CountryFlag'
 import ProgressionChart from '../components/common/ProgressionChart'
 
-const MEDAL_COLORS = { GOLD: '#FFD700', SILVER: '#C0C0C0', BRONZE: '#CD7F32' }
-const MEDAL_LABELS = { GOLD: 'Gold', SILVER: 'Silver', BRONZE: 'Bronze' }
 
 /* ───────── Animated number counter ───────── */
 function AnimatedNumber({ value, duration = 800 }) {
@@ -201,150 +199,363 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
   )
 }
 
-/* ───────── Medals Tab ───────── */
-function MedalsTab({ stats, navigate, swimmer }) {
-  if (!stats) return null
-  const { medals, medals_hierarchy } = stats
+/* ───────── Medals Tab (infographic) ───────── */
+const MEDAL_NAVY = '#0b1f5e'
+const MEDAL_GOLD = '#f2a71b'
+const MEDAL_SILVER = '#b9bdc6'
+const MEDAL_BRONZE = '#e2711d'
 
-  const alpha2 = swimmer?.nationality_detail?.flag_url || (swimmer?.nationality_detail?.code || '').toLowerCase().slice(0, 2)
-  const genderLabel = swimmer?.sex === 'M' ? "MEN'S" : "WOMEN'S"
+const MEDAL_COMPS = [
+  { label: 'OLYMPIC', match: 'Olympic', color: '#eef1f6', fg: '#1e6ef5',
+    icon: <svg viewBox="0 0 48 30" className="w-5 h-3.5" fill="none" stroke="currentColor" strokeWidth="3.4"><circle cx="9" cy="10" r="6.5"/><circle cx="24" cy="10" r="6.5"/><circle cx="39" cy="10" r="6.5"/><circle cx="16.5" cy="19" r="6.5"/><circle cx="31.5" cy="19" r="6.5"/></svg> },
+  { label: 'WORLD', match: 'World', color: '#1e6ef5', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="8"/><ellipse cx="12" cy="12" rx="3.5" ry="8"/><path d="M4 12h16M5 8h14M5 16h14" strokeWidth="1.2"/></svg> },
+  { label: 'ARAB', match: 'Arab', color: '#1f8f4e', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 3l2 4.2 4.6.7-3.3 3.2.8 4.6L12 13.5l-4.1 2.2.8-4.6L5.4 7.9l4.6-.7z"/></svg> },
+  { label: 'ASIAN', match: 'Asian', color: '#7a36d9', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 3l7 4v2H5V7l7-4zM6 10h2v8H6zM11 10h2v8h-2zM16 10h2v8h-2zM4 19h16v2H4z"/></svg> },
+  { label: 'AFRICAN', match: 'African', color: '#2aa63f', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M8 2l8 1 3 5-2 5-2 7-3 3-3-6-2-6-1-5 2-4z"/></svg> },
+  { label: 'GCC', match: 'GCC', color: '#0e7f96', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M6 3l7 2 5 4-1 6-4 4-5 2-3-5 1-6-1-4 1-3z"/></svg> },
+  { label: 'MEDITERRANEAN', match: 'Mediterranean', color: '#1e6ef5', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M3 8c2.5-2 5-2 7.5 0s5 2 7.5 0"/><path d="M3 13c2.5-2 5-2 7.5 0s5 2 7.5 0"/><path d="M3 18c2.5-2 5-2 7.5 0s5 2 7.5 0"/></svg> },
+  { label: 'ISLAMIC', match: 'Islamic', color: '#1f8f4e', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="7" y="7" width="10" height="10"/><rect x="7" y="7" width="10" height="10" transform="rotate(45 12 12)"/></svg> },
+  { label: 'SCHOOL', match: 'School', color: '#ef9410', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 4L2 9l10 5 10-5-10-5z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5l-6 3-6-3z"/></svg> },
+  { label: 'UNIVERSITY', match: 'University', color: '#7a36d9', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 3l8 4v2H4V7l8-4zM5 10h2v8H5zM10 10h2v8h-2zM15 10h2v8h-2zM19 10h1v8h-1zM4 19h16v2H4z"/></svg> },
+  { label: 'NATIONAL', match: 'National', color: '#d92b30', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z"/></svg> },
+  { label: 'OTHER', match: 'Other', color: '#79838f', fg: 'white',
+    icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/></svg> },
+]
+
+function MedalGraphic({ tone }) {
+  // tone: gold | silver | bronze
+  const cols = {
+    gold: { a: '#fcd34d', b: '#d97706', ring: '#b45309' },
+    silver: { a: '#e5e7eb', b: '#9ca3af', ring: '#6b7280' },
+    bronze: { a: '#f0a06a', b: '#b45a1b', ring: '#8f4513' },
+  }[tone]
+  return (
+    <svg viewBox="0 0 48 48" className="w-16 h-16 sm:w-20 sm:h-20">
+      <defs>
+        <linearGradient id={`medal-${tone}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={cols.a} /><stop offset="100%" stopColor={cols.b} />
+        </linearGradient>
+      </defs>
+      {/* laurel */}
+      <g stroke={cols.b} strokeWidth="1.6" fill="none">
+        <path d="M10 34c-4-5-5-12-2-18" /><path d="M38 34c4-5 5-12 2-18" />
+        {[0, 1, 2, 3].map(i => (
+          <g key={i}>
+            <path d={`M${9 - i * 0.6} ${30 - i * 4.5}q-4 -1 -5.5 -4.5q4 0 5.5 4.5`} fill={cols.b} strokeWidth="0.5" />
+            <path d={`M${39 + i * 0.6} ${30 - i * 4.5}q4 -1 5.5 -4.5q-4 0 -5.5 4.5`} fill={cols.b} strokeWidth="0.5" />
+          </g>
+        ))}
+      </g>
+      <circle cx="24" cy="24" r="14" fill={`url(#medal-${tone})`} stroke={cols.ring} strokeWidth="1.5" />
+      <circle cx="24" cy="24" r="10.5" fill="none" stroke="white" strokeWidth="1" strokeDasharray="2 2" opacity="0.7" />
+      <path d="M24 17l2.1 4.3 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z" fill="white" opacity="0.95" />
+    </svg>
+  )
+}
+
+function TrophyGraphic() {
+  return (
+    <svg viewBox="0 0 48 48" className="w-16 h-16 sm:w-20 sm:h-20">
+      <defs>
+        <linearGradient id="trophy-blue" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#1237a8" />
+        </linearGradient>
+      </defs>
+      <path d="M14 8h20v3c0 8-4 13-10 13S14 19 14 11V8z" fill="url(#trophy-blue)" stroke="#0b1f5e" strokeWidth="1.2" />
+      <path d="M14 10H8c0 6 2.5 9 6.5 9.5M34 10h6c0 6-2.5 9-6.5 9.5" fill="none" stroke="#1237a8" strokeWidth="2.4" />
+      <path d="M21 24h6v5h-6z" fill="url(#trophy-blue)" />
+      <path d="M17 31h14v3H17z" fill="url(#trophy-blue)" />
+      <path d="M15 36h18v4H15z" fill="#1237a8" />
+      <path d="M24 11l1.6 3.2 3.5.5-2.5 2.5.6 3.5-3.2-1.7-3.2 1.7.6-3.5-2.5-2.5 3.5-.5z" fill="white" />
+    </svg>
+  )
+}
+
+function NavyBar({ children }) {
+  return (
+    <div className="rounded-lg px-4 py-2.5 text-center text-white text-sm sm:text-base font-black tracking-wide"
+      style={{ background: 'linear-gradient(180deg, #1b3a8f 0%, #0b1f5e 100%)' }}>
+      {children}
+    </div>
+  )
+}
+
+function PercentRing({ pct, tone, title, desc, icon }) {
+  const r = 50
+  const C = 2 * Math.PI * r
+  const grad = tone === 'blue'
+    ? { a: '#3b82f6', b: '#1237a8', track: '#dbe6fb' }
+    : { a: '#fcd34d', b: '#d97706', track: '#faecd2' }
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5 flex flex-col items-center">
+      <NavyBar>{title}</NavyBar>
+      <div className="relative my-4">
+        <svg viewBox="0 0 120 120" className="w-32 h-32 sm:w-36 sm:h-36 -rotate-90">
+          <defs>
+            <linearGradient id={`ring-${title.replace(/\s/g, '')}`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor={grad.a} /><stop offset="100%" stopColor={grad.b} />
+            </linearGradient>
+          </defs>
+          <circle cx="60" cy="60" r={r} fill="none" stroke={grad.track} strokeWidth="12" />
+          <circle cx="60" cy="60" r={r} fill="none" stroke={`url(#ring-${title.replace(/\s/g, '')})`} strokeWidth="12"
+            strokeLinecap="round" strokeDasharray={`${(pct / 100) * C} ${C}`} />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="font-black" style={{ color: MEDAL_NAVY }}>
+            <span className="text-3xl sm:text-4xl">{pct}</span><span className="text-lg">%</span>
+          </span>
+        </div>
+      </div>
+      <p className="text-xs sm:text-sm text-gray-600 text-center leading-snug">{desc}</p>
+      <div className="mt-3">{icon}</div>
+    </div>
+  )
+}
+
+function MedalsTab({ stats }) {
+  if (!stats) return null
+  const { medals, medals_hierarchy, total_races } = stats
 
   if (medals.total === 0) {
     return (
-      <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] p-12 text-center animate-fade-in">
-        <svg className="w-16 h-16 mx-auto mb-4 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-        <p className="text-white/30 font-bold">No medals yet</p>
-        <p className="text-white/15 text-sm mt-1">Medals will appear here once earned</p>
+      <div className="bg-white rounded-2xl border shadow-sm p-12 text-center animate-fade-in">
+        <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+        <p className="text-gray-400 font-bold">No medals yet</p>
+        <p className="text-gray-300 text-sm mt-1">Medals will appear here once earned</p>
       </div>
     )
   }
 
-  // Flatten hierarchy into a single medal list, then group by championship
-  const allMedals = []
+  // Per-competition breakdown from the classification hierarchy
+  const compCounts = {}
   ;(medals_hierarchy || []).forEach(cat => {
     cat.classifications.forEach(cls => {
-      cls.medals.forEach(m => allMedals.push(m))
-      cls.sub_classifications.forEach(sub => sub.medals.forEach(m => allMedals.push(m)))
+      if (!compCounts[cls.name]) compCounts[cls.name] = { gold: 0, silver: 0, bronze: 0 }
+      compCounts[cls.name].gold += cls.gold
+      compCounts[cls.name].silver += cls.silver
+      compCounts[cls.name].bronze += cls.bronze
     })
   })
-  allMedals.sort((a, b) => new Date(b.championship_date || 0) - new Date(a.championship_date || 0))
 
-  const meets = []
-  const meetIndex = {}
-  allMedals.forEach(m => {
-    if (meetIndex[m.championship_id] === undefined) {
-      meetIndex[m.championship_id] = meets.length
-      meets.push({
-        id: m.championship_id, name: m.championship_name, date: m.championship_date,
-        gold: 0, silver: 0, bronze: 0, medals: [],
-      })
-    }
-    const meet = meets[meetIndex[m.championship_id]]
-    meet[m.medal_type.toLowerCase()] += 1
-    meet.medals.push(m)
+  const pctOf = (n) => medals.total > 0 ? ((n / medals.total) * 100).toFixed(1) : '0.0'
+  const races = total_races || 0
+  const medalRacePct = races > 0 ? Math.min(100, Math.round((medals.total / races) * 100)) : 0
+  const goldRacePct = races > 0 ? Math.min(100, Math.round((medals.gold / races) * 100)) : 0
+  const goldSharePct = medals.total > 0 ? Math.round((medals.gold / medals.total) * 1000) / 10 : 0
+
+  // Donut geometry
+  const donutR = 44
+  const donutC = 2 * Math.PI * donutR
+  let acc = 0
+  const donutSegs = [
+    { key: 'gold', n: medals.gold, color: MEDAL_GOLD },
+    { key: 'silver', n: medals.silver, color: MEDAL_SILVER },
+    { key: 'bronze', n: medals.bronze, color: MEDAL_BRONZE },
+  ].map(s => {
+    const frac = medals.total > 0 ? s.n / medals.total : 0
+    const seg = { ...s, dash: frac * donutC, offset: -acc * donutC }
+    acc += frac
+    return seg
   })
 
+  // Bar chart — competitions that have at least one medal
+  const chartComps = MEDAL_COMPS.filter(c => {
+    const cc = compCounts[c.match]
+    return cc && (cc.gold + cc.silver + cc.bronze) > 0
+  })
+  const chartMax = Math.max(1, ...chartComps.flatMap(c => {
+    const cc = compCounts[c.match]
+    return [cc.gold, cc.silver, cc.bronze]
+  }))
+
+  const statCards = [
+    { title: 'GOLD', graphic: <MedalGraphic tone="gold" />, n: medals.gold, badge: 'linear-gradient(180deg, #fcd34d 0%, #d97706 100%)' },
+    { title: 'SILVER', graphic: <MedalGraphic tone="silver" />, n: medals.silver, badge: 'linear-gradient(180deg, #d7dade 0%, #9fa4ad 100%)' },
+    { title: 'BRONZE', graphic: <MedalGraphic tone="bronze" />, n: medals.bronze, badge: 'linear-gradient(180deg, #e88a37 0%, #c05f14 100%)' },
+    { title: 'TOTAL', graphic: <TrophyGraphic />, n: medals.total, badge: 'linear-gradient(180deg, #2f66e8 0%, #1237a8 100%)' },
+  ]
+
+  const miniMedal = (color) => (
+    <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0"><circle cx="8" cy="8" r="7" fill={color} /><path d="M8 4l1.1 2.2 2.4.4-1.7 1.7.4 2.4L8 9.6l-2.2 1.1.4-2.4L4.5 6.6l2.4-.4z" fill="white" /></svg>
+  )
+
   return (
-    <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] animate-fade-in">
-      {/* Badge */}
-      <div className="px-6 pt-6 pb-2 flex justify-center">
-        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-amber-400/50 bg-amber-500/10">
-          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-300">{genderLabel} MEDALIST · {medals.total} MEDAL{medals.total !== 1 ? 'S' : ''}</span>
+    <div className="rounded-2xl p-3 sm:p-5 space-y-4 sm:space-y-5 animate-fade-in" style={{ background: 'linear-gradient(160deg, #f5f7fc 0%, #edf1fa 100%)' }}>
+      {/* ── Top: title + medal stat cards ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-4 items-stretch">
+        <div className="flex flex-col items-center justify-center text-center py-4">
+          <div className="text-lg sm:text-2xl font-black tracking-wide" style={{ color: '#1e56d6' }}>OUR ACHIEVEMENTS</div>
+          <div className="text-5xl sm:text-7xl font-black tracking-tight leading-none" style={{ color: MEDAL_NAVY }}>MEDALS</div>
+          <div className="flex gap-1.5 my-2 text-amber-400 text-xl">★ ★ ★</div>
+          <p className="text-sm sm:text-base text-gray-600 leading-snug">Celebrating excellence.<br />Honoring every podium finish.</p>
+          <svg viewBox="0 0 48 24" className="w-10 h-5 mt-2" fill="#1e6ef5">
+            <circle cx="34" cy="6" r="3.2"/>
+            <path d="M10 12l14-5 5 4-6 3-13-2z"/>
+            <path d="M4 18c3-2.2 6-2.2 9 0s6 2.2 9 0 6-2.2 9 0v2.5c-3 2.2-6 2.2-9 0s-6-2.2-9 0-6-2.2-9 0z" opacity="0.9"/>
+          </svg>
         </div>
-      </div>
-
-      {/* Swimmer name + flag */}
-      <div className="px-6 pt-3 pb-1">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">{swimmer?.name}</h2>
-          {alpha2 && (
-            <img
-              src={`https://flagcdn.com/w40/${alpha2}.png`}
-              alt={swimmer?.nationality_detail?.name || ''}
-              className="w-7 h-5 object-cover rounded-sm"
-              onError={(e) => { e.target.style.display = 'none' }}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Hero stat */}
-      <div className="px-6 py-5">
-        <div className="flex items-end gap-5">
-          <div>
-            <div className="flex items-start">
-              <span className="text-7xl sm:text-8xl font-black text-white leading-none"><AnimatedNumber value={medals.total} /></span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {statCards.map(c => (
+            <div key={c.title} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 flex flex-col items-center justify-between">
+              <div className="text-center leading-tight">
+                <div className="text-sm sm:text-base font-black" style={{ color: c.title === 'GOLD' ? '#d99a12' : c.title === 'SILVER' ? '#8f959e' : c.title === 'BRONZE' ? '#e2711d' : '#1e56d6' }}>{c.title}</div>
+                <div className="text-xs sm:text-sm font-black" style={{ color: MEDAL_NAVY }}>MEDALS</div>
+              </div>
+              <div className="my-2">{c.graphic}</div>
+              <div className="w-full rounded-xl text-center text-white text-2xl sm:text-3xl font-black py-1.5" style={{ background: c.badge }}>
+                <AnimatedNumber value={c.n} />
+              </div>
             </div>
-            <div className="text-sm font-black uppercase tracking-widest text-amber-400 mt-1">TOTAL MEDALS</div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Middle: distribution donut + breakdown by competition ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5">
+          <NavyBar>MEDAL DISTRIBUTION</NavyBar>
+          <div className="flex items-center gap-4 sm:gap-6 mt-5">
+            <div className="relative shrink-0">
+              <svg viewBox="0 0 120 120" className="w-36 h-36 sm:w-44 sm:h-44 -rotate-90">
+                {donutSegs.map(s => s.n > 0 && (
+                  <circle key={s.key} cx="60" cy="60" r={donutR} fill="none" stroke={s.color} strokeWidth="22"
+                    strokeDasharray={`${s.dash} ${donutC}`} strokeDashoffset={s.offset} />
+                ))}
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-3xl sm:text-4xl font-black leading-none" style={{ color: MEDAL_NAVY }}><AnimatedNumber value={medals.total} /></span>
+                <span className="text-[10px] sm:text-xs font-black tracking-widest" style={{ color: MEDAL_NAVY }}>TOTAL</span>
+              </div>
+            </div>
+            <div className="flex-1 divide-y divide-gray-100">
+              {[
+                { label: 'GOLD', n: medals.gold, color: MEDAL_GOLD, text: '#d99a12' },
+                { label: 'SILVER', n: medals.silver, color: MEDAL_SILVER, text: '#8f959e' },
+                { label: 'BRONZE', n: medals.bronze, color: MEDAL_BRONZE, text: '#e2711d' },
+              ].map(row => (
+                <div key={row.label} className="flex items-center gap-3 py-3">
+                  <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full shrink-0" style={{ background: row.color }} />
+                  <div className="flex-1 leading-tight">
+                    <div className="text-sm sm:text-base font-black" style={{ color: row.text }}>{row.label}</div>
+                    <div className="text-sm font-black" style={{ color: MEDAL_NAVY }}>{row.n}</div>
+                  </div>
+                  <div className="text-lg sm:text-2xl font-black" style={{ color: row.text }}>{pctOf(row.n)}%</div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="h-16 w-px bg-white/15 mx-2" />
-          <div className="flex gap-6">
-            {medals.gold > 0 && (
-              <div>
-                <div className="text-4xl sm:text-5xl font-black leading-none" style={{ color: '#FFD700' }}><AnimatedNumber value={medals.gold} /></div>
-                <div className="text-[11px] font-black uppercase tracking-widest mt-1" style={{ color: '#FFD70080' }}>Gold</div>
-              </div>
-            )}
-            {medals.silver > 0 && (
-              <div>
-                <div className="text-4xl sm:text-5xl font-black leading-none" style={{ color: '#C0C0C0' }}><AnimatedNumber value={medals.silver} /></div>
-                <div className="text-[11px] font-black uppercase tracking-widest mt-1" style={{ color: '#C0C0C080' }}>Silver</div>
-              </div>
-            )}
-            {medals.bronze > 0 && (
-              <div>
-                <div className="text-4xl sm:text-5xl font-black leading-none" style={{ color: '#CD7F32' }}><AnimatedNumber value={medals.bronze} /></div>
-                <div className="text-[11px] font-black uppercase tracking-widest mt-1" style={{ color: '#CD7F3280' }}>Bronze</div>
-              </div>
-            )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5">
+          <NavyBar>MEDAL BREAKDOWN BY COMPETITION</NavyBar>
+          <div className="divide-y divide-gray-100 mt-2">
+            {MEDAL_COMPS.map(comp => {
+              const cc = compCounts[comp.match] || { gold: 0, silver: 0, bronze: 0 }
+              return (
+                <div key={comp.label} className="flex items-center gap-3 py-2">
+                  <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-gray-100" style={{ background: comp.color, color: comp.fg }}>
+                    {comp.icon}
+                  </span>
+                  <div className="flex-1 min-w-0 text-[11px] sm:text-sm font-black truncate" style={{ color: MEDAL_NAVY }}>{comp.label}</div>
+                  <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+                    <span className="flex items-center gap-1">{miniMedal(MEDAL_GOLD)}<span className="text-sm font-black w-5 text-right" style={{ color: MEDAL_NAVY }}>{cc.gold}</span></span>
+                    <span className="flex items-center gap-1">{miniMedal(MEDAL_SILVER)}<span className="text-sm font-black w-5 text-right" style={{ color: MEDAL_NAVY }}>{cc.silver}</span></span>
+                    <span className="flex items-center gap-1">{miniMedal(MEDAL_BRONZE)}<span className="text-sm font-black w-5 text-right" style={{ color: MEDAL_NAVY }}>{cc.bronze}</span></span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
 
-      {/* Medals grouped by meet */}
-      <div className="px-4 pb-5 space-y-3">
-        {meets.map((meet, mi) => (
-          <div key={meet.id} className="rounded-xl overflow-hidden animate-fade-in-up" style={{ animationDelay: `${mi * 0.05}s` }}>
-            {/* Meet header */}
-            <button onClick={() => navigate(`/meets/${meet.id}`)}
-              className="w-full flex items-center gap-4 px-4 py-3.5 bg-white/5 hover:bg-white/8 transition-colors text-left">
-              <div className="flex-1 min-w-0">
-                <div className="font-black text-[15px] text-white/90 uppercase tracking-wide truncate">{meet.name}</div>
-                {meet.date && <div className="text-[10px] text-white/25 mt-0.5">{new Date(meet.date).getFullYear()}</div>}
-              </div>
-              <div className="flex gap-1.5 shrink-0">
-                {meet.gold > 0 && <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#FFD70025', color: '#FFD700' }}>{meet.gold}</span>}
-                {meet.silver > 0 && <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#C0C0C025', color: '#C0C0C0' }}>{meet.silver}</span>}
-                {meet.bronze > 0 && <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: '#CD7F3225', color: '#CD7F32' }}>{meet.bronze}</span>}
-              </div>
-            </button>
-            {/* Medal rows */}
-            <div className="space-y-1 mt-1">
-              {meet.medals.map((m, i) => {
-                const isGold = m.medal_type === 'GOLD'
-                const medalColor = isGold ? '#FFD700' : m.medal_type === 'SILVER' ? '#C0C0C0' : '#CD7F32'
-                const isFeatured = i === 0 && mi === 0
-                return (
-                  <div key={m.id}
-                    className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 ${
-                      isFeatured ? 'bg-cyan-400 text-[#0b1a30]' : 'hover:bg-white/5'
-                    }`}>
-                    <StrokeIcon eventName={m.event_name} className="w-10 h-10" dark={isFeatured} />
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-[15px] font-black uppercase tracking-wide truncate ${isFeatured ? 'text-[#0b1a30]' : 'text-white/90'}`}>{m.event_name}</div>
+      {/* ── Medal Summary bar chart ── */}
+      {chartComps.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5">
+          <NavyBar>MEDAL SUMMARY</NavyBar>
+          <div className="mt-5 overflow-x-auto">
+            <div className="min-w-[420px]">
+              <div className="flex items-end gap-2 sm:gap-4 h-44 border-b-2 border-gray-200 px-2">
+                {chartComps.map(comp => {
+                  const cc = compCounts[comp.match]
+                  const bar = (n, color) => (
+                    <div className="flex flex-col items-center justify-end w-4 sm:w-6">
+                      {n > 0 && <span className="text-[9px] sm:text-[11px] font-black mb-0.5" style={{ color: MEDAL_NAVY }}>{n}</span>}
+                      <div className="w-full rounded-t-sm" style={{ height: `${(n / chartMax) * 130}px`, background: color, minHeight: n > 0 ? '4px' : '0' }} />
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
-                        isFeatured
-                          ? 'bg-[#0b1a30]/15 text-[#0b1a30]/70'
-                          : ''
-                      }`} style={isFeatured ? {} : { backgroundColor: medalColor + '20', color: medalColor }}>
-                        {MEDAL_LABELS[m.medal_type]}
-                      </span>
+                  )
+                  return (
+                    <div key={comp.label} className="flex-1 flex items-end justify-center gap-0.5 sm:gap-1">
+                      {bar(cc.gold, MEDAL_GOLD)}
+                      {bar(cc.silver, MEDAL_SILVER)}
+                      {bar(cc.bronze, MEDAL_BRONZE)}
                     </div>
+                  )
+                })}
+              </div>
+              <div className="flex gap-2 sm:gap-4 px-2 mt-2">
+                {chartComps.map(comp => (
+                  <div key={comp.label} className="flex-1 flex flex-col items-center gap-1">
+                    <span className="w-7 h-7 rounded-full flex items-center justify-center border border-gray-100" style={{ background: comp.color, color: comp.fg }}>{comp.icon}</span>
+                    <span className="text-[8px] sm:text-[10px] font-black text-center leading-tight" style={{ color: MEDAL_NAVY }}>{comp.label}</span>
                   </div>
-                )
-              })}
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-5 sm:gap-8 mt-4">
+            {[['GOLD', MEDAL_GOLD], ['SILVER', MEDAL_SILVER], ['BRONZE', MEDAL_BRONZE]].map(([label, color]) => (
+              <span key={label} className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-sm" style={{ background: color }} />
+                <span className="text-xs sm:text-sm font-black" style={{ color: MEDAL_NAVY }}>{label}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Percentage rings ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <PercentRing pct={medalRacePct} tone="blue" title="MEDAL-WINNING RACES"
+          desc={<span>Races that earned<br />at least one medal.</span>}
+          icon={<span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#1e56d6' }}><svg viewBox="0 0 24 24" className="w-5 h-5" fill="white"><path d="M12 3l2 4.2 4.6.7-3.3 3.2.8 4.6L12 13.5l-4.1 2.2.8-4.6L5.4 7.9l4.6-.7z"/><circle cx="7" cy="17" r="1"/><circle cx="17" cy="17" r="1"/><circle cx="12" cy="20" r="1"/></svg></span>} />
+        <PercentRing pct={goldRacePct} tone="gold" title="GOLD-WINNING RACES"
+          desc={<span>Races that resulted<br />in a gold medal.</span>}
+          icon={<span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(180deg,#fcd34d,#d97706)' }}><svg viewBox="0 0 24 24" className="w-5 h-5" fill="white"><path d="M9 3h6l-1 5h-4L9 3z"/><circle cx="12" cy="14" r="5"/><path d="M12 11l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5L11 13z" fill="#d97706"/></svg></span>} />
+        <PercentRing pct={goldSharePct} tone="gold" title="GOLD SHARE"
+          desc={<span>Percentage of gold medals<br />out of total medals.</span>}
+          icon={<span className="w-9 h-9 rounded-full flex items-center justify-center border-2" style={{ borderColor: '#d97706', background: '#fdf3dd' }}><svg viewBox="0 0 24 24" className="w-5 h-5" fill="#d97706"><path d="M12 4l1.8 3.7 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z"/></svg></span>} />
+      </div>
+
+      {/* ── Footer strip ── */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-3 sm:px-6 py-3 sm:py-4 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-0">
+        {[
+          { title: 'CHAMPION MINDSET', sub: 'Focused. Determined. Unstoppable.', bg: '#1e56d6',
+            icon: <svg viewBox="0 0 24 24" className="w-6 h-6" fill="white"><path d="M12 4v6M12 4h5l-1.5 2L17 8h-5z"/><path d="M4 20l8-11 8 11H4z"/></svg> },
+          { title: 'CONSISTENT PODIUMS', sub: 'Every race. Every time. Raising the standard.', bg: '#2aa63f',
+            icon: <svg viewBox="0 0 24 24" className="w-6 h-6" fill="white"><path d="M9 10h6v10H9zM3 14h6v6H3zM15 12h6v8h-6z"/><path d="M12 2l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2L8.8 4.3 11 4z"/></svg> },
+          { title: 'TEAM EXCELLENCE', sub: 'Stronger together. Achieving more.', bg: '#ef9410',
+            icon: <svg viewBox="0 0 24 24" className="w-6 h-6" fill="white"><circle cx="12" cy="7" r="2.5"/><circle cx="6" cy="9" r="2"/><circle cx="18" cy="9" r="2"/><path d="M8 20c0-2.5 1.8-4 4-4s4 1.5 4 4h-8zM2 18c0-2 1.6-3.2 3.8-3.2.5 0 1 .1 1.5.2A6.2 6.2 0 005.8 18H2zM18.2 18a6.2 6.2 0 00-1.5-3c.5-.1 1-.2 1.5-.2 2.2 0 3.8 1.2 3.8 3.2h-3.8z"/></svg> },
+          { title: 'RISING LEGACY', sub: 'Building today. Inspiring tomorrow.', bg: '#7a36d9',
+            icon: <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round"><path d="M4 18l5-5 3 3 7-8"/><path d="M15 8h4v4"/></svg> },
+        ].map((f, i) => (
+          <div key={f.title} className={`flex items-center gap-2.5 sm:gap-3 sm:px-4 ${i > 0 ? 'lg:border-l lg:border-gray-200' : ''}`}>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: f.bg }}>
+              {f.icon}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[9px] sm:text-xs font-black tracking-wide truncate" style={{ color: MEDAL_NAVY }}>{f.title}</div>
+              <div className="text-[9px] sm:text-[11px] text-gray-500 leading-tight">{f.sub}</div>
             </div>
           </div>
         ))}
@@ -425,7 +636,7 @@ function StatsTab({ stats, events, swimmerId }) {
   }, [swimmerId])
 
   if (!stats) return null
-  const { medals, best_fina, best_event, total_championships, records, total_records, fina_distribution } = stats
+  const { medals, best_fina, season_best_fina, best_event, total_championships, records, total_records, fina_distribution } = stats
   const totalEvents = new Set(events.map(e => e.event_id)).size
   const totalSwims = events.reduce((sum, e) => sum + e.times_count, 0)
 
@@ -459,6 +670,14 @@ function StatsTab({ stats, events, swimmerId }) {
               <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-sky-600 to-sky-800 bg-clip-text text-transparent"><AnimatedNumber value={best_fina.points} /></div>
               <div className="text-xs sm:text-sm font-semibold text-gray-600 mt-1.5 sm:mt-2">{best_fina.event_name}</div>
               <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{best_fina.championship_name}</div>
+            </div>
+          )}
+          {season_best_fina && (
+            <div className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 rounded-2xl border border-emerald-200 p-5 shadow-sm animate-fade-in-up stagger-5 hover:shadow-md transition-shadow duration-300">
+              <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2">Season Best FINA Points · {season_best_fina.year}</div>
+              <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-emerald-600 to-emerald-800 bg-clip-text text-transparent"><AnimatedNumber value={season_best_fina.points} /></div>
+              <div className="text-xs sm:text-sm font-semibold text-gray-600 mt-1.5 sm:mt-2">{season_best_fina.event_name}</div>
+              <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{season_best_fina.championship_name}</div>
             </div>
           )}
           {best_event && (
@@ -585,6 +804,120 @@ function StatsTab({ stats, events, swimmerId }) {
   )
 }
 
+/* ───────── International Participation Infographic ───────── */
+const PARTICIPATION_TILES = [
+  { label: 'OLYMPIC', match: 'Olympic', grad: 'linear-gradient(135deg, #2f80ff 0%, #1259e0 100%)', badge: '#1e6ef5',
+    icon: <svg viewBox="0 0 48 30" className="w-10 h-7" fill="none" stroke="white" strokeWidth="2.6"><circle cx="9" cy="10" r="6.5"/><circle cx="24" cy="10" r="6.5"/><circle cx="39" cy="10" r="6.5"/><circle cx="16.5" cy="19" r="6.5"/><circle cx="31.5" cy="19" r="6.5"/></svg> },
+  { label: 'WORLD', match: 'World', grad: 'linear-gradient(135deg, #3b5bdb 0%, #23379f 100%)', badge: '#2c46b8',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="none" stroke="white" strokeWidth="1.7"><circle cx="12" cy="10" r="7"/><ellipse cx="12" cy="10" rx="3.2" ry="7"/><path d="M5 10h14M5.8 6.5h12.4M5.8 13.5h12.4" strokeWidth="1.2"/><path d="M4 20c2-1.6 4-1.6 6 0s4 1.6 6 0 3-1.2 4-.4" strokeLinecap="round"/></svg> },
+  { label: 'ARAB', match: 'Arab', grad: 'linear-gradient(135deg, #f6a623 0%, #e08508 100%)', badge: '#ef9410',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="white"><path d="M3 12l3-4 4-1 3-3 4 1 4 3-1 4-3 2-1 4-4-1-3 1-3-3 1-2-4-1z"/></svg> },
+  { label: 'ASIAN', match: 'Asian', grad: 'linear-gradient(135deg, #17a2b8 0%, #0e7f96 100%)', badge: '#1197ad',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="white"><path d="M4 8l4-4 6-1 6 3 1 5-3 3-1 5-4 2-2-4-4-1-2-4 1-2-2-2z"/></svg> },
+  { label: 'AFRICAN', match: 'African', grad: 'linear-gradient(135deg, #35b54a 0%, #1f8f34 100%)', badge: '#2aa63f',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="white"><path d="M8 2l8 1 3 5-2 5-2 7-3 3-3-6-2-6-1-5 2-4z"/></svg> },
+  { label: 'GCC', match: 'GCC', grad: 'linear-gradient(135deg, #9b59f5 0%, #7a36d9 100%)', badge: '#8a48e8',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="white"><path d="M6 3l7 2 5 4-1 6-4 4-5 2-3-5 1-6-1-4 1-3z"/></svg> },
+  { label: 'MEDITERRANEAN', match: 'Mediterranean', grad: 'linear-gradient(135deg, #38a4e8 0%, #1b7fc4 100%)', badge: '#2b94d9',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M3 8c2.5-2 5-2 7.5 0s5 2 7.5 0"/><path d="M3 13c2.5-2 5-2 7.5 0s5 2 7.5 0"/><path d="M3 18c2.5-2 5-2 7.5 0s5 2 7.5 0"/></svg> },
+  { label: 'ISLAMIC', match: 'Islamic', grad: 'linear-gradient(135deg, #d4a017 0%, #b0820a 100%)', badge: '#c6940f',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="none" stroke="white" strokeWidth="1.6"><rect x="6" y="6" width="12" height="12"/><rect x="6" y="6" width="12" height="12" transform="rotate(45 12 12)"/><circle cx="12" cy="12" r="3"/></svg> },
+  { label: 'SCHOOL', match: 'School', grad: 'linear-gradient(135deg, #ef4b50 0%, #cf2b30 100%)', badge: '#e33a40',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="white"><path d="M12 3v3M12 3h4v2h-4z"/><path d="M5 11l7-5 7 5v9H5z"/><rect x="10.5" y="14" width="3" height="6" fill="#ef4b50"/><circle cx="12" cy="11" r="1.5" fill="#ef4b50"/></svg> },
+  { label: 'UNIVERSITY', match: 'University', grad: 'linear-gradient(135deg, #f0508a 0%, #d42e6c 100%)', badge: '#e63f7b',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="white"><path d="M12 4L2 9l10 5 10-5-10-5z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5l-6 3-6-3z"/><path d="M21 10v6h-1v-6z"/></svg> },
+  { label: 'NATIONAL', match: 'National', grad: 'linear-gradient(135deg, #1e6ef5 0%, #0c47c9 100%)', badge: '#155cdd',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="white"><path d="M11 3v4h4V5l-4-2z"/><rect x="11" y="3" width="1.5" height="6"/><path d="M4 11l8-4 8 4v1H4v-1z"/><rect x="5" y="13" width="2" height="6"/><rect x="9" y="13" width="2" height="6"/><rect x="13" y="13" width="2" height="6"/><rect x="17" y="13" width="2" height="6"/><rect x="4" y="19.5" width="16" height="2"/></svg> },
+  { label: 'OTHER', match: 'Other', grad: 'linear-gradient(135deg, #8b95a1 0%, #667180 100%)', badge: '#79838f',
+    icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="none" stroke="white" strokeWidth="1.8"><circle cx="12" cy="12" r="8"/><path fill="white" stroke="none" d="M12 6.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z"/></svg> },
+]
+
+const PARTICIPATION_FOOTER = [
+  { title: 'UNITED SPIRIT', sub: 'Stronger together', bg: '#e3edfd', color: '#1e6ef5',
+    icon: <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 19c0-3 2.7-5 6-5s6 2 6 5v1H2zM13.5 14.6c.8-.4 1.6-.6 2.5-.6 3.3 0 6 2 6 5v1h-8v-1c0-1.7-.6-3.2-.5-4.4z"/></svg> },
+  { title: 'DRIVEN BY EXCELLENCE', sub: 'Committed to success', bg: '#e4f6e8', color: '#2aa63f',
+    icon: <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor"><path d="M6 3h12v2h3v3c0 2.5-2 4.5-4.5 4.9A6 6 0 0113 16.9V19h3v2H8v-2h3v-2.1a6 6 0 01-3.5-3A5 5 0 013 8V5h3V3zm-1 4v1a3 3 0 002.2 2.9A9 9 0 017 7H5zm14 0h-2a9 9 0 01-.2 3.9A3 3 0 0019 8V7z"/></svg> },
+  { title: 'DIVERSE NATIONS', sub: 'One aquatic family', bg: '#fdeedd', color: '#ef9410',
+    icon: <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor"><circle cx="12" cy="6" r="2.5"/><circle cx="5.5" cy="9" r="2"/><circle cx="18.5" cy="9" r="2"/><path d="M8 20c0-2.5 1.8-4 4-4s4 1.5 4 4h-8zM1.5 17c0-2 1.7-3.3 4-3.3.6 0 1.2.1 1.7.3A6 6 0 005.5 17h-4zM18.5 17a6 6 0 00-1.7-3c.5-.2 1.1-.3 1.7-.3 2.3 0 4 1.3 4 3.3h-4z" transform="translate(0 -1)"/></svg> },
+  { title: 'BUILDING LEGACIES', sub: 'For today and tomorrow', bg: '#efe5fd', color: '#8a48e8',
+    icon: <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor"><path d="M12 21s-7-4.6-9.3-8.6C1 9.5 2.8 6 6.2 6c2 0 3.3 1 4.1 2.2h3.4C14.5 7 15.8 6 17.8 6c3.4 0 5.2 3.5 3.5 6.4C19 16.4 12 21 12 21z"/></svg> },
+]
+
+function InternationalParticipation({ championships }) {
+  const counts = {}
+  championships.forEach(c => {
+    const key = c.classification || ''
+    counts[key] = (counts[key] || 0) + 1
+  })
+  return (
+    <div className="rounded-2xl overflow-hidden mb-4 sm:mb-6 animate-fade-in relative"
+      style={{ background: 'linear-gradient(160deg, #f2f5fc 0%, #e8edf9 50%, #eef1fa 100%)' }}>
+      {/* faint dotted world backdrop */}
+      <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(#1e6ef5 1.2px, transparent 1.2px)', backgroundSize: '14px 14px' }} />
+      <div className="relative px-4 sm:px-8 py-6 sm:py-8">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="flex items-center justify-center gap-3 mb-1.5">
+            <span className="h-[3px] w-10 sm:w-16 rounded-full" style={{ background: '#1e6ef5' }} />
+            <span className="text-[11px] sm:text-sm font-extrabold tracking-[0.25em]" style={{ color: '#1e6ef5' }}>WE ARE GLOBAL</span>
+            <span className="h-[3px] w-10 sm:w-16 rounded-full" style={{ background: '#1e6ef5' }} />
+          </div>
+          <h2 className="text-2xl sm:text-5xl font-black tracking-tight leading-tight" style={{ color: '#0b1f5e' }}>
+            INTERNATIONAL PARTICIPATION
+          </h2>
+          <p className="text-xs sm:text-base text-gray-500 mt-2">Uniting nations. Celebrating excellence. Inspiring generations.</p>
+          <svg viewBox="0 0 48 24" className="w-10 h-5 mx-auto mt-2" fill="#1e6ef5">
+            <circle cx="34" cy="6" r="3.2"/>
+            <path d="M10 12l14-5 5 4-6 3-13-2z"/>
+            <path d="M4 18c3-2.2 6-2.2 9 0s6 2.2 9 0 6-2.2 9-0 6 2.2 9 0v2.5c-3 2.2-6 2.2-9 0s-6-2.2-9 0-6 2.2-9 0-6-2.2-9 0z" opacity="0.9"/>
+          </svg>
+        </div>
+
+        {/* Tiles */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+          {PARTICIPATION_TILES.map((t, i) => {
+            const n = counts[t.match] || 0
+            return (
+              <div key={t.label} className="flex rounded-xl overflow-hidden bg-white shadow-md animate-fade-in-up" style={{ animationDelay: `${i * 0.04}s` }}>
+                <div className="w-[42%] shrink-0 flex items-center justify-center py-5 sm:py-6" style={{ background: t.grad }}>
+                  {t.icon}
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center gap-1.5 px-1 py-3">
+                  <div className="text-[10px] sm:text-sm font-extrabold tracking-wide text-center leading-tight" style={{ color: '#0b1f5e' }}>{t.label}</div>
+                  <div className="text-white text-sm sm:text-xl font-black px-2.5 sm:px-3 py-0.5 rounded-lg" style={{ background: t.badge }}>
+                    {String(n).padStart(2, '0')}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Footer strip */}
+        <div className="mt-5 sm:mt-7 bg-white rounded-2xl shadow-md px-3 sm:px-6 py-3 sm:py-4 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-0">
+          {PARTICIPATION_FOOTER.map((f, i) => (
+            <div key={f.title} className={`flex items-center gap-2.5 sm:gap-3 sm:px-4 ${i > 0 ? 'lg:border-l lg:border-gray-200' : ''}`}>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: f.bg, color: f.color }}>
+                {f.icon}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[9px] sm:text-xs font-extrabold tracking-wide truncate" style={{ color: '#0b1f5e' }}>{f.title}</div>
+                <div className="text-[9px] sm:text-xs text-gray-500 truncate">{f.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Carousel dots (decorative) */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <span className="w-5 h-1.5 rounded-full" style={{ background: '#0b1f5e' }} />
+          {[...Array(4)].map((_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-200" />)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ───────── Meets Tab ───────── */
 function MeetsTab({ stats, navigate }) {
   if (!stats) return null
@@ -600,6 +933,9 @@ function MeetsTab({ stats, navigate }) {
 
   return (
     <div className="space-y-4">
+      {/* International Participation infographic */}
+      <InternationalParticipation championships={championships} />
+
       {/* Overview */}
       <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4 animate-fade-in">
         <div className="bg-white rounded-xl sm:rounded-2xl border shadow-sm px-3 sm:px-5 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
@@ -663,7 +999,6 @@ function MeetsTab({ stats, navigate }) {
 function RecordsTab({ swimmerId, swimmer }) {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeType, setActiveType] = useState('ALL')
   useEffect(() => {
     const natId = swimmer?.nationality
     const fetches = [
@@ -704,138 +1039,124 @@ function RecordsTab({ swimmerId, swimmer }) {
     byType[type].push(r)
   })
 
-  const nationalCount = (byType['NATIONAL'] || []).length
-  const arabCount = (byType['ARAB'] || []).length
-  const gccCount = (byType['GCC'] || []).length
   const totalCount = records.length
-
-  const alpha2 = swimmer?.nationality_detail?.flag_url || (swimmer?.nationality_detail?.code || '').toLowerCase().slice(0, 2)
   const genderLabel = swimmer?.sex === 'M' ? "MEN'S" : "WOMEN'S"
 
   if (totalCount === 0) {
     return (
-      <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] p-12 text-center animate-fade-in">
-        <svg className="w-16 h-16 mx-auto mb-4 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
-        <p className="text-white/30 font-bold">No records held</p>
-        <p className="text-white/15 text-sm mt-1">Records will appear here when this swimmer sets Arab, GCC, or National records</p>
+      <div className="rounded-2xl bg-white border shadow-sm p-12 text-center animate-fade-in">
+        <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
+        <p className="text-gray-400 font-bold">No records held</p>
+        <p className="text-gray-300 text-sm mt-1">Records will appear here when this swimmer sets Arab, GCC, or National records</p>
       </div>
     )
   }
 
+  // Tile + badge colors per record scope (matches broadcast infographic palette)
   const typeConfig = {
-    NATIONAL: { label: 'NATIONAL', accent: 'text-purple-400', ring: 'ring-purple-400/30 bg-purple-500/15' },
-    ARAB: { label: 'ARAB', accent: 'text-emerald-400', ring: 'ring-emerald-400/30 bg-emerald-500/15' },
-    GCC: { label: 'GCC', accent: 'text-sky-400', ring: 'ring-sky-400/30 bg-sky-500/15' },
+    NATIONAL: { label: 'NATIONAL', tile: 'linear-gradient(135deg, #8b3fd9 0%, #a855f7 100%)', badge: 'border-purple-500 text-purple-600' },
+    GCC: { label: 'GCC', tile: 'linear-gradient(135deg, #d99a13 0%, #eab308 100%)', badge: 'border-amber-500 text-amber-600' },
+    ARAB: { label: 'ARAB', tile: 'linear-gradient(135deg, #e0641b 0%, #f97316 100%)', badge: 'border-orange-500 text-orange-600' },
+    WORLD: { label: 'WORLD', tile: 'linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%)', badge: 'border-violet-500 text-violet-600' },
+    ASIAN: { label: 'ASIAN', tile: 'linear-gradient(135deg, #e0641b 0%, #f97316 100%)', badge: 'border-orange-500 text-orange-600' },
+    ISLAMIC: { label: 'ISLAMIC', tile: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)', badge: 'border-teal-500 text-teal-600' },
+  }
+  const navy = '#0b2a6b'
+  const sectionOrder = ['WORLD', 'ASIAN', 'ISLAMIC', 'ARAB', 'GCC', 'NATIONAL'].filter(t => (byType[t] || []).length > 0)
+
+  const fmtDate = (d) => {
+    if (!d) return ''
+    const parts = String(d).split('-')
+    if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`
+    return d
   }
 
-  const filtered = activeType === 'ALL' ? records : (byType[activeType] || [])
-
-  // Find a "featured" record — first one in filtered list
-  const featuredRecord = filtered[0]
-
   return (
-    <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] animate-fade-in">
-      {/* Event badge */}
-      <div className="px-6 pt-6 pb-2 flex justify-center">
-        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-amber-400/50 bg-amber-500/10">
-          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-300">{genderLabel} RECORD HOLDER · {totalCount} RECORD{totalCount !== 1 ? 'S' : ''}</span>
+    <div className="rounded-2xl overflow-hidden shadow-xl bg-[#f6f7fa] p-4 sm:p-8 animate-fade-in">
+      {/* Header banner pill */}
+      <div className="flex justify-center mb-6 sm:mb-8">
+        <div className="inline-flex items-center gap-3 sm:gap-4 px-6 sm:px-10 py-3 rounded-full shadow-lg"
+          style={{ background: 'linear-gradient(180deg, #1450b8 0%, #0b2a6b 60%, #071d4d 100%)', border: '2px solid #3b82f6' }}>
+          <span className="text-white text-lg sm:text-xl leading-none">&#9733;</span>
+          <span className="text-white font-black uppercase tracking-[0.12em] text-sm sm:text-xl whitespace-nowrap">
+            {genderLabel} RECORD HOLDER <span className="mx-1">&bull;</span> {totalCount} RECORD{totalCount !== 1 ? 'S' : ''}
+          </span>
+          <span className="text-white text-lg sm:text-xl leading-none">&#9733;</span>
         </div>
       </div>
 
-      {/* Swimmer name + flag */}
-      <div className="px-6 pt-3 pb-1">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">{swimmer?.name}</h2>
-          {alpha2 && (
-            <img
-              src={`https://flagcdn.com/w40/${alpha2}.png`}
-              alt={swimmer?.nationality_detail?.name || ''}
-              className="w-7 h-5 object-cover rounded-sm"
-              onError={(e) => { e.target.style.display = 'none' }}
-            />
-          )}
+      {/* Stat tiles */}
+      <div className="flex flex-wrap justify-center gap-2.5 sm:gap-4 mb-8 sm:mb-10">
+        <div className="rounded-xl shadow-lg px-3 sm:px-5 pt-3 sm:pt-4 pb-3 text-center min-w-[92px] sm:min-w-[130px]"
+          style={{ background: 'linear-gradient(135deg, #1450b8 0%, #0b2a6b 100%)' }}>
+          <div className="text-white font-black text-4xl sm:text-6xl leading-none"><AnimatedNumber value={totalCount} /></div>
+          <div className="text-white font-bold uppercase tracking-[0.15em] text-[8px] sm:text-[10px] mt-2">Total Records</div>
+          <div className="h-0.5 w-8 bg-white/80 mx-auto mt-1.5 rounded-full" />
         </div>
-      </div>
-
-      {/* Hero stat */}
-      <div className="px-6 py-5">
-        <div className="flex items-end gap-5">
-          <div>
-            <div className="flex items-start">
-              <span className="text-7xl sm:text-8xl font-black text-white leading-none"><AnimatedNumber value={totalCount} /></span>
-            </div>
-            <div className="text-sm font-black uppercase tracking-widest text-amber-400 mt-1">TOTAL RECORDS</div>
+        {sectionOrder.map(t => (
+          <div key={t} className="rounded-xl shadow-lg px-3 sm:px-5 pt-3 sm:pt-4 pb-3 text-center min-w-[80px] sm:min-w-[110px]"
+            style={{ background: typeConfig[t].tile }}>
+            <div className="text-white font-black text-4xl sm:text-6xl leading-none"><AnimatedNumber value={byType[t].length} /></div>
+            <div className="text-white font-bold uppercase tracking-[0.15em] text-[8px] sm:text-[10px] mt-2">{typeConfig[t].label}</div>
+            <div className="h-0.5 w-8 bg-white/80 mx-auto mt-1.5 rounded-full" />
           </div>
-          <div className="h-16 w-px bg-white/15 mx-2" />
-          <div className="flex gap-6">
-            {nationalCount > 0 && (
-              <div>
-                <div className="text-4xl sm:text-5xl font-black text-purple-400 leading-none"><AnimatedNumber value={nationalCount} /></div>
-                <div className="text-[11px] font-black uppercase tracking-widest text-purple-400/50 mt-1">National</div>
-              </div>
-            )}
-            {arabCount > 0 && (
-              <div>
-                <div className="text-4xl sm:text-5xl font-black text-emerald-400 leading-none"><AnimatedNumber value={arabCount} /></div>
-                <div className="text-[11px] font-black uppercase tracking-widest text-emerald-400/50 mt-1">Arab</div>
-              </div>
-            )}
-            {gccCount > 0 && (
-              <div>
-                <div className="text-4xl sm:text-5xl font-black text-sky-400 leading-none"><AnimatedNumber value={gccCount} /></div>
-                <div className="text-[11px] font-black uppercase tracking-widest text-sky-400/50 mt-1">GCC</div>
-              </div>
-            )}
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Filter toggles */}
-      <div className="px-6 pb-3">
-        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 w-fit">
-          {[{ key: 'ALL', label: 'All', count: totalCount }, ...(nationalCount > 0 ? [{ key: 'NATIONAL', label: 'National', count: nationalCount }] : []), ...(arabCount > 0 ? [{ key: 'ARAB', label: 'Arab', count: arabCount }] : []), ...(gccCount > 0 ? [{ key: 'GCC', label: 'GCC', count: gccCount }] : [])].map(f => (
-            <button key={f.key} onClick={() => setActiveType(f.key)}
-              className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all duration-200 ${
-                activeType === f.key ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-white/40 hover:text-white/70'
-              }`}>
-              {f.label} <span className="opacity-60">({f.count})</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Record rows */}
-      <div className="px-4 pb-5 mt-1 space-y-1">
-        {filtered.map((r, i) => {
-          const cfg = typeConfig[r.record_type] || typeConfig.ARAB
-          const isFeatured = i === 0
-          return (
-            <div key={i}
-              className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 animate-fade-in-up ${
-                isFeatured ? 'bg-cyan-400 text-[#0b1a30]' : 'hover:bg-white/5'
-              }`}
-              style={{ animationDelay: `${i * 0.04}s` }}>
-              <StrokeIcon eventName={r.event_name} className="w-10 h-10" dark={isFeatured} />
-              <div className="flex-1 min-w-0">
-                <div className={`text-[15px] font-black uppercase tracking-wide truncate ${isFeatured ? 'text-[#0b1a30]' : 'text-white/90'}`}>{r.event_detail?.name || r.event_name}</div>
-                {!isFeatured && <div className="text-[10px] text-white/25 mt-0.5 truncate">{r.location}{r.location && r.result_date ? ' \u00b7 ' : ''}{r.result_date}</div>}
-                {isFeatured && <div className="text-[10px] text-[#0b1a30]/50 mt-0.5 truncate">{r.location}{r.location && r.result_date ? ' \u00b7 ' : ''}{r.result_date}</div>}
+      {/* Sections per record type */}
+      {sectionOrder.map(type => {
+        const list = byType[type]
+        const cfg = typeConfig[type]
+        return (
+          <div key={type} className="mb-8 last:mb-0">
+            {/* Section header: navy banner + records count with rules */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="inline-flex items-center gap-2.5 pl-4 pr-8 py-2.5 shadow-md shrink-0"
+                style={{ background: `linear-gradient(180deg, #143c8f 0%, ${navy} 100%)`, clipPath: 'polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%)', borderRadius: '8px 4px 4px 8px' }}>
+                <span className="text-amber-400 text-base leading-none">&#9733;</span>
+                <span className="text-white font-black uppercase tracking-[0.12em] text-xs sm:text-sm whitespace-nowrap">{cfg.label} RECORDS</span>
               </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
-                  isFeatured ? 'bg-[#0b1a30]/15 text-[#0b1a30]/70' : `ring-1 ${cfg.ring}`
-                }`}>
-                  <span className={isFeatured ? '' : cfg.accent}>{cfg.label}</span>
-                </span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                  isFeatured ? 'bg-[#0b1a30]/10 text-[#0b1a30]/60' : r.pool === 'LCM' ? 'bg-sky-500/15 text-sky-400/70' : 'bg-amber-500/15 text-amber-400/70'
-                }`}>{r.pool}</span>
-                <span className={`font-mono font-black text-lg tabular-nums min-w-[75px] text-right ${isFeatured ? 'text-[#0b1a30]' : 'text-white'}`}>{r.formatted_time}</span>
-              </div>
+              <div className="h-px flex-1 max-w-[60px]" style={{ background: '#1450b8' }} />
+              <span className="font-black uppercase tracking-[0.15em] text-xs sm:text-sm whitespace-nowrap" style={{ color: '#1450b8' }}>
+                {list.length} RECORD{list.length !== 1 ? 'S' : ''}
+              </span>
+              <div className="h-px flex-1" style={{ background: '#1450b8' }} />
             </div>
-          )
-        })}
-      </div>
+
+            {/* Record rows */}
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-100">
+              {list.map((r, i) => (
+                <div key={i} className="flex items-center gap-3 sm:gap-5 px-3 sm:px-5 py-3.5 sm:py-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.04}s` }}>
+                  {/* Number circle */}
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shrink-0 shadow"
+                    style={{ background: `linear-gradient(180deg, #143c8f 0%, ${navy} 100%)` }}>
+                    <span className="text-white font-black text-base sm:text-lg">{i + 1}</span>
+                  </div>
+                  {/* Event + meet + date */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black uppercase tracking-wide text-sm sm:text-lg leading-tight truncate" style={{ color: navy }}>
+                      {r.event_detail?.name || r.event_name}
+                    </div>
+                    <div className="text-[11px] sm:text-xs font-bold mt-0.5 truncate" style={{ color: '#1450b8' }}>{r.location}</div>
+                    <div className="text-[10px] sm:text-[11px] font-bold mt-0.5" style={{ color: navy }}>{fmtDate(r.result_date)}</div>
+                  </div>
+                  {/* Badges */}
+                  <div className="hidden sm:flex items-center gap-2.5 shrink-0">
+                    <span className={`border-2 rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] bg-white ${cfg.badge}`}>{cfg.label}</span>
+                    <span className="border-2 border-blue-400 text-blue-500 rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] bg-white">{r.category || 'OPEN'}</span>
+                    <span className={`border-2 rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] bg-white ${r.pool === 'SCM' ? 'border-orange-400 text-orange-500' : 'border-blue-400 text-blue-500'}`}>{r.pool}</span>
+                  </div>
+                  {/* Divider + time */}
+                  <div className="hidden sm:block h-8 w-px bg-gray-300 shrink-0" />
+                  <div className="font-black tabular-nums text-base sm:text-2xl shrink-0 min-w-[70px] sm:min-w-[110px] text-right" style={{ color: navy }}>
+                    {r.formatted_time}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -1100,12 +1421,13 @@ function StrokeIcon({ eventName, className = 'w-9 h-9', dark = false }) {
 }
 
 /* ───────── Rankings Tab ───────── */
-function RankingsTab({ swimmerId, swimmer, onEventClick }) {
+function RankingsTab({ swimmerId, swimmer }) {
   const [rankings, setRankings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState([])
   const [activePool, setActivePool] = useState('LCM')
   const [activeScope, setActiveScope] = useState(null)
+  const [selectedKey, setSelectedKey] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -1161,9 +1483,9 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
       return ra - rb
     })
 
-  const bestRow = poolRows[0]
-  const bestRank = bestRow?.rankings[currentScope]
-  const bestEventName = bestRow ? (eventMap[`${bestRow.event_id}-${bestRow.pool}`] || eventMap[`${bestRow.event_id}`] || `Event ${bestRow.event_id}`) : ''
+  const selectedRow = poolRows.find(r => `${r.event_id}-${r.pool}` === selectedKey) || poolRows[0]
+  const selectedRank = selectedRow?.rankings[currentScope]
+  const selectedEventName = selectedRow ? (eventMap[`${selectedRow.event_id}-${selectedRow.pool}`] || eventMap[`${selectedRow.event_id}`] || `Event ${selectedRow.event_id}`) : ''
 
   const ordinalSuffix = (n) => {
     if (n % 100 >= 11 && n % 100 <= 13) return 'TH'
@@ -1175,29 +1497,13 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
   }
 
   const genderLabel = swimmer?.sex === 'M' ? "MEN'S" : "WOMEN'S"
-  const alpha2 = swimmer?.nationality_detail?.flag_url || (swimmer?.nationality_detail?.code || '').toLowerCase().slice(0, 2)
 
   return (
     <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1a30] to-[#0f2035] animate-fade-in">
       {/* Event badge */}
       <div className="px-6 pt-6 pb-2 flex justify-center">
         <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-cyan-400/50 bg-cyan-500/10">
-          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-300">{genderLabel} {bestEventName?.toUpperCase()} · {effectivePool}</span>
-        </div>
-      </div>
-
-      {/* Swimmer name + flag */}
-      <div className="px-6 pt-3 pb-1">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">{swimmer?.name}</h2>
-          {alpha2 && (
-            <img
-              src={`https://flagcdn.com/w40/${alpha2}.png`}
-              alt={swimmer?.nationality_detail?.name || ''}
-              className="w-7 h-5 object-cover rounded-sm"
-              onError={(e) => { e.target.style.display = 'none' }}
-            />
-          )}
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-300">{genderLabel} {selectedEventName?.toUpperCase()} · {effectivePool}</span>
         </div>
       </div>
 
@@ -1227,21 +1533,21 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
         </div>
       </div>
 
-      {/* Hero stat — best ranking */}
-      {bestRank && (
+      {/* Hero stat — selected event ranking */}
+      {selectedRank && (
         <div className="px-6 py-5">
           <div className="flex items-end gap-5">
             <div>
               <div className="flex items-start">
-                <span className="text-7xl sm:text-8xl font-black text-white leading-none">{bestRank.rank}</span>
-                <span className="text-2xl sm:text-3xl font-black text-white mt-1 ml-0.5">{ordinalSuffix(bestRank.rank)}</span>
+                <span className="text-7xl sm:text-8xl font-black text-white leading-none">{selectedRank.rank}</span>
+                <span className="text-2xl sm:text-3xl font-black text-white mt-1 ml-0.5">{ordinalSuffix(selectedRank.rank)}</span>
               </div>
               <div className="text-sm font-black uppercase tracking-widest text-cyan-400 mt-1">{scopeLabelUpper[currentScope]}</div>
             </div>
             <div className="h-16 w-px bg-white/15 mx-2" />
             <div>
-              <div className="text-6xl sm:text-7xl font-black text-white font-mono leading-none tracking-tight">{bestRow.best_time}</div>
-              <div className="text-sm font-black uppercase tracking-widest text-cyan-400 mt-1">BEST TIME</div>
+              <div className="text-6xl sm:text-7xl font-black text-white font-mono leading-none tracking-tight">{selectedRow.best_time}</div>
+              <div className="text-sm font-black uppercase tracking-widest text-cyan-400 mt-1">{selectedEventName?.toUpperCase()} · PERSONAL BEST</div>
             </div>
           </div>
         </div>
@@ -1252,25 +1558,25 @@ function RankingsTab({ swimmerId, swimmer, onEventClick }) {
         {poolRows.map((r, i) => {
           const rank = r.rankings[currentScope]
           const eName = eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`
-          const isBest = i === 0
+          const isSelected = selectedRow && `${r.event_id}-${r.pool}` === `${selectedRow.event_id}-${selectedRow.pool}`
           return (
             <div key={`${r.event_id}-${r.pool}`}
-              onClick={() => onEventClick && onEventClick(r.event_id, r.pool)}
+              onClick={() => setSelectedKey(`${r.event_id}-${r.pool}`)}
               className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 animate-fade-in-up cursor-pointer ${
-                isBest ? 'bg-cyan-400 text-[#0b1a30]' : 'hover:bg-white/5'
+                isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-white/5'
               }`}
               style={{ animationDelay: `${i * 0.05}s` }}>
-              <StrokeIcon eventName={eName} className="w-10 h-10" dark={isBest} />
+              <StrokeIcon eventName={eName} className="w-10 h-10" dark={isSelected} />
               <div className="flex-1 min-w-0">
-                <div className={`text-[15px] font-black uppercase tracking-wide truncate ${isBest ? 'text-[#0b1a30]' : 'text-white/90'}`}>{eName}</div>
+                <div className={`text-[15px] font-black uppercase tracking-wide truncate ${isSelected ? 'text-white' : 'text-white/90'}`}>{eName}</div>
               </div>
               <div className="flex items-center gap-5 shrink-0">
                 {rank ? (
                   <>
-                    <span className={`font-black text-[15px] tabular-nums ${isBest ? 'text-[#0b1a30]/70' : 'text-white/40'}`}>
-                      {rank.rank}<span className={isBest ? 'text-[#0b1a30]/40' : 'text-white/20'}>/{rank.total}</span>
+                    <span className={`font-black text-[15px] tabular-nums ${isSelected ? 'text-white/80' : 'text-white/40'}`}>
+                      {rank.rank}<span className={isSelected ? 'text-white/50' : 'text-white/20'}>/{rank.total}</span>
                     </span>
-                    <span className={`font-mono font-black text-lg tabular-nums min-w-[75px] text-right ${isBest ? 'text-[#0b1a30]' : 'text-white'}`}>{r.best_time}</span>
+                    <span className={`font-mono font-black text-lg tabular-nums min-w-[75px] text-right text-white`}>{r.best_time}</span>
                   </>
                 ) : (
                   <span className="text-white/20 text-sm">-</span>
@@ -1501,8 +1807,8 @@ export default function SwimmerProfilePage() {
           </div>
         )}
         {activeTab === 'meets' && <MeetsTab stats={stats} navigate={navigate} />}
-        {activeTab === 'medals' && <MedalsTab stats={stats} navigate={navigate} swimmer={swimmer} />}
-        {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} onEventClick={(eventId, pool) => { setActiveTab('times'); handleEventClick({ event_id: eventId, pool }) }} />}
+        {activeTab === 'medals' && <MedalsTab stats={stats} />}
+        {activeTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
         {activeTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
         {activeTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
         {activeTab === 'stats' && <StatsTab stats={stats} events={events} swimmerId={parseInt(id)} />}

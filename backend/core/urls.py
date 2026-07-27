@@ -8,5 +8,6 @@ router.register(r'events', views.EventViewSet)
 
 urlpatterns = [
     path('auth/me/', views.me, name='auth-me'),
+    path('fina-points/', views.fina_points_preview, name='fina-points-preview'),
     path('', include(router.urls)),
 ]

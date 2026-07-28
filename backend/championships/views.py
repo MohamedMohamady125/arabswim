@@ -62,6 +62,14 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             return ChampionshipListSerializer
         return ChampionshipDetailSerializer
 
+    def perform_update(self, serializer):
+        championship = serializer.save()
+        # Classifying a meet after import (e.g. Other/France) tells us which
+        # country its clubs belong to — reapply the club-country rule so
+        # foreign clubs aren't left tagged with a swimmer's nationality.
+        from teams.utils import apply_subclassification_country
+        apply_subclassification_country(championship)
+
     def get_queryset(self):
         qs = super().get_queryset()
         # List-only filters. They must NOT apply to detail actions: e.g.

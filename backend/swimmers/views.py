@@ -775,9 +775,19 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             c['country_code'] = t.country.code if t else None
             c['country_flag'] = t.country.flag_url if t else None
             c['is_national'] = bool(t and t.is_national_team)
-            # "Current" = swam for this club within a year of the swimmer's latest meet
-            c['is_current'] = bool(
-                latest_date and (latest_date - c['last_meet_date']).days <= 365)
+        # A club stops being "current" the moment the swimmer competes for a
+        # different club — only the most recent club is current. National
+        # teams run in parallel with clubs, so they stay "current" while the
+        # swimmer competed for them within a year of their latest meet.
+        latest_club_date = max(
+            (c['last_meet_date'] for c in clubs if not c['is_national']),
+            default=None)
+        for c in clubs:
+            if c['is_national']:
+                c['is_current'] = bool(
+                    latest_date and (latest_date - c['last_meet_date']).days <= 365)
+            else:
+                c['is_current'] = c['last_meet_date'] == latest_club_date
             del c['last_meet_date']
 
         # Nationality changes

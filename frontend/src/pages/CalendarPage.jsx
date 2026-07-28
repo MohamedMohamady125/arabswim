@@ -545,41 +545,41 @@ export default function CalendarPage() {
       <div key={c.id}>
         <div
           onClick={() => setSelectedMeet(isSelected ? null : c)}
-          className={`bg-white border px-4 md:px-6 py-4 md:py-5 flex items-center gap-4 md:gap-6 cursor-pointer transition-colors ${
+          className={`bg-white border px-3 md:px-6 py-3.5 md:py-5 flex items-center gap-3 md:gap-6 cursor-pointer transition-colors ${
             isSelected ? 'border-aqua-500 rounded-t-md shadow-card' : 'border-ink-100 rounded-md shadow-card hover:border-aqua-500/40'
           }`}
         >
           {/* Meet photo or date badge */}
           {c.meet_photo ? (
-            <div className="w-24 h-20 rounded-md overflow-hidden shrink-0 shadow-card">
+            <div className="w-16 h-14 md:w-24 md:h-20 rounded-md overflow-hidden shrink-0 shadow-card">
               <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
             </div>
           ) : (
-            <div className="w-20 h-20 bg-ink-900 rounded-md flex flex-col items-center justify-center text-white shrink-0">
+            <div className="w-14 h-14 md:w-20 md:h-20 bg-ink-900 rounded-md flex flex-col items-center justify-center text-white shrink-0">
               <span className="text-display leading-none tnum">{d.date()}</span>
-              <span className="text-label text-aqua-400 mt-1">{MONTH_SHORT[d.month()]}</span>
+              <span className="text-label text-aqua-400 mt-0.5 md:mt-1">{MONTH_SHORT[d.month()]}</span>
             </div>
           )}
 
           {/* Meet info */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-title text-ink-900 truncate">{c.name}</h3>
-            <div className="flex items-center gap-3 text-body-sm text-ink-500 mt-1.5">
-              {c.location && (
-                <span className="flex items-center gap-1">
-                  <MapPin size={14} className="text-ink-400 shrink-0" />
-                  {c.location}
-                  {c.country_detail && <span>, {c.country_detail.name}</span>}
-                </span>
-              )}
-              {!c.location && c.country_detail && (
-                <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
-              )}
-            </div>
-            <div className="flex items-center gap-3 text-body-sm text-ink-400 mt-1.5">
-              <span>{c.pool === 'LCM' ? '50m Pool' : '25m Pool'}</span>
+            <h3 className="text-title text-ink-900 leading-snug break-words">{c.name}</h3>
+            {(c.location || c.country_detail) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-ink-500 mt-1">
+                {c.location ? (
+                  <span className="flex items-center gap-1 min-w-0">
+                    <MapPin size={14} className="text-ink-400 shrink-0" />
+                    <span className="break-words">{c.location}{c.country_detail ? `, ${c.country_detail.name}` : ''}</span>
+                  </span>
+                ) : (
+                  <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
+                )}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-ink-400 mt-1">
+              <span className="whitespace-nowrap">{c.pool === 'LCM' ? '50m Pool' : '25m Pool'}</span>
               {c.end_date && c.end_date !== c.date && (
-                <span>&mdash; {formatDate(c.date)} to {formatDate(c.end_date)}</span>
+                <span className="whitespace-nowrap">{formatDate(c.date)} &ndash; {formatDate(c.end_date)}</span>
               )}
             </div>
           </div>

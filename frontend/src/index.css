@@ -1,17 +1,71 @@
 @import "tailwindcss";
 
-html, body { overflow-x: hidden; max-width: 100vw; }
-
+/* ArabSwiM design tokens — "white water": white pages, aqua accent, ink authority */
 @theme {
-  /* Times use font-mono; system monospace fonts (Menlo/Monaco) draw a
-     slashed zero that looks like an 8. Use the sans stack with tabular
-     (fixed-width) figures instead — digits stay aligned, zeros stay open. */
-  --font-mono: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  /* Ink (black side of the brand) */
+  --color-ink-950: #06090F;
+  --color-ink-900: #0A1220;
+  --color-ink-700: #1E2A3A;
+  --color-ink-500: #48586C;
+  --color-ink-400: #6B7A8E;
+  --color-ink-200: #D7DEE7;
+  --color-ink-100: #E8EDF2;
+  --color-ink-50: #F4F7FA;
+
+  /* Aqua (brand accent — deliberate, not everywhere) */
+  --color-aqua-600: #0891B2;
+  --color-aqua-500: #06B6D4;
+  --color-aqua-400: #22D3EE;
+  --color-aqua-100: #CFFAFE;
+  --color-aqua-50: #ECFEFF;
+
+  /* Semantics */
+  --color-pos: #059669;
+  --color-neg: #DC2626;
+  --color-gold: #D4A017;
+  --color-silver: #8C9AA8;
+  --color-bronze: #B0713A;
+  --color-lcm: #0369A1;
+  --color-scm: #B45309;
+  --color-record: #7C3AED;
+
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Archivo", "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Times use tabular figures on the sans stack (monospace fonts draw a
+     slashed zero that reads like an 8) */
+  --font-mono: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono--font-feature-settings: "tnum";
+
+  /* Shape — exactly three radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Elevation — exactly two shadows */
+  --shadow-card: 0 1px 2px rgb(10 18 32 / 0.06);
+  --shadow-pop: 0 8px 24px rgb(10 18 32 / 0.12);
 }
 
-/* Swimmer profile animations */
+html, body { overflow-x: hidden; max-width: 100vw; }
+body { background-color: var(--color-ink-50); color: var(--color-ink-900); }
+
+/* Tabular numerals — apply on every time, count, rank, points value */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Type scale utilities (the only allowed sizes in migrated code) */
+.text-display-xl { font-family: var(--font-display); font-size: 36px; line-height: 40px; font-weight: 800; }
+.text-display { font-family: var(--font-display); font-size: 28px; line-height: 34px; font-weight: 700; }
+.text-title { font-family: var(--font-display); font-size: 20px; line-height: 28px; font-weight: 700; }
+.text-body { font-size: 15px; line-height: 22px; }
+.text-body-sm { font-size: 13px; line-height: 18px; }
+.text-label { font-size: 11px; line-height: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+.text-time-lg { font-size: 24px; line-height: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.text-time { font-size: 15px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Motion — consolidated */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
@@ -19,13 +73,6 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-@keyframes growWidth {
-  from { width: 0; }
 }
 @keyframes countUp {
   from { opacity: 0; transform: scale(0.5); }
@@ -35,30 +82,47 @@ html, body { overflow-x: hidden; max-width: 100vw; }
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
-@keyframes heroSlideIn {
-  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
 @keyframes expandDown {
   from { opacity: 0; max-height: 0; }
   to { opacity: 1; max-height: 2000px; }
 }
-.animate-fade-in-up { animation: fadeInUp 0.5s ease-out both; }
-.animate-fade-in { animation: fadeIn 0.4s ease-out both; }
-.animate-slide-right { animation: slideInRight 0.4s ease-out both; }
-.animate-grow-width { animation: growWidth 0.8s ease-out both; }
+.animate-fade-up { animation: fadeInUp 0.25s ease-out both; }
+.animate-fade-in { animation: fadeIn 0.25s ease-out both; }
 .animate-count-up { animation: countUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
-.animate-hero { animation: heroSlideIn 0.6s ease-out both; }
 .animate-expand { animation: expandDown 0.3s ease-out both; overflow: hidden; }
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.1s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.2s; }
-.stagger-5 { animation-delay: 0.25s; }
-.stagger-6 { animation-delay: 0.3s; }
-.stagger-7 { animation-delay: 0.35s; }
-.stagger-8 { animation-delay: 0.4s; }
+.stagger-1 { animation-delay: 0.04s; }
+.stagger-2 { animation-delay: 0.08s; }
+.stagger-3 { animation-delay: 0.12s; }
+.stagger-4 { animation-delay: 0.16s; }
+.stagger-5 { animation-delay: 0.2s; }
+.stagger-6 { animation-delay: 0.24s; }
+.stagger-7 { animation-delay: 0.28s; }
+.stagger-8 { animation-delay: 0.32s; }
+
+/* Legacy aliases (removed once all pages migrate) */
+.animate-fade-in-up { animation: fadeInUp 0.5s ease-out both; }
+.animate-slide-right { animation: fadeIn 0.4s ease-out both; }
+.animate-grow-width { animation: none; }
+.animate-hero { animation: fadeInUp 0.4s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-ink-100) 25%, var(--color-ink-50) 50%, var(--color-ink-100) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
 
 /* Hide scrollbar but keep scrolling */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Focus visibility */
+:focus-visible { outline: 2px solid var(--color-aqua-500); outline-offset: 2px; }

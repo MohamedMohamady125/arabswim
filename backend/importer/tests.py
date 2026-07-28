@@ -2167,3 +2167,66 @@ class FFNNameReorderTests(TestCase):
         from importer.parsers.ffn_parser import _reorder_ffn_name
         # No TitleCase given name to move — leave as-is
         self.assertEqual(_reorder_ffn_name('MOHAMED ALI'), 'MOHAMED ALI')
+
+
+class SurnameCapsTests(SimpleTestCase):
+    """Names without an all-caps word get their surname uppercased so every
+    stored name follows the 'Given SURNAME' convention."""
+
+    def test_plain_title_case(self):
+        from importer.services import uppercase_surname
+        self.assertEqual(uppercase_surname('Dora Buklu'), 'Dora BUKLU')
+
+    def test_particle_surnames(self):
+        from importer.services import uppercase_surname
+        self.assertEqual(uppercase_surname('Maha Al Shehhi'), 'Maha AL SHEHHI')
+        self.assertEqual(uppercase_surname('Mohamed-Yassine Ben Abbes'),
+                         'Mohamed-Yassine BEN ABBES')
+        self.assertEqual(uppercase_surname('Pablo De La Torre'),
+                         'Pablo DE LA TORRE')
+
+    def test_multiple_middle_initials(self):
+        from importer.services import uppercase_surname
+        self.assertEqual(uppercase_surname('Saba A A H Sultan'),
+                         'Saba A A H SULTAN')
+
+    def test_single_word_unchanged(self):
+        from importer.services import uppercase_surname
+        self.assertEqual(uppercase_surname('Madonna'), 'Madonna')
+
+    def test_normalize_swimmer_name_no_caps_source(self):
+        from importer.services import normalize_swimmer_name
+        # Source PDFs without a caps surname ("dora buklu" / "Dora Buklu")
+        self.assertEqual(normalize_swimmer_name('dora buklu'), 'Dora BUKLU')
+        self.assertEqual(normalize_swimmer_name('Dora Buklu'), 'Dora BUKLU')
+        self.assertEqual(normalize_swimmer_name('DORA BUKLU'), 'Dora BUKLU')
+
+    def test_normalize_swimmer_name_correct_names_untouched(self):
+        from importer.services import normalize_swimmer_name
+        self.assertEqual(normalize_swimmer_name('Malak MEQDAR'), 'Malak MEQDAR')
+        self.assertEqual(normalize_swimmer_name('Mohamed-Yassine BEN ABBES'),
+                         'Mohamed-Yassine BEN ABBES')
+
+
+class ClubEquivalenceTests(SimpleTestCase):
+    """Fuzzy club comparison so a stray extraction character doesn't split
+    one athlete into two ('GRENOBLE ALP'38' vs 'GRENOBsLE ALP'38')."""
+
+    def test_extraction_glitch_is_same_club(self):
+        from importer.matcher import clubs_equivalent
+        self.assertTrue(clubs_equivalent("GRENOBLE ALP'38", "GRENOBsLE ALP'38"))
+
+    def test_case_and_punctuation_variants(self):
+        from importer.matcher import clubs_equivalent
+        self.assertTrue(clubs_equivalent("Grenoble Alp'38", 'GRENOBLE ALP 38'))
+        self.assertTrue(clubs_equivalent('C.N. ALGER', 'CN ALGER'))
+
+    def test_different_clubs(self):
+        from importer.matcher import clubs_equivalent
+        self.assertFalse(clubs_equivalent('CA', 'OLYMPICA'))
+        self.assertFalse(clubs_equivalent('CN ALGER', 'USM ALGER'))
+
+    def test_empty_values(self):
+        from importer.matcher import clubs_equivalent
+        self.assertFalse(clubs_equivalent('', "GRENOBLE ALP'38"))
+        self.assertFalse(clubs_equivalent(None, None))

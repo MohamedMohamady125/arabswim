@@ -11,8 +11,32 @@ Age consistency: a swimmer aged 15 at a 2022 meet (born ~2007) should be
 aged 17 at a 2024 meet. We check if birth_year matches within ±1 year tolerance.
 """
 import re
+from difflib import SequenceMatcher
 from swimmers.models import Swimmer
 from core.models import Country
+
+
+def _club_key(text):
+    """Reduce a club name to its alphanumerics for comparison."""
+    return re.sub(r'[^A-Z0-9]', '', (text or '').upper())
+
+
+def clubs_equivalent(a, b):
+    """True when two club strings refer to the same club.
+
+    PDF text extraction sometimes injects stray characters into one
+    occurrence of a club ("GRENOBLE ALP'38" vs "GRENOBsLE ALP'38").
+    Exact comparison then splits one athlete into two identities and
+    creates a duplicate swimmer. Compare on alphanumerics only, and
+    accept near-identical strings; genuinely different clubs ("CA" vs
+    "OLYMPICA") stay distinct.
+    """
+    ka, kb = _club_key(a), _club_key(b)
+    if not ka or not kb:
+        return False
+    if ka == kb:
+        return True
+    return SequenceMatcher(None, ka, kb).ratio() >= 0.85
 
 
 _country_cache = None
@@ -332,7 +356,7 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
             club = (getattr(parsed_result, 'club', '') or '').strip().upper()
             if club:
                 for swimmer in exact_year:
-                    if (swimmer.club or '').strip().upper() == club:
+                    if clubs_equivalent(swimmer.club, club):
                         return swimmer, 100, 'exact'
         if exact_year:
             return exact_year[0], 100, 'exact'

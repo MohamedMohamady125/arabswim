@@ -70,6 +70,7 @@ export default function MedalsPage() {
 
   useEffect(() => {
     if (isNationalContext && view === 'summary') setView('clubs')
+    if (!isNationalContext && view === 'clubs') setView('summary')
   }, [isNationalContext])
 
   const totalGold = summary.reduce((s, r) => s + (r.gold || 0), 0)

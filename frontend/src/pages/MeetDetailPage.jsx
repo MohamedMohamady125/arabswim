@@ -200,7 +200,7 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
   // National/Other meets: no country tally — clubs + swimmers tallies instead
   const isNational = meet?.classification_name
     ? ['National', 'Other'].includes(meet.classification_name)
-    : (stats?.countries?.length || 0) <= 1
+    : (stats ? (stats.countries?.length || 0) <= 1 : false)
   const safeMedals = Array.isArray(medals) ? medals : []
   const safeSummary = Array.isArray(medalSummary) ? medalSummary : []
   const safeClubSummary = Array.isArray(medalClubSummary) ? medalClubSummary : []

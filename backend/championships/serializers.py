@@ -56,6 +56,8 @@ class ChampionshipListSerializer(serializers.ModelSerializer):
 
 class ChampionshipDetailSerializer(serializers.ModelSerializer):
     country_detail = CountrySerializer(source='country', read_only=True)
+    classification_name = serializers.CharField(source='classification.name', read_only=True, default=None)
+    sub_classification_name = serializers.CharField(source='sub_classification.name', read_only=True, default=None)
 
     class Meta:
         model = Championship

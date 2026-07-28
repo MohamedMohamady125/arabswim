@@ -846,9 +846,14 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         age_label = None
         age_q = None
         if birth_year:
-            age_label = f'U{date.today().year - birth_year + 1}'
-            age_q = (Q(swimmer__date_of_birth__year__gte=birth_year) |
-                     Q(swimmer__date_of_birth__isnull=True, swimmer__birth_year__gte=birth_year))
+            age_num = date.today().year - birth_year + 1
+            # Age-group rankings are a youth feature: swimmers up to U18 get
+            # their age-band rank next to Open in every scope; older swimmers
+            # rank in Open only (no meaningless "U22" cards).
+            if age_num <= 18:
+                age_label = f'U{age_num}'
+                age_q = (Q(swimmer__date_of_birth__year__gte=birth_year) |
+                         Q(swimmer__date_of_birth__isnull=True, swimmer__birth_year__gte=birth_year))
 
         nat = swimmer.nationality
         # Determine which scopes apply

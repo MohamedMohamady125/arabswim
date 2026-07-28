@@ -1,7 +1,7 @@
 const MEDAL_SRC = {
-  gold: '/medal_gold.png',
-  silver: '/medal_silver.png',
-  bronze: '/medal_bronze.png',
+  gold: '/medal_gold.webp',
+  silver: '/medal_silver.webp',
+  bronze: '/medal_bronze.webp',
 }
 
 export default function MedalIcon({ type, size = 24, className = '' }) {

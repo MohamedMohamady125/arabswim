@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react'
+import {
+  Check, X, FileText, FileSpreadsheet, Globe, PenLine, Upload,
+  AlertTriangle, Info, Users, ListChecks, CalendarDays, CheckCircle2, XCircle,
+} from 'lucide-react'
 import { uploadFile, matchSwimmers, confirmImport } from '../api/importer'
 import { getCountries } from '../api/core'
 import { getClassifications, getSubClassifications, getResultsBySwimmer, bulkDeleteResults } from '../api/championships'
 import { POOL_TYPES, ARAB_COUNTRY_CODES } from '../utils/constants'
 import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
+import { Button, Card, Badge, Input, Select, FieldLabel, StatCard, PageHeader, ConfirmDialog } from '../components/ui'
 
 const MAX_FILES = 200
 
@@ -252,18 +257,20 @@ export default function ImportPage() {
     <div className="flex flex-wrap gap-2 mb-4">
       {meets.map((m, i) => (
         <button key={m.importId} onClick={() => setActive(i)}
-          className={`px-3 py-1.5 rounded-lg text-sm border transition-colors flex items-center gap-1.5 ${
+          className={`min-h-10 px-3 py-1.5 rounded-sm text-body-sm border transition-colors flex items-center gap-1.5 ${
             i === active
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+              ? 'bg-aqua-600 text-white border-aqua-600'
+              : 'bg-white text-ink-700 border-ink-200 hover:border-aqua-500/40'
           }`}>
-          <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${
-            i === active ? 'bg-white/20' : 'bg-gray-100'
+          <span className={`w-5 h-5 rounded-full text-label flex items-center justify-center ${
+            i === active ? 'bg-white/20' : 'bg-ink-50'
           }`}>{i + 1}</span>
           <span className="max-w-[160px] truncate">{m.champForm.name || m.fileName}</span>
-          {step === 2 && !formComplete(m) && <span className="w-2 h-2 rounded-full bg-red-400" title="Missing required fields" />}
-          {step === 2 && formComplete(m) && <span className={i === active ? 'text-white' : 'text-green-600'}>{'\u2713'}</span>}
-          {step === 4 && (m.result ? <span className="text-green-500">{'\u2713'}</span> : <span className="text-red-500">{'\u2715'}</span>)}
+          {step === 2 && !formComplete(m) && <span className="w-2 h-2 rounded-full bg-neg" title="Missing required fields" />}
+          {step === 2 && formComplete(m) && <Check size={14} className={i === active ? 'text-white' : 'text-pos'} />}
+          {step === 4 && (m.result
+            ? <Check size={14} className={i === active ? 'text-white' : 'text-pos'} />
+            : <X size={14} className={i === active ? 'text-white' : 'text-neg'} />)}
         </button>
       ))}
     </div>
@@ -271,91 +278,87 @@ export default function ImportPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Import Results</h1>
+      <PageHeader title="Import Results" subtitle="Bring meet results in from PDF, Excel, HTML or manual entry" />
 
-      {/* Progress Steps */}
-      <div className="flex items-center gap-2 mb-8">
+      {/* Wizard step indicator */}
+      <div className="flex items-center gap-2 mb-6 md:mb-8 overflow-x-auto scrollbar-hide pb-1" aria-label="Import progress">
         {stepLabels.map((label, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-              step > i ? 'bg-green-500 text-white' :
-              step === i ? 'bg-blue-600 text-white' :
-              'bg-gray-200 text-gray-500'
+          <div key={i} className="flex items-center gap-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-body-sm font-bold tnum ${
+              step > i ? 'bg-pos text-white' :
+              step === i ? 'bg-aqua-600 text-white' :
+              'bg-ink-200 text-ink-500'
             }`}>
-              {step > i ? '\u2713' : i + 1}
+              {step > i ? <Check size={16} /> : i + 1}
             </div>
-            <span className={`text-sm ${step === i ? 'font-semibold' : 'text-gray-500'}`}>{label}</span>
-            {i < stepLabels.length - 1 && <div className="w-8 h-0.5 bg-gray-200" />}
+            <span className={`text-body-sm whitespace-nowrap ${step === i ? 'font-semibold text-ink-900' : 'text-ink-400'}`}>{label}</span>
+            {i < stepLabels.length - 1 && <div className={`w-8 h-0.5 ${step > i ? 'bg-pos' : 'bg-ink-100'}`} />}
           </div>
         ))}
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4">{error}</div>
+        <div className="flex items-start gap-2.5 bg-neg/10 text-neg p-4 rounded-md mb-4 text-body-sm">
+          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
       )}
 
       {/* Step 0: Method Selection */}
       {step === 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button onClick={() => selectMethod('pdf')}
-            className="bg-white rounded-lg border p-8 text-center hover:border-blue-500 hover:shadow-md transition-all group">
-            <div className="text-5xl mb-4">&#x1F4C4;</div>
-            <h2 className="text-lg font-semibold mb-2 group-hover:text-blue-600">Upload PDF</h2>
-            <p className="text-sm text-gray-500">Import from PDF files (Splash, HY-TEK, FRMN)</p>
-          </button>
-
-          <button onClick={() => selectMethod('excel')}
-            className="bg-white rounded-lg border p-8 text-center hover:border-green-500 hover:shadow-md transition-all group">
-            <div className="text-5xl mb-4">&#x1F4CA;</div>
-            <h2 className="text-lg font-semibold mb-2 group-hover:text-green-600">Upload Excel</h2>
-            <p className="text-sm text-gray-500">Import from Excel or CSV files — up to {MAX_FILES} meets at once</p>
-          </button>
-
-          <button onClick={() => selectMethod('html')}
-            className="bg-white rounded-lg border p-8 text-center hover:border-orange-500 hover:shadow-md transition-all group">
-            <div className="text-5xl mb-4">&#x1F310;</div>
-            <h2 className="text-lg font-semibold mb-2 group-hover:text-orange-600">Upload HTML</h2>
-            <p className="text-sm text-gray-500">Import from HTML files (Nat'2i Tunisia format)</p>
-          </button>
-
-          <button onClick={() => selectMethod('manual')}
-            className="bg-white rounded-lg border p-8 text-center hover:border-purple-500 hover:shadow-md transition-all group">
-            <div className="text-5xl mb-4">&#x270D;&#xFE0F;</div>
-            <h2 className="text-lg font-semibold mb-2 group-hover:text-purple-600">Manual Entry</h2>
-            <p className="text-sm text-gray-500">Add individual results manually by searching athletes</p>
-          </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { key: 'pdf', icon: FileText, title: 'Upload PDF', hint: 'Import from PDF files (Splash, HY-TEK, FRMN)' },
+            { key: 'excel', icon: FileSpreadsheet, title: 'Upload Excel', hint: `Import from Excel or CSV files — up to ${MAX_FILES} meets at once` },
+            { key: 'html', icon: Globe, title: 'Upload HTML', hint: "Import from HTML files (Nat'2i Tunisia format)" },
+            { key: 'manual', icon: PenLine, title: 'Manual Entry', hint: 'Add individual results manually by searching athletes' },
+          ].map(({ key, icon: Icon, title, hint }) => (
+            <button key={key} onClick={() => selectMethod(key)}
+              className="bg-white rounded-md border border-ink-100 shadow-card p-6 md:p-8 text-center transition-colors hover:border-aqua-500/40 hover:bg-aqua-50/40 group">
+              <span className="mx-auto mb-4 w-12 h-12 rounded-full bg-aqua-50 text-aqua-600 flex items-center justify-center">
+                <Icon size={24} />
+              </span>
+              <h2 className="text-title text-ink-900 mb-2 group-hover:text-aqua-600 transition-colors">{title}</h2>
+              <p className="text-body-sm text-ink-400">{hint}</p>
+            </button>
+          ))}
         </div>
       )}
 
       {/* Step 1: Upload (PDF/Excel/HTML) */}
       {step === 1 && importMethod !== 'manual' && (
-        <div className="bg-white rounded-lg border p-8 text-center">
-          <div className="text-6xl mb-4">{importMethod === 'pdf' ? '\uD83D\uDCC4' : importMethod === 'html' ? '\uD83C\uDF10' : '\uD83D\uDCCA'}</div>
-          <h2 className="text-lg font-semibold mb-2">
-            Upload {importMethod === 'pdf' ? 'PDF' : importMethod === 'html' ? 'HTML' : 'Excel/CSV'} File{allowMultiple ? 's' : ''}
-          </h2>
-          <p className="text-gray-500 mb-6">
-            {importMethod === 'pdf'
-              ? 'Supports Splash, HY-TEK, FRMN and other PDF formats'
-              : importMethod === 'html'
-              ? "Supports Nat'2i HTML format (Tunisia)"
-              : `Supports .xlsx, .xls, and .csv files — select up to ${MAX_FILES} files, one meet per file`}
-          </p>
-          <label className={`inline-block bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-            {loading ? (loadingMsg || 'Parsing...') : `Choose File${allowMultiple ? 's' : ''}`}
-            <input type="file" accept={acceptTypes} multiple={allowMultiple} onChange={handleUpload} className="hidden" disabled={loading} />
-          </label>
-          <div className="mt-4">
-            <button onClick={resetAll} className="text-sm text-gray-500 hover:text-gray-700">&larr; Back to method selection</button>
+        <Card padding="none">
+          <div className="m-4 md:m-6 rounded-md border-2 border-dashed border-aqua-500/40 bg-aqua-50/50 p-8 md:p-12 text-center">
+            <span className="mx-auto mb-4 w-14 h-14 rounded-full bg-white text-aqua-600 shadow-card flex items-center justify-center">
+              <Upload size={26} />
+            </span>
+            <h2 className="text-title text-ink-900 mb-2">
+              Upload {importMethod === 'pdf' ? 'PDF' : importMethod === 'html' ? 'HTML' : 'Excel/CSV'} File{allowMultiple ? 's' : ''}
+            </h2>
+            <p className="text-body-sm text-ink-500 mb-6 max-w-md mx-auto">
+              {importMethod === 'pdf'
+                ? 'Supports Splash, HY-TEK, FRMN and other PDF formats'
+                : importMethod === 'html'
+                ? "Supports Nat'2i HTML format (Tunisia)"
+                : `Supports .xlsx, .xls, and .csv files — select up to ${MAX_FILES} files, one meet per file`}
+            </p>
+            <label className={`inline-flex items-center justify-center gap-2 min-h-10 bg-aqua-600 text-white px-6 py-2.5 rounded-sm text-body-sm font-medium cursor-pointer hover:bg-aqua-500 transition-colors ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+              <Upload size={16} />
+              {loading ? (loadingMsg || 'Parsing...') : `Choose File${allowMultiple ? 's' : ''}`}
+              <input type="file" accept={acceptTypes} multiple={allowMultiple} onChange={handleUpload} className="hidden" disabled={loading} />
+            </label>
+            <div className="mt-5">
+              <Button variant="ghost" size="sm" onClick={resetAll}>Back to method selection</Button>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Step 1: Manual Entry */}
       {step === 1 && importMethod === 'manual' && (
         <div>
           <div className="mb-4">
-            <button onClick={resetAll} className="text-sm text-gray-500 hover:text-gray-700">&larr; Back to method selection</button>
+            <Button variant="ghost" size="sm" onClick={resetAll}>Back to method selection</Button>
           </div>
           <ManualEntryForm onComplete={resetAll} />
         </div>
@@ -367,163 +370,147 @@ export default function ImportPage() {
           {meetTabs}
 
           {/* Arab Only Toggle — TOP of page, big and clear */}
-          <div className={`mb-6 p-6 rounded-xl border-3 text-center cursor-pointer select-none transition-all ${
-            meet.arabOnly
-              ? 'bg-green-50 border-green-500 shadow-lg ring-2 ring-green-300'
-              : 'bg-amber-50 border-amber-400 shadow hover:shadow-lg'
-          }`} onClick={() => toggleArabOnly(active)}>
-            <div className="flex items-center justify-center gap-4">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xl ${
-                meet.arabOnly ? 'bg-green-500 text-white' : 'bg-amber-400 text-white'
+          <button type="button"
+            className={`w-full mb-6 p-5 md:p-6 rounded-md border-2 text-center cursor-pointer select-none transition-colors ${
+              meet.arabOnly
+                ? 'bg-pos/10 border-pos'
+                : 'bg-white border-ink-200 hover:border-aqua-500/40'
+            }`} onClick={() => toggleArabOnly(active)}>
+            <div className="flex items-center justify-center gap-3">
+              <span className={`w-8 h-8 rounded-sm flex items-center justify-center text-white ${
+                meet.arabOnly ? 'bg-pos' : 'bg-ink-400'
               }`}>
-                {meet.arabOnly ? '\u2713' : '\u2715'}
-              </div>
-              <span className={`text-2xl font-bold ${meet.arabOnly ? 'text-green-700' : 'text-amber-700'}`}>
+                {meet.arabOnly ? <Check size={18} /> : <X size={18} />}
+              </span>
+              <span className={`text-title ${meet.arabOnly ? 'text-pos' : 'text-ink-900'}`}>
                 {meet.arabOnly ? 'Arab Swimmers Only — ON' : 'Importing ALL Swimmers'}
               </span>
             </div>
-            <p className={`mt-3 text-base font-medium ${meet.arabOnly ? 'text-green-600' : 'text-amber-600'}`}>
+            <p className={`mt-2 text-body-sm font-medium ${meet.arabOnly ? 'text-pos' : 'text-ink-500'}`}>
               {meet.arabOnly
                 ? `Filtered: only Arab/GCC swimmers kept (${meet.editedPreview.stats.total_results} results)`
                 : 'Click here to import ONLY Arab/GCC swimmers from this meet'}
             </p>
-          </div>
+          </button>
 
           {/* Meet warnings */}
           {meet.meetWarnings.length > 0 && (
             <div className="mb-4 space-y-2">
-              {meet.meetWarnings.map((w, i) => (
-                <div key={i} className={`p-4 rounded-lg border ${
-                  w.type === 'exact_duplicate' ? 'bg-red-50 border-red-300 text-red-800' :
-                  w.type === 'partial_new' ? 'bg-yellow-50 border-yellow-300 text-yellow-800' :
-                  w.type === 'different_pool' ? 'bg-blue-50 border-blue-300 text-blue-800' :
-                  'bg-gray-50 border-gray-300 text-gray-700'
-                }`}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-lg mt-0.5">{
-                      w.type === 'exact_duplicate' ? '\u26A0\uFE0F' :
-                      w.type === 'partial_new' ? '\uD83D\uDFE1' :
-                      '\u2139\uFE0F'
-                    }</span>
-                    <div>
-                      <div className="font-semibold text-sm mb-1">{
-                        w.type === 'exact_duplicate' ? 'Duplicate Meet Detected' :
-                        w.type === 'partial_new' ? 'Existing Meet — New Events Found' :
-                        w.type === 'different_pool' ? 'Same Meet, Different Pool' :
-                        'Similar Meet Found'
-                      }</div>
-                      <div className="text-sm">{w.message}</div>
-                      <div className="text-xs mt-1 opacity-75">
-                        Existing: {w.db_results} results, {w.db_events} events, {w.db_swimmers} swimmers
+              {meet.meetWarnings.map((w, i) => {
+                const isDup = w.type === 'exact_duplicate'
+                return (
+                  <div key={i} className={`p-4 rounded-md border text-body-sm ${
+                    isDup ? 'bg-neg/5 border-neg/40 text-neg' : 'bg-ink-50 border-ink-200 text-ink-700'
+                  }`}>
+                    <div className="flex items-start gap-2.5">
+                      {isDup
+                        ? <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                        : <Info size={16} className="shrink-0 mt-0.5 text-ink-400" />}
+                      <div>
+                        <div className="font-semibold mb-1">{
+                          w.type === 'exact_duplicate' ? 'Duplicate Meet Detected' :
+                          w.type === 'partial_new' ? 'Existing Meet — New Events Found' :
+                          w.type === 'different_pool' ? 'Same Meet, Different Pool' :
+                          'Similar Meet Found'
+                        }</div>
+                        <div>{w.message}</div>
+                        <div className="text-body-sm mt-1 opacity-75 tnum">
+                          Existing: {w.db_results} results, {w.db_events} events, {w.db_swimmers} swimmers
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
           {/* Stats bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-blue-50 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-blue-600">{meet.editedPreview.stats.total_swimmers}</div>
-              <div className="text-xs text-gray-500">Swimmers</div>
-            </div>
-            <div className="bg-green-50 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-green-600">{meet.editedPreview.stats.total_results}</div>
-              <div className="text-xs text-gray-500">Results</div>
-            </div>
-            <div className="bg-purple-50 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-purple-600">{meet.editedPreview.stats.total_events}</div>
-              <div className="text-xs text-gray-500">Events</div>
-            </div>
-            <div className="bg-gray-50 p-3 rounded-lg text-center">
-              <div className="text-sm font-semibold text-gray-700">{meet.editedPreview.meet.format?.toUpperCase()}</div>
-              <div className="text-xs text-gray-500">Format Detected</div>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+            <StatCard label="Swimmers" value={meet.editedPreview.stats.total_swimmers} icon={Users} />
+            <StatCard label="Results" value={meet.editedPreview.stats.total_results} icon={ListChecks} />
+            <StatCard label="Events" value={meet.editedPreview.stats.total_events} icon={CalendarDays} />
+            <StatCard label="Format Detected" value={meet.editedPreview.meet.format?.toUpperCase()} icon={FileText} />
           </div>
 
           {/* Championship details form */}
-          <div className="bg-white rounded-lg border p-6 mb-4">
-            <h2 className="text-lg font-semibold mb-1">Championship Details</h2>
-            <p className="text-sm text-gray-500 mb-4">Review and complete the championship information. Fields marked with * are required.</p>
+          <Card title="Championship Details" className="mb-4">
+            <p className="text-body-sm text-ink-400 mb-4">Review and complete the championship information. Fields marked with * are required.</p>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1">Championship Name *</label>
-                <input type="text" value={meet.champForm.name}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <FieldLabel required>Championship Name</FieldLabel>
+                <Input type="text" value={meet.champForm.name}
                   onChange={(e) => setChampForm({ name: e.target.value })}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm ${meet.champForm.name ? 'border-green-300 bg-green-50/30' : 'border-red-300 bg-red-50/30'}`}
+                  className={meet.champForm.name ? 'border-pos/40' : 'border-neg/40'}
                   placeholder="e.g. Championnat du Liban 25 M" required />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Country *</label>
-                <select value={meet.champForm.country}
+                <FieldLabel required>Country</FieldLabel>
+                <Select value={meet.champForm.country}
                   onChange={(e) => setChampForm({ country: e.target.value })}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm ${meet.champForm.country ? 'border-green-300 bg-green-50/30' : 'border-red-300 bg-red-50/30'}`} required>
+                  className={meet.champForm.country ? 'border-pos/40' : 'border-neg/40'} required>
                   <option value="">Select country</option>
                   {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                </Select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Pool *</label>
-                <select value={meet.champForm.pool}
+                <FieldLabel required>Pool</FieldLabel>
+                <Select value={meet.champForm.pool}
                   onChange={(e) => setChampForm({ pool: e.target.value })}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm ${meet.champForm.pool ? 'border-green-300 bg-green-50/30' : ''}`}>
+                  className={meet.champForm.pool ? 'border-pos/40' : ''}>
                   {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
+                </Select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Start Date *</label>
-                <input type="date" value={meet.champForm.date}
+                <FieldLabel required>Start Date</FieldLabel>
+                <Input type="date" value={meet.champForm.date}
                   onChange={(e) => setChampForm({ date: e.target.value })}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm ${meet.champForm.date ? 'border-green-300 bg-green-50/30' : 'border-red-300 bg-red-50/30'}`} required />
+                  className={meet.champForm.date ? 'border-pos/40' : 'border-neg/40'} required />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">End Date</label>
-                <input type="date" value={meet.champForm.end_date}
-                  onChange={(e) => setChampForm({ end_date: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" />
+                <FieldLabel>End Date</FieldLabel>
+                <Input type="date" value={meet.champForm.end_date}
+                  onChange={(e) => setChampForm({ end_date: e.target.value })} />
               </div>
 
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1">Location</label>
-                <input type="text" value={meet.champForm.location}
+              <div className="sm:col-span-2">
+                <FieldLabel>Location</FieldLabel>
+                <Input type="text" value={meet.champForm.location}
                   onChange={(e) => setChampForm({ location: e.target.value })}
                   placeholder="City / Venue"
-                  className={`w-full border rounded-lg px-3 py-2 text-sm ${meet.champForm.location ? 'border-green-300 bg-green-50/30' : ''}`} />
+                  className={meet.champForm.location ? 'border-pos/40' : ''} />
               </div>
             </div>
 
             {/* Classification section */}
-            <div className="border-t mt-4 pt-4">
-              <h3 className="font-medium mb-3">Classification</h3>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="border-t border-ink-100 mt-5 pt-4">
+              <h3 className="text-body font-semibold text-ink-900 mb-3">Classification</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Classification</label>
-                  <select value={meet.champForm.classification}
-                    onChange={(e) => setChampForm({ classification: e.target.value, sub_classification: '' })}
-                    className="w-full border rounded-lg px-3 py-2 text-sm">
+                  <FieldLabel>Classification</FieldLabel>
+                  <Select value={meet.champForm.classification}
+                    onChange={(e) => setChampForm({ classification: e.target.value, sub_classification: '' })}>
                     <option value="">Select...</option>
                     {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Sub Classification</label>
-                  <select value={meet.champForm.sub_classification}
+                  <FieldLabel>Sub Classification</FieldLabel>
+                  <Select value={meet.champForm.sub_classification}
                     onChange={(e) => setChampForm({ sub_classification: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 text-sm" disabled={!subClassifications.length}>
+                    disabled={!subClassifications.length}>
                     <option value="">Select...</option>
                     {subClassifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  </Select>
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Editable Results Table */}
           <div className="mb-4">
@@ -531,18 +518,16 @@ export default function ImportPage() {
               onPreviewChange={(p) => updateMeet(active, { editedPreview: p })} />
           </div>
 
-          <div className="flex justify-end gap-3 items-center">
+          <div className="flex flex-wrap justify-end gap-3 items-center">
             {meets.length > 1 && !allFormsComplete && (
-              <span className="text-sm text-amber-600">Complete required fields on every meet tab to continue</span>
+              <span className="text-body-sm text-neg">Complete required fields on every meet tab to continue</span>
             )}
-            <button onClick={() => { setStep(1); setMeets([]); setActive(0) }} className="px-4 py-2 border rounded-lg">
+            <Button variant="secondary" onClick={() => { setStep(1); setMeets([]); setActive(0) }}>
               Back
-            </button>
-            <button onClick={handleMatch}
-              disabled={loading || !allFormsComplete}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-              {loading ? (loadingMsg || 'Matching Swimmers...') : 'Next: Match Swimmers \u2192'}
-            </button>
+            </Button>
+            <Button onClick={handleMatch} disabled={loading || !allFormsComplete} loading={loading}>
+              {loading ? (loadingMsg || 'Matching Swimmers...') : 'Next: Match Swimmers'}
+            </Button>
           </div>
         </div>
       )}
@@ -552,93 +537,76 @@ export default function ImportPage() {
         <div>
           {meetTabs}
 
-          <div className="bg-white rounded-lg border p-6 mb-4">
-            <h2 className="text-lg font-semibold mb-4">
-              Swimmer Matching{meets.length > 1 ? ` — ${meet.champForm.name || meet.fileName}` : ''}
-            </h2>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-green-50 p-3 rounded-lg text-center">
-                <div className="text-xl font-bold text-green-600">{meet.matchStats.exact_matches || 0}</div>
-                <div className="text-xs text-gray-500">Exact Matches</div>
-              </div>
-              <div className="bg-yellow-50 p-3 rounded-lg text-center">
-                <div className="text-xl font-bold text-yellow-600">{meet.matchStats.fuzzy_matches || 0}</div>
-                <div className="text-xs text-gray-500">Fuzzy Matches</div>
-              </div>
-              <div className="bg-blue-50 p-3 rounded-lg text-center">
-                <div className="text-xl font-bold text-blue-600">{meet.matchStats.new_swimmers || 0}</div>
-                <div className="text-xs text-gray-500">New Swimmers</div>
-              </div>
+          <Card title={`Swimmer Matching${meets.length > 1 ? ` — ${meet.champForm.name || meet.fileName}` : ''}`} className="mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+              <StatCard label="Exact Matches" value={meet.matchStats.exact_matches || 0} icon={CheckCircle2} />
+              <StatCard label="Fuzzy Matches" value={meet.matchStats.fuzzy_matches || 0} icon={ListChecks} />
+              <StatCard label="New Swimmers" value={meet.matchStats.new_swimmers || 0} icon={Users} />
             </div>
-          </div>
+          </Card>
 
           {/* Matches table */}
-          <div className="bg-white rounded-lg border overflow-hidden mb-4">
-            <div className="max-h-[500px] overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 sticky top-0">
+          <Card padding="none" className="overflow-hidden mb-4">
+            <div className="max-h-[500px] overflow-y-auto overflow-x-auto">
+              <table className="w-full min-w-[640px]">
+                <thead className="bg-ink-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Parsed Name</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Match</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Confidence</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Action</th>
+                    <th scope="col" className="px-4 py-2.5 text-start text-label text-ink-400">Parsed Name</th>
+                    <th scope="col" className="px-4 py-2.5 text-start text-label text-ink-400">Match</th>
+                    <th scope="col" className="px-4 py-2.5 text-start text-label text-ink-400">Confidence</th>
+                    <th scope="col" className="px-4 py-2.5 text-start text-label text-ink-400">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-ink-100">
                   {meet.matches.map((m, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm">
-                        <div className="font-medium">{m.parsed_name}</div>
-                        <div className="text-xs text-gray-400">
-                          {m.nationality_code && <span className="mr-2">{m.nationality_code}</span>}
-                          {m.birth_year > 0 && <span>Born {m.birth_year}</span>}
+                    <tr key={i} className="hover:bg-ink-50">
+                      <td className="px-4 py-2 text-body-sm">
+                        <div className="font-medium text-ink-900">{m.parsed_name}</div>
+                        <div className="text-body-sm text-ink-400">
+                          {m.nationality_code && <span className="me-2">{m.nationality_code}</span>}
+                          {m.birth_year > 0 && <span className="tnum">Born {m.birth_year}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-sm">
+                      <td className="px-4 py-2 text-body-sm">
                         {m.matched_swimmer ? (
                           <div>
-                            <div>{m.matched_swimmer.name}</div>
-                            <div className="text-xs text-gray-400">{m.matched_swimmer.nationality}</div>
+                            <div className="text-ink-900">{m.matched_swimmer.name}</div>
+                            <div className="text-body-sm text-ink-400">{m.matched_swimmer.nationality}</div>
                           </div>
                         ) : (
-                          <span className="text-gray-400 italic">No match</span>
+                          <span className="text-ink-400 italic">No match</span>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-sm">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          m.confidence >= 90 ? 'bg-green-100 text-green-700' :
-                          m.confidence >= 75 ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {m.confidence}%
-                        </span>
+                      <td className="px-4 py-2 text-body-sm">
+                        <Badge variant={m.confidence >= 90 ? 'pos' : m.confidence >= 75 ? 'pool-scm' : 'status'}>
+                          <span className="tnum">{m.confidence}%</span>
+                        </Badge>
                       </td>
-                      <td className="px-4 py-2 text-sm">
-                        <select value={meet.decisions[m.parsed_name]?.action || 'create'}
+                      <td className="px-4 py-2 text-body-sm">
+                        <Select value={meet.decisions[m.parsed_name]?.action || 'create'}
                           onChange={(e) => updateDecision(m.parsed_name, e.target.value,
                             e.target.value === 'match' ? m.matched_swimmer?.id : undefined)}
-                          className="border rounded px-2 py-1 text-sm">
+                          className="h-9 min-w-40">
                           {m.matched_swimmer && (
                             <option value="match">Use existing: {m.matched_swimmer.name}</option>
                           )}
                           <option value="create">Create new swimmer</option>
                           <option value="skip">Skip</option>
-                        </select>
+                        </Select>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
 
           <div className="flex justify-end gap-3">
-            <button onClick={() => setStep(2)} className="px-4 py-2 border rounded-lg">Back</button>
-            <button onClick={handleConfirm} disabled={loading}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+            <Button variant="secondary" onClick={() => setStep(2)}>Back</Button>
+            <Button onClick={handleConfirm} disabled={loading} loading={loading} icon={loading ? undefined : Check}>
               {loading ? (loadingMsg || 'Importing...')
-                : meets.length > 1 ? `Confirm Import (${meets.length} meets) \u2713` : 'Confirm Import \u2713'}
-            </button>
+                : meets.length > 1 ? `Confirm Import (${meets.length} meets)` : 'Confirm Import'}
+            </Button>
           </div>
         </div>
       )}
@@ -657,6 +625,7 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
   const [selected, setSelected] = useState(new Set())
   const [cleanupLoading, setCleanupLoading] = useState(false)
   const [cleanupDone, setCleanupDone] = useState(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
   const openCleanup = async (champId) => {
     setCleanupChampId(champId)
@@ -689,7 +658,7 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
 
   const handleDelete = async () => {
     if (!selected.size) return
-    if (!window.confirm(`Delete results for ${selected.size} swimmer(s)? This cannot be undone.`)) return
+    setConfirmDeleteOpen(false)
     setCleanupLoading(true)
     try {
       const res = await bulkDeleteResults(cleanupChampId, [...selected])
@@ -706,55 +675,45 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
     <div>
       {meetTabs}
       {meets.map((m, i) => (meets.length === 1 || i === active) && (
-        <div key={m.importId} className="bg-white rounded-lg border p-8 text-center mb-4">
+        <Card key={m.importId} className="mb-4">
           {m.result ? (
-            <>
-              <div className="text-6xl mb-4">&#x2705;</div>
-              <h2 className="text-xl font-semibold mb-4">
+            <div className="text-center">
+              <span className="mx-auto mb-4 w-14 h-14 rounded-full bg-pos/10 text-pos flex items-center justify-center">
+                <CheckCircle2 size={28} />
+              </span>
+              <h2 className="text-title text-ink-900 mb-4">
                 Import Complete{meets.length > 1 ? `: ${m.result.championship_name}` : '!'}
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-6">
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <div className="text-xl font-bold text-green-600">{m.result.created_results}</div>
-                  <div className="text-xs">Results Created</div>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <div className="text-xl font-bold text-blue-600">{m.result.created_swimmers}</div>
-                  <div className="text-xs">New Swimmers</div>
-                </div>
-                <div className="bg-purple-50 p-3 rounded-lg">
-                  <div className="text-xl font-bold text-purple-600">{m.result.matched_swimmers}</div>
-                  <div className="text-xs">Matched Swimmers</div>
-                </div>
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <div className="text-xl font-bold text-gray-600">{m.result.skipped_results}</div>
-                  <div className="text-xs">Skipped (duplicates)</div>
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl mx-auto mb-6 text-start">
+                <StatCard label="Results Created" value={m.result.created_results} icon={ListChecks} />
+                <StatCard label="New Swimmers" value={m.result.created_swimmers} icon={Users} />
+                <StatCard label="Matched Swimmers" value={m.result.matched_swimmers} icon={CheckCircle2} />
+                <StatCard label="Skipped (Duplicates)" value={m.result.skipped_results} icon={XCircle} />
               </div>
-              <p className="text-sm text-gray-500 mb-4">Championship: {m.result.championship_name}</p>
+              <p className="text-body-sm text-ink-400 mb-4">Championship: {m.result.championship_name}</p>
 
               {m.result.skipped_details && m.result.skipped_details.length > 0 && (
-                <details className="text-left max-w-2xl mx-auto mb-4">
-                  <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700 font-medium">
+                <details className="text-start max-w-2xl mx-auto mb-4">
+                  <summary className="cursor-pointer text-body-sm text-ink-500 hover:text-ink-900 font-medium">
                     View {m.result.skipped_details.length} skipped result{m.result.skipped_details.length !== 1 ? 's' : ''}
                   </summary>
-                  <div className="mt-2 border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50">
+                  <div className="mt-2 border border-ink-100 rounded-md overflow-hidden overflow-x-auto">
+                    <table className="w-full text-body-sm min-w-[480px]">
+                      <thead className="bg-ink-50">
                         <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Event</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Round</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Reason</th>
+                          <th scope="col" className="px-3 py-2 text-start text-label text-ink-400">Swimmer</th>
+                          <th scope="col" className="px-3 py-2 text-start text-label text-ink-400">Event</th>
+                          <th scope="col" className="px-3 py-2 text-start text-label text-ink-400">Round</th>
+                          <th scope="col" className="px-3 py-2 text-start text-label text-ink-400">Reason</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y">
+                      <tbody className="divide-y divide-ink-100">
                         {m.result.skipped_details.map((s, j) => (
-                          <tr key={j} className="text-xs">
-                            <td className="px-3 py-1.5 font-medium">{s.swimmer}</td>
+                          <tr key={j} className="text-body-sm">
+                            <td className="px-3 py-1.5 font-medium text-ink-900">{s.swimmer}</td>
                             <td className="px-3 py-1.5">{s.event}</td>
                             <td className="px-3 py-1.5">{s.round || '-'}</td>
-                            <td className="px-3 py-1.5 text-gray-500">{s.reason}</td>
+                            <td className="px-3 py-1.5 text-ink-400">{s.reason}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -765,60 +724,56 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
 
               {/* Cleanup button */}
               {m.result.championship_id && cleanupChampId !== m.result.championship_id && (
-                <button onClick={() => openCleanup(m.result.championship_id)}
-                  className="mt-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600">
+                <Button variant="secondary" className="mt-2" onClick={() => openCleanup(m.result.championship_id)}>
                   Clean Up Results (Remove Non-Arab Swimmers)
-                </button>
+                </Button>
               )}
 
               {/* Cleanup panel */}
               {cleanupChampId === m.result.championship_id && (
-                <div className="text-left max-w-3xl mx-auto mt-4">
+                <div className="text-start max-w-3xl mx-auto mt-4">
                   {cleanupDone && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3 text-sm text-green-800">
+                    <div className="bg-pos/10 border border-pos/30 rounded-md p-3 mb-3 text-body-sm text-pos tnum">
                       Deleted {cleanupDone.deleted_results} results and {cleanupDone.deleted_orphan_swimmers} orphan swimmers.
                     </div>
                   )}
-                  <div className="bg-white border rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-3 border-b flex items-center justify-between">
-                      <h3 className="font-semibold text-sm">Select swimmers to remove</h3>
-                      <div className="flex gap-2">
-                        <button onClick={selectAllNonArab} className="text-xs text-amber-600 hover:underline">Select non-Arab</button>
-                        <button onClick={deselectAll} className="text-xs text-gray-500 hover:underline">Deselect all</button>
+                  <div className="bg-white border border-ink-100 rounded-md overflow-hidden">
+                    <div className="bg-ink-50 px-4 py-3 border-b border-ink-100 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="font-semibold text-body-sm text-ink-900">Select swimmers to remove</h3>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={selectAllNonArab}>Select non-Arab</Button>
+                        <Button variant="ghost" size="sm" onClick={deselectAll}>Deselect all</Button>
                       </div>
                     </div>
                     {cleanupLoading ? (
-                      <div className="p-4 text-center text-gray-500 text-sm">Loading swimmers...</div>
+                      <div className="p-4 text-center text-ink-400 text-body-sm">Loading swimmers...</div>
                     ) : (
-                      <div className="max-h-[400px] overflow-y-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 sticky top-0">
+                      <div className="max-h-[400px] overflow-y-auto overflow-x-auto">
+                        <table className="w-full text-body-sm min-w-[520px]">
+                          <thead className="bg-ink-50 sticky top-0 z-10">
                             <tr>
-                              <th className="px-3 py-2 text-left w-8"></th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Region</th>
-                              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Results</th>
+                              <th scope="col" className="px-3 py-2 text-start w-8"></th>
+                              <th scope="col" className="px-3 py-2 text-start text-label text-ink-400">Swimmer</th>
+                              <th scope="col" className="px-3 py-2 text-start text-label text-ink-400">Nationality</th>
+                              <th scope="col" className="px-3 py-2 text-start text-label text-ink-400">Region</th>
+                              <th scope="col" className="px-3 py-2 text-end text-label text-ink-400">Results</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y">
+                          <tbody className="divide-y divide-ink-100">
                             {swimmers.map(s => (
-                              <tr key={s.swimmer_id} className={`hover:bg-gray-50 ${selected.has(s.swimmer_id) ? 'bg-red-50' : ''}`}>
+                              <tr key={s.swimmer_id} className={`hover:bg-ink-50 ${selected.has(s.swimmer_id) ? 'bg-neg/5' : ''}`}>
                                 <td className="px-3 py-2">
                                   <input type="checkbox" checked={selected.has(s.swimmer_id)}
                                     onChange={() => toggleSwimmer(s.swimmer_id)}
-                                    className="w-4 h-4" />
+                                    aria-label={`Select ${s.name}`}
+                                    className="w-4 h-4 accent-aqua-600" />
                                 </td>
-                                <td className="px-3 py-2 font-medium">{s.name}</td>
+                                <td className="px-3 py-2 font-medium text-ink-900">{s.name}</td>
                                 <td className="px-3 py-2">{s.nationality} ({s.nationality_code})</td>
                                 <td className="px-3 py-2">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    s.is_arab ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                                  }`}>
-                                    {s.region}
-                                  </span>
+                                  <Badge variant={s.is_arab ? 'pos' : 'status'}>{s.region}</Badge>
                                 </td>
-                                <td className="px-3 py-2 text-right">{s.results_count}</td>
+                                <td className="px-3 py-2 text-end tnum">{s.results_count}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -826,34 +781,44 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
                       </div>
                     )}
                     {selected.size > 0 && (
-                      <div className="px-4 py-3 border-t bg-red-50 flex items-center justify-between">
-                        <span className="text-sm text-red-700">
+                      <div className="px-4 py-3 border-t border-ink-100 bg-neg/5 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-body-sm text-neg tnum">
                           {selected.size} swimmer{selected.size !== 1 ? 's' : ''} selected for removal
                         </span>
-                        <button onClick={handleDelete} disabled={cleanupLoading}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                        <Button variant="danger" size="sm" disabled={cleanupLoading}
+                          onClick={() => setConfirmDeleteOpen(true)}>
                           Delete Selected Results
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </div>
                 </div>
               )}
-            </>
+            </div>
           ) : (
-            <>
-              <div className="text-6xl mb-4">&#x274C;</div>
-              <h2 className="text-xl font-semibold mb-2">Import Failed: {m.champForm.name || m.fileName}</h2>
-              <p className="text-sm text-red-600 mb-4">{m.confirmError}</p>
-            </>
+            <div className="text-center">
+              <span className="mx-auto mb-4 w-14 h-14 rounded-full bg-neg/10 text-neg flex items-center justify-center">
+                <XCircle size={28} />
+              </span>
+              <h2 className="text-title text-ink-900 mb-2">Import Failed: {m.champForm.name || m.fileName}</h2>
+              <p className="text-body-sm text-neg mb-4">{m.confirmError}</p>
+            </div>
           )}
-        </div>
+        </Card>
       ))}
       <div className="text-center">
-        <button onClick={resetAll} className="px-6 py-2 bg-blue-600 text-white rounded-lg">
-          Import Another File
-        </button>
+        <Button onClick={resetAll}>Import Another File</Button>
       </div>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Delete swimmer results"
+        message={`Delete results for ${selected.size} swimmer${selected.size !== 1 ? 's' : ''}? This cannot be undone.`}
+        destructive
+        loading={cleanupLoading}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </div>
   )
 }

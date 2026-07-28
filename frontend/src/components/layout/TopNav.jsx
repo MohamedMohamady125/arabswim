@@ -184,7 +184,7 @@ function MobileMenu({ onClose, isAdmin }) {
     <div className="fixed inset-0 z-[70] bg-ink-950 overflow-y-auto md:hidden">
       <div className="flex items-center justify-between h-14 px-4 border-b border-white/10">
         <Link to="/" onClick={onClose} className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
+          <img src="/logo.webp" alt="" className="h-8 w-8 object-contain" />
           <span className="font-display font-bold text-white text-lg">ArabSwiM</span>
         </Link>
         <button onClick={onClose} aria-label="Close menu" className="p-2 -me-2 min-h-11 min-w-11 flex items-center justify-center text-ink-200 hover:text-white">
@@ -255,7 +255,7 @@ export default function TopNav() {
     <header className="sticky top-0 z-40 bg-ink-950 text-white">
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 flex items-center h-14 gap-2">
         <Link to="/" className="flex items-center gap-2.5 me-4 shrink-0">
-          <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
+          <img src="/logo.webp" alt="" className="h-8 w-8 object-contain" />
           <span className="font-display font-bold text-lg tracking-tight">ArabSwiM</span>
         </Link>
 

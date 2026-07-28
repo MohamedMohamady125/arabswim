@@ -41,7 +41,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2.5">
-              <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
+              <img src="/logo.webp" alt="" className="h-9 w-9 object-contain" />
               <span className="font-display font-bold text-white text-lg">ArabSwiM</span>
             </Link>
             <p className="text-body-sm text-ink-400 mt-3 max-w-xs">

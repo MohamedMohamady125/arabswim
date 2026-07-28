@@ -745,7 +745,7 @@ export default function CalendarPage() {
         <div key={key} className="mb-8">
           {/* Month header */}
           <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-label text-ink-500 !text-[12px]">
+            <h2 className="text-label text-ink-500">
               {MONTHS[group.month]} {group.year}
             </h2>
             <div className="flex-1 h-px bg-ink-200" />

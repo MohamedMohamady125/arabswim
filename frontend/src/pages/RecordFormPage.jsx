@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, X, Search, UserPlus } from 'lucide-react'
+import { X, Search, UserPlus, Save } from 'lucide-react'
 import { createRecord, updateRecord } from '../api/records'
 import api from '../api/client'
 import { getSwimmers, createSwimmer } from '../api/swimmers'
 import { getCountries, getEvents } from '../api/core'
 import { useToast } from '../context/ToastContext'
 import { RECORD_TYPES, POOL_TYPES, formatTime, parseTime } from '../utils/constants'
+import { Button, Card, PageHeader, Input, Select, FieldLabel } from '../components/ui'
 
 export default function RecordFormPage() {
   const navigate = useNavigate()
@@ -132,145 +133,147 @@ export default function RecordFormPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <button onClick={() => navigate('/records')} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 mb-4">
-        <ArrowLeft size={15} /> Back to Records
-      </button>
-      <h1 className="text-2xl font-bold mb-6">{isEdit ? 'Edit Record' : 'Add Record'}</h1>
+    <div className="max-w-2xl mx-auto pb-6">
+      <PageHeader
+        breadcrumb={[{ label: 'Records', to: '/records' }, { label: isEdit ? 'Edit' : 'New' }]}
+        title={isEdit ? 'Edit Record' : 'Add Record'}
+      />
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Record Type *</label>
-            <select value={form.record_type} onChange={set('record_type')} className="w-full border rounded-lg px-3 py-2 text-sm">
-              {RECORD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Pool *</label>
-            <select value={form.pool} onChange={set('pool')} className="w-full border rounded-lg px-3 py-2 text-sm">
-              {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-            </select>
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <label className="block text-sm font-medium mb-1">Event *</label>
-            <select value={form.event} onChange={set('event')} className="w-full border rounded-lg px-3 py-2 text-sm">
-              <option value="">— Select —</option>
-              {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Swimmer *</label>
-          {swimmer ? (
-            <div className="flex items-center justify-between border rounded-lg px-3 py-2 bg-blue-50">
-              <span className="text-sm text-blue-800">
-                {swimmer.name}
-                {swimmer.nationality_detail && <span className="text-blue-500"> · {swimmer.nationality_detail.name}</span>}
-              </span>
-              <button type="button" onClick={() => setSwimmer(null)} className="text-gray-400 hover:text-red-600">
-                <X size={15} />
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="relative">
-                <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
-                <input type="text" value={swimmerQuery} onChange={(e) => setSwimmerQuery(e.target.value)}
-                  className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm" placeholder="Search swimmers in the database..." />
-                {swimmerResults.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                    {swimmerResults.map(s => (
-                      <button key={s.id} type="button"
-                        onClick={() => { setSwimmer(s); setSwimmerQuery(''); setSwimmerResults([]) }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50">
-                        {s.name}
-                        {s.nationality_detail && <span className="text-gray-400"> · {s.nationality_detail.name}</span>}
-                        {s.birth_year && <span className="text-gray-400"> · {s.birth_year}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {!showNewSwimmer && (
-                <button type="button" onClick={() => setShowNewSwimmer(true)}
-                  className="mt-2 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium">
-                  <UserPlus size={15} /> Swimmer not in database? Create new
-                </button>
-              )}
-            </>
-          )}
-
-          {!swimmer && showNewSwimmer && (
-            <div className="mt-3 border rounded-lg p-4 bg-gray-50 space-y-3">
-              <div className="text-sm font-semibold text-gray-700">New Swimmer</div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium mb-1">Name *</label>
-                  <input type="text" value={newSwimmer.name}
-                    onChange={(e) => setNewSwimmer(s => ({ ...s, name: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Full name" />
+      <form onSubmit={handleSubmit}>
+        <Card>
+          <div className="space-y-6">
+            <section>
+              <h3 className="text-label text-ink-400 mb-4">Record</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div>
+                  <FieldLabel required>Record Type</FieldLabel>
+                  <Select value={form.record_type} onChange={set('record_type')}>
+                    {RECORD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </Select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">Gender *</label>
-                  <select value={newSwimmer.sex}
-                    onChange={(e) => setNewSwimmer(s => ({ ...s, sex: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm">
-                    <option value="M">Male</option>
-                    <option value="F">Female</option>
-                  </select>
+                  <FieldLabel required>Pool</FieldLabel>
+                  <Select value={form.pool} onChange={set('pool')}>
+                    {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </Select>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">Birth Year</label>
-                  <input type="number" value={newSwimmer.birth_year}
-                    onChange={(e) => setNewSwimmer(s => ({ ...s, birth_year: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="2005" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium mb-1">Country *</label>
-                  <select value={newSwimmer.nationality}
-                    onChange={(e) => setNewSwimmer(s => ({ ...s, nationality: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm">
+                <div className="col-span-2 sm:col-span-1">
+                  <FieldLabel required>Event</FieldLabel>
+                  <Select value={form.event} onChange={set('event')}>
                     <option value="">— Select —</option>
-                    {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                    {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+                  </Select>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button type="button" onClick={handleCreateSwimmer}
-                  className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Create Swimmer</button>
-                <button type="button" onClick={() => setShowNewSwimmer(false)}
-                  className="px-4 py-1.5 border rounded-lg text-sm">Cancel</button>
+            </section>
+
+            <section className="border-t border-ink-100 pt-5">
+              <FieldLabel required>Swimmer</FieldLabel>
+              {swimmer ? (
+                <div className="flex items-center justify-between border border-aqua-100 rounded-sm ps-3 pe-2 py-2 bg-aqua-50">
+                  <span className="text-body-sm text-ink-900">
+                    {swimmer.name}
+                    {swimmer.nationality_detail && <span className="text-ink-400"> · {swimmer.nationality_detail.name}</span>}
+                  </span>
+                  <button type="button" aria-label="Clear swimmer" onClick={() => setSwimmer(null)} className="p-2 text-ink-400 hover:text-neg rounded-sm">
+                    <X size={15} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="relative">
+                    <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+                    <Input type="text" value={swimmerQuery} onChange={(e) => setSwimmerQuery(e.target.value)}
+                      className="ps-9" placeholder="Search swimmers in the database..." />
+                    {swimmerResults.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-ink-100 rounded-md shadow-pop max-h-56 overflow-y-auto">
+                        {swimmerResults.map(s => (
+                          <button key={s.id} type="button"
+                            onClick={() => { setSwimmer(s); setSwimmerQuery(''); setSwimmerResults([]) }}
+                            className="w-full text-start px-3 py-2.5 text-body-sm text-ink-900 hover:bg-aqua-50">
+                            {s.name}
+                            {s.nationality_detail && <span className="text-ink-400"> · {s.nationality_detail.name}</span>}
+                            {s.birth_year && <span className="text-ink-400"> · {s.birth_year}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {!showNewSwimmer && (
+                    <button type="button" onClick={() => setShowNewSwimmer(true)}
+                      className="mt-2 flex items-center gap-1.5 py-2 text-body-sm text-aqua-600 hover:text-ink-900 font-medium">
+                      <UserPlus size={15} /> Swimmer not in database? Create new
+                    </button>
+                  )}
+                </>
+              )}
+
+              {!swimmer && showNewSwimmer && (
+                <div className="mt-3 border border-ink-100 rounded-md p-4 bg-ink-50 space-y-3">
+                  <div className="text-label text-ink-400">New Swimmer</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="col-span-2">
+                      <FieldLabel required>Name</FieldLabel>
+                      <Input type="text" value={newSwimmer.name}
+                        onChange={(e) => setNewSwimmer(s => ({ ...s, name: e.target.value }))}
+                        placeholder="Full name" />
+                    </div>
+                    <div>
+                      <FieldLabel required>Gender</FieldLabel>
+                      <Select value={newSwimmer.sex}
+                        onChange={(e) => setNewSwimmer(s => ({ ...s, sex: e.target.value }))}>
+                        <option value="M">Male</option>
+                        <option value="F">Female</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <FieldLabel>Birth Year</FieldLabel>
+                      <Input type="number" value={newSwimmer.birth_year}
+                        onChange={(e) => setNewSwimmer(s => ({ ...s, birth_year: e.target.value }))}
+                        placeholder="2005" />
+                    </div>
+                    <div className="col-span-2">
+                      <FieldLabel required>Country</FieldLabel>
+                      <Select value={newSwimmer.nationality}
+                        onChange={(e) => setNewSwimmer(s => ({ ...s, nationality: e.target.value }))}>
+                        <option value="">— Select —</option>
+                        {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={handleCreateSwimmer}>Create Swimmer</Button>
+                    <Button type="button" variant="secondary" onClick={() => setShowNewSwimmer(false)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="border-t border-ink-100 pt-5">
+              <h3 className="text-label text-ink-400 mb-4">Performance</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div>
+                  <FieldLabel required>Time</FieldLabel>
+                  <Input type="text" value={form.time} onChange={set('time')}
+                    className="tnum" placeholder="1:54.32 or 54.32" />
+                </div>
+                <div>
+                  <FieldLabel required>Date</FieldLabel>
+                  <Input type="date" value={form.result_date} onChange={set('result_date')} />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <FieldLabel>Location / Meet</FieldLabel>
+                  <Input type="text" value={form.location} onChange={set('location')}
+                    placeholder="e.g. Doha 2024 Worlds" />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            </section>
+          </div>
+        </Card>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Time *</label>
-            <input type="text" value={form.time} onChange={set('time')}
-              className="w-full border rounded-lg px-3 py-2 text-sm font-mono" placeholder="1:54.32 or 54.32" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Date *</label>
-            <input type="date" value={form.result_date} onChange={set('result_date')}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <label className="block text-sm font-medium mb-1">Location / Meet</label>
-            <input type="text" value={form.location} onChange={set('location')}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Doha 2024 Worlds" />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={() => navigate('/records')} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-          <button type="submit" disabled={saving}
-            className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
-            {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Record'}
-          </button>
+        <div className="sticky bottom-0 z-10 mt-4 rounded-md border border-ink-100 bg-white/95 backdrop-blur-sm shadow-pop px-4 py-3 flex items-center justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => navigate('/records')}>Cancel</Button>
+          <Button type="submit" icon={Save} loading={saving}>{isEdit ? 'Save Changes' : 'Add Record'}</Button>
         </div>
       </form>
     </div>

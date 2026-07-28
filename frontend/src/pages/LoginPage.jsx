@@ -41,7 +41,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md">
         <div className="bg-white rounded-lg shadow-pop p-6 sm:p-8 animate-fade-up">
           <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="ArabSwiM" className="h-16 w-16 rounded-full object-cover" />
+            <img src="/logo.webp" alt="ArabSwiM" className="h-16 w-16 rounded-full object-cover" />
           </div>
           <h1 className="text-title text-center text-ink-900">ArabSwiM Admin</h1>
           <p className="text-body-sm text-ink-400 text-center mt-1 mb-6">Sign in to manage the platform</p>

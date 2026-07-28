@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Plus, Save, Trash2 } from 'lucide-react'
 import { getTeam, createTeam, updateTeam } from '../api/teams'
 import { getCountries } from '../api/core'
+import { Button, Card, PageHeader, Input, Select, Textarea, FieldLabel } from '../components/ui'
+
+const FILE_INPUT =
+  'block w-full text-body-sm text-ink-500 file:me-3 file:h-9 file:px-3 file:rounded-sm file:border-0 ' +
+  'file:bg-ink-50 file:text-ink-900 file:text-body-sm file:font-medium file:cursor-pointer cursor-pointer ' +
+  'rounded-sm border border-ink-200 bg-white'
 
 export default function TeamFormPage() {
   const { id } = useParams()
@@ -83,104 +90,108 @@ export default function TeamFormPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/teams')} className="text-gray-500 hover:text-gray-700">&larr; Back</button>
-        <h1 className="text-2xl font-bold">{isEdit ? 'Edit Team' : 'New Team'}</h1>
-      </div>
+    <div className="max-w-2xl mx-auto pb-6">
+      <PageHeader
+        breadcrumb={[{ label: 'Teams', to: '/teams' }, { label: isEdit ? 'Edit' : 'New' }]}
+        title={isEdit ? 'Edit Team' : 'New Team'}
+      />
 
-      {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4">{error}</div>}
+      {error && (
+        <div className="bg-neg/10 border border-neg/20 text-neg text-body-sm p-4 rounded-md mb-4">{error}</div>
+      )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg border p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1">Team Name *</label>
-            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" required />
+      <form onSubmit={handleSubmit}>
+        <Card>
+          <div className="space-y-6">
+            <section>
+              <h3 className="text-label text-ink-400 mb-4">Team Details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <FieldLabel required>Team Name</FieldLabel>
+                  <Input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                </div>
+                <div>
+                  <FieldLabel required>Country</FieldLabel>
+                  <Select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} required>
+                    <option value="">Select country</option>
+                    {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </Select>
+                </div>
+                <div>
+                  <FieldLabel>Founded Year</FieldLabel>
+                  <Input type="number" value={form.founded_year} onChange={(e) => setForm({ ...form, founded_year: e.target.value })} placeholder="e.g. 1947" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="flex items-center gap-2 text-body-sm text-ink-900 py-1">
+                    <input type="checkbox" checked={form.is_national_team}
+                      onChange={(e) => setForm({ ...form, is_national_team: e.target.checked })}
+                      className="accent-aqua-600 w-4 h-4" />
+                    <span className="font-medium">National Team</span>
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            <section className="border-t border-ink-100 pt-5">
+              <h3 className="text-label text-ink-400 mb-4">Contact</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <FieldLabel>Website</FieldLabel>
+                  <Input type="url" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://..." />
+                </div>
+                <div>
+                  <FieldLabel>Email</FieldLabel>
+                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </div>
+                <div>
+                  <FieldLabel>Phone</FieldLabel>
+                  <Input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                </div>
+                <div className="sm:col-span-2">
+                  <FieldLabel>Address</FieldLabel>
+                  <Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} />
+                </div>
+              </div>
+            </section>
+
+            <section className="border-t border-ink-100 pt-5">
+              <h3 className="text-label text-ink-400 mb-4">Media</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <FieldLabel>Logo</FieldLabel>
+                  <input type="file" accept="image/*" onChange={(e) => setLogo(e.target.files?.[0] || null)} className={FILE_INPUT} />
+                </div>
+                <div>
+                  <FieldLabel>Banner</FieldLabel>
+                  <input type="file" accept="image/*" onChange={(e) => setBanner(e.target.files?.[0] || null)} className={FILE_INPUT} />
+                </div>
+              </div>
+            </section>
+
+            <section className="border-t border-ink-100 pt-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-label text-ink-400">Trophies</h3>
+                <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={addTrophy}>Add Trophy</Button>
+              </div>
+              <div className="space-y-2">
+                {trophies.map((t, i) => (
+                  <div key={i} className="flex gap-2">
+                    <Input type="text" value={t.name} onChange={(e) => updateTrophy(i, 'name', e.target.value)}
+                      placeholder="Trophy name" className="flex-1" />
+                    <Input type="number" value={t.year} onChange={(e) => updateTrophy(i, 'year', e.target.value)}
+                      placeholder="Year" className="w-24" />
+                    <Button type="button" variant="ghost" icon={Trash2} aria-label="Remove trophy"
+                      onClick={() => removeTrophy(i)} className="text-neg hover:text-neg" />
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
+        </Card>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Country *</label>
-            <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" required>
-              <option value="">Select country</option>
-              {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Founded Year</label>
-            <input type="number" value={form.founded_year} onChange={(e) => setForm({ ...form, founded_year: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. 1947" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Website</label>
-            <input type="url" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="https://..." />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone</label>
-            <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          </div>
-
-          <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1">Address</label>
-            <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" rows={2} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Logo</label>
-            <input type="file" accept="image/*" onChange={(e) => setLogo(e.target.files?.[0] || null)}
-              className="w-full text-sm" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Banner</label>
-            <input type="file" accept="image/*" onChange={(e) => setBanner(e.target.files?.[0] || null)}
-              className="w-full text-sm" />
-          </div>
-
-          <div className="col-span-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.is_national_team}
-                onChange={(e) => setForm({ ...form, is_national_team: e.target.checked })} />
-              <span className="font-medium">National Team</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Trophies */}
-        <div className="border-t pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Trophies</h3>
-            <button type="button" onClick={addTrophy} className="text-blue-600 text-sm hover:text-blue-800">+ Add Trophy</button>
-          </div>
-          {trophies.map((t, i) => (
-            <div key={i} className="flex gap-3 mb-2">
-              <input type="text" value={t.name} onChange={(e) => updateTrophy(i, 'name', e.target.value)}
-                placeholder="Trophy name" className="flex-1 border rounded-lg px-3 py-2 text-sm" />
-              <input type="number" value={t.year} onChange={(e) => updateTrophy(i, 'year', e.target.value)}
-                placeholder="Year" className="w-24 border rounded-lg px-3 py-2 text-sm" />
-              <button type="button" onClick={() => removeTrophy(i)} className="text-red-500 hover:text-red-700 text-sm">Remove</button>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <button type="button" onClick={() => navigate('/teams')} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-          <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-            {isEdit ? 'Save Changes' : 'Create Team'}
-          </button>
+        <div className="sticky bottom-0 z-10 mt-4 rounded-md border border-ink-100 bg-white/95 backdrop-blur-sm shadow-pop px-4 py-3 flex items-center justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => navigate('/teams')}>Cancel</Button>
+          <Button type="submit" icon={Save}>{isEdit ? 'Save Changes' : 'Create Team'}</Button>
         </div>
       </form>
     </div>

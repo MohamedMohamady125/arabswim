@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ImagePlus } from 'lucide-react'
+import { ImagePlus, Save } from 'lucide-react'
 import { getArticle, createArticle, updateArticle } from '../api/news'
 import { getCountries } from '../api/core'
 import { useToast } from '../context/ToastContext'
+import { Button, Card, PageHeader, Input, Select, Textarea, FieldLabel } from '../components/ui'
 
 export default function NewsFormPage() {
   const navigate = useNavigate()
@@ -68,67 +69,65 @@ export default function NewsFormPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <button onClick={() => navigate('/news')} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 mb-4">
-        <ArrowLeft size={15} /> Back to News
-      </button>
-      <h1 className="text-2xl font-bold mb-6">{isEdit ? 'Edit Article' : 'New Article'}</h1>
+    <div className="max-w-2xl mx-auto pb-6">
+      <PageHeader
+        breadcrumb={[{ label: 'News', to: '/news' }, { label: isEdit ? 'Edit' : 'New' }]}
+        title={isEdit ? 'Edit Article' : 'New Article'}
+      />
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-        <div>
-          <label className="block text-sm font-medium mb-1">Cover Image</label>
-          <label className="block h-44 rounded-lg bg-gray-50 border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer relative">
-            {coverPreview ? (
-              <img src={coverPreview} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 text-sm gap-2">
-                <ImagePlus size={26} /> Click to upload a cover
+      <form onSubmit={handleSubmit}>
+        <Card>
+          <div className="space-y-5">
+            <div>
+              <FieldLabel>Cover Image</FieldLabel>
+              <label className="block h-44 rounded-md bg-ink-50 border-2 border-dashed border-ink-200 overflow-hidden cursor-pointer relative hover:border-aqua-500/40">
+                {coverPreview ? (
+                  <img src={coverPreview} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-ink-400 text-body-sm gap-2">
+                    <ImagePlus size={26} /> Click to upload a cover
+                  </div>
+                )}
+                <input type="file" accept="image/*" onChange={onCoverSelect} className="absolute inset-0 opacity-0 cursor-pointer" />
+              </label>
+            </div>
+
+            <div>
+              <FieldLabel required>Title</FieldLabel>
+              <Input type="text" value={form.title} onChange={set('title')} placeholder="Article headline" />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <FieldLabel>Country</FieldLabel>
+                <Select value={form.country} onChange={set('country')}>
+                  <option value="">— None —</option>
+                  {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </Select>
               </div>
-            )}
-            <input type="file" accept="image/*" onChange={onCoverSelect} className="absolute inset-0 opacity-0 cursor-pointer" />
-          </label>
-        </div>
+              <div>
+                <FieldLabel>Status</FieldLabel>
+                <Select value={form.status} onChange={set('status')}>
+                  <option value="DRAFT">Draft</option>
+                  <option value="PUBLISHED">Published</option>
+                </Select>
+              </div>
+              <div>
+                <FieldLabel>Publish Date</FieldLabel>
+                <Input type="date" value={form.published_at} onChange={set('published_at')} />
+              </div>
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Title *</label>
-          <input type="text" value={form.title} onChange={set('title')}
-            className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Article headline" />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Country</label>
-            <select value={form.country} onChange={set('country')} className="w-full border rounded-lg px-3 py-2 text-sm">
-              <option value="">— None —</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <div>
+              <FieldLabel>Body</FieldLabel>
+              <Textarea value={form.body} onChange={set('body')} rows={12} placeholder="Write the article..." />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
-            <select value={form.status} onChange={set('status')} className="w-full border rounded-lg px-3 py-2 text-sm">
-              <option value="DRAFT">Draft</option>
-              <option value="PUBLISHED">Published</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Publish Date</label>
-            <input type="date" value={form.published_at} onChange={set('published_at')}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          </div>
-        </div>
+        </Card>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Body</label>
-          <textarea value={form.body} onChange={set('body')} rows={12}
-            className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Write the article..." />
-        </div>
-
-        <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={() => navigate('/news')} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-          <button type="submit" disabled={saving}
-            className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
-            {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Article'}
-          </button>
+        <div className="sticky bottom-0 z-10 mt-4 rounded-md border border-ink-100 bg-white/95 backdrop-blur-sm shadow-pop px-4 py-3 flex items-center justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => navigate('/news')}>Cancel</Button>
+          <Button type="submit" icon={Save} loading={saving}>{isEdit ? 'Save Changes' : 'Create Article'}</Button>
         </div>
       </form>
     </div>

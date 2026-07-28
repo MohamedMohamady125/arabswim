@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
+import { CheckCircle2, Plus, AlertTriangle } from 'lucide-react'
 import { searchSwimmers, createSwimmer } from '../../api/swimmers'
 import { getChampionships, createChampionship, addChampionshipResult } from '../../api/championships'
 import { getCountries, getEvents, getFinaPointsPreview } from '../../api/core'
 import { getClassifications, getSubClassifications } from '../../api/championships'
 import { POOL_TYPES, parseTime, formatDate } from '../../utils/constants'
+import { Button, Card, Input, Select, SearchInput, FieldLabel } from '../ui'
 
 export default function ManualEntryForm({ onComplete }) {
   // Swimmer state
@@ -191,102 +193,102 @@ export default function ManualEntryForm({ onComplete }) {
 
   if (success) {
     return (
-      <div className="bg-white rounded-lg border p-8 text-center">
-        <div className="text-5xl mb-4">&#x2705;</div>
-        <h2 className="text-xl font-semibold mb-2">Result Added!</h2>
-        <div className="text-sm text-gray-600 mb-6">
-          <p><strong>{success.swimmer_name}</strong></p>
-          <p>{success.event_name} &mdash; {success.time}</p>
-          <p className="text-gray-400">{success.championship_name}</p>
+      <Card>
+        <div className="text-center py-4">
+          <span className="mx-auto mb-4 w-14 h-14 rounded-full bg-pos/10 text-pos flex items-center justify-center">
+            <CheckCircle2 size={28} />
+          </span>
+          <h2 className="text-title text-ink-900 mb-2">Result Added!</h2>
+          <div className="text-body-sm text-ink-500 mb-6">
+            <p className="font-semibold text-ink-900">{success.swimmer_name}</p>
+            <p>{success.event_name} &mdash; <span className="tnum font-semibold">{success.time}</span></p>
+            <p className="text-ink-400">{success.championship_name}</p>
+          </div>
+          <div className="flex justify-center gap-3">
+            <Button onClick={handleAddAnother}>Add Another Result</Button>
+            <Button variant="secondary" onClick={handleDone}>Done</Button>
+          </div>
         </div>
-        <div className="flex justify-center gap-3">
-          <button onClick={handleAddAnother} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Add Another Result
-          </button>
-          <button onClick={handleDone} className="px-6 py-2 border rounded-lg hover:bg-gray-50">
-            Done
-          </button>
-        </div>
-      </div>
+      </Card>
     )
   }
 
   return (
     <div className="space-y-6">
-      {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg">{error}</div>}
+      {error && (
+        <div className="flex items-start gap-2.5 bg-neg/10 text-neg p-4 rounded-md text-body-sm">
+          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Section A: Swimmer */}
-      <div className="bg-white rounded-lg border p-5">
-        <h3 className="font-semibold mb-3">1. Select Swimmer *</h3>
-
+      <Card title="1. Select Swimmer *">
         {selectedSwimmer ? (
-          <div className="flex items-center gap-3 bg-blue-50 rounded-lg p-3">
-            <div className="flex-1">
-              <div className="font-medium">{selectedSwimmer.name}</div>
-              <div className="text-xs text-gray-500">
+          <div className="flex items-center gap-3 bg-aqua-50 rounded-md p-3">
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-ink-900">{selectedSwimmer.name}</div>
+              <div className="text-body-sm text-ink-500">
                 {selectedSwimmer.nationality_detail?.name || ''} &middot; {selectedSwimmer.sex === 'M' ? 'Male' : 'Female'}
                 {selectedSwimmer.club && ` · ${selectedSwimmer.club}`}
               </div>
             </div>
-            <button onClick={() => setSelectedSwimmer(null)} className="text-sm text-gray-500 hover:text-gray-700">Change</button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedSwimmer(null)}>Change</Button>
           </div>
         ) : showNewSwimmer ? (
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <h4 className="text-sm font-medium mb-3">Create New Swimmer</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <input type="text" placeholder="Full Name *" value={newSwimmer.name}
-                  onChange={(e) => setNewSwimmer({ ...newSwimmer, name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" />
+          <div className="border border-ink-100 rounded-md p-4 bg-ink-50">
+            <h4 className="text-body-sm font-semibold text-ink-900 mb-3">Create New Swimmer</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <FieldLabel required>Full Name</FieldLabel>
+                <Input type="text" placeholder="Full Name" value={newSwimmer.name}
+                  onChange={(e) => setNewSwimmer({ ...newSwimmer, name: e.target.value })} />
               </div>
               <div>
-                <input type="date" value={newSwimmer.date_of_birth}
-                  onChange={(e) => setNewSwimmer({ ...newSwimmer, date_of_birth: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" />
-                <span className="text-xs text-gray-400">Date of Birth *</span>
+                <FieldLabel required>Date of Birth</FieldLabel>
+                <Input type="date" value={newSwimmer.date_of_birth}
+                  onChange={(e) => setNewSwimmer({ ...newSwimmer, date_of_birth: e.target.value })} />
               </div>
               <div>
-                <select value={newSwimmer.nationality} onChange={(e) => setNewSwimmer({ ...newSwimmer, nationality: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm">
-                  <option value="">Nationality *</option>
+                <FieldLabel required>Nationality</FieldLabel>
+                <Select value={newSwimmer.nationality} onChange={(e) => setNewSwimmer({ ...newSwimmer, nationality: e.target.value })}>
+                  <option value="">Nationality</option>
                   {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
-                <select value={newSwimmer.sex} onChange={(e) => setNewSwimmer({ ...newSwimmer, sex: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm">
+                <FieldLabel>Sex</FieldLabel>
+                <Select value={newSwimmer.sex} onChange={(e) => setNewSwimmer({ ...newSwimmer, sex: e.target.value })}>
                   <option value="M">Male</option>
                   <option value="F">Female</option>
-                </select>
+                </Select>
               </div>
               <div>
-                <input type="text" placeholder="Club" value={newSwimmer.club}
-                  onChange={(e) => setNewSwimmer({ ...newSwimmer, club: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" />
+                <FieldLabel>Club</FieldLabel>
+                <Input type="text" placeholder="Club" value={newSwimmer.club}
+                  onChange={(e) => setNewSwimmer({ ...newSwimmer, club: e.target.value })} />
               </div>
             </div>
-            <div className="flex gap-2 mt-3">
-              <button onClick={handleCreateSwimmer}
-                disabled={!newSwimmer.name || !newSwimmer.date_of_birth || !newSwimmer.nationality}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
+            <div className="flex gap-2 mt-4">
+              <Button onClick={handleCreateSwimmer}
+                disabled={!newSwimmer.name || !newSwimmer.date_of_birth || !newSwimmer.nationality}>
                 Create Swimmer
-              </button>
-              <button onClick={() => setShowNewSwimmer(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+              </Button>
+              <Button variant="secondary" onClick={() => setShowNewSwimmer(false)}>Cancel</Button>
             </div>
           </div>
         ) : (
           <div>
             <div className="relative" ref={swimmerDropdownRef}>
-              <input type="text" placeholder="Search swimmers by name..." value={swimmerQuery}
-                onChange={(e) => handleSwimmerSearch(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <SearchInput placeholder="Search swimmers by name..." value={swimmerQuery}
+                onChange={(e) => handleSwimmerSearch(e.target.value)} />
               {swimmerResults.length > 0 && (
-                <div className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-10 w-full bg-white border border-ink-100 rounded-md mt-1 shadow-pop max-h-48 overflow-y-auto">
                   {swimmerResults.map(s => (
                     <button key={s.id} onClick={() => { setSelectedSwimmer(s); setSwimmerResults([]); setSwimmerQuery('') }}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm flex items-center justify-between">
-                      <span className="font-medium">{s.name}</span>
-                      <span className="text-xs text-gray-400">
+                      className="w-full text-start px-3 py-2.5 hover:bg-ink-50 text-body-sm flex items-center justify-between gap-2 min-h-10">
+                      <span className="font-medium text-ink-900">{s.name}</span>
+                      <span className="text-body-sm text-ink-400">
                         {s.nationality_detail?.name || ''} &middot; {s.sex === 'M' ? 'M' : 'F'}
                       </span>
                     </button>
@@ -294,52 +296,52 @@ export default function ManualEntryForm({ onComplete }) {
                 </div>
               )}
             </div>
-            <button onClick={() => setShowNewSwimmer(true)} className="text-blue-600 text-sm mt-2 hover:text-blue-800">
-              + Create New Swimmer
+            <button onClick={() => setShowNewSwimmer(true)}
+              className="inline-flex items-center gap-1 text-aqua-600 text-body-sm mt-2 hover:text-aqua-500 font-medium min-h-10">
+              <Plus size={14} /> Create New Swimmer
             </button>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Section B: Championship */}
-      <div className="bg-white rounded-lg border p-5">
-        <h3 className="font-semibold mb-3">2. Select Championship *</h3>
-
+      <Card title="2. Select Championship *">
         {selectedChamp ? (
-          <div className="flex items-center gap-3 bg-blue-50 rounded-lg p-3">
-            <div className="flex-1">
-              <div className="font-medium">{selectedChamp.name}</div>
-              <div className="text-xs text-gray-500">
+          <div className="flex items-center gap-3 bg-aqua-50 rounded-md p-3">
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-ink-900">{selectedChamp.name}</div>
+              <div className="text-body-sm text-ink-500">
                 {formatDate(selectedChamp.date)} &middot; {selectedChamp.pool}
                 {selectedChamp.location && ` · ${selectedChamp.location}`}
               </div>
             </div>
-            <button onClick={() => setSelectedChamp(null)} className="text-sm text-gray-500 hover:text-gray-700">Change</button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedChamp(null)}>Change</Button>
           </div>
         ) : showNewChamp ? (
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <h4 className="text-sm font-medium mb-3">Create New Championship</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <input type="text" placeholder="Championship Name *" value={newChamp.name}
-                  onChange={(e) => setNewChamp({ ...newChamp, name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" />
+          <div className="border border-ink-100 rounded-md p-4 bg-ink-50">
+            <h4 className="text-body-sm font-semibold text-ink-900 mb-3">Create New Championship</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <FieldLabel required>Championship Name</FieldLabel>
+                <Input type="text" placeholder="Championship Name" value={newChamp.name}
+                  onChange={(e) => setNewChamp({ ...newChamp, name: e.target.value })} />
               </div>
               <div>
-                <select value={newChamp.country} onChange={(e) => setNewChamp({ ...newChamp, country: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm">
-                  <option value="">Country *</option>
+                <FieldLabel required>Country</FieldLabel>
+                <Select value={newChamp.country} onChange={(e) => setNewChamp({ ...newChamp, country: e.target.value })}>
+                  <option value="">Country</option>
                   {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
-                <select value={newChamp.pool} onChange={(e) => setNewChamp({ ...newChamp, pool: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm">
+                <FieldLabel>Pool</FieldLabel>
+                <Select value={newChamp.pool} onChange={(e) => setNewChamp({ ...newChamp, pool: e.target.value })}>
                   {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
-                <input type="date" value={newChamp.date}
+                <FieldLabel required>Start Date</FieldLabel>
+                <Input type="date" value={newChamp.date}
                   onChange={(e) => {
                     const date = e.target.value
                     // Pre-fill end date with the start date so the end-date
@@ -348,116 +350,110 @@ export default function ManualEntryForm({ onComplete }) {
                       ...prev, date,
                       end_date: (!prev.end_date || prev.end_date < date) ? date : prev.end_date,
                     }))
-                  }}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" />
-                <span className="text-xs text-gray-400">Start Date *</span>
+                  }} />
               </div>
               <div>
-                <input type="date" value={newChamp.end_date} min={newChamp.date || undefined}
-                  onChange={(e) => setNewChamp({ ...newChamp, end_date: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" />
-                <span className="text-xs text-gray-400">End Date</span>
+                <FieldLabel>End Date</FieldLabel>
+                <Input type="date" value={newChamp.end_date} min={newChamp.date || undefined}
+                  onChange={(e) => setNewChamp({ ...newChamp, end_date: e.target.value })} />
               </div>
-              <div className="col-span-2">
-                <input type="text" placeholder="Location" value={newChamp.location}
-                  onChange={(e) => setNewChamp({ ...newChamp, location: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <div className="sm:col-span-2">
+                <FieldLabel>Location</FieldLabel>
+                <Input type="text" placeholder="Location" value={newChamp.location}
+                  onChange={(e) => setNewChamp({ ...newChamp, location: e.target.value })} />
               </div>
               <div>
-                <select value={newChamp.classification} onChange={(e) => setNewChamp({ ...newChamp, classification: e.target.value, sub_classification: '' })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm">
+                <FieldLabel>Classification</FieldLabel>
+                <Select value={newChamp.classification} onChange={(e) => setNewChamp({ ...newChamp, classification: e.target.value, sub_classification: '' })}>
                   <option value="">Classification</option>
                   {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
-                <select value={newChamp.sub_classification} onChange={(e) => setNewChamp({ ...newChamp, sub_classification: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" disabled={!subClassifications.length}>
+                <FieldLabel>Sub Classification</FieldLabel>
+                <Select value={newChamp.sub_classification} onChange={(e) => setNewChamp({ ...newChamp, sub_classification: e.target.value })}
+                  disabled={!subClassifications.length}>
                   <option value="">Sub Classification</option>
                   {subClassifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
-            <div className="flex gap-2 mt-3">
-              <button onClick={handleCreateChamp}
-                disabled={!newChamp.name || !newChamp.country || !newChamp.date}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
+            <div className="flex gap-2 mt-4">
+              <Button onClick={handleCreateChamp}
+                disabled={!newChamp.name || !newChamp.country || !newChamp.date}>
                 Create Championship
-              </button>
-              <button onClick={() => setShowNewChamp(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+              </Button>
+              <Button variant="secondary" onClick={() => setShowNewChamp(false)}>Cancel</Button>
             </div>
           </div>
         ) : (
           <div>
             <div className="relative" ref={champDropdownRef}>
-              <input type="text" placeholder="Search championships by name..." value={champQuery}
-                onChange={(e) => handleChampSearch(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <SearchInput placeholder="Search championships by name..." value={champQuery}
+                onChange={(e) => handleChampSearch(e.target.value)} />
               {champResults.length > 0 && (
-                <div className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-10 w-full bg-white border border-ink-100 rounded-md mt-1 shadow-pop max-h-48 overflow-y-auto">
                   {champResults.map(c => (
                     <button key={c.id} onClick={() => { setSelectedChamp(c); setChampResults([]); setChampQuery('') }}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm flex items-center justify-between">
-                      <span className="font-medium">{c.name}</span>
-                      <span className="text-xs text-gray-400">{formatDate(c.date)} &middot; {c.pool}</span>
+                      className="w-full text-start px-3 py-2.5 hover:bg-ink-50 text-body-sm flex items-center justify-between gap-2 min-h-10">
+                      <span className="font-medium text-ink-900">{c.name}</span>
+                      <span className="text-body-sm text-ink-400">{formatDate(c.date)} &middot; {c.pool}</span>
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <button onClick={() => setShowNewChamp(true)} className="text-blue-600 text-sm mt-2 hover:text-blue-800">
-              + Create New Championship
+            <button onClick={() => setShowNewChamp(true)}
+              className="inline-flex items-center gap-1 text-aqua-600 text-body-sm mt-2 hover:text-aqua-500 font-medium min-h-10">
+              <Plus size={14} /> Create New Championship
             </button>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Section C: Result */}
-      <div className="bg-white rounded-lg border p-5">
-        <h3 className="font-semibold mb-3">3. Result Details *</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1">Event *</label>
-            <select value={resultForm.event} onChange={(e) => setResultForm({ ...resultForm, event: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm">
+      <Card title="3. Result Details *">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="sm:col-span-2">
+            <FieldLabel required>Event</FieldLabel>
+            <Select value={resultForm.event} onChange={(e) => setResultForm({ ...resultForm, event: e.target.value })}>
               <option value="">Select event</option>
               {events.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Time * <span className="text-xs text-gray-400">(e.g. 1:23.45 or 56.78)</span></label>
-            <input type="text" value={resultForm.time} onChange={(e) => setResultForm({ ...resultForm, time: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm font-mono" placeholder="0:00.00" />
+            <FieldLabel required>Time (e.g. 1:23.45 or 56.78)</FieldLabel>
+            <Input type="text" value={resultForm.time} onChange={(e) => setResultForm({ ...resultForm, time: e.target.value })}
+              className="tnum" placeholder="0:00.00" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">FINA <span className="text-xs text-gray-400">(auto-calculated)</span></label>
-            <input type="number" value={resultForm.fina_points} onChange={(e) => setResultForm({ ...resultForm, fina_points: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50 font-medium" />
+            <FieldLabel>FINA (auto-calculated)</FieldLabel>
+            <Input type="number" value={resultForm.fina_points} onChange={(e) => setResultForm({ ...resultForm, fina_points: e.target.value })}
+              className="bg-aqua-50 font-medium tnum" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Medal <span className="text-xs text-gray-400">(optional)</span></label>
-            <select value={resultForm.medal} onChange={(e) => setResultForm({ ...resultForm, medal: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm">
+            <FieldLabel>Medal (optional)</FieldLabel>
+            <Select value={resultForm.medal} onChange={(e) => setResultForm({ ...resultForm, medal: e.target.value })}>
               <option value="">No medal</option>
-              <option value="GOLD">&#x1F947; Gold</option>
-              <option value="SILVER">&#x1F948; Silver</option>
-              <option value="BRONZE">&#x1F949; Bronze</option>
-            </select>
+              <option value="GOLD">Gold</option>
+              <option value="SILVER">Silver</option>
+              <option value="BRONZE">Bronze</option>
+            </Select>
           </div>
-          <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1">Team / Club</label>
-            <input type="text" value={resultForm.team} onChange={(e) => setResultForm({ ...resultForm, team: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Club or team name at this meet" />
+          <div className="sm:col-span-2">
+            <FieldLabel>Team / Club</FieldLabel>
+            <Input type="text" value={resultForm.team} onChange={(e) => setResultForm({ ...resultForm, team: e.target.value })}
+              placeholder="Club or team name at this meet" />
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Submit */}
       <div className="flex justify-end">
-        <button onClick={handleSubmit} disabled={loading || !selectedSwimmer || !selectedChamp || !resultForm.event || !resultForm.time}
-          className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium">
+        <Button onClick={handleSubmit} loading={loading}
+          disabled={loading || !selectedSwimmer || !selectedChamp || !resultForm.event || !resultForm.time}>
           {loading ? 'Adding Result...' : 'Add Result'}
-        </button>
+        </Button>
       </div>
     </div>
   )

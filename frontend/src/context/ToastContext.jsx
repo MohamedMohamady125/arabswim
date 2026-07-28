@@ -26,16 +26,16 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2">
+      <div className="fixed bottom-4 inset-x-0 sm:inset-x-auto sm:end-6 sm:bottom-6 z-[100] flex flex-col items-center sm:items-end gap-2 px-4 sm:px-0 pointer-events-none">
         {toasts.map((t) => (
           <div
             key={t.id}
             onClick={() => remove(t.id)}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm text-white cursor-pointer ${
-              t.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
-            }`}
+            className="pointer-events-auto flex items-center gap-2.5 ps-3 pe-4 py-3 rounded-md shadow-pop bg-white border border-ink-100 text-body-sm text-ink-900 cursor-pointer animate-fade-up max-w-sm"
           >
-            {t.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+            {t.type === 'success'
+              ? <CheckCircle size={18} className="text-pos shrink-0" />
+              : <XCircle size={18} className="text-neg shrink-0" />}
             {t.message}
           </div>
         ))}

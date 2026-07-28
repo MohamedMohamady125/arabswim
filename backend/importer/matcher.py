@@ -167,6 +167,19 @@ def resolve_country(code):
                         hit = cmap.get(base + ending)
                         if hit:
                             return hit
+    # National-federation team names: strip trailing governing-body words —
+    # "Kuwait Swimming" -> "Kuwait", "Bahrain Aquatics" -> "Bahrain",
+    # "Saudi Swimming Federation" -> "Saudi" (alias -> KSA),
+    # "Uae Aquatics Federation" -> "UAE". Deliberately excludes "Club"
+    # so real clubs like "Kuwait Club" never resolve as countries.
+    fed_words = {'SWIMMING', 'AQUATICS', 'AQUATIC', 'FEDERATION',
+                 'ASSOCIATION', 'NATIONAL', 'TEAM', 'NATL'}
+    words = key.split()
+    while len(words) > 1 and words[-1] in fed_words:
+        words.pop()
+        hit = cmap.get(' '.join(words))
+        if hit:
+            return hit
     return None
 
 

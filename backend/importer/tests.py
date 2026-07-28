@@ -1810,6 +1810,49 @@ class CountryCodeAliasTests(TestCase):
             self.assertIn(alias, ARAB_COUNTRY_CODES, f'{alias} missing from ARAB_COUNTRY_CODES')
 
 
+class FederationTeamNameTests(TestCase):
+    """GCC/international meets list national federations in the Team column
+    ("Kuwait Swimming", "Bahrain Aquatics", "Saudi Swimming Federation").
+    These must resolve to countries or every swimmer silently falls back to
+    the meet host country (happened on the GCC championship import)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Country
+        for code, name in [('KUW', 'Kuwait'), ('BHR', 'Bahrain'),
+                           ('KSA', 'Saudi Arabia'), ('UAE', 'UAE'),
+                           ('OMA', 'Oman'), ('QAT', 'Qatar')]:
+            Country.objects.create(name=name, code=code)
+
+    def setUp(self):
+        from importer import matcher
+        matcher._country_cache = None
+        self.addCleanup(lambda: setattr(matcher, '_country_cache', None))
+
+    def test_federation_names_resolve(self):
+        from importer.matcher import resolve_country
+        cases = {
+            'Kuwait Swimming': 'KUW',
+            'Bahrain Aquatics': 'BHR',
+            'Saudi Swimming Federation': 'KSA',
+            'Uae Aquatics Federation': 'UAE',
+            'Oman National Team': 'OMA',
+            'Qatar National Team': 'QAT',
+            'Qatar Swimming Association': 'QAT',
+        }
+        for team, code in cases.items():
+            country = resolve_country(team)
+            self.assertIsNotNone(country, f'{team!r} did not resolve')
+            self.assertEqual(country.code, code, f'{team!r} resolved to {country.code}')
+
+    def test_real_clubs_do_not_resolve(self):
+        from importer.matcher import resolve_country
+        # "Club" is not a federation word — Kuwait Club is a real club
+        self.assertIsNone(resolve_country('Kuwait Club'))
+        self.assertIsNone(resolve_country('Alexandria Swimming'))
+        self.assertIsNone(resolve_country('Swimming'))
+
+
 class MissingAgeLineTests(SimpleTestCase):
     """When a result line has no age/birth-year token, the parsers must not
     swallow the country code or team into the swimmer's name (user-reported:

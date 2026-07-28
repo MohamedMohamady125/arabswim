@@ -106,21 +106,26 @@ export default function MedalsPage() {
   ].filter(Boolean)
 
   const countryRows = summary.map(row => ({
-    entity: <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />,
+    entity: (
+      <span className="flex items-center min-w-0 max-w-[32vw] sm:max-w-none">
+        <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name}
+          className="min-w-0 max-w-full [&>span:last-child]:truncate [&>span:last-child]:min-w-0" />
+      </span>
+    ),
     gold: row.gold, silver: row.silver, bronze: row.bronze,
   }))
 
   const clubRows = clubSummary.map(row => ({
-    entity: <span className="text-body-sm font-semibold text-ink-900">{row.result__team}</span>,
+    entity: <span className="block truncate max-w-[32vw] sm:max-w-none text-body-sm font-semibold text-ink-900">{row.result__team}</span>,
     gold: row.gold, silver: row.silver, bronze: row.bronze,
   }))
 
   const swimmerRows = swimmerSummary.map(row => ({
     swimmerId: row.swimmer__id,
     entity: (
-      <span className="inline-flex items-center gap-2 min-w-0">
-        <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} />
-        <span className="text-body-sm font-semibold text-ink-900 truncate">{row.swimmer__name}</span>
+      <span className="flex items-center gap-2 min-w-0 max-w-[32vw] sm:max-w-none">
+        <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} className="shrink-0" />
+        <span className="text-body-sm font-semibold text-ink-900 truncate min-w-0">{row.swimmer__name}</span>
       </span>
     ),
     gold: row.gold, silver: row.silver, bronze: row.bronze,

@@ -1108,9 +1108,9 @@ function MeetsTab({ stats, navigate }) {
                 className="w-full text-start bg-white rounded-md border border-ink-100 shadow-card px-3 sm:px-4 py-2.5 sm:py-3 min-h-11 hover:border-aqua-500/40 hover:bg-aqua-50/40 flex items-center gap-2 sm:gap-3 transition-colors group">
                 <div className="flex-1 min-w-0">
                   <div className="text-body-sm font-semibold text-ink-900 group-hover:text-aqua-600 transition-colors truncate">{c.name}</div>
-                  <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-                    <CountryFlag code={c.country_code} flagUrl={c.flag_url} name={c.country} className="text-body-sm" />
-                    <span className="text-body-sm text-ink-400">{formatDate(c.date)}</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 min-w-0">
+                    <CountryFlag code={c.country_code} flagUrl={c.flag_url} name={c.country} className="text-body-sm min-w-0 [&>span:last-child]:truncate [&>span:last-child]:min-w-0" />
+                    <span className="text-body-sm text-ink-400 whitespace-nowrap shrink-0">{formatDate(c.date)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -1352,7 +1352,7 @@ function RecordsTab({ swimmerId, swimmer }) {
     <div className="rounded-md overflow-hidden bg-ink-50 border border-ink-100 p-4 sm:p-8">
       {/* Header banner pill */}
       <div className="flex justify-center mb-6 sm:mb-8">
-        <div className="inline-flex items-center gap-3 sm:gap-4 px-6 sm:px-10 py-3 rounded-full shadow-pop bg-gradient-to-b from-ink-700 to-ink-950 border-2 border-aqua-500">
+        <div className="inline-flex items-center gap-2 sm:gap-4 px-4 sm:px-10 py-3 max-w-full rounded-full shadow-pop bg-gradient-to-b from-ink-700 to-ink-950 border-2 border-aqua-500">
           <Star size={18} className="text-gold fill-gold shrink-0" />
           <span className="text-white font-bold uppercase tracking-[0.06em] sm:tracking-[0.12em] text-body-sm sm:text-xl text-center">
             {genderLabel} RECORD HOLDER <span className="mx-1">&bull;</span> {totalCount} RECORD{totalCount !== 1 ? 'S' : ''}
@@ -1558,9 +1558,9 @@ function ProgressionTab({ swimmerId }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <h3 className="text-title text-ink-900">Performance Progression</h3>
-        <SegmentedControl className="ms-auto"
+        <SegmentedControl className="ms-auto whitespace-nowrap"
           options={[{ key: 'LCM', label: 'Long Course' }, { key: 'SCM', label: 'Short Course' }]}
           value={pool} onChange={setPool} />
       </div>
@@ -1671,7 +1671,7 @@ function TransferHistoryTab({ swimmerId }) {
             <h4 className="text-body-sm font-semibold text-ink-700 mb-3">Nationality Changes</h4>
             <div className="space-y-3">
               {data.nationality_changes.filter(ch => ch.from_country !== ch.to_country).map((ch, i) => (
-                <div key={i} className="flex items-center gap-3 text-body-sm">
+                <div key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body-sm">
                   {ch.from_country && (
                     <>
                       <CountryFlag code={ch.from_country_code} flagUrl={ch.from_country_flag} name={ch.from_country} />
@@ -1791,13 +1791,13 @@ function RankingsTab({ swimmerId, swimmer }) {
                       </div>
                       <div className="flex gap-2.5 sm:gap-3 items-stretch">
                         {/* Rank square */}
-                        <div className="flex items-center justify-center text-white px-3 sm:px-4 py-2 shrink-0 rounded-sm bg-ink-900">
-                          <span className="text-5xl sm:text-6xl font-bold leading-none tnum"><AnimatedNumber value={rank.rank} /></span>
+                        <div className="flex items-center justify-center text-white px-2.5 sm:px-4 py-2 shrink-0 rounded-sm bg-ink-900">
+                          <span className="text-4xl sm:text-6xl font-bold leading-none tnum"><AnimatedNumber value={rank.rank} /></span>
                           <span className="text-body-sm sm:text-lg font-bold self-center ms-0.5 mt-2">{ordinalSuffix(rank.rank)}</span>
                         </div>
                         {/* Time box */}
-                        <div className="flex-1 flex items-center justify-center py-2 min-w-0 rounded-sm border-4 border-ink-900">
-                          <span className="text-4xl sm:text-6xl font-bold tnum tracking-tight text-ink-900">
+                        <div className="flex-1 flex items-center justify-center py-2 px-1 min-w-0 rounded-sm border-4 border-ink-900">
+                          <span className="text-[26px] leading-none sm:text-6xl font-bold tnum tracking-tight text-ink-900">
                             <AnimatedTime time={r.best_time} />
                           </span>
                         </div>

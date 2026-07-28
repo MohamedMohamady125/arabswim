@@ -164,8 +164,8 @@ export default function SponsorsPage() {
                 {s.description && (
                   <p className="text-body-sm text-ink-500 mt-1 line-clamp-2">{s.description}</p>
                 )}
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-ink-100 min-h-10">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 mt-2 pt-2 border-t border-ink-100 min-h-10">
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
                     {s.website && (
                       <a href={s.website} target="_blank" rel="noreferrer" aria-label={`Visit ${s.name} website`}
                         className="inline-flex items-center gap-1 text-body-sm text-aqua-600 hover:text-ink-900 min-h-10">

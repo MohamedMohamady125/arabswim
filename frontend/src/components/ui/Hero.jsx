@@ -11,7 +11,7 @@ export default function Hero({ image, className, children }) {
         <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover opacity-25" />
       )}
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-aqua-600 via-aqua-400 to-aqua-600" />
-      <div className="relative px-5 md:px-8 py-7 md:py-10">{children}</div>
+      <div className="relative min-w-0 px-4 md:px-8 py-6 md:py-10">{children}</div>
     </div>
   )
 }

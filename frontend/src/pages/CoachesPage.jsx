@@ -146,15 +146,15 @@ export default function CoachesPage() {
 
                     <div className="flex items-center gap-4 mt-1.5 text-body-sm text-ink-500 flex-wrap">
                       {c.nationality_detail && (
-                        <span className="flex items-center gap-1">
-                          <CountryFlag code={c.nationality_detail.code} flagUrl={c.nationality_detail.flag_url} name={c.nationality_detail.name} />
+                        <span className="flex items-center gap-1 min-w-0">
+                          <CountryFlag code={c.nationality_detail.code} flagUrl={c.nationality_detail.flag_url} name={c.nationality_detail.name} className="max-w-full" />
                         </span>
                       )}
                       {c.city && (
-                        <span className="flex items-center gap-1"><MapPin size={13} className="text-ink-400" /> {c.city}</span>
+                        <span className="flex items-center gap-1"><MapPin size={13} className="text-ink-400 shrink-0" /> {c.city}</span>
                       )}
                       {c.current_club && (
-                        <span className="flex items-center gap-1"><Briefcase size={13} className="text-ink-400" /> {c.current_club}</span>
+                        <span className="flex items-center gap-1 min-w-0"><Briefcase size={13} className="text-ink-400 shrink-0" /> <span className="truncate">{c.current_club}</span></span>
                       )}
                       {c.years_experience && (
                         <span className="flex items-center gap-1"><Award size={13} className="text-ink-400" /> {c.years_experience} yrs experience</span>
@@ -230,8 +230,8 @@ export default function CoachesPage() {
                             <h4 className="text-label text-ink-400 mb-1.5">Contact</h4>
                             <div className="space-y-1">
                               {c.email && (
-                                <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-body-sm text-ink-700 hover:text-aqua-600 min-h-10">
-                                  <Mail size={13} className="text-ink-400" /> {c.email}
+                                <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-body-sm text-ink-700 hover:text-aqua-600 min-h-10 min-w-0">
+                                  <Mail size={13} className="text-ink-400 shrink-0" /> <span className="break-all">{c.email}</span>
                                 </a>
                               )}
                               {c.phone && (
@@ -248,7 +248,7 @@ export default function CoachesPage() {
                               {c.linkedin && (
                                 <a href={c.linkedin} target="_blank" rel="noreferrer"
                                   className="flex items-center gap-2 text-body-sm text-ink-700 hover:text-aqua-600 min-h-10">
-                                  <ExternalLink size={13} className="text-ink-400" /> LinkedIn
+                                  <ExternalLink size={13} className="text-ink-400 shrink-0" /> LinkedIn
                                 </a>
                               )}
                             </div>

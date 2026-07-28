@@ -123,7 +123,7 @@ export default function RecordsPage() {
           {[r.nationality, r.championship_name, formatDate(r.date)].filter(Boolean).join(' · ')}
         </div>
       </div>
-      <TimeDisplay time={r.time} />
+      <TimeDisplay time={r.time} className="shrink-0" />
     </div>
   )
 
@@ -159,9 +159,9 @@ export default function RecordsPage() {
           {[r.location, formatDate(r.result_date)].filter(Boolean).join(' · ')}
         </div>
       </div>
-      <TimeDisplay time={r.formatted_time} />
+      <TimeDisplay time={r.formatted_time} className="shrink-0" />
       {isAdmin && (
-        <span className="inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        <span className="inline-flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
           <Button variant="ghost" size="sm" icon={Pencil} aria-label="Edit record"
             onClick={() => navigate(`/records/${r.id}/edit`)} />
           <Button variant="ghost" size="sm" icon={Trash2} aria-label="Delete record"

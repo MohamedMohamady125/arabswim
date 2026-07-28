@@ -492,7 +492,7 @@ export default function TeamsPage() {
         title="Teams"
         subtitle="Clubs and national teams across the region"
         action={isAdmin && (
-          <>
+          <div className="flex flex-wrap items-center gap-2 max-w-full min-w-0">
             {selected.size > 0 && (
               <Button variant="danger" size="sm" icon={Trash2} loading={bulkDeleting} onClick={() => setConfirmBulk(true)}>
                 Delete ({selected.size})
@@ -507,7 +507,7 @@ export default function TeamsPage() {
             <Button variant="ghost" size="sm" icon={Plus} onClick={() => navigate('/teams/new')}>
               Add
             </Button>
-          </>
+          </div>
         )}
       />
 

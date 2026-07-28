@@ -21,7 +21,7 @@ export default function Modal({ open, onClose, title, size = 'md', children, foo
         role="dialog"
         aria-modal="true"
         className={clsx(
-          'bg-white rounded-t-lg sm:rounded-lg shadow-pop w-full max-h-[92vh] overflow-y-auto animate-fade-up',
+          'bg-white rounded-t-lg sm:rounded-lg shadow-pop w-full max-w-[100vw] max-h-[92vh] overflow-y-auto overscroll-contain animate-fade-up',
           size === 'sm' && 'sm:max-w-sm',
           size === 'md' && 'sm:max-w-md',
           size === 'lg' && 'sm:max-w-2xl',
@@ -30,16 +30,16 @@ export default function Modal({ open, onClose, title, size = 'md', children, foo
         onClick={(e) => e.stopPropagation()}
       >
         {(title || onClose) && (
-          <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100 sticky top-0 bg-white rounded-t-lg">
-            <h2 className="text-title text-ink-900">{title}</h2>
+          <header className="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-ink-100 sticky top-0 bg-white rounded-t-lg">
+            <h2 className="text-title text-ink-900 min-w-0 truncate">{title}</h2>
             {onClose && (
-              <button onClick={onClose} aria-label="Close" className="p-2 -me-2 text-ink-400 hover:text-ink-900 rounded-sm">
+              <button onClick={onClose} aria-label="Close" className="p-2 -me-2 min-h-10 min-w-10 flex items-center justify-center shrink-0 text-ink-400 hover:text-ink-900 rounded-sm">
                 <X size={18} />
               </button>
             )}
           </header>
         )}
-        <div className="p-5">{children}</div>
+        <div className="p-4 sm:p-5 min-w-0">{children}</div>
         {footer && <footer className="px-5 py-4 border-t border-ink-100 flex justify-end gap-2">{footer}</footer>}
       </div>
     </div>

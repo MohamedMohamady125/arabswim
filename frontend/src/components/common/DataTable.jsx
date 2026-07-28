@@ -22,7 +22,7 @@ export default function DataTable({ columns, data, onRowClick, emptyMessage = 'N
 
   const table = (
     <div className="bg-white rounded-md border border-ink-100 shadow-card overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overscroll-x-contain max-w-full">
         <table className="w-full">
           <thead>
             <tr className="bg-ink-50 border-b border-ink-100">

@@ -182,7 +182,7 @@ export default function SwimmersPage() {
         title="Swimmers"
         subtitle="Browse every swimmer in the database"
         action={
-          <>
+          <div className="flex flex-wrap items-center gap-2 max-w-full min-w-0">
             <Button variant="secondary" size="sm" icon={ArrowLeftRight} onClick={() => navigate('/swimmers/compare')}>
               Compare
             </Button>
@@ -196,7 +196,7 @@ export default function SwimmersPage() {
                 </Button>
               </>
             )}
-          </>
+          </div>
         }
       />
 

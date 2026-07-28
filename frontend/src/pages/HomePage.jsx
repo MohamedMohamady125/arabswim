@@ -139,7 +139,7 @@ export default function HomePage() {
       <Hero>
         <div className="max-w-2xl">
           <div className="text-label text-aqua-400 mb-2">The home of Arab swimming</div>
-          <h1 className="text-display-xl text-white">
+          <h1 className="font-display font-extrabold text-[28px] leading-[34px] md:text-[36px] md:leading-[40px] text-white break-words">
             Every result. Every record. Every swimmer.
           </h1>
           <p className="text-body text-ink-200 mt-3 max-w-xl">

@@ -136,7 +136,7 @@ export default function TeamProfilePage() {
           </div>
           <div className="flex-1 pt-6 sm:pt-10 min-w-0">
             <div className="flex items-center gap-2 sm:gap-3 mb-1 flex-wrap">
-              <h1 className="text-title sm:text-display text-ink-900">{team.name}</h1>
+              <h1 className="font-display font-bold text-[20px] leading-7 sm:text-[28px] sm:leading-[34px] text-ink-900 break-words min-w-0">{team.name}</h1>
               {team.is_national_team && <Badge variant="aqua">National Team</Badge>}
             </div>
             {country && (
@@ -270,12 +270,12 @@ export default function TeamProfilePage() {
                 <div className="divide-y divide-ink-100">
                   {Object.values(timesByEvent).map((group, gi) => (
                     <details key={gi} className="group">
-                      <summary className="px-4 py-3 min-h-11 cursor-pointer hover:bg-ink-50 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <summary className="px-4 py-3 min-h-11 cursor-pointer hover:bg-ink-50 flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 min-w-0">
                           <span className="font-medium text-body-sm text-ink-900">{group.event_name}</span>
-                          <span className="text-body-sm text-ink-500">{group.gender === 'M' ? "Men's" : "Women's"}{group.is_relay ? ' Relay' : ''}</span>
+                          <span className="text-body-sm text-ink-500 whitespace-nowrap">{group.gender === 'M' ? "Men's" : "Women's"}{group.is_relay ? ' Relay' : ''}</span>
                         </div>
-                        <span className="text-body-sm text-ink-400 tnum">{group.results.length} result{group.results.length !== 1 ? 's' : ''}</span>
+                        <span className="text-body-sm text-ink-400 tnum whitespace-nowrap shrink-0">{group.results.length} result{group.results.length !== 1 ? 's' : ''}</span>
                       </summary>
                       <div className="px-4 pb-3 overflow-x-auto">
                         <table className="w-full min-w-[560px] sm:min-w-0">
@@ -374,7 +374,7 @@ export default function TeamProfilePage() {
                               </div>
                             )}
                           </div>
-                          <div className="flex gap-3 mt-1 text-body-sm text-ink-500">
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-body-sm text-ink-500">
                             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gold inline-block" /> {cat.counts.GOLD} Gold</span>
                             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-silver inline-block" /> {cat.counts.SILVER} Silver</span>
                             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-bronze inline-block" /> {cat.counts.BRONZE} Bronze</span>
@@ -391,8 +391,8 @@ export default function TeamProfilePage() {
                           {profile.classification_breakdown.map(cls => {
                             const clsTotal = cls.GOLD + cls.SILVER + cls.BRONZE
                             return (
-                              <div key={cls.name} className="flex items-center gap-3">
-                                <span className="text-body-sm font-medium text-ink-500 w-28 truncate" title={cls.name}>{cls.name}</span>
+                              <div key={cls.name} className="flex items-center gap-2 sm:gap-3">
+                                <span className="text-body-sm font-medium text-ink-500 w-20 sm:w-28 shrink-0 truncate" title={cls.name}>{cls.name}</span>
                                 <div className="flex-1 flex h-5 rounded-sm overflow-hidden bg-ink-50">
                                   {cls.GOLD > 0 && (
                                     <div className="bg-gold h-full transition-all duration-500"
@@ -407,7 +407,7 @@ export default function TeamProfilePage() {
                                       style={{ width: `${(cls.BRONZE / clsTotal) * 100}%` }} />
                                   )}
                                 </div>
-                                <div className="flex items-center gap-1.5 text-body-sm text-ink-500 w-24 justify-end shrink-0 tnum">
+                                <div className="flex items-center gap-1 sm:gap-1.5 text-body-sm text-ink-500 sm:w-24 justify-end shrink-0 tnum">
                                   <MedalIcon type="gold" size={14} /><span>{cls.GOLD}</span>
                                   <MedalIcon type="silver" size={14} /><span>{cls.SILVER}</span>
                                   <MedalIcon type="bronze" size={14} /><span>{cls.BRONZE}</span>

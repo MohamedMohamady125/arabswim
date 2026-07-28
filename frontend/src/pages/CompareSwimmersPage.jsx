@@ -43,8 +43,8 @@ function SwimmerSlot({ swimmer, onRemove, onAdd, index }) {
         </button>
         <div className="mx-auto mb-2 flex justify-center"><Avatar photo={swimmer.photo} size="lg" /></div>
         <div className="text-body-sm font-semibold text-ink-900 truncate">{swimmer.name}</div>
-        <div className="mt-1 flex justify-center">
-          <CountryFlag code={swimmer.nationality_detail?.code} flagUrl={swimmer.nationality_detail?.flag_url} name={swimmer.nationality_detail?.name} className="text-body-sm text-ink-500" />
+        <div className="mt-1 flex justify-center min-w-0">
+          <CountryFlag code={swimmer.nationality_detail?.code} flagUrl={swimmer.nationality_detail?.flag_url} name={swimmer.nationality_detail?.name} className="text-body-sm text-ink-500 min-w-0 max-w-full [&>span:last-child]:truncate [&>span:last-child]:min-w-0" />
         </div>
       </div>
     )
@@ -161,8 +161,8 @@ export default function CompareSwimmersPage() {
       </div>
 
       {/* Swimmer Selection */}
-      <div className="grid gap-3 mb-6"
-        style={{ gridTemplateColumns: `repeat(${Math.min(selected.length + (selected.length < MAX_SWIMMERS ? 1 : 0), MAX_SWIMMERS)}, minmax(0, 1fr))` }}>
+      <div className="grid gap-3 mb-6 grid-cols-2 sm:grid-cols-3 md:[grid-template-columns:var(--cmp-cols)]"
+        style={{ '--cmp-cols': `repeat(${Math.min(selected.length + (selected.length < MAX_SWIMMERS ? 1 : 0), MAX_SWIMMERS)}, minmax(0, 1fr))` }}>
         {selected.map((s, i) => (
           <SwimmerSlot key={s.id} swimmer={s} index={i} onRemove={() => removeSwimmer(s.id)} />
         ))}
@@ -290,8 +290,8 @@ export default function CompareSwimmersPage() {
                 const total = s.medals.total
                 const maxTotal = Math.max(...data.map(d => d.medals.total)) || 1
                 return (
-                  <div key={s.id} className="flex items-center gap-3">
-                    <div className="w-28 text-body-sm font-medium text-ink-500 truncate shrink-0">{s.name}</div>
+                  <div key={s.id} className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-20 sm:w-28 text-body-sm font-medium text-ink-500 truncate shrink-0">{s.name}</div>
                     <div className="flex-1">
                       <div className="flex h-5 rounded-full overflow-hidden bg-ink-50" style={{ width: `${Math.max((total / maxTotal) * 100, total > 0 ? 6 : 2)}%` }}>
                         {s.medals.gold > 0 && <div className="bg-gold" style={{ width: `${(s.medals.gold / total) * 100}%` }} />}
@@ -299,7 +299,7 @@ export default function CompareSwimmersPage() {
                         {s.medals.bronze > 0 && <div className="bg-bronze" style={{ width: `${(s.medals.bronze / total) * 100}%` }} />}
                       </div>
                     </div>
-                    <div className="flex gap-2 text-body-sm font-semibold tnum shrink-0 w-24 justify-end">
+                    <div className="flex gap-1.5 sm:gap-2 text-body-sm font-semibold tnum shrink-0 sm:w-24 justify-end">
                       {s.medals.gold > 0 && <span className="text-gold">{s.medals.gold}G</span>}
                       {s.medals.silver > 0 && <span className="text-silver">{s.medals.silver}S</span>}
                       {s.medals.bronze > 0 && <span className="text-bronze">{s.medals.bronze}B</span>}

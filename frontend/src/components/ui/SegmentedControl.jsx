@@ -3,7 +3,7 @@ import clsx from 'clsx'
 /** Small view switch (e.g. Country/Club/Swimmer tally, LCM/SCM). */
 export default function SegmentedControl({ options, value, onChange, className }) {
   return (
-    <div className={clsx('inline-flex rounded-sm bg-ink-50 border border-ink-100 p-0.5 gap-0.5', className)} role="tablist">
+    <div className={clsx('inline-flex max-w-full overflow-x-auto scrollbar-hide overscroll-x-contain rounded-sm bg-ink-50 border border-ink-100 p-0.5 gap-0.5', className)} role="tablist">
       {options.map((opt) => {
         const isActive = value === opt.key
         return (
@@ -13,7 +13,7 @@ export default function SegmentedControl({ options, value, onChange, className }
             aria-selected={isActive}
             onClick={() => onChange(opt.key)}
             className={clsx(
-              'px-3 h-9 rounded-sm text-body-sm font-medium transition-colors whitespace-nowrap',
+              'px-3 h-10 min-w-10 shrink-0 rounded-sm text-body-sm font-medium transition-colors whitespace-nowrap',
               isActive
                 ? 'bg-white text-ink-900 shadow-card'
                 : 'text-ink-400 hover:text-ink-700',

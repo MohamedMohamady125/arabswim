@@ -79,7 +79,11 @@ function TopPerformersTable({ performers, navigate }) {
     <Card
       padding="none"
       title="Top Performances"
-      action={<SegmentedControl options={GENDER_OPTIONS} value={genderFilter} onChange={setGenderFilter} />}
+      action={
+        <div className="min-w-0 max-w-full overflow-x-auto">
+          <SegmentedControl options={GENDER_OPTIONS} value={genderFilter} onChange={setGenderFilter} />
+        </div>
+      }
     >
       <p className="px-4 md:px-5 pt-3 text-body-sm text-ink-400">Highest FINA points at this championship</p>
       {filtered.length > 0 ? (
@@ -127,7 +131,11 @@ function MostImprovedTable({ swimmers, navigate }) {
     <Card
       padding="none"
       title="Most Improved Swimmers"
-      action={<SegmentedControl options={GENDER_OPTIONS} value={genderFilter} onChange={setGenderFilter} />}
+      action={
+        <div className="min-w-0 max-w-full overflow-x-auto">
+          <SegmentedControl options={GENDER_OPTIONS} value={genderFilter} onChange={setGenderFilter} />
+        </div>
+      }
     >
       <p className="px-4 md:px-5 pt-3 text-body-sm text-ink-400">Biggest time drops vs previous personal best</p>
       {filtered.length > 0 ? (
@@ -230,15 +238,18 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
 
       {/* Tally switcher: Country/Club Medal Tally vs Swimmer Medal Tally */}
       {(safeSummary.length > 0 || safeClubSummary.length > 0 || safeSwimmerSummary.length > 0) && (
-        <SegmentedControl
-          options={[
-            { key: 'main', label: isNational ? 'Club Tally' : 'Country Tally' },
-            ...(!isNational && safeClubSummary.length > 0 ? [{ key: 'clubs', label: 'Club Tally' }] : []),
-            { key: 'swimmers', label: 'Swimmer Tally' },
-          ]}
-          value={tallySection}
-          onChange={setTallySection}
-        />
+        <div className="max-w-full overflow-x-auto">
+          <SegmentedControl
+            className="whitespace-nowrap"
+            options={[
+              { key: 'main', label: isNational ? 'Club Tally' : 'Country Tally' },
+              ...(!isNational && safeClubSummary.length > 0 ? [{ key: 'clubs', label: 'Club Tally' }] : []),
+              { key: 'swimmers', label: 'Swimmer Tally' },
+            ]}
+            value={tallySection}
+            onChange={setTallySection}
+          />
+        </div>
       )}
 
       {/* Country Medal Tally (international) or Club Medal Tally (national) */}
@@ -261,8 +272,13 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
               rows={filteredSummary.map((row, i) => ({
                 id: row.swimmer__nationality__code || i,
                 entity: (
-                  <span className="text-body-sm text-ink-900">
-                    <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
+                  <span className="text-body-sm text-ink-900 flex min-w-0 max-w-[45vw] sm:max-w-none">
+                    <CountryFlag
+                      code={row.swimmer__nationality__code}
+                      flagUrl={row.swimmer__nationality__flag_url}
+                      name={row.swimmer__nationality__name}
+                      className="min-w-0 [&>span:last-child]:truncate [&>span:last-child]:min-w-0"
+                    />
                   </span>
                 ),
                 gold: row.gold || 0,
@@ -331,16 +347,19 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
           padding="none"
           title={`All Medals (${filteredMedals.length})`}
           action={
-            <SegmentedControl
-              options={[
-                { key: 'ALL', label: `All (${safeMedals.length})` },
-                { key: 'GOLD', label: `Gold (${goldCount})` },
-                { key: 'SILVER', label: `Silver (${silverCount})` },
-                { key: 'BRONZE', label: `Bronze (${bronzeCount})` },
-              ]}
-              value={medalFilter}
-              onChange={setMedalFilter}
-            />
+            <div className="min-w-0 max-w-full overflow-x-auto">
+              <SegmentedControl
+                className="whitespace-nowrap"
+                options={[
+                  { key: 'ALL', label: `All (${safeMedals.length})` },
+                  { key: 'GOLD', label: `Gold (${goldCount})` },
+                  { key: 'SILVER', label: `Silver (${silverCount})` },
+                  { key: 'BRONZE', label: `Bronze (${bronzeCount})` },
+                ]}
+                value={medalFilter}
+                onChange={setMedalFilter}
+              />
+            </div>
           }
         >
           <div className="overflow-x-auto">
@@ -794,8 +813,9 @@ export default function MeetDetailPage() {
                 if (rounds.length <= 1) return null
                 rounds.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
                 return (
-                  <div className="px-4 py-3 border-b border-ink-100">
+                  <div className="px-4 py-3 border-b border-ink-100 max-w-full overflow-x-auto">
                     <SegmentedControl
+                      className="whitespace-nowrap"
                       options={rounds.map(round => ({ key: round, label: roundLabel(round) }))}
                       value={selectedRound}
                       onChange={(round) => { setSelectedRound(round); setSelectedCategory(null); setExpandedRelay(null) }}
@@ -1071,13 +1091,14 @@ export default function MeetDetailPage() {
           <Card padding="none" title={`Countries (${stats.countries.length})`}>
             <div className="divide-y divide-ink-100 max-h-[500px] overflow-y-auto">
               {stats.countries.map((c, i) => (
-                <div key={c.swimmer__nationality__id ?? i} className="flex items-center justify-between px-4 py-3 min-h-11 text-body-sm">
+                <div key={c.swimmer__nationality__id ?? i} className="flex items-center justify-between gap-3 px-4 py-3 min-h-11 text-body-sm">
                   <CountryFlag
                     code={c.swimmer__nationality__code}
                     flagUrl={c.swimmer__nationality__flag_url}
                     name={c.swimmer__nationality__name}
+                    className="min-w-0 [&>span:last-child]:truncate [&>span:last-child]:min-w-0"
                   />
-                  <span className="text-body-sm font-medium text-ink-500 tnum">{c.swimmers_count} swimmers</span>
+                  <span className="text-body-sm font-medium text-ink-500 tnum whitespace-nowrap shrink-0">{c.swimmers_count} swimmers</span>
                 </div>
               ))}
             </div>
@@ -1238,11 +1259,11 @@ export default function MeetDetailPage() {
                       createMediaItem({ album: album.id, media_type: 'VIDEO', video_url: videoUrl.trim() })
                         .then(() => { setVideoUrl(''); getOrCreateAlbumForChampionship(id).then(res => setAlbum(res.data)) })
                         .catch(() => {})
-                    }} className="flex gap-2">
+                    }} className="flex gap-2 w-full sm:w-auto">
                       <Input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
                         placeholder="YouTube / Instagram link..."
-                        className="w-56" />
-                      <Button type="submit" variant="secondary" size="md">Add Video</Button>
+                        className="flex-1 min-w-0 sm:flex-none sm:w-56" />
+                      <Button type="submit" variant="secondary" size="md" className="shrink-0">Add Video</Button>
                     </form>
                     <label className={`inline-flex items-center justify-center gap-2 h-10 px-4 rounded-sm text-body-sm font-medium bg-white text-ink-900 border border-ink-200 hover:border-aqua-500/40 hover:bg-aqua-50 cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
                       <Camera size={16} />

@@ -11,7 +11,7 @@ export default function Tabs({ tabs, active, onChange, sticky = false, className
       sticky && 'sticky top-14 z-30',
       className,
     )}>
-      <nav className="flex gap-1 overflow-x-auto scrollbar-hide px-1" aria-label="Tabs">
+      <nav className="flex gap-1 max-w-full overflow-x-auto scrollbar-hide overscroll-x-contain px-1" aria-label="Tabs">
         {tabs.map((tab) => {
           const isActive = active === tab.key
           const Icon = tab.icon

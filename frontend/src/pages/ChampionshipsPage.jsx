@@ -93,7 +93,7 @@ export default function ChampionshipsPage() {
       <Hero image={featured?.meet_photo ? mediaUrl(featured.meet_photo) : undefined}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-display-xl">Championships</h1>
+            <h1 className="font-display font-extrabold text-[28px] leading-[34px] md:text-[36px] md:leading-[40px]">Championships</h1>
             <p className="text-body text-white/70 mt-1">Every meet across the Arab swimming world.</p>
             {featured && (
               <div className="mt-5">
@@ -209,7 +209,7 @@ export default function ChampionshipsPage() {
 
                     {/* Meet info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-body sm:text-title text-ink-900 leading-snug line-clamp-2 sm:truncate">{c.name}</h3>
+                      <h3 className="font-semibold text-[15px] leading-snug sm:font-display sm:font-bold sm:text-[20px] sm:leading-7 text-ink-900 line-clamp-2 sm:truncate">{c.name}</h3>
                       <div className="mt-1 flex items-center gap-1.5">
                         <Calendar size={14} className="text-ink-400 shrink-0" />
                         <span className="text-body-sm text-ink-500 whitespace-nowrap">

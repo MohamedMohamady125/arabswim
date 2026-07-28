@@ -71,17 +71,17 @@ export default function HallOfFamePage() {
                       <User size={24} className="text-ink-200" />
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="text-title text-ink-900 truncate flex items-center gap-1.5">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-title text-ink-900 flex items-center gap-1.5 min-w-0">
                       <Crown size={15} className="text-gold shrink-0" aria-hidden="true" />
-                      {i.name}
+                      <span className="truncate">{i.name}</span>
                     </h3>
-                    <div className="text-body-sm text-ink-500 mt-0.5">
+                    <div className="text-body-sm text-ink-500 mt-0.5 min-w-0">
                       {i.country_detail && (
-                        <CountryFlag code={i.country_detail.code} flagUrl={i.country_detail.flag_url} name={i.country_detail.name} />
+                        <CountryFlag code={i.country_detail.code} flagUrl={i.country_detail.flag_url} name={i.country_detail.name} className="max-w-full" />
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       {i.era && <Badge variant="medal">{i.era}</Badge>}
                       {i.inducted_year && <span className="text-label text-ink-400 tnum">Inducted {i.inducted_year}</span>}
                     </div>

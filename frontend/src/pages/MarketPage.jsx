@@ -137,15 +137,15 @@ export default function MarketPage() {
                         <ExternalLink size={15} /> Contact seller
                       </a>
                     ) : (
-                      <span className="inline-flex items-center min-h-10 px-3 rounded-sm bg-ink-50 border border-ink-100 text-body-sm text-ink-700 font-medium">
+                      <span className="inline-flex items-center min-h-10 max-w-full px-3 py-1.5 rounded-sm bg-ink-50 border border-ink-100 text-body-sm text-ink-700 font-medium break-all">
                         Contact: {l.seller_contact}
                       </span>
                     )}
                   </div>
                 )}
                 {isAdmin && (
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
-                    <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-ink-100">
+                    <div className="flex flex-wrap gap-2">
                       {l.status === 'PENDING' && (
                         <>
                           <Button variant="primary" size="sm" icon={Check} onClick={() => setStatus(l, 'APPROVED')}>

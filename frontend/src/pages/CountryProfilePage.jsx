@@ -130,16 +130,16 @@ export default function CountryProfilePage() {
             </div>
           </div>
           {/* Medal summary */}
-          <div className="sm:ms-auto flex items-center gap-3 sm:gap-4">
+          <div className="sm:ms-auto flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
             {[['GOLD', medals.gold], ['SILVER', medals.silver], ['BRONZE', medals.bronze]].map(([t, n]) => (
               <div key={t} className="text-center">
-                <MedalIcon type={t} />
-                <div className="text-time-lg text-ink-900">{n}</div>
+                <MedalIcon type={t} size={20} className="sm:w-6 sm:h-6" />
+                <div className="text-[18px] leading-6 sm:text-[24px] sm:leading-7 font-bold tnum text-ink-900">{n}</div>
               </div>
             ))}
             <div className="text-center ps-3 border-s border-ink-100">
               <div className="text-label text-ink-400">Total</div>
-              <div className="text-time-lg text-ink-900">{medals.total}</div>
+              <div className="text-[18px] leading-6 sm:text-[24px] sm:leading-7 font-bold tnum text-ink-900">{medals.total}</div>
             </div>
           </div>
         </div>
@@ -300,7 +300,7 @@ export default function CountryProfilePage() {
                       <div className="font-medium text-ink-900">{c.name}</div>
                       <div className="text-ink-400 text-body-sm mt-0.5">{formatDate(c.date)} · {c.pool} {c.location ? `· ${c.location}` : ''}</div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); setShowSwimmers(showSwimmers === c.id ? null : c.id) }}
                         className="text-body-sm text-aqua-600 hover:underline font-medium min-h-10"

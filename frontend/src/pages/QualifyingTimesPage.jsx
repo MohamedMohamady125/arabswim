@@ -389,7 +389,7 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <CompIcon size={22} className="text-aqua-600 shrink-0" />
-            <h1 className="text-display text-ink-900">{standard.name}</h1>
+            <h1 className="text-display text-ink-900 min-w-0 break-words">{standard.name}</h1>
             {isAdmin && (
               <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setShowEdit(true)} aria-label="Edit standard" />
             )}
@@ -421,7 +421,7 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
         />
 
         {isAdmin && (
-          <div className="flex gap-2 ms-auto">
+          <div className="flex flex-wrap gap-2 ms-auto">
             <Button size="sm" icon={Plus} onClick={() => setShowAddTime(true)}>Add Time</Button>
             <label className={uploading ? 'opacity-50 pointer-events-none' : ''}>
               <span className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-sm text-body-sm font-medium bg-white text-ink-900 border border-ink-200 hover:border-aqua-500/40 hover:bg-aqua-50 cursor-pointer transition-colors">
@@ -494,13 +494,13 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
                       <td className="px-4 py-2 text-end">
                         {row.time ? (
                           isAdmin && editingTimeId === row.time.id ? (
-                            <span className="inline-flex items-center gap-1.5">
+                            <span className="inline-flex flex-wrap items-center justify-end gap-1.5 max-w-full">
                               <Input value={editTimeText} onChange={e => setEditTimeText(e.target.value)}
                                 onKeyDown={e => {
                                   if (e.key === 'Enter') { e.preventDefault(); handleSaveTime(row.time) }
                                   if (e.key === 'Escape') setEditingTimeId(null)
                                 }}
-                                className="w-28 tnum text-center h-9"
+                                className="w-24 tnum text-center h-9"
                                 autoFocus />
                               <Button size="sm" icon={Check} loading={savingTime} onClick={() => handleSaveTime(row.time)} aria-label="Save time" />
                               <Button size="sm" variant="ghost" icon={X} onClick={() => setEditingTimeId(null)} aria-label="Cancel editing" />

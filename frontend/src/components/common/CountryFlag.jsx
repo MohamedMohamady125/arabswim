@@ -53,15 +53,15 @@ export default function CountryFlag({ code, flagUrl, name, className = '' }) {
   const alpha2 = flagUrl || CODE_TO_ALPHA2[code?.toUpperCase()] || (code || '').toLowerCase().slice(0, 2)
 
   return (
-    <span className={`inline-flex items-center gap-1.5 ${className}`}>
+    <span className={`inline-flex items-center gap-1.5 min-w-0 max-w-full ${className}`}>
       <img
         src={`https://flagcdn.com/w40/${alpha2}.png`}
         srcSet={`https://flagcdn.com/w80/${alpha2}.png 2x`}
         alt={name || code}
-        className="w-5 h-3.5 object-cover"
+        className="w-5 h-3.5 shrink-0 grow-0 object-cover rounded-[2px] ring-1 ring-black/10"
         onError={(e) => { e.target.style.display = 'none' }}
       />
-      <span>{name}</span>
+      {name && <span className="min-w-0 truncate">{name}</span>}
     </span>
   )
 }

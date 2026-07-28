@@ -125,6 +125,26 @@ def _parse_split_line(line):
     return splits
 
 
+def _reorder_ffn_name(name):
+    """'RESSENCOURT Lilou' → 'Lilou RESSENCOURT'.
+
+    FFN result lines put the surname first in all caps followed by the
+    given name in mixed case. Reorder to the site-wide 'Given SURNAME'
+    convention. Names without a mixed-case part are left untouched.
+    """
+    # Some lines glue surname and given name ('MOLUMary-Ambre'): insert a
+    # space where an all-caps run meets a TitleCase word
+    name = re.sub(r'([A-ZÀ-Þ]{2,})([A-ZÀ-Þ][a-zà-ÿ])', r'\1 \2', name)
+    tokens = name.split()
+    i = 0
+    while i < len(tokens) and tokens[i] == tokens[i].upper() \
+            and any(c.isalpha() for c in tokens[i]):
+        i += 1
+    if 0 < i < len(tokens):
+        return ' '.join(tokens[i:] + tokens[:i])
+    return name
+
+
 def parse(text):
     """Parse FFN-extraNat PDF text into a ParsedMeet."""
     lines = text.split('\n')
@@ -252,6 +272,10 @@ def parse(text):
 
             # Clean OCR artifacts from name (stray watermark letters)
             name = re.sub(r'(?<=[a-z])\s+(?=[a-z])', '', name)
+
+            # FFN lists names as "SURNAME Given" — site standard is
+            # "Given SURNAME" (leading all-caps tokens are the surname)
+            name = _reorder_ffn_name(name)
 
             # Determine status
             status = 'OK'

@@ -2135,3 +2135,35 @@ class CanonicalizeParsedClubsTests(TestCase):
         meet = self._meet({'CN ALGER': 20, 'CS ALGER': 15, 'CN  ALGER': 4})
         canonicalize_parsed_clubs(meet)
         self.assertEqual(self._clubs(meet), {'CN ALGER', 'CS ALGER'})
+
+
+class FFNNameReorderTests(TestCase):
+    """FFN lists names 'SURNAME Given'; the site convention is 'Given SURNAME'."""
+
+    def test_simple_surname_first(self):
+        from importer.parsers.ffn_parser import _reorder_ffn_name
+        self.assertEqual(_reorder_ffn_name('RESSENCOURT Lilou'),
+                         'Lilou RESSENCOURT')
+        self.assertEqual(_reorder_ffn_name('WATTEL Marie'), 'Marie WATTEL')
+
+    def test_hyphenated_and_multiword_surnames(self):
+        from importer.parsers.ffn_parser import _reorder_ffn_name
+        self.assertEqual(_reorder_ffn_name('SCIUTO-BRUNEL Miki'),
+                         'Miki SCIUTO-BRUNEL')
+        self.assertEqual(_reorder_ffn_name('DE LA TORRE Pablo'),
+                         'Pablo DE LA TORRE')
+
+    def test_glued_surname_and_given_name(self):
+        from importer.parsers.ffn_parser import _reorder_ffn_name
+        # PDF extraction sometimes glues them: 'MOLUMary-Ambre'
+        self.assertEqual(_reorder_ffn_name('MOLUMary-Ambre'), 'Mary-Ambre MOLU')
+
+    def test_accented_names(self):
+        from importer.parsers.ffn_parser import _reorder_ffn_name
+        self.assertEqual(_reorder_ffn_name('GASTALDELLO Béryl'),
+                         'Béryl GASTALDELLO')
+
+    def test_all_caps_name_unchanged(self):
+        from importer.parsers.ffn_parser import _reorder_ffn_name
+        # No TitleCase given name to move — leave as-is
+        self.assertEqual(_reorder_ffn_name('MOHAMED ALI'), 'MOHAMED ALI')

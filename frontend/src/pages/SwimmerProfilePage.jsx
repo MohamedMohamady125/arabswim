@@ -1761,7 +1761,8 @@ function RankingsTab({ swimmerId, swimmer }) {
         </div>
       )}
 
-      <div className="space-y-6">
+      {/* Scope sections side by side — ARAB next to NATIONAL, GCC below, etc. */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 items-start">
         {scopes.map(scope => {
           const rows = rankings
             .filter(r => r.pool === effectivePool && r.rankings[scope])
@@ -1770,13 +1771,13 @@ function RankingsTab({ swimmerId, swimmer }) {
           return (
             <div key={scope}>
               {/* Section banner */}
-              <div className="relative text-center text-white font-bold uppercase py-2 sm:py-2.5 px-3 mb-3 text-lg sm:text-2xl leading-none tracking-tight bg-gradient-to-b from-ink-700 to-ink-950">
+              <div className="relative text-center text-white font-bold uppercase py-1.5 sm:py-2.5 px-1 mb-2 sm:mb-3 text-[11px] sm:text-xl leading-tight tracking-tight bg-gradient-to-b from-ink-700 to-ink-950">
                 <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-aqua-600 via-aqua-400 to-aqua-600" />
                 {scopeLabel[scope]} {genderLabel} RANKING
               </div>
 
-              {/* One card per event — OPEN + age-group ranks side by side, single time */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-3">
+              {/* One compact card per event */}
+              <div className="space-y-2 sm:space-y-2.5">
                 {rows.map((r) => {
                   const open = r.rankings[scope]
                   const eName = (eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`).toUpperCase()
@@ -1784,29 +1785,29 @@ function RankingsTab({ swimmerId, swimmer }) {
                   if (open.age) blocks.push({ tag: open.age.label, rank: open.age })
                   return (
                     <div key={`${scope}-${r.event_id}-${r.pool}`}
-                      className="bg-white p-2 sm:p-2.5 rounded-sm border-2 border-ink-900">
+                      className="bg-white p-1.5 sm:p-2.5 rounded-sm border-2 border-ink-900">
                       {/* Event pill */}
-                      <div className="text-center text-white font-bold uppercase rounded-full py-1 px-3 mb-2 text-label leading-tight bg-ink-900 truncate">
+                      <div className="text-center text-white font-bold uppercase rounded-full py-0.5 sm:py-1 px-2 mb-1.5 sm:mb-2 text-[9px] sm:text-label leading-tight bg-ink-900 truncate">
                         {eName}
                       </div>
-                      <div className="flex gap-1.5 sm:gap-2 items-stretch">
-                        {/* Rank squares — OPEN and age band adjacent */}
+                      {/* Rank squares — OPEN and age band adjacent, filling the row */}
+                      <div className="flex gap-1.5 sm:gap-2 items-stretch mb-1.5 sm:mb-2">
                         {blocks.map(({ tag, rank }) => (
                           <div key={tag}
-                            className="flex flex-col items-center justify-center text-white px-2.5 sm:px-3 py-1.5 shrink-0 rounded-sm bg-ink-900 min-w-[3.5rem]">
-                            <span className="text-[10px] font-bold tracking-wider leading-none mb-1 text-aqua-400">{tag}</span>
+                            className="flex-1 flex flex-col items-center justify-center text-white px-1 py-1 sm:py-1.5 min-w-0 rounded-sm bg-ink-900">
+                            <span className="text-[8px] sm:text-[10px] font-bold tracking-wider leading-none mb-0.5 sm:mb-1 text-aqua-400">{tag}</span>
                             <span className="flex items-start">
-                              <span className="text-2xl sm:text-3xl font-bold leading-none tnum"><AnimatedNumber value={rank.rank} /></span>
-                              <span className="text-[10px] sm:text-[11px] font-bold ms-0.5 mt-0.5">{ordinalSuffix(rank.rank)}</span>
+                              <span className="text-xl sm:text-3xl font-bold leading-none tnum"><AnimatedNumber value={rank.rank} /></span>
+                              <span className="text-[8px] sm:text-[11px] font-bold ms-0.5 mt-0.5">{ordinalSuffix(rank.rank)}</span>
                             </span>
                           </div>
                         ))}
-                        {/* Time box */}
-                        <div className="flex-1 flex items-center justify-center py-1.5 px-1 min-w-0 rounded-sm border-2 sm:border-[3px] border-ink-900">
-                          <span className="text-[22px] sm:text-[26px] leading-none font-bold tnum tracking-tight text-ink-900">
-                            <AnimatedTime time={r.best_time} />
-                          </span>
-                        </div>
+                      </div>
+                      {/* Time bar */}
+                      <div className="flex items-center justify-center py-1 sm:py-1.5 px-1 rounded-sm border-2 sm:border-[3px] border-ink-900">
+                        <span className="text-[15px] sm:text-2xl leading-none font-bold tnum tracking-tight text-ink-900">
+                          <AnimatedTime time={r.best_time} />
+                        </span>
                       </div>
                     </div>
                   )

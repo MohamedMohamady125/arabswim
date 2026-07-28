@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { login as loginApi } from '../api/core'
+import Button from '../components/ui/Button'
+import { Input, FieldLabel } from '../components/ui/Input'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -27,29 +30,44 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex justify-center mb-4">
-          <img src="/logo.png" alt="ArabSwiM" className="h-20 w-20 rounded-full object-cover" />
+    <div className="min-h-screen bg-ink-950 relative flex items-center justify-center px-4">
+      {/* aqua accent glow */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(60% 40% at 50% 0%, rgba(8,145,178,0.25), transparent 70%)' }}
+      />
+      <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-aqua-600 via-aqua-400 to-aqua-600" />
+
+      <div className="relative w-full max-w-md">
+        <div className="bg-white rounded-lg shadow-pop p-6 sm:p-8 animate-fade-up">
+          <div className="flex justify-center mb-4">
+            <img src="/logo.png" alt="ArabSwiM" className="h-16 w-16 rounded-full object-cover" />
+          </div>
+          <h1 className="text-title text-center text-ink-900">ArabSwiM Admin</h1>
+          <p className="text-body-sm text-ink-400 text-center mt-1 mb-6">Sign in to manage the platform</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-neg/5 text-neg border border-neg/20 px-3 py-2.5 rounded-sm text-body-sm">{error}</div>
+            )}
+            <div>
+              <FieldLabel>Username</FieldLabel>
+              <Input type="text" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
+            </div>
+            <div>
+              <FieldLabel>Password</FieldLabel>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+            </div>
+            <Button type="submit" loading={loading} className="w-full">
+              Sign in
+            </Button>
+          </form>
         </div>
-        <h1 className="text-3xl font-bold text-center mb-1">
-          <span className="text-blue-600">ArabSwiM</span>
-        </h1>
-        <p className="text-gray-500 text-center mb-8">Management System</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
-          </div>
-          <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+        <div className="text-center mt-4">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-body-sm text-ink-400 hover:text-white transition-colors">
+            <ArrowLeft size={14} />
+            Back to the site
+          </Link>
+        </div>
       </div>
     </div>
   )

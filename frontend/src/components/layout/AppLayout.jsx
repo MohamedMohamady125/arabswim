@@ -1,17 +1,15 @@
 import { Outlet } from 'react-router-dom'
-import Header from './Header'
-import Sidebar from './Sidebar'
+import TopNav from './TopNav'
+import Footer from './Footer'
 
 export default function AppLayout() {
   return (
-    <div className="min-h-screen bg-gray-50 md:flex">
-      <Sidebar />
-      <div className="flex-1 min-w-0 flex flex-col w-full">
-        <Header />
-        <main className="px-3 py-3 sm:px-4 sm:py-4 md:p-6 flex-1 overflow-x-hidden">
-          <Outlet />
-        </main>
-      </div>
+    <div className="min-h-screen bg-ink-50 flex flex-col">
+      <TopNav />
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 overflow-x-hidden">
+        <Outlet />
+      </main>
+      <Footer />
     </div>
   )
 }

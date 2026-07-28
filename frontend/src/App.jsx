@@ -45,37 +45,37 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      <Route path="/" element={<AppLayout />}>
         <Route index element={<HomePage />} />
         <Route path="swimmers" element={<SwimmersPage />} />
-        <Route path="swimmers/new" element={<SwimmerFormPage />} />
-        <Route path="swimmers/:id/edit" element={<SwimmerFormPage />} />
+        <Route path="swimmers/new" element={<ProtectedRoute><SwimmerFormPage /></ProtectedRoute>} />
+        <Route path="swimmers/:id/edit" element={<ProtectedRoute><SwimmerFormPage /></ProtectedRoute>} />
         <Route path="swimmers/compare" element={<CompareSwimmersPage />} />
         <Route path="swimmers/:id" element={<SwimmerProfilePage />} />
         <Route path="championships" element={<ChampionshipsPage />} />
-        <Route path="championships/new" element={<ChampionshipFormPage />} />
-        <Route path="championships/:id/edit" element={<ChampionshipFormPage />} />
+        <Route path="championships/new" element={<ProtectedRoute><ChampionshipFormPage /></ProtectedRoute>} />
+        <Route path="championships/:id/edit" element={<ProtectedRoute><ChampionshipFormPage /></ProtectedRoute>} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="meets/:id" element={<MeetDetailPage />} />
         <Route path="new-records" element={<NewRecordsPage />} />
         <Route path="records" element={<RecordsPage />} />
-        <Route path="records/new" element={<RecordFormPage />} />
-        <Route path="records/:id/edit" element={<RecordFormPage />} />
+        <Route path="records/new" element={<ProtectedRoute><RecordFormPage /></ProtectedRoute>} />
+        <Route path="records/:id/edit" element={<ProtectedRoute><RecordFormPage /></ProtectedRoute>} />
         <Route path="medals" element={<MedalsPage />} />
         <Route path="rankings" element={<RankingsPage />} />
         <Route path="teams" element={<TeamsPage />} />
-        <Route path="teams/new" element={<TeamFormPage />} />
-        <Route path="teams/:id/edit" element={<TeamFormPage />} />
+        <Route path="teams/new" element={<ProtectedRoute><TeamFormPage /></ProtectedRoute>} />
+        <Route path="teams/:id/edit" element={<ProtectedRoute><TeamFormPage /></ProtectedRoute>} />
         <Route path="teams/:id" element={<TeamProfilePage />} />
         <Route path="news" element={<NewsPage />} />
-        <Route path="news/new" element={<NewsFormPage />} />
-        <Route path="news/:id/edit" element={<NewsFormPage />} />
+        <Route path="news/new" element={<ProtectedRoute><NewsFormPage /></ProtectedRoute>} />
+        <Route path="news/:id/edit" element={<ProtectedRoute><NewsFormPage /></ProtectedRoute>} />
         <Route path="market" element={<MarketPage />} />
-        <Route path="market/new" element={<MarketFormPage />} />
-        <Route path="market/:id/edit" element={<MarketFormPage />} />
+        <Route path="market/new" element={<ProtectedRoute><MarketFormPage /></ProtectedRoute>} />
+        <Route path="market/:id/edit" element={<ProtectedRoute><MarketFormPage /></ProtectedRoute>} />
         <Route path="hall-of-fame" element={<HallOfFamePage />} />
-        <Route path="hall-of-fame/new" element={<InducteeFormPage />} />
-        <Route path="hall-of-fame/:id/edit" element={<InducteeFormPage />} />
+        <Route path="hall-of-fame/new" element={<ProtectedRoute><InducteeFormPage /></ProtectedRoute>} />
+        <Route path="hall-of-fame/:id/edit" element={<ProtectedRoute><InducteeFormPage /></ProtectedRoute>} />
         <Route path="media" element={<MediaPage />} />
         <Route path="media/albums/:id" element={<AlbumDetailPage />} />
         <Route path="countries" element={<CountriesPage />} />
@@ -83,9 +83,9 @@ export default function App() {
         <Route path="qualifying-times" element={<QualifyingTimesPage />} />
         <Route path="sponsors" element={<SponsorsPage />} />
         <Route path="coaches" element={<CoachesPage />} />
-        <Route path="coaches/new" element={<CoachFormPage />} />
-        <Route path="coaches/:id/edit" element={<CoachFormPage />} />
-        <Route path="import" element={<ImportPage />} />
+        <Route path="coaches/new" element={<ProtectedRoute><CoachFormPage /></ProtectedRoute>} />
+        <Route path="coaches/:id/edit" element={<ProtectedRoute><CoachFormPage /></ProtectedRoute>} />
+        <Route path="import" element={<ProtectedRoute><ImportPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   )

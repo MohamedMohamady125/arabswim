@@ -1,24 +1,35 @@
 import { useState, useEffect, useRef } from 'react'
 import {
+  Plus, Upload, Pencil, Trash2, ChevronLeft, ChevronRight,
+  Clock, Check, X, Medal, Globe, Trophy,
+} from 'lucide-react'
+import {
   getQualifyingStandards, getQualifyingStandard,
   createQualifyingStandard, updateQualifyingStandard, deleteQualifyingStandard,
   uploadQualifyingPdf, addQualifyingTime, deleteQualifyingTime,
 } from '../api/qualifyingTimes'
 import { getEvents } from '../api/core'
 import { formatDate } from '../utils/constants'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import {
+  Button, Card, Badge, SegmentedControl, Input, Select, FieldLabel,
+  Modal, ConfirmDialog, EmptyState, Skeleton, PageHeader,
+} from '../components/ui'
+import TimeDisplay from '../components/domain/TimeDisplay'
 
 const COMP_TYPES = [
-  { value: 'olympics', label: 'Olympics', color: 'bg-amber-100 text-amber-800', icon: '\u{1F3C5}' },
-  { value: 'world_championships', label: 'World Championships', color: 'bg-sky-100 text-sky-800', icon: '\u{1F30D}' },
+  { value: 'olympics', label: 'Olympics', badge: 'medal', icon: Medal },
+  { value: 'world_championships', label: 'World Championships', badge: 'aqua', icon: Globe },
 ]
 
 // Resolve any competition_type (including custom ones) to a display config
 function getCompType(value) {
   const known = COMP_TYPES.find(t => t.value === value)
   if (known) return known
-  if (!value) return { value: '', label: 'Standard', color: 'bg-gray-100 text-gray-600', icon: '\u{1F3C6}' }
+  if (!value) return { value: '', label: 'Standard', badge: 'status', icon: Trophy }
   const label = value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-  return { value, label, color: 'bg-violet-100 text-violet-800', icon: '\u{1F3C6}' }
+  return { value, label, badge: 'record', icon: Trophy }
 }
 
 function formatTime(cs) {
@@ -30,8 +41,48 @@ function formatTime(cs) {
   return `${seconds}.${String(centis).padStart(2, '0')}`
 }
 
+/* ───────── Standard form fields (shared by create/edit modals) ───────── */
+function StandardFields({ name, setName, type, setType, customType, setCustomType, year, setYear, periodStart, setPeriodStart, periodEnd, setPeriodEnd, namePlaceholder }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <FieldLabel required>Competition Name</FieldLabel>
+        <Input value={name} onChange={e => setName(e.target.value)} placeholder={namePlaceholder} autoFocus required />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <FieldLabel>Type</FieldLabel>
+          <Select value={type} onChange={e => setType(e.target.value)}>
+            {COMP_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            <option value="__custom__">Custom...</option>
+          </Select>
+          {type === '__custom__' && (
+            <Input value={customType} onChange={e => setCustomType(e.target.value)}
+              placeholder="e.g. Mediterranean Games" className="mt-2" required />
+          )}
+        </div>
+        <div>
+          <FieldLabel>Year</FieldLabel>
+          <Input type="number" value={year} onChange={e => setYear(parseInt(e.target.value))} />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <FieldLabel>Period Start</FieldLabel>
+          <Input type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
+        </div>
+        <div>
+          <FieldLabel>Period End</FieldLabel>
+          <Input type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ───────── Create Standard Modal ───────── */
 function CreateModal({ onClose, onCreated }) {
+  const toast = useToast()
   const [name, setName] = useState('')
   const [type, setType] = useState('olympics')
   const [customType, setCustomType] = useState('')
@@ -57,67 +108,35 @@ function CreateModal({ onClose, onCreated }) {
       })
       onCreated()
     } catch {
-      alert('Failed to create')
+      toast.error('Failed to create')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <form onSubmit={handleSubmit} className="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
-        <h2 className="text-lg font-bold text-gray-800">New Qualifying Standard</h2>
-        <div>
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Competition Name</label>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Paris 2024 Olympics"
-            className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" autoFocus required />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Type</label>
-            <select value={type} onChange={e => setType(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
-              {COMP_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              <option value="__custom__">Custom...</option>
-            </select>
-            {type === '__custom__' && (
-              <input value={customType} onChange={e => setCustomType(e.target.value)}
-                placeholder="e.g. Mediterranean Games"
-                className="w-full mt-2 px-3 py-2 border rounded-lg text-sm" required />
-            )}
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Year</label>
-            <input type="number" value={year} onChange={e => setYear(parseInt(e.target.value))}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Period Start</label>
-            <input type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Period End</label>
-            <input type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
-          </div>
-        </div>
-        <div className="flex gap-2 pt-2">
-          <button type="submit" disabled={saving}
-            className="flex-1 bg-sky-600 text-white font-bold py-2.5 rounded-xl hover:bg-sky-700 disabled:opacity-50 text-sm">
-            {saving ? 'Creating...' : 'Create'}
-          </button>
-          <button type="button" onClick={onClose} className="px-4 py-2.5 border rounded-xl text-sm text-gray-500 hover:bg-gray-50">Cancel</button>
+    <Modal open onClose={onClose} title="New Qualifying Standard">
+      <form onSubmit={handleSubmit}>
+        <StandardFields
+          name={name} setName={setName} type={type} setType={setType}
+          customType={customType} setCustomType={setCustomType}
+          year={year} setYear={setYear}
+          periodStart={periodStart} setPeriodStart={setPeriodStart}
+          periodEnd={periodEnd} setPeriodEnd={setPeriodEnd}
+          namePlaceholder="e.g. Paris 2024 Olympics"
+        />
+        <div className="flex justify-end gap-2 mt-5">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={saving}>Create</Button>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }
 
 /* ───────── Edit Standard Modal ───────── */
 function EditStandardModal({ standard, onClose, onSaved }) {
+  const toast = useToast()
   const isKnownType = COMP_TYPES.some(t => t.value === standard.competition_type)
   const [name, setName] = useState(standard.name)
   const [type, setType] = useState(isKnownType ? standard.competition_type : '__custom__')
@@ -144,67 +163,34 @@ function EditStandardModal({ standard, onClose, onSaved }) {
       })
       onSaved()
     } catch {
-      alert('Failed to save')
+      toast.error('Failed to save')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <form onSubmit={handleSubmit} className="relative bg-white rounded-2xl shadow-xl p-4 sm:p-6 w-full max-w-md space-y-4">
-        <h2 className="text-lg font-bold text-gray-800">Edit Standard</h2>
-        <div>
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Competition Name</label>
-          <input value={name} onChange={e => setName(e.target.value)}
-            className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" autoFocus required />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Type</label>
-            <select value={type} onChange={e => setType(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
-              {COMP_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              <option value="__custom__">Custom...</option>
-            </select>
-            {type === '__custom__' && (
-              <input value={customType} onChange={e => setCustomType(e.target.value)}
-                placeholder="e.g. Mediterranean Games"
-                className="w-full mt-2 px-3 py-2 border rounded-lg text-sm" required />
-            )}
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Year</label>
-            <input type="number" value={year} onChange={e => setYear(parseInt(e.target.value))}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Period Start</label>
-            <input type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Period End</label>
-            <input type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
-          </div>
-        </div>
-        <div className="flex gap-2 pt-2">
-          <button type="submit" disabled={saving}
-            className="flex-1 bg-sky-600 text-white font-bold py-2.5 rounded-xl hover:bg-sky-700 disabled:opacity-50 text-sm">
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-          <button type="button" onClick={onClose} className="px-4 py-2.5 border rounded-xl text-sm text-gray-500 hover:bg-gray-50">Cancel</button>
+    <Modal open onClose={onClose} title="Edit Standard">
+      <form onSubmit={handleSubmit}>
+        <StandardFields
+          name={name} setName={setName} type={type} setType={setType}
+          customType={customType} setCustomType={setCustomType}
+          year={year} setYear={setYear}
+          periodStart={periodStart} setPeriodStart={setPeriodStart}
+          periodEnd={periodEnd} setPeriodEnd={setPeriodEnd}
+        />
+        <div className="flex justify-end gap-2 mt-5">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={saving}>Save</Button>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }
 
 /* ───────── Add Time Modal ───────── */
 function AddTimeModal({ standardId, events, onClose, onAdded }) {
+  const toast = useToast()
   const [eventId, setEventId] = useState('')
   const [gender, setGender] = useState('M')
   const [cut, setCut] = useState('A')
@@ -222,66 +208,62 @@ function AddTimeModal({ standardId, events, onClose, onAdded }) {
       await addQualifyingTime(standardId, { event: eventId, gender, cut, pool, time_text: timeText.trim() })
       onAdded()
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to add time')
+      toast.error(err.response?.data?.error || 'Failed to add time')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <form onSubmit={handleSubmit} className="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
-        <h2 className="text-lg font-bold text-gray-800">Add Qualifying Time</h2>
+    <Modal open onClose={onClose} title="Add Qualifying Time">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Event</label>
-          <select value={eventId} onChange={e => setEventId(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" required>
+          <FieldLabel required>Event</FieldLabel>
+          <Select value={eventId} onChange={e => setEventId(e.target.value)} required>
             <option value="">Select event...</option>
             {individualEvents.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Gender</label>
-            <select value={gender} onChange={e => setGender(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+            <FieldLabel>Gender</FieldLabel>
+            <Select value={gender} onChange={e => setGender(e.target.value)}>
               <option value="M">Male</option>
               <option value="F">Female</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Cut</label>
-            <select value={cut} onChange={e => setCut(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+            <FieldLabel>Cut</FieldLabel>
+            <Select value={cut} onChange={e => setCut(e.target.value)}>
               <option value="A">A Standard</option>
               <option value="B">B Standard</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pool</label>
-            <select value={pool} onChange={e => setPool(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+            <FieldLabel>Pool</FieldLabel>
+            <Select value={pool} onChange={e => setPool(e.target.value)}>
               <option value="LCM">LCM (50m)</option>
               <option value="SCM">SCM (25m)</option>
-            </select>
+            </Select>
           </div>
         </div>
         <div>
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Time</label>
-          <input value={timeText} onChange={e => setTimeText(e.target.value)} placeholder="1:02.34 or 28.75"
-            className="w-full mt-1 px-3 py-2 border rounded-lg text-sm font-mono" required />
+          <FieldLabel required>Time</FieldLabel>
+          <Input value={timeText} onChange={e => setTimeText(e.target.value)}
+            placeholder="1:02.34 or 28.75" className="tnum" required />
         </div>
-        <div className="flex gap-2 pt-2">
-          <button type="submit" disabled={saving}
-            className="flex-1 bg-sky-600 text-white font-bold py-2.5 rounded-xl hover:bg-sky-700 disabled:opacity-50 text-sm">
-            {saving ? 'Saving...' : 'Add Time'}
-          </button>
-          <button type="button" onClick={onClose} className="px-4 py-2.5 border rounded-xl text-sm text-gray-500 hover:bg-gray-50">Cancel</button>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={saving}>Add Time</Button>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }
 
 /* ───────── Standard Detail View ───────── */
-function StandardDetail({ standardId, onBack }) {
+function StandardDetail({ standardId, onBack, isAdmin }) {
+  const toast = useToast()
   const [standard, setStandard] = useState(null)
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
@@ -295,6 +277,7 @@ function StandardDetail({ standardId, onBack }) {
   const [genderFilter, setGenderFilter] = useState('M')
   const [poolFilter, setPoolFilter] = useState('LCM')
   const [cutFilter, setCutFilter] = useState('A')
+  const [pendingDeleteTime, setPendingDeleteTime] = useState(null)
   const fileRef = useRef()
 
   const refresh = () => {
@@ -331,9 +314,10 @@ function StandardDetail({ standardId, onBack }) {
     }
   }
 
-  const handleDeleteTime = async (timeId) => {
-    if (!window.confirm('Delete this qualifying time?')) return
-    await deleteQualifyingTime(standardId, timeId)
+  const confirmDeleteTime = async () => {
+    if (!pendingDeleteTime) return
+    await deleteQualifyingTime(standardId, pendingDeleteTime)
+    setPendingDeleteTime(null)
     refresh()
   }
 
@@ -354,16 +338,25 @@ function StandardDetail({ standardId, onBack }) {
       setEditingTimeId(null)
       refresh()
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to save time')
+      toast.error(err.response?.data?.error || 'Failed to save time')
     } finally {
       setSavingTime(false)
     }
   }
 
-  if (loading) return <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-10 w-full max-w-lg" />
+        <Skeleton className="h-72 w-full" />
+      </div>
+    )
+  }
   if (!standard) return null
 
   const compType = getCompType(standard.competition_type)
+  const CompIcon = compType.icon
   const times = (standard.times || []).filter(t => t.gender === genderFilter && t.pool === poolFilter && t.cut === cutFilter)
 
   // Group times by event for the selected cut
@@ -388,101 +381,77 @@ function StandardDetail({ standardId, onBack }) {
     byStroke[row.stroke].push(row)
   }
 
-  const strokeColors = {
-    Freestyle: { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', header: 'bg-sky-100' },
-    Backstroke: { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', header: 'bg-violet-100' },
-    Butterfly: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', header: 'bg-amber-100' },
-    Breaststroke: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', header: 'bg-emerald-100' },
-    'Individual Medley': { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700', header: 'bg-pink-100' },
-  }
-  const defaultColors = { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', header: 'bg-gray-100' }
-
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-5 md:space-y-6 animate-fade-up">
       {/* Header */}
-      <div className="flex items-start gap-4">
-        <button onClick={onBack} className="mt-1 p-2 rounded-xl border hover:bg-gray-50 transition-colors">
-          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
-        </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xl">{compType?.icon}</span>
-            <h1 className="text-xl sm:text-2xl font-black text-gray-800">{standard.name}</h1>
-            <button onClick={() => setShowEdit(true)} title="Edit standard"
-              className="p-1.5 rounded-lg text-gray-400 hover:text-sky-600 hover:bg-sky-50 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" /></svg>
-            </button>
+      <div className="flex items-start gap-3">
+        <Button variant="secondary" size="sm" icon={ChevronLeft} onClick={onBack} aria-label="Back to standards" className="mt-1 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CompIcon size={22} className="text-aqua-600 shrink-0" />
+            <h1 className="text-display text-ink-900">{standard.name}</h1>
+            {isAdmin && (
+              <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setShowEdit(true)} aria-label="Edit standard" />
+            )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className={`px-2.5 py-1 rounded-lg font-bold ${compType?.color}`}>{compType?.label}</span>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <Badge variant={compType.badge}>{compType.label}</Badge>
             {standard.qualifying_period_start && standard.qualifying_period_end && (
-              <span className="text-gray-400">
-                Qualifying: {formatDate(standard.qualifying_period_start)} - {formatDate(standard.qualifying_period_end)}
+              <span className="text-body-sm text-ink-400">
+                Qualifying: {formatDate(standard.qualifying_period_start)} – {formatDate(standard.qualifying_period_end)}
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Actions Bar */}
+      {/* Filters + admin actions */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Gender Toggle */}
-        <div className="flex rounded-xl border overflow-hidden">
-          {[{ v: 'M', l: 'Men' }, { v: 'F', l: 'Women' }].map(g => (
-            <button key={g.v} onClick={() => setGenderFilter(g.v)}
-              className={`px-4 py-2 text-xs font-bold transition-all ${genderFilter === g.v ? 'bg-sky-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
-              {g.l}
-            </button>
-          ))}
-        </div>
-        {/* Pool Toggle */}
-        <div className="flex rounded-xl border overflow-hidden">
-          {[{ v: 'LCM', l: 'LCM (50m)' }, { v: 'SCM', l: 'SCM (25m)' }].map(p => (
-            <button key={p.v} onClick={() => setPoolFilter(p.v)}
-              className={`px-4 py-2 text-xs font-bold transition-all ${poolFilter === p.v ? 'bg-sky-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
-              {p.l}
-            </button>
-          ))}
-        </div>
-        {/* Cut Toggle */}
-        <div className="flex rounded-xl border overflow-hidden">
-          {[{ v: 'A', l: 'A Cut', color: 'bg-emerald-600' }, { v: 'B', l: 'B Cut', color: 'bg-amber-600' }].map(c => (
-            <button key={c.v} onClick={() => setCutFilter(c.v)}
-              className={`px-4 py-2 text-xs font-bold transition-all ${cutFilter === c.v ? `${c.color} text-white` : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
-              {c.l}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          options={[{ key: 'M', label: 'Men' }, { key: 'F', label: 'Women' }]}
+          value={genderFilter} onChange={setGenderFilter}
+        />
+        <SegmentedControl
+          options={[{ key: 'LCM', label: 'LCM 50m' }, { key: 'SCM', label: 'SCM 25m' }]}
+          value={poolFilter} onChange={setPoolFilter}
+        />
+        <SegmentedControl
+          options={[{ key: 'A', label: 'A Cut' }, { key: 'B', label: 'B Cut' }]}
+          value={cutFilter} onChange={setCutFilter}
+        />
 
-        <div className="flex gap-2 ml-auto">
-          <button onClick={() => setShowAddTime(true)}
-            className="px-3 py-2 bg-sky-600 text-white rounded-xl text-xs font-bold hover:bg-sky-700 flex items-center gap-1.5">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-            Add Time
-          </button>
-          <label className={`px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 flex items-center gap-1.5 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-            {uploading ? 'Uploading...' : 'Import PDF'}
-            <input ref={fileRef} type="file" accept=".pdf" onChange={handleUpload} className="hidden" />
-          </label>
-        </div>
+        {isAdmin && (
+          <div className="flex gap-2 ms-auto">
+            <Button size="sm" icon={Plus} onClick={() => setShowAddTime(true)}>Add Time</Button>
+            <label className={uploading ? 'opacity-50 pointer-events-none' : ''}>
+              <span className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-sm text-body-sm font-medium bg-white text-ink-900 border border-ink-200 hover:border-aqua-500/40 hover:bg-aqua-50 cursor-pointer transition-colors">
+                <Upload size={16} />
+                {uploading ? 'Uploading...' : 'Import PDF'}
+              </span>
+              <input ref={fileRef} type="file" accept=".pdf" onChange={handleUpload} className="hidden" />
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Upload Result */}
       {uploadResult && (
-        <div className={`rounded-xl border p-4 text-sm ${uploadResult.error ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+        <div className={`rounded-md border p-4 text-body-sm ${uploadResult.error ? 'bg-neg/5 border-neg/20 text-neg' : 'bg-pos/5 border-pos/20 text-pos'}`}>
           {uploadResult.error ? (
             <p>{uploadResult.error}</p>
           ) : (
             <div className="space-y-1">
-              <p className="font-bold">Import complete: {uploadResult.created} created, {uploadResult.updated} updated</p>
+              <p className="font-semibold">Import complete: {uploadResult.created} created, {uploadResult.updated} updated</p>
               {uploadResult.pools_used && (
-                <p className="text-xs">Pool{uploadResult.pools_used.length > 1 ? 's' : ''} detected: {uploadResult.pools_used.map(p => <span key={p} className="inline-block ml-1 px-2 py-0.5 rounded bg-emerald-100 font-bold">{p}</span>)}</p>
+                <p>
+                  Pool{uploadResult.pools_used.length > 1 ? 's' : ''} detected:
+                  {uploadResult.pools_used.map(p => <span key={p} className="inline-block ms-1.5 px-2 py-0.5 rounded-sm bg-pos/10 font-semibold">{p}</span>)}
+                </p>
               )}
               {uploadResult.skipped?.length > 0 && (
-                <details className="text-xs">
+                <details>
                   <summary className="cursor-pointer font-semibold">{uploadResult.skipped.length} skipped</summary>
-                  <ul className="mt-1 space-y-0.5 pl-4 list-disc">{uploadResult.skipped.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                  <ul className="mt-1 space-y-0.5 ps-5 list-disc">{uploadResult.skipped.map((s, i) => <li key={i}>{s}</li>)}</ul>
                 </details>
               )}
             </div>
@@ -490,94 +459,105 @@ function StandardDetail({ standardId, onBack }) {
         </div>
       )}
 
-      {/* Times Table grouped by stroke */}
+      {/* Times tables grouped by stroke */}
       {eventRows.length === 0 ? (
-        <div className="bg-white rounded-2xl border shadow-sm p-12 text-center">
-          <svg className="w-14 h-14 mx-auto mb-3 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-gray-400 font-medium">No qualifying times for {genderFilter === 'M' ? 'Men' : 'Women'} ({poolFilter}) yet</p>
-          <p className="text-gray-300 text-sm mt-1">Import a PDF or add times manually</p>
-        </div>
+        <Card padding="none">
+          <EmptyState
+            icon={Clock}
+            title={`No qualifying times for ${genderFilter === 'M' ? 'Men' : 'Women'} (${poolFilter}) yet`}
+            hint={isAdmin ? 'Import a PDF or add times manually' : 'Times for this selection will appear here once published'}
+          />
+        </Card>
       ) : (
-        <div className="space-y-4">
-          {Object.entries(byStroke).map(([stroke, rows]) => {
-            const colors = strokeColors[stroke] || defaultColors
-            return (
-              <div key={stroke} className={`rounded-2xl border ${colors.border} overflow-hidden shadow-sm`}>
-                <div className={`${colors.header} px-4 py-2.5 flex items-center gap-2`}>
-                  <h3 className={`font-bold text-sm ${colors.text}`}>{stroke}</h3>
-                  <span className={`text-[10px] font-bold ${colors.text} opacity-60`}>{rows.length} event{rows.length !== 1 ? 's' : ''}</span>
-                </div>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className={`${colors.bg} border-b ${colors.border}`}>
-                      <th className="px-4 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Event</th>
-                      <th className="px-4 py-2 text-center text-[10px] font-bold uppercase tracking-wider" style={{ color: cutFilter === 'A' ? '#059669' : '#d97706' }}>
-                        {cutFilter === 'A' ? 'A Standard' : 'B Standard'}
-                      </th>
-                      <th className="px-4 py-2 w-10" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, i) => (
-                      <tr key={i} className={`border-b ${colors.border} last:border-0 hover:${colors.bg} transition-colors`}>
-                        <td className="px-4 py-2.5 font-semibold text-gray-800">{row.event_name}</td>
-                        <td className="px-4 py-2.5 text-center">
-                          {row.time ? (
-                            editingTimeId === row.time.id ? (
-                              <span className="inline-flex items-center gap-1.5">
-                                <input value={editTimeText} onChange={e => setEditTimeText(e.target.value)}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') { e.preventDefault(); handleSaveTime(row.time) }
-                                    if (e.key === 'Escape') setEditingTimeId(null)
-                                  }}
-                                  className="w-24 font-mono font-bold text-xs border-2 border-sky-400 rounded-lg px-2 py-1 text-center"
-                                  autoFocus />
-                                <button onClick={() => handleSaveTime(row.time)} disabled={savingTime}
-                                  className="px-2 py-1 bg-sky-600 text-white rounded-lg text-[10px] font-bold hover:bg-sky-700 disabled:opacity-50">
-                                  {savingTime ? '...' : 'Save'}
-                                </button>
-                                <button onClick={() => setEditingTimeId(null)}
-                                  className="px-1.5 py-1 text-gray-400 hover:text-gray-600 text-[10px] font-bold">✕</button>
-                              </span>
-                            ) : (
-                              <button onClick={() => startEditTime(row.time)} title="Tap to edit"
-                                className={`font-mono font-bold px-2.5 py-1 rounded-lg text-xs cursor-pointer hover:ring-2 hover:ring-sky-300 transition-all ${cutFilter === 'A' ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50'}`}>
-                                {row.time.formatted_time}
-                              </button>
-                            )
-                          ) : <span className="text-gray-300">-</span>}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          {row.time && editingTimeId !== row.time.id && (
-                            <button onClick={() => handleDeleteTime(row.time.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+        <div className="space-y-4 md:space-y-5">
+          {Object.entries(byStroke).map(([stroke, rows]) => (
+            <Card
+              key={stroke}
+              padding="none"
+              title={stroke}
+              action={<span className="text-label text-ink-400">{rows.length} event{rows.length !== 1 ? 's' : ''}</span>}
+            >
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-ink-50 border-b border-ink-100">
+                    <th scope="col" className="px-4 md:px-5 py-2.5 text-start text-label text-ink-400">Event</th>
+                    <th scope="col" className="px-4 py-2.5 text-end text-label text-ink-400">
+                      {cutFilter === 'A' ? 'A Standard' : 'B Standard'}
+                    </th>
+                    {isAdmin && <th scope="col" className="px-2 py-2.5 w-10" aria-label="Actions" />}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink-100">
+                  {rows.map((row, i) => (
+                    <tr key={i} className="hover:bg-ink-50 transition-colors">
+                      <td className="px-4 md:px-5 py-3 text-body-sm font-medium text-ink-900">{row.event_name}</td>
+                      <td className="px-4 py-2 text-end">
+                        {row.time ? (
+                          isAdmin && editingTimeId === row.time.id ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Input value={editTimeText} onChange={e => setEditTimeText(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') { e.preventDefault(); handleSaveTime(row.time) }
+                                  if (e.key === 'Escape') setEditingTimeId(null)
+                                }}
+                                className="w-28 tnum text-center h-9"
+                                autoFocus />
+                              <Button size="sm" icon={Check} loading={savingTime} onClick={() => handleSaveTime(row.time)} aria-label="Save time" />
+                              <Button size="sm" variant="ghost" icon={X} onClick={() => setEditingTimeId(null)} aria-label="Cancel editing" />
+                            </span>
+                          ) : isAdmin ? (
+                            <button onClick={() => startEditTime(row.time)} title="Tap to edit"
+                              className="rounded-sm px-2 py-1.5 -me-2 hover:bg-aqua-50 hover:ring-1 hover:ring-aqua-500/40 transition-all">
+                              <TimeDisplay time={row.time.formatted_time} />
                             </button>
+                          ) : (
+                            <TimeDisplay time={row.time.formatted_time} />
+                          )
+                        ) : <span className="text-ink-200">–</span>}
+                      </td>
+                      {isAdmin && (
+                        <td className="px-2 py-2 text-end">
+                          {row.time && editingTimeId !== row.time.id && (
+                            <Button variant="ghost" size="sm" icon={Trash2}
+                              onClick={() => setPendingDeleteTime(row.time.id)}
+                              aria-label="Delete time"
+                              className="text-ink-400 hover:text-neg" />
                           )}
                         </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          })}
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          ))}
         </div>
       )}
 
-      {showEdit && <EditStandardModal standard={standard} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); refresh() }} />}
-      {showAddTime && <AddTimeModal standardId={standardId} events={events} onClose={() => setShowAddTime(false)} onAdded={() => { setShowAddTime(false); refresh() }} />}
+      {isAdmin && showEdit && <EditStandardModal standard={standard} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); refresh() }} />}
+      {isAdmin && showAddTime && <AddTimeModal standardId={standardId} events={events} onClose={() => setShowAddTime(false)} onAdded={() => { setShowAddTime(false); refresh() }} />}
+      <ConfirmDialog
+        open={!!pendingDeleteTime}
+        title="Delete qualifying time"
+        message="Delete this qualifying time? This cannot be undone."
+        destructive
+        onConfirm={confirmDeleteTime}
+        onCancel={() => setPendingDeleteTime(null)}
+      />
     </div>
   )
 }
 
 /* ───────── Main Page ───────── */
 export default function QualifyingTimesPage() {
+  const { token } = useAuth()
+  const isAdmin = !!token
+  const toast = useToast()
   const [standards, setStandards] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   const refresh = () => {
     getQualifyingStandards().then(res => setStandards(res.data.results || res.data)).catch(() => {})
@@ -589,66 +569,76 @@ export default function QualifyingTimesPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const confirmDeleteStandard = () => {
+    if (!pendingDelete) return
+    deleteQualifyingStandard(pendingDelete.id).then(refresh).catch(() => toast.error('Failed to delete'))
+    setPendingDelete(null)
+  }
+
   if (selectedId) {
     return (
-      <div className="p-4 sm:p-6 max-w-5xl mx-auto">
-        <StandardDetail standardId={selectedId} onBack={() => { setSelectedId(null); refresh() }} />
+      <div className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8 py-6">
+        <StandardDetail standardId={selectedId} isAdmin={isAdmin} onBack={() => { setSelectedId(null); refresh() }} />
       </div>
     )
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-sky-600 via-sky-700 to-indigo-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black">Qualifying Times</h1>
-            <p className="text-sky-200 text-sm mt-1">Olympic & World Championship entry standards</p>
-          </div>
-          <button onClick={() => setShowCreate(true)}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-            New Standard
-          </button>
-        </div>
-      </div>
+    <div className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+      <PageHeader
+        title="Qualifying Times"
+        subtitle="Olympic & World Championship entry standards"
+        action={isAdmin && (
+          <Button icon={Plus} onClick={() => setShowCreate(true)}>New Standard</Button>
+        )}
+      />
 
       {loading ? (
-        <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-sky-200 border-t-sky-600 rounded-full animate-spin" /></div>
-      ) : standards.length === 0 ? (
-        <div className="bg-white rounded-2xl border shadow-sm p-12 text-center">
-          <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-gray-400 font-medium text-lg">No qualifying standards yet</p>
-          <p className="text-gray-300 text-sm mt-1">Create one to start adding A & B cut times</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-md shadow-card border border-ink-100 p-5">
+              <Skeleton className="h-5 w-2/3 mb-3" />
+              <Skeleton className="h-4 w-1/3" />
+            </div>
+          ))}
         </div>
+      ) : standards.length === 0 ? (
+        <Card padding="none">
+          <EmptyState
+            icon={Clock}
+            title="No qualifying standards yet"
+            hint={isAdmin ? 'Create one to start adding A & B cut times' : 'Qualifying standards will appear here once published'}
+            action={isAdmin && <Button icon={Plus} onClick={() => setShowCreate(true)}>New Standard</Button>}
+          />
+        </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {standards.map((s, i) => {
             const compType = getCompType(s.competition_type)
+            const CompIcon = compType.icon
             return (
-              <div key={s.id} className="bg-white rounded-2xl border shadow-sm p-5 text-left hover:shadow-md hover:border-sky-200 transition-all group animate-fade-in-up"
-                style={{ animationDelay: `${i * 0.06}s` }}>
+              <div key={s.id}
+                className="bg-white rounded-md shadow-card border border-ink-100 p-4 md:p-5 hover:border-aqua-500/40 hover:bg-aqua-50/30 transition-colors group animate-fade-up"
+                style={{ animationDelay: `${i * 0.04}s` }}>
                 <div className="flex items-start gap-3 cursor-pointer" onClick={() => setSelectedId(s.id)}>
-                  <span className="text-2xl">{compType?.icon}</span>
+                  <span className="w-10 h-10 rounded-full bg-aqua-50 text-aqua-600 flex items-center justify-center shrink-0">
+                    <CompIcon size={20} />
+                  </span>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-800 group-hover:text-sky-700 transition-colors">{s.name}</h3>
+                    <h3 className="text-body font-semibold text-ink-900 group-hover:text-aqua-600 transition-colors truncate">{s.name}</h3>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${compType?.color}`}>{compType?.label}</span>
-                      <span className="text-[10px] text-gray-400">{s.times_count || 0} times</span>
+                      <Badge variant={compType.badge}>{compType.label}</Badge>
+                      <span className="text-body-sm text-ink-400 tnum">{s.times_count || 0} times</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={(e) => {
-                      e.stopPropagation()
-                      if (!window.confirm(`Delete "${s.name}" and all its qualifying times?`)) return
-                      deleteQualifyingStandard(s.id).then(refresh).catch(() => alert('Failed to delete'))
-                    }} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50" title="Delete standard">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                    </button>
-                    <svg className="w-5 h-5 text-gray-300 group-hover:text-sky-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isAdmin && (
+                      <Button variant="ghost" size="sm" icon={Trash2}
+                        onClick={(e) => { e.stopPropagation(); setPendingDelete(s) }}
+                        aria-label="Delete standard"
+                        className="text-ink-400 hover:text-neg" />
+                    )}
+                    <ChevronRight size={18} className="text-ink-200 group-hover:text-aqua-500 transition-colors" />
                   </div>
                 </div>
               </div>
@@ -657,7 +647,15 @@ export default function QualifyingTimesPage() {
         </div>
       )}
 
-      {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); refresh() }} />}
+      {isAdmin && showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); refresh() }} />}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete standard"
+        message={pendingDelete ? `Delete "${pendingDelete.name}" and all its qualifying times? This cannot be undone.` : ''}
+        destructive
+        onConfirm={confirmDeleteStandard}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

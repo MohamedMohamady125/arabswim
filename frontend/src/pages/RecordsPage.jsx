@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Trophy } from 'lucide-react'
 import { getComputedRecords, getRecords, deleteRecord } from '../api/records'
 import { getCountries } from '../api/core'
+import DataTable from '../components/common/DataTable'
 import CountryFlag from '../components/common/CountryFlag'
+import { PageHeader, Tabs, FilterBar, Select, FieldLabel, Button, ConfirmDialog, EmptyState, TableSkeleton, SegmentedControl } from '../components/ui'
+import { TimeDisplay, EventLabel, SwimmerCell } from '../components/domain'
 import { POOL_TYPES, AGE_GROUPS, MANUAL_RECORD_SCOPES, formatDate } from '../utils/constants'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -13,11 +16,14 @@ const COMPUTED_SCOPES = ['national', 'arab', 'gcc']
 export default function RecordsPage() {
   const navigate = useNavigate()
   const { token } = useAuth()
+  const isAdmin = !!token
   const toast = useToast()
   const [records, setRecords] = useState([])
   const [manualRecords, setManualRecords] = useState([])
   const [countries, setCountries] = useState([])
   const [loading, setLoading] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const [filters, setFilters] = useState({
     scope: 'arab', country: '', gender: '', pool: 'LCM', age_group: 'OPEN',
   })
@@ -62,14 +68,17 @@ export default function RecordsPage() {
     })
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this record?')) return
+  const confirmDelete = async () => {
+    setDeleting(true)
     try {
-      await deleteRecord(id)
+      await deleteRecord(pendingDelete)
       toast.success('Record deleted')
       loadRecords()
     } catch {
       toast.error('Failed to delete record')
+    } finally {
+      setDeleting(false)
+      setPendingDelete(null)
     }
   }
 
@@ -86,135 +95,122 @@ export default function RecordsPage() {
   const menManual = sortManual(manualRecords.filter(r => r.swimmer_detail?.sex === 'M'))
   const womenManual = sortManual(manualRecords.filter(r => r.swimmer_detail?.sex === 'F'))
 
-  const RecordTable = ({ title, data, isRelay }) => (
-    <div className="mb-6 sm:mb-8">
-      <h2 className="text-base sm:text-lg font-bold mb-2 sm:mb-3">{title}</h2>
-      <div className="bg-white rounded-lg border overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Event</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{isRelay ? 'Team' : 'Swimmer'}</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden sm:table-cell">{isRelay ? 'Country' : 'Nationality'}</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Time</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden md:table-cell">FINA</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden lg:table-cell">Championship</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden lg:table-cell">Location</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden md:table-cell">Date</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {data.map((r, i) => (
-              <tr key={i} className="hover:bg-gray-50">
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium whitespace-nowrap">{r.event_name}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm whitespace-nowrap">{r.swimmer_name}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden sm:table-cell"><CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} name={r.nationality} /></td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-mono font-medium whitespace-nowrap">{r.time}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell">{r.fina_points || '-'}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell">{r.championship_name}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell"><CountryFlag code={r.championship_country_code} flagUrl={r.championship_country_flag} name={r.championship_country} /></td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell">{formatDate(r.date)}</td>
-              </tr>
-            ))}
-            {data.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">No records found.</td></tr>
-            )}
-          </tbody>
-        </table>
+  const scopeTabs = [
+    ...COMPUTED_SCOPES.map(s => ({ key: s, label: s === 'national' ? 'National' : s.toUpperCase() })),
+    ...MANUAL_RECORD_SCOPES.map(s => ({ key: s.value, label: s.label })),
+  ]
+
+  const computedColumns = (isRelay) => [
+    { key: 'event_name', label: 'Event', render: r => <EventLabel name={r.event_name} /> },
+    { key: 'swimmer_name', label: isRelay ? 'Team' : 'Swimmer',
+      render: r => <span className="font-medium">{r.swimmer_name}</span> },
+    { key: 'nationality', label: isRelay ? 'Country' : 'Nationality',
+      render: r => <CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} name={r.nationality} /> },
+    { key: 'time', label: 'Time', align: 'end', render: r => <TimeDisplay time={r.time} /> },
+    { key: 'fina_points', label: 'FINA', numeric: true, render: r => r.fina_points || '-' },
+    { key: 'championship_name', label: 'Championship' },
+    { key: 'championship_country', label: 'Location',
+      render: r => <CountryFlag code={r.championship_country_code} flagUrl={r.championship_country_flag} name={r.championship_country} /> },
+    { key: 'date', label: 'Date', render: r => formatDate(r.date) },
+  ]
+
+  const computedMobileRender = (r) => (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <EventLabel name={r.event_name} className="mb-0.5" />
+        <div className="text-body-sm font-medium text-ink-900 truncate">{r.swimmer_name}</div>
+        <div className="text-body-sm text-ink-400 truncate">
+          {[r.nationality, r.championship_name, formatDate(r.date)].filter(Boolean).join(' · ')}
         </div>
       </div>
+      <TimeDisplay time={r.time} />
     </div>
   )
 
-  const ManualRecordTable = ({ title, data }) => (
-    <div className="mb-6 sm:mb-8">
-      <h2 className="text-base sm:text-lg font-bold mb-2 sm:mb-3">{title}</h2>
-      <div className="bg-white rounded-lg border overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Event</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Swimmer</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden sm:table-cell">Nationality</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Time</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden lg:table-cell">Location / Meet</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden md:table-cell">Date</th>
-              {token && <th className="px-2.5 sm:px-4 py-2 sm:py-3" />}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {data.map(r => (
-              <tr key={r.id} className="hover:bg-gray-50">
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium whitespace-nowrap">{r.event_detail?.name}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm whitespace-nowrap">
-                  {r.swimmer_detail ? (
-                    <Link to={`/swimmers/${r.swimmer_detail.id}`} className="hover:text-blue-600">{r.swimmer_detail.name}</Link>
-                  ) : '-'}
-                </td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden sm:table-cell">
-                  {r.swimmer_detail?.nationality_detail && (
-                    <CountryFlag code={r.swimmer_detail.nationality_detail.code}
-                      flagUrl={r.swimmer_detail.nationality_detail.flag_url}
-                      name={r.swimmer_detail.nationality_detail.name} />
-                  )}
-                </td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-mono font-medium whitespace-nowrap">{r.formatted_time}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell">{r.location || '-'}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell whitespace-nowrap">{formatDate(r.result_date)}</td>
-                {token && (
-                  <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-right whitespace-nowrap">
-                    <button onClick={() => navigate(`/records/${r.id}/edit`)} className="text-gray-400 hover:text-blue-600 mr-2" title="Edit">
-                      <Pencil size={15} />
-                    </button>
-                    <button onClick={() => handleDelete(r.id)} className="text-gray-400 hover:text-red-600" title="Delete">
-                      <Trash2 size={15} />
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-            {data.length === 0 && (
-              <tr><td colSpan={token ? 7 : 6} className="px-4 py-8 text-center text-gray-500">No records added yet.</td></tr>
-            )}
-          </tbody>
-        </table>
+  const manualColumns = [
+    { key: 'event', label: 'Event', render: r => <EventLabel name={r.event_detail?.name} /> },
+    { key: 'swimmer', label: 'Swimmer', render: r => r.swimmer_detail ? (
+      <SwimmerCell
+        name={r.swimmer_detail.name}
+        countryCode={r.swimmer_detail.nationality_detail?.code}
+        flagUrl={r.swimmer_detail.nationality_detail?.flag_url}
+        onClick={() => navigate(`/swimmers/${r.swimmer_detail.id}`)}
+      />
+    ) : '-' },
+    { key: 'time', label: 'Time', align: 'end', render: r => <TimeDisplay time={r.formatted_time} /> },
+    { key: 'location', label: 'Location / Meet', render: r => r.location || '-' },
+    { key: 'result_date', label: 'Date', render: r => formatDate(r.result_date) },
+    ...(isAdmin ? [{ key: 'actions', label: '', align: 'end', render: r => (
+      <span className="inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        <Button variant="ghost" size="sm" icon={Pencil} aria-label="Edit record"
+          onClick={() => navigate(`/records/${r.id}/edit`)} />
+        <Button variant="ghost" size="sm" icon={Trash2} aria-label="Delete record"
+          className="hover:text-neg" onClick={() => setPendingDelete(r.id)} />
+      </span>
+    ) }] : []),
+  ]
+
+  const manualMobileRender = (r) => (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <EventLabel name={r.event_detail?.name} className="mb-0.5" />
+        <div className="text-body-sm font-medium text-ink-900 truncate">{r.swimmer_detail?.name || '-'}</div>
+        <div className="text-body-sm text-ink-400 truncate">
+          {[r.location, formatDate(r.result_date)].filter(Boolean).join(' · ')}
         </div>
       </div>
+      <TimeDisplay time={r.formatted_time} />
+      {isAdmin && (
+        <span className="inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>
+          <Button variant="ghost" size="sm" icon={Pencil} aria-label="Edit record"
+            onClick={() => navigate(`/records/${r.id}/edit`)} />
+          <Button variant="ghost" size="sm" icon={Trash2} aria-label="Delete record"
+            className="hover:text-neg" onClick={() => setPendingDelete(r.id)} />
+        </span>
+      )}
     </div>
   )
+
+  const RecordSection = ({ title, columns, data, mobileRender, emptyMessage }) => (
+    <section className="mb-6 md:mb-8">
+      <h2 className="text-title text-ink-900 mb-3">{title}</h2>
+      <DataTable columns={columns} data={data} mobileRender={mobileRender} emptyMessage={emptyMessage} />
+    </section>
+  )
+
+  const activeChips = [
+    filters.country && {
+      key: 'country',
+      label: countries.find(c => c.id.toString() === filters.country.toString())?.name || 'Country',
+      onRemove: () => updateFilter('country', ''),
+    },
+    filters.gender && {
+      key: 'gender',
+      label: filters.gender === 'M' ? 'Male' : 'Female',
+      onRemove: () => updateFilter('gender', ''),
+    },
+    { key: 'pool', label: filters.pool },
+  ].filter(Boolean)
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold">Records</h1>
-        {token && (
-          <Link to={`/records/new${isManualScope ? `?type=${filters.scope}` : ''}`}
-            className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-700">
-            <Plus size={15} /> Add Record
+      <PageHeader
+        title="Records"
+        subtitle="National, Arab and continental swimming records"
+        action={isAdmin && (
+          <Link to={`/records/new${isManualScope ? `?type=${filters.scope}` : ''}`}>
+            <Button variant="secondary" size="sm" icon={Plus}>Add Record</Button>
           </Link>
         )}
-      </div>
+      />
 
-      <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4 overflow-x-auto scrollbar-hide">
-        {['national', 'arab', 'gcc'].map(scope => (
-          <button key={scope} onClick={() => updateFilter('scope', scope)} className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium capitalize whitespace-nowrap ${filters.scope === scope ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
-            {scope === 'national' ? 'National' : scope.toUpperCase()}
-          </button>
-        ))}
-        {MANUAL_RECORD_SCOPES.map(s => (
-          <button key={s.value} onClick={() => updateFilter('scope', s.value)} className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap ${filters.scope === s.value ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={scopeTabs} active={filters.scope} onChange={v => updateFilter('scope', v)} className="mb-4" />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-3 sm:mb-4">
+      <FilterBar chips={activeChips} onReset={() => setFilters(prev => ({ ...prev, country: '', gender: '', pool: 'LCM', age_group: 'OPEN' }))}>
         {!isManualScope && (
-          <div>
-            <label className="block text-sm font-medium mb-1">Country</label>
-            <select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+          <div className="w-full md:w-48">
+            <FieldLabel>Country</FieldLabel>
+            <Select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)}>
               <option value="">All</option>
               {countries
                 .filter(c => {
@@ -222,56 +218,72 @@ export default function RecordsPage() {
                   return c.region === 'ARAB' || c.region === 'GCC'
                 })
                 .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </Select>
           </div>
         )}
-        <div>
-          <label className="block text-sm font-medium mb-1">Gender</label>
-          <select value={filters.gender} onChange={(e) => updateFilter('gender', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+        <div className="w-full md:w-36">
+          <FieldLabel>Gender</FieldLabel>
+          <Select value={filters.gender} onChange={(e) => updateFilter('gender', e.target.value)}>
             <option value="">Both</option>
             <option value="M">Male</option>
             <option value="F">Female</option>
-          </select>
+          </Select>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Pool</label>
-          <select value={filters.pool} onChange={(e) => updateFilter('pool', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+        <div className="w-full md:w-48">
+          <FieldLabel>Pool</FieldLabel>
+          <Select value={filters.pool} onChange={(e) => updateFilter('pool', e.target.value)}>
             {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
+          </Select>
         </div>
-      </div>
+      </FilterBar>
 
       {!isManualScope && (
-        <div className="flex gap-1 mb-3 sm:mb-4 overflow-x-auto scrollbar-hide">
-          {AGE_GROUPS.map(ag => (
-            <button key={ag} onClick={() => updateFilter('age_group', ag)} className={`px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium whitespace-nowrap border rounded-md ${filters.age_group === ag ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'}`}>
-              {ag}
-            </button>
-          ))}
+        <div className="mb-4 overflow-x-auto scrollbar-hide">
+          <SegmentedControl
+            options={AGE_GROUPS.map(ag => ({ key: ag, label: ag }))}
+            value={filters.age_group}
+            onChange={v => updateFilter('age_group', v)}
+          />
         </div>
       )}
 
       {isManualScope ? (
         loading ? (
-          <div className="text-center py-8 text-gray-500">Loading records...</div>
+          <TableSkeleton rows={8} />
         ) : (
           <>
-            {(!filters.gender || filters.gender === 'M') && <ManualRecordTable title="Men" data={menManual} />}
-            {(!filters.gender || filters.gender === 'F') && <ManualRecordTable title="Women" data={womenManual} />}
+            {(!filters.gender || filters.gender === 'M') &&
+              <RecordSection title="Men" columns={manualColumns} data={menManual} mobileRender={manualMobileRender} emptyMessage="No records added yet." />}
+            {(!filters.gender || filters.gender === 'F') &&
+              <RecordSection title="Women" columns={manualColumns} data={womenManual} mobileRender={manualMobileRender} emptyMessage="No records added yet." />}
           </>
         )
       ) : filters.scope === 'national' && !filters.country ? (
-        <div className="text-center py-8 text-gray-500">Select a country to view national records</div>
+        <EmptyState icon={Trophy} title="Select a country" hint="Choose a country above to view its national records." />
       ) : loading ? (
-        <div className="text-center py-8 text-gray-500">Loading records...</div>
+        <TableSkeleton rows={8} />
       ) : (
         <>
-          {(!filters.gender || filters.gender === 'M') && <RecordTable title="Men" data={menRecords} />}
-          {(!filters.gender || filters.gender === 'F') && <RecordTable title="Women" data={womenRecords} />}
-          {(!filters.gender || filters.gender === 'M') && menRelayRecords.length > 0 && <RecordTable title="Men Relay" data={menRelayRecords} isRelay />}
-          {(!filters.gender || filters.gender === 'F') && womenRelayRecords.length > 0 && <RecordTable title="Women Relay" data={womenRelayRecords} isRelay />}
+          {(!filters.gender || filters.gender === 'M') &&
+            <RecordSection title="Men" columns={computedColumns(false)} data={menRecords} mobileRender={computedMobileRender} emptyMessage="No records found." />}
+          {(!filters.gender || filters.gender === 'F') &&
+            <RecordSection title="Women" columns={computedColumns(false)} data={womenRecords} mobileRender={computedMobileRender} emptyMessage="No records found." />}
+          {(!filters.gender || filters.gender === 'M') && menRelayRecords.length > 0 &&
+            <RecordSection title="Men Relay" columns={computedColumns(true)} data={menRelayRecords} mobileRender={computedMobileRender} emptyMessage="No records found." />}
+          {(!filters.gender || filters.gender === 'F') && womenRelayRecords.length > 0 &&
+            <RecordSection title="Women Relay" columns={computedColumns(true)} data={womenRelayRecords} mobileRender={computedMobileRender} emptyMessage="No records found." />}
         </>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete record"
+        message="This record will be permanently deleted. This cannot be undone."
+        destructive
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

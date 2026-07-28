@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Sparkles } from 'lucide-react'
 import { getRecords } from '../api/records'
-import DataTable from '../components/common/DataTable'
-import CountryFlag from '../components/common/CountryFlag'
-import { RECORD_TYPES, formatTime, formatDate } from '../utils/constants'
+import { FilterBar, Select, SearchInput, FieldLabel, PageHeader, EmptyState, CardsSkeleton } from '../components/ui'
+import { RecordCard } from '../components/domain'
+import { RECORD_TYPES, formatDate } from '../utils/constants'
 
 export default function NewRecordsPage() {
+  const navigate = useNavigate()
   const [records, setRecords] = useState([])
+  const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState('')
   const [searchName, setSearchName] = useState('')
 
@@ -13,35 +17,67 @@ export default function NewRecordsPage() {
     const params = { is_new: 'true' }
     if (filterType) params.record_type = filterType
     if (searchName) params.search = searchName
-    getRecords(params).then(res => setRecords(res.data.results || res.data)).catch(() => {})
+    setLoading(true)
+    getRecords(params)
+      .then(res => setRecords(res.data.results || res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [filterType, searchName])
 
-  const columns = [
-    { key: 'photo', label: 'Photo', render: (row) => (
-      <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-        {row.swimmer_detail?.photo ? <img src={row.swimmer_detail.photo} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs">👤</div>}
-      </div>
-    )},
-    { key: 'swimmer_name', label: 'Swimmer Name', render: (row) => row.swimmer_detail?.name },
-    { key: 'nationality', label: 'Nationality', render: (row) => <CountryFlag code={row.swimmer_detail?.nationality_detail?.code} flagUrl={row.swimmer_detail?.nationality_detail?.flag_url} name={row.swimmer_detail?.nationality_detail?.name} /> },
-    { key: 'race', label: 'Race', render: (row) => row.event_detail?.name },
-    { key: 'record', label: 'Record', render: (row) => row.formatted_time },
-    { key: 'location', label: 'Location' },
-    { key: 'record_type', label: 'Type' },
-    { key: 'result_date', label: 'Result Date', render: (row) => formatDate(row.result_date) },
-  ]
+  const chips = [
+    filterType && {
+      key: 'type',
+      label: RECORD_TYPES.find(t => t.value === filterType)?.label || filterType,
+      onRemove: () => setFilterType(''),
+    },
+    searchName && { key: 'search', label: `"${searchName}"`, onRemove: () => setSearchName('') },
+  ].filter(Boolean)
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">New Records</h1>
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
-          <option value="">All Types</option>
-          {RECORD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        <input type="text" placeholder="Search by name..." value={searchName} onChange={(e) => setSearchName(e.target.value)} className="flex-1 border rounded-lg px-3 py-2 text-sm" />
-      </div>
-      <DataTable columns={columns} data={records} emptyMessage="No new records found" />
+      <PageHeader title="New Records" subtitle="Recently broken records across all scopes" />
+
+      <FilterBar chips={chips} onReset={() => { setFilterType(''); setSearchName('') }}>
+        <div className="w-full md:w-48">
+          <FieldLabel>Record type</FieldLabel>
+          <Select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+            <option value="">All Types</option>
+            {RECORD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </Select>
+        </div>
+        <div className="w-full md:w-64">
+          <FieldLabel>Swimmer</FieldLabel>
+          <SearchInput placeholder="Search by name..." value={searchName}
+            onChange={(e) => setSearchName(e.target.value)} />
+        </div>
+      </FilterBar>
+
+      {loading ? (
+        <CardsSkeleton count={6} />
+      ) : records.length === 0 ? (
+        <EmptyState icon={Sparkles} title="No new records"
+          hint="No recently broken records match these filters." />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {records.map(r => (
+            <RecordCard
+              key={r.id}
+              isNew
+              scope={r.record_type}
+              event={r.event_detail?.name}
+              time={r.formatted_time}
+              date={formatDate(r.result_date)}
+              meet={r.location}
+              holder={r.swimmer_detail ? {
+                name: r.swimmer_detail.name,
+                countryCode: r.swimmer_detail.nationality_detail?.code,
+                flagUrl: r.swimmer_detail.nationality_detail?.flag_url,
+              } : undefined}
+              onClick={r.swimmer_detail ? () => navigate(`/swimmers/${r.swimmer_detail.id}`) : undefined}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

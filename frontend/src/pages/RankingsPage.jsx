@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { ListOrdered } from 'lucide-react'
 import { getRankings } from '../api/rankings'
 import { getCountries, getEvents } from '../api/core'
 import Pagination from '../components/common/Pagination'
-import CountryFlag from '../components/common/CountryFlag'
+import { PageHeader, Tabs, FilterBar, Select, FieldLabel, SegmentedControl, Card, EmptyState } from '../components/ui'
+import { RankRow } from '../components/domain'
 import { POOL_TYPES, AGE_GROUPS, formatDate } from '../utils/constants'
 
 export default function RankingsPage() {
@@ -63,22 +65,36 @@ export default function RankingsPage() {
   const years = []
   for (let y = new Date().getFullYear(); y >= 2000; y--) years.push(y)
 
+  const selectedEvent = events.find(e => e.id.toString() === filters.event)
+  const isRelay = selectedEvent?.is_relay
+
+  const chips = [
+    filters.country && {
+      key: 'country',
+      label: countries.find(c => c.id.toString() === filters.country.toString())?.name || 'Country',
+      onRemove: () => updateFilter('country', ''),
+    },
+    { key: 'gender', label: filters.gender === 'M' ? 'Male' : 'Female' },
+    filters.year && { key: 'year', label: filters.year, onRemove: () => updateFilter('year', '') },
+    { key: 'pool', label: filters.pool },
+    selectedEvent && { key: 'event', label: selectedEvent.name },
+  ].filter(Boolean)
+
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Ranking</h1>
+      <PageHeader title="Rankings" subtitle="All-time and yearly best performances by event" />
 
-      <div className="flex gap-2 mb-4">
-        {['national', 'arab', 'gcc'].map(scope => (
-          <button key={scope} onClick={() => updateFilter('scope', scope)} className={`px-4 py-2 rounded-full text-sm font-medium capitalize ${filters.scope === scope ? 'bg-red-500 text-white' : 'border border-gray-300'}`}>
-            {scope === 'national' ? 'National' : scope.toUpperCase()}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={['national', 'arab', 'gcc'].map(s => ({ key: s, label: s === 'national' ? 'National' : s.toUpperCase() }))}
+        active={filters.scope}
+        onChange={v => updateFilter('scope', v)}
+        className="mb-4"
+      />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Country</label>
-          <select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+      <FilterBar chips={chips}>
+        <div className="w-full md:w-44">
+          <FieldLabel>Country</FieldLabel>
+          <Select value={filters.country} onChange={(e) => updateFilter('country', e.target.value)}>
             <option value="">All</option>
             {countries
               .filter(c => {
@@ -87,31 +103,31 @@ export default function RankingsPage() {
                 return true
               })
               .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Gender</label>
-          <select value={filters.gender} onChange={(e) => updateFilter('gender', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+        <div className="w-full md:w-32">
+          <FieldLabel>Gender</FieldLabel>
+          <Select value={filters.gender} onChange={(e) => updateFilter('gender', e.target.value)}>
             <option value="M">Male</option>
             <option value="F">Female</option>
-          </select>
+          </Select>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Year</label>
-          <select value={filters.year} onChange={(e) => updateFilter('year', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
-            <option value="">-- Select a year --</option>
+        <div className="w-full md:w-36">
+          <FieldLabel>Year</FieldLabel>
+          <Select value={filters.year} onChange={(e) => updateFilter('year', e.target.value)}>
+            <option value="">All-time</option>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+          </Select>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Pool</label>
-          <select value={filters.pool} onChange={(e) => updateFilter('pool', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+        <div className="w-full md:w-44">
+          <FieldLabel>Pool</FieldLabel>
+          <Select value={filters.pool} onChange={(e) => updateFilter('pool', e.target.value)}>
             {POOL_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
+          </Select>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Event</label>
-          <select value={filters.event} onChange={(e) => updateFilter('event', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+        <div className="w-full md:w-52">
+          <FieldLabel>Event</FieldLabel>
+          <Select value={filters.event} onChange={(e) => updateFilter('event', e.target.value)}>
             <option value="">Select event</option>
             {(() => {
               const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley', 'Freestyle Relay', 'Medley Relay']
@@ -138,65 +154,54 @@ export default function RankingsPage() {
                 </optgroup>
               ))
             })()}
-          </select>
+          </Select>
         </div>
+      </FilterBar>
+
+      <div className="mb-4 overflow-x-auto scrollbar-hide">
+        <SegmentedControl
+          options={AGE_GROUPS.map(ag => ({ key: ag, label: ag }))}
+          value={filters.age_group}
+          onChange={v => updateFilter('age_group', v)}
+        />
       </div>
 
-      <div className="flex gap-1 mb-4 overflow-x-auto">
-        {AGE_GROUPS.map(ag => (
-          <button key={ag} onClick={() => updateFilter('age_group', ag)} className={`px-4 py-2 text-sm font-medium whitespace-nowrap border ${filters.age_group === ag ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'}`}>
-            {ag}
-          </button>
-        ))}
-      </div>
-
-      {(() => {
-        const selectedEvent = events.find(e => e.id.toString() === filters.event)
-        const isRelay = selectedEvent?.is_relay
-        return (
-      <div className="bg-white rounded-lg border overflow-hidden max-h-[700px] overflow-y-auto">
-        <table className="w-full">
-          <thead className="sticky top-0 z-10">
-            <tr className="bg-gray-50 border-b">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isRelay ? 'Team' : 'Swimmer Name'}</th>
-              {!isRelay && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Age</th>}
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isRelay ? 'Country' : 'Nationality'}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Championship Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">FINA</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
+      {rankings.length === 0 ? (
+        <Card padding="none">
+          <EmptyState
+            icon={ListOrdered}
+            title={filters.event ? 'No rankings found' : 'Select an event'}
+            hint={filters.event
+              ? 'No rankings found for these filters.'
+              : 'Select an event above to view rankings.'}
+          />
+        </Card>
+      ) : (
+        <Card padding="none" title={selectedEvent ? `${selectedEvent.name} — ${filters.gender === 'M' ? 'Men' : 'Women'}` : undefined}>
+          <div className="max-h-[700px] overflow-y-auto divide-y divide-ink-100">
             {rankings.map((r, i) => {
               const prevTime = i > 0 ? rankings[i - 1].time_centiseconds : null
               const isTied = prevTime !== null && r.time_centiseconds === prevTime
               return (
-              <tr key={i} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{isTied ? '--' : r.rank}</td>
-                <td className="px-4 py-3 text-sm font-medium">{r.swimmer_name}</td>
-                {!isRelay && <td className="px-4 py-3 text-sm text-gray-500">{r.age_at_competition || '-'}</td>}
-                <td className="px-4 py-3 text-sm"><CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} name={r.nationality} /></td>
-                <td className="px-4 py-3 text-sm font-mono">{r.time}</td>
-                <td className="px-4 py-3 text-sm">{r.championship_name}</td>
-                <td className="px-4 py-3 text-sm"><CountryFlag code={r.championship_country_code} flagUrl={r.championship_country_flag} name={r.championship_country} /></td>
-                <td className="px-4 py-3 text-sm">{formatDate(r.date)}</td>
-                <td className="px-4 py-3 text-sm">{r.fina_points || '-'}</td>
-              </tr>
+                <RankRow
+                  key={i}
+                  rank={isTied ? '=' : r.rank}
+                  swimmer={{
+                    name: r.swimmer_name,
+                    countryCode: r.nationality_code,
+                    flagUrl: r.nationality_flag,
+                    meta: !isRelay && r.age_at_competition ? `Age ${r.age_at_competition}` : undefined,
+                  }}
+                  time={r.time}
+                  points={r.fina_points || undefined}
+                  meta={[r.championship_name, r.championship_country, formatDate(r.date)].filter(Boolean).join(' · ')}
+                />
               )
             })}
-            {rankings.length === 0 && (
-              <tr><td colSpan={isRelay ? 8 : 9} className="px-4 py-8 text-center text-gray-500">
-                {filters.event ? 'No rankings found for these filters.' : 'Select an event above to view rankings.'}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-        )
-      })()}
+          </div>
+        </Card>
+      )}
+
       {pagination.count > 0 && <Pagination {...pagination} currentPage={page} onPageChange={setPage} pageSize={50} />}
     </div>
   )

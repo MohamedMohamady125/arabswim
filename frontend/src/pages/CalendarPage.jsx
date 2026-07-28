@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Clock, MapPin, CalendarDays, Radio, BookOpen, PenLine, Globe, FileText,
+  Trash2, ChevronRight, Cake, Gift, Plus,
+} from 'lucide-react'
 import { createCalendarEvent, getCalendarEvents, updateCalendarEvent, deleteCalendarEvent } from '../api/calendar'
 import { getChampionships, getChampionship, createChampionship, updateChampionship, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import { getSwimmerBirthdays } from '../api/swimmers'
 import { POOL_TYPES, mediaUrl, formatDate } from '../utils/constants'
 import CountryFlag from '../components/common/CountryFlag'
+import {
+  Hero, Card, Badge, Button, Select, Input, Textarea, FieldLabel, Modal,
+  ConfirmDialog, EmptyState, FilterBar, PageHeader,
+} from '../components/ui'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 dayjs.extend(customParseFormat)
@@ -30,22 +40,20 @@ function Countdown({ targetDate }) {
 
   return (
     <div>
-      <div className="text-[10px] font-bold uppercase tracking-widest text-white/70 mb-2 flex items-center gap-1.5">
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+      <div className="text-label text-white/70 mb-2 flex items-center gap-1.5">
+        <Clock size={14} className="text-aqua-400" />
         Starts in
       </div>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-2 max-w-md">
         {[
           { val: days, label: 'Days' },
           { val: hours, label: 'Hours' },
           { val: mins, label: 'Min' },
           { val: secs, label: 'Sec' },
         ].map(({ val, label }) => (
-          <div key={label} className="bg-white/10 backdrop-blur-sm rounded-lg px-2 py-2 text-center border border-white/20">
-            <div className="text-2xl font-black text-white leading-none">{String(val).padStart(2, '0')}</div>
-            <div className="text-[9px] font-bold uppercase tracking-wider text-white/60 mt-1">{label}</div>
+          <div key={label} className="bg-white/10 backdrop-blur-sm rounded-sm px-2 py-2.5 text-center border border-white/15">
+            <div className="text-time-lg text-white tnum leading-none">{String(val).padStart(2, '0')}</div>
+            <div className="text-label text-white/60 mt-1.5">{label}</div>
           </div>
         ))}
       </div>
@@ -66,47 +74,34 @@ function FeaturedMeet({ meet: c, navigate }) {
     : ''
 
   return (
-    <div className={`relative rounded-2xl overflow-hidden mb-6 group ${c.id ? 'cursor-pointer' : ''}`}
+    <div className={`mb-6 ${c.id ? 'cursor-pointer' : ''} group`}
       onClick={() => { if (c.id) navigate(`/meets/${c.id}`) }}>
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-blue-900 to-cyan-900">
-        {c.meet_photo && (
-          <img src={mediaUrl(c.meet_photo)} alt="" className="w-full h-full object-cover opacity-40" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-      </div>
-
-      <div className="relative px-6 sm:px-8 py-8 sm:py-10">
+      <Hero image={c.meet_photo ? mediaUrl(c.meet_photo) : undefined}>
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full mb-5 border border-white/20">
-          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-          <span className="text-xs font-bold text-white uppercase tracking-wider">Featured Competition</span>
+        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full mb-5 border border-white/15">
+          <span className="w-2 h-2 rounded-full bg-aqua-400 animate-pulse" />
+          <span className="text-label text-white">Featured Competition</span>
         </div>
 
         {/* Title */}
-        <h2 className="text-2xl sm:text-3xl font-black text-white mb-2 group-hover:text-cyan-200 transition-colors">{c.name}</h2>
+        <h2 className="text-display-xl text-white mb-2 group-hover:text-aqua-400 transition-colors">{c.name}</h2>
 
         {/* Subtitle */}
-        <p className="text-white/70 text-sm sm:text-base mb-5">
+        <p className="text-body text-white/70 mb-5">
           {c.pool ? (c.pool === 'LCM' ? 'Long Course 50m' : 'Short Course 25m') : (c.description || 'Upcoming competition')}
         </p>
 
         {/* Location & Date */}
         <div className="space-y-2 mb-6">
           {c.location && (
-            <div className="flex items-center gap-2 text-white/80 text-sm">
-              <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-              </svg>
+            <div className="flex items-center gap-2 text-white/80 text-body-sm">
+              <MapPin size={16} className="text-aqua-400 shrink-0" />
               {c.location}{c.country_detail ? `, ${c.country_detail.name}` : ''}
             </div>
           )}
           {dateStr && (
-            <div className="flex items-center gap-2 text-white/80 text-sm">
-              <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-              </svg>
+            <div className="flex items-center gap-2 text-white/80 text-body-sm">
+              <CalendarDays size={16} className="text-aqua-400 shrink-0" />
               {dateStr}
             </div>
           )}
@@ -114,12 +109,14 @@ function FeaturedMeet({ meet: c, navigate }) {
 
         {/* Countdown */}
         {isUpcoming && targetDate && <Countdown targetDate={targetDate} />}
-      </div>
+      </Hero>
     </div>
   )
 }
 
-function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = [] }) {
+const LINK_BTN = 'inline-flex items-center justify-center gap-1.5 w-full h-10 px-4 rounded-sm text-body-sm font-medium text-white transition-opacity hover:opacity-90'
+
+function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = [], isAdmin = false }) {
   const [editingField, setEditingField] = useState(null)
   const [fieldValue, setFieldValue] = useState('')
   const [saving, setSaving] = useState(false)
@@ -152,181 +149,209 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = 
     finally { setSaving(false) }
   }
 
+  const showLive = c.live_results_url || isAdmin
+  const showGuide = c.meet_guide_pdf || isAdmin
+  const showReg = c.registration_url || isAdmin
+
   return (
-    <div className="bg-gray-50 border border-cyan-500 border-t-0 rounded-b-xl px-6 py-4">
+    <div className="bg-ink-50 border border-aqua-500 border-t-0 rounded-b-md px-4 md:px-6 py-4">
       {/* Meet Info */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         <div>
-          <div className="text-xs text-gray-500 mb-1">Date</div>
-          <div className="text-sm font-medium">{formatDate(c.date)}{c.end_date && c.end_date !== c.date ? ` to ${formatDate(c.end_date)}` : ''}</div>
+          <div className="text-label text-ink-400 mb-1">Date</div>
+          <div className="text-body-sm font-medium text-ink-900">{formatDate(c.date)}{c.end_date && c.end_date !== c.date ? ` to ${formatDate(c.end_date)}` : ''}</div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 mb-1">Pool</div>
-          <div className="text-sm font-medium">{c.pool === 'LCM' ? 'Long Course (50m)' : 'Short Course (25m)'}</div>
+          <div className="text-label text-ink-400 mb-1">Pool</div>
+          <div className="text-body-sm font-medium text-ink-900">{c.pool === 'LCM' ? 'Long Course (50m)' : 'Short Course (25m)'}</div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 mb-1">Country</div>
-          <div className="text-sm font-medium">
-            {editingField === 'country' ? (
+          <div className="text-label text-ink-400 mb-1">Country</div>
+          <div className="text-body-sm font-medium text-ink-900">
+            {isAdmin && editingField === 'country' ? (
               <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                <select value={fieldValue} onChange={e => setFieldValue(e.target.value)} autoFocus
-                  className="border rounded-lg px-2 py-1 text-xs max-w-[140px]">
+                <Select value={fieldValue} onChange={e => setFieldValue(e.target.value)} autoFocus
+                  className="!h-8 max-w-[150px] text-body-sm">
                   <option value="">Select country</option>
                   {countries.map(co => <option key={co.id} value={co.id}>{co.name}</option>)}
-                </select>
+                </Select>
                 <button disabled={saving || !fieldValue} onClick={async () => {
                   await saveField('country', fieldValue)
                   const co = countries.find(x => String(x.id) === String(fieldValue))
                   if (co) onUpdate({ ...c, country: co.id, country_detail: co })
-                }} className="text-xs text-cyan-600 font-semibold disabled:opacity-50">Save</button>
-                <button onClick={() => setEditingField(null)} className="text-xs text-gray-400">Cancel</button>
+                }} className="text-body-sm text-aqua-600 font-semibold disabled:opacity-50 min-h-10">Save</button>
+                <button onClick={() => setEditingField(null)} className="text-body-sm text-ink-400 min-h-10">Cancel</button>
               </div>
             ) : c.country_detail ? (
               <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
-            ) : (
+            ) : isAdmin ? (
               <button onClick={(e) => { e.stopPropagation(); startEdit('country', '') }}
-                className="text-xs text-gray-400 border border-dashed border-gray-300 rounded-lg px-2 py-1 hover:border-cyan-400 hover:text-cyan-600">+ Set country</button>
+                className="text-body-sm text-ink-400 border border-dashed border-ink-200 rounded-sm px-2 py-1.5 hover:border-aqua-500 hover:text-aqua-600">+ Set country</button>
+            ) : (
+              <span className="text-ink-400">—</span>
             )}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 mb-1">Location</div>
-          <div className="text-sm font-medium">
-            {editingField === 'location' ? (
+          <div className="text-label text-ink-400 mb-1">Location</div>
+          <div className="text-body-sm font-medium text-ink-900">
+            {isAdmin && editingField === 'location' ? (
               <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                <input value={fieldValue} onChange={e => setFieldValue(e.target.value)} autoFocus
-                  placeholder="City / venue" className="border rounded-lg px-2 py-1 text-xs max-w-[140px]" />
+                <Input value={fieldValue} onChange={e => setFieldValue(e.target.value)} autoFocus
+                  placeholder="City / venue" className="!h-8 max-w-[150px] text-body-sm" />
                 <button disabled={saving} onClick={() => saveField('location', fieldValue)}
-                  className="text-xs text-cyan-600 font-semibold disabled:opacity-50">Save</button>
-                <button onClick={() => setEditingField(null)} className="text-xs text-gray-400">Cancel</button>
+                  className="text-body-sm text-aqua-600 font-semibold disabled:opacity-50 min-h-10">Save</button>
+                <button onClick={() => setEditingField(null)} className="text-body-sm text-ink-400 min-h-10">Cancel</button>
               </div>
             ) : c.location ? (
-              <span onClick={(e) => { e.stopPropagation(); startEdit('location', c.location) }} className="cursor-pointer hover:text-cyan-600" title="Edit">{c.location}</span>
-            ) : (
+              isAdmin ? (
+                <span onClick={(e) => { e.stopPropagation(); startEdit('location', c.location) }}
+                  className="cursor-pointer hover:text-aqua-600" title="Edit">{c.location}</span>
+              ) : (
+                <span>{c.location}</span>
+              )
+            ) : isAdmin ? (
               <button onClick={(e) => { e.stopPropagation(); startEdit('location', '') }}
-                className="text-xs text-gray-400 border border-dashed border-gray-300 rounded-lg px-2 py-1 hover:border-cyan-400 hover:text-cyan-600">+ Set location</button>
+                className="text-body-sm text-ink-400 border border-dashed border-ink-200 rounded-sm px-2 py-1.5 hover:border-aqua-500 hover:text-aqua-600">+ Set location</button>
+            ) : (
+              <span className="text-ink-400">—</span>
             )}
           </div>
         </div>
       </div>
 
       {/* Three main sections */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-        {/* Live Results */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-red-500 text-lg">&#x1F534;</span>
-            <h4 className="font-semibold text-sm">Live Results</h4>
-          </div>
-          {c.live_results_url && editingField !== 'live_results_url' ? (
-            <div>
-              <a href={c.live_results_url} target="_blank" rel="noopener noreferrer"
-                className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 inline-flex items-center gap-1.5 w-full justify-center mb-2">
-                Open Live Results
-              </a>
-              <button onClick={(e) => { e.stopPropagation(); startEdit('live_results_url', c.live_results_url) }}
-                className="text-xs text-gray-400 hover:text-gray-600 w-full text-center">Edit link</button>
-            </div>
-          ) : editingField === 'live_results_url' ? (
-            <div className="space-y-2" onClick={e => e.stopPropagation()}>
-              <input type="url" value={fieldValue} onChange={e => setFieldValue(e.target.value)}
-                placeholder="https://..." className="w-full border rounded-lg px-3 py-2 text-sm" autoFocus />
-              <div className="flex gap-2">
-                <button onClick={() => saveField('live_results_url', fieldValue)} disabled={saving}
-                  className="flex-1 bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-red-700 disabled:opacity-50">Save</button>
-                <button onClick={() => setEditingField(null)}
-                  className="flex-1 border px-3 py-1.5 rounded-lg text-xs hover:bg-gray-50">Cancel</button>
+      {(showLive || showGuide || showReg) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+          {/* Live Results */}
+          {showLive && (
+            <div className="bg-white rounded-md border border-ink-100 shadow-card p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Radio size={16} className="text-neg" />
+                <h4 className="text-body-sm font-semibold text-ink-900">Live Results</h4>
               </div>
+              {c.live_results_url && editingField !== 'live_results_url' ? (
+                <div>
+                  <a href={c.live_results_url} target="_blank" rel="noopener noreferrer"
+                    className={`${LINK_BTN} bg-neg mb-2`}>
+                    Open Live Results
+                  </a>
+                  {isAdmin && (
+                    <button onClick={(e) => { e.stopPropagation(); startEdit('live_results_url', c.live_results_url) }}
+                      className="text-body-sm text-ink-400 hover:text-ink-900 w-full text-center min-h-10">Edit link</button>
+                  )}
+                </div>
+              ) : isAdmin && editingField === 'live_results_url' ? (
+                <div className="space-y-2" onClick={e => e.stopPropagation()}>
+                  <Input type="url" value={fieldValue} onChange={e => setFieldValue(e.target.value)}
+                    placeholder="https://..." autoFocus />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="flex-1" loading={saving}
+                      onClick={() => saveField('live_results_url', fieldValue)}>Save</Button>
+                    <Button size="sm" variant="secondary" className="flex-1"
+                      onClick={() => setEditingField(null)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : isAdmin ? (
+                <button onClick={(e) => { e.stopPropagation(); startEdit('live_results_url', '') }}
+                  className="w-full border-2 border-dashed border-ink-200 rounded-sm py-3 text-body-sm text-ink-400 hover:border-neg hover:text-neg">
+                  + Add Live Results Link
+                </button>
+              ) : null}
             </div>
-          ) : (
-            <button onClick={(e) => { e.stopPropagation(); startEdit('live_results_url', '') }}
-              className="w-full border-2 border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-400 hover:border-red-400 hover:text-red-500">
-              + Add Live Results Link
-            </button>
           )}
-        </div>
 
-        {/* Meet Guide PDF */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-blue-500 text-lg">&#x1F4D6;</span>
-            <h4 className="font-semibold text-sm">Entry Pack</h4>
-          </div>
-          {c.meet_guide_pdf ? (
-            <div>
-              <a href={c.meet_guide_pdf} target="_blank" rel="noopener noreferrer"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 inline-flex items-center gap-1.5 w-full justify-center mb-2">
-                View Entry Pack
-              </a>
-              <label className="block text-xs text-gray-400 hover:text-gray-600 w-full text-center cursor-pointer" onClick={e => e.stopPropagation()}>
-                Replace PDF
-                <input type="file" accept=".pdf" className="hidden" onChange={e => { if (e.target.files[0]) uploadGuide(e.target.files[0]) }} />
-              </label>
-            </div>
-          ) : (
-            <label className="block cursor-pointer" onClick={e => e.stopPropagation()}>
-              <div className="w-full border-2 border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-400 hover:border-blue-400 hover:text-blue-500 text-center">
-                + Upload Entry Pack PDF
+          {/* Meet Guide PDF */}
+          {showGuide && (
+            <div className="bg-white rounded-md border border-ink-100 shadow-card p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen size={16} className="text-aqua-600" />
+                <h4 className="text-body-sm font-semibold text-ink-900">Entry Pack</h4>
               </div>
-              <input type="file" accept=".pdf" className="hidden" onChange={e => { if (e.target.files[0]) uploadGuide(e.target.files[0]) }} />
-            </label>
+              {c.meet_guide_pdf ? (
+                <div>
+                  <a href={c.meet_guide_pdf} target="_blank" rel="noopener noreferrer"
+                    className={`${LINK_BTN} bg-aqua-600 mb-2`}>
+                    View Entry Pack
+                  </a>
+                  {isAdmin && (
+                    <label className="block text-body-sm text-ink-400 hover:text-ink-900 w-full text-center cursor-pointer min-h-10 leading-10" onClick={e => e.stopPropagation()}>
+                      Replace PDF
+                      <input type="file" accept=".pdf" className="hidden" onChange={e => { if (e.target.files[0]) uploadGuide(e.target.files[0]) }} />
+                    </label>
+                  )}
+                </div>
+              ) : isAdmin ? (
+                <label className="block cursor-pointer" onClick={e => e.stopPropagation()}>
+                  <div className="w-full border-2 border-dashed border-ink-200 rounded-sm py-3 text-body-sm text-ink-400 hover:border-aqua-500 hover:text-aqua-600 text-center">
+                    + Upload Entry Pack PDF
+                  </div>
+                  <input type="file" accept=".pdf" className="hidden" onChange={e => { if (e.target.files[0]) uploadGuide(e.target.files[0]) }} />
+                </label>
+              ) : null}
+            </div>
           )}
-        </div>
 
-        {/* Registration */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-green-500 text-lg">&#x270F;&#xFE0F;</span>
-            <h4 className="font-semibold text-sm">Registration</h4>
-          </div>
-          {c.registration_url && editingField !== 'registration_url' ? (
-            <div>
-              <a href={c.registration_url} target="_blank" rel="noopener noreferrer"
-                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 inline-flex items-center gap-1.5 w-full justify-center mb-2">
-                Open Registration
-              </a>
-              <button onClick={(e) => { e.stopPropagation(); startEdit('registration_url', c.registration_url) }}
-                className="text-xs text-gray-400 hover:text-gray-600 w-full text-center">Edit link</button>
-            </div>
-          ) : editingField === 'registration_url' ? (
-            <div className="space-y-2" onClick={e => e.stopPropagation()}>
-              <input type="url" value={fieldValue} onChange={e => setFieldValue(e.target.value)}
-                placeholder="https://..." className="w-full border rounded-lg px-3 py-2 text-sm" autoFocus />
-              <div className="flex gap-2">
-                <button onClick={() => saveField('registration_url', fieldValue)} disabled={saving}
-                  className="flex-1 bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-green-700 disabled:opacity-50">Save</button>
-                <button onClick={() => setEditingField(null)}
-                  className="flex-1 border px-3 py-1.5 rounded-lg text-xs hover:bg-gray-50">Cancel</button>
+          {/* Registration */}
+          {showReg && (
+            <div className="bg-white rounded-md border border-ink-100 shadow-card p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <PenLine size={16} className="text-pos" />
+                <h4 className="text-body-sm font-semibold text-ink-900">Registration</h4>
               </div>
+              {c.registration_url && editingField !== 'registration_url' ? (
+                <div>
+                  <a href={c.registration_url} target="_blank" rel="noopener noreferrer"
+                    className={`${LINK_BTN} bg-pos mb-2`}>
+                    Open Registration
+                  </a>
+                  {isAdmin && (
+                    <button onClick={(e) => { e.stopPropagation(); startEdit('registration_url', c.registration_url) }}
+                      className="text-body-sm text-ink-400 hover:text-ink-900 w-full text-center min-h-10">Edit link</button>
+                  )}
+                </div>
+              ) : isAdmin && editingField === 'registration_url' ? (
+                <div className="space-y-2" onClick={e => e.stopPropagation()}>
+                  <Input type="url" value={fieldValue} onChange={e => setFieldValue(e.target.value)}
+                    placeholder="https://..." autoFocus />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="flex-1" loading={saving}
+                      onClick={() => saveField('registration_url', fieldValue)}>Save</Button>
+                    <Button size="sm" variant="secondary" className="flex-1"
+                      onClick={() => setEditingField(null)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : isAdmin ? (
+                <button onClick={(e) => { e.stopPropagation(); startEdit('registration_url', '') }}
+                  className="w-full border-2 border-dashed border-ink-200 rounded-sm py-3 text-body-sm text-ink-400 hover:border-pos hover:text-pos">
+                  + Add Registration Link
+                </button>
+              ) : null}
             </div>
-          ) : (
-            <button onClick={(e) => { e.stopPropagation(); startEdit('registration_url', '') }}
-              className="w-full border-2 border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-400 hover:border-green-400 hover:text-green-500">
-              + Add Registration Link
-            </button>
           )}
         </div>
-      </div>
+      )}
 
       {/* Other buttons */}
       <div className="flex flex-wrap gap-3">
         {c.website && (
           <a href={c.website} target="_blank" rel="noopener noreferrer"
-            className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700 inline-flex items-center gap-1.5">
-            <span>&#x1F310;</span> Website
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-sm text-body-sm font-medium bg-aqua-600 text-white hover:bg-aqua-500 transition-colors">
+            <Globe size={16} /> Website
           </a>
         )}
         {c.policy_pdf && (
           <a href={c.policy_pdf} target="_blank" rel="noopener noreferrer"
-            className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100 inline-flex items-center gap-1.5">
-            <span>&#x1F4C4;</span> Nashra (Policy)
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-sm text-body-sm font-medium bg-white text-ink-900 border border-ink-200 hover:border-aqua-500/40 hover:bg-aqua-50 transition-colors">
+            <FileText size={16} /> Nashra (Policy)
           </a>
         )}
-        {c.is_calendar_only && onDelete && (
-          <button onClick={(e) => { e.stopPropagation(); onDelete(c) }}
-            className="ml-auto border border-red-200 text-red-500 px-4 py-2 rounded-lg text-sm hover:bg-red-50 inline-flex items-center gap-1.5">
+        {isAdmin && c.is_calendar_only && onDelete && (
+          <Button variant="ghost" size="md" icon={Trash2}
+            className="ms-auto !text-neg hover:!bg-neg/10"
+            onClick={(e) => { e.stopPropagation(); onDelete(c) }}>
             Delete Meet
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -362,17 +387,17 @@ function TodayBirthdays({ navigate }) {
   if (today.length === 0 && upcoming.length === 0) return null
 
   return (
-    <div className="bg-gradient-to-r from-pink-50 to-amber-50 border border-pink-200 rounded-xl p-4 mb-5">
+    <Card className="mb-5">
       {today.length > 0 && (
-        <div className={upcoming.length > 0 ? 'mb-3' : ''}>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">🎂</span>
-            <h3 className="font-bold text-sm text-gray-800">Birthdays Today</h3>
+        <div className={upcoming.length > 0 ? 'mb-4' : ''}>
+          <div className="flex items-center gap-2 mb-2.5">
+            <Cake size={16} className="text-aqua-600" />
+            <h3 className="text-label text-ink-500">Birthdays Today</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {today.map(s => (
               <button key={s.id} onClick={() => navigate(`/swimmers/${s.id}`)}
-                className="bg-white border border-pink-200 rounded-full px-3 py-1 text-sm font-medium text-gray-700 hover:border-pink-400 hover:text-pink-700 transition-colors">
+                className="bg-white border border-ink-200 rounded-full px-3.5 h-10 text-body-sm font-medium text-ink-900 hover:border-aqua-500/40 hover:bg-aqua-50 transition-colors">
                 {s.name}
               </button>
             ))}
@@ -381,27 +406,36 @@ function TodayBirthdays({ navigate }) {
       )}
       {upcoming.length > 0 && (
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">🎈</span>
-            <h3 className="font-bold text-sm text-gray-800">Upcoming Birthdays</h3>
+          <div className="flex items-center gap-2 mb-2.5">
+            <Gift size={16} className="text-aqua-600" />
+            <h3 className="text-label text-ink-500">Upcoming Birthdays</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {upcoming.map(s => (
               <button key={s.id} onClick={() => navigate(`/swimmers/${s.id}`)}
-                className="bg-white border border-pink-200 rounded-full px-3 py-1 text-sm font-medium text-gray-700 hover:border-pink-400 hover:text-pink-700 transition-colors">
+                className="bg-white border border-ink-200 rounded-full px-3.5 h-10 text-body-sm font-medium text-ink-900 hover:border-aqua-500/40 hover:bg-aqua-50 transition-colors">
                 {s.name}
-                <span className="text-gray-400 ml-1.5 text-xs">{s.when.getDate()} {MONTH_SHORT[s.when.getMonth()]}</span>
+                <span className="text-ink-400 ms-1.5 text-body-sm">{s.when.getDate()} {MONTH_SHORT[s.when.getMonth()]}</span>
               </button>
             ))}
           </div>
         </div>
       )}
-    </div>
+    </Card>
   )
+}
+
+const EVENT_TYPE_BADGE = {
+  CHAMPIONSHIP: 'aqua',
+  MEET: 'aqua',
+  CUSTOM: 'record',
 }
 
 export default function CalendarPage() {
   const navigate = useNavigate()
+  const toast = useToast()
+  const { token } = useAuth()
+  const isAdmin = !!token
   const [championships, setChampionships] = useState([])
   const [calendarEvents, setCalendarEvents] = useState([])
   const [countries, setCountries] = useState([])
@@ -410,6 +444,7 @@ export default function CalendarPage() {
   const [selectedMeet, setSelectedMeet] = useState(null)
   const [featuredMeet, setFeaturedMeet] = useState(null)
   const [featuredEvent, setFeaturedEvent] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null) // { type: 'meet'|'event', item }
 
   // Upgrade an old meet-type event (no championship behind it) to a full meet
   const [upgradingEvent, setUpgradingEvent] = useState(null)
@@ -510,29 +545,29 @@ export default function CalendarPage() {
       <div key={c.id}>
         <div
           onClick={() => setSelectedMeet(isSelected ? null : c)}
-          className={`bg-white border px-6 py-5 flex items-center gap-6 cursor-pointer transition-all hover:shadow-md ${
-            isSelected ? 'border-cyan-500 shadow-md rounded-t-xl' : 'border-gray-200 rounded-xl'
+          className={`bg-white border px-4 md:px-6 py-4 md:py-5 flex items-center gap-4 md:gap-6 cursor-pointer transition-colors ${
+            isSelected ? 'border-aqua-500 rounded-t-md shadow-card' : 'border-ink-100 rounded-md shadow-card hover:border-aqua-500/40'
           }`}
         >
           {/* Meet photo or date badge */}
           {c.meet_photo ? (
-            <div className="w-24 h-20 rounded-xl overflow-hidden shrink-0 shadow">
+            <div className="w-24 h-20 rounded-md overflow-hidden shrink-0 shadow-card">
               <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
             </div>
           ) : (
-            <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
-              <span className="text-3xl font-bold leading-none">{d.date()}</span>
-              <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{MONTH_SHORT[d.month()]}</span>
+            <div className="w-20 h-20 bg-ink-900 rounded-md flex flex-col items-center justify-center text-white shrink-0">
+              <span className="text-display leading-none tnum">{d.date()}</span>
+              <span className="text-label text-aqua-400 mt-1">{MONTH_SHORT[d.month()]}</span>
             </div>
           )}
 
           {/* Meet info */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-lg text-gray-900 truncate">{c.name}</h3>
-            <div className="flex items-center gap-3 text-sm text-gray-500 mt-1.5">
+            <h3 className="text-title text-ink-900 truncate">{c.name}</h3>
+            <div className="flex items-center gap-3 text-body-sm text-ink-500 mt-1.5">
               {c.location && (
                 <span className="flex items-center gap-1">
-                  <span className="text-gray-400">&#x1F4CD;</span>
+                  <MapPin size={14} className="text-ink-400 shrink-0" />
                   {c.location}
                   {c.country_detail && <span>, {c.country_detail.name}</span>}
                 </span>
@@ -541,7 +576,7 @@ export default function CalendarPage() {
                 <CountryFlag code={c.country_detail.code} flagUrl={c.country_detail.flag_url} name={c.country_detail.name} />
               )}
             </div>
-            <div className="flex items-center gap-3 text-sm text-gray-400 mt-1.5">
+            <div className="flex items-center gap-3 text-body-sm text-ink-400 mt-1.5">
               <span>{c.pool === 'LCM' ? '50m Pool' : '25m Pool'}</span>
               {c.end_date && c.end_date !== c.date && (
                 <span>&mdash; {formatDate(c.date)} to {formatDate(c.end_date)}</span>
@@ -550,14 +585,14 @@ export default function CalendarPage() {
           </div>
 
           {/* Arrow */}
-          <span className={`text-gray-400 text-lg transition-transform ${isSelected ? 'rotate-90' : ''}`}>&#x276F;</span>
+          <ChevronRight size={18} className={`text-ink-400 shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
         </div>
 
         {/* Expanded meet details */}
         {isSelected && (
-          <MeetExpandedPanel meet={c} navigate={navigate} countries={countries} onUpdate={(updated) => {
+          <MeetExpandedPanel meet={c} navigate={navigate} countries={countries} isAdmin={isAdmin} onUpdate={(updated) => {
             setChampionships(prev => prev.map(ch => ch.id === updated.id ? { ...ch, ...updated } : ch))
-          }} onDelete={handleDeleteCalendarMeet} />
+          }} onDelete={(meet) => setPendingDelete({ type: 'meet', item: meet })} />
         )}
       </div>
     )
@@ -599,7 +634,7 @@ export default function CalendarPage() {
       setNewEvent({ title: '', date: '', end_date: '', event_type: 'CUSTOM', description: '', country: '', location: '', pool: 'LCM' })
       setShowAddEvent(false)
     } catch (err) {
-      alert('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
+      toast.error('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
     } finally {
       setAddLoading(false)
     }
@@ -632,14 +667,13 @@ export default function CalendarPage() {
       setUpgradingEvent(null)
       setUpgradeForm({ country: '', pool: 'LCM', location: '' })
     } catch (err) {
-      alert('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
+      toast.error('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
     } finally {
       setUpgradeLoading(false)
     }
   }
 
-  const handleDeleteCalendarMeet = async (c) => {
-    if (!confirm(`Delete "${c.name}" from the calendar?`)) return
+  const doDeleteCalendarMeet = async (c) => {
     try {
       await deleteChampionship(c.id)
       // Remove the linked calendar event(s) too
@@ -654,8 +688,7 @@ export default function CalendarPage() {
     } catch { /* ignore */ }
   }
 
-  const handleDeleteEvent = async (evId) => {
-    if (!confirm('Delete this event?')) return
+  const doDeleteEvent = async (evId) => {
     try {
       await deleteCalendarEvent(evId)
       setCalendarEvents(prev => prev.filter(e => e.id !== evId))
@@ -663,14 +696,25 @@ export default function CalendarPage() {
     } catch { /* ignore */ }
   }
 
-  const EVENT_TYPE_COLORS = {
-    CHAMPIONSHIP: 'bg-cyan-100 text-cyan-700',
-    MEET: 'bg-blue-100 text-blue-700',
-    CUSTOM: 'bg-purple-100 text-purple-700',
-  }
+  const filterChips = [
+    filterYear && { key: 'year', label: filterYear, onRemove: () => setFilterYear('') },
+    filterCountry && {
+      key: 'country',
+      label: countries.find(c => String(c.id) === String(filterCountry))?.name || 'Country',
+      onRemove: () => setFilterCountry(''),
+    },
+  ].filter(Boolean)
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto">
+      <PageHeader
+        title="Calendar"
+        subtitle="Upcoming meets and events across the Arab world"
+        action={isAdmin && (
+          <Button icon={Plus} onClick={() => setShowAddEvent(true)}>Add Event</Button>
+        )}
+      />
+
       {/* Featured upcoming meet */}
       {upcomingMeet && <FeaturedMeet meet={upcomingMeet} navigate={navigate} />}
 
@@ -678,41 +722,33 @@ export default function CalendarPage() {
       <TodayBirthdays navigate={navigate} />
 
       {/* Filters */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-3">
-          <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}
-            className="border-2 border-cyan-500 rounded-lg px-4 py-2 text-sm bg-white font-medium">
-            <option value="">All Years</option>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-          <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)}
-            className="border-2 border-cyan-500 rounded-lg px-4 py-2 text-sm bg-white">
-            <option value="">All Countries</option>
-            {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-        <button onClick={() => setShowAddEvent(true)}
-          className="bg-cyan-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-cyan-700 font-medium">
-          + Add Event
-        </button>
-      </div>
+      <FilterBar chips={filterChips} onReset={() => { setFilterYear(''); setFilterCountry('') }}>
+        <Select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}
+          className="w-full md:w-36" aria-label="Year">
+          <option value="">All Years</option>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </Select>
+        <Select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)}
+          className="w-full md:w-52" aria-label="Country">
+          <option value="">All Countries</option>
+          {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </Select>
+      </FilterBar>
 
       {/* Events grouped by month — latest first */}
       {Object.keys(grouped).length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <div className="text-5xl mb-3">&#x1F4C5;</div>
-          <p>No competitions found for the selected filters</p>
-        </div>
+        <EmptyState icon={CalendarDays} title="No competitions found"
+          hint="Try a different year or country filter" />
       )}
 
       {Object.entries(grouped).sort(([a], [b]) => b.localeCompare(a)).map(([key, group]) => (
         <div key={key} className="mb-8">
           {/* Month header */}
           <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
+            <h2 className="text-label text-ink-500 !text-[12px]">
               {MONTHS[group.month]} {group.year}
             </h2>
-            <div className="flex-1 h-px bg-cyan-200" />
+            <div className="flex-1 h-px bg-ink-200" />
           </div>
 
           {/* Events + meets for this month — latest first */}
@@ -725,13 +761,12 @@ export default function CalendarPage() {
                 const ev = item
                 const d = dayjs(ev.date)
                 const isMeetType = ev.event_type !== 'CUSTOM'
-                const deleteBtn = (
-                  <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev.id) }} className="text-gray-300 hover:text-red-500 shrink-0" title="Delete">
-                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                    </svg>
+                const deleteBtn = isAdmin ? (
+                  <button onClick={(e) => { e.stopPropagation(); setPendingDelete({ type: 'event', item: ev }) }}
+                    className="p-2.5 text-ink-200 hover:text-neg shrink-0 rounded-sm" aria-label="Delete event" title="Delete">
+                    <Trash2 size={16} />
                   </button>
-                )
+                ) : null
                 if (isMeetType) {
                   // Meet/championship calendar event — rendered exactly like a
                   // meet card. Clicking loads the linked championship (or asks
@@ -772,22 +807,22 @@ export default function CalendarPage() {
                           } catch { /* not admin — card stays as-is */ }
                         }
                       }}
-                      className="bg-white border border-gray-200 rounded-xl px-6 py-5 flex items-center gap-6 transition-all hover:shadow-md cursor-pointer">
-                      <div className="w-20 h-20 bg-cyan-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow">
-                        <span className="text-3xl font-bold leading-none">{d.date()}</span>
-                        <span className="text-xs font-semibold uppercase tracking-wider mt-0.5">{MONTH_SHORT[d.month()]}</span>
+                      className="bg-white border border-ink-100 shadow-card rounded-md px-4 md:px-6 py-4 md:py-5 flex items-center gap-4 md:gap-6 transition-colors hover:border-aqua-500/40 cursor-pointer">
+                      <div className="w-20 h-20 bg-ink-900 rounded-md flex flex-col items-center justify-center text-white shrink-0">
+                        <span className="text-display leading-none tnum">{d.date()}</span>
+                        <span className="text-label text-aqua-400 mt-1">{MONTH_SHORT[d.month()]}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-lg text-gray-900 truncate">{ev.title}</h3>
+                        <h3 className="text-title text-ink-900 truncate">{ev.title}</h3>
                         {ev.description && (
-                          <div className="flex items-center gap-3 text-sm text-gray-500 mt-1.5">
+                          <div className="flex items-center gap-3 text-body-sm text-ink-500 mt-1.5">
                             <span className="flex items-center gap-1">
-                              <span className="text-gray-400">&#x1F4CD;</span>
+                              <MapPin size={14} className="text-ink-400 shrink-0" />
                               {ev.description}
                             </span>
                           </div>
                         )}
-                        <div className="flex items-center gap-3 text-sm text-gray-400 mt-1.5">
+                        <div className="flex items-center gap-3 text-body-sm text-ink-400 mt-1.5">
                           <span>50m Pool</span>
                           {ev.end_date && ev.end_date !== ev.date && (
                             <span>&mdash; {formatDate(ev.date)} to {formatDate(ev.end_date)}</span>
@@ -795,26 +830,24 @@ export default function CalendarPage() {
                         </div>
                       </div>
                       {deleteBtn}
-                      <span className="text-gray-400 text-lg">&#x276F;</span>
+                      <ChevronRight size={18} className="text-ink-400 shrink-0" />
                     </div>
                   )
                 }
                 return (
-                  <div key={`ev-${ev.id}`} className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-5">
-                    <div className="w-14 h-14 bg-purple-500 rounded-lg flex flex-col items-center justify-center text-white shrink-0">
-                      <span className="text-xl font-bold leading-none">{d.date()}</span>
-                      <span className="text-[9px] font-semibold uppercase">{MONTH_SHORT[d.month()]}</span>
+                  <div key={`ev-${ev.id}`} className="bg-white border border-ink-100 shadow-card rounded-md px-4 md:px-5 py-4 flex items-center gap-4 md:gap-5">
+                    <div className="w-14 h-14 bg-record rounded-sm flex flex-col items-center justify-center text-white shrink-0">
+                      <span className="text-title leading-none tnum">{d.date()}</span>
+                      <span className="text-label mt-0.5">{MONTH_SHORT[d.month()]}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900 truncate">{ev.title}</h3>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${EVENT_TYPE_COLORS[ev.event_type] || EVENT_TYPE_COLORS.CUSTOM}`}>
-                          {ev.event_type}
-                        </span>
+                        <h3 className="text-body font-semibold text-ink-900 truncate">{ev.title}</h3>
+                        <Badge variant={EVENT_TYPE_BADGE[ev.event_type] || 'record'}>{ev.event_type}</Badge>
                       </div>
-                      {ev.description && <p className="text-sm text-gray-500 mt-0.5 truncate">{ev.description}</p>}
+                      {ev.description && <p className="text-body-sm text-ink-500 mt-0.5 truncate">{ev.description}</p>}
                       {ev.end_date && ev.end_date !== ev.date && (
-                        <p className="text-xs text-gray-400 mt-0.5">{formatDate(ev.date)} to {formatDate(ev.end_date)}</p>
+                        <p className="text-body-sm text-ink-400 mt-0.5">{formatDate(ev.date)} to {formatDate(ev.end_date)}</p>
                       )}
                     </div>
                     {deleteBtn}
@@ -825,129 +858,131 @@ export default function CalendarPage() {
         </div>
       ))}
 
-      {/* Upgrade old meet-type event Modal */}
-      {upgradingEvent && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setUpgradingEvent(null)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold mb-1">{upgradingEvent.title}</h2>
-            <p className="text-sm text-gray-500 mb-4">Complete the meet details to unlock the full meet card (live results, entry pack, registration...)</p>
-            <form onSubmit={handleUpgradeEvent} className="space-y-3">
+      {/* Upgrade old meet-type event Modal (admin) */}
+      <Modal open={isAdmin && !!upgradingEvent} onClose={() => setUpgradingEvent(null)}
+        title={upgradingEvent?.title} size="md">
+        <p className="text-body-sm text-ink-500 mb-4 -mt-1">Complete the meet details to unlock the full meet card (live results, entry pack, registration...)</p>
+        <form onSubmit={handleUpgradeEvent} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <FieldLabel required>Country</FieldLabel>
+              <Select value={upgradeForm.country} onChange={(e) => setUpgradeForm({ ...upgradeForm, country: e.target.value })} required>
+                <option value="">Select country</option>
+                {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </Select>
+            </div>
+            <div>
+              <FieldLabel>Pool</FieldLabel>
+              <Select value={upgradeForm.pool} onChange={(e) => setUpgradeForm({ ...upgradeForm, pool: e.target.value })}>
+                <option value="LCM">Long Course (50m)</option>
+                <option value="SCM">Short Course (25m)</option>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Location</FieldLabel>
+            <Input type="text" value={upgradeForm.location} onChange={(e) => setUpgradeForm({ ...upgradeForm, location: e.target.value })}
+              placeholder="City / venue" />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="secondary" className="flex-1" onClick={() => setUpgradingEvent(null)}>Cancel</Button>
+            <Button type="submit" className="flex-1" disabled={!upgradeForm.country} loading={upgradeLoading}>
+              Save
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Event Modal (admin) */}
+      <Modal open={isAdmin && showAddEvent} onClose={() => setShowAddEvent(false)}
+        title="Add Calendar Event" size="md">
+        <form onSubmit={handleAddEvent} className="space-y-3">
+          <div>
+            <FieldLabel required>Title</FieldLabel>
+            <Input type="text" value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+              placeholder="e.g. Team Meeting, Deadline..." required />
+          </div>
+          <div>
+            <FieldLabel>Type</FieldLabel>
+            <Select value={newEvent.event_type} onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}>
+              <option value="CUSTOM">Custom Event</option>
+              <option value="MEET">Meet</option>
+              <option value="CHAMPIONSHIP">Championship</option>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <FieldLabel required>Start Date</FieldLabel>
+              <Input type="date" value={newEvent.date} onChange={(e) => {
+                const d = e.target.value
+                const updates = { date: d }
+                if (newEvent.end_date && newEvent.end_date < d) updates.end_date = d
+                setNewEvent({ ...newEvent, ...updates })
+              }} required />
+            </div>
+            <div>
+              <FieldLabel>End Date</FieldLabel>
+              <Input type="date" value={newEvent.end_date} onChange={(e) => setNewEvent({ ...newEvent, end_date: e.target.value })}
+                min={newEvent.date || undefined} />
+            </div>
+          </div>
+          {newEvent.event_type !== 'CUSTOM' && (
+            <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Country *</label>
-                  <select value={upgradeForm.country} onChange={(e) => setUpgradeForm({ ...upgradeForm, country: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 text-sm" required>
+                  <FieldLabel required>Country</FieldLabel>
+                  <Select value={newEvent.country} onChange={(e) => setNewEvent({ ...newEvent, country: e.target.value })} required>
                     <option value="">Select country</option>
                     {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Pool</label>
-                  <select value={upgradeForm.pool} onChange={(e) => setUpgradeForm({ ...upgradeForm, pool: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 text-sm">
+                  <FieldLabel>Pool</FieldLabel>
+                  <Select value={newEvent.pool} onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })}>
                     <option value="LCM">Long Course (50m)</option>
                     <option value="SCM">Short Course (25m)</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Location</label>
-                <input type="text" value={upgradeForm.location} onChange={(e) => setUpgradeForm({ ...upgradeForm, location: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="City / venue" />
+                <FieldLabel>Location</FieldLabel>
+                <Input type="text" value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                  placeholder="City / venue" />
               </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setUpgradingEvent(null)} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
-                <button type="submit" disabled={!upgradeForm.country || upgradeLoading}
-                  className="flex-1 bg-cyan-600 text-white rounded-lg py-2 text-sm hover:bg-cyan-700 disabled:opacity-50">
-                  {upgradeLoading ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </form>
+            </>
+          )}
+          <div>
+            <FieldLabel>Description</FieldLabel>
+            <Textarea value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+              rows={2} placeholder="Optional details..." />
           </div>
-        </div>
-      )}
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="secondary" className="flex-1" onClick={() => setShowAddEvent(false)}>Cancel</Button>
+            <Button type="submit" className="flex-1" loading={addLoading}
+              disabled={!newEvent.title || !newEvent.date || (newEvent.event_type !== 'CUSTOM' && !newEvent.country)}>
+              Save
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
-      {/* Add Event Modal */}
-      {showAddEvent && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowAddEvent(false)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold mb-4">Add Calendar Event</h2>
-            <form onSubmit={handleAddEvent} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Title *</label>
-                <input type="text" value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Team Meeting, Deadline..." required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Type</label>
-                <select value={newEvent.event_type} onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm">
-                  <option value="CUSTOM">Custom Event</option>
-                  <option value="MEET">Meet</option>
-                  <option value="CHAMPIONSHIP">Championship</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Start Date *</label>
-                  <input type="date" value={newEvent.date} onChange={(e) => {
-                    const d = e.target.value
-                    const updates = { date: d }
-                    if (newEvent.end_date && newEvent.end_date < d) updates.end_date = d
-                    setNewEvent({ ...newEvent, ...updates })
-                  }}
-                    className="w-full border rounded-lg px-3 py-2 text-sm" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">End Date</label>
-                  <input type="date" value={newEvent.end_date} onChange={(e) => setNewEvent({ ...newEvent, end_date: e.target.value })}
-                    min={newEvent.date || undefined}
-                    className="w-full border rounded-lg px-3 py-2 text-sm" />
-                </div>
-              </div>
-              {newEvent.event_type !== 'CUSTOM' && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Country *</label>
-                      <select value={newEvent.country} onChange={(e) => setNewEvent({ ...newEvent, country: e.target.value })}
-                        className="w-full border rounded-lg px-3 py-2 text-sm" required>
-                        <option value="">Select country</option>
-                        {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Pool</label>
-                      <select value={newEvent.pool} onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })}
-                        className="w-full border rounded-lg px-3 py-2 text-sm">
-                        <option value="LCM">Long Course (50m)</option>
-                        <option value="SCM">Short Course (25m)</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Location</label>
-                    <input type="text" value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                      className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="City / venue" />
-                  </div>
-                </>
-              )}
-              <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
-                <textarea value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" rows={2} placeholder="Optional details..." />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddEvent(false)} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
-                <button type="submit" disabled={!newEvent.title || !newEvent.date || (newEvent.event_type !== 'CUSTOM' && !newEvent.country) || addLoading}
-                  className="flex-1 bg-cyan-600 text-white rounded-lg py-2 text-sm hover:bg-cyan-700 disabled:opacity-50">
-                  {addLoading ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Delete confirmations */}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={pendingDelete?.type === 'meet'
+          ? `Delete "${pendingDelete?.item?.name}" from the calendar?`
+          : 'Delete this event?'}
+        message="This cannot be undone."
+        destructive
+        onConfirm={async () => {
+          const pd = pendingDelete
+          setPendingDelete(null)
+          if (!pd) return
+          if (pd.type === 'meet') await doDeleteCalendarMeet(pd.item)
+          else await doDeleteEvent(pd.item.id)
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

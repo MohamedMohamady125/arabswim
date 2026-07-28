@@ -4,23 +4,29 @@ import { Image, Plus, Trash2 } from 'lucide-react'
 import { getAlbums, createAlbum, deleteAlbum } from '../api/media'
 import { getChampionships } from '../api/championships'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import { Button, Modal, Input, Select, Textarea, FieldLabel, EmptyState, ConfirmDialog, CardsSkeleton, PageHeader } from '../components/ui'
 
 export default function MediaPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const championshipFilter = searchParams.get('championship') || ''
   const toast = useToast()
+  const { token } = useAuth()
+  const isAdmin = !!token
   const [albums, setAlbums] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [championships, setChampionships] = useState([])
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ title: '', description: '', championship: '' })
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   const load = () => {
     const params = championshipFilter ? { championship: championshipFilter } : {}
     getAlbums(params).then((res) => {
       setAlbums(Array.isArray(res.data) ? res.data : res.data.results || [])
-    }).catch(() => {})
+    }).catch(() => {}).finally(() => setLoading(false))
   }
 
   useEffect(load, [])
@@ -51,94 +57,100 @@ export default function MediaPage() {
   }
 
   const handleDelete = async (album) => {
-    if (!window.confirm(`Delete album "${album.title}" and all its media?`)) return
     try {
       await deleteAlbum(album.id)
       setAlbums((prev) => prev.filter((a) => a.id !== album.id))
       toast.success('Album deleted')
     } catch {
       toast.error('Failed to delete album')
+    } finally {
+      setPendingDelete(null)
     }
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Image size={24} className="text-blue-600" /> Media
-          <span className="text-gray-400 text-lg font-normal">({albums.length} albums)</span>
-        </h1>
-        <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-          <Plus size={16} /> New Album
-        </button>
-      </div>
+    <div className="max-w-7xl mx-auto animate-fade-up">
+      <PageHeader
+        title="Media"
+        subtitle={`${albums.length} album${albums.length === 1 ? '' : 's'}`}
+        action={isAdmin && (
+          <Button variant="secondary" size="sm" icon={Plus} onClick={() => setShowModal(true)}>
+            New Album
+          </Button>
+        )}
+      />
 
-      {albums.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
-          No albums yet. Create one to start uploading photos and videos.
+      {loading ? (
+        <CardsSkeleton count={8} />
+      ) : albums.length === 0 ? (
+        <div className="bg-white rounded-md shadow-card border border-ink-100">
+          <EmptyState icon={Image} title="No albums yet" hint="Photos and videos from championships will appear here." />
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {albums.map((a) => (
-            <div key={a.id} className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="h-36 bg-gray-100 cursor-pointer relative" onClick={() => navigate(`/media/albums/${a.id}`)}>
+            <div key={a.id}
+              className="group bg-white rounded-md shadow-card border border-ink-100 overflow-hidden transition-colors hover:border-aqua-500/40">
+              <div className="aspect-[4/3] bg-ink-50 cursor-pointer relative" onClick={() => navigate(`/media/albums/${a.id}`)}>
                 {a.cover ? (
                   <img src={a.cover} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300">
+                  <div className="w-full h-full flex items-center justify-center text-ink-200">
                     <Image size={32} />
                   </div>
                 )}
-                <button onClick={(e) => { e.stopPropagation(); handleDelete(a) }}
-                  className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity">
-                  <Trash2 size={13} />
-                </button>
+                {isAdmin && (
+                  <button onClick={(e) => { e.stopPropagation(); setPendingDelete(a) }}
+                    aria-label="Delete album"
+                    className="absolute top-2 end-2 bg-ink-950/60 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-neg transition-opacity">
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
-              <div className="p-3 cursor-pointer" onClick={() => navigate(`/media/albums/${a.id}`)}>
-                <h3 className="font-semibold text-sm truncate hover:text-blue-600">{a.title}</h3>
-                <div className="text-xs text-gray-400 mt-0.5">{a.items_count} item{a.items_count === 1 ? '' : 's'}</div>
+              <div className="p-3 cursor-pointer min-h-14" onClick={() => navigate(`/media/albums/${a.id}`)}>
+                <h3 className="text-body-sm font-semibold text-ink-900 truncate group-hover:text-aqua-600 transition-colors">{a.title}</h3>
+                <div className="text-label text-ink-400 mt-1 tnum">{a.items_count} item{a.items_count === 1 ? '' : 's'}</div>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <form onSubmit={handleCreate} className="bg-white rounded-xl p-4 sm:p-6 w-[440px] max-w-[92vw] space-y-4">
-            <h3 className="text-lg font-semibold">New Album</h3>
-            <div>
-              <label className="block text-sm font-medium mb-1">Title *</label>
-              <input type="text" value={form.title} autoFocus
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                className="w-full border rounded-lg px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
-              <textarea value={form.description} rows={2}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                className="w-full border rounded-lg px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Championship (optional)</label>
-              <select value={form.championship}
-                onChange={(e) => setForm((f) => ({ ...f, championship: e.target.value }))}
-                className="w-full border rounded-lg px-3 py-2 text-sm">
-                <option value="">— None —</option>
-                {championships.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="flex justify-end gap-3 pt-1">
-              <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button type="submit" disabled={saving}
-                className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
-                {saving ? 'Creating...' : 'Create Album'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="New Album" size="md">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div>
+            <FieldLabel required>Title</FieldLabel>
+            <Input type="text" value={form.title} autoFocus
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+          </div>
+          <div>
+            <FieldLabel>Description</FieldLabel>
+            <Textarea value={form.description} rows={2}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+          </div>
+          <div>
+            <FieldLabel>Championship (optional)</FieldLabel>
+            <Select value={form.championship}
+              onChange={(e) => setForm((f) => ({ ...f, championship: e.target.value }))}>
+              <option value="">— None —</option>
+              {championships.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
+            <Button type="submit" loading={saving}>Create Album</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete album"
+        message={pendingDelete ? `Delete album "${pendingDelete.title}" and all its media?` : ''}
+        destructive
+        onConfirm={() => handleDelete(pendingDelete)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

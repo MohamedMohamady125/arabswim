@@ -1,29 +1,33 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Globe, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Globe, Plus, Pencil, Trash2, Users } from 'lucide-react'
 import { getCountries, createCountry, updateCountry, deleteCountry } from '../api/core'
-import CountryFlag from '../components/common/CountryFlag'
+import { CODE_TO_ALPHA2 } from '../components/common/CountryFlag'
+import { PageHeader, FilterBar, SearchInput, Select, Button, Badge, Modal, ConfirmDialog, EmptyState, FieldLabel, Input, CardsSkeleton } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
 const REGIONS = [['ARAB', 'Arab'], ['GCC', 'GCC'], ['OTHER', 'Other']]
-const REGION_STYLES = {
-  ARAB: 'bg-blue-100 text-blue-700',
-  GCC: 'bg-emerald-100 text-emerald-700',
-  OTHER: 'bg-gray-100 text-gray-600',
-}
 
 const EMPTY = { name: '', code: '', flag_url: '', region: 'ARAB' }
 
 export default function CountriesPage() {
   const toast = useToast()
+  const { token } = useAuth()
+  const isAdmin = !!token
   const [countries, setCountries] = useState([])
+  const [loading, setLoading] = useState(true)
   const [regionFilter, setRegionFilter] = useState('ARAB_ALL')
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState(null) // 'new' or country id
   const [draft, setDraft] = useState(EMPTY)
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   const load = () => {
-    getCountries({ with_stats: 1 }).then((res) => setCountries(res.data)).catch(() => {})
+    getCountries({ with_stats: 1 })
+      .then((res) => setCountries(res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }
 
   useEffect(load, [])
@@ -54,7 +58,6 @@ export default function CountriesPage() {
   }
 
   const handleDelete = async (c) => {
-    if (!window.confirm(`Delete country "${c.name}"? This will fail if swimmers or data reference it.`)) return
     try {
       await deleteCountry(c.id)
       setCountries((prev) => prev.filter((x) => x.id !== c.id))
@@ -71,111 +74,133 @@ export default function CountriesPage() {
     return regionMatch && (!search || c.name.toLowerCase().includes(search.toLowerCase()) || c.code.toLowerCase().includes(search.toLowerCase()))
   })
 
-  const editorRow = (isNew, key) => (
-    <tr className="bg-blue-50" key={key}>
-      <td className="px-4 py-2">
-        <input type="text" value={draft.flag_url} placeholder="alpha-2 (e.g. eg)"
-          onChange={(e) => setDraft((d) => ({ ...d, flag_url: e.target.value }))}
-          className="border rounded px-2 py-1 text-sm w-24" />
-      </td>
-      <td className="px-4 py-2">
-        <input type="text" value={draft.name} placeholder="Country name" autoFocus
-          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-          className="border rounded px-2 py-1 text-sm w-full" />
-      </td>
-      <td className="px-4 py-2">
-        <input type="text" value={draft.code} placeholder="EGY" maxLength={3}
-          onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value.toUpperCase() }))}
-          className="border rounded px-2 py-1 text-sm w-20" />
-      </td>
-      <td className="px-4 py-2">
-        <select value={draft.region} onChange={(e) => setDraft((d) => ({ ...d, region: e.target.value }))}
-          className="border rounded px-2 py-1 text-sm">
-          {REGIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-      </td>
-      <td className="px-4 py-2 text-gray-400 text-sm">{isNew ? '—' : ''}</td>
-      <td className="px-4 py-2">
-        <div className="flex gap-2 justify-end">
-          <button onClick={saveEdit} className="text-emerald-600 hover:text-emerald-800"><Check size={16} /></button>
-          <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
-        </div>
-      </td>
-    </tr>
-  )
+  const chips = [
+    regionFilter && {
+      key: 'region',
+      label: regionFilter === 'ARAB_ALL' ? 'Arab' : 'Other',
+      onRemove: () => setRegionFilter(''),
+    },
+    search && { key: 'search', label: `"${search}"`, onRemove: () => setSearch('') },
+  ].filter(Boolean)
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Globe size={24} className="text-blue-600" /> Federations
-          <span className="text-gray-400 text-lg font-normal">({filtered.length})</span>
-        </h1>
-        <button onClick={() => { setEditingId('new'); setDraft(EMPTY) }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-          <Plus size={16} /> Add Country
-        </button>
-      </div>
+    <div className="max-w-7xl mx-auto">
+      <PageHeader
+        title="Federations"
+        subtitle={`${filtered.length} national swimming federations`}
+        action={isAdmin && (
+          <Button icon={Plus} onClick={() => { setEditingId('new'); setDraft(EMPTY) }}>
+            Add Country
+          </Button>
+        )}
+      />
 
-      <div className="flex gap-3 mb-4">
-        <input type="text" placeholder="Search countries..." value={search}
+      <FilterBar chips={chips} onReset={() => { setSearch(''); setRegionFilter('') }}>
+        <SearchInput
+          placeholder="Search countries..."
+          value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 border rounded-lg px-3 py-2 text-sm bg-white" />
-        <select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}
-          className="border rounded-lg px-3 py-2 text-sm bg-white">
+          className="w-full md:w-64"
+          aria-label="Search countries"
+        />
+        <Select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}
+          className="w-full md:w-44" aria-label="Region">
           <option value="">All Regions</option>
           <option value="ARAB_ALL">Arab</option>
           <option value="OTHER">Other</option>
-        </select>
-      </div>
+        </Select>
+      </FilterBar>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full min-w-[560px] sm:min-w-0 text-left">
-          <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-            <tr>
-              <th className="px-4 py-3">Flag</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Code</th>
-              <th className="px-4 py-3">Region</th>
-              <th className="px-4 py-3">Swimmers</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {editingId === 'new' && editorRow(true, 'new')}
-            {filtered.map((c) => (
-              editingId === c.id ? (
-                editorRow(false, c.id)
-              ) : (
-                <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2.5">
-                    <CountryFlag code={c.code} flagUrl={c.flag_url} name="" />
-                  </td>
-                  <td className="px-4 py-2.5 text-sm font-medium">
-                    <Link to={`/countries/${c.id}`} className="text-blue-600 hover:underline">{c.name}</Link>
-                  </td>
-                  <td className="px-4 py-2.5 text-sm text-gray-500">{c.code}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.region === 'OTHER' ? REGION_STYLES.OTHER : REGION_STYLES.ARAB}`}>
-                      {c.region === 'OTHER' ? 'OTHER' : 'ARAB'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-sm text-gray-500">{c.swimmers_count ?? '—'}</td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex gap-3 justify-end">
-                      <button onClick={() => startEdit(c)} className="text-blue-600 hover:text-blue-800"><Pencil size={14} /></button>
-                      <button onClick={() => handleDelete(c)} className="text-red-600 hover:text-red-800"><Trash2 size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            ))}
-            {filtered.length === 0 && editingId !== 'new' && (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-400">No countries found</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {loading ? (
+        <CardsSkeleton count={8} />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Globe} title="No countries found" hint="Try a different search or region filter" />
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          {filtered.map((c) => {
+            const alpha2 = c.flag_url || CODE_TO_ALPHA2[c.code?.toUpperCase()] || (c.code || '').toLowerCase().slice(0, 2)
+            return (
+              <div key={c.id}
+                className="relative bg-white rounded-md shadow-card border border-ink-100 hover:border-aqua-500/40 hover:bg-aqua-50/40 transition-colors">
+                <Link to={`/countries/${c.id}`} className="block p-4">
+                  <img
+                    src={`https://flagcdn.com/w160/${alpha2}.png`}
+                    alt=""
+                    className="w-14 h-10 object-cover rounded-sm border border-ink-100 mb-3"
+                    onError={(e) => { e.target.style.display = 'none' }}
+                  />
+                  <div className="text-body font-semibold text-ink-900 truncate">{c.name}</div>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span className="text-label text-ink-400">{c.code}</span>
+                    <Badge variant={c.region === 'OTHER' ? 'status' : 'aqua'}>
+                      {c.region === 'OTHER' ? 'Other' : 'Arab'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2 text-body-sm text-ink-500">
+                    <Users size={14} className="text-ink-400" />
+                    <span className="tnum">{c.swimmers_count ?? '—'}</span> swimmers
+                  </div>
+                </Link>
+                {isAdmin && (
+                  <div className="absolute top-2 end-2 flex gap-1">
+                    <Button variant="ghost" size="sm" icon={Pencil} aria-label={`Edit ${c.name}`}
+                      className="!min-w-0 !px-2" onClick={() => startEdit(c)} />
+                    <Button variant="ghost" size="sm" icon={Trash2} aria-label={`Delete ${c.name}`}
+                      className="!min-w-0 !px-2 hover:!text-neg" onClick={() => setPendingDelete(c)} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Admin: add / edit country */}
+      <Modal
+        open={isAdmin && editingId !== null}
+        onClose={cancelEdit}
+        title={editingId === 'new' ? 'Add Country' : 'Edit Country'}
+        size="md"
+      >
+        <div className="space-y-3">
+          <div>
+            <FieldLabel required>Country name</FieldLabel>
+            <Input type="text" value={draft.name} placeholder="Country name" autoFocus
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <FieldLabel required>Code</FieldLabel>
+              <Input type="text" value={draft.code} placeholder="EGY" maxLength={3}
+                onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value.toUpperCase() }))} />
+            </div>
+            <div>
+              <FieldLabel>Flag (alpha-2)</FieldLabel>
+              <Input type="text" value={draft.flag_url} placeholder="e.g. eg"
+                onChange={(e) => setDraft((d) => ({ ...d, flag_url: e.target.value }))} />
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Region</FieldLabel>
+            <Select value={draft.region} onChange={(e) => setDraft((d) => ({ ...d, region: e.target.value }))}>
+              {REGIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={cancelEdit}>Cancel</Button>
+            <Button onClick={saveEdit}>{editingId === 'new' ? 'Add Country' : 'Save Changes'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={`Delete "${pendingDelete?.name}"?`}
+        message="This will fail if swimmers or data reference it."
+        destructive
+        onConfirm={async () => { const c = pendingDelete; setPendingDelete(null); await handleDelete(c) }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

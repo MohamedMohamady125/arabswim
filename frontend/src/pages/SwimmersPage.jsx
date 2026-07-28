@@ -1,11 +1,27 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { User, Users, Plus, Pencil, Trash2, GitMerge, ArrowLeftRight } from 'lucide-react'
 import { getSwimmers, deleteSwimmer, searchSwimmers } from '../api/swimmers'
 import { getCountries } from '../api/core'
 import { mergeSwimmers } from '../api/importer'
 import DataTable from '../components/common/DataTable'
 import Pagination from '../components/common/Pagination'
 import CountryFlag from '../components/common/CountryFlag'
+import { Button, PageHeader, FilterBar, Select, SearchInput, Modal, ConfirmDialog, EmptyState } from '../components/ui'
+import { SwimmerCell } from '../components/domain'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+
+function Avatar({ photo, size = 'md' }) {
+  const cls = size === 'sm' ? 'w-8 h-8' : 'w-10 h-10'
+  return (
+    <div className={`${cls} rounded-full bg-ink-100 overflow-hidden shrink-0 flex items-center justify-center`}>
+      {photo
+        ? <img src={photo} alt="" className="w-full h-full object-cover" />
+        : <User size={size === 'sm' ? 14 : 16} className="text-ink-400" />}
+    </div>
+  )
+}
 
 export default function SwimmersPage() {
   const [swimmers, setSwimmers] = useState([])
@@ -16,6 +32,9 @@ export default function SwimmersPage() {
   const [filterNationality, setFilterNationality] = useState('')
   const [filterSex, setFilterSex] = useState('')
   const navigate = useNavigate()
+  const { token } = useAuth()
+  const isAdmin = !!token
+  const toast = useToast()
 
   // Merge state
   const [mergeMode, setMergeMode] = useState(false)
@@ -25,6 +44,9 @@ export default function SwimmersPage() {
   const [mergeSearch, setMergeSearch] = useState('')
   const [mergeResults, setMergeResults] = useState([])
   const [merging, setMerging] = useState(false)
+  const [confirmMerge, setConfirmMerge] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data.filter(c => c.region === 'ARAB' || c.region === 'GCC'))).catch(() => {})
@@ -45,10 +67,19 @@ export default function SwimmersPage() {
 
   useEffect(fetchSwimmers, [page, search, filterNationality, filterSex])
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this swimmer?')) return
-    await deleteSwimmer(id)
-    setSwimmers(swimmers.filter(s => s.id !== id))
+  const handleDelete = async () => {
+    if (!pendingDelete) return
+    setDeleting(true)
+    try {
+      await deleteSwimmer(pendingDelete.id)
+      setSwimmers(swimmers.filter(s => s.id !== pendingDelete.id))
+      toast.success('Swimmer deleted')
+      setPendingDelete(null)
+    } catch {
+      toast.error('Failed to delete swimmer')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   // Merge search
@@ -76,14 +107,15 @@ export default function SwimmersPage() {
 
   const handleMerge = async () => {
     if (!primarySwimmer || !duplicateSwimmer) return
-    if (!window.confirm(`Merge "${duplicateSwimmer.name}" into "${primarySwimmer.name}"?\n\nAll results, records, and medals from "${duplicateSwimmer.name}" will be transferred to "${primarySwimmer.name}", and "${duplicateSwimmer.name}" will be deleted.\n\nThis cannot be undone.`)) return
     setMerging(true)
     try {
       await mergeSwimmers(primarySwimmer.id, duplicateSwimmer.id)
+      toast.success(`Merged "${duplicateSwimmer.name}" into "${primarySwimmer.name}"`)
+      setConfirmMerge(false)
       cancelMerge()
       fetchSwimmers()
     } catch (err) {
-      alert('Merge failed: ' + (err.response?.data?.error || err.message))
+      toast.error('Merge failed: ' + (err.response?.data?.error || err.message))
     } finally {
       setMerging(false)
     }
@@ -98,133 +130,120 @@ export default function SwimmersPage() {
     setMergeResults([])
   }
 
+  const swimmerMeta = (s) => [s.club, s.sex === 'M' ? 'Male' : 'Female', s.age ? `Age ${s.age}` : null].filter(Boolean).join(' · ')
+
   const columns = [
-    { key: 'photo', label: 'Photo', render: (row) => (
-      <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-        {row.photo ? <img src={row.photo} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">👤</div>}
-      </div>
+    { key: 'photo', label: '', render: (row) => <Avatar photo={row.photo} /> },
+    { key: 'name', label: 'Swimmer', render: (row) => (
+      <SwimmerCell name={row.name} countryCode={row.nationality_detail?.code} flagUrl={row.nationality_detail?.flag_url} />
     )},
-    { key: 'name', label: 'Swimmer Name' },
-    { key: 'nationality', label: 'Nationality', render: (row) => (
-      <CountryFlag code={row.nationality_detail?.code} flagUrl={row.nationality_detail?.flag_url} name={row.nationality_detail?.name} />
-    )},
+    { key: 'nationality', label: 'Nationality', render: (row) => row.nationality_detail?.name || '-' },
     { key: 'club', label: 'Club', render: (row) => row.club || '-' },
     { key: 'sex', label: 'Sex', render: (row) => row.sex === 'M' ? 'Male' : 'Female' },
-    { key: 'age', label: 'Age' },
-    { key: 'actions', label: '', render: (row) => (
-      <div className="flex gap-2">
-        <button onClick={(e) => { e.stopPropagation(); navigate(`/swimmers/${row.id}/edit`) }} className="text-blue-600 text-sm hover:underline">Edit</button>
-        <button onClick={(e) => { e.stopPropagation(); handleDelete(row.id) }} className="text-red-600 text-sm hover:underline">Delete</button>
+    { key: 'age', label: 'Age', numeric: true },
+    ...(isAdmin ? [{ key: 'actions', label: '', render: (row) => (
+      <div className="flex gap-1 justify-end">
+        <Button variant="ghost" size="sm" icon={Pencil} aria-label="Edit swimmer"
+          onClick={(e) => { e.stopPropagation(); navigate(`/swimmers/${row.id}/edit`) }} />
+        <Button variant="ghost" size="sm" icon={Trash2} aria-label="Delete swimmer" className="text-neg hover:text-neg"
+          onClick={(e) => { e.stopPropagation(); setPendingDelete(row) }} />
       </div>
-    )},
+    )}] : []),
   ]
+
+  const chips = [
+    filterNationality && { key: 'nat', label: countries.find(c => String(c.id) === String(filterNationality))?.name || 'Country', onRemove: () => { setFilterNationality(''); setPage(1) } },
+    filterSex && { key: 'sex', label: filterSex === 'M' ? 'Men' : 'Women', onRemove: () => { setFilterSex(''); setPage(1) } },
+  ].filter(Boolean)
+
+  const mergeSlot = (swimmer, { title, hint, onClear }) => (
+    <div className="rounded-md border border-ink-100 bg-ink-50 p-4">
+      <div className="text-label text-ink-400 mb-2">{title}</div>
+      {swimmer ? (
+        <div className="flex items-center gap-3">
+          <Avatar photo={swimmer.photo} />
+          <div className="min-w-0">
+            <div className="text-body font-medium text-ink-900 truncate">{swimmer.name}</div>
+            <div className="text-body-sm text-ink-400">
+              <CountryFlag code={swimmer.nationality_detail?.code} flagUrl={swimmer.nationality_detail?.flag_url} name={swimmer.nationality_detail?.name} />
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" className="ms-auto" onClick={onClear}>Change</Button>
+        </div>
+      ) : (
+        <div className="text-body-sm text-ink-400 italic min-h-10 flex items-center">{hint}</div>
+      )}
+    </div>
+  )
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold">Swimmers</h1>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => navigate('/swimmers/compare')}
-            className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm border border-sky-500 text-sky-500 hover:bg-sky-50">
-            Compare
-          </button>
-          <button
-            onClick={() => mergeMode ? cancelMerge() : setMergeMode(true)}
-            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm ${mergeMode ? 'bg-gray-200 text-gray-700' : 'border border-orange-500 text-orange-500 hover:bg-orange-50'}`}
-          >
-            {mergeMode ? 'Cancel' : 'Merge'}
-          </button>
-          <button onClick={() => navigate('/swimmers/new')} className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm hover:bg-blue-700">
-            + Add
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Swimmers"
+        subtitle="Browse every swimmer in the database"
+        action={
+          <>
+            <Button variant="secondary" size="sm" icon={ArrowLeftRight} onClick={() => navigate('/swimmers/compare')}>
+              Compare
+            </Button>
+            {isAdmin && (
+              <>
+                <Button variant="ghost" size="sm" icon={GitMerge} onClick={() => setMergeMode(true)}>
+                  Merge
+                </Button>
+                <Button variant="ghost" size="sm" icon={Plus} onClick={() => navigate('/swimmers/new')}>
+                  Add
+                </Button>
+              </>
+            )}
+          </>
+        }
+      />
 
-      {/* Merge Panel */}
-      {mergeMode && (
-        <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-5 mb-6">
-          <h3 className="font-semibold text-orange-800 mb-3">Merge Swimmers</h3>
-          <p className="text-sm text-orange-700 mb-4">
-            Select the swimmer to <strong>keep</strong> (primary), then select the <strong>duplicate</strong> to merge into them. All results and data from the duplicate will be transferred.
+      {/* Merge wizard (admin) */}
+      {isAdmin && (
+        <Modal open={mergeMode} onClose={cancelMerge} title="Merge swimmers" size="lg">
+          <p className="text-body-sm text-ink-500 mb-4">
+            Select the swimmer to <strong className="text-ink-900">keep</strong> (primary), then select the{' '}
+            <strong className="text-ink-900">duplicate</strong> to merge into them. All results, records and medals
+            from the duplicate will be transferred.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-start">
-            {/* Primary swimmer */}
-            <div className="bg-white rounded-lg border p-4">
-              <div className="text-xs font-medium text-gray-500 uppercase mb-2">
-                {mergeStep === 1 ? 'Step 1: Select swimmer to KEEP' : 'Keeping'}
-              </div>
-              {primarySwimmer ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm shrink-0">
-                    {primarySwimmer.photo ? <img src={primarySwimmer.photo} alt="" className="w-full h-full rounded-full object-cover" /> : '👤'}
-                  </div>
-                  <div>
-                    <div className="font-medium">{primarySwimmer.name}</div>
-                    <div className="text-xs text-gray-500">
-                      <CountryFlag code={primarySwimmer.nationality_detail?.code} flagUrl={primarySwimmer.nationality_detail?.flag_url} name={primarySwimmer.nationality_detail?.name} />
-                    </div>
-                  </div>
-                  <button onClick={() => { setPrimarySwimmer(null); setDuplicateSwimmer(null); setMergeStep(1) }} className="ml-auto text-xs text-gray-400 hover:text-red-500">Change</button>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-400 italic">Search and select below...</div>
-              )}
-            </div>
-
-            {/* Arrow */}
-            <div className="flex items-center justify-center text-2xl text-orange-400 pt-6">←</div>
-
-            {/* Duplicate swimmer */}
-            <div className="bg-white rounded-lg border p-4">
-              <div className="text-xs font-medium text-gray-500 uppercase mb-2">
-                {mergeStep === 2 ? 'Step 2: Select DUPLICATE to merge' : 'Duplicate (will be deleted)'}
-              </div>
-              {duplicateSwimmer ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm shrink-0">
-                    {duplicateSwimmer.photo ? <img src={duplicateSwimmer.photo} alt="" className="w-full h-full rounded-full object-cover" /> : '👤'}
-                  </div>
-                  <div>
-                    <div className="font-medium">{duplicateSwimmer.name}</div>
-                    <div className="text-xs text-gray-500">
-                      <CountryFlag code={duplicateSwimmer.nationality_detail?.code} flagUrl={duplicateSwimmer.nationality_detail?.flag_url} name={duplicateSwimmer.nationality_detail?.name} />
-                    </div>
-                  </div>
-                  <button onClick={() => { setDuplicateSwimmer(null) }} className="ml-auto text-xs text-gray-400 hover:text-red-500">Change</button>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-400 italic">{mergeStep === 1 ? 'Select primary first' : 'Search and select below...'}</div>
-              )}
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {mergeSlot(primarySwimmer, {
+              title: mergeStep === 1 ? 'Step 1 — Keep (primary)' : 'Keeping',
+              hint: 'Search and select below...',
+              onClear: () => { setPrimarySwimmer(null); setDuplicateSwimmer(null); setMergeStep(1) },
+            })}
+            {mergeSlot(duplicateSwimmer, {
+              title: mergeStep === 2 ? 'Step 2 — Duplicate (deleted)' : 'Duplicate (will be deleted)',
+              hint: mergeStep === 1 ? 'Select primary first' : 'Search and select below...',
+              onClear: () => setDuplicateSwimmer(null),
+            })}
           </div>
 
           {/* Search for merge */}
           {(mergeStep === 1 || (mergeStep === 2 && !duplicateSwimmer)) && (
             <div className="mt-4">
-              <input
-                type="text"
+              <SearchInput
                 placeholder={mergeStep === 1 ? 'Search for the swimmer to KEEP...' : 'Search for the DUPLICATE swimmer...'}
                 value={mergeSearch}
                 onChange={(e) => setMergeSearch(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm"
                 autoFocus
               />
               {mergeResults.length > 0 && (
-                <div className="mt-2 bg-white border rounded-lg max-h-48 overflow-y-auto divide-y">
+                <div className="mt-2 bg-white border border-ink-100 rounded-sm max-h-48 overflow-y-auto divide-y divide-ink-100">
                   {mergeResults.filter(s => mergeStep === 1 || s.id !== primarySwimmer?.id).map(s => (
                     <button
                       key={s.id}
                       onClick={() => handleSelectForMerge(s)}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-3"
+                      className="w-full text-start px-3 py-2.5 min-h-11 hover:bg-ink-50 flex items-center gap-3"
                     >
-                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs shrink-0">
-                        {s.photo ? <img src={s.photo} alt="" className="w-full h-full rounded-full object-cover" /> : '👤'}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">{s.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {s.nationality_detail?.name} {s.club ? `• ${s.club}` : ''} • Age {s.age}
+                      <Avatar photo={s.photo} size="sm" />
+                      <div className="min-w-0">
+                        <div className="text-body-sm font-medium text-ink-900 truncate">{s.name}</div>
+                        <div className="text-body-sm text-ink-400 truncate">
+                          {s.nationality_detail?.name} {s.club ? `· ${s.club}` : ''} · Age {s.age}
                         </div>
                       </div>
                     </button>
@@ -234,37 +253,102 @@ export default function SwimmersPage() {
             </div>
           )}
 
-          {/* Merge button */}
-          {primarySwimmer && duplicateSwimmer && (
-            <div className="mt-4 flex items-center gap-3">
-              <button
-                onClick={handleMerge}
-                disabled={merging}
-                className="bg-orange-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-orange-700 disabled:opacity-50"
+          {/* Merge action */}
+          <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-end gap-3">
+            {primarySwimmer && duplicateSwimmer && (
+              <span className="text-body-sm text-ink-400">
+                This will delete "{duplicateSwimmer.name}" and transfer all their data.
+              </span>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={cancelMerge}>Cancel</Button>
+              <Button
+                icon={GitMerge}
+                disabled={!primarySwimmer || !duplicateSwimmer}
+                loading={merging}
+                onClick={() => setConfirmMerge(true)}
               >
-                {merging ? 'Merging...' : `Merge "${duplicateSwimmer.name}" into "${primarySwimmer.name}"`}
-              </button>
-              <span className="text-xs text-gray-500">This will delete "{duplicateSwimmer.name}" and transfer all their data</span>
+                Merge
+              </Button>
             </div>
-          )}
-        </div>
+          </div>
+        </Modal>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
-        <input type="text" placeholder="Search swimmer..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm min-w-0" />
-        <div className="flex gap-2">
-          <select value={filterNationality} onChange={(e) => { setFilterNationality(e.target.value); setPage(1) }} className="flex-1 sm:flex-none border border-gray-300 rounded-lg px-2 sm:px-3 py-2 text-sm">
-            <option value="">All Countries</option>
-            {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select value={filterSex} onChange={(e) => { setFilterSex(e.target.value); setPage(1) }} className="border border-gray-300 rounded-lg px-2 sm:px-3 py-2 text-sm">
-            <option value="">All</option>
-            <option value="M">M</option>
-            <option value="F">F</option>
-          </select>
-        </div>
-      </div>
-      <DataTable columns={columns} data={swimmers} onRowClick={(row) => navigate(`/swimmers/${row.id}`)} />
+      <ConfirmDialog
+        open={confirmMerge}
+        title="Merge swimmers"
+        message={primarySwimmer && duplicateSwimmer
+          ? `Merge "${duplicateSwimmer.name}" into "${primarySwimmer.name}"? All results, records, and medals will be transferred, and "${duplicateSwimmer.name}" will be deleted. This cannot be undone.`
+          : ''}
+        confirmLabel="Merge"
+        destructive
+        loading={merging}
+        onConfirm={handleMerge}
+        onCancel={() => setConfirmMerge(false)}
+      />
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete swimmer"
+        message={pendingDelete ? `Delete "${pendingDelete.name}"? This cannot be undone.` : ''}
+        destructive
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+
+      <FilterBar
+        chips={chips}
+        onReset={() => { setFilterNationality(''); setFilterSex(''); setPage(1) }}
+      >
+        <SearchInput
+          placeholder="Search swimmer..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          className="w-full md:w-64"
+        />
+        <Select value={filterNationality} onChange={(e) => { setFilterNationality(e.target.value); setPage(1) }} className="md:w-44" aria-label="Nationality">
+          <option value="">All countries</option>
+          {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </Select>
+        <Select value={filterSex} onChange={(e) => { setFilterSex(e.target.value); setPage(1) }} className="md:w-32" aria-label="Sex">
+          <option value="">All</option>
+          <option value="M">Men</option>
+          <option value="F">Women</option>
+        </Select>
+      </FilterBar>
+
+      {swimmers.length === 0 ? (
+        <EmptyState icon={Users} title="No swimmers found" hint="Try adjusting the search or filters." />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={swimmers}
+          onRowClick={(row) => navigate(`/swimmers/${row.id}`)}
+          mobileRender={(row) => (
+            <div className="flex items-center gap-3">
+              <Avatar photo={row.photo} />
+              <div className="min-w-0 flex-1">
+                <SwimmerCell
+                  name={row.name}
+                  countryCode={row.nationality_detail?.code}
+                  flagUrl={row.nationality_detail?.flag_url}
+                  meta={swimmerMeta(row)}
+                />
+              </div>
+              {isAdmin && (
+                <div className="flex gap-1 shrink-0">
+                  <Button variant="ghost" size="sm" icon={Pencil} aria-label="Edit swimmer"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/swimmers/${row.id}/edit`) }} />
+                  <Button variant="ghost" size="sm" icon={Trash2} aria-label="Delete swimmer" className="text-neg hover:text-neg"
+                    onClick={(e) => { e.stopPropagation(); setPendingDelete(row) }} />
+                </div>
+              )}
+            </div>
+          )}
+        />
+      )}
       {pagination.count > 0 && <Pagination {...pagination} currentPage={page} onPageChange={setPage} pageSize={50} />}
     </div>
   )

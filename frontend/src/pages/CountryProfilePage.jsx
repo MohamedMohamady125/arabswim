@@ -1,41 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
-  ArrowLeft, Users, Trophy, Medal, Timer, ListChecks, Shield, Award,
+  Users, Trophy, Medal, Timer, ListChecks, Shield, Award, ChevronDown, Globe,
 } from 'lucide-react'
 import { getCountryProfile, getCountryProgression } from '../api/core'
 import ProgressionChart from '../components/common/ProgressionChart'
+import DataTable from '../components/common/DataTable'
 import { formatDate } from '../utils/constants'
 import MedalIcon from '../components/common/MedalIcon'
 import { CODE_TO_ALPHA2 } from '../components/common/CountryFlag'
+import { Card, Badge, Select, SegmentedControl, StatCard, Skeleton, TableSkeleton, EmptyState } from '../components/ui'
+import { TimeDisplay, MedalDot } from '../components/domain'
 
-const REGION_STYLES = {
-  ARAB: 'bg-blue-100 text-blue-700',
-  GCC: 'bg-emerald-100 text-emerald-700',
-  OTHER: 'bg-gray-100 text-gray-600',
-}
+const STROKES = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
 
-function StatCard({ icon: Icon, label, value, sub }) {
+function SwimmerLink({ id, name, meta }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-      <div className="flex items-center gap-2 text-gray-500 text-xs uppercase font-medium">
-        <Icon size={14} className="text-blue-600" /> {label}
-      </div>
-      <div className="text-2xl font-bold mt-1">{value}</div>
-      {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
-    </div>
-  )
-}
-
-function Section({ title, children, count }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100 font-semibold flex items-center gap-2">
-        {title}
-        {count !== undefined && <span className="text-gray-400 font-normal text-sm">({count})</span>}
-      </div>
-      {children}
-    </div>
+    <span>
+      <Link to={`/swimmers/${id}`} className="font-medium text-ink-900 hover:text-aqua-600">{name}</Link>
+      {meta && <span className="text-ink-400 ms-1 text-body-sm">{meta}</span>}
+    </span>
   )
 }
 
@@ -66,8 +50,24 @@ export default function CountryProfilePage() {
       .finally(() => setProgLoading(false))
   }, [id, data, progStroke, progPool])
 
-  if (error) return <div className="text-center text-gray-400 py-20">Failed to load country profile</div>
-  if (!data) return <div className="text-center text-gray-400 py-20">Loading…</div>
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <EmptyState icon={Globe} title="Failed to load country profile" />
+      </div>
+    )
+  }
+  if (!data) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <Skeleton className="h-32 w-full rounded-md" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-md" />)}
+        </div>
+        <TableSkeleton rows={6} />
+      </div>
+    )
+  }
 
   const { country, stats, medals, top_swimmers, top_medalists, best_times, records, championships_hosted, championships_participated, teams } = data
   const alpha2 = country.flag_url || CODE_TO_ALPHA2[country.code?.toUpperCase()] || (country.code || '').toLowerCase().slice(0, 2)
@@ -76,303 +76,261 @@ export default function CountryProfilePage() {
   const currentRecords = records.filter((r) => !r.is_new)
   const newRecords = records.filter((r) => r.is_new)
 
-  return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <Link to="/countries" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800">
-        <ArrowLeft size={14} /> Countries
-      </Link>
+  const recordColumns = [
+    {
+      key: 'record_type', label: 'Type',
+      render: (r) => <Badge variant="record"><Award size={12} /> {r.record_type}</Badge>,
+    },
+    { key: 'event', label: 'Event', render: (r) => <span className="font-medium">{r.event}</span> },
+    { key: 'sex', label: 'Sex', render: (r) => <span className="text-ink-500">{r.sex}</span> },
+    { key: 'time', label: 'Time', numeric: true, render: (r) => <TimeDisplay time={r.time} /> },
+    { key: 'swimmer', label: 'Swimmer', render: (r) => <SwimmerLink id={r.swimmer_id} name={r.swimmer} /> },
+    { key: 'location', label: 'Location', render: (r) => <span className="text-ink-500">{r.location || '—'}</span> },
+    { key: 'date', label: 'Date', render: (r) => <span className="text-ink-500">{formatDate(r.date)}</span> },
+  ]
 
-      {/* Header */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 flex flex-wrap items-center gap-3 sm:gap-5">
-        <img
-          src={`https://flagcdn.com/w160/${alpha2}.png`}
-          alt={country.name}
-          className="w-24 h-16 object-cover border border-gray-200 shadow-sm"
-          onError={(e) => { e.target.style.display = 'none' }}
-        />
-        <div>
-          <h1 className="text-xl sm:text-3xl font-bold">{country.name}</h1>
-          <div className="flex items-center gap-2 mt-1.5">
-            <span className="text-gray-500 text-sm font-medium">{country.code}</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${country.region === 'OTHER' ? REGION_STYLES.OTHER : REGION_STYLES.ARAB}`}>
-              {country.region === 'OTHER' ? 'OTHER' : 'ARAB'}
-            </span>
-          </div>
-        </div>
-        {/* Medal summary */}
-        <div className="sm:ml-auto flex items-center gap-3 sm:gap-4">
-          {[['GOLD', medals.gold], ['SILVER', medals.silver], ['BRONZE', medals.bronze]].map(([t, n]) => (
-            <div key={t} className="text-center">
-              <MedalIcon type={t} />
-              <div className="font-bold text-lg">{n}</div>
-            </div>
-          ))}
-          <div className="text-center pl-3 border-l border-gray-200">
-            <div className="text-xs text-gray-400 uppercase">Total</div>
-            <div className="font-bold text-lg">{medals.total}</div>
-          </div>
-        </div>
+  const recordMobile = (r) => (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-body-sm font-medium text-ink-900">{r.event} <span className="text-ink-400">{r.sex}</span></span>
+        <TimeDisplay time={r.time} />
       </div>
+      <div className="text-body-sm text-ink-400 mt-1 flex items-center gap-2 flex-wrap">
+        <Badge variant="record">{r.record_type}</Badge>
+        <SwimmerLink id={r.swimmer_id} name={r.swimmer} />
+        <span>{formatDate(r.date)}</span>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
+      <nav className="flex items-center gap-1 text-body-sm text-ink-400" aria-label="Breadcrumb">
+        <Link to="/countries" className="hover:text-aqua-600">Federations</Link>
+        <span>/</span>
+        <span className="text-ink-500">{country.name}</span>
+      </nav>
+
+      {/* Identity header */}
+      <Card className="!mt-3">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <img
+            src={`https://flagcdn.com/w160/${alpha2}.png`}
+            alt={country.name}
+            className="w-24 h-16 object-cover rounded-sm border border-ink-100 shadow-card"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+          <div>
+            <h1 className="text-display text-ink-900">{country.name}</h1>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-body-sm font-medium text-ink-500">{country.code}</span>
+              <Badge variant={country.region === 'OTHER' ? 'status' : 'aqua'}>
+                {country.region === 'OTHER' ? 'Other' : 'Arab'}
+              </Badge>
+            </div>
+          </div>
+          {/* Medal summary */}
+          <div className="sm:ms-auto flex items-center gap-3 sm:gap-4">
+            {[['GOLD', medals.gold], ['SILVER', medals.silver], ['BRONZE', medals.bronze]].map(([t, n]) => (
+              <div key={t} className="text-center">
+                <MedalIcon type={t} />
+                <div className="text-time-lg text-ink-900">{n}</div>
+              </div>
+            ))}
+            <div className="text-center ps-3 border-s border-ink-100">
+              <div className="text-label text-ink-400">Total</div>
+              <div className="text-time-lg text-ink-900">{medals.total}</div>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard icon={Users} label="Swimmers" value={stats.swimmers}
-          sub={`${stats.swimmers_male} M · ${stats.swimmers_female} F`} />
+        <StatCard icon={Users} label="Swimmers" value={stats.swimmers} />
         <StatCard icon={ListChecks} label="Results" value={stats.results} />
         <StatCard icon={Medal} label="Medals" value={stats.medals} />
         <StatCard icon={Timer} label="Records" value={stats.records} />
         <StatCard icon={Trophy} label="Hosted" value={stats.championships_hosted} />
         <StatCard icon={Shield} label="Teams" value={stats.teams} />
       </div>
-
-      {/* Performance Progression */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 flex-wrap">
-          <span className="font-semibold">Performance Progression</span>
-          <div className="flex flex-wrap gap-1 sm:ml-auto">
-            {['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley'].map(s => (
-              <button key={s} onClick={() => setProgStroke(s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  progStroke === s ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                }`}>
-                {s === 'Individual Medley' ? 'IM' : s}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-1">
-            {['LCM', 'SCM'].map(p => (
-              <button key={p} onClick={() => setProgPool(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  progPool === p ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                }`}>
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="p-4">
-          {progLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-            </div>
-          ) : (
-            <ProgressionChart lines={progLines} showSwimmer />
-          )}
-        </div>
+      <div className="text-body-sm text-ink-400 -mt-4">
+        {stats.swimmers_male} men · {stats.swimmers_female} women
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      {/* Performance Progression */}
+      <Card title="Performance Progression">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="max-w-full overflow-x-auto scrollbar-hide">
+            <SegmentedControl
+              options={STROKES.map(s => ({ key: s, label: s === 'Individual Medley' ? 'IM' : s }))}
+              value={progStroke}
+              onChange={setProgStroke}
+            />
+          </div>
+          <SegmentedControl
+            options={[{ key: 'LCM', label: 'LCM' }, { key: 'SCM', label: 'SCM' }]}
+            value={progPool}
+            onChange={setProgPool}
+          />
+        </div>
+        {progLoading ? (
+          <Skeleton className="h-64 w-full" />
+        ) : (
+          <ProgressionChart lines={progLines} showSwimmer />
+        )}
+      </Card>
+
+      <div className="grid lg:grid-cols-2 gap-6 items-start">
         {/* Top swimmers by FINA */}
-        <Section title="Top Swimmers by FINA" count={top_swimmers.length}>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-              <tr>
-                <th className="px-4 py-2">Swimmer</th>
-                <th className="px-4 py-2">Best Event</th>
-                <th className="px-4 py-2">Time</th>
-                <th className="px-4 py-2 text-right">FINA</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {top_swimmers.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2">
-                    <Link to={`/swimmers/${s.id}`} className="font-medium text-blue-600 hover:underline">{s.name}</Link>
-                    <span className="text-gray-400 ml-1 text-xs">{s.sex}</span>
-                  </td>
-                  <td className="px-4 py-2 text-gray-600">{s.best_event}</td>
-                  <td className="px-4 py-2 font-mono">{s.best_time}</td>
-                  <td className="px-4 py-2 text-right font-semibold">{s.best_fina}</td>
-                </tr>
-              ))}
-              {top_swimmers.length === 0 && (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">No results yet</td></tr>
-              )}
-            </tbody>
-          </table>
-        </Section>
+        <div>
+          <h2 className="text-title text-ink-900 mb-3">
+            Top Swimmers by FINA <span className="text-ink-400 font-normal text-body-sm">({top_swimmers.length})</span>
+          </h2>
+          <DataTable
+            emptyMessage="No results yet"
+            columns={[
+              { key: 'name', label: 'Swimmer', render: (s) => <SwimmerLink id={s.id} name={s.name} meta={s.sex} /> },
+              { key: 'best_event', label: 'Best Event', render: (s) => <span className="text-ink-500">{s.best_event}</span> },
+              { key: 'best_time', label: 'Time', render: (s) => <TimeDisplay time={s.best_time} /> },
+              { key: 'best_fina', label: 'FINA', numeric: true },
+            ]}
+            data={top_swimmers}
+          />
+        </div>
 
         {/* Top medalists */}
-        <Section title="Top Medalists" count={top_medalists.length}>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-              <tr>
-                <th className="px-4 py-2">Swimmer</th>
-                <th className="px-4 py-2 text-center">🥇</th>
-                <th className="px-4 py-2 text-center">🥈</th>
-                <th className="px-4 py-2 text-center">🥉</th>
-                <th className="px-4 py-2 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {top_medalists.map((m) => (
-                <tr key={m.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2">
-                    <Link to={`/swimmers/${m.id}`} className="font-medium text-blue-600 hover:underline">{m.name}</Link>
-                  </td>
-                  <td className="px-4 py-2 text-center">{m.gold}</td>
-                  <td className="px-4 py-2 text-center">{m.silver}</td>
-                  <td className="px-4 py-2 text-center">{m.bronze}</td>
-                  <td className="px-4 py-2 text-right font-semibold">{m.total}</td>
-                </tr>
-              ))}
-              {top_medalists.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No medals yet</td></tr>
-              )}
-            </tbody>
-          </table>
-        </Section>
+        <div>
+          <h2 className="text-title text-ink-900 mb-3">
+            Top Medalists <span className="text-ink-400 font-normal text-body-sm">({top_medalists.length})</span>
+          </h2>
+          <DataTable
+            emptyMessage="No medals yet"
+            columns={[
+              { key: 'name', label: 'Swimmer', render: (m) => <SwimmerLink id={m.id} name={m.name} /> },
+              { key: 'gold', label: <MedalDot type="gold" />, numeric: true },
+              { key: 'silver', label: <MedalDot type="silver" />, numeric: true },
+              { key: 'bronze', label: <MedalDot type="bronze" />, numeric: true },
+              { key: 'total', label: 'Total', numeric: true, render: (m) => <span className="font-semibold tnum">{m.total}</span> },
+            ]}
+            data={top_medalists}
+          />
+        </div>
       </div>
 
       {/* National best times */}
-      <Section title="National Best Times" count={filteredBest.length}>
-        <div className="px-4 py-2.5 border-b border-gray-100 flex gap-2">
-          <select value={btSex} onChange={(e) => setBtSex(e.target.value)}
-            className="border rounded-lg px-2 py-1 text-sm bg-white">
-            <option value="">All</option>
-            <option value="M">Men</option>
-            <option value="F">Women</option>
-          </select>
-          <select value={btPool} onChange={(e) => setBtPool(e.target.value)}
-            className="border rounded-lg px-2 py-1 text-sm bg-white">
-            <option value="">All Pools</option>
-            <option value="LCM">LCM (50m)</option>
-            <option value="SCM">SCM (25m)</option>
-          </select>
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h2 className="text-title text-ink-900">
+            National Best Times <span className="text-ink-400 font-normal text-body-sm">({filteredBest.length})</span>
+          </h2>
+          <div className="flex gap-2">
+            <Select value={btSex} onChange={(e) => setBtSex(e.target.value)} className="!h-9 w-auto" aria-label="Sex">
+              <option value="">All</option>
+              <option value="M">Men</option>
+              <option value="F">Women</option>
+            </Select>
+            <Select value={btPool} onChange={(e) => setBtPool(e.target.value)} className="!h-9 w-auto" aria-label="Pool">
+              <option value="">All Pools</option>
+              <option value="LCM">LCM (50m)</option>
+              <option value="SCM">SCM (25m)</option>
+            </Select>
+          </div>
         </div>
-        <div className="max-h-[28rem] overflow-y-auto overflow-x-auto">
-          <table className="w-full min-w-[640px] sm:min-w-0 text-left text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-500 uppercase sticky top-0">
-              <tr>
-                <th className="px-4 py-2">Event</th>
-                <th className="px-4 py-2">Sex</th>
-                <th className="px-4 py-2">Pool</th>
-                <th className="px-4 py-2">Time</th>
-                <th className="px-4 py-2">FINA</th>
-                <th className="px-4 py-2">Swimmer</th>
-                <th className="px-4 py-2">Age</th>
-                <th className="px-4 py-2">Championship</th>
-                <th className="px-4 py-2">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredBest.map((b, i) => (
-                <tr key={i} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 font-medium">{b.event}</td>
-                  <td className="px-4 py-2 text-gray-500">{b.sex}</td>
-                  <td className="px-4 py-2 text-gray-500">{b.pool}</td>
-                  <td className="px-4 py-2 font-mono font-semibold">{b.time}</td>
-                  <td className="px-4 py-2 text-gray-600">{b.fina ?? '—'}</td>
-                  <td className="px-4 py-2">
-                    <Link to={`/swimmers/${b.swimmer_id}`} className="text-blue-600 hover:underline">{b.swimmer}</Link>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">{b.age_at_competition || '-'}</td>
-                  <td className="px-4 py-2 text-gray-500">{b.championship}</td>
-                  <td className="px-4 py-2 text-gray-500">{formatDate(b.date)}</td>
-                </tr>
-              ))}
-              {filteredBest.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">No times yet</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Section>
+        <DataTable
+          emptyMessage="No times yet"
+          columns={[
+            { key: 'event', label: 'Event', render: (b) => <span className="font-medium">{b.event}</span> },
+            { key: 'sex', label: 'Sex', render: (b) => <span className="text-ink-500">{b.sex}</span> },
+            { key: 'pool', label: 'Pool', render: (b) => <span className="text-ink-500">{b.pool}</span> },
+            { key: 'time', label: 'Time', render: (b) => <TimeDisplay time={b.time} /> },
+            { key: 'fina', label: 'FINA', numeric: true, render: (b) => b.fina ?? '—' },
+            { key: 'swimmer', label: 'Swimmer', render: (b) => <SwimmerLink id={b.swimmer_id} name={b.swimmer} /> },
+            { key: 'age_at_competition', label: 'Age', numeric: true, render: (b) => b.age_at_competition || '—' },
+            { key: 'championship', label: 'Championship', render: (b) => <span className="text-ink-500">{b.championship}</span> },
+            { key: 'date', label: 'Date', render: (b) => <span className="text-ink-500">{formatDate(b.date)}</span> },
+          ]}
+          data={filteredBest}
+          mobileRender={(b) => (
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-body-sm font-medium text-ink-900">{b.event} <span className="text-ink-400">{b.sex} · {b.pool}</span></span>
+                <TimeDisplay time={b.time} />
+              </div>
+              <div className="text-body-sm text-ink-400 mt-1 flex items-center gap-2 flex-wrap">
+                <SwimmerLink id={b.swimmer_id} name={b.swimmer} />
+                {b.fina != null && <span className="tnum">{b.fina} pts</span>}
+                <span>{formatDate(b.date)}</span>
+              </div>
+            </div>
+          )}
+        />
+      </div>
 
       {/* Records */}
       {[['Records Held', currentRecords], ['New Records', newRecords]].map(([title, list]) => (
         list.length > 0 && (
-          <Section title={title} count={list.length} key={title}>
-            <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] sm:min-w-0 text-left text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                <tr>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2">Event</th>
-                  <th className="px-4 py-2">Sex</th>
-                  <th className="px-4 py-2">Time</th>
-                  <th className="px-4 py-2">Swimmer</th>
-                  <th className="px-4 py-2">Location</th>
-                  <th className="px-4 py-2">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {list.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                        <Award size={12} /> {r.record_type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 font-medium">{r.event}</td>
-                    <td className="px-4 py-2 text-gray-500">{r.sex}</td>
-                    <td className="px-4 py-2 font-mono font-semibold">{r.time}</td>
-                    <td className="px-4 py-2">
-                      <Link to={`/swimmers/${r.swimmer_id}`} className="text-blue-600 hover:underline">{r.swimmer}</Link>
-                    </td>
-                    <td className="px-4 py-2 text-gray-500">{r.location || '—'}</td>
-                    <td className="px-4 py-2 text-gray-500">{formatDate(r.date)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </Section>
+          <div key={title}>
+            <h2 className="text-title text-ink-900 mb-3">
+              {title} <span className="text-ink-400 font-normal text-body-sm">({list.length})</span>
+            </h2>
+            <DataTable columns={recordColumns} data={list} mobileRender={recordMobile} />
+          </div>
         )
       ))}
 
       {/* Championships participated */}
       {championships_participated && championships_participated.length > 0 && (
-        <Section title="Championships Participated" count={championships_participated.length}>
-          <div className="divide-y divide-gray-100">
+        <Card
+          padding="none"
+          title={(
+            <>Championships Participated <span className="text-ink-400 font-normal text-body-sm">({championships_participated.length})</span></>
+          )}
+        >
+          <div className="divide-y divide-ink-100">
             {championships_participated.map((c) => {
               const isOpen = openChamp === c.id
               return (
                 <div key={c.id}>
                   <button
                     onClick={() => setOpenChamp(isOpen ? null : c.id)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-sm text-left"
+                    className="w-full flex flex-wrap items-center justify-between gap-2 px-4 md:px-5 py-3 hover:bg-ink-50 text-body-sm text-start min-h-11"
                   >
-                    <div className="flex-1">
-                      <div className="font-medium">{c.name}</div>
-                      <div className="text-gray-400 text-xs mt-0.5">{formatDate(c.date)} · {c.pool} {c.location ? `· ${c.location}` : ''}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-ink-900">{c.name}</div>
+                      <div className="text-ink-400 text-body-sm mt-0.5">{formatDate(c.date)} · {c.pool} {c.location ? `· ${c.location}` : ''}</div>
                     </div>
                     <div className="flex items-center gap-3">
                       <button
                         onClick={(e) => { e.stopPropagation(); setShowSwimmers(showSwimmers === c.id ? null : c.id) }}
-                        className="text-xs text-blue-600 hover:underline font-medium"
+                        className="text-body-sm text-aqua-600 hover:underline font-medium min-h-10"
                       >{c.swimmers_count} swimmers</button>
-                      <span className="text-xs text-gray-500">· {c.results_count} results</span>
+                      <span className="text-body-sm text-ink-500">· {c.results_count} results</span>
                       {c.medals.total > 0 && (
                         <span className="flex items-center gap-1.5">
-                          {c.medals.gold > 0 && <span className="flex items-center gap-0.5"><MedalIcon type="gold" size={16} /><span className="text-xs font-semibold">{c.medals.gold}</span></span>}
-                          {c.medals.silver > 0 && <span className="flex items-center gap-0.5"><MedalIcon type="silver" size={16} /><span className="text-xs font-semibold">{c.medals.silver}</span></span>}
-                          {c.medals.bronze > 0 && <span className="flex items-center gap-0.5"><MedalIcon type="bronze" size={16} /><span className="text-xs font-semibold">{c.medals.bronze}</span></span>}
+                          {c.medals.gold > 0 && <span className="flex items-center gap-1"><MedalDot type="gold" /><span className="text-body-sm font-semibold tnum">{c.medals.gold}</span></span>}
+                          {c.medals.silver > 0 && <span className="flex items-center gap-1"><MedalDot type="silver" /><span className="text-body-sm font-semibold tnum">{c.medals.silver}</span></span>}
+                          {c.medals.bronze > 0 && <span className="flex items-center gap-1"><MedalDot type="bronze" /><span className="text-body-sm font-semibold tnum">{c.medals.bronze}</span></span>}
                         </span>
                       )}
-                      <svg
-                        className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <ChevronDown size={16} className={`text-ink-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                     </div>
                   </button>
                   {isOpen && (
-                    <div className="px-4 pb-3 pt-1 bg-gray-50 border-t border-gray-100">
-                      <Link to={`/meets/${c.id}`} className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline">
+                    <div className="px-4 md:px-5 pb-3 pt-1 bg-ink-50 border-t border-ink-100">
+                      <Link to={`/meets/${c.id}`} className="inline-flex items-center gap-1 text-body-sm text-aqua-600 hover:underline">
                         View full meet details →
                       </Link>
                     </div>
                   )}
                   {showSwimmers === c.id && c.swimmers && (
-                    <div className="px-4 pb-3 pt-2 bg-blue-50 border-t border-blue-100">
-                      <div className="text-xs font-semibold text-gray-600 mb-2">Athletes ({c.swimmers.length})</div>
+                    <div className="px-4 md:px-5 pb-3 pt-2 bg-aqua-50 border-t border-aqua-100">
+                      <div className="text-label text-ink-500 mb-2">Athletes ({c.swimmers.length})</div>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
                         {c.swimmers.map(s => (
                           <Link key={s.id} to={`/swimmers/${s.id}`}
-                            className="text-sm text-blue-600 hover:underline px-2 py-1 rounded hover:bg-blue-100">
-                            {s.name} <span className="text-gray-400 text-xs">{s.sex}</span>
+                            className="text-body-sm text-aqua-600 hover:underline px-2 py-1.5 rounded-sm hover:bg-aqua-100">
+                            {s.name} <span className="text-ink-400 text-body-sm">{s.sex}</span>
                           </Link>
                         ))}
                       </div>
@@ -382,49 +340,51 @@ export default function CountryProfilePage() {
               )
             })}
           </div>
-        </Section>
+        </Card>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6 items-start">
         {/* Championships hosted */}
-        <Section title="Championships Hosted" count={stats.championships_hosted}>
-          <div className="divide-y divide-gray-100">
+        <Card padding="none" title={(
+          <>Championships Hosted <span className="text-ink-400 font-normal text-body-sm">({stats.championships_hosted})</span></>
+        )}>
+          <div className="divide-y divide-ink-100">
             {championships_hosted.map((c) => (
               <Link key={c.id} to={`/meets/${c.id}`}
-                className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 text-sm">
-                <div>
-                  <div className="font-medium text-blue-600">{c.name}</div>
-                  <div className="text-gray-400 text-xs">{c.location}</div>
+                className="flex items-center justify-between px-4 md:px-5 py-3 hover:bg-ink-50 text-body-sm min-h-11">
+                <div className="min-w-0">
+                  <div className="font-medium text-ink-900 truncate">{c.name}</div>
+                  <div className="text-ink-400 text-body-sm">{c.location}</div>
                 </div>
-                <div className="text-right text-gray-500 text-xs">
+                <div className="text-end text-ink-500 text-body-sm shrink-0">
                   <div>{formatDate(c.date)}</div>
                   <div>{c.pool}</div>
                 </div>
               </Link>
             ))}
             {championships_hosted.length === 0 && (
-              <div className="px-4 py-8 text-center text-gray-400 text-sm">No championships hosted</div>
+              <div className="px-4 py-8 text-center text-ink-400 text-body-sm">No championships hosted</div>
             )}
           </div>
-        </Section>
+        </Card>
 
         {/* Teams */}
-        <Section title="Teams" count={teams.length}>
-          <div className="divide-y divide-gray-100">
+        <Card padding="none" title={(
+          <>Teams <span className="text-ink-400 font-normal text-body-sm">({teams.length})</span></>
+        )}>
+          <div className="divide-y divide-ink-100">
             {teams.map((t) => (
               <Link key={t.id} to={`/teams/${t.id}`}
-                className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 text-sm">
-                <span className="font-medium text-blue-600">{t.name}</span>
-                {t.is_national_team && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">National Team</span>
-                )}
+                className="flex items-center justify-between px-4 md:px-5 py-3 hover:bg-ink-50 text-body-sm min-h-11">
+                <span className="font-medium text-ink-900">{t.name}</span>
+                {t.is_national_team && <Badge variant="aqua">National Team</Badge>}
               </Link>
             ))}
             {teams.length === 0 && (
-              <div className="px-4 py-8 text-center text-gray-400 text-sm">No teams</div>
+              <div className="px-4 py-8 text-center text-ink-400 text-body-sm">No teams</div>
             )}
           </div>
-        </Section>
+        </Card>
       </div>
     </div>
   )

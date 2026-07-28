@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UserCheck, Plus, MapPin, Briefcase, Award, Mail, Phone, FileText, AtSign, ExternalLink } from 'lucide-react'
+import { UserCheck, Plus, MapPin, Briefcase, Award, Mail, Phone, FileText, AtSign, ExternalLink, ChevronDown } from 'lucide-react'
 import { getCoaches, deleteCoach } from '../api/coaches'
 import { getCountries } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
+import { PageHeader, FilterBar, SearchInput, Select, Button, Badge, ConfirmDialog, EmptyState } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
 const LEVEL_LABELS = {
@@ -15,24 +17,27 @@ const LEVEL_LABELS = {
   PRIVATE: 'Private Coach',
 }
 
-const LEVEL_COLORS = {
-  HEAD: 'bg-blue-100 text-blue-700',
-  ASSISTANT: 'bg-sky-100 text-sky-700',
-  TECHNIQUE: 'bg-purple-100 text-purple-700',
-  FITNESS: 'bg-emerald-100 text-emerald-700',
-  YOUTH: 'bg-amber-100 text-amber-700',
-  PRIVATE: 'bg-gray-100 text-gray-600',
+const LEVEL_STYLES = {
+  HEAD: 'bg-aqua-100 text-aqua-600',
+  ASSISTANT: 'bg-lcm/10 text-lcm',
+  TECHNIQUE: 'bg-record/10 text-record',
+  FITNESS: 'bg-pos/10 text-pos',
+  YOUTH: 'bg-gold/15 text-gold',
+  PRIVATE: 'bg-ink-100 text-ink-500',
 }
 
 export default function CoachesPage() {
   const navigate = useNavigate()
   const toast = useToast()
+  const { token } = useAuth()
+  const isAdmin = !!token
   const [coaches, setCoaches] = useState([])
   const [countries, setCountries] = useState([])
   const [search, setSearch] = useState('')
   const [countryFilter, setCountryFilter] = useState('')
   const [levelFilter, setLevelFilter] = useState('')
   const [expandedId, setExpandedId] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
@@ -51,7 +56,6 @@ export default function CoachesPage() {
   }, [search, countryFilter, levelFilter])
 
   const handleDelete = async (c) => {
-    if (!window.confirm(`Delete coach "${c.name}"?`)) return
     try {
       await deleteCoach(c.id)
       setCoaches(prev => prev.filter(x => x.id !== c.id))
@@ -61,43 +65,48 @@ export default function CoachesPage() {
     }
   }
 
+  const chips = [
+    search && { key: 'search', label: `"${search}"`, onRemove: () => setSearch('') },
+    countryFilter && {
+      key: 'country',
+      label: countries.find(c => String(c.id) === String(countryFilter))?.name || 'Country',
+      onRemove: () => setCountryFilter(''),
+    },
+    levelFilter && { key: 'level', label: LEVEL_LABELS[levelFilter] || levelFilter, onRemove: () => setLevelFilter('') },
+  ].filter(Boolean)
+
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <UserCheck size={24} className="text-blue-600" /> Coaches
-          <span className="text-gray-400 text-lg font-normal">({coaches.length})</span>
-        </h1>
-        <button onClick={() => navigate('/coaches/new')}
-          className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-          <Plus size={16} /> Add Coach
-        </button>
-      </div>
+      <PageHeader
+        title="Coaches"
+        subtitle={`${coaches.length} coaches in the directory`}
+        action={isAdmin && (
+          <Button icon={Plus} onClick={() => navigate('/coaches/new')}>Add Coach</Button>
+        )}
+      />
 
       {/* Filters */}
-      <div className="flex gap-3 mb-5 flex-wrap">
-        <input type="text" placeholder="Search by name, club, specialty..." value={search}
+      <FilterBar chips={chips} onReset={() => { setSearch(''); setCountryFilter(''); setLevelFilter('') }}>
+        <SearchInput placeholder="Search by name, club, specialty..." value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full sm:w-auto sm:flex-1 sm:min-w-[200px] border rounded-lg px-3 py-2 text-sm bg-white" />
-        <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
-          className="border rounded-lg px-3 py-2 text-sm bg-white">
+          className="w-full md:w-72" aria-label="Search coaches" />
+        <Select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
+          className="w-full md:w-48" aria-label="Country">
           <option value="">All Countries</option>
           {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)}
-          className="border rounded-lg px-3 py-2 text-sm bg-white">
+        </Select>
+        <Select value={levelFilter} onChange={e => setLevelFilter(e.target.value)}
+          className="w-full md:w-48" aria-label="Level">
           <option value="">All Levels</option>
           {Object.entries(LEVEL_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
-      </div>
+        </Select>
+      </FilterBar>
 
       {/* Coach Cards */}
       {coaches.length === 0 ? (
-        <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
-          <UserCheck size={48} className="mx-auto mb-3 opacity-30" />
-          <p className="text-lg font-medium">No coaches yet</p>
-          <p className="text-sm mt-1">Add coaches to build the coaching directory</p>
+        <div className="bg-white rounded-md border border-ink-100 shadow-card">
+          <EmptyState icon={UserCheck} title="No coaches yet"
+            hint="Add coaches to build the coaching directory" />
         </div>
       ) : (
         <div className="space-y-4">
@@ -108,15 +117,15 @@ export default function CoachesPage() {
             const achievements = c.achievements ? c.achievements.split('\n').map(s => s.trim()).filter(Boolean) : []
 
             return (
-              <div key={c.id} className={`bg-white rounded-xl border overflow-hidden transition-shadow hover:shadow-md ${!c.is_active ? 'opacity-60' : ''}`}>
+              <div key={c.id} className={`bg-white rounded-md border border-ink-100 shadow-card overflow-hidden transition-colors hover:border-aqua-500/40 ${!c.is_active ? 'opacity-60' : ''}`}>
                 {/* Main card row */}
-                <div className="flex items-start gap-4 p-5 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : c.id)}>
+                <div className="flex items-start gap-4 p-4 md:p-5 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : c.id)}>
                   {/* Photo */}
-                  <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-md bg-aqua-50 flex items-center justify-center overflow-hidden shrink-0">
                     {c.photo ? (
                       <img src={c.photo} alt={c.name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-2xl font-bold text-blue-300">
+                      <span className="text-title text-aqua-600/50">
                         {c.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()}
                       </span>
                     )}
@@ -125,36 +134,30 @@ export default function CoachesPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-base">{c.name}</h3>
+                      <h3 className="text-body font-bold text-ink-900">{c.name}</h3>
                       {c.level && (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${LEVEL_COLORS[c.level] || 'bg-gray-100 text-gray-600'}`}>
+                        <span className={`text-label px-2 py-0.5 rounded-full ${LEVEL_STYLES[c.level] || 'bg-ink-100 text-ink-500'}`}>
                           {LEVEL_LABELS[c.level] || c.level}
                         </span>
                       )}
-                      {c.is_available && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                          Open to offers
-                        </span>
-                      )}
-                      {!c.is_active && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Inactive</span>
-                      )}
+                      {c.is_available && <Badge variant="pos">Open to offers</Badge>}
+                      {!c.is_active && <Badge variant="status">Inactive</Badge>}
                     </div>
 
-                    <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-500 flex-wrap">
+                    <div className="flex items-center gap-4 mt-1.5 text-body-sm text-ink-500 flex-wrap">
                       {c.nationality_detail && (
                         <span className="flex items-center gap-1">
                           <CountryFlag code={c.nationality_detail.code} flagUrl={c.nationality_detail.flag_url} name={c.nationality_detail.name} />
                         </span>
                       )}
                       {c.city && (
-                        <span className="flex items-center gap-1"><MapPin size={12} /> {c.city}</span>
+                        <span className="flex items-center gap-1"><MapPin size={13} className="text-ink-400" /> {c.city}</span>
                       )}
                       {c.current_club && (
-                        <span className="flex items-center gap-1"><Briefcase size={12} /> {c.current_club}</span>
+                        <span className="flex items-center gap-1"><Briefcase size={13} className="text-ink-400" /> {c.current_club}</span>
                       )}
                       {c.years_experience && (
-                        <span className="flex items-center gap-1"><Award size={12} /> {c.years_experience} yrs experience</span>
+                        <span className="flex items-center gap-1"><Award size={13} className="text-ink-400" /> {c.years_experience} yrs experience</span>
                       )}
                     </div>
 
@@ -162,46 +165,43 @@ export default function CoachesPage() {
                     {specializations.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {specializations.map((s, i) => (
-                          <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-medium">{s}</span>
+                          <span key={i} className="text-label normal-case tracking-normal px-2 py-0.5 rounded-sm bg-aqua-50 text-aqua-600 font-medium">{s}</span>
                         ))}
                       </div>
                     )}
                   </div>
 
                   {/* Right: actions + expand arrow */}
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 self-center">
                     {c.cv_file && (
                       <a href={c.cv_file} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1.5 rounded-lg font-medium">
-                        <FileText size={13} /> CV
+                        className="flex items-center gap-1 text-body-sm text-aqua-600 hover:text-aqua-500 bg-aqua-50 px-2.5 py-2.5 rounded-sm font-medium">
+                        <FileText size={14} /> CV
                       </a>
                     )}
-                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <ChevronDown size={16} className={`text-ink-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                   </div>
                 </div>
 
                 {/* Expanded detail */}
                 {isExpanded && (
-                  <div className="border-t bg-gray-50/50 px-5 py-4">
+                  <div className="border-t border-ink-100 bg-ink-50/60 px-4 md:px-5 py-4">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* Left: Bio + Achievements */}
                       <div className="space-y-4">
                         {c.bio && (
                           <div>
-                            <h4 className="text-xs font-semibold uppercase text-gray-400 mb-1.5">About</h4>
-                            <p className="text-sm text-gray-700 whitespace-pre-line">{c.bio}</p>
+                            <h4 className="text-label text-ink-400 mb-1.5">About</h4>
+                            <p className="text-body-sm text-ink-700 whitespace-pre-line">{c.bio}</p>
                           </div>
                         )}
                         {achievements.length > 0 && (
                           <div>
-                            <h4 className="text-xs font-semibold uppercase text-gray-400 mb-1.5">Achievements</h4>
+                            <h4 className="text-label text-ink-400 mb-1.5">Achievements</h4>
                             <ul className="space-y-1">
                               {achievements.map((a, i) => (
-                                <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                                  <span className="text-blue-500 mt-1 shrink-0">&#9679;</span> {a}
+                                <li key={i} className="text-body-sm text-ink-700 flex items-start gap-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-aqua-500 mt-1.5 shrink-0" /> {a}
                                 </li>
                               ))}
                             </ul>
@@ -213,11 +213,11 @@ export default function CoachesPage() {
                       <div className="space-y-4">
                         {certifications.length > 0 && (
                           <div>
-                            <h4 className="text-xs font-semibold uppercase text-gray-400 mb-1.5">Certifications</h4>
+                            <h4 className="text-label text-ink-400 mb-1.5">Certifications</h4>
                             <div className="space-y-1">
                               {certifications.map((cert, i) => (
-                                <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                                  <Award size={13} className="text-amber-500 shrink-0" /> {cert}
+                                <div key={i} className="flex items-center gap-2 text-body-sm text-ink-700">
+                                  <Award size={13} className="text-gold shrink-0" /> {cert}
                                 </div>
                               ))}
                             </div>
@@ -227,28 +227,28 @@ export default function CoachesPage() {
                         {/* Contact */}
                         {(c.email || c.phone || c.instagram || c.linkedin) && (
                           <div>
-                            <h4 className="text-xs font-semibold uppercase text-gray-400 mb-1.5">Contact</h4>
-                            <div className="space-y-1.5">
+                            <h4 className="text-label text-ink-400 mb-1.5">Contact</h4>
+                            <div className="space-y-1">
                               {c.email && (
-                                <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-sm text-gray-700 hover:text-blue-600">
-                                  <Mail size={13} className="text-gray-400" /> {c.email}
+                                <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-body-sm text-ink-700 hover:text-aqua-600 min-h-10">
+                                  <Mail size={13} className="text-ink-400" /> {c.email}
                                 </a>
                               )}
                               {c.phone && (
-                                <a href={`tel:${c.phone}`} className="flex items-center gap-2 text-sm text-gray-700 hover:text-blue-600">
-                                  <Phone size={13} className="text-gray-400" /> {c.phone}
+                                <a href={`tel:${c.phone}`} className="flex items-center gap-2 text-body-sm text-ink-700 hover:text-aqua-600 min-h-10">
+                                  <Phone size={13} className="text-ink-400" /> {c.phone}
                                 </a>
                               )}
                               {c.instagram && (
                                 <a href={`https://instagram.com/${c.instagram.replace('@', '')}`} target="_blank" rel="noreferrer"
-                                  className="flex items-center gap-2 text-sm text-gray-700 hover:text-blue-600">
-                                  <AtSign size={13} className="text-gray-400" /> {c.instagram}
+                                  className="flex items-center gap-2 text-body-sm text-ink-700 hover:text-aqua-600 min-h-10">
+                                  <AtSign size={13} className="text-ink-400" /> {c.instagram}
                                 </a>
                               )}
                               {c.linkedin && (
                                 <a href={c.linkedin} target="_blank" rel="noreferrer"
-                                  className="flex items-center gap-2 text-sm text-gray-700 hover:text-blue-600">
-                                  <ExternalLink size={13} className="text-gray-400" /> LinkedIn
+                                  className="flex items-center gap-2 text-body-sm text-ink-700 hover:text-aqua-600 min-h-10">
+                                  <ExternalLink size={13} className="text-ink-400" /> LinkedIn
                                 </a>
                               )}
                             </div>
@@ -257,13 +257,14 @@ export default function CoachesPage() {
                       </div>
                     </div>
 
-                    {/* Actions bar */}
-                    <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-gray-200">
-                      <button onClick={() => navigate(`/coaches/${c.id}/edit`)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
-                      <button onClick={() => handleDelete(c)}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium">Delete</button>
-                    </div>
+                    {/* Admin actions bar */}
+                    {isAdmin && (
+                      <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-ink-100">
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/coaches/${c.id}/edit`)}>Edit</Button>
+                        <Button variant="ghost" size="sm" className="!text-neg hover:!bg-neg/10"
+                          onClick={() => setPendingDelete(c)}>Delete</Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -271,6 +272,15 @@ export default function CoachesPage() {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={`Delete coach "${pendingDelete?.name}"?`}
+        message="This cannot be undone."
+        destructive
+        onConfirm={async () => { const c = pendingDelete; setPendingDelete(null); await handleDelete(c) }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

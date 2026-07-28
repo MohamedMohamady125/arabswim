@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Handshake, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react'
 import { getSponsors, deleteSponsor, createSponsor, updateSponsor } from '../api/sponsors'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import { Button, Badge, Modal, Input, Select, Textarea, FieldLabel, EmptyState, ConfirmDialog, CardsSkeleton, PageHeader } from '../components/ui'
 
 function SponsorModal({ sponsor, onClose, onSaved }) {
   const toast = useToast()
@@ -39,165 +41,154 @@ function SponsorModal({ sponsor, onClose, onSaved }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="p-5 border-b">
-          <h2 className="text-lg font-bold">{isEdit ? 'Edit Partner' : 'Add Partner'}</h2>
+    <Modal open onClose={onClose} title={isEdit ? 'Edit Partner' : 'Add Partner'} size="md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Logo */}
+        <div className="flex items-center gap-4">
+          <label className="w-20 h-20 rounded-md bg-ink-50 border-2 border-dashed border-ink-200 flex items-center justify-center overflow-hidden cursor-pointer shrink-0 relative">
+            {logoPreview ? (
+              <img src={logoPreview} alt="" className="w-full h-full object-contain p-1" />
+            ) : (
+              <span className="text-label text-ink-400">Logo</span>
+            )}
+            <input type="file" accept="image/*" onChange={e => {
+              const f = e.target.files?.[0]
+              if (f) { setLogoFile(f); setLogoPreview(URL.createObjectURL(f)) }
+            }} className="absolute inset-0 opacity-0 cursor-pointer" />
+          </label>
+          <div className="flex-1">
+            <FieldLabel required>Name</FieldLabel>
+            <Input type="text" value={form.name} onChange={set('name')} placeholder="Partner name" />
+          </div>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Logo */}
-          <div className="flex items-center gap-4">
-            <label className="w-20 h-20 rounded-xl bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden cursor-pointer shrink-0 relative">
-              {logoPreview ? (
-                <img src={logoPreview} alt="" className="w-full h-full object-contain p-1" />
-              ) : (
-                <div className="text-center text-gray-400 text-[10px]">Logo</div>
-              )}
-              <input type="file" accept="image/*" onChange={e => {
-                const f = e.target.files?.[0]
-                if (f) { setLogoFile(f); setLogoPreview(URL.createObjectURL(f)) }
-              }} className="absolute inset-0 opacity-0 cursor-pointer" />
-            </label>
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">Name *</label>
-              <input type="text" value={form.name} onChange={set('name')}
-                className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Partner name" />
-            </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
-            <select value={String(form.is_active)} onChange={e => setForm(f => ({ ...f, is_active: e.target.value === 'true' }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm">
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </select>
-          </div>
+        <div>
+          <FieldLabel>Status</FieldLabel>
+          <Select value={String(form.is_active)} onChange={e => setForm(f => ({ ...f, is_active: e.target.value === 'true' }))}>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </Select>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Website</label>
-            <input type="url" value={form.website} onChange={set('website')}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="https://..." />
-          </div>
+        <div>
+          <FieldLabel>Website</FieldLabel>
+          <Input type="url" value={form.website} onChange={set('website')} placeholder="https://..." />
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea value={form.description} onChange={set('description')} rows={3}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Brief description of the partner..." />
-          </div>
+        <div>
+          <FieldLabel>Description</FieldLabel>
+          <Textarea value={form.description} onChange={set('description')} rows={3}
+            placeholder="Brief description of the partner..." />
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Sort Order</label>
-            <input type="number" value={form.sort_order} onChange={set('sort_order')}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          </div>
+        <div>
+          <FieldLabel>Sort Order</FieldLabel>
+          <Input type="number" value={form.sort_order} onChange={set('sort_order')} />
+        </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-            <button type="submit" disabled={saving}
-              className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Partner'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={saving}>{isEdit ? 'Save Changes' : 'Add Partner'}</Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
 export default function SponsorsPage() {
   const toast = useToast()
+  const { token } = useAuth()
+  const isAdmin = !!token
   const [sponsors, setSponsors] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showSponsorModal, setShowSponsorModal] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   const load = () => {
     getSponsors({ page_size: 200 }).then(res => {
       setSponsors(Array.isArray(res.data) ? res.data : res.data.results || [])
-    }).catch(() => {})
+    }).catch(() => {}).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
 
   const handleDelete = async (s) => {
-    if (!window.confirm(`Delete partner "${s.name}"?`)) return
     try {
       await deleteSponsor(s.id)
       setSponsors(prev => prev.filter(x => x.id !== s.id))
       toast.success('Partner deleted')
     } catch {
       toast.error('Failed to delete')
+    } finally {
+      setPendingDelete(null)
     }
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Handshake size={24} className="text-blue-600" /> Partnerships
-          <span className="text-gray-400 text-lg font-normal">({sponsors.length})</span>
-        </h1>
-        <button onClick={() => setShowSponsorModal({})}
-          className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-          <Plus size={16} /> Add Partner
-        </button>
-      </div>
+    <div className="max-w-7xl mx-auto animate-fade-up">
+      <PageHeader
+        title="Partnerships"
+        subtitle={`${sponsors.length} partner${sponsors.length === 1 ? '' : 's'} supporting Arab swimming`}
+        action={isAdmin && (
+          <Button variant="secondary" size="sm" icon={Plus} onClick={() => setShowSponsorModal({})}>
+            Add Partner
+          </Button>
+        )}
+      />
 
-      {/* Sponsors grid */}
-      {sponsors.length === 0 ? (
-        <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
-          <Handshake size={48} className="mx-auto mb-3 opacity-30" />
-          <p className="text-lg font-medium">No partnerships yet</p>
-          <p className="text-sm mt-1">Add your first partner above</p>
+      {loading ? (
+        <CardsSkeleton count={8} />
+      ) : sponsors.length === 0 ? (
+        <div className="bg-white rounded-md shadow-card border border-ink-100">
+          <EmptyState icon={Handshake} title="No partnerships yet" hint="Our partners will be featured here." />
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
           {sponsors.map(s => (
-            <div key={s.id} className={`group bg-white rounded-xl border overflow-hidden transition-shadow hover:shadow-lg ${!s.is_active ? 'opacity-50' : ''}`}>
-              {/* Logo area */}
-              <div className="h-32 bg-gray-50 flex items-center justify-center p-4 border-b">
+            <article key={s.id}
+              className={`group bg-white rounded-md shadow-card border border-ink-100 overflow-hidden transition-colors hover:border-aqua-500/40 ${!s.is_active ? 'opacity-50' : ''}`}>
+              {/* Logo on white */}
+              <div className="h-32 bg-white flex items-center justify-center p-5 border-b border-ink-100">
                 {s.logo ? (
                   <img src={s.logo} alt={s.name} className="max-h-full max-w-full object-contain" />
                 ) : (
-                  <div className="text-gray-300 text-center">
+                  <div className="text-ink-200 text-center">
                     <Handshake size={32} className="mx-auto" />
-                    <div className="text-xs mt-1">No logo</div>
+                    <div className="text-label mt-1">No logo</div>
                   </div>
                 )}
               </div>
               {/* Info */}
               <div className="p-3">
-                <h3 className="font-semibold text-sm truncate">{s.name}</h3>
+                <h3 className="text-body-sm font-semibold text-ink-900 truncate">{s.name}</h3>
                 {s.description && (
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{s.description}</p>
+                  <p className="text-body-sm text-ink-500 mt-1 line-clamp-2">{s.description}</p>
                 )}
-                <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-ink-100 min-h-10">
                   <div className="flex items-center gap-2">
                     {s.website && (
-                      <a href={s.website} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-600" title="Visit website">
-                        <ExternalLink size={13} />
+                      <a href={s.website} target="_blank" rel="noreferrer" aria-label={`Visit ${s.name} website`}
+                        className="inline-flex items-center gap-1 text-body-sm text-aqua-600 hover:text-ink-900 min-h-10">
+                        <ExternalLink size={13} /> Website
                       </a>
                     )}
-                    {!s.is_active && (
-                      <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Inactive</span>
-                    )}
+                    {!s.is_active && <Badge variant="status">Inactive</Badge>}
                   </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setShowSponsorModal(s)} className="text-blue-600 hover:text-blue-800" title="Edit">
-                      <Pencil size={13} />
-                    </button>
-                    <button onClick={() => handleDelete(s)} className="text-red-500 hover:text-red-700" title="Delete">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" icon={Pencil} aria-label="Edit partner"
+                        onClick={() => setShowSponsorModal(s)} />
+                      <Button variant="ghost" size="sm" icon={Trash2} aria-label="Delete partner"
+                        className="hover:text-neg" onClick={() => setPendingDelete(s)} />
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
 
-      {/* Modal */}
       {showSponsorModal !== null && (
         <SponsorModal
           sponsor={showSponsorModal.id ? showSponsorModal : null}
@@ -205,6 +196,15 @@ export default function SponsorsPage() {
           onSaved={() => { setShowSponsorModal(null); load() }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete partner"
+        message={pendingDelete ? `Delete partner "${pendingDelete.name}"?` : ''}
+        destructive
+        onConfirm={() => handleDelete(pendingDelete)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

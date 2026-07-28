@@ -4,101 +4,123 @@ import { Crown, Plus, Pencil, Trash2, User, ExternalLink } from 'lucide-react'
 import { getInductees, deleteInductee } from '../api/fame'
 import CountryFlag from '../components/common/CountryFlag'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import { Button, Badge, SearchInput, EmptyState, ConfirmDialog, CardsSkeleton, PageHeader } from '../components/ui'
 
 export default function HallOfFamePage() {
   const navigate = useNavigate()
   const toast = useToast()
+  const { token } = useAuth()
+  const isAdmin = !!token
   const [inductees, setInductees] = useState([])
   const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   useEffect(() => {
     getInductees({ search: search || undefined }).then((res) => {
       setInductees(Array.isArray(res.data) ? res.data : res.data.results || [])
-    }).catch(() => {})
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [search])
 
   const handleDelete = async (i) => {
-    if (!window.confirm(`Remove "${i.name}" from the Hall of Fame?`)) return
     try {
       await deleteInductee(i.id)
       setInductees((prev) => prev.filter((x) => x.id !== i.id))
       toast.success('Inductee removed')
     } catch {
       toast.error('Failed to remove inductee')
+    } finally {
+      setPendingDelete(null)
     }
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Crown size={24} className="text-amber-500" /> Hall of Fame
-          <span className="text-gray-400 text-lg font-normal">({inductees.length})</span>
-        </h1>
-        <button onClick={() => navigate('/hall-of-fame/new')}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-          <Plus size={16} /> Add Inductee
-        </button>
-      </div>
+    <div className="max-w-7xl mx-auto animate-fade-up">
+      <PageHeader
+        title="Hall of Fame"
+        subtitle={`${inductees.length} legend${inductees.length === 1 ? '' : 's'} of Arab swimming`}
+        action={isAdmin && (
+          <Button variant="secondary" size="sm" icon={Plus} onClick={() => navigate('/hall-of-fame/new')}>
+            Add Inductee
+          </Button>
+        )}
+      />
 
-      <input type="text" placeholder="Search inductees..." value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full border rounded-lg px-3 py-2 text-sm bg-white mb-5" />
+      <SearchInput placeholder="Search inductees..." value={search}
+        onChange={(e) => setSearch(e.target.value)} className="mb-5 max-w-md" />
 
-      {inductees.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
-          No inductees yet. Honor the legends.
+      {loading ? (
+        <CardsSkeleton count={6} />
+      ) : inductees.length === 0 ? (
+        <div className="bg-white rounded-md shadow-card border border-ink-100">
+          <EmptyState icon={Crown} title="No inductees yet" hint="The legends of Arab swimming will be honored here." />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {inductees.map((i) => {
             const photo = i.photo || i.swimmer_detail?.photo
             return (
-              <div key={i.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-                <div className="bg-gradient-to-br from-amber-50 to-white p-5 flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-gray-100 ring-2 ring-amber-300 overflow-hidden flex items-center justify-center shrink-0">
+              <article key={i.id}
+                className="bg-white rounded-md shadow-card border border-ink-100 overflow-hidden transition-colors hover:border-aqua-500/40">
+                <div className="border-t-2 border-gold p-5 flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-ink-50 ring-2 ring-gold/50 overflow-hidden flex items-center justify-center shrink-0">
                     {photo ? (
                       <img src={photo} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <User size={24} className="text-gray-300" />
+                      <User size={24} className="text-ink-200" />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-sm cursor-pointer hover:text-blue-600 truncate"
-                      onClick={() => navigate(`/hall-of-fame/${i.id}/edit`)}>{i.name}</h3>
-                    <div className="text-xs text-gray-500 mt-0.5">
+                    <h3 className="text-title text-ink-900 truncate flex items-center gap-1.5">
+                      <Crown size={15} className="text-gold shrink-0" aria-hidden="true" />
+                      {i.name}
+                    </h3>
+                    <div className="text-body-sm text-ink-500 mt-0.5">
                       {i.country_detail && (
                         <CountryFlag code={i.country_detail.code} flagUrl={i.country_detail.flag_url} name={i.country_detail.name} />
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      {i.era && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-medium">{i.era}</span>}
-                      {i.inducted_year && <span className="text-[10px] text-gray-400">Inducted {i.inducted_year}</span>}
+                    <div className="flex items-center gap-2 mt-1.5">
+                      {i.era && <Badge variant="medal">{i.era}</Badge>}
+                      {i.inducted_year && <span className="text-label text-ink-400 tnum">Inducted {i.inducted_year}</span>}
                     </div>
                   </div>
                 </div>
                 <div className="px-5 pb-4">
-                  {i.achievements && <p className="text-xs text-gray-500 line-clamp-3">{i.achievements}</p>}
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                  {i.achievements && <p className="text-body-sm text-ink-500 line-clamp-3">{i.achievements}</p>}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100 min-h-10">
                     {i.swimmer ? (
                       <button onClick={() => navigate(`/swimmers/${i.swimmer}`)}
-                        className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1">
-                        <ExternalLink size={12} /> Swimmer profile
+                        className="text-aqua-600 hover:text-ink-900 text-body-sm flex items-center gap-1 min-h-10">
+                        <ExternalLink size={13} /> Swimmer profile
                       </button>
-                    ) : <span className="text-[10px] text-gray-300">Standalone legend</span>}
-                    <div className="flex gap-3">
-                      <button onClick={() => navigate(`/hall-of-fame/${i.id}/edit`)}
-                        className="text-blue-600 hover:text-blue-800"><Pencil size={14} /></button>
-                      <button onClick={() => handleDelete(i)}
-                        className="text-red-600 hover:text-red-800"><Trash2 size={14} /></button>
-                    </div>
+                    ) : <span className="text-label text-ink-400">Standalone legend</span>}
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" icon={Pencil} aria-label="Edit inductee"
+                          onClick={() => navigate(`/hall-of-fame/${i.id}/edit`)} />
+                        <Button variant="ghost" size="sm" icon={Trash2} aria-label="Remove inductee"
+                          className="hover:text-neg" onClick={() => setPendingDelete(i)} />
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              </article>
             )
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Remove inductee"
+        message={pendingDelete ? `Remove "${pendingDelete.name}" from the Hall of Fame?` : ''}
+        destructive
+        confirmLabel="Remove"
+        onConfirm={() => handleDelete(pendingDelete)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

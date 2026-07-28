@@ -334,31 +334,68 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = 
 }
 
 function TodayBirthdays({ navigate }) {
-  const [birthdays, setBirthdays] = useState([])
+  const [today, setToday] = useState([])
+  const [upcoming, setUpcoming] = useState([])
 
   useEffect(() => {
-    const today = new Date()
-    getSwimmerBirthdays(today.getMonth() + 1)
-      .then(res => setBirthdays((res.data || []).filter(s => s.day === today.getDate())))
-      .catch(() => {})
+    const now = new Date()
+    const thisMonth = now.getMonth() + 1
+    const nextMonth = (thisMonth % 12) + 1
+    Promise.all([
+      getSwimmerBirthdays(thisMonth).then(r => r.data || []).catch(() => []),
+      getSwimmerBirthdays(nextMonth).then(r => r.data || []).catch(() => []),
+    ]).then(([cur, next]) => {
+      setToday(cur.filter(s => s.day === now.getDate()))
+      // Next 7 days (may span into next month)
+      const up = []
+      for (let i = 1; i <= 7; i++) {
+        const d = new Date(now)
+        d.setDate(now.getDate() + i)
+        const pool = d.getMonth() + 1 === thisMonth ? cur : next
+        pool.filter(s => s.day === d.getDate())
+          .forEach(s => up.push({ ...s, when: d }))
+      }
+      setUpcoming(up)
+    })
   }, [])
 
-  if (birthdays.length === 0) return null
+  if (today.length === 0 && upcoming.length === 0) return null
 
   return (
     <div className="bg-gradient-to-r from-pink-50 to-amber-50 border border-pink-200 rounded-xl p-4 mb-5">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">🎂</span>
-        <h3 className="font-bold text-sm text-gray-800">Birthdays Today</h3>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {birthdays.map(s => (
-          <button key={s.id} onClick={() => navigate(`/swimmers/${s.id}`)}
-            className="bg-white border border-pink-200 rounded-full px-3 py-1 text-sm font-medium text-gray-700 hover:border-pink-400 hover:text-pink-700 transition-colors">
-            {s.name}
-          </button>
-        ))}
-      </div>
+      {today.length > 0 && (
+        <div className={upcoming.length > 0 ? 'mb-3' : ''}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg">🎂</span>
+            <h3 className="font-bold text-sm text-gray-800">Birthdays Today</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {today.map(s => (
+              <button key={s.id} onClick={() => navigate(`/swimmers/${s.id}`)}
+                className="bg-white border border-pink-200 rounded-full px-3 py-1 text-sm font-medium text-gray-700 hover:border-pink-400 hover:text-pink-700 transition-colors">
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {upcoming.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg">🎈</span>
+            <h3 className="font-bold text-sm text-gray-800">Upcoming Birthdays</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {upcoming.map(s => (
+              <button key={s.id} onClick={() => navigate(`/swimmers/${s.id}`)}
+                className="bg-white border border-pink-200 rounded-full px-3 py-1 text-sm font-medium text-gray-700 hover:border-pink-400 hover:text-pink-700 transition-colors">
+                {s.name}
+                <span className="text-gray-400 ml-1.5 text-xs">{s.when.getDate()} {MONTH_SHORT[s.when.getMonth()]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

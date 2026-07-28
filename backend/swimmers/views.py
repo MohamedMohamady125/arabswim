@@ -65,7 +65,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'date_of_birth': s.date_of_birth,
                 'day': s.date_of_birth.day,
                 'age': s.age,
-                'nationality': s.nationality.name,
+                'nationality': s.nationality.name if s.nationality else '',
                 'photo': s.photo.url if s.photo else None,
             })
         return Response(data)

@@ -32,6 +32,7 @@ frontend/.next/
 *.PDF
 *.xlsx
 *.html
+!frontend/index.html
 
 # Extra
 **/__pycache__/

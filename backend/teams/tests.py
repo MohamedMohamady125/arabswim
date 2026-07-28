@@ -321,3 +321,43 @@ class ApplySubclassificationCountryTests(TestCase):
         self.assertEqual(apply_subclassification_country(champ), 0)
         team.refresh_from_db()
         self.assertEqual(team.country, self.belgium)
+
+
+class CleanupOrphanTeamsTests(TestCase):
+    """Teams whose club has no remaining swimmers or results are removed —
+    e.g. after non-Arab swimmers are deleted from an imported meet."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.country = Country.objects.create(name='France', code='FRA', region='OTHER')
+        cls.arab = Country.objects.create(name='Algeria', code='ALG', region='ARAB')
+
+    def test_orphan_team_deleted(self):
+        from teams.utils import cleanup_orphan_teams
+        Team.objects.create(name='STADE OLYMPIQUE CHAMBÉRY', country=self.country)
+        self.assertEqual(cleanup_orphan_teams(), 1)
+        self.assertFalse(Team.objects.filter(name='STADE OLYMPIQUE CHAMBÉRY').exists())
+
+    def test_team_with_swimmer_kept(self):
+        from teams.utils import cleanup_orphan_teams
+        Team.objects.create(name='MC ALGER', country=self.arab)
+        Swimmer.objects.create(name='Ali TAMER', sex='M', nationality=self.arab, club='MC ALGER')
+        self.assertEqual(cleanup_orphan_teams(), 0)
+
+    def test_team_with_result_kept(self):
+        from teams.utils import cleanup_orphan_teams
+        Team.objects.create(name='CA BRAZZA', country=self.arab)
+        event = Event.objects.create(name='50 M Freestyle', distance=50, stroke='Freestyle')
+        champ = Championship.objects.create(name='Meet', date='2026-06-01', pool='LCM', country=self.arab)
+        s = Swimmer.objects.create(name='Omar SAYED', sex='M', nationality=self.arab)
+        Result.objects.create(swimmer=s, championship=champ, event=event,
+                              team='CA Brazza 2', time_centiseconds=3000)
+        # 'CA Brazza 2' matches team 'CA BRAZZA' via normalized key
+        self.assertEqual(cleanup_orphan_teams(), 0)
+
+    def test_curated_team_never_deleted(self):
+        from teams.utils import cleanup_orphan_teams
+        Team.objects.create(name='OLD CLUB', country=self.country, founded_year=1950)
+        Team.objects.create(name='NAT TEAM', country=self.arab, is_national_team=True)
+        self.assertEqual(cleanup_orphan_teams(), 0)
+        self.assertEqual(Team.objects.count(), 2)

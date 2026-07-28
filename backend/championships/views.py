@@ -124,6 +124,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 hall_of_fame_entries__isnull=True,
             )
             orphans.delete()
+        from teams.utils import cleanup_orphan_teams
+        cleanup_orphan_teams()
         return response
 
     @action(detail=True, methods=['post'], url_path='upload-pdf')
@@ -864,9 +866,13 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         )
         orphans_deleted = orphans.count()
         orphans.delete()
+        # Clubs whose swimmers were all removed must not linger as teams
+        from teams.utils import cleanup_orphan_teams
+        teams_deleted = cleanup_orphan_teams()
         return Response({
             'deleted_results': count,
             'deleted_orphan_swimmers': orphans_deleted,
+            'deleted_orphan_teams': teams_deleted,
         })
 
     @action(detail=True, methods=['post'], url_path='bulk-delete-result-ids')
@@ -893,9 +899,12 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         )
         orphans_deleted = orphans.count()
         orphans.delete()
+        from teams.utils import cleanup_orphan_teams
+        teams_deleted = cleanup_orphan_teams()
         return Response({
             'deleted_results': count,
             'deleted_orphan_swimmers': orphans_deleted,
+            'deleted_orphan_teams': teams_deleted,
         })
 
     @action(detail=True, methods=['get'], url_path='all-results')

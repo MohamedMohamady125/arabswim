@@ -228,6 +228,44 @@ def auto_create_teams():
     return created
 
 
+def cleanup_orphan_teams():
+    """Delete auto-created teams whose club no longer has any swimmer or
+    result — e.g. after non-Arab swimmers are removed from an imported
+    meet, their clubs must not linger as empty teams.
+
+    Teams with any manually curated data (logo, banner, contact info,
+    founded year, trophies) or marked as national teams are never touched.
+    Returns the number of teams deleted.
+    """
+    from championships.models import Result
+
+    used_keys = set()
+    club_names = (Swimmer.objects.exclude(club='').exclude(club__isnull=True)
+                  .values_list('club', flat=True).distinct())
+    team_names = (Result.objects.exclude(team='').exclude(team__isnull=True)
+                  .values_list('team', flat=True).distinct())
+    for name in list(club_names) + list(team_names):
+        name = (name or '').strip()
+        if name:
+            used_keys.add(normalize_team_key(name) or name.casefold())
+
+    candidates = (
+        Team.objects.filter(is_national_team=False, founded_year__isnull=True,
+                            website='', address='', email='', phone='')
+        .filter(Q(logo='') | Q(logo__isnull=True))
+        .filter(Q(banner='') | Q(banner__isnull=True))
+        .annotate(trophy_count=Count('trophies'))
+        .filter(trophy_count=0)
+    )
+    deleted = 0
+    for team in candidates:
+        key = normalize_team_key(team.name) or team.name.casefold()
+        if key not in used_keys:
+            team.delete()
+            deleted += 1
+    return deleted
+
+
 def ensure_team_exists(club_name, country=None):
     """
     Ensure a Team exists for the given club name.

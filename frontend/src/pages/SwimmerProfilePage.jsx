@@ -177,7 +177,8 @@ function SplitsBreakdown({ splits, eventName }) {
     const max = Math.max(...laps.map(r => r.lapCs))
     const range = Math.max(max - min, 50)
     const x = (i) => PX + (i * (W - 2 * PX)) / (laps.length - 1)
-    const y = (v) => PY + ((v - min) / range) * (H - 2 * PY)
+    // Higher (slower) lap time sits higher on the chart
+    const y = (v) => H - PY - ((v - min) / range) * (H - 2 * PY)
     const pts = laps.map((r, i) => `${x(i)},${y(r.lapCs)}`).join(' ')
     chart = (
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[460px] h-auto">

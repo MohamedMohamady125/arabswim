@@ -10,7 +10,7 @@ import { AFRICA_PATH, ASIA_PATH, ARAB_PATH, GCC_PATH } from '../assets/mapPaths'
 import { FaSchoolFlag, FaGraduationCap, FaLandmarkFlag } from 'react-icons/fa6'
 import { formatDate } from '../utils/constants'
 import { useAuth } from '../context/AuthContext'
-import { Button, Card, Badge, PoolBadge, Tabs, SegmentedControl, EmptyState, Skeleton, TableSkeleton, StatCard, Hero } from '../components/ui'
+import { Button, Card, Badge, PoolBadge, Tabs, SegmentedControl, EmptyState, Skeleton, TableSkeleton, Hero } from '../components/ui'
 import { TimeDisplay, EventLabel } from '../components/domain'
 import { CHART, formatCs } from '../components/charts/theme'
 import {
@@ -800,26 +800,9 @@ function StatsTab({ stats, events, swimmerId }) {
   }, [swimmerId, gapStandard])
 
   if (!stats) return null
-  const { medals, best_fina, season_best_fina, best_event, total_championships, records, total_records, fina_distribution } = stats
-  const totalEvents = new Set(events.map(e => e.event_id)).size
-  const totalSwims = events.reduce((sum, e) => sum + e.times_count, 0)
-
-  const quickStats = [
-    { label: 'Championships', value: total_championships, icon: CalendarDays },
-    { label: 'Events', value: totalEvents, icon: ChartLine },
-    { label: 'Total Swims', value: totalSwims, icon: Clock },
-    { label: 'Medals', value: medals.total, icon: Medal },
-  ]
-
+  const { best_fina, season_best_fina, best_event, records, total_records, fina_distribution } = stats
   return (
     <div className="space-y-6">
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-        {quickStats.map((s) => (
-          <StatCard key={s.label} label={s.label} value={<AnimatedNumber value={s.value} />} icon={s.icon} />
-        ))}
-      </div>
-
       {/* Performance Index + Highlights */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         <PerformanceIndex finaDistribution={fina_distribution} bestFina={best_fina} />
@@ -1086,12 +1069,6 @@ function MeetsTab({ stats, navigate }) {
     <div className="space-y-4">
       {/* International Participation infographic */}
       <InternationalParticipation championships={championships} />
-
-      {/* Overview */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4">
-        <StatCard label="Meets" value={<AnimatedNumber value={championships.length} />} icon={CalendarDays} />
-        <StatCard label="Years" value={<AnimatedNumber value={years.length} />} icon={Clock} />
-      </div>
 
       {/* Timeline */}
       {years.map((year) => (
@@ -2018,26 +1995,6 @@ export default function SwimmerProfilePage() {
           </div>
         </div>
       </Hero>
-
-      {/* Quick stats */}
-      {stats && (stats.medals.total > 0 || stats.best_fina || stats.total_records > 0) && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4">
-          {stats.medals.total > 0 && (
-            <StatCard label="Medals" icon={Medal}
-              value={<AnimatedNumber value={stats.medals.total} />}
-              delta={`${stats.medals.gold}G · ${stats.medals.silver}S · ${stats.medals.bronze}B`} deltaGood />
-          )}
-          {stats.best_fina && (
-            <StatCard label="Best FINA" icon={Target} value={<AnimatedNumber value={stats.best_fina.points} />} />
-          )}
-          {stats.total_records > 0 && (
-            <StatCard label="Records" icon={Star} value={<AnimatedNumber value={stats.total_records} />} />
-          )}
-          {stats.total_championships != null && (
-            <StatCard label="Meets" icon={CalendarDays} value={<AnimatedNumber value={stats.total_championships} />} />
-          )}
-        </div>
-      )}
 
       {/* Tabs — Compare stays a public navigation action */}
       <Tabs

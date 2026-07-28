@@ -9,6 +9,14 @@ import MedalIcon from '../components/common/MedalIcon'
 import { formatDate } from '../utils/constants'
 import AddResultsModal from '../components/championships/AddResultsModal'
 import MeetEditModal from '../components/championships/MeetEditModal'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import { Hero, Tabs, SegmentedControl, Card, Button, Badge, PoolBadge, ConfirmDialog, EmptyState, Skeleton, TableSkeleton, Input } from '../components/ui'
+import { SwimmerCell, TimeDisplay, MedalTally, RankNumber } from '../components/domain'
+import {
+  ArrowLeft, Pencil, Plus, Users, Timer, ChevronRight, ChevronUp, ChevronDown,
+  Trash2, X, Camera, Medal, MapPin, Calendar, ListOrdered, Waves,
+} from 'lucide-react'
 
 // Display categories oldest → youngest (bigger age first).
 // Extracts the highest age number from the category string for sorting.
@@ -41,6 +49,24 @@ function parseTimeToCs(text) {
   return null
 }
 
+const GENDER_OPTIONS = [
+  { key: 'overall', label: 'Overall' },
+  { key: 'M', label: 'Male' },
+  { key: 'F', label: 'Female' },
+]
+
+const TH = 'px-3 md:px-4 py-2.5 text-label text-ink-400 text-start whitespace-nowrap'
+const TH_END = 'px-3 md:px-4 py-2.5 text-label text-ink-400 text-end whitespace-nowrap'
+const TD = 'px-3 md:px-4 py-2.5 text-body-sm text-ink-900'
+
+function finaTierClass(points) {
+  if (points >= 1000) return 'text-gold'
+  if (points >= 900) return 'text-pos'
+  if (points >= 800) return 'text-aqua-600'
+  if (points >= 600) return 'text-lcm'
+  return 'text-ink-500'
+}
+
 function TopPerformersTable({ performers, navigate }) {
   const [genderFilter, setGenderFilter] = useState('overall')
   if (!performers || performers.length === 0) return null
@@ -50,60 +76,43 @@ function TopPerformersTable({ performers, navigate }) {
     : performers.filter(t => t.gender === genderFilter)
 
   return (
-    <div className="bg-white rounded-lg border">
-      <div className="p-4 border-b flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold">Top Performances</h3>
-          <p className="text-xs text-gray-500 mt-1">Highest FINA points at this championship</p>
-        </div>
-        <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
-          {[
-            { key: 'overall', label: 'Overall' },
-            { key: 'M', label: 'Male' },
-            { key: 'F', label: 'Female' },
-          ].map(opt => (
-            <button key={opt.key} onClick={() => setGenderFilter(opt.key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                genderFilter === opt.key ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <Card
+      padding="none"
+      title="Top Performances"
+      action={<SegmentedControl options={GENDER_OPTIONS} value={genderFilter} onChange={setGenderFilter} />}
+    >
+      <p className="px-4 md:px-5 pt-3 text-body-sm text-ink-400">Highest FINA points at this championship</p>
       {filtered.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto mt-2">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
+              <tr className="bg-ink-50 border-b border-ink-100">
+                <th scope="col" className={`${TH} w-10`}>#</th>
+                <th scope="col" className={TH}>Swimmer</th>
+                <th scope="col" className={TH}>Event</th>
+                <th scope="col" className={TH_END}>Time</th>
+                <th scope="col" className={TH_END}>FINA</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-ink-100">
               {filtered.map((t, i) => (
-                <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
-                  <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                  <td className="px-4 py-2 text-sm font-medium">{t.swimmer_name}</td>
-                  <td className="px-4 py-2 text-sm">
-                    <CountryFlag code={t.nationality_code} flagUrl={t.flag_url} name={t.nationality} />
+                <tr key={i} className="h-11 hover:bg-ink-50 cursor-pointer transition-colors" onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
+                  <td className={TD}><RankNumber rank={i + 1} /></td>
+                  <td className={TD}>
+                    <SwimmerCell name={t.swimmer_name} countryCode={t.nationality_code} flagUrl={t.flag_url} />
                   </td>
-                  <td className="px-4 py-2 text-sm">{t.event_name}</td>
-                  <td className="px-4 py-2 text-sm font-mono">{t.time}</td>
-                  <td className="px-4 py-2 text-sm font-bold text-sky-600">{t.fina_points}</td>
+                  <td className={`${TD} whitespace-nowrap`}>{t.event_name}</td>
+                  <td className={`${TD} text-end`}><TimeDisplay time={t.time} /></td>
+                  <td className={`${TD} text-end tnum font-bold text-aqua-600`}>{t.fina_points}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <div className="p-8 text-center text-gray-400 text-sm">No performances for this filter</div>
+        <div className="p-8 text-center text-ink-400 text-body-sm">No performances for this filter</div>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -115,70 +124,53 @@ function MostImprovedTable({ swimmers, navigate }) {
     : swimmers.filter(s => s.gender === genderFilter)
 
   return (
-    <div className="bg-white rounded-lg border">
-      <div className="p-4 border-b flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold">Most Improved Swimmers</h3>
-          <p className="text-xs text-gray-500 mt-1">Biggest time drops vs previous personal best</p>
-        </div>
-        <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
-          {[
-            { key: 'overall', label: 'Overall' },
-            { key: 'M', label: 'Male' },
-            { key: 'F', label: 'Female' },
-          ].map(opt => (
-            <button key={opt.key} onClick={() => setGenderFilter(opt.key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                genderFilter === opt.key ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <Card
+      padding="none"
+      title="Most Improved Swimmers"
+      action={<SegmentedControl options={GENDER_OPTIONS} value={genderFilter} onChange={setGenderFilter} />}
+    >
+      <p className="px-4 md:px-5 pt-3 text-body-sm text-ink-400">Biggest time drops vs previous personal best</p>
       {filtered.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto mt-2">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Previous Best</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">New Time</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Improvement</th>
+              <tr className="bg-ink-50 border-b border-ink-100">
+                <th scope="col" className={`${TH} w-10`}>#</th>
+                <th scope="col" className={TH}>Swimmer</th>
+                <th scope="col" className={TH}>Event</th>
+                <th scope="col" className={TH}>Previous Best</th>
+                <th scope="col" className={TH_END}>New Time</th>
+                <th scope="col" className={TH_END}>Improvement</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-ink-100">
               {filtered.map((s, i) => (
-                <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
-                  <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                  <td className="px-4 py-2 text-sm font-medium">{s.swimmer_name}</td>
-                  <td className="px-4 py-2 text-sm">
-                    <CountryFlag code={s.nationality_code} flagUrl={s.flag_url} name={s.nationality} />
+                <tr key={i} className="h-11 hover:bg-ink-50 cursor-pointer transition-colors" onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
+                  <td className={TD}><RankNumber rank={i + 1} /></td>
+                  <td className={TD}>
+                    <SwimmerCell name={s.swimmer_name} countryCode={s.nationality_code} flagUrl={s.flag_url} />
                   </td>
-                  <td className="px-4 py-2 text-sm">{s.event_name}</td>
-                  <td className="px-4 py-2 text-sm">
+                  <td className={`${TD} whitespace-nowrap`}>{s.event_name}</td>
+                  <td className={TD}>
                     {s.is_new_entry ? (
-                      <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full font-medium">New Entry</span>
+                      <Badge variant="aqua">New Entry</Badge>
                     ) : (
                       <>
-                        <div className="font-mono text-gray-500">{s.previous_best}</div>
+                        <div className="tnum text-ink-500">{s.previous_best}</div>
                         <div className="flex items-center gap-1 mt-0.5 cursor-pointer group" onClick={(e) => { e.stopPropagation(); navigate(`/meets/${s.previous_best_meet_id}`) }}>
-                          <span className="text-[10px] text-sky-600 group-hover:text-sky-800 truncate max-w-[140px]" title={s.previous_best_meet}>
+                          <span className="text-label normal-case tracking-normal text-aqua-600 group-hover:underline truncate max-w-[140px]" title={s.previous_best_meet}>
                             {s.previous_best_meet}
                           </span>
                           {s.previous_best_date && (
-                            <span className="text-[9px] text-gray-400">({new Date(s.previous_best_date).getFullYear()})</span>
+                            <span className="text-label normal-case tracking-normal text-ink-400">({new Date(s.previous_best_date).getFullYear()})</span>
                           )}
                         </div>
                       </>
                     )}
                   </td>
-                  <td className="px-4 py-2 text-sm font-mono font-semibold">{s.current_time}</td>
-                  <td className="px-4 py-2 text-sm font-mono font-bold text-green-600">
-                    {s.is_new_entry ? <span className="text-gray-400 font-normal">—</span> : `-${s.improvement}`}
+                  <td className={`${TD} text-end`}><TimeDisplay time={s.current_time} /></td>
+                  <td className={`${TD} text-end tnum font-bold text-pos`}>
+                    {s.is_new_entry ? <span className="text-ink-400 font-normal">—</span> : `-${s.improvement}`}
                   </td>
                 </tr>
               ))}
@@ -186,9 +178,9 @@ function MostImprovedTable({ swimmers, navigate }) {
           </table>
         </div>
       ) : (
-        <div className="p-8 text-center text-gray-400 text-sm">No improvements for this filter</div>
+        <div className="p-8 text-center text-ink-400 text-body-sm">No improvements for this filter</div>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -222,38 +214,31 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
       {/* Medal Count Cards */}
       {safeMedals.length > 0 && (
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-2 sm:p-4 text-center">
-            <MedalIcon type="gold" size={32} />
-            <div className="text-2xl sm:text-3xl font-black text-amber-700 mt-1">{goldCount}</div>
-            <div className="text-[10px] sm:text-xs font-semibold text-amber-600 uppercase tracking-wide">Gold</div>
-          </div>
-          <div className="bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-2 sm:p-4 text-center">
-            <MedalIcon type="silver" size={32} />
-            <div className="text-2xl sm:text-3xl font-black text-gray-600 mt-1">{silverCount}</div>
-            <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">Silver</div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-2 sm:p-4 text-center">
-            <MedalIcon type="bronze" size={32} />
-            <div className="text-2xl sm:text-3xl font-black text-orange-700 mt-1">{bronzeCount}</div>
-            <div className="text-[10px] sm:text-xs font-semibold text-orange-600 uppercase tracking-wide">Bronze</div>
-          </div>
+          {[
+            { type: 'gold', count: goldCount, label: 'Gold', accent: 'border-s-2 border-gold text-gold' },
+            { type: 'silver', count: silverCount, label: 'Silver', accent: 'border-s-2 border-silver text-silver' },
+            { type: 'bronze', count: bronzeCount, label: 'Bronze', accent: 'border-s-2 border-bronze text-bronze' },
+          ].map(m => (
+            <div key={m.type} className={`bg-white rounded-md shadow-card border border-ink-100 ${m.accent} p-3 sm:p-4 text-center`}>
+              <MedalIcon type={m.type} size={32} />
+              <div className="text-time-lg text-ink-900 mt-1">{m.count}</div>
+              <div className="text-label text-ink-400">{m.label}</div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Tally switcher: Country/Club Medal Tally vs Swimmer Medal Tally */}
       {(safeSummary.length > 0 || safeClubSummary.length > 0 || safeSwimmerSummary.length > 0) && (
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-          {[
-            { key: 'main', label: isNational ? 'Club Medal Tally' : 'Country Medal Tally' },
-            ...(!isNational && safeClubSummary.length > 0 ? [{ key: 'clubs', label: 'Club Medal Tally' }] : []),
-            { key: 'swimmers', label: 'Swimmer Medal Tally' },
-          ].map(t => (
-            <button key={t.key} onClick={() => setTallySection(t.key)}
-              className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                tallySection === t.key ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}>{t.label}</button>
-          ))}
-        </div>
+        <SegmentedControl
+          options={[
+            { key: 'main', label: isNational ? 'Club Tally' : 'Country Tally' },
+            ...(!isNational && safeClubSummary.length > 0 ? [{ key: 'clubs', label: 'Club Tally' }] : []),
+            { key: 'swimmers', label: 'Swimmer Tally' },
+          ]}
+          value={tallySection}
+          onChange={setTallySection}
+        />
       )}
 
       {/* Country Medal Tally (international) or Club Medal Tally (national) */}
@@ -262,209 +247,139 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
           ? safeSummary.filter(r => r.swimmer__nationality__region === 'ARAB' || r.swimmer__nationality__region === 'GCC')
           : safeSummary
         return (
-          <div className="bg-white rounded-lg border">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="font-semibold">Country Medal Tally</h3>
-              <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl">
-                {[
-                  { key: 'ALL', label: 'Overall' },
-                  { key: 'ARAB', label: 'Arab' },
-                ].map(opt => (
-                  <button key={opt.key} onClick={() => setTallyFilter(opt.key)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
-                      tallyFilter === opt.key
-                        ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                    }`}>
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <h3 className="text-title text-ink-900">Country Medal Tally</h3>
+              <SegmentedControl
+                options={[{ key: 'ALL', label: 'Overall' }, { key: 'ARAB', label: 'Arab' }]}
+                value={tallyFilter}
+                onChange={setTallyFilter}
+              />
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Country</th>
-                    <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
-                    <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
-                    <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
-                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filteredSummary.map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                      <td className="px-4 py-2 text-sm">
-                        <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
-                      </td>
-                      <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
-                      <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
-                      <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
-                      <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <MedalTally
+              entityLabel="Country"
+              rows={filteredSummary.map((row, i) => ({
+                id: row.swimmer__nationality__code || i,
+                entity: (
+                  <span className="text-body-sm text-ink-900">
+                    <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
+                  </span>
+                ),
+                gold: row.gold || 0,
+                silver: row.silver || 0,
+                bronze: row.bronze || 0,
+              }))}
+            />
           </div>
         )
       })()}
 
       {(tallySection === 'clubs' || (tallySection === 'main' && isNational)) && safeClubSummary.length > 0 && (
-        <div className="bg-white rounded-lg border">
-          <div className="p-4 border-b">
-            <h3 className="font-semibold">Club Medal Tally</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Club</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
-                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
-                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {safeClubSummary.map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                    <td className="px-4 py-2 text-sm font-medium">{row.result__team}</td>
-                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
-                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
-                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
-                    <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div>
+          <h3 className="text-title text-ink-900 mb-3">Club Medal Tally</h3>
+          <MedalTally
+            entityLabel="Club"
+            rows={safeClubSummary.map((row, i) => ({
+              id: i,
+              entity: <span className="text-body-sm font-medium text-ink-900">{row.result__team}</span>,
+              gold: row.gold || 0,
+              silver: row.silver || 0,
+              bronze: row.bronze || 0,
+            }))}
+          />
         </div>
       )}
 
       {/* Swimmer Medal Tally */}
       {tallySection === 'swimmers' && safeSwimmerSummary.length > 0 && (
-        <div className="bg-white rounded-lg border">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold">Swimmer Medal Tally</h3>
-            <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl">
-              {[
-                { key: 'ALL', label: 'All' },
-                { key: 'M', label: 'Men' },
-                { key: 'F', label: 'Women' },
-              ].map(opt => (
-                <button key={opt.key} onClick={() => setSwimmerGender(opt.key)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
-                    swimmerGender === opt.key
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <h3 className="text-title text-ink-900">Swimmer Medal Tally</h3>
+            <SegmentedControl
+              options={[{ key: 'ALL', label: 'All' }, { key: 'M', label: 'Men' }, { key: 'F', label: 'Women' }]}
+              value={swimmerGender}
+              onChange={setSwimmerGender}
+            />
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="gold" size={24} /></th>
-                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="silver" size={24} /></th>
-                  <th className="px-4 py-2 text-center text-xs font-medium"><MedalIcon type="bronze" size={24} /></th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {(swimmerGender === 'ALL'
-                  ? safeSwimmerSummary
-                  : safeSwimmerSummary.filter(r => r.swimmer__sex === swimmerGender)
-                ).map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${row.swimmer__id}`)}>
-                    <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                    <td className="px-4 py-2 text-sm font-medium">{row.swimmer__name}</td>
-                    <td className="px-4 py-2 text-sm">
-                      <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name} />
-                    </td>
-                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.gold || 0}</td>
-                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.silver || 0}</td>
-                    <td className="px-4 py-2 text-sm text-center font-semibold">{row.bronze || 0}</td>
-                    <td className="px-4 py-2 text-sm text-center font-bold">{row.total || 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <MedalTally
+            entityLabel="Swimmer"
+            onRowClick={(row) => navigate(`/swimmers/${row.swimmerId}`)}
+            rows={(swimmerGender === 'ALL'
+              ? safeSwimmerSummary
+              : safeSwimmerSummary.filter(r => r.swimmer__sex === swimmerGender)
+            ).map((row, i) => ({
+              id: row.swimmer__id || i,
+              swimmerId: row.swimmer__id,
+              entity: (
+                <SwimmerCell
+                  name={row.swimmer__name}
+                  countryCode={row.swimmer__nationality__code}
+                  flagUrl={row.swimmer__nationality__flag_url}
+                />
+              ),
+              gold: row.gold || 0,
+              silver: row.silver || 0,
+              bronze: row.bronze || 0,
+            }))}
+          />
         </div>
       )}
 
       {/* All Medals with filter buttons */}
       {safeMedals.length > 0 && (
-        <div className="bg-white rounded-lg border">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold">All Medals ({filteredMedals.length})</h3>
-            <div className="flex gap-1.5">
-              {[
-                { key: 'ALL', label: 'All', color: 'bg-sky-600 text-white shadow-md shadow-sky-200', count: safeMedals.length },
-                { key: 'GOLD', label: 'Gold', color: 'bg-amber-500 text-white shadow-md shadow-amber-200', count: goldCount },
-                { key: 'SILVER', label: 'Silver', color: 'bg-gray-400 text-white shadow-md shadow-gray-200', count: silverCount },
-                { key: 'BRONZE', label: 'Bronze', color: 'bg-orange-600 text-white shadow-md shadow-orange-200', count: bronzeCount },
-              ].map(opt => (
-                <button key={opt.key} onClick={() => setMedalFilter(opt.key)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
-                    medalFilter === opt.key
-                      ? opt.color
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}>
-                  {opt.label} ({opt.count})
-                </button>
-              ))}
-            </div>
-          </div>
+        <Card
+          padding="none"
+          title={`All Medals (${filteredMedals.length})`}
+          action={
+            <SegmentedControl
+              options={[
+                { key: 'ALL', label: `All (${safeMedals.length})` },
+                { key: 'GOLD', label: `Gold (${goldCount})` },
+                { key: 'SILVER', label: `Silver (${silverCount})` },
+                { key: 'BRONZE', label: `Bronze (${bronzeCount})` },
+              ]}
+              value={medalFilter}
+              onChange={setMedalFilter}
+            />
+          }
+        >
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Medal</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
+                <tr className="bg-ink-50 border-b border-ink-100">
+                  <th scope="col" className={`${TH} w-14`}>Medal</th>
+                  <th scope="col" className={TH}>Swimmer</th>
+                  <th scope="col" className={TH}>Event</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-ink-100">
                 {filteredMedals.map((m, i) => (
-                  <tr key={m.id || i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}>
-                    <td className="px-4 py-2"><MedalIcon type={m.medal_type?.toLowerCase()} size={24} /></td>
-                    <td className="px-4 py-2 text-sm font-medium">{m.swimmer_detail?.name}</td>
-                    <td className="px-4 py-2 text-sm">
-                      <CountryFlag
-                        code={m.swimmer_detail?.nationality_detail?.code}
+                  <tr key={m.id || i} className="h-11 hover:bg-ink-50 cursor-pointer transition-colors" onClick={() => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}>
+                    <td className={TD}><MedalIcon type={m.medal_type?.toLowerCase()} size={24} /></td>
+                    <td className={TD}>
+                      <SwimmerCell
+                        name={m.swimmer_detail?.name}
+                        countryCode={m.swimmer_detail?.nationality_detail?.code}
                         flagUrl={m.swimmer_detail?.nationality_detail?.flag_url}
-                        name={m.swimmer_detail?.nationality_detail?.name}
                       />
                     </td>
-                    <td className="px-4 py-2 text-sm">{m.event_detail?.name}</td>
+                    <td className={`${TD} whitespace-nowrap`}>{m.event_detail?.name}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
       {safeSummary.length === 0 && safeClubSummary.length === 0 && safeMedals.length === 0 && (
-        <div className="bg-white rounded-lg border p-12 text-center text-gray-400">
-          <div className="text-5xl mb-3">🏅</div>
-          <p className="text-lg font-medium">No medals yet</p>
-          <p className="text-sm mt-1">Medals are computed from results automatically</p>
-        </div>
+        <Card padding="none">
+          <EmptyState
+            icon={Medal}
+            title="No medals yet"
+            hint="Medals are computed from results automatically"
+          />
+        </Card>
       )}
     </div>
   )
@@ -474,6 +389,9 @@ export default function MeetDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { token } = useAuth()
+  const isAdmin = !!token
+  const toast = useToast()
   const activeTab = searchParams.get('tab') || 'results'
   const setActiveTab = (tab) => setSearchParams({ tab })
   const [meet, setMeet] = useState(null)
@@ -493,6 +411,8 @@ export default function MeetDetailPage() {
   const [editValues, setEditValues] = useState({ time: '', team: '' })
   const [selectedCategory, setSelectedCategory] = useState(null)  // null = all
   const [genderFilter, setGenderFilter] = useState('')  // '' = all, 'M' = men, 'F' = women
+  const [pendingDeleteResult, setPendingDeleteResult] = useState(null)  // result row awaiting confirm
+  const [pendingDeleteMedia, setPendingDeleteMedia] = useState(null)    // media item awaiting confirm
 
   // Medals tab state
   const [medals, setMedals] = useState([])
@@ -560,24 +480,37 @@ export default function MeetDetailPage() {
 
   const saveEditRow = async (r) => {
     const cs = parseTimeToCs(editValues.time)
-    if (!cs) { alert('Invalid time — use 1:02.34 or 28.75'); return }
+    if (!cs) { toast.error('Invalid time — use 1:02.34 or 28.75'); return }
     try {
       await updateResult(r.id, { time_centiseconds: cs, team: editValues.team })
       setEditingId(null)
       await Promise.all([refreshResults(), refreshStats()])
     } catch {
-      alert('Failed to save the result')
+      toast.error('Failed to save the result')
     }
   }
 
-  const removeRow = async (r) => {
-    if (!window.confirm(`Delete ${r.swimmer_detail?.name}'s ${selectedEvent?.event_name} result (${r.formatted_time})?`)) return
+  const removeRow = (r) => setPendingDeleteResult(r)
+
+  const confirmRemoveRow = async () => {
+    const r = pendingDeleteResult
+    setPendingDeleteResult(null)
+    if (!r) return
     try {
       await deleteResult(r.id)
       await Promise.all([refreshResults(), refreshStats()])
     } catch {
-      alert('Failed to delete the result')
+      toast.error('Failed to delete the result')
     }
+  }
+
+  const confirmRemoveMedia = () => {
+    const item = pendingDeleteMedia
+    setPendingDeleteMedia(null)
+    if (!item) return
+    deleteMediaItem(item.id).then(() => {
+      setAlbum(a => ({ ...a, items: a.items.filter(i => i.id !== item.id) }))
+    }).catch(() => {})
   }
 
   // Round display order: finals first, then semis/consolation, prelims/heats
@@ -624,115 +557,99 @@ export default function MeetDetailPage() {
     }
   }
 
-  if (!meet || !stats) return <div className="text-center py-12 text-gray-400">Loading...</div>
+  if (!meet || !stats) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-6">
+        <Skeleton className="h-48 w-full rounded-lg" />
+        <Skeleton className="h-11 w-full" />
+        <TableSkeleton rows={8} />
+      </div>
+    )
+  }
+
+  const heroStats = [
+    { label: 'Swimmers', value: stats.total_swimmers },
+    { label: 'Results', value: stats.total_results },
+    { label: 'Events', value: stats.events.length },
+    { label: 'Male', value: stats.male_count, hideMobile: true },
+    { label: 'Female', value: stats.female_count, hideMobile: true },
+  ]
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-3 sm:mb-6">
-        <button onClick={() => navigate('/calendar')} className="text-gray-500 hover:text-gray-700 text-sm">← Back</button>
+    <div className="max-w-7xl mx-auto">
+      {/* Top row: back + admin actions */}
+      <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
+        <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/calendar')}>Back</Button>
+        {isAdmin && (
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setShowEditModal(true)}>
+              <span className="hidden sm:inline">Edit Meet</span><span className="sm:hidden">Edit</span>
+            </Button>
+            <Button variant="ghost" size="sm" icon={Plus} onClick={() => setShowAddModal(true)}>
+              <span className="hidden sm:inline">Add Results</span><span className="sm:hidden">Add</span>
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Meet Banner */}
-      <div className="bg-gradient-to-r from-sky-600 to-sky-500 text-white rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-2xl font-bold mb-1.5 sm:mb-2">{meet.name}</h1>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sky-100 text-xs sm:text-sm">
-              {meet.country_detail && (
-                <CountryFlag code={meet.country_detail.code} flagUrl={meet.country_detail.flag_url} name={meet.country_detail.name} className="text-sky-100" />
-              )}
-              {meet.location && <span>{meet.location}</span>}
-              <span>{formatDate(meet.date)}{meet.end_date ? ` to ${formatDate(meet.end_date)}` : ''}</span>
-              <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium">{meet.pool}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="flex items-center gap-1 sm:gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium"
-            >
-              <span className="text-sm sm:text-base leading-none">✎</span> <span className="hidden sm:inline">Edit Meet</span><span className="sm:hidden">Edit</span>
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1 sm:gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium"
-            >
-              <span className="text-sm sm:text-base leading-none">＋</span> <span className="hidden sm:inline">Add Results</span><span className="sm:hidden">Add</span>
-            </button>
-          </div>
+      {/* Meet Hero */}
+      <Hero image={meet.meet_photo || meet.photo} className="mb-5 sm:mb-6">
+        <h1 className="text-display sm:text-display-xl">{meet.name}</h1>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-body-sm text-white/80">
+          {meet.country_detail && (
+            <CountryFlag code={meet.country_detail.code} flagUrl={meet.country_detail.flag_url} name={meet.country_detail.name} />
+          )}
+          {meet.location && (
+            <span className="inline-flex items-center gap-1.5"><MapPin size={14} />{meet.location}</span>
+          )}
+          <span className="inline-flex items-center gap-1.5">
+            <Calendar size={14} />
+            {formatDate(meet.date)}{meet.end_date ? ` to ${formatDate(meet.end_date)}` : ''}
+          </span>
+          <PoolBadge pool={meet.pool} />
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4 mt-4 sm:mt-6">
-          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center">
-            <div className="text-lg sm:text-2xl font-bold">{stats.total_swimmers}</div>
-            <div className="text-[10px] sm:text-xs text-sky-200">Swimmers</div>
-          </div>
-          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center">
-            <div className="text-lg sm:text-2xl font-bold">{stats.total_results}</div>
-            <div className="text-[10px] sm:text-xs text-sky-200">Results</div>
-          </div>
-          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center">
-            <div className="text-lg sm:text-2xl font-bold">{stats.events.length}</div>
-            <div className="text-[10px] sm:text-xs text-sky-200">Events</div>
-          </div>
-          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center hidden sm:block">
-            <div className="text-lg sm:text-2xl font-bold">{stats.male_count}</div>
-            <div className="text-[10px] sm:text-xs text-sky-200">Male</div>
-          </div>
-          <div className="bg-white/15 rounded-lg p-2 sm:p-3 text-center hidden sm:block">
-            <div className="text-lg sm:text-2xl font-bold">{stats.female_count}</div>
-            <div className="text-[10px] sm:text-xs text-sky-200">Female</div>
-          </div>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 mt-5 sm:mt-6">
+          {heroStats.map(s => (
+            <div key={s.label} className={`bg-white/10 rounded-sm px-2 py-2.5 sm:p-3 text-center ${s.hideMobile ? 'hidden sm:block' : ''}`}>
+              <div className="text-time-lg text-white">{s.value}</div>
+              <div className="text-label text-white/60">{s.label}</div>
+            </div>
+          ))}
         </div>
-      </div>
+      </Hero>
 
       {/* Tab Navigation */}
-      <div className="flex gap-0.5 sm:gap-1 mb-4 sm:mb-6 bg-gray-100 p-1 rounded-xl overflow-x-auto scrollbar-hide">
-        {[
-          { key: 'results', label: 'Results' },
-          { key: 'statistics', label: 'Stats' },
-          { key: 'medals', label: 'Medals' },
-          { key: 'gallery', label: 'Gallery' },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-              activeTab === tab.key
-                ? 'bg-white text-sky-700 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        sticky
+        className="mb-5 sm:mb-6 rounded-t-md"
+        tabs={[
+          { key: 'results', label: 'Results', icon: ListOrdered },
+          { key: 'statistics', label: 'Stats', icon: Waves },
+          { key: 'medals', label: 'Medals', icon: Medal },
+          { key: 'gallery', label: 'Gallery', icon: Camera },
+        ]}
+        active={activeTab}
+        onChange={setActiveTab}
+      />
 
       {/* Results Tab */}
       {activeTab === 'results' && (!selectedEvent ? (
         /* Full-width events grid when no event is selected */
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-lg">Events ({stats.events.length})</h3>
-            <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl">
-              {[
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 className="text-title text-ink-900">Events ({stats.events.length})</h3>
+            <SegmentedControl
+              options={[
                 { key: '', label: 'All' },
                 { key: 'M', label: 'Men' },
                 { key: 'F', label: 'Women' },
                 { key: 'X', label: 'Mixed' },
-              ].map(opt => (
-                <button key={opt.key} onClick={() => setGenderFilter(opt.key)}
-                  className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-300 ${
-                    genderFilter === opt.key
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+              ]}
+              value={genderFilter}
+              onChange={setGenderFilter}
+            />
           </div>
           {(() => {
             const filtered = stats.events.filter(e => !genderFilter || e.gender === genderFilter)
@@ -743,9 +660,9 @@ export default function MeetDetailPage() {
               return (
                 <div key={g} className="mb-6">
                   <div className="flex items-center gap-3 mb-3">
-                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wide">{gLabel}</h4>
-                    <div className="flex-1 h-px bg-gray-200" />
-                    <span className="text-xs text-gray-400">{genderEvents.length} events</span>
+                    <h4 className="text-label text-ink-400">{gLabel}</h4>
+                    <div className="flex-1 h-px bg-ink-100" />
+                    <span className="text-body-sm text-ink-400 tnum">{genderEvents.length} events</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {genderEvents.map(e => {
@@ -754,27 +671,23 @@ export default function MeetDetailPage() {
                         <button
                           key={`${e.event_id}-${e.gender}`}
                           onClick={() => handleEventClick(e)}
-                          className={`rounded-xl p-4 text-left transition-all duration-300 ${
+                          className={`rounded-md p-4 text-start min-h-11 transition-colors shadow-card ${
                             isActive
-                              ? 'bg-sky-600 text-white shadow-lg shadow-sky-200 scale-[1.02] border border-sky-600'
-                              : 'bg-white border border-gray-200 hover:border-sky-400 hover:shadow-md'
+                              ? 'bg-ink-900 text-white border border-ink-900'
+                              : 'bg-white border border-ink-100 hover:border-aqua-500/40 hover:bg-aqua-50/40'
                           }`}
                         >
-                          <div className="flex items-start justify-between">
-                            <div className={`font-semibold transition-colors duration-300 ${isActive ? 'text-white' : 'text-gray-900'}`}>{e.event_name}</div>
-                            <span className={`text-lg ml-2 transition-all duration-300 ${isActive ? 'text-white/70 translate-x-0.5' : 'text-gray-400'}`}>&#x276F;</span>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className={`text-body font-semibold ${isActive ? 'text-white' : 'text-ink-900'}`}>{e.event_name}</div>
+                            <ChevronRight size={18} className={isActive ? 'text-white/70' : 'text-ink-400'} />
                           </div>
                           <div className="flex items-center gap-3 mt-2.5">
-                            <div className={`flex items-center gap-1.5 text-xs transition-colors duration-300 ${isActive ? 'text-sky-100' : 'text-gray-500'}`}>
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-1.997M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                              </svg>
+                            <div className={`flex items-center gap-1.5 text-body-sm tnum ${isActive ? 'text-white/70' : 'text-ink-500'}`}>
+                              <Users size={14} />
                               {e.results_count} results
                             </div>
-                            <div className={`flex items-center gap-1.5 text-xs font-mono font-semibold transition-colors duration-300 ${isActive ? 'text-white' : 'text-sky-600'}`}>
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
+                            <div className={`flex items-center gap-1.5 text-body-sm tnum font-semibold ${isActive ? 'text-aqua-400' : 'text-aqua-600'}`}>
+                              <Timer size={14} />
                               {e.best_time}
                             </div>
                           </div>
@@ -791,28 +704,24 @@ export default function MeetDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         {/* Left: Events sidebar */}
         <div className="space-y-4">
-          <div className="bg-white rounded-lg border">
-            <div className="p-3 border-b">
+          <Card padding="none">
+            <div className="p-3 border-b border-ink-100">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm">Events ({stats.events.length})</h3>
+                <h3 className="text-body-sm font-semibold text-ink-900">Events ({stats.events.length})</h3>
               </div>
-              <div className="flex gap-1 mt-2 bg-gray-100 p-0.5 rounded-lg">
-                {[
+              <SegmentedControl
+                className="mt-2 w-full [&>button]:flex-1"
+                options={[
                   { key: '', label: 'All' },
                   { key: 'M', label: 'Men' },
                   { key: 'F', label: 'Women' },
                   { key: 'X', label: 'Mixed' },
-                ].map(opt => (
-                  <button key={opt.key} onClick={() => setGenderFilter(opt.key)}
-                    className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      genderFilter === opt.key ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                    }`}>
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+                ]}
+                value={genderFilter}
+                onChange={setGenderFilter}
+              />
             </div>
-            <div className="divide-y max-h-[500px] overflow-y-auto">
+            <div className="divide-y divide-ink-100 max-h-[500px] overflow-y-auto">
               {stats.events.filter(e => !genderFilter || e.gender === genderFilter).map((e, i, filtered) => {
                 const isSelected = selectedEvent?.event_id === e.event_id && selectedEvent?.gender === e.gender
                 const prevGender = i > 0 ? filtered[i-1].gender : null
@@ -820,57 +729,62 @@ export default function MeetDetailPage() {
                 return (
                   <div key={`${e.event_id}-${e.gender}`}>
                     {showDivider && (
-                      <div className="bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-500 uppercase">
+                      <div className="bg-ink-50 px-3 py-1.5 text-label text-ink-400">
                         {e.gender_label}
                       </div>
                     )}
                     {i === 0 && (
-                      <div className="bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-500 uppercase">
+                      <div className="bg-ink-50 px-3 py-1.5 text-label text-ink-400">
                         {e.gender_label}
                       </div>
                     )}
                     <button
                       onClick={() => handleEventClick(e)}
-                      className={`w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors ${
-                        isSelected ? 'bg-sky-50 border-l-4 border-sky-500' : ''
+                      className={`w-full text-start px-3 py-2.5 min-h-11 hover:bg-ink-50 transition-colors ${
+                        isSelected ? 'bg-aqua-50 border-s-4 border-aqua-500' : ''
                       }`}
                     >
-                      <div className="text-sm font-medium">{e.event_name}</div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-                        <span>{e.results_count} results</span>
-                        <span className="text-sky-600 font-mono font-semibold">{e.best_time}</span>
+                      <div className="text-body-sm font-medium text-ink-900">{e.event_name}</div>
+                      <div className="flex items-center gap-2 text-body-sm text-ink-400 mt-0.5">
+                        <span className="tnum">{e.results_count} results</span>
+                        <span className="text-aqua-600 tnum font-semibold">{e.best_time}</span>
                       </div>
                     </button>
                   </div>
                 )
               })}
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* Right: Results Table */}
         <div>
           {(
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b flex items-center justify-between">
+            <Card padding="none">
+              <div className="p-4 border-b border-ink-100 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="font-semibold">{selectedEvent.event_name} — {selectedEvent.gender_label || ({M: 'Men', F: 'Women', X: 'Mixed'}[selectedEvent.gender] || 'Men')}</h3>
-                  <p className="text-xs text-gray-500">{results.length} results</p>
+                  <h3 className="text-title text-ink-900">{selectedEvent.event_name} — {selectedEvent.gender_label || ({M: 'Men', F: 'Women', X: 'Mixed'}[selectedEvent.gender] || 'Men')}</h3>
+                  <p className="text-body-sm text-ink-400 tnum">{results.length} results</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => { setEditMode(m => !m); setEditingId(null) }}
-                    className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                      editMode
-                        ? 'bg-sky-600 text-white border-sky-600'
-                        : 'text-gray-600 border-gray-200 hover:bg-gray-50'
-                    }`}
+                  {isAdmin && (
+                    <Button
+                      variant={editMode ? 'secondary' : 'ghost'}
+                      size="sm"
+                      icon={Pencil}
+                      onClick={() => { setEditMode(m => !m); setEditingId(null) }}
+                    >
+                      {editMode ? 'Done editing' : 'Edit'}
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={ArrowLeft}
+                    onClick={() => { setSelectedEvent(null); setResults([]); setSelectedRound(null); setEditMode(false); setEditingId(null) }}
                   >
-                    {editMode ? 'Done editing' : '✎ Edit'}
-                  </button>
-                  <button onClick={() => { setSelectedEvent(null); setResults([]); setSelectedRound(null); setEditMode(false); setEditingId(null) }} className="text-sm text-gray-500 hover:text-gray-700">
-                    ← All events
-                  </button>
+                    All events
+                  </Button>
                 </div>
               </div>
 
@@ -880,23 +794,12 @@ export default function MeetDetailPage() {
                 if (rounds.length <= 1) return null
                 rounds.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
                 return (
-                  <div className="flex gap-2 px-4 pt-3 border-b">
-                    {rounds.map(round => {
-                      const active = selectedRound === round
-                      return (
-                        <button
-                          key={round || '_timed'}
-                          onClick={() => { setSelectedRound(round); setSelectedCategory(null); setExpandedRelay(null) }}
-                          className={`px-4 py-2 text-sm font-medium rounded-t-lg border border-b-0 transition-colors ${
-                            active
-                              ? 'bg-sky-600 text-white border-sky-600'
-                              : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-                          }`}
-                        >
-                          {roundLabel(round)}
-                        </button>
-                      )
-                    })}
+                  <div className="px-4 py-3 border-b border-ink-100">
+                    <SegmentedControl
+                      options={rounds.map(round => ({ key: round, label: roundLabel(round) }))}
+                      value={selectedRound}
+                      onChange={(round) => { setSelectedRound(round); setSelectedCategory(null); setExpandedRelay(null) }}
+                    />
                   </div>
                 )
               })()}
@@ -911,13 +814,13 @@ export default function MeetDetailPage() {
                 if (selectedCategory === null && cats.length > 0) {
                   setTimeout(() => setSelectedCategory(cats[0]), 0)
                 }
-                const pill = (active) => `px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                const pill = (active) => `px-3 py-1.5 min-h-9 text-body-sm font-medium rounded-full border transition-colors ${
                   active
-                    ? 'bg-sky-600 text-white border-sky-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-sky-300 hover:text-sky-600'
+                    ? 'bg-aqua-600 text-white border-aqua-600'
+                    : 'bg-white text-ink-500 border-ink-200 hover:border-aqua-500/40 hover:text-aqua-600'
                 }`
                 return (
-                  <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b bg-gray-50/60">
+                  <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-ink-100 bg-ink-50/60">
                     {cats.map(cat => {
                       const active = selectedCategory === cat
                       return (
@@ -931,23 +834,22 @@ export default function MeetDetailPage() {
               })()}
 
               {loadingResults ? (
-                <div className="p-12 text-center text-gray-400">Loading...</div>
+                <div className="p-4"><TableSkeleton rows={8} /></div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Rank</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Age</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Team</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
-                        {editMode && <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Actions</th>}
+                      <tr className="bg-ink-50 border-b border-ink-100">
+                        <th scope="col" className={`${TH} w-14`}>Rank</th>
+                        <th scope="col" className={TH}>Swimmer</th>
+                        <th scope="col" className={TH}>Age</th>
+                        <th scope="col" className={TH}>Team</th>
+                        <th scope="col" className={TH_END}>Time</th>
+                        <th scope="col" className={TH_END}>FINA</th>
+                        {editMode && <th scope="col" className={TH_END}>Actions</th>}
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
+                    <tbody className="divide-y divide-ink-100">
                       {(() => {
                         // Show only the selected round (Finals / Prelims / Heats)
                         const roundResults = results.filter(r => (r.round_type || '') === (selectedRound ?? ''))
@@ -990,10 +892,15 @@ export default function MeetDetailPage() {
                           const splits = r.splits || []
                           const hasSplits = !isRelay && splits.length > 0
                           const isEditing = editingId === r.id
+                          const medalOnRow = showMedals && !r.is_manual && !r.is_hc
+                          const medalAccent = medalOnRow && rank === 1 ? 'border-s-2 border-s-gold bg-gold/5'
+                            : medalOnRow && rank === 2 ? 'border-s-2 border-s-silver bg-silver/5'
+                            : medalOnRow && rank === 3 ? 'border-s-2 border-s-bronze bg-bronze/5'
+                            : ''
                           return (
                             <React.Fragment key={r.id}>
                               <tr
-                                className={`hover:bg-gray-50 ${editMode ? '' : 'cursor-pointer'} ${isBest ? 'bg-amber-50' : ''} ${isEditing ? 'bg-sky-50' : ''}`}
+                                className={`h-11 hover:bg-ink-50 transition-colors ${editMode ? '' : 'cursor-pointer'} ${medalAccent} ${isEditing ? 'bg-aqua-50' : ''}`}
                                 onClick={() => {
                                   if (editMode) return
                                   if (isRelay && swimmers.length > 0) {
@@ -1003,87 +910,99 @@ export default function MeetDetailPage() {
                                   }
                                 }}
                               >
-                                <td className="px-4 py-2 text-sm">
+                                <td className={TD}>
                                   {r.is_hc ? (
-                                    <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</span>
+                                    <Badge variant="status" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</Badge>
                                   ) : (<>
                                     {showMedals && !r.is_manual && rank === 1 && <MedalIcon type="gold" size={22} />}
                                     {showMedals && !r.is_manual && rank === 2 && <MedalIcon type="silver" size={22} />}
                                     {showMedals && !r.is_manual && rank === 3 && <MedalIcon type="bronze" size={22} />}
-                                    {(!showMedals || r.is_manual || rank > 3) && <span className="text-gray-500">{rank}</span>}
+                                    {(!showMedals || r.is_manual || rank > 3) && <RankNumber rank={rank} />}
                                   </>)}
                                 </td>
-                                <td className="px-4 py-2 text-sm font-medium">
-                                  {r.swimmer_detail?.name}
-                                  {!isRelay && (r.team || '').toUpperCase() === 'LP' && (
-                                    <span className="ml-1.5 text-[9px] font-black bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-md align-middle" title="No club — transferring (libre passage)">LP</span>
-                                  )}
-                                  {isRelay && swimmers.length > 0 && (
-                                    <span className="ml-2 text-xs text-gray-400">{isExpanded ? '▲' : '▼'}</span>
-                                  )}
+                                <td className={TD}>
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <SwimmerCell
+                                      name={r.swimmer_detail?.name}
+                                      countryCode={r.swimmer_detail?.nationality_detail?.code}
+                                      flagUrl={r.swimmer_detail?.nationality_detail?.flag_url}
+                                    />
+                                    {!isRelay && (r.team || '').toUpperCase() === 'LP' && (
+                                      <Badge variant="record" className="shrink-0" title="No club — transferring (libre passage)">LP</Badge>
+                                    )}
+                                    {isRelay && swimmers.length > 0 && (
+                                      isExpanded
+                                        ? <ChevronUp size={14} className="text-ink-400 shrink-0" />
+                                        : <ChevronDown size={14} className="text-ink-400 shrink-0" />
+                                    )}
+                                  </div>
                                 </td>
-                                <td className="px-4 py-2 text-sm text-gray-500">{r.age_at_competition || '-'}</td>
-                                <td className="px-4 py-2 text-sm">
-                                  <CountryFlag
-                                    code={r.swimmer_detail?.nationality_detail?.code}
-                                    flagUrl={r.swimmer_detail?.nationality_detail?.flag_url}
-                                    name={r.swimmer_detail?.nationality_detail?.name}
-                                  />
-                                </td>
-                                <td className="px-4 py-2 text-sm text-gray-500">
+                                <td className={`${TD} text-ink-500 tnum`}>{r.age_at_competition || '-'}</td>
+                                <td className={`${TD} text-ink-500`}>
                                   {isEditing ? (
-                                    <input
+                                    <Input
                                       value={editValues.team}
                                       onChange={e => setEditValues(v => ({ ...v, team: e.target.value }))}
-                                      className="w-28 border rounded px-1.5 py-1 text-sm"
+                                      className="w-28 h-8"
                                       placeholder="Club"
                                     />
                                   ) : (r.team || '-')}
                                 </td>
-                                <td className="px-4 py-2 text-sm font-mono font-semibold">
+                                <td className={`${TD} text-end whitespace-nowrap`}>
                                   {isEditing ? (
-                                    <input
+                                    <Input
                                       value={editValues.time}
                                       onChange={e => setEditValues(v => ({ ...v, time: e.target.value }))}
                                       onKeyDown={e => { if (e.key === 'Enter') saveEditRow(r); if (e.key === 'Escape') setEditingId(null) }}
-                                      className="w-24 border rounded px-1.5 py-1 text-sm font-mono"
+                                      className="w-24 h-8 tnum"
                                       autoFocus
                                     />
-                                  ) : <span className="flex items-center gap-1">{r.formatted_time}{r.is_hc && <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded-md" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</span>}
-                                  {hasSplits && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setExpandedRelay(isExpanded ? null : r.id) }}
-                                      className={`text-[9px] font-black px-1.5 py-0.5 rounded-md transition-colors ${isExpanded ? 'bg-sky-600 text-white' : 'bg-sky-50 text-sky-600 hover:bg-sky-100'}`}
-                                      title="Show split times">
-                                      SPLITS {isExpanded ? '▲' : '▼'}
-                                    </button>
-                                  )}</span>}
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <TimeDisplay time={r.formatted_time} />
+                                      {r.is_hc && (
+                                        <Badge variant="status" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</Badge>
+                                      )}
+                                      {hasSplits && (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setExpandedRelay(isExpanded ? null : r.id) }}
+                                          className={`inline-flex items-center gap-0.5 text-label px-1.5 py-0.5 rounded-full transition-colors ${isExpanded ? 'bg-aqua-600 text-white' : 'bg-aqua-50 text-aqua-600 hover:bg-aqua-100'}`}
+                                          title="Show split times">
+                                          Splits {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                                        </button>
+                                      )}
+                                    </span>
+                                  )}
                                 </td>
-                                <td className="px-4 py-2 text-sm">{r.fina_points || '-'}</td>
+                                <td className={`${TD} text-end tnum`}>{r.fina_points || '-'}</td>
                                 {editMode && (
-                                  <td className="px-4 py-2 text-right whitespace-nowrap">
+                                  <td className={`${TD} text-end whitespace-nowrap`}>
                                     {isEditing ? (
-                                      <>
-                                        <button onClick={() => saveEditRow(r)} className="text-xs px-2 py-1 rounded bg-sky-600 text-white hover:bg-sky-700 mr-1">Save</button>
-                                        <button onClick={() => setEditingId(null)} className="text-xs px-2 py-1 rounded border text-gray-500 hover:bg-gray-50">Cancel</button>
-                                      </>
+                                      <span className="inline-flex items-center gap-1">
+                                        <Button size="sm" onClick={() => saveEditRow(r)}>Save</Button>
+                                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                                      </span>
                                     ) : (
-                                      <>
-                                        <button onClick={() => startEditRow(r)} title="Edit" className="text-gray-400 hover:text-sky-600 px-1.5">✎</button>
-                                        <button onClick={() => removeRow(r)} title="Delete" className="text-gray-400 hover:text-red-500 px-1.5">🗑</button>
-                                      </>
+                                      <span className="inline-flex items-center gap-0.5">
+                                        <button onClick={() => startEditRow(r)} title="Edit" aria-label="Edit result" className="p-2 rounded-sm text-ink-400 hover:text-aqua-600 hover:bg-ink-50">
+                                          <Pencil size={15} />
+                                        </button>
+                                        <button onClick={() => removeRow(r)} title="Delete" aria-label="Delete result" className="p-2 rounded-sm text-ink-400 hover:text-neg hover:bg-ink-50">
+                                          <Trash2 size={15} />
+                                        </button>
+                                      </span>
                                     )}
                                   </td>
                                 )}
                               </tr>
                               {hasSplits && isExpanded && (
-                                <tr className="bg-sky-50/60">
-                                  <td colSpan={editMode ? 8 : 7} className="px-4 py-2">
+                                <tr className="bg-aqua-50/60">
+                                  <td colSpan={editMode ? 7 : 6} className="px-4 py-2">
                                     <div className="flex flex-wrap gap-1.5">
                                       {splits.map((s, j) => (
-                                        <span key={j} className="inline-flex items-center gap-1.5 bg-white border border-sky-100 rounded-lg px-2 py-1 shadow-sm">
-                                          <span className="text-[9px] font-bold text-gray-400">{s.distance ? `${s.distance}m` : `#${j + 1}`}</span>
-                                          <span className="text-xs font-mono font-semibold text-gray-700">{s.time}</span>
+                                        <span key={j} className="inline-flex items-center gap-1.5 bg-white border border-ink-100 rounded-sm px-2 py-1 shadow-card">
+                                          <span className="text-label text-ink-400">{s.distance ? `${s.distance}m` : `#${j + 1}`}</span>
+                                          <span className="text-body-sm tnum font-semibold text-ink-700">{s.time}</span>
                                         </span>
                                       ))}
                                     </div>
@@ -1091,12 +1010,12 @@ export default function MeetDetailPage() {
                                 </tr>
                               )}
                               {isRelay && isExpanded && swimmers.map((s, j) => (
-                                <tr key={`${r.id}-${j}`} className="bg-blue-50">
-                                  <td className="px-4 py-1.5 text-sm text-gray-400 text-right">{j + 1}</td>
-                                  <td className="px-4 py-1.5 text-sm pl-8">{s.name}</td>
-                                  <td className="px-4 py-1.5 text-sm" colSpan={3}></td>
-                                  <td className="px-4 py-1.5 text-sm font-mono text-gray-600">{s.split_time || '-'}</td>
-                                  <td className="px-4 py-1.5 text-sm" colSpan={editMode ? 2 : 1}></td>
+                                <tr key={`${r.id}-${j}`} className="bg-aqua-50/40">
+                                  <td className={`${TD} text-ink-400 text-end tnum`}>{j + 1}</td>
+                                  <td className={`${TD} ps-8`}>{s.name}</td>
+                                  <td className={TD} colSpan={2}></td>
+                                  <td className={`${TD} text-end tnum text-ink-500`}>{s.split_time || '-'}</td>
+                                  <td className={TD} colSpan={editMode ? 2 : 1}></td>
                                 </tr>
                               ))}
                             </React.Fragment>
@@ -1104,14 +1023,14 @@ export default function MeetDetailPage() {
                         }
 
                         if (catFiltered.length === 0) {
-                          return <tr><td colSpan={editMode ? 8 : 7} className="px-4 py-8 text-center text-gray-400">No results</td></tr>
+                          return <tr><td colSpan={editMode ? 7 : 6} className="px-4 py-8 text-center text-body-sm text-ink-400">No results</td></tr>
                         }
 
                         return order.map(cat => (
                           <React.Fragment key={cat || '_general'}>
                             {hasCategories && (
-                              <tr className="bg-sky-50">
-                                <td colSpan={editMode ? 8 : 7} className="px-4 py-2 text-sm font-semibold text-sky-800 uppercase tracking-wide">
+                              <tr className="bg-ink-50">
+                                <td colSpan={editMode ? 7 : 6} className="px-4 py-2 text-label text-ink-500">
                                   {cat || 'General'}
                                 </td>
                               </tr>
@@ -1124,7 +1043,7 @@ export default function MeetDetailPage() {
                   </table>
                 </div>
               )}
-            </div>
+            </Card>
           )}
         </div>
       </div>))}
@@ -1133,133 +1052,110 @@ export default function MeetDetailPage() {
       {activeTab === 'statistics' && stats && (
         <div className="space-y-6">
           {/* Overview Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-3xl font-bold text-sky-600">{stats.total_swimmers}</div>
-              <div className="text-sm text-gray-500 mt-1">Swimmers</div>
-            </div>
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-3xl font-bold text-sky-600">{stats.total_results}</div>
-              <div className="text-sm text-gray-500 mt-1">Results</div>
-            </div>
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-3xl font-bold text-sky-600">{stats.events.length}</div>
-              <div className="text-sm text-gray-500 mt-1">Events</div>
-            </div>
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-3xl font-bold text-blue-600">{stats.male_count}</div>
-              <div className="text-sm text-gray-500 mt-1">Male</div>
-            </div>
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-3xl font-bold text-pink-500">{stats.female_count}</div>
-              <div className="text-sm text-gray-500 mt-1">Female</div>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+            {[
+              { label: 'Swimmers', value: stats.total_swimmers },
+              { label: 'Results', value: stats.total_results },
+              { label: 'Events', value: stats.events.length },
+              { label: 'Male', value: stats.male_count },
+              { label: 'Female', value: stats.female_count },
+            ].map(s => (
+              <div key={s.label} className="bg-white rounded-md shadow-card border border-ink-100 p-4 text-center">
+                <div className="text-time-lg text-aqua-600">{s.value}</div>
+                <div className="text-label text-ink-400 mt-1">{s.label}</div>
+              </div>
+            ))}
           </div>
 
           {/* Countries Breakdown */}
-          <div className="bg-white rounded-lg border">
-            <div className="p-4 border-b">
-              <h3 className="font-semibold">Countries ({stats.countries.length})</h3>
-            </div>
-            <div className="divide-y max-h-[500px] overflow-y-auto">
+          <Card padding="none" title={`Countries (${stats.countries.length})`}>
+            <div className="divide-y divide-ink-100 max-h-[500px] overflow-y-auto">
               {stats.countries.map((c, i) => (
-                <div key={c.swimmer__nationality__id ?? i} className="flex items-center justify-between px-4 py-3">
+                <div key={c.swimmer__nationality__id ?? i} className="flex items-center justify-between px-4 py-3 min-h-11 text-body-sm">
                   <CountryFlag
                     code={c.swimmer__nationality__code}
                     flagUrl={c.swimmer__nationality__flag_url}
                     name={c.swimmer__nationality__name}
                   />
-                  <span className="text-sm font-medium text-gray-600">{c.swimmers_count} swimmers</span>
+                  <span className="text-body-sm font-medium text-ink-500 tnum">{c.swimmers_count} swimmers</span>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           {/* Top Performers */}
           <TopPerformersTable performers={stats.top_performers} navigate={navigate} />
 
           {/* Personal Bests */}
           {stats.personal_bests?.length > 0 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Personal Bests Achieved</h3>
-                <p className="text-xs text-gray-500 mt-1">Swimmers who set their all-time best at this meet</p>
-              </div>
-              <div className="overflow-x-auto">
+            <Card padding="none" title="Personal Bests Achieved">
+              <p className="px-4 md:px-5 pt-3 text-body-sm text-ink-400">Swimmers who set their all-time best at this meet</p>
+              <div className="overflow-x-auto mt-2">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">FINA</th>
+                    <tr className="bg-ink-50 border-b border-ink-100">
+                      <th scope="col" className={`${TH} w-10`}>#</th>
+                      <th scope="col" className={TH}>Swimmer</th>
+                      <th scope="col" className={TH}>Event</th>
+                      <th scope="col" className={TH_END}>Time</th>
+                      <th scope="col" className={TH_END}>FINA</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y divide-ink-100">
                     {stats.personal_bests.map((s, i) => (
-                      <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
-                        <td className="px-4 py-2 text-sm text-gray-500">{i + 1}</td>
-                        <td className="px-4 py-2 text-sm font-medium">{s.swimmer_name}</td>
-                        <td className="px-4 py-2 text-sm">
-                          <CountryFlag code={s.nationality_code} flagUrl={s.flag_url} name={s.nationality} />
+                      <tr key={i} className="h-11 hover:bg-ink-50 cursor-pointer transition-colors" onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
+                        <td className={TD}><RankNumber rank={i + 1} /></td>
+                        <td className={TD}>
+                          <SwimmerCell name={s.swimmer_name} countryCode={s.nationality_code} flagUrl={s.flag_url} />
                         </td>
-                        <td className="px-4 py-2 text-sm">{s.event_name}</td>
-                        <td className="px-4 py-2 text-sm font-mono font-semibold">{s.time}</td>
-                        <td className="px-4 py-2 text-sm">
+                        <td className={`${TD} whitespace-nowrap`}>{s.event_name}</td>
+                        <td className={`${TD} text-end`}><TimeDisplay time={s.time} pb /></td>
+                        <td className={`${TD} text-end`}>
                           {s.fina_points ? (
-                            <span className={`font-mono font-semibold ${s.fina_points >= 1000 ? 'text-amber-600' : s.fina_points >= 900 ? 'text-emerald-600' : s.fina_points >= 800 ? 'text-sky-600' : s.fina_points >= 600 ? 'text-blue-600' : 'text-gray-600'}`}>{s.fina_points}</span>
-                          ) : <span className="text-gray-400">—</span>}
+                            <span className={`tnum font-semibold ${finaTierClass(s.fina_points)}`}>{s.fina_points}</span>
+                          ) : <span className="text-ink-400">—</span>}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Records Broken */}
           {stats.records_broken?.length > 0 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Records Broken</h3>
-                <p className="text-xs text-gray-500 mt-1">Records set or broken at this championship</p>
-              </div>
-              <div className="overflow-x-auto">
+            <Card padding="none" title="Records Broken">
+              <p className="px-4 md:px-5 pt-3 text-body-sm text-ink-400">Records set or broken at this championship</p>
+              <div className="overflow-x-auto mt-2">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Record</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Swimmer</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nationality</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Event</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Time</th>
+                    <tr className="bg-ink-50 border-b border-ink-100">
+                      <th scope="col" className={`${TH} w-16`}>Record</th>
+                      <th scope="col" className={TH}>Swimmer</th>
+                      <th scope="col" className={TH}>Event</th>
+                      <th scope="col" className={TH_END}>Time</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y divide-ink-100">
                     {stats.records_broken.map((r, i) => (
-                      <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/swimmers/${r.swimmer_id}`)}>
-                        <td className="px-4 py-2">
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                            r.record_type === 'ARAB' ? 'bg-emerald-100 text-emerald-700' :
-                            r.record_type === 'GCC' ? 'bg-sky-100 text-sky-700' :
-                            'bg-purple-100 text-purple-700'
-                          }`}>{r.record_type}</span>
+                      <tr key={i} className="h-11 hover:bg-ink-50 cursor-pointer transition-colors" onClick={() => navigate(`/swimmers/${r.swimmer_id}`)}>
+                        <td className={TD}>
+                          <Badge variant={r.record_type === 'ARAB' ? 'pos' : r.record_type === 'GCC' ? 'aqua' : 'record'}>
+                            {r.record_type}
+                          </Badge>
                         </td>
-                        <td className="px-4 py-2 text-sm font-medium">{r.swimmer_name}</td>
-                        <td className="px-4 py-2 text-sm">
-                          <CountryFlag code={r.nationality_code} flagUrl={r.flag_url} name={r.nationality} />
+                        <td className={TD}>
+                          <SwimmerCell name={r.swimmer_name} countryCode={r.nationality_code} flagUrl={r.flag_url} />
                         </td>
-                        <td className="px-4 py-2 text-sm">{r.event_name}</td>
-                        <td className="px-4 py-2 text-sm font-mono font-bold text-sky-600">{r.time}</td>
+                        <td className={`${TD} whitespace-nowrap`}>{r.event_name}</td>
+                        <td className={`${TD} text-end`}><TimeDisplay time={r.time} record /></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Most Improved Swimmers */}
@@ -1269,48 +1165,45 @@ export default function MeetDetailPage() {
 
           {/* Championship Comparison */}
           {comparison.length > 1 && (
-            <div className="bg-white rounded-lg border">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">Compare with Previous Editions</h3>
-                <p className="text-xs text-gray-500 mt-1">Same classification, same pool type</p>
-              </div>
-              <div className="overflow-x-auto">
+            <Card padding="none" title="Compare with Previous Editions">
+              <p className="px-4 md:px-5 pt-3 text-body-sm text-ink-400">Same classification, same pool type</p>
+              <div className="overflow-x-auto mt-2">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Championship</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Host</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Year</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Swimmers</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Countries</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Events</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Results</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Best FINA</th>
+                    <tr className="bg-ink-50 border-b border-ink-100">
+                      <th scope="col" className={TH}>Championship</th>
+                      <th scope="col" className={TH}>Host</th>
+                      <th scope="col" className={TH_END}>Year</th>
+                      <th scope="col" className={TH_END}>Swimmers</th>
+                      <th scope="col" className={TH_END}>Countries</th>
+                      <th scope="col" className={TH_END}>Events</th>
+                      <th scope="col" className={TH_END}>Results</th>
+                      <th scope="col" className={TH_END}>Best FINA</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
-                    {comparison.map((ch, i) => (
-                      <tr key={ch.id} className={`hover:bg-gray-50 ${ch.is_current ? 'bg-sky-50 font-medium' : 'cursor-pointer'}`}
+                  <tbody className="divide-y divide-ink-100">
+                    {comparison.map((ch) => (
+                      <tr key={ch.id} className={`h-11 hover:bg-ink-50 transition-colors ${ch.is_current ? 'bg-aqua-50 font-medium' : 'cursor-pointer'}`}
                         onClick={() => !ch.is_current && navigate(`/meets/${ch.id}?tab=statistics`)}>
-                        <td className="px-4 py-2 text-sm">
+                        <td className={TD}>
                           {ch.name}
-                          {ch.is_current && <span className="ml-2 text-xs bg-sky-200 text-sky-700 px-1.5 py-0.5 rounded">Current</span>}
+                          {ch.is_current && <Badge variant="aqua" className="ms-2">Current</Badge>}
                         </td>
-                        <td className="px-4 py-2 text-sm">
+                        <td className={`${TD} whitespace-nowrap`}>
                           <CountryFlag code={ch.country_code} flagUrl={ch.flag_url} name={ch.country} />
                         </td>
-                        <td className="px-4 py-2 text-sm text-center">{ch.year}</td>
-                        <td className="px-4 py-2 text-sm text-center">{ch.total_swimmers}</td>
-                        <td className="px-4 py-2 text-sm text-center">{ch.countries_count}</td>
-                        <td className="px-4 py-2 text-sm text-center">{ch.total_events}</td>
-                        <td className="px-4 py-2 text-sm text-center">{ch.total_results}</td>
-                        <td className="px-4 py-2 text-sm text-center font-bold text-sky-600">{ch.best_fina || '-'}</td>
+                        <td className={`${TD} text-end tnum`}>{ch.year}</td>
+                        <td className={`${TD} text-end tnum`}>{ch.total_swimmers}</td>
+                        <td className={`${TD} text-end tnum`}>{ch.countries_count}</td>
+                        <td className={`${TD} text-end tnum`}>{ch.total_events}</td>
+                        <td className={`${TD} text-end tnum`}>{ch.total_results}</td>
+                        <td className={`${TD} text-end tnum font-bold text-aqua-600`}>{ch.best_fina || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
           )}
         </div>
       )}
@@ -1332,58 +1225,61 @@ export default function MeetDetailPage() {
       {activeTab === 'gallery' && (
         <div>
           {!album ? (
-            <div className="text-center py-12 text-gray-400">Loading gallery...</div>
+            <TableSkeleton rows={4} />
           ) : (
             <div>
-              <div className="flex items-center justify-between mb-6">
-                <div className="text-sm text-gray-500">{(album.items || []).length} item{(album.items || []).length === 1 ? '' : 's'}</div>
-                <div className="flex items-center gap-3">
-                  <form onSubmit={(e) => {
-                    e.preventDefault()
-                    if (!videoUrl.trim()) return
-                    createMediaItem({ album: album.id, media_type: 'VIDEO', video_url: videoUrl.trim() })
-                      .then(() => { setVideoUrl(''); getOrCreateAlbumForChampionship(id).then(res => setAlbum(res.data)) })
-                      .catch(() => {})
-                  }} className="flex gap-2">
-                    <input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="YouTube / Instagram link..."
-                      className="border rounded-lg px-3 py-2 text-sm bg-white w-56" />
-                    <button type="submit" className="border border-gray-300 bg-white px-3 py-2 rounded-lg text-sm hover:bg-gray-50">
-                      Add Video
-                    </button>
-                  </form>
-                  <label className={`flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {uploading ? 'Uploading...' : 'Add Photos'}
-                    <input type="file" accept="image/*" multiple onChange={async (e) => {
-                      const files = Array.from(e.target.files || [])
-                      e.target.value = ''
-                      if (!files.length) return
-                      setUploading(true)
-                      try {
-                        const fd = new FormData()
-                        fd.append('album', album.id)
-                        files.forEach(f => fd.append('images', f))
-                        await uploadPhotos(fd)
-                        const res = await getOrCreateAlbumForChampionship(id)
-                        setAlbum(res.data)
-                      } catch { /* ignore */ }
-                      finally { setUploading(false) }
-                    }} className="hidden" />
-                  </label>
-                </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div className="text-body-sm text-ink-400 tnum">{(album.items || []).length} item{(album.items || []).length === 1 ? '' : 's'}</div>
+                {isAdmin && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <form onSubmit={(e) => {
+                      e.preventDefault()
+                      if (!videoUrl.trim()) return
+                      createMediaItem({ album: album.id, media_type: 'VIDEO', video_url: videoUrl.trim() })
+                        .then(() => { setVideoUrl(''); getOrCreateAlbumForChampionship(id).then(res => setAlbum(res.data)) })
+                        .catch(() => {})
+                    }} className="flex gap-2">
+                      <Input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
+                        placeholder="YouTube / Instagram link..."
+                        className="w-56" />
+                      <Button type="submit" variant="secondary" size="md">Add Video</Button>
+                    </form>
+                    <label className={`inline-flex items-center justify-center gap-2 h-10 px-4 rounded-sm text-body-sm font-medium bg-white text-ink-900 border border-ink-200 hover:border-aqua-500/40 hover:bg-aqua-50 cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <Camera size={16} />
+                      {uploading ? 'Uploading...' : 'Add Photos'}
+                      <input type="file" accept="image/*" multiple onChange={async (e) => {
+                        const files = Array.from(e.target.files || [])
+                        e.target.value = ''
+                        if (!files.length) return
+                        setUploading(true)
+                        try {
+                          const fd = new FormData()
+                          fd.append('album', album.id)
+                          files.forEach(f => fd.append('images', f))
+                          await uploadPhotos(fd)
+                          const res = await getOrCreateAlbumForChampionship(id)
+                          setAlbum(res.data)
+                        } catch { /* ignore */ }
+                        finally { setUploading(false) }
+                      }} className="hidden" />
+                    </label>
+                  </div>
+                )}
               </div>
 
               {(album.items || []).length === 0 ? (
-                <div className="bg-white rounded-lg border p-12 text-center text-gray-400">
-                  <div className="text-5xl mb-3">📷</div>
-                  <p className="text-lg font-medium">No photos or videos yet</p>
-                  <p className="text-sm mt-1">Add photos or video links for this meet</p>
-                </div>
+                <Card padding="none">
+                  <EmptyState
+                    icon={Camera}
+                    title="No photos or videos yet"
+                    hint={isAdmin ? 'Add photos or video links for this meet' : 'Media from this meet will appear here'}
+                  />
+                </Card>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                   {(album.items || []).map(item => (
-                    <div key={item.id} className="group bg-white rounded-xl border border-gray-200 overflow-hidden">
-                      <div className="h-40 bg-gray-900 relative cursor-pointer"
+                    <div key={item.id} className="group bg-white rounded-md border border-ink-100 shadow-card overflow-hidden">
+                      <div className="h-40 bg-ink-950 relative cursor-pointer"
                         onClick={() => item.media_type === 'VIDEO' && item.video_url
                           ? window.open(item.video_url, '_blank')
                           : setLightbox(item)}>
@@ -1392,29 +1288,31 @@ export default function MeetDetailPage() {
                         ) : item.embed_thumbnail ? (
                           <img src={item.embed_thumbnail} alt={item.caption} className="w-full h-full object-cover opacity-80" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Video</div>
+                          <div className="w-full h-full flex items-center justify-center text-ink-400 text-body-sm">Video</div>
                         )}
-                        <button onClick={(e) => {
-                          e.stopPropagation()
-                          if (!window.confirm('Delete this item?')) return
-                          deleteMediaItem(item.id).then(() => {
-                            setAlbum(a => ({ ...a, items: a.items.filter(i => i.id !== item.id) }))
-                          }).catch(() => {})
-                        }}
-                          className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity text-xs">
-                          ✕
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setPendingDeleteMedia(item) }}
+                            aria-label="Delete item"
+                            className="absolute top-2 end-2 bg-ink-950/50 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-neg transition-opacity">
+                            <X size={14} />
+                          </button>
+                        )}
                       </div>
-                      <input
-                        type="text" defaultValue={item.caption || ''} placeholder="Add a caption..."
-                        onBlur={(e) => {
-                          if (e.target.value !== (item.caption || ''))
-                            updateMediaItem(item.id, { caption: e.target.value }).then(() => {
-                              setAlbum(a => ({ ...a, items: a.items.map(i => i.id === item.id ? { ...i, caption: e.target.value } : i) }))
-                            }).catch(() => {})
-                        }}
-                        className="w-full px-3 py-2 text-xs text-gray-600 focus:outline-none focus:bg-blue-50"
-                      />
+                      {isAdmin ? (
+                        <input
+                          type="text" defaultValue={item.caption || ''} placeholder="Add a caption..."
+                          onBlur={(e) => {
+                            if (e.target.value !== (item.caption || ''))
+                              updateMediaItem(item.id, { caption: e.target.value }).then(() => {
+                                setAlbum(a => ({ ...a, items: a.items.map(i => i.id === item.id ? { ...i, caption: e.target.value } : i) }))
+                              }).catch(() => {})
+                          }}
+                          className="w-full px-3 py-2 text-body-sm text-ink-500 focus:outline-none focus:bg-aqua-50"
+                        />
+                      ) : (
+                        item.caption ? <div className="px-3 py-2 text-body-sm text-ink-500 truncate">{item.caption}</div> : null
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1424,18 +1322,18 @@ export default function MeetDetailPage() {
 
           {/* Lightbox */}
           {lightbox && (
-            <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
-              <button className="absolute top-5 right-5 text-white/70 hover:text-white text-2xl">✕</button>
-              <img src={lightbox.image} alt={lightbox.caption} className="max-h-full max-w-full object-contain rounded-lg" />
+            <div className="fixed inset-0 bg-ink-950/90 z-50 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
+              <button aria-label="Close" className="absolute top-5 end-5 text-white/70 hover:text-white p-2"><X size={24} /></button>
+              <img src={lightbox.image} alt={lightbox.caption} className="max-h-full max-w-full object-contain rounded-md" />
               {lightbox.caption && (
-                <div className="absolute bottom-6 left-0 right-0 text-center text-white/80 text-sm">{lightbox.caption}</div>
+                <div className="absolute bottom-6 inset-x-0 text-center text-white/80 text-body-sm">{lightbox.caption}</div>
               )}
             </div>
           )}
         </div>
       )}
 
-      {showAddModal && (
+      {isAdmin && showAddModal && (
         <AddResultsModal
           championshipId={id}
           onClose={() => setShowAddModal(false)}
@@ -1443,7 +1341,7 @@ export default function MeetDetailPage() {
         />
       )}
 
-      {showEditModal && (
+      {isAdmin && showEditModal && (
         <MeetEditModal
           meet={meet}
           onClose={() => setShowEditModal(false)}
@@ -1454,6 +1352,28 @@ export default function MeetDetailPage() {
           }}
         />
       )}
+
+      {/* Delete result confirmation */}
+      <ConfirmDialog
+        open={!!pendingDeleteResult}
+        destructive
+        title="Delete result"
+        message={pendingDeleteResult
+          ? `Delete ${pendingDeleteResult.swimmer_detail?.name}'s ${selectedEvent?.event_name} result (${pendingDeleteResult.formatted_time})? This cannot be undone.`
+          : ''}
+        onConfirm={confirmRemoveRow}
+        onCancel={() => setPendingDeleteResult(null)}
+      />
+
+      {/* Delete media confirmation */}
+      <ConfirmDialog
+        open={!!pendingDeleteMedia}
+        destructive
+        title="Delete media item"
+        message="Delete this item? This cannot be undone."
+        onConfirm={confirmRemoveMedia}
+        onCancel={() => setPendingDeleteMedia(null)}
+      />
     </div>
   )
 }

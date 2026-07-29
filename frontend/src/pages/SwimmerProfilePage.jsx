@@ -14,7 +14,7 @@ import { Button, Card, Badge, PoolBadge, Tabs, SegmentedControl, EmptyState, Ske
 import { TimeDisplay, EventLabel } from '../components/domain'
 import { CHART, formatCs } from '../components/charts/theme'
 import {
-  Clock, CalendarDays, Medal, Trophy, Star, TrendingUp, BarChart3, ChartLine,
+  Clock, CalendarDays, Medal, Trophy, Star, TrendingUp, TrendingDown, BarChart3, ChartLine,
   GitCompare, ArrowLeftRight, Images, ChevronRight, ChevronUp, ChevronDown,
   ArrowLeft, Pencil, User, Play, X, Award, Target, Image as ImageIcon,
 } from 'lucide-react'
@@ -1670,12 +1670,13 @@ function TransferHistoryTab({ swimmerId }) {
   )
 }
 
-/* ───────── Rankings Tab — broadcast infographic style ───────── */
+/* ───────── Rankings Tab — scope pills + per-pool cards ───────── */
 function RankingsTab({ swimmerId, swimmer }) {
   const [rankings, setRankings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState([])
-  const [activePool, setActivePool] = useState('LCM')
+  const [activeScope, setActiveScope] = useState(null)
+  const [selectedEventId, setSelectedEventId] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -1699,17 +1700,19 @@ function RankingsTab({ swimmerId, swimmer }) {
     eventMap[`${e.event_id}-${e.pool}`] = e.event_name
     eventMap[`${e.event_id}`] = e.event_name
   }
+  const eventName = (r) =>
+    (eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`).toUpperCase()
 
   const scopeSet = new Set()
   for (const r of rankings) {
     for (const s of Object.keys(r.rankings)) scopeSet.add(s)
   }
-  const scopeOrder = ['arab', 'gcc', 'national']
+  const scopeOrder = ['national', 'arab', 'gcc']
   const scopes = scopeOrder.filter(s => scopeSet.has(s))
   const scopeLabel = { arab: 'ARAB', gcc: 'GCC', national: 'NATIONAL' }
+  const scope = scopes.includes(activeScope) ? activeScope : scopes[0]
 
-  const availablePools = [...new Set(rankings.map(r => r.pool))].sort((a, b) => a === 'LCM' ? -1 : 1)
-  const effectivePool = availablePools.includes(activePool) ? activePool : availablePools[0]
+  const pools = [...new Set(rankings.map(r => r.pool))].sort((a, b) => (a === 'LCM' ? -1 : 1))
 
   const ordinalSuffix = (n) => {
     if (n % 100 >= 11 && n % 100 <= 13) return 'TH'
@@ -1723,74 +1726,83 @@ function RankingsTab({ swimmerId, swimmer }) {
   const genderLabel = swimmer?.sex === 'M' ? "MEN'S" : "WOMEN'S"
 
   return (
-    <div className="rounded-md bg-white p-3 sm:p-5 shadow-card border-2 border-ink-900">
-      {/* Pool toggle */}
-      {availablePools.length > 1 && (
-        <div className="flex justify-center mb-4">
-          <div className="inline-flex rounded-full overflow-hidden border-2 border-ink-900">
-            {availablePools.map(p => (
-              <button key={p} onClick={() => setActivePool(p)}
-                className={`px-4 py-2 min-h-10 text-label transition-colors ${
-                  effectivePool === p ? 'bg-ink-900 text-white' : 'bg-white text-ink-900 hover:bg-ink-50'
-                }`}>
-                {p === 'LCM' ? '50M POOL' : '25M POOL'}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+    <div>
+      {/* Scope pills */}
+      <div className="flex justify-center gap-2 sm:gap-3 mb-4">
+        {scopes.map(s => (
+          <button key={s} onClick={() => setActiveScope(s)}
+            className={`px-5 sm:px-8 py-2 min-h-10 rounded-md font-bold text-body-sm sm:text-body tracking-wide transition-colors shadow-card ${
+              scope === s ? 'bg-aqua-600 text-white' : 'bg-white text-ink-900 hover:bg-aqua-50'
+            }`}>
+            {scopeLabel[s]}
+          </button>
+        ))}
+      </div>
 
-      <div className="space-y-4 sm:space-y-6">
-        {scopes.map(scope => {
+      {/* One card per pool, side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 items-start">
+        {pools.map(pool => {
           const rows = rankings
-            .filter(r => r.pool === effectivePool && r.rankings[scope])
+            .filter(r => r.pool === pool && r.rankings[scope])
             .sort((a, b) => a.rankings[scope].rank - b.rankings[scope].rank)
-          if (rows.length === 0) return null
+          if (rows.length === 0) return (
+            <div key={pool} className="bg-white rounded-lg shadow-card p-6 text-center text-body-sm text-ink-400">
+              No {scopeLabel[scope]} rankings ({pool})
+            </div>
+          )
+          const selected = rows.find(r => r.event_id === selectedEventId) || rows[0]
+          const sel = selected.rankings[scope]
           return (
-            <div key={scope}>
-              {/* Section banner */}
-              <div className="relative text-center text-white font-bold uppercase py-2.5 sm:py-3.5 px-3 mb-3 sm:mb-4 text-2xl sm:text-[2.6rem] leading-none tracking-tight bg-gradient-to-b from-ink-700 to-ink-950">
-                <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-aqua-600 via-aqua-400 to-aqua-600" />
-                {scopeLabel[scope]} {genderLabel} RANKING
+            <div key={pool} className="bg-white rounded-lg shadow-card p-3 sm:p-4">
+              {/* Header pill — selected event */}
+              <div className="bg-aqua-600 text-white font-bold uppercase text-center rounded-md py-2 px-3 text-body-sm sm:text-body tracking-wide leading-tight">
+                {genderLabel} {eventName(selected)} <span className="mx-1 opacity-60">|</span> {pool}
               </div>
 
-              {/* Cards — one OPEN + one age-group per event */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {rows.flatMap((r) => {
-                  const open = r.rankings[scope]
-                  const eName = (eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`).toUpperCase()
-                  const cards = [{ tag: 'OPEN', rank: open }]
-                  if (open.age) cards.push({ tag: open.age.label, rank: open.age })
-                  return cards.map(({ tag, rank }) => (
-                    <div key={`${scope}-${r.event_id}-${r.pool}-${tag}`}
-                      className="bg-white p-2.5 sm:p-3.5 rounded-sm border-2 border-ink-900">
-                      {/* Event pill */}
-                      <div className="text-center text-white font-bold uppercase rounded-full py-1.5 px-3 mb-2.5 sm:mb-3 text-label sm:text-body-sm sm:tracking-wide leading-tight bg-ink-900">
-                        {genderLabel} {eName} &bull; {tag}
-                      </div>
-                      <div className="flex gap-2.5 sm:gap-3 items-stretch">
-                        {/* Rank square */}
-                        <div className="flex items-center justify-center text-white px-2.5 sm:px-4 py-2 shrink-0 rounded-sm bg-ink-900">
-                          <span className="text-4xl sm:text-6xl font-bold leading-none tnum"><AnimatedNumber value={rank.rank} /></span>
-                          <span className="text-body-sm sm:text-lg font-bold self-center ms-0.5 mt-2">{ordinalSuffix(rank.rank)}</span>
-                        </div>
-                        {/* Time box */}
-                        <div className="flex-1 flex items-center justify-center py-2 px-1 min-w-0 rounded-sm border-4 border-ink-900">
-                          <span className="text-[26px] leading-none sm:text-6xl font-bold tnum tracking-tight text-ink-900">
-                            <AnimatedTime time={r.best_time} />
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
+              {/* Hero: rank square + time */}
+              <div className="flex items-center justify-center gap-3 sm:gap-4 py-4 sm:py-5">
+                <div className="flex items-start justify-center bg-aqua-600 text-white rounded-md px-3 py-2 sm:px-4 sm:py-3 shrink-0">
+                  <span className="text-5xl sm:text-6xl font-extrabold leading-none tnum"><AnimatedNumber value={sel.rank} /></span>
+                  <span className="text-body-sm sm:text-body font-bold ms-0.5 mt-1">{ordinalSuffix(sel.rank)}</span>
+                </div>
+                <div className="w-px self-stretch bg-ink-100" />
+                <span className="text-4xl sm:text-5xl font-extrabold tnum tracking-tight text-aqua-600">
+                  <AnimatedTime time={selected.best_time} />
+                </span>
+              </div>
+
+              {/* Event rows */}
+              <div className="divide-y divide-ink-100 border-t border-ink-100">
+                {rows.map(r => {
+                  const rk = r.rankings[scope]
+                  const isSel = r.event_id === selected.event_id
+                  const pct = rk.total ? rk.rank / rk.total : 1
+                  const up = pct <= 0.5
+                  return (
+                    <button key={`${r.event_id}-${r.pool}`}
+                      onClick={() => setSelectedEventId(r.event_id)}
+                      className={`w-full flex items-center gap-2 px-2 sm:px-3 py-2.5 min-h-11 text-start transition-colors ${
+                        isSel ? 'bg-aqua-50 text-aqua-600' : 'hover:bg-ink-50 text-ink-900'
+                      }`}>
+                      <span className={`flex-1 min-w-0 truncate font-bold uppercase text-[13px] sm:text-body-sm ${isSel ? 'text-aqua-600' : 'text-ink-900'}`}>
+                        {eventName(r)}
+                      </span>
+                      <span className={`flex items-center gap-1 shrink-0 tnum text-[13px] sm:text-body-sm font-semibold ${isSel ? 'text-aqua-600' : 'text-ink-400'}`}>
+                        {rk.rank}{rk.total ? `/${rk.total}` : ''}
+                        {up
+                          ? <TrendingUp size={13} className="text-success" />
+                          : <TrendingDown size={13} className="text-danger" />}
+                      </span>
+                      <span className={`shrink-0 w-[64px] sm:w-[76px] text-end tnum font-bold text-[13px] sm:text-body-sm ${isSel ? 'text-aqua-600' : 'text-ink-900'}`}>
+                        {r.best_time}
+                      </span>
+                    </button>
+                  )
                 })}
               </div>
             </div>
           )
         })}
-        {scopes.every(scope => rankings.filter(r => r.pool === effectivePool && r.rankings[scope]).length === 0) && (
-          <div className="text-center py-8 text-body-sm font-bold text-ink-900">No rankings for this pool</div>
-        )}
       </div>
     </div>
   )

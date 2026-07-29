@@ -612,7 +612,7 @@ export default function MeetDetailPage() {
       </div>
 
       {/* Meet Hero */}
-      <Hero image={meet.meet_photo || meet.photo} className="mb-5 sm:mb-6">
+      <Hero className="mb-5 sm:mb-6">
         <h1 className="font-display font-bold text-[22px] leading-[28px] sm:font-extrabold sm:text-[36px] sm:leading-[40px] break-words">{meet.name}</h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-x-4 sm:gap-y-2 mt-2.5 sm:mt-3 text-body-sm text-white/80">
           {meet.country_detail && (

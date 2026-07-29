@@ -152,13 +152,12 @@ function csToSplitTime(cs) {
   return neg ? `-${body}` : body
 }
 
-function SplitsBreakdown({ splits, eventName }) {
+function deriveSplitRows(splits) {
   // splits are cumulative {distance, time}; derive lap times + diffs
-  const stroke = (eventName || '').replace(/^\d+\s*[Mm]?\s*/, '').trim() || ''
   const rows = []
   let prevCum = 0
   let prevLap = null
-  for (let i = 0; i < splits.length; i++) {
+  for (let i = 0; i < (splits || []).length; i++) {
     const cumCs = splitTimeToCs(splits[i].time)
     const lapCs = cumCs != null ? cumCs - prevCum : null
     const diffCs = lapCs != null && prevLap != null ? lapCs - prevLap : null
@@ -166,29 +165,100 @@ function SplitsBreakdown({ splits, eventName }) {
     if (cumCs != null) prevCum = cumCs
     if (lapCs != null) prevLap = lapCs
   }
+  return rows
+}
+
+// Broadcast-style series colors: Finals = solid deep aqua w/ round markers,
+// Prelims = dashed cyan w/ square markers (Omega/Swimify convention)
+const FINALS_COLOR = '#0891B2'
+const PRELIMS_COLOR = '#22D3EE'
+
+function SplitsBreakdown({ splits, eventName, roundType, compareSplits, compareRoundType }) {
+  const stroke = (eventName || '').replace(/^\d+\s*[Mm]?\s*/, '').trim() || ''
+  const rows = deriveSplitRows(splits)
   const laps = rows.filter(r => r.lapCs != null)
   const totalCum = rows.length ? rows[rows.length - 1].cum : null
 
-  // Mini line chart of lap times (chart-system tokens)
+  const compareRows = compareSplits ? deriveSplitRows(compareSplits) : []
+  const compareLaps = compareRows.filter(r => r.lapCs != null)
+
+  // Build series list: primary = the row the user expanded, compare = sibling round
+  const isPrelims = (rt) => rt === 'Prelims'
+  const series = [{ laps, roundType: roundType || 'Finals' }]
+  if (compareLaps.length >= 2 && compareLaps.length === laps.length) {
+    series.push({ laps: compareLaps, roundType: compareRoundType || (isPrelims(roundType) ? 'Finals' : 'Prelims') })
+  }
+  const hasBoth = series.length === 2
+
   let chart = null
   if (laps.length >= 2) {
-    const W = 460, H = 130, PX = 34, PY = 22
-    const min = Math.min(...laps.map(r => r.lapCs))
-    const max = Math.max(...laps.map(r => r.lapCs))
-    const range = Math.max(max - min, 50)
-    const x = (i) => PX + (i * (W - 2 * PX)) / (laps.length - 1)
-    // Higher (slower) lap time sits higher on the chart
-    const y = (v) => H - PY - ((v - min) / range) * (H - 2 * PY)
-    const pts = laps.map((r, i) => `${x(i)},${y(r.lapCs)}`).join(' ')
+    const W = 480, H = hasBoth ? 190 : 160, PX = 40, PY = 26
+    const allLaps = series.flatMap(s => s.laps.map(r => r.lapCs))
+    const minCs = Math.min(...allLaps)
+    const maxCs = Math.max(...allLaps)
+    // Round y-domain to whole seconds with breathing room
+    const lo = Math.floor((minCs - 40) / 100) * 100
+    const hi = Math.ceil((maxCs + 40) / 100) * 100
+    const range = Math.max(hi - lo, 100)
+    const n = laps.length
+    const x = (i) => PX + (i * (W - PX - 16)) / (n - 1)
+    // Slower lap sits higher on the chart
+    const y = (v) => H - PY - ((v - lo) / range) * (H - 2 * PY)
+
+    // ~4 whole-second gridlines
+    const tickStep = Math.max(100, Math.ceil(range / 4 / 100) * 100)
+    const ticks = []
+    for (let t = lo; t <= hi; t += tickStep) ticks.push(t)
+
+    const styleFor = (rt) => isPrelims(rt)
+      ? { color: PRELIMS_COLOR, dash: '6 4', marker: 'square' }
+      : { color: FINALS_COLOR, dash: null, marker: 'circle' }
+
     chart = (
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[460px] h-auto">
-        <polyline points={pts} fill="none" stroke={CHART.primary} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        {laps.map((r, i) => (
-          <g key={i}>
-            <circle cx={x(i)} cy={y(r.lapCs)} r={CHART.point.r + 0.5} fill={CHART.primary} stroke={CHART.point.stroke} strokeWidth={CHART.point.strokeWidth} />
-            <text x={x(i)} y={y(r.lapCs) - 8} textAnchor="middle" fill={CHART.primary} style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{csToSplitTime(r.lapCs)}</text>
-            <text x={x(i)} y={H - 4} textAnchor="middle" fill={CHART.axisText} style={{ fontSize: 9, fontWeight: 600 }}>{r.distance ? `${r.distance}m` : `#${i + 1}`}</text>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[480px] h-auto">
+        {/* gridlines + y-axis second labels */}
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={PX} y1={y(t)} x2={W - 16} y2={y(t)} stroke={CHART.grid} strokeWidth="1" />
+            <text x={PX - 6} y={y(t) + 3} textAnchor="end" fill={CHART.axisText} style={{ fontSize: 9, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+              {Math.round(t / 100)}s
+            </text>
           </g>
+        ))}
+        {/* series lines (compare drawn first so primary sits on top) */}
+        {[...series].reverse().map((s, si) => {
+          const st = styleFor(s.roundType)
+          return (
+            <polyline key={si} points={s.laps.map((r, i) => `${x(i)},${y(r.lapCs)}`).join(' ')}
+              fill="none" stroke={st.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
+              strokeDasharray={st.dash || undefined} />
+          )
+        })}
+        {/* markers + point labels */}
+        {series.map((s, si) => {
+          const st = styleFor(s.roundType)
+          const prelims = isPrelims(s.roundType)
+          // when both shown: prelims labels above, finals labels below
+          const labelAbove = hasBoth ? prelims : true
+          return s.laps.map((r, i) => (
+            <g key={`${si}-${i}`}>
+              {st.marker === 'square' ? (
+                <rect x={x(i) - 3.5} y={y(r.lapCs) - 3.5} width="7" height="7" fill={st.color} stroke="#FFFFFF" strokeWidth="1.5" />
+              ) : (
+                <circle cx={x(i)} cy={y(r.lapCs)} r="4" fill={st.color} stroke="#FFFFFF" strokeWidth="1.5" />
+              )}
+              <text x={x(i)} y={labelAbove ? y(r.lapCs) - 9 : y(r.lapCs) + 16} textAnchor="middle" fill={st.color}
+                style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                {csToSplitTime(r.lapCs)}
+              </text>
+            </g>
+          ))
+        })}
+        {/* x-axis distance labels */}
+        {laps.map((r, i) => (
+          <text key={i} x={x(i)} y={H - 6} textAnchor="middle" fill={CHART.axisText} style={{ fontSize: 9, fontWeight: 600 }}>
+            {r.distance ? `${r.distance}m` : `#${i + 1}`}
+          </text>
         ))}
       </svg>
     )
@@ -196,7 +266,25 @@ function SplitsBreakdown({ splits, eventName }) {
 
   return (
     <div className="max-w-md">
-      {chart && <div className="mb-2">{chart}</div>}
+      {chart && (
+        <div className="mb-2">
+          <div className="flex items-center gap-4 mb-1.5">
+            {(hasBoth ? ['Prelims', 'Finals'] : [roundType || 'Finals']).map((rt) => (
+              <span key={rt} className="inline-flex items-center gap-1.5 text-label text-ink-500">
+                <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
+                  <line x1="1" y1="5" x2="21" y2="5" stroke={rt === 'Prelims' ? PRELIMS_COLOR : FINALS_COLOR}
+                    strokeWidth="2.5" strokeDasharray={rt === 'Prelims' ? '5 3' : undefined} strokeLinecap="round" />
+                  {rt === 'Prelims'
+                    ? <rect x="8" y="2" width="6" height="6" fill={PRELIMS_COLOR} stroke="#fff" strokeWidth="1" />
+                    : <circle cx="11" cy="5" r="3.5" fill={FINALS_COLOR} stroke="#fff" strokeWidth="1" />}
+                </svg>
+                {rt}
+              </span>
+            ))}
+          </div>
+          {chart}
+        </div>
+      )}
       <table className="w-full text-body-sm">
         <thead>
           <tr>
@@ -329,13 +417,21 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                       ) : <span className="text-ink-200">-</span>}
                     </td>
                   </tr>
-                  {showSplits && (
-                    <tr className="bg-aqua-50/60 border-b border-ink-100">
-                      <td colSpan={8} className="px-3 py-3">
-                        <SplitsBreakdown splits={splits} eventName={selectedEvent.event_name} />
-                      </td>
-                    </tr>
-                  )}
+                  {showSplits && (() => {
+                    // overlay the sibling round (prelims vs finals) from the same meet, if it has splits
+                    const sibling = h.round_type ? history.find(x =>
+                      x.id !== h.id && x.championship_id === h.championship_id &&
+                      x.round_type && x.round_type !== h.round_type && (x.splits || []).length > 0
+                    ) : null
+                    return (
+                      <tr className="bg-aqua-50/60 border-b border-ink-100">
+                        <td colSpan={8} className="px-3 py-3">
+                          <SplitsBreakdown splits={splits} eventName={selectedEvent.event_name}
+                            roundType={h.round_type} compareSplits={sibling?.splits} compareRoundType={sibling?.round_type} />
+                        </td>
+                      </tr>
+                    )
+                  })()}
                   </Fragment>
                 )
               })}

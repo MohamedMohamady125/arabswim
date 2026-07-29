@@ -978,20 +978,26 @@ export default function MeetDetailPage() {
                                       autoFocus
                                     />
                                   ) : (
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <TimeDisplay time={r.formatted_time} />
-                                      {r.is_hc && (
-                                        <Badge variant="status" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</Badge>
+                                    <>
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <TimeDisplay time={r.formatted_time} />
+                                        {r.is_hc && (
+                                          <Badge variant="status" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</Badge>
+                                        )}
+                                        {hasSplits && (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); setExpandedRelay(isExpanded ? null : r.id) }}
+                                            className={`inline-flex items-center gap-0.5 text-label px-1.5 py-0.5 rounded-full transition-colors ${isExpanded ? 'bg-aqua-600 text-white' : 'bg-aqua-50 text-aqua-600 hover:bg-aqua-100'}`}
+                                            title="Show split times">
+                                            Splits {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                                          </button>
+                                        )}
+                                      </span>
+                                      {/* Phone: Team column is hidden, so show the club under the time */}
+                                      {r.team && (r.team || '').toUpperCase() !== 'LP' && (
+                                        <span className="block md:hidden text-[11px] leading-tight text-ink-400 truncate max-w-[130px] ms-auto">{r.team}</span>
                                       )}
-                                      {hasSplits && (
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); setExpandedRelay(isExpanded ? null : r.id) }}
-                                          className={`inline-flex items-center gap-0.5 text-label px-1.5 py-0.5 rounded-full transition-colors ${isExpanded ? 'bg-aqua-600 text-white' : 'bg-aqua-50 text-aqua-600 hover:bg-aqua-100'}`}
-                                          title="Show split times">
-                                          Splits {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-                                        </button>
-                                      )}
-                                    </span>
+                                    </>
                                   )}
                                 </td>
                                 <td className={`${TD} text-end tnum`}>{r.fina_points || '-'}</td>

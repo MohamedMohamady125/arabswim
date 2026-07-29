@@ -14,7 +14,7 @@ import { Button, Card, Badge, PoolBadge, Tabs, SegmentedControl, EmptyState, Ske
 import { TimeDisplay, EventLabel } from '../components/domain'
 import { CHART, formatCs } from '../components/charts/theme'
 import {
-  Clock, CalendarDays, Medal, Trophy, Star, TrendingUp, TrendingDown, BarChart3, ChartLine,
+  Clock, CalendarDays, Medal, Trophy, Star, TrendingUp, BarChart3, ChartLine,
   GitCompare, ArrowLeftRight, Images, ChevronRight, ChevronUp, ChevronDown,
   ArrowLeft, Pencil, User, Play, X, Award, Target, Image as ImageIcon,
 } from 'lucide-react'

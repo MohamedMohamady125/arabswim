@@ -36,7 +36,7 @@ function SwimmerSlot({ swimmer, onRemove, onAdd, index }) {
 
   if (swimmer) {
     return (
-      <div className="bg-white rounded-md border border-ink-100 shadow-card p-4 text-center relative animate-fade-up" style={{ animationDelay: `${index * 0.04}s` }}>
+      <div className="bg-white rounded-md border border-ink-100 shadow-card p-3 sm:p-4 text-center relative animate-fade-up" style={{ animationDelay: `${index * 0.04}s` }}>
         <button onClick={onRemove} aria-label={`Remove ${swimmer.name}`}
           className="absolute top-2 end-2 w-7 h-7 rounded-full bg-ink-50 text-ink-400 hover:bg-neg/10 hover:text-neg flex items-center justify-center transition-colors">
           <X size={14} />
@@ -52,7 +52,7 @@ function SwimmerSlot({ swimmer, onRemove, onAdd, index }) {
 
   return (
     <div className="animate-fade-up" style={{ animationDelay: `${index * 0.04}s` }}>
-      <div className="bg-ink-50 rounded-md border-2 border-dashed border-ink-200 p-4 relative">
+      <div className="bg-ink-50 rounded-md border-2 border-dashed border-ink-200 p-3 sm:p-4 relative">
         <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Search swimmer..." />
         {results.length > 0 && (
           <div className="absolute top-full inset-x-0 mt-1 bg-white border border-ink-100 rounded-md shadow-pop max-h-48 overflow-y-auto z-20">
@@ -76,12 +76,12 @@ function SwimmerSlot({ swimmer, onRemove, onAdd, index }) {
 function StatRow({ label, values, best }) {
   return (
     <tr className="hover:bg-ink-50 transition-colors">
-      <td className="px-4 py-3 text-body-sm font-medium text-ink-500 whitespace-nowrap sticky start-0 bg-white">{label}</td>
+      <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-body-sm font-medium text-ink-500 whitespace-nowrap sticky start-0 bg-white">{label}</td>
       {values.map((v, i) => {
         const isBest = v != null && v === best
         const display = v == null ? '–' : v
         return (
-          <td key={i} className="px-4 py-3 text-center">
+          <td key={i} className="px-3 sm:px-4 py-2.5 sm:py-3 text-center">
             <span className={`text-body-sm font-semibold tnum ${isBest ? 'text-pos' : 'text-ink-900'}`}>
               {display}
             </span>
@@ -148,7 +148,7 @@ export default function CompareSwimmersPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6 pb-12">
+    <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-4 sm:py-6 pb-12">
       <nav className="flex items-center gap-1 text-body-sm text-ink-400 mb-2" aria-label="Breadcrumb">
         <button onClick={() => navigate('/swimmers')} className="inline-flex items-center gap-1 hover:text-aqua-600 transition-colors">
           <ChevronLeft size={14} />
@@ -173,7 +173,7 @@ export default function CompareSwimmersPage() {
 
       {/* Compare Button */}
       {selected.length >= 2 && (
-        <div className="flex justify-center mb-8 animate-fade-up">
+        <div className="flex justify-center mb-6 sm:mb-8 animate-fade-up">
           <Button icon={ArrowLeftRight} loading={loading} onClick={doCompare}>
             {loading ? 'Comparing...' : `Compare ${selected.length} Swimmers`}
           </Button>
@@ -199,12 +199,12 @@ export default function CompareSwimmersPage() {
               <table className="w-full min-w-max">
                 <thead>
                   <tr className="border-b border-ink-100 bg-ink-50">
-                    <th scope="col" className="px-4 py-3 text-start text-label text-ink-400 w-28 sm:w-40 sticky start-0 bg-ink-50">Metric</th>
+                    <th scope="col" className="px-3 sm:px-4 py-2.5 sm:py-3 text-start text-label text-ink-400 w-28 sm:w-40 sticky start-0 bg-ink-50">Metric</th>
                     {data.map(s => (
-                      <th key={s.id} scope="col" className="px-4 py-3 text-center min-w-32">
+                      <th key={s.id} scope="col" className="px-3 sm:px-4 py-2.5 sm:py-3 text-center min-w-32">
                         <button onClick={() => navigate(`/swimmers/${s.id}`)} className="group mx-auto">
                           <div className="mx-auto mb-1 flex justify-center"><Avatar photo={s.photo} /></div>
-                          <div className="text-body-sm font-semibold text-ink-900 group-hover:text-aqua-600 transition-colors truncate max-w-32 mx-auto">{s.name}</div>
+                          <div className="text-body-sm font-semibold text-ink-900 group-hover:text-aqua-600 transition-colors break-words line-clamp-2 max-w-36 mx-auto">{s.name}</div>
                           <div className="flex justify-center mt-0.5">
                             <CountryFlag code={s.nationality_code} flagUrl={s.flag_url} name={s.nationality} className="text-body-sm text-ink-400" />
                           </div>
@@ -241,10 +241,10 @@ export default function CompareSwimmersPage() {
                 <table className="w-full min-w-max">
                   <thead>
                     <tr className="border-b border-ink-100 bg-ink-50">
-                      <th scope="col" className="px-4 py-3 text-start text-label text-ink-400 sticky start-0 bg-ink-50">Event</th>
-                      <th scope="col" className="px-4 py-3 text-start text-label text-ink-400 w-20">Pool</th>
+                      <th scope="col" className="px-3 sm:px-4 py-2.5 sm:py-3 text-start text-label text-ink-400 sticky start-0 bg-ink-50">Event</th>
+                      <th scope="col" className="px-3 sm:px-4 py-2.5 sm:py-3 text-start text-label text-ink-400 w-20">Pool</th>
                       {data.map(s => (
-                        <th key={s.id} scope="col" className="px-4 py-3 text-center text-body-sm font-semibold text-ink-900 max-w-32 truncate">{s.name}</th>
+                        <th key={s.id} scope="col" className="px-3 sm:px-4 py-2.5 sm:py-3 text-center text-body-sm font-semibold text-ink-900 max-w-36 whitespace-normal break-words">{s.name}</th>
                       ))}
                     </tr>
                   </thead>
@@ -258,14 +258,14 @@ export default function CompareSwimmersPage() {
                       const bestTime = bestOf(times.filter(Boolean), false)
                       return (
                         <tr key={key} className="hover:bg-ink-50 transition-colors">
-                          <td className="px-4 py-3 text-body-sm font-medium text-ink-900 whitespace-nowrap sticky start-0 bg-white">{ev.event_name}</td>
-                          <td className="px-4 py-3"><PoolBadge pool={ev.pool} /></td>
+                          <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-body-sm font-medium text-ink-900 whitespace-nowrap sticky start-0 bg-white">{ev.event_name}</td>
+                          <td className="px-3 sm:px-4 py-2.5 sm:py-3"><PoolBadge pool={ev.pool} /></td>
                           {data.map((s, si) => {
                             const pb = s.personal_bests[key]
-                            if (!pb) return <td key={si} className="px-4 py-3 text-center text-ink-200 text-body-sm">–</td>
+                            if (!pb) return <td key={si} className="px-3 sm:px-4 py-2.5 sm:py-3 text-center text-ink-200 text-body-sm">–</td>
                             const isBest = pb.best_cs === bestTime
                             return (
-                              <td key={si} className="px-4 py-3 text-center">
+                              <td key={si} className="px-3 sm:px-4 py-2.5 sm:py-3 text-center">
                                 <span className={`text-time tnum ${isBest ? 'text-pos' : 'text-ink-900'}`}>
                                   {pb.best_time}
                                 </span>
@@ -291,7 +291,7 @@ export default function CompareSwimmersPage() {
                 const maxTotal = Math.max(...data.map(d => d.medals.total)) || 1
                 return (
                   <div key={s.id} className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-20 sm:w-28 text-body-sm font-medium text-ink-500 truncate shrink-0">{s.name}</div>
+                    <div className="w-24 sm:w-28 text-body-sm font-medium text-ink-500 break-words line-clamp-2 leading-tight shrink-0">{s.name}</div>
                     <div className="flex-1">
                       <div className="flex h-5 rounded-full overflow-hidden bg-ink-50" style={{ width: `${Math.max((total / maxTotal) * 100, total > 0 ? 6 : 2)}%` }}>
                         {s.medals.gold > 0 && <div className="bg-gold" style={{ width: `${(s.medals.gold / total) * 100}%` }} />}

@@ -20,11 +20,11 @@ function strokeColor(name = '') {
 /** "100m Freestyle" with a stroke color dot. */
 export default function EventLabel({ name, dot = true, className }) {
   return (
-    <span className={clsx('inline-flex items-center gap-1.5 text-body-sm text-ink-900 whitespace-nowrap', className)}>
+    <span className={clsx('inline-flex items-center gap-1.5 max-w-full min-w-0 text-body-sm text-ink-900 whitespace-nowrap', className)}>
       {dot && (
         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: strokeColor(name) }} />
       )}
-      {name}
+      <span className="min-w-0 truncate">{name}</span>
     </span>
   )
 }

@@ -88,15 +88,15 @@ export default function ChampionshipsPage() {
   ].filter(Boolean)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Hero — page title + featured/nearest meet */}
       <Hero image={featured?.meet_photo ? mediaUrl(featured.meet_photo) : undefined}>
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
           <div className="min-w-0">
             <h1 className="font-display font-extrabold text-[28px] leading-[34px] md:text-[36px] md:leading-[40px]">Championships</h1>
             <p className="text-body text-white/70 mt-1">Every meet across the Arab swimming world.</p>
             {featured && (
-              <div className="mt-5">
+              <div className="mt-4 sm:mt-5">
                 <div className="text-label text-aqua-400 mb-1">
                   {upcoming[0] ? 'Next meet' : 'Latest meet'}
                 </div>
@@ -174,7 +174,7 @@ export default function ChampionshipsPage() {
       {!loading && Object.entries(grouped).sort(([a], [b]) => b.localeCompare(a)).map(([key, group]) => (
         <section key={key}>
           {/* Month band */}
-          <div className="flex items-center gap-3 rounded-sm bg-ink-50 border border-ink-100 px-4 py-2 mb-3">
+          <div className="flex items-center gap-3 rounded-sm bg-ink-50 border border-ink-100 px-3 sm:px-4 py-2 mb-2.5 sm:mb-3">
             <h2 className="text-label text-ink-900">
               {MONTHS[group.month]} {group.year}
             </h2>
@@ -184,7 +184,7 @@ export default function ChampionshipsPage() {
           </div>
 
           {/* Meet cards */}
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             {group.events.map(c => {
               const isExpanded = expandedId === c.id
 
@@ -248,7 +248,7 @@ export default function ChampionshipsPage() {
 
                   {/* Expanded */}
                   {isExpanded && (
-                    <div className="bg-ink-50 border border-aqua-500/40 border-t-0 rounded-b-md px-4 sm:px-5 py-4">
+                    <div className="bg-ink-50 border border-aqua-500/40 border-t-0 rounded-b-md px-3 py-3 sm:px-5 sm:py-4">
                       <div className="flex flex-wrap gap-2">
                         {c.results_count > 0 && (
                           <Button size="sm" icon={Trophy}

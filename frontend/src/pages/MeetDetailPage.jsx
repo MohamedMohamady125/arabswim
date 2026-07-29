@@ -114,7 +114,7 @@ function TopPerformersTable({ performers, navigate }) {
           </table>
         </div>
       ) : (
-        <div className="p-8 text-center text-ink-400 text-body-sm">No performances for this filter</div>
+        <div className="p-6 sm:p-8 text-center text-ink-400 text-body-sm">No performances for this filter</div>
       )}
     </Card>
   )
@@ -165,8 +165,8 @@ function MostImprovedTable({ swimmers, navigate }) {
                     ) : (
                       <>
                         <div className="tnum text-ink-500">{s.previous_best}</div>
-                        <div className="flex items-center gap-1 mt-0.5 cursor-pointer group" onClick={(e) => { e.stopPropagation(); navigate(`/meets/${s.previous_best_meet_id}`) }}>
-                          <span className="text-label normal-case tracking-normal text-aqua-600 group-hover:underline truncate max-w-[140px]" title={s.previous_best_meet}>
+                        <div className="flex items-center gap-1 min-w-0 mt-0.5 cursor-pointer group" onClick={(e) => { e.stopPropagation(); navigate(`/meets/${s.previous_best_meet_id}`) }}>
+                          <span className="text-label normal-case tracking-normal text-aqua-600 group-hover:underline flex-1 min-w-0 truncate sm:max-w-[140px]" title={s.previous_best_meet}>
                             {s.previous_best_meet}
                           </span>
                           {s.previous_best_date && (
@@ -186,7 +186,7 @@ function MostImprovedTable({ swimmers, navigate }) {
           </table>
         </div>
       ) : (
-        <div className="p-8 text-center text-ink-400 text-body-sm">No improvements for this filter</div>
+        <div className="p-6 sm:p-8 text-center text-ink-400 text-body-sm">No improvements for this filter</div>
       )}
     </Card>
   )
@@ -218,7 +218,7 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
     : safeMedals.filter(m => m.medal_type === medalFilter)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Medal Count Cards */}
       {safeMedals.length > 0 && (
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
@@ -272,7 +272,7 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
               rows={filteredSummary.map((row, i) => ({
                 id: row.swimmer__nationality__code || i,
                 entity: (
-                  <span className="text-body-sm text-ink-900 flex min-w-0 max-w-[45vw] sm:max-w-none">
+                  <span className="text-body-sm text-ink-900 flex min-w-0">
                     <CountryFlag
                       code={row.swimmer__nationality__code}
                       flagUrl={row.swimmer__nationality__flag_url}
@@ -613,8 +613,8 @@ export default function MeetDetailPage() {
 
       {/* Meet Hero */}
       <Hero image={meet.meet_photo || meet.photo} className="mb-5 sm:mb-6">
-        <h1 className="text-display sm:text-display-xl">{meet.name}</h1>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-body-sm text-white/80">
+        <h1 className="font-display font-bold text-[22px] leading-[28px] sm:font-extrabold sm:text-[36px] sm:leading-[40px] break-words">{meet.name}</h1>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-x-4 sm:gap-y-2 mt-2.5 sm:mt-3 text-body-sm text-white/80">
           {meet.country_detail && (
             <CountryFlag code={meet.country_detail.code} flagUrl={meet.country_detail.flag_url} name={meet.country_detail.name} />
           )}
@@ -657,7 +657,7 @@ export default function MeetDetailPage() {
       {activeTab === 'results' && (!selectedEvent ? (
         /* Full-width events grid when no event is selected */
         <div>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-4">
             <h3 className="text-title text-ink-900">Events ({stats.events.length})</h3>
             <SegmentedControl
               options={[
@@ -677,20 +677,20 @@ export default function MeetDetailPage() {
               const genderEvents = filtered.filter(e => e.gender === g)
               const gLabel = genderEvents[0]?.gender_label || ({M: 'Men', F: 'Women', X: 'Mixed'}[g] || g)
               return (
-                <div key={g} className="mb-6">
-                  <div className="flex items-center gap-3 mb-3">
+                <div key={g} className="mb-4 sm:mb-6">
+                  <div className="flex items-center gap-3 mb-2.5 sm:mb-3">
                     <h4 className="text-label text-ink-400">{gLabel}</h4>
                     <div className="flex-1 h-px bg-ink-100" />
                     <span className="text-body-sm text-ink-400 tnum">{genderEvents.length} events</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
                     {genderEvents.map(e => {
                       const isActive = selectedEvent?.event_id === e.event_id && selectedEvent?.gender === e.gender
                       return (
                         <button
                           key={`${e.event_id}-${e.gender}`}
                           onClick={() => handleEventClick(e)}
-                          className={`rounded-md p-4 text-start min-h-11 transition-colors shadow-card ${
+                          className={`rounded-md p-3 sm:p-4 text-start min-h-11 transition-colors shadow-card ${
                             isActive
                               ? 'bg-ink-900 text-white border border-ink-900'
                               : 'bg-white border border-ink-100 hover:border-aqua-500/40 hover:bg-aqua-50/40'
@@ -720,7 +720,7 @@ export default function MeetDetailPage() {
           })()}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 lg:gap-6">
         {/* Left: Events sidebar */}
         <div className="space-y-4">
           <Card padding="none">
@@ -780,7 +780,7 @@ export default function MeetDetailPage() {
         <div>
           {(
             <Card padding="none">
-              <div className="p-4 border-b border-ink-100 flex flex-wrap items-center justify-between gap-3">
+              <div className="p-3 sm:p-4 border-b border-ink-100 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
                 <div>
                   <h3 className="text-title text-ink-900">{selectedEvent.event_name} — {selectedEvent.gender_label || ({M: 'Men', F: 'Women', X: 'Mixed'}[selectedEvent.gender] || 'Men')}</h3>
                   <p className="text-body-sm text-ink-400 tnum">{results.length} results</p>
@@ -813,7 +813,7 @@ export default function MeetDetailPage() {
                 if (rounds.length <= 1) return null
                 rounds.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
                 return (
-                  <div className="px-4 py-3 border-b border-ink-100 max-w-full overflow-x-auto">
+                  <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-ink-100 max-w-full overflow-x-auto">
                     <SegmentedControl
                       className="whitespace-nowrap"
                       options={rounds.map(round => ({ key: round, label: roundLabel(round) }))}
@@ -840,7 +840,7 @@ export default function MeetDetailPage() {
                     : 'bg-white text-ink-500 border-ink-200 hover:border-aqua-500/40 hover:text-aqua-600'
                 }`
                 return (
-                  <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-ink-100 bg-ink-50/60">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 px-3 py-2.5 sm:px-4 sm:py-3 border-b border-ink-100 bg-ink-50/60">
                     {cats.map(cat => {
                       const active = selectedCategory === cat
                       return (
@@ -1070,9 +1070,9 @@ export default function MeetDetailPage() {
 
       {/* Statistics Tab */}
       {activeTab === 'statistics' && stats && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Overview Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 md:gap-4">
             {[
               { label: 'Swimmers', value: stats.total_swimmers },
               { label: 'Results', value: stats.total_results },
@@ -1080,7 +1080,7 @@ export default function MeetDetailPage() {
               { label: 'Male', value: stats.male_count },
               { label: 'Female', value: stats.female_count },
             ].map(s => (
-              <div key={s.label} className="bg-white rounded-md shadow-card border border-ink-100 p-4 text-center">
+              <div key={s.label} className="bg-white rounded-md shadow-card border border-ink-100 p-3 md:p-4 text-center">
                 <div className="text-time-lg text-aqua-600">{s.value}</div>
                 <div className="text-label text-ink-400 mt-1">{s.label}</div>
               </div>
@@ -1091,7 +1091,7 @@ export default function MeetDetailPage() {
           <Card padding="none" title={`Countries (${stats.countries.length})`}>
             <div className="divide-y divide-ink-100 max-h-[500px] overflow-y-auto">
               {stats.countries.map((c, i) => (
-                <div key={c.swimmer__nationality__id ?? i} className="flex items-center justify-between gap-3 px-4 py-3 min-h-11 text-body-sm">
+                <div key={c.swimmer__nationality__id ?? i} className="flex items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3 min-h-11 text-body-sm">
                   <CountryFlag
                     code={c.swimmer__nationality__code}
                     flagUrl={c.swimmer__nationality__flag_url}
@@ -1249,7 +1249,7 @@ export default function MeetDetailPage() {
             <TableSkeleton rows={4} />
           ) : (
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+              <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-4 sm:mb-5">
                 <div className="text-body-sm text-ink-400 tnum">{(album.items || []).length} item{(album.items || []).length === 1 ? '' : 's'}</div>
                 {isAdmin && (
                   <div className="flex flex-wrap items-center gap-3">
@@ -1297,7 +1297,7 @@ export default function MeetDetailPage() {
                   />
                 </Card>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
                   {(album.items || []).map(item => (
                     <div key={item.id} className="group bg-white rounded-md border border-ink-100 shadow-card overflow-hidden">
                       <div className="h-40 bg-ink-950 relative cursor-pointer"

@@ -23,13 +23,13 @@ export default function RecordCard({ scope, event, pool, time, holder, meet, dat
         </div>
         {date && <span className="text-label normal-case tracking-normal font-normal text-ink-400">{date}</span>}
       </div>
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex items-end justify-between gap-2 sm:gap-3">
+        <div className="flex-1 min-w-0">
           <EventLabel name={event} className="mb-1" />
           {holder && <SwimmerCell {...holder} />}
           {meet && <div className="text-body-sm text-ink-400 truncate mt-1">{meet}</div>}
         </div>
-        <TimeDisplay time={time} size="lg" record={isNew} />
+        <TimeDisplay time={time} size="lg" record={isNew} className="shrink-0" />
       </div>
     </div>
   )

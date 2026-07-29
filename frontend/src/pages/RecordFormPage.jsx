@@ -141,10 +141,10 @@ export default function RecordFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <section>
               <h3 className="text-label text-ink-400 mb-4">Record</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel required>Record Type</FieldLabel>
                   <Select value={form.record_type} onChange={set('record_type')}>
@@ -251,7 +251,7 @@ export default function RecordFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Performance</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel required>Time</FieldLabel>
                   <Input type="text" value={form.time} onChange={set('time')}

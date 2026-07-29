@@ -115,7 +115,7 @@ export default function RecordsPage() {
   ]
 
   const computedMobileRender = (r) => (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5 sm:gap-3">
       <div className="flex-1 min-w-0">
         <EventLabel name={r.event_name} className="mb-0.5" />
         <div className="text-body-sm font-medium text-ink-900 truncate">{r.swimmer_name}</div>
@@ -151,7 +151,7 @@ export default function RecordsPage() {
   ]
 
   const manualMobileRender = (r) => (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5 sm:gap-3">
       <div className="flex-1 min-w-0">
         <EventLabel name={r.event_detail?.name} className="mb-0.5" />
         <div className="text-body-sm font-medium text-ink-900 truncate">{r.swimmer_detail?.name || '-'}</div>
@@ -172,7 +172,7 @@ export default function RecordsPage() {
   )
 
   const RecordSection = ({ title, columns, data, mobileRender, emptyMessage }) => (
-    <section className="mb-6 md:mb-8">
+    <section className="mb-5 sm:mb-6 md:mb-8">
       <h2 className="text-title text-ink-900 mb-3">{title}</h2>
       <DataTable columns={columns} data={data} mobileRender={mobileRender} emptyMessage={emptyMessage} />
     </section>

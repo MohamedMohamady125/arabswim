@@ -92,15 +92,15 @@ export default function SwimmerFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <section>
               <h3 className="text-label text-ink-400 mb-4">Basic Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-3 sm:gap-6">
                 <div>
                   <FieldLabel>Profile Photo</FieldLabel>
                   <PhotoUpload currentPhoto={form.photo} onPhotoChange={setPhotoBlob} />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <FieldLabel required>Name</FieldLabel>
                     <Input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -174,7 +174,7 @@ export default function SwimmerFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Contact Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Email</FieldLabel>
                   <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Enter email (optional)" />
@@ -188,7 +188,7 @@ export default function SwimmerFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Social Media</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Instagram Link</FieldLabel>
                   <Input type="url" value={form.instagram_url} onChange={(e) => setForm({ ...form, instagram_url: e.target.value })} placeholder="https://instagram.com/... (optional)" />

@@ -157,7 +157,7 @@ export default function SwimmersPage() {
   ].filter(Boolean)
 
   const mergeSlot = (swimmer, { title, hint, onClear }) => (
-    <div className="rounded-md border border-ink-100 bg-ink-50 p-4">
+    <div className="rounded-md border border-ink-100 bg-ink-50 p-3 sm:p-4">
       <div className="text-label text-ink-400 mb-2">{title}</div>
       {swimmer ? (
         <div className="flex items-center gap-3">

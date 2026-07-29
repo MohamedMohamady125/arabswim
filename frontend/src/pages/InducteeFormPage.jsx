@@ -110,7 +110,7 @@ export default function InducteeFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <section>
               <FieldLabel>Link to Swimmer (optional)</FieldLabel>
               {linkedSwimmer ? (
@@ -143,7 +143,7 @@ export default function InducteeFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Inductee Details</h3>
-              <div className="flex items-center gap-5 mb-4">
+              <div className="flex items-center gap-3 sm:gap-5 mb-4">
                 <label className="w-24 h-24 rounded-full bg-ink-50 border-2 border-dashed border-ink-200 flex items-center justify-center overflow-hidden cursor-pointer relative shrink-0 hover:border-aqua-500/40">
                   {photoPreview ? (
                     <img src={photoPreview} alt="" className="w-full h-full object-cover" />
@@ -158,7 +158,7 @@ export default function InducteeFormPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel required>Country</FieldLabel>
                   <Select value={form.country} onChange={set('country')}>

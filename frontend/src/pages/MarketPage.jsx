@@ -97,7 +97,7 @@ export default function MarketPage() {
           <EmptyState icon={ShoppingBag} title="No listings found" hint="Swim gear for sale will appear here." />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {listings.map((l) => (
             <article key={l.id}
               className="bg-white rounded-md shadow-card border border-ink-100 overflow-hidden transition-colors hover:border-aqua-500/40 flex flex-col">

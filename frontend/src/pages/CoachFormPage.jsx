@@ -92,12 +92,12 @@ export default function CoachFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             {/* Personal Info */}
             <section>
               <h3 className="text-label text-ink-400 mb-4">Personal Information</h3>
 
-              <div className="flex items-start gap-5 mb-4">
+              <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-5 mb-4">
                 <label className="w-24 h-24 rounded-md bg-ink-50 border-2 border-dashed border-ink-200 flex items-center justify-center overflow-hidden cursor-pointer relative shrink-0 hover:border-aqua-500/40">
                   {photoPreview ? (
                     <img src={photoPreview} alt="" className="w-full h-full object-cover" />
@@ -112,12 +112,12 @@ export default function CoachFormPage() {
                     if (f) { setPhotoFile(f); setPhotoPreview(URL.createObjectURL(f)) }
                   }} className="absolute inset-0 opacity-0 cursor-pointer" />
                 </label>
-                <div className="flex-1 space-y-4">
+                <div className="w-full sm:w-auto sm:flex-1 space-y-3 sm:space-y-4">
                   <div>
                     <FieldLabel required>Full Name</FieldLabel>
                     <Input type="text" value={form.name} onChange={set('name')} placeholder="Coach full name" />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <FieldLabel required>Nationality</FieldLabel>
                       <Select value={form.nationality} onChange={set('nationality')}>
@@ -143,7 +143,7 @@ export default function CoachFormPage() {
             <section className="border-t border-ink-100 pt-5 space-y-4">
               <h3 className="text-label text-ink-400">Professional Details</h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Level</FieldLabel>
                   <Select value={form.level} onChange={set('level')}>
@@ -212,7 +212,7 @@ export default function CoachFormPage() {
             {/* Contact */}
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Contact Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Email</FieldLabel>
                   <Input type="email" value={form.email} onChange={set('email')} />
@@ -235,7 +235,7 @@ export default function CoachFormPage() {
             {/* Status */}
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Status</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Available for hire</FieldLabel>
                   <Select value={String(form.is_available)} onChange={e => setForm(f => ({ ...f, is_available: e.target.value === 'true' }))}>

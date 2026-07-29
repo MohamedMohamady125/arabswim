@@ -134,7 +134,7 @@ export default function HomePage() {
   const meetDate = useMemo(() => (nextMeet ? parseMeetDate(nextMeet.date) : null), [nextMeet])
 
   return (
-    <div className="space-y-8 animate-fade-up">
+    <div className="space-y-5 sm:space-y-8 animate-fade-up">
       {/* ── Hero ── */}
       <Hero>
         <div className="max-w-2xl">
@@ -154,7 +154,7 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 pt-6 border-t border-white/10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 sm:mt-8 sm:pt-6 border-t border-white/10">
           {HERO_STATS.map(({ key, label }) => (
             <div key={key}>
               <div className="text-time-lg text-white tnum animate-count-up">
@@ -168,10 +168,10 @@ export default function HomePage() {
 
       {/* ── Next meet countdown ── */}
       {nextMeet && meetDate && (
-        <div className="bg-ink-900 rounded-lg text-white p-5 md:p-6 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+        <div className="bg-ink-900 rounded-lg text-white p-4 md:p-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 justify-between">
           <div className="min-w-0">
             <div className="text-label text-aqua-400 mb-1">Next meet</div>
-            <Link to={`/meets/${nextMeet.id}`} className="text-title text-white hover:text-aqua-400 transition-colors block truncate">
+            <Link to={`/meets/${nextMeet.id}`} className="text-title text-white hover:text-aqua-400 transition-colors block break-words line-clamp-2">
               {nextMeet.name}
             </Link>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-body-sm text-ink-200">
@@ -229,7 +229,7 @@ export default function HomePage() {
             <Link
               key={to}
               to={to}
-              className="bg-white rounded-md shadow-card border border-ink-100 hover:border-aqua-500/40 transition-colors p-4 h-full flex items-center gap-3 min-h-11"
+              className="bg-white rounded-md shadow-card border border-ink-100 hover:border-aqua-500/40 transition-colors p-3 sm:p-4 h-full flex items-center gap-2.5 sm:gap-3 min-h-11"
             >
               <span className="shrink-0 w-9 h-9 rounded-sm bg-aqua-50 text-aqua-600 flex items-center justify-center">
                 <Icon size={18} />

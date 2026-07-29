@@ -52,14 +52,14 @@ export default function FilterBar({ children, chips = [], onReset, className }) 
           onClick={() => setSheetOpen(false)}>
           <div className="bg-white rounded-t-lg shadow-pop w-full max-w-[100vw] max-h-[85vh] overflow-y-auto overscroll-contain animate-fade-up"
             onClick={(e) => e.stopPropagation()}>
-            <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100 sticky top-0 bg-white rounded-t-lg">
+            <header className="flex items-center justify-between px-4 py-3.5 border-b border-ink-100 sticky top-0 bg-white rounded-t-lg">
               <h2 className="text-title text-ink-900">Filters</h2>
               <button onClick={() => setSheetOpen(false)} aria-label="Close" className="p-2 -me-2 text-ink-400 hover:text-ink-900">
                 <X size={18} />
               </button>
             </header>
-            <div className="p-5 flex flex-col gap-3 [&>*]:min-w-0 [&>*]:max-w-full [&_select]:w-full [&_input]:w-full">{children}</div>
-            <footer className="px-5 py-4 border-t border-ink-100 flex gap-2 sticky bottom-0 bg-white">
+            <div className="p-4 flex flex-col gap-3 [&>*]:min-w-0 [&>*]:max-w-full [&_select]:w-full [&_input]:w-full">{children}</div>
+            <footer className="px-4 py-3 border-t border-ink-100 flex gap-2 sticky bottom-0 bg-white">
               {onReset && (
                 <Button variant="secondary" className="flex-1" onClick={() => { onReset(); setSheetOpen(false) }}>
                   Reset

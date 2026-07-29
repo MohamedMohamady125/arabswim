@@ -10,7 +10,7 @@ export default function RankRow({ rank, swimmer, time, points, meta, onClick }) 
   return (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 px-4 py-2.5 min-h-11 ${onClick ? 'hover:bg-ink-50 cursor-pointer transition-colors' : ''}`}
+      className={`flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-2.5 min-h-11 ${onClick ? 'hover:bg-ink-50 cursor-pointer transition-colors' : ''}`}
     >
       <span className="w-7 text-center shrink-0"><RankNumber rank={rank} /></span>
       <div className="flex-1 min-w-0">

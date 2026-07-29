@@ -89,10 +89,10 @@ export default function ChampionshipFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <section>
               <h3 className="text-label text-ink-400 mb-4">Meet Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="sm:col-span-2">
                   <FieldLabel required>Name</FieldLabel>
                   <Input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -127,7 +127,7 @@ export default function ChampionshipFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Links &amp; Documents</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Website</FieldLabel>
                   <Input type="url" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://..." />
@@ -163,7 +163,7 @@ export default function ChampionshipFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Classification</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Category</FieldLabel>
                   <Select value={form.classification_category} onChange={(e) => setForm({ ...form, classification_category: e.target.value, classification: '', sub_classification: '' })}>

@@ -96,7 +96,7 @@ function PersonalBestsTable({ events, onEventClick, selectedEvent }) {
             const isSelected = selectedEvent?.event_id === e.event_id && selectedEvent?.pool === e.pool
             return (
               <button key={`${e.event_id}-${e.pool}`} onClick={() => onEventClick(e)}
-                className={`w-full text-start px-3 py-2.5 min-h-11 rounded-sm flex items-center gap-3 transition-colors group ${
+                className={`w-full text-start px-2.5 sm:px-3 py-2.5 min-h-11 rounded-sm flex items-center gap-2 sm:gap-3 transition-colors group ${
                   isSelected ? 'bg-aqua-50 ring-1 ring-aqua-600/30' : 'hover:bg-ink-50'
                 }`}>
                 <div className="flex-1 min-w-0">
@@ -318,7 +318,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                     </td>
                     <td className="px-2 sm:px-3 py-2.5">
                       <button onClick={(e) => { e.stopPropagation(); navigate(`/meets/${h.championship_id}`) }}
-                        className="text-aqua-600 hover:text-ink-900 font-medium transition-colors truncate max-w-[120px] sm:max-w-none block text-start">
+                        className="text-aqua-600 hover:text-ink-900 font-medium transition-colors break-words line-clamp-2 max-w-44 sm:max-w-none block text-start">
                         {h.championship_name}
                       </button>
                     </td>
@@ -802,11 +802,11 @@ function StatsTab({ stats, events, swimmerId }) {
   if (!stats) return null
   const { best_fina, season_best_fina, best_event, records, total_records, fina_distribution } = stats
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Performance Index + Highlights */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         <PerformanceIndex finaDistribution={fina_distribution} bestFina={best_fina} />
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {best_fina && (
             <Card className="border-aqua-600/30">
               <div className="text-label text-aqua-600 mb-2">Best FINA Points</div>
@@ -876,7 +876,7 @@ function StatsTab({ stats, events, swimmerId }) {
               const maxGap = Math.max(...filteredGaps.map(x => Math.abs(x.gap_cs)))
               const barPct = maxGap > 0 ? (Math.abs(g.gap_cs) / maxGap) * 100 : 0
               return (
-                <div key={g.event_id} className="px-5 py-4">
+                <div key={g.event_id} className="px-3 sm:px-5 py-3.5 sm:py-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <EventLabel name={g.event_name} className="font-semibold" />
@@ -933,7 +933,7 @@ function StatsTab({ stats, events, swimmerId }) {
           </div>
           <div className="divide-y divide-ink-100">
             {records.map((r) => (
-              <div key={r.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-ink-50 transition-colors">
+              <div key={r.id} className="px-3 sm:px-5 py-3 sm:py-3.5 flex items-center gap-3 sm:gap-4 hover:bg-ink-50 transition-colors">
                 <Badge variant={r.record_type === 'ARAB' ? 'pos' : r.record_type === 'GCC' ? 'aqua' : 'record'}>{r.record_type}</Badge>
                 <div className="flex-1">
                   <EventLabel name={r.event_name} className="font-semibold" />
@@ -1203,7 +1203,7 @@ function RecordsTab({ swimmerId, swimmer }) {
                 const maxGap = Math.max(...filteredGaps.map(x => Math.abs(x.gap_cs)))
                 const barPct = maxGap > 0 ? (Math.abs(g.gap_cs) / maxGap) * 100 : 0
                 return (
-                  <div key={`${g.event_id}-${g.pool}`} className="px-5 py-4">
+                  <div key={`${g.event_id}-${g.pool}`} className="px-3 sm:px-5 py-3.5 sm:py-4">
                     <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <EventLabel name={g.event_name} className="font-semibold" />
@@ -1450,7 +1450,7 @@ function GalleryTab({ swimmerId }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Photos Grid */}
       {photos.length > 0 && (
         <div>
@@ -1577,10 +1577,10 @@ function TransferHistoryTab({ swimmerId }) {
   if (!data) return <div className="text-center py-8 text-ink-400 text-body-sm">Failed to load transfer history</div>
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Club History */}
       <Card padding="none" className="overflow-hidden">
-        <div className="px-5 py-4 border-b border-ink-100 bg-ink-50">
+        <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-ink-100 bg-ink-50">
           <h3 className="text-title text-ink-900">Club History</h3>
           <p className="text-body-sm text-ink-400 mt-0.5">Clubs represented based on competition results</p>
         </div>
@@ -1588,10 +1588,10 @@ function TransferHistoryTab({ swimmerId }) {
           <div className="p-8 text-center text-ink-400 text-body-sm">No club history available</div>
         ) : (
           <div className="relative">
-            <div className="absolute start-8 top-0 bottom-0 w-0.5 bg-ink-100" />
+            <div className="absolute start-7 sm:start-8 top-0 bottom-0 w-0.5 bg-ink-100" />
             <div className="divide-y divide-ink-100">
               {data.clubs.map((club, i) => (
-                <div key={i} className="flex items-start gap-4 px-5 py-4 relative">
+                <div key={i} className="flex items-start gap-3 sm:gap-4 px-3.5 sm:px-5 py-3.5 sm:py-4 relative">
                   <div className="w-7 h-7 rounded-full bg-aqua-100 border-2 border-aqua-500 flex items-center justify-center z-10 shrink-0 mt-0.5">
                     <span className="text-body-sm font-bold tnum text-aqua-600">{i + 1}</span>
                   </div>
@@ -1626,10 +1626,10 @@ function TransferHistoryTab({ swimmerId }) {
 
       {/* Nationality */}
       <Card padding="none" className="overflow-hidden">
-        <div className="px-5 py-4 border-b border-ink-100 bg-ink-50">
+        <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-ink-100 bg-ink-50">
           <h3 className="text-title text-ink-900">Nationality</h3>
         </div>
-        <div className="px-5 py-4">
+        <div className="px-4 sm:px-5 py-3.5 sm:py-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {data.nationality_meet_counts.map((n, i) => (
               <div key={i} className="flex items-center gap-3 bg-ink-50 rounded-sm p-3">
@@ -1644,7 +1644,7 @@ function TransferHistoryTab({ swimmerId }) {
           </div>
         </div>
         {data.nationality_changes.filter(ch => ch.from_country !== ch.to_country).length > 0 && (
-          <div className="px-5 pb-4 border-t border-ink-100 pt-4">
+          <div className="px-4 sm:px-5 pb-4 border-t border-ink-100 pt-4">
             <h4 className="text-body-sm font-semibold text-ink-700 mb-3">Nationality Changes</h4>
             <div className="space-y-3">
               {data.nationality_changes.filter(ch => ch.from_country !== ch.to_country).map((ch, i) => (
@@ -1738,7 +1738,7 @@ function RankingsTab({ swimmerId, swimmer }) {
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {scopes.map(scope => {
           const rows = rankings
             .filter(r => r.pool === effectivePool && r.rankings[scope])
@@ -2008,7 +2008,7 @@ export default function SwimmerProfilePage() {
       {/* Tab Content */}
       <div key={effectiveTab} className="animate-fade-up">
         {effectiveTab === 'times' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-4 lg:gap-6">
             <PersonalBestsTable events={events} onEventClick={handleEventClick} selectedEvent={selectedEvent} />
             <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} navigate={navigate} />
           </div>

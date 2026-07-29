@@ -306,7 +306,7 @@ export default function ImportPage() {
 
       {/* Step 0: Method Selection */}
       {step === 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[
             { key: 'pdf', icon: FileText, title: 'Upload PDF', hint: 'Import from PDF files (Splash, HY-TEK, FRMN)' },
             { key: 'excel', icon: FileSpreadsheet, title: 'Upload Excel', hint: `Import from Excel or CSV files — up to ${MAX_FILES} meets at once` },
@@ -314,7 +314,7 @@ export default function ImportPage() {
             { key: 'manual', icon: PenLine, title: 'Manual Entry', hint: 'Add individual results manually by searching athletes' },
           ].map(({ key, icon: Icon, title, hint }) => (
             <button key={key} onClick={() => selectMethod(key)}
-              className="bg-white rounded-md border border-ink-100 shadow-card p-6 md:p-8 text-center transition-colors hover:border-aqua-500/40 hover:bg-aqua-50/40 group">
+              className="bg-white rounded-md border border-ink-100 shadow-card p-4 sm:p-6 md:p-8 text-center transition-colors hover:border-aqua-500/40 hover:bg-aqua-50/40 group">
               <span className="mx-auto mb-4 w-12 h-12 rounded-full bg-aqua-50 text-aqua-600 flex items-center justify-center">
                 <Icon size={24} />
               </span>
@@ -328,7 +328,7 @@ export default function ImportPage() {
       {/* Step 1: Upload (PDF/Excel/HTML) */}
       {step === 1 && importMethod !== 'manual' && (
         <Card padding="none">
-          <div className="m-4 md:m-6 rounded-md border-2 border-dashed border-aqua-500/40 bg-aqua-50/50 p-8 md:p-12 text-center">
+          <div className="m-3 sm:m-4 md:m-6 rounded-md border-2 border-dashed border-aqua-500/40 bg-aqua-50/50 p-5 sm:p-8 md:p-12 text-center">
             <span className="mx-auto mb-4 w-14 h-14 rounded-full bg-white text-aqua-600 shadow-card flex items-center justify-center">
               <Upload size={26} />
             </span>
@@ -371,7 +371,7 @@ export default function ImportPage() {
 
           {/* Arab Only Toggle — TOP of page, big and clear */}
           <button type="button"
-            className={`w-full mb-6 p-5 md:p-6 rounded-md border-2 text-center cursor-pointer select-none transition-colors ${
+            className={`w-full mb-4 sm:mb-6 p-4 sm:p-5 md:p-6 rounded-md border-2 text-center cursor-pointer select-none transition-colors ${
               meet.arabOnly
                 ? 'bg-pos/10 border-pos'
                 : 'bg-white border-ink-200 hover:border-aqua-500/40'
@@ -426,7 +426,7 @@ export default function ImportPage() {
           )}
 
           {/* Stats bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
             <StatCard label="Swimmers" value={meet.editedPreview.stats.total_swimmers} icon={Users} />
             <StatCard label="Results" value={meet.editedPreview.stats.total_results} icon={ListChecks} />
             <StatCard label="Events" value={meet.editedPreview.stats.total_events} icon={CalendarDays} />
@@ -437,7 +437,7 @@ export default function ImportPage() {
           <Card title="Championship Details" className="mb-4">
             <p className="text-body-sm text-ink-400 mb-4">Review and complete the championship information. Fields marked with * are required.</p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="sm:col-span-2">
                 <FieldLabel required>Championship Name</FieldLabel>
                 <Input type="text" value={meet.champForm.name}
@@ -490,7 +490,7 @@ export default function ImportPage() {
             {/* Classification section */}
             <div className="border-t border-ink-100 mt-5 pt-4">
               <h3 className="text-body font-semibold text-ink-900 mb-3">Classification</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Classification</FieldLabel>
                   <Select value={meet.champForm.classification}
@@ -538,7 +538,7 @@ export default function ImportPage() {
           {meetTabs}
 
           <Card title={`Swimmer Matching${meets.length > 1 ? ` — ${meet.champForm.name || meet.fileName}` : ''}`} className="mb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
               <StatCard label="Exact Matches" value={meet.matchStats.exact_matches || 0} icon={CheckCircle2} />
               <StatCard label="Fuzzy Matches" value={meet.matchStats.fuzzy_matches || 0} icon={ListChecks} />
               <StatCard label="New Swimmers" value={meet.matchStats.new_swimmers || 0} icon={Users} />
@@ -684,7 +684,7 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
               <h2 className="text-title text-ink-900 mb-4">
                 Import Complete{meets.length > 1 ? `: ${m.result.championship_name}` : '!'}
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl mx-auto mb-6 text-start">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 max-w-2xl mx-auto mb-4 sm:mb-6 text-start">
                 <StatCard label="Results Created" value={m.result.created_results} icon={ListChecks} />
                 <StatCard label="New Swimmers" value={m.result.created_swimmers} icon={Users} />
                 <StatCard label="Matched Swimmers" value={m.result.matched_swimmers} icon={CheckCircle2} />

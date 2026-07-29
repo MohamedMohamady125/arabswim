@@ -74,25 +74,25 @@ function FeaturedMeet({ meet: c, navigate }) {
     : ''
 
   return (
-    <div className={`mb-6 ${c.id ? 'cursor-pointer' : ''} group`}
+    <div className={`mb-4 sm:mb-6 ${c.id ? 'cursor-pointer' : ''} group`}
       onClick={() => { if (c.id) navigate(`/meets/${c.id}`) }}>
       <Hero image={c.meet_photo ? mediaUrl(c.meet_photo) : undefined}>
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full mb-5 border border-white/15">
+        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full mb-4 sm:mb-5 border border-white/15">
           <span className="w-2 h-2 rounded-full bg-aqua-400 animate-pulse" />
           <span className="text-label text-white">Featured Competition</span>
         </div>
 
         {/* Title */}
-        <h2 className="text-display-xl text-white mb-2 group-hover:text-aqua-400 transition-colors">{c.name}</h2>
+        <h2 className="font-display font-extrabold text-[26px] leading-[31px] sm:text-[36px] sm:leading-[40px] break-words text-white mb-2 group-hover:text-aqua-400 transition-colors">{c.name}</h2>
 
         {/* Subtitle */}
-        <p className="text-body text-white/70 mb-5">
+        <p className="text-body text-white/70 mb-4 sm:mb-5">
           {c.pool ? (c.pool === 'LCM' ? 'Long Course 50m' : 'Short Course 25m') : (c.description || 'Upcoming competition')}
         </p>
 
         {/* Location & Date */}
-        <div className="space-y-2 mb-6">
+        <div className="space-y-2 mb-5 sm:mb-6">
           {c.location && (
             <div className="flex items-center gap-2 text-white/80 text-body-sm">
               <MapPin size={16} className="text-aqua-400 shrink-0" />
@@ -154,9 +154,9 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = 
   const showReg = c.registration_url || isAdmin
 
   return (
-    <div className="bg-ink-50 border border-aqua-500 border-t-0 rounded-b-md px-4 md:px-6 py-4">
+    <div className="bg-ink-50 border border-aqua-500 border-t-0 rounded-b-md px-3 py-3.5 md:px-6 md:py-4">
       {/* Meet Info */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 md:gap-4 md:mb-5">
         <div>
           <div className="text-label text-ink-400 mb-1">Date</div>
           <div className="text-body-sm font-medium text-ink-900">{formatDate(c.date)}{c.end_date && c.end_date !== c.date ? ` to ${formatDate(c.end_date)}` : ''}</div>
@@ -222,7 +222,7 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = 
 
       {/* Three main sections */}
       {(showLive || showGuide || showReg) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 md:gap-4 md:mb-5">
           {/* Live Results */}
           {showLive && (
             <div className="bg-white rounded-md border border-ink-100 shadow-card p-4">
@@ -333,7 +333,7 @@ function MeetExpandedPanel({ meet: c, navigate, onUpdate, onDelete, countries = 
       )}
 
       {/* Other buttons */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2 md:gap-3">
         {c.website && (
           <a href={c.website} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 h-10 px-4 rounded-sm text-body-sm font-medium bg-aqua-600 text-white hover:bg-aqua-500 transition-colors">
@@ -742,9 +742,9 @@ export default function CalendarPage() {
       )}
 
       {Object.entries(grouped).sort(([a], [b]) => b.localeCompare(a)).map(([key, group]) => (
-        <div key={key} className="mb-8">
+        <div key={key} className="mb-6 sm:mb-8">
           {/* Month header */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-3 sm:mb-4">
             <h2 className="text-label text-ink-500">
               {MONTHS[group.month]} {group.year}
             </h2>
@@ -752,7 +752,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Events + meets for this month — latest first */}
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
               {[...group.events.map(item => ({ kind: 'event', ts: dayjs(item.date).valueOf(), item })),
                 ...group.meets.map(item => ({ kind: 'meet', ts: dayjs(item.date, 'DD/MM/YYYY').valueOf(), item }))]
                 .sort((a, b) => b.ts - a.ts)
@@ -807,22 +807,22 @@ export default function CalendarPage() {
                           } catch { /* not admin — card stays as-is */ }
                         }
                       }}
-                      className="bg-white border border-ink-100 shadow-card rounded-md px-4 md:px-6 py-4 md:py-5 flex items-center gap-4 md:gap-6 transition-colors hover:border-aqua-500/40 cursor-pointer">
-                      <div className="w-20 h-20 bg-ink-900 rounded-md flex flex-col items-center justify-center text-white shrink-0">
+                      className="bg-white border border-ink-100 shadow-card rounded-md px-3 py-3.5 md:px-6 md:py-5 flex items-center gap-3 md:gap-6 transition-colors hover:border-aqua-500/40 cursor-pointer">
+                      <div className="w-14 h-14 md:w-20 md:h-20 bg-ink-900 rounded-md flex flex-col items-center justify-center text-white shrink-0">
                         <span className="text-display leading-none tnum">{d.date()}</span>
-                        <span className="text-label text-aqua-400 mt-1">{MONTH_SHORT[d.month()]}</span>
+                        <span className="text-label text-aqua-400 mt-0.5 md:mt-1">{MONTH_SHORT[d.month()]}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-title text-ink-900 truncate">{ev.title}</h3>
+                        <h3 className="text-title text-ink-900 leading-snug break-words">{ev.title}</h3>
                         {ev.description && (
-                          <div className="flex items-center gap-3 text-body-sm text-ink-500 mt-1.5">
-                            <span className="flex items-center gap-1">
+                          <div className="flex items-center gap-3 text-body-sm text-ink-500 mt-1">
+                            <span className="flex items-center gap-1 min-w-0">
                               <MapPin size={14} className="text-ink-400 shrink-0" />
-                              {ev.description}
+                              <span className="break-words">{ev.description}</span>
                             </span>
                           </div>
                         )}
-                        <div className="flex items-center gap-3 text-body-sm text-ink-400 mt-1.5">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-ink-400 mt-1">
                           <span>50m Pool</span>
                           {ev.end_date && ev.end_date !== ev.date && (
                             <span>&mdash; {formatDate(ev.date)} to {formatDate(ev.end_date)}</span>
@@ -835,15 +835,15 @@ export default function CalendarPage() {
                   )
                 }
                 return (
-                  <div key={`ev-${ev.id}`} className="bg-white border border-ink-100 shadow-card rounded-md px-4 md:px-5 py-4 flex items-center gap-4 md:gap-5">
+                  <div key={`ev-${ev.id}`} className="bg-white border border-ink-100 shadow-card rounded-md px-3 py-3 md:px-5 md:py-4 flex items-center gap-3 md:gap-5">
                     <div className="w-14 h-14 bg-record rounded-sm flex flex-col items-center justify-center text-white shrink-0">
                       <span className="text-title leading-none tnum">{d.date()}</span>
                       <span className="text-label mt-0.5">{MONTH_SHORT[d.month()]}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-body font-semibold text-ink-900 truncate">{ev.title}</h3>
-                        <Badge variant={EVENT_TYPE_BADGE[ev.event_type] || 'record'}>{ev.event_type}</Badge>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 className="text-body font-semibold text-ink-900 min-w-0 truncate">{ev.title}</h3>
+                        <Badge variant={EVENT_TYPE_BADGE[ev.event_type] || 'record'} className="shrink-0">{ev.event_type}</Badge>
                       </div>
                       {ev.description && <p className="text-body-sm text-ink-500 mt-0.5 truncate">{ev.description}</p>}
                       {ev.end_date && ev.end_date !== ev.date && (

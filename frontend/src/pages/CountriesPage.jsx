@@ -116,17 +116,17 @@ export default function CountriesPage() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={Globe} title="No countries found" hint="Try a different search or region filter" />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
           {filtered.map((c) => {
             const alpha2 = c.flag_url || CODE_TO_ALPHA2[c.code?.toUpperCase()] || (c.code || '').toLowerCase().slice(0, 2)
             return (
               <div key={c.id}
                 className="relative bg-white rounded-md shadow-card border border-ink-100 hover:border-aqua-500/40 hover:bg-aqua-50/40 transition-colors">
-                <Link to={`/countries/${c.id}`} className="block p-4">
+                <Link to={`/countries/${c.id}`} className="block p-3 sm:p-4">
                   <img
                     src={`https://flagcdn.com/w160/${alpha2}.png`}
                     alt=""
-                    className="w-14 h-10 object-cover rounded-sm border border-ink-100 mb-3"
+                    className="w-14 h-10 object-cover rounded-sm border border-ink-100 mb-2.5 sm:mb-3"
                     onError={(e) => { e.target.style.display = 'none' }}
                   />
                   <div className="text-body font-semibold text-ink-900 truncate">{c.name}</div>

@@ -108,7 +108,7 @@ export default function MedalsPage() {
 
   const countryRows = summary.map(row => ({
     entity: (
-      <span className="flex items-center min-w-0 max-w-[32vw] sm:max-w-none">
+      <span className="flex flex-1 items-center min-w-0">
         <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} name={row.swimmer__nationality__name}
           className="min-w-0 max-w-full [&>span:last-child]:truncate [&>span:last-child]:min-w-0" />
       </span>
@@ -117,14 +117,14 @@ export default function MedalsPage() {
   }))
 
   const clubRows = clubSummary.map(row => ({
-    entity: <span className="block truncate max-w-[32vw] sm:max-w-none text-body-sm font-semibold text-ink-900">{row.result__team}</span>,
+    entity: <span className="block flex-1 min-w-0 truncate text-body-sm font-semibold text-ink-900">{row.result__team}</span>,
     gold: row.gold, silver: row.silver, bronze: row.bronze,
   }))
 
   const swimmerRows = swimmerSummary.map(row => ({
     swimmerId: row.swimmer__id,
     entity: (
-      <span className="flex items-center gap-2 min-w-0 max-w-[32vw] sm:max-w-none">
+      <span className="flex flex-1 items-center gap-2 min-w-0">
         <CountryFlag code={row.swimmer__nationality__code} flagUrl={row.swimmer__nationality__flag_url} className="shrink-0" />
         <span className="text-body-sm font-semibold text-ink-900 truncate min-w-0">{row.swimmer__name}</span>
       </span>
@@ -143,7 +143,7 @@ export default function MedalsPage() {
       <PageHeader title="Medal Tally" subtitle="Arab countries medal standings" />
 
       {/* Totals */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
         <StatCard label="Gold" value={totalGold} icon={GoldDot} />
         <StatCard label="Silver" value={totalSilver} icon={SilverDot} />
         <StatCard label="Bronze" value={totalBronze} icon={BronzeDot} />
@@ -183,7 +183,7 @@ export default function MedalsPage() {
       </FilterBar>
 
       {/* View switcher */}
-      <div className="mb-5 overflow-x-auto scrollbar-hide">
+      <div className="mb-4 sm:mb-5 overflow-x-auto scrollbar-hide">
         <SegmentedControl
           options={[
             ...(!isNationalContext ? [{ key: 'summary', label: 'Country Tally' }] : []),

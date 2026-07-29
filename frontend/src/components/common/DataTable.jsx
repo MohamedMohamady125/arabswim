@@ -31,7 +31,7 @@ export default function DataTable({ columns, data, onRowClick, emptyMessage = 'N
                   key={col.key}
                   scope="col"
                   className={clsx(
-                    'px-3 md:px-4 py-2.5 text-label text-ink-400 whitespace-nowrap',
+                    'px-2.5 md:px-4 py-2.5 text-label text-ink-400 whitespace-nowrap',
                     col.align === 'end' || col.numeric ? 'text-end' : 'text-start',
                     col.sticky && 'sticky start-0 bg-ink-50 z-10',
                   )}
@@ -52,7 +52,7 @@ export default function DataTable({ columns, data, onRowClick, emptyMessage = 'N
                   <td
                     key={col.key}
                     className={clsx(
-                      'px-3 md:px-4 py-2.5 text-body-sm text-ink-900 whitespace-nowrap',
+                      'px-2.5 md:px-4 py-2.5 text-body-sm text-ink-900 whitespace-nowrap',
                       (col.align === 'end' || col.numeric) && 'text-end',
                       col.numeric && 'tnum font-medium',
                       col.sticky && 'sticky start-0 bg-white z-10',
@@ -79,7 +79,7 @@ export default function DataTable({ columns, data, onRowClick, emptyMessage = 'N
           <div
             key={row.id || i}
             onClick={() => onRowClick?.(row)}
-            className={clsx('px-4 py-3 min-h-11', onRowClick && 'active:bg-ink-50 cursor-pointer')}
+            className={clsx('px-3 py-2.5 min-h-11', onRowClick && 'active:bg-ink-50 cursor-pointer')}
           >
             {mobileRender(row)}
           </div>

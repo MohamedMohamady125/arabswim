@@ -98,7 +98,7 @@ export default function MarketFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <section>
               <h3 className="text-label text-ink-400 mb-4">Listing</h3>
               <div className="space-y-4">
@@ -110,7 +110,7 @@ export default function MarketFormPage() {
                   <FieldLabel>Description</FieldLabel>
                   <Textarea value={form.description} onChange={set('description')} rows={4} />
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                   <div>
                     <FieldLabel>Price</FieldLabel>
                     <Input type="number" step="0.01" min="0" value={form.price} onChange={set('price')} className="tnum" />
@@ -138,7 +138,7 @@ export default function MarketFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Seller</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Seller Name</FieldLabel>
                   <Input type="text" value={form.seller_name} onChange={set('seller_name')} />

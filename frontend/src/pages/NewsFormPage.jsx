@@ -97,7 +97,7 @@ export default function NewsFormPage() {
               <Input type="text" value={form.title} onChange={set('title')} placeholder="Article headline" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div>
                 <FieldLabel>Country</FieldLabel>
                 <Select value={form.country} onChange={set('country')}>

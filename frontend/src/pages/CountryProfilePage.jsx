@@ -104,7 +104,7 @@ export default function CountryProfilePage() {
   )
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
+    <div className="max-w-6xl mx-auto space-y-5 sm:space-y-6 md:space-y-8">
       <nav className="flex items-center gap-1 text-body-sm text-ink-400" aria-label="Breadcrumb">
         <Link to="/countries" className="hover:text-aqua-600">Federations</Link>
         <span>/</span>
@@ -113,11 +113,11 @@ export default function CountryProfilePage() {
 
       {/* Identity header */}
       <Card className="!mt-3">
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
           <img
             src={`https://flagcdn.com/w160/${alpha2}.png`}
             alt={country.name}
-            className="w-24 h-16 object-cover rounded-sm border border-ink-100 shadow-card"
+            className="w-20 h-14 sm:w-24 sm:h-16 object-cover rounded-sm border border-ink-100 shadow-card"
             onError={(e) => { e.target.style.display = 'none' }}
           />
           <div>
@@ -130,7 +130,7 @@ export default function CountryProfilePage() {
             </div>
           </div>
           {/* Medal summary */}
-          <div className="sm:ms-auto flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
+          <div className="sm:ms-auto flex flex-wrap items-center gap-2.5 sm:gap-4 min-w-0">
             {[['GOLD', medals.gold], ['SILVER', medals.silver], ['BRONZE', medals.bronze]].map(([t, n]) => (
               <div key={t} className="text-center">
                 <MedalIcon type={t} size={20} className="sm:w-6 sm:h-6" />
@@ -146,7 +146,7 @@ export default function CountryProfilePage() {
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         <StatCard icon={Users} label="Swimmers" value={stats.swimmers} />
         <StatCard icon={ListChecks} label="Results" value={stats.results} />
         <StatCard icon={Medal} label="Medals" value={stats.medals} />
@@ -177,11 +177,13 @@ export default function CountryProfilePage() {
         {progLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : (
-          <ProgressionChart lines={progLines} showSwimmer />
+          <div className="w-full min-w-0 max-w-full overflow-x-auto">
+            <ProgressionChart lines={progLines} showSwimmer />
+          </div>
         )}
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6 items-start">
+      <div className="grid lg:grid-cols-2 gap-5 sm:gap-6 items-start">
         {/* Top swimmers by FINA */}
         <div>
           <h2 className="text-title text-ink-900 mb-3">
@@ -343,7 +345,7 @@ export default function CountryProfilePage() {
         </Card>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-6 items-start">
+      <div className="grid lg:grid-cols-2 gap-5 sm:gap-6 items-start">
         {/* Championships hosted */}
         <Card padding="none" title={(
           <>Championships Hosted <span className="text-ink-400 font-normal text-body-sm">({stats.championships_hosted})</span></>

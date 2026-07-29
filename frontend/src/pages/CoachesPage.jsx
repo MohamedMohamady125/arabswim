@@ -109,7 +109,7 @@ export default function CoachesPage() {
             hint="Add coaches to build the coaching directory" />
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {coaches.map(c => {
             const isExpanded = expandedId === c.id
             const specializations = c.specializations ? c.specializations.split(',').map(s => s.trim()).filter(Boolean) : []
@@ -119,9 +119,9 @@ export default function CoachesPage() {
             return (
               <div key={c.id} className={`bg-white rounded-md border border-ink-100 shadow-card overflow-hidden transition-colors hover:border-aqua-500/40 ${!c.is_active ? 'opacity-60' : ''}`}>
                 {/* Main card row */}
-                <div className="flex items-start gap-4 p-4 md:p-5 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : c.id)}>
+                <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 md:p-5 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : c.id)}>
                   {/* Photo */}
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-md bg-aqua-50 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-md bg-aqua-50 flex items-center justify-center overflow-hidden shrink-0">
                     {c.photo ? (
                       <img src={c.photo} alt={c.name} className="w-full h-full object-cover" />
                     ) : (
@@ -134,7 +134,7 @@ export default function CoachesPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-body font-bold text-ink-900">{c.name}</h3>
+                      <h3 className="text-body font-bold text-ink-900 break-words min-w-0">{c.name}</h3>
                       {c.level && (
                         <span className={`text-label px-2 py-0.5 rounded-full ${LEVEL_STYLES[c.level] || 'bg-ink-100 text-ink-500'}`}>
                           {LEVEL_LABELS[c.level] || c.level}
@@ -144,7 +144,7 @@ export default function CoachesPage() {
                       {!c.is_active && <Badge variant="status">Inactive</Badge>}
                     </div>
 
-                    <div className="flex items-center gap-4 mt-1.5 text-body-sm text-ink-500 flex-wrap">
+                    <div className="flex items-center gap-x-3 gap-y-1 sm:gap-4 mt-1.5 text-body-sm text-ink-500 flex-wrap">
                       {c.nationality_detail && (
                         <span className="flex items-center gap-1 min-w-0">
                           <CountryFlag code={c.nationality_detail.code} flagUrl={c.nationality_detail.flag_url} name={c.nationality_detail.name} className="max-w-full" />
@@ -185,8 +185,8 @@ export default function CoachesPage() {
 
                 {/* Expanded detail */}
                 {isExpanded && (
-                  <div className="border-t border-ink-100 bg-ink-50/60 px-4 md:px-5 py-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="border-t border-ink-100 bg-ink-50/60 px-3 sm:px-4 md:px-5 py-3 sm:py-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                       {/* Left: Bio + Achievements */}
                       <div className="space-y-4">
                         {c.bio && (

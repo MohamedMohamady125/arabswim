@@ -11,7 +11,7 @@ export function TableSkeleton({ rows = 8 }) {
       <div className="bg-ink-50 h-10" />
       <div className="divide-y divide-ink-100">
         {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="flex items-center gap-4 px-4 h-11">
+          <div key={i} className="flex items-center gap-3 sm:gap-4 px-3 sm:px-4 h-11">
             <Skeleton className="h-4 w-6" />
             <Skeleton className="h-4 flex-1 max-w-48" />
             <Skeleton className="h-4 w-16 ms-auto" />
@@ -25,7 +25,7 @@ export function TableSkeleton({ rows = 8 }) {
 /** Ready-made skeleton for card grids. */
 export function CardsSkeleton({ count = 6 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="bg-white rounded-md shadow-card border border-ink-100 p-4">
           <Skeleton className="h-32 w-full mb-3" />

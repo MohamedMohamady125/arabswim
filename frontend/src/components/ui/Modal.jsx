@@ -40,7 +40,7 @@ export default function Modal({ open, onClose, title, size = 'md', children, foo
           </header>
         )}
         <div className="p-4 sm:p-5 min-w-0">{children}</div>
-        {footer && <footer className="px-5 py-4 border-t border-ink-100 flex justify-end gap-2">{footer}</footer>}
+        {footer && <footer className="px-4 sm:px-5 py-3 sm:py-4 border-t border-ink-100 flex justify-end gap-2">{footer}</footer>}
       </div>
     </div>
   )

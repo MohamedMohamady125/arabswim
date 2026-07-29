@@ -102,10 +102,10 @@ export default function TeamFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <section>
               <h3 className="text-label text-ink-400 mb-4">Team Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="sm:col-span-2">
                   <FieldLabel required>Team Name</FieldLabel>
                   <Input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -134,7 +134,7 @@ export default function TeamFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Contact</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Website</FieldLabel>
                   <Input type="url" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://..." />
@@ -156,7 +156,7 @@ export default function TeamFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Media</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Logo</FieldLabel>
                   <input type="file" accept="image/*" onChange={(e) => setLogo(e.target.files?.[0] || null)} className={FILE_INPUT} />

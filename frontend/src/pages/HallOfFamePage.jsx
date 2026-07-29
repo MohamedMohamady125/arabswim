@@ -57,13 +57,13 @@ export default function HallOfFamePage() {
           <EmptyState icon={Crown} title="No inductees yet" hint="The legends of Arab swimming will be honored here." />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {inductees.map((i) => {
             const photo = i.photo || i.swimmer_detail?.photo
             return (
               <article key={i.id}
                 className="bg-white rounded-md shadow-card border border-ink-100 overflow-hidden transition-colors hover:border-aqua-500/40">
-                <div className="border-t-2 border-gold p-5 flex items-center gap-4">
+                <div className="border-t-2 border-gold p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
                   <div className="w-16 h-16 rounded-full bg-ink-50 ring-2 ring-gold/50 overflow-hidden flex items-center justify-center shrink-0">
                     {photo ? (
                       <img src={photo} alt="" className="w-full h-full object-cover" />
@@ -87,7 +87,7 @@ export default function HallOfFamePage() {
                     </div>
                   </div>
                 </div>
-                <div className="px-5 pb-4">
+                <div className="px-4 sm:px-5 pb-4">
                   {i.achievements && <p className="text-body-sm text-ink-500 line-clamp-3">{i.achievements}</p>}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100 min-h-10">
                     {i.swimmer ? (

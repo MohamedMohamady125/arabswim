@@ -153,7 +153,7 @@ export default function TeamProfilePage() {
       </div>
 
       {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 lg:gap-6">
         {/* Main content */}
         <div>
           {/* Team Info */}
@@ -216,25 +216,25 @@ export default function TeamProfilePage() {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-ink-50 border-b border-ink-100">
-                        <th scope="col" className="px-4 py-2.5 text-start text-label text-ink-400">Name</th>
-                        <th scope="col" className="px-4 py-2.5 text-start text-label text-ink-400">Nationality</th>
-                        <th scope="col" className="px-4 py-2.5 text-start text-label text-ink-400">Gender</th>
-                        <th scope="col" className="px-4 py-2.5 text-end text-label text-ink-400">Age</th>
+                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-start text-label text-ink-400">Name</th>
+                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-start text-label text-ink-400">Nationality</th>
+                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-start text-label text-ink-400">Gender</th>
+                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-end text-label text-ink-400">Age</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-ink-100">
                       {profile.roster.map(s => (
                         <tr key={s.id} className="h-11 hover:bg-ink-50 cursor-pointer transition-colors" onClick={() => navigate(`/swimmers/${s.id}`)}>
-                          <td className="px-4 py-2.5">
+                          <td className="px-3 sm:px-4 py-2.5">
                             <SwimmerCell
                               name={s.name}
                               countryCode={s.nationality_detail?.code}
                               flagUrl={s.nationality_detail?.flag_url}
                             />
                           </td>
-                          <td className="px-4 py-2.5 text-body-sm text-ink-500">{s.nationality_detail?.name || '-'}</td>
-                          <td className="px-4 py-2.5 text-body-sm text-ink-500">{s.sex === 'M' ? 'Male' : 'Female'}</td>
-                          <td className="px-4 py-2.5 text-body-sm text-ink-900 text-end tnum">{s.age}</td>
+                          <td className="px-3 sm:px-4 py-2.5 text-body-sm text-ink-500">{s.nationality_detail?.name || '-'}</td>
+                          <td className="px-3 sm:px-4 py-2.5 text-body-sm text-ink-500">{s.sex === 'M' ? 'Male' : 'Female'}</td>
+                          <td className="px-3 sm:px-4 py-2.5 text-body-sm text-ink-900 text-end tnum">{s.age}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -270,14 +270,14 @@ export default function TeamProfilePage() {
                 <div className="divide-y divide-ink-100">
                   {Object.values(timesByEvent).map((group, gi) => (
                     <details key={gi} className="group">
-                      <summary className="px-4 py-3 min-h-11 cursor-pointer hover:bg-ink-50 flex items-center justify-between gap-2">
+                      <summary className="px-3 sm:px-4 py-3 min-h-11 cursor-pointer hover:bg-ink-50 flex items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 min-w-0">
                           <span className="font-medium text-body-sm text-ink-900">{group.event_name}</span>
                           <span className="text-body-sm text-ink-500 whitespace-nowrap">{group.gender === 'M' ? "Men's" : "Women's"}{group.is_relay ? ' Relay' : ''}</span>
                         </div>
                         <span className="text-body-sm text-ink-400 tnum whitespace-nowrap shrink-0">{group.results.length} result{group.results.length !== 1 ? 's' : ''}</span>
                       </summary>
-                      <div className="px-4 pb-3 overflow-x-auto">
+                      <div className="px-3 sm:px-4 pb-3 overflow-x-auto">
                         <table className="w-full min-w-[560px] sm:min-w-0">
                           <thead>
                             <tr className="text-label text-ink-400 border-b border-ink-100">
@@ -329,7 +329,7 @@ export default function TeamProfilePage() {
                 return (
                   <Card title="Medal Analysis">
                     {/* Summary */}
-                    <div className="grid grid-cols-3 gap-3 mb-5">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-5">
                       <div className="bg-ink-50 rounded-md p-3 text-center">
                         <div className="text-time-lg text-ink-900">{grandTotal}</div>
                         <div className="text-label text-ink-400">Total Medals</div>
@@ -429,7 +429,7 @@ export default function TeamProfilePage() {
                 ) : (
                   <div className="divide-y divide-ink-100">
                     {medals.map(m => (
-                      <div key={m.id} className="px-4 py-3 min-h-11 flex items-center gap-3 hover:bg-ink-50">
+                      <div key={m.id} className="px-3 sm:px-4 py-3 min-h-11 flex items-center gap-2.5 sm:gap-3 hover:bg-ink-50">
                         {medalIcon(m.medal_type)}
                         <div className="flex-1 min-w-0">
                           <div className="text-body-sm font-medium text-ink-900">{m.event_name}</div>

@@ -382,7 +382,7 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
   }
 
   return (
-    <div className="space-y-5 md:space-y-6 animate-fade-up">
+    <div className="space-y-4 sm:space-y-5 md:space-y-6 animate-fade-up">
       {/* Header */}
       <div className="flex items-start gap-3">
         <Button variant="secondary" size="sm" icon={ChevronLeft} onClick={onBack} aria-label="Back to standards" className="mt-1 shrink-0" />
@@ -436,7 +436,7 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
 
       {/* Upload Result */}
       {uploadResult && (
-        <div className={`rounded-md border p-4 text-body-sm ${uploadResult.error ? 'bg-neg/5 border-neg/20 text-neg' : 'bg-pos/5 border-pos/20 text-pos'}`}>
+        <div className={`rounded-md border p-3 sm:p-4 text-body-sm ${uploadResult.error ? 'bg-neg/5 border-neg/20 text-neg' : 'bg-pos/5 border-pos/20 text-pos'}`}>
           {uploadResult.error ? (
             <p>{uploadResult.error}</p>
           ) : (
@@ -480,8 +480,8 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
               <table className="w-full">
                 <thead>
                   <tr className="bg-ink-50 border-b border-ink-100">
-                    <th scope="col" className="px-4 md:px-5 py-2.5 text-start text-label text-ink-400">Event</th>
-                    <th scope="col" className="px-4 py-2.5 text-end text-label text-ink-400">
+                    <th scope="col" className="ps-3 pe-2 sm:px-4 md:px-5 py-2.5 text-start text-label text-ink-400">Event</th>
+                    <th scope="col" className="px-3 sm:px-4 py-2.5 text-end text-label text-ink-400">
                       {cutFilter === 'A' ? 'A Standard' : 'B Standard'}
                     </th>
                     {isAdmin && <th scope="col" className="px-2 py-2.5 w-10" aria-label="Actions" />}
@@ -490,8 +490,8 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
                 <tbody className="divide-y divide-ink-100">
                   {rows.map((row, i) => (
                     <tr key={i} className="hover:bg-ink-50 transition-colors">
-                      <td className="px-4 md:px-5 py-3 text-body-sm font-medium text-ink-900">{row.event_name}</td>
-                      <td className="px-4 py-2 text-end">
+                      <td className="ps-3 pe-2 sm:px-4 md:px-5 py-3 text-body-sm font-medium text-ink-900">{row.event_name}</td>
+                      <td className="px-3 sm:px-4 py-2 text-end">
                         {row.time ? (
                           isAdmin && editingTimeId === row.time.id ? (
                             <span className="inline-flex flex-wrap items-center justify-end gap-1.5 max-w-full">
@@ -577,14 +577,14 @@ export default function QualifyingTimesPage() {
 
   if (selectedId) {
     return (
-      <div className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8 py-6">
+      <div className="max-w-5xl mx-auto px-0 sm:px-4 md:px-6 lg:px-8 py-0 sm:py-6">
         <StandardDetail standardId={selectedId} isAdmin={isAdmin} onBack={() => { setSelectedId(null); refresh() }} />
       </div>
     )
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-0 sm:px-4 md:px-6 lg:px-8 py-0 sm:py-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Qualifying Times"
         subtitle="Olympic & World Championship entry standards"
@@ -596,7 +596,7 @@ export default function QualifyingTimesPage() {
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-md shadow-card border border-ink-100 p-5">
+            <div key={i} className="bg-white rounded-md shadow-card border border-ink-100 p-4 sm:p-5">
               <Skeleton className="h-5 w-2/3 mb-3" />
               <Skeleton className="h-4 w-1/3" />
             </div>

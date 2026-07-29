@@ -70,7 +70,7 @@ export default function NewsPage() {
           <EmptyState icon={Newspaper} title="No articles yet" hint="News from around the Arab swimming world will appear here." />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {articles.map((a) => (
             <article key={a.id}
               className="bg-white rounded-md shadow-card border border-ink-100 overflow-hidden transition-colors hover:border-aqua-500/40 flex flex-col">

@@ -243,7 +243,6 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
             className="whitespace-nowrap"
             options={[
               { key: 'main', label: isNational ? 'Club Tally' : 'Country Tally' },
-              ...(!isNational && safeClubSummary.length > 0 ? [{ key: 'clubs', label: 'Club Tally' }] : []),
               { key: 'swimmers', label: 'Swimmer Tally' },
             ]}
             value={tallySection}
@@ -290,7 +289,7 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
         )
       })()}
 
-      {(tallySection === 'clubs' || (tallySection === 'main' && isNational)) && safeClubSummary.length > 0 && (
+      {tallySection === 'main' && isNational && safeClubSummary.length > 0 && (
         <div>
           <h3 className="text-title text-ink-900 mb-3">Club Medal Tally</h3>
           <MedalTally

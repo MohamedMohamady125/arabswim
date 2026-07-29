@@ -187,7 +187,7 @@ export default function MedalsPage() {
         <SegmentedControl
           options={[
             ...(!isNationalContext ? [{ key: 'summary', label: 'Country Tally' }] : []),
-            { key: 'clubs', label: 'By Club' },
+            ...(isNationalContext ? [{ key: 'clubs', label: 'By Club' }] : []),
             { key: 'swimmers', label: 'By Swimmer' },
           ]}
           value={view}

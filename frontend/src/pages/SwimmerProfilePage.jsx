@@ -1776,8 +1776,6 @@ function RankingsTab({ swimmerId, swimmer }) {
                 {rows.map(r => {
                   const rk = r.rankings[scope]
                   const isSel = r.event_id === selected.event_id
-                  const pct = rk.total ? rk.rank / rk.total : 1
-                  const up = pct <= 0.5
                   return (
                     <button key={`${r.event_id}-${r.pool}`}
                       onClick={() => setSelectedEventId(r.event_id)}
@@ -1787,11 +1785,8 @@ function RankingsTab({ swimmerId, swimmer }) {
                       <span className={`flex-1 min-w-0 truncate font-bold uppercase text-[13px] sm:text-body-sm ${isSel ? 'text-aqua-600' : 'text-ink-900'}`}>
                         {eventName(r)}
                       </span>
-                      <span className={`flex items-center gap-1 shrink-0 tnum text-[13px] sm:text-body-sm font-semibold ${isSel ? 'text-aqua-600' : 'text-ink-400'}`}>
+                      <span className={`shrink-0 tnum text-[13px] sm:text-body-sm font-semibold ${isSel ? 'text-aqua-600' : 'text-ink-400'}`}>
                         {rk.rank}{rk.total ? `/${rk.total}` : ''}
-                        {up
-                          ? <TrendingUp size={13} className="text-success" />
-                          : <TrendingDown size={13} className="text-danger" />}
                       </span>
                       <span className={`shrink-0 w-[64px] sm:w-[76px] text-end tnum font-bold text-[13px] sm:text-body-sm ${isSel ? 'text-aqua-600' : 'text-ink-900'}`}>
                         {r.best_time}

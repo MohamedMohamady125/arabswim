@@ -18,7 +18,7 @@ export default function FilterBar({ children, chips = [], onReset, className }) 
   const [sheetOpen, setSheetOpen] = useState(false)
 
   return (
-    <div className={clsx('mb-4 md:mb-5', className)}>
+    <div className={clsx('mb-3 md:mb-5', className)}>
       {/* Desktop row */}
       <div className="hidden md:flex flex-wrap items-center gap-2.5 [&>*]:min-w-0 [&>*]:max-w-full">{children}</div>
 

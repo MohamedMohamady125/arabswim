@@ -4,14 +4,14 @@ export default function Card({ title, action, footer, padding = 'md', className,
   return (
     <section className={clsx('bg-white rounded-md shadow-card border border-ink-100', className)}>
       {(title || action) && (
-        <header className="flex items-center justify-between px-4 md:px-5 py-3 border-b border-ink-100">
+        <header className="flex items-center justify-between px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-b border-ink-100">
           {title && <h3 className="text-title text-ink-900">{title}</h3>}
           {action}
         </header>
       )}
-      <div className={clsx(padding === 'none' ? '' : 'p-4 md:p-5')}>{children}</div>
+      <div className={clsx(padding === 'none' ? '' : 'p-3 sm:p-4 md:p-5')}>{children}</div>
       {footer && (
-        <footer className="px-4 md:px-5 py-3 border-t border-ink-100">{footer}</footer>
+        <footer className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-t border-ink-100">{footer}</footer>
       )}
     </section>
   )

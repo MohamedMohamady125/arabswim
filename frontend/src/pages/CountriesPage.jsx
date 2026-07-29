@@ -124,9 +124,10 @@ export default function CountriesPage() {
                 className="relative bg-white rounded-md shadow-card border border-ink-100 hover:border-aqua-500/40 hover:bg-aqua-50/40 transition-colors">
                 <Link to={`/countries/${c.id}`} className="block p-3 sm:p-4">
                   <img
-                    src={`https://flagcdn.com/w160/${alpha2}.png`}
+                    src={`https://flagcdn.com/80x60/${alpha2}.png`}
+                    srcSet={`https://flagcdn.com/160x120/${alpha2}.png 2x`}
                     alt=""
-                    className="w-14 h-10 object-cover rounded-sm border border-ink-100 mb-2.5 sm:mb-3"
+                    className="w-20 h-[60px] object-contain rounded-sm border border-ink-100 mb-2.5 sm:mb-3"
                     onError={(e) => { e.target.style.display = 'none' }}
                   />
                   <div className="text-body font-semibold text-ink-900 truncate">{c.name}</div>

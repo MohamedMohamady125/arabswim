@@ -55,9 +55,9 @@ const GENDER_OPTIONS = [
   { key: 'F', label: 'Female' },
 ]
 
-const TH = 'px-3 md:px-4 py-2.5 text-label text-ink-400 text-start whitespace-nowrap'
-const TH_END = 'px-3 md:px-4 py-2.5 text-label text-ink-400 text-end whitespace-nowrap'
-const TD = 'px-3 md:px-4 py-2.5 text-body-sm text-ink-900'
+const TH = 'px-2 md:px-4 py-2.5 text-label text-ink-400 text-start whitespace-nowrap'
+const TH_END = 'px-2 md:px-4 py-2.5 text-label text-ink-400 text-end whitespace-nowrap'
+const TD = 'px-2 md:px-4 py-2.5 text-body-sm text-ink-900'
 
 function finaTierClass(points) {
   if (points >= 1000) return 'text-gold'
@@ -862,8 +862,8 @@ export default function MeetDetailPage() {
                       <tr className="bg-ink-50 border-b border-ink-100">
                         <th scope="col" className={`${TH} w-14`}>Rank</th>
                         <th scope="col" className={TH}>Swimmer</th>
-                        <th scope="col" className={TH}>Age</th>
-                        <th scope="col" className={TH}>Team</th>
+                        <th scope="col" className={`${TH} hidden md:table-cell`}>Age</th>
+                        <th scope="col" className={`${TH} hidden md:table-cell`}>Team</th>
                         <th scope="col" className={TH_END}>Time</th>
                         <th scope="col" className={TH_END}>FINA</th>
                         {editMode && <th scope="col" className={TH_END}>Actions</th>}
@@ -957,8 +957,8 @@ export default function MeetDetailPage() {
                                     )}
                                   </div>
                                 </td>
-                                <td className={`${TD} text-ink-500 tnum`}>{r.age_at_competition || '-'}</td>
-                                <td className={`${TD} text-ink-500`}>
+                                <td className={`${TD} text-ink-500 tnum hidden md:table-cell`}>{r.age_at_competition || '-'}</td>
+                                <td className={`${TD} text-ink-500 hidden md:table-cell`}>
                                   {isEditing ? (
                                     <Input
                                       value={editValues.team}

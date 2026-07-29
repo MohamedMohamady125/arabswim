@@ -21,7 +21,7 @@ export default function Modal({ open, onClose, title, size = 'md', children, foo
         role="dialog"
         aria-modal="true"
         className={clsx(
-          'bg-white rounded-t-lg sm:rounded-lg shadow-pop w-full max-w-[100vw] max-h-[92vh] overflow-y-auto overscroll-contain animate-fade-up',
+          'bg-white rounded-t-lg sm:rounded-lg shadow-pop w-full max-w-full max-h-[92vh] overflow-y-auto overscroll-contain animate-fade-up',
           size === 'sm' && 'sm:max-w-sm',
           size === 'md' && 'sm:max-w-md',
           size === 'lg' && 'sm:max-w-2xl',

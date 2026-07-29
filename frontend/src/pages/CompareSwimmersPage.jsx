@@ -195,7 +195,7 @@ export default function CompareSwimmersPage() {
         <div className="space-y-6 md:space-y-8 animate-fade-up">
           {/* Career Overview */}
           <Card title="Career Overview" padding="none">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-w-full min-w-0">
               <table className="w-full min-w-max">
                 <thead>
                   <tr className="border-b border-ink-100 bg-ink-50">
@@ -237,7 +237,7 @@ export default function CompareSwimmersPage() {
               action={<span className="text-body-sm text-ink-400">Personal bests in shared events</span>}
               padding="none"
             >
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-w-full min-w-0">
                 <table className="w-full min-w-max">
                   <thead>
                     <tr className="border-b border-ink-100 bg-ink-50">

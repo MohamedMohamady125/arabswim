@@ -722,7 +722,7 @@ export default function MeetDetailPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 lg:gap-6">
         {/* Left: Events sidebar */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <Card padding="none">
             <div className="p-3 border-b border-ink-100">
               <div className="flex items-center justify-between">
@@ -777,7 +777,7 @@ export default function MeetDetailPage() {
         </div>
 
         {/* Right: Results Table */}
-        <div>
+        <div className="min-w-0">
           {(
             <Card padding="none">
               <div className="p-3 sm:p-4 border-b border-ink-100 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">

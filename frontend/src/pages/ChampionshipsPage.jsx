@@ -212,7 +212,7 @@ export default function ChampionshipsPage() {
                       <h3 className="font-semibold text-[15px] leading-snug sm:font-display sm:font-bold sm:text-[20px] sm:leading-7 text-ink-900 line-clamp-2 sm:truncate">{c.name}</h3>
                       <div className="mt-1 flex items-center gap-1.5">
                         <Calendar size={14} className="text-ink-400 shrink-0" />
-                        <span className="text-body-sm text-ink-500 whitespace-nowrap">
+                        <span className="text-body-sm text-ink-500 min-w-0">
                           {formatDate(c.date)}{c.end_date && c.end_date !== c.date ? ` — ${formatDate(c.end_date)}` : ''}
                         </span>
                       </div>

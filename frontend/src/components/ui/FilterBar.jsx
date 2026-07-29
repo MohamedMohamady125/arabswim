@@ -50,7 +50,7 @@ export default function FilterBar({ children, chips = [], onReset, className }) 
       {sheetOpen && (
         <div className="fixed inset-0 z-50 md:hidden bg-ink-950/60 backdrop-blur-sm flex items-end"
           onClick={() => setSheetOpen(false)}>
-          <div className="bg-white rounded-t-lg shadow-pop w-full max-w-[100vw] max-h-[85vh] overflow-y-auto overscroll-contain animate-fade-up"
+          <div className="bg-white rounded-t-lg shadow-pop w-full max-w-full max-h-[85vh] overflow-y-auto overscroll-contain animate-fade-up"
             onClick={(e) => e.stopPropagation()}>
             <header className="flex items-center justify-between px-4 py-3.5 border-b border-ink-100 sticky top-0 bg-white rounded-t-lg">
               <h2 className="text-title text-ink-900">Filters</h2>

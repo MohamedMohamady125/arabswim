@@ -155,7 +155,7 @@ export default function TeamProfilePage() {
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 lg:gap-6">
         {/* Main content */}
-        <div>
+        <div className="min-w-0">
           {/* Team Info */}
           <Card className="mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-body-sm break-words">
@@ -173,7 +173,7 @@ export default function TeamProfilePage() {
                 </div>
               )}
               {team.address && (
-                <div className="col-span-2 flex items-center gap-2">
+                <div className="sm:col-span-2 flex items-center gap-2">
                   <MapPin size={15} className="text-ink-400 shrink-0" />
                   <span className="text-ink-500">Address:</span> <span className="font-medium text-ink-900">{team.address}</span>
                 </div>
@@ -212,7 +212,7 @@ export default function TeamProfilePage() {
               {profile.roster.length === 0 ? (
                 <EmptyState icon={Users} title="No swimmers registered" hint="No swimmers registered for this team." />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-w-full min-w-0">
                   <table className="w-full">
                     <thead>
                       <tr className="bg-ink-50 border-b border-ink-100">
@@ -277,7 +277,7 @@ export default function TeamProfilePage() {
                         </div>
                         <span className="text-body-sm text-ink-400 tnum whitespace-nowrap shrink-0">{group.results.length} result{group.results.length !== 1 ? 's' : ''}</span>
                       </summary>
-                      <div className="px-3 sm:px-4 pb-3 overflow-x-auto">
+                      <div className="px-3 sm:px-4 pb-3 overflow-x-auto max-w-full min-w-0">
                         <table className="w-full min-w-[560px] sm:min-w-0">
                           <thead>
                             <tr className="text-label text-ink-400 border-b border-ink-100">

@@ -250,7 +250,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
   return (
     <Card padding="none" className="overflow-hidden">
       <div className="p-4 border-b border-ink-100 flex items-center gap-3">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h3 className="text-title text-ink-900">{selectedEvent.event_name}</h3>
           <p className="text-body-sm text-ink-400 mt-0.5">
             {history.length} race{history.length !== 1 ? 's' : ''} recorded
@@ -262,7 +262,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
       {loadingHistory ? (
         <div className="p-4"><TableSkeleton rows={6} /></div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-w-full min-w-0">
           <table className="w-full text-body-sm">
             <thead>
               <tr className="border-b border-ink-100 bg-ink-50">
@@ -594,7 +594,7 @@ function MedalsTab({ stats }) {
                 <span className="text-label text-ink-900">TOTAL</span>
               </div>
             </div>
-            <div className="flex-1 divide-y divide-ink-100">
+            <div className="flex-1 min-w-0 divide-y divide-ink-100">
               {[
                 { label: 'GOLD', n: medals.gold, color: GOLD },
                 { label: 'SILVER', n: medals.silver, color: SILVER },
@@ -640,7 +640,7 @@ function MedalsTab({ stats }) {
       {chartComps.length > 0 && (
         <Card>
           <InkBar>MEDAL SUMMARY</InkBar>
-          <div className="mt-5 overflow-x-auto">
+          <div className="mt-5 overflow-x-auto max-w-full min-w-0">
             <div className="min-w-[420px]">
               <div className="flex items-end gap-2 sm:gap-4 h-44 border-b-2 border-ink-100 px-2">
                 {chartComps.map(comp => {
@@ -935,7 +935,7 @@ function StatsTab({ stats, events, swimmerId }) {
             {records.map((r) => (
               <div key={r.id} className="px-3 sm:px-5 py-3 sm:py-3.5 flex items-center gap-3 sm:gap-4 hover:bg-ink-50 transition-colors">
                 <Badge variant={r.record_type === 'ARAB' ? 'pos' : r.record_type === 'GCC' ? 'aqua' : 'record'}>{r.record_type}</Badge>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <EventLabel name={r.event_name} className="font-semibold" />
                   <div className="text-body-sm text-ink-400">{r.location}{r.location && r.date ? ' \u00b7 ' : ''}{formatDate(r.date)}</div>
                 </div>

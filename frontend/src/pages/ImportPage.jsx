@@ -547,7 +547,7 @@ export default function ImportPage() {
 
           {/* Matches table */}
           <Card padding="none" className="overflow-hidden mb-4">
-            <div className="max-h-[500px] overflow-y-auto overflow-x-auto">
+            <div className="max-h-[500px] max-w-full overflow-y-auto overflow-x-auto">
               <table className="w-full min-w-[640px]">
                 <thead className="bg-ink-50 sticky top-0 z-10">
                   <tr>
@@ -697,7 +697,7 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
                   <summary className="cursor-pointer text-body-sm text-ink-500 hover:text-ink-900 font-medium">
                     View {m.result.skipped_details.length} skipped result{m.result.skipped_details.length !== 1 ? 's' : ''}
                   </summary>
-                  <div className="mt-2 border border-ink-100 rounded-md overflow-hidden overflow-x-auto">
+                  <div className="mt-2 max-w-full border border-ink-100 rounded-md overflow-hidden overflow-x-auto">
                     <table className="w-full text-body-sm min-w-[480px]">
                       <thead className="bg-ink-50">
                         <tr>
@@ -748,7 +748,7 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
                     {cleanupLoading ? (
                       <div className="p-4 text-center text-ink-400 text-body-sm">Loading swimmers...</div>
                     ) : (
-                      <div className="max-h-[400px] overflow-y-auto overflow-x-auto">
+                      <div className="max-h-[400px] max-w-full overflow-y-auto overflow-x-auto">
                         <table className="w-full text-body-sm min-w-[520px]">
                           <thead className="bg-ink-50 sticky top-0 z-10">
                             <tr>

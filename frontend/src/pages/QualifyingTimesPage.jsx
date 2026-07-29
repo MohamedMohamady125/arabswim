@@ -477,6 +477,7 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
               title={stroke}
               action={<span className="text-label text-ink-400">{rows.length} event{rows.length !== 1 ? 's' : ''}</span>}
             >
+              <div className="overflow-x-auto overscroll-x-contain max-w-full min-w-0">
               <table className="w-full">
                 <thead>
                   <tr className="bg-ink-50 border-b border-ink-100">
@@ -529,6 +530,7 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
                   ))}
                 </tbody>
               </table>
+              </div>
             </Card>
           ))}
         </div>

@@ -191,7 +191,7 @@ export default function MeetEditModal({ meet, onClose, onSaved }) {
     <Modal open onClose={onClose} title={`Edit Meet — ${meet.name}`} size="xl">
       {/* Section Tabs */}
       <Tabs
-        className="-mx-5 px-5 mb-5"
+        className="-mx-4 px-4 sm:-mx-5 sm:px-5 mb-5"
         tabs={[
           { key: 'info', label: 'Meet Info', icon: ClipboardList },
           { key: 'results', label: `Results (${totalResults})`, icon: Waves },

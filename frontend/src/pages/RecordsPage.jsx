@@ -104,8 +104,12 @@ export default function RecordsPage() {
     { key: 'event_name', label: 'Event', render: r => <EventLabel name={r.event_name} /> },
     { key: 'swimmer_name', label: isRelay ? 'Team' : 'Swimmer',
       render: r => <span className="font-medium">{r.swimmer_name}</span> },
-    { key: 'nationality', label: isRelay ? 'Country' : 'Nationality',
-      render: r => <CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} name={r.nationality} /> },
+    { key: 'nationality', label: isRelay ? 'Country' : 'Nat.',
+      render: r => (
+        <span title={r.nationality}>
+          <CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} />
+        </span>
+      ) },
     { key: 'time', label: 'Time', align: 'end', render: r => <TimeDisplay time={r.time} /> },
     { key: 'fina_points', label: 'FINA', numeric: true, render: r => r.fina_points || '-' },
     { key: 'championship_name', label: 'Championship' },
@@ -118,9 +122,12 @@ export default function RecordsPage() {
     <div className="flex items-center gap-2.5 sm:gap-3">
       <div className="flex-1 min-w-0">
         <EventLabel name={r.event_name} className="mb-0.5" />
-        <div className="text-body-sm font-medium text-ink-900 truncate">{r.swimmer_name}</div>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <CountryFlag code={r.nationality_code} flagUrl={r.nationality_flag} className="shrink-0 [&>img]:w-5 [&>img]:h-[15px]" />
+          <span className="text-body-sm font-medium text-ink-900 truncate">{r.swimmer_name}</span>
+        </div>
         <div className="text-body-sm text-ink-400 truncate">
-          {[r.nationality, r.championship_name, formatDate(r.date)].filter(Boolean).join(' · ')}
+          {[r.championship_name, formatDate(r.date)].filter(Boolean).join(' · ')}
         </div>
       </div>
       <TimeDisplay time={r.time} className="shrink-0" />

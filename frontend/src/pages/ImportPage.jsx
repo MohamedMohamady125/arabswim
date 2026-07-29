@@ -281,7 +281,7 @@ export default function ImportPage() {
       <PageHeader title="Import Results" subtitle="Bring meet results in from PDF, Excel, HTML or manual entry" />
 
       {/* Wizard step indicator */}
-      <div className="flex items-center gap-2 mb-6 md:mb-8 overflow-x-auto scrollbar-hide pb-1" aria-label="Import progress">
+      <div className="flex items-center gap-2 mb-4 sm:mb-5 overflow-x-auto scrollbar-hide pb-1" aria-label="Import progress">
         {stepLabels.map((label, i) => (
           <div key={i} className="flex items-center gap-2 shrink-0">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-body-sm font-bold tnum ${
@@ -314,7 +314,7 @@ export default function ImportPage() {
             { key: 'manual', icon: PenLine, title: 'Manual Entry', hint: 'Add individual results manually by searching athletes' },
           ].map(({ key, icon: Icon, title, hint }) => (
             <button key={key} onClick={() => selectMethod(key)}
-              className="bg-white rounded-md border border-ink-100 shadow-card p-4 sm:p-6 md:p-8 text-center transition-colors hover:border-aqua-500/40 hover:bg-aqua-50/40 group">
+              className="bg-white rounded-md border border-ink-100 shadow-card p-4 sm:p-5 text-center transition-colors hover:border-aqua-500/40 hover:bg-aqua-50/40 group">
               <span className="mx-auto mb-4 w-12 h-12 rounded-full bg-aqua-50 text-aqua-600 flex items-center justify-center">
                 <Icon size={24} />
               </span>
@@ -371,7 +371,7 @@ export default function ImportPage() {
 
           {/* Arab Only Toggle — TOP of page, big and clear */}
           <button type="button"
-            className={`w-full mb-4 sm:mb-6 p-4 sm:p-5 md:p-6 rounded-md border-2 text-center cursor-pointer select-none transition-colors ${
+            className={`w-full mb-4 p-4 sm:p-5 rounded-md border-2 text-center cursor-pointer select-none transition-colors ${
               meet.arabOnly
                 ? 'bg-pos/10 border-pos'
                 : 'bg-white border-ink-200 hover:border-aqua-500/40'

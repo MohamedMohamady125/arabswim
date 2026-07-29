@@ -134,7 +134,7 @@ export default function HomePage() {
   const meetDate = useMemo(() => (nextMeet ? parseMeetDate(nextMeet.date) : null), [nextMeet])
 
   return (
-    <div className="space-y-5 sm:space-y-8 animate-fade-up">
+    <div className="space-y-4 sm:space-y-6 animate-fade-up">
       {/* ── Hero ── */}
       <Hero>
         <div className="max-w-2xl">
@@ -154,7 +154,7 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 sm:mt-8 sm:pt-6 border-t border-white/10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 sm:mt-6 sm:pt-5 border-t border-white/10">
           {HERO_STATS.map(({ key, label }) => (
             <div key={key}>
               <div className="text-time-lg text-white tnum animate-count-up">

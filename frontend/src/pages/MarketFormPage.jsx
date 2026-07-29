@@ -98,7 +98,7 @@ export default function MarketFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-5 sm:space-y-6">
+          <div className="space-y-4 sm:space-y-5">
             <section>
               <h3 className="text-label text-ink-400 mb-4">Listing</h3>
               <div className="space-y-4">

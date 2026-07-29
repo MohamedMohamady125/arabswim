@@ -88,7 +88,7 @@ export default function ChampionshipsPage() {
   ].filter(Boolean)
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Hero — page title + featured/nearest meet */}
       <Hero image={featured?.meet_photo ? mediaUrl(featured.meet_photo) : undefined}>
         <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">

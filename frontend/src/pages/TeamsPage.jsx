@@ -56,7 +56,7 @@ function AutoCleanModal({ onClose, onCleaned }) {
       </p>
 
       {loading ? (
-        <div className="py-10 text-center">
+        <div className="py-8 text-center">
           <Loader2 size={28} className="animate-spin mx-auto text-aqua-600" />
           <p className="text-body-sm text-ink-400 mt-3">Scanning all teams for duplicates...</p>
         </div>
@@ -207,7 +207,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
 
   if (loading) return (
     <Modal open onClose={onClose} title="Merge teams" size="lg">
-      <div className="py-10 text-center">
+      <div className="py-8 text-center">
         <Loader2 size={28} className="animate-spin mx-auto text-aqua-600" />
       </div>
     </Modal>

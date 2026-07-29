@@ -92,10 +92,10 @@ export default function SwimmerFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-5 sm:space-y-6">
+          <div className="space-y-4 sm:space-y-5">
             <section>
               <h3 className="text-label text-ink-400 mb-4">Basic Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-3 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Profile Photo</FieldLabel>
                   <PhotoUpload currentPhoto={form.photo} onPhotoChange={setPhotoBlob} />

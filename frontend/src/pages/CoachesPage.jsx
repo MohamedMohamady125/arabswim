@@ -186,7 +186,7 @@ export default function CoachesPage() {
                 {/* Expanded detail */}
                 {isExpanded && (
                   <div className="border-t border-ink-100 bg-ink-50/60 px-3 sm:px-4 md:px-5 py-3 sm:py-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                       {/* Left: Bio + Achievements */}
                       <div className="space-y-4">
                         {c.bio && (

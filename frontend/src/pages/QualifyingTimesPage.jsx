@@ -382,7 +382,7 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-5 md:space-y-6 animate-fade-up">
+    <div className="space-y-4 sm:space-y-5 animate-fade-up">
       {/* Header */}
       <div className="flex items-start gap-3">
         <Button variant="secondary" size="sm" icon={ChevronLeft} onClick={onBack} aria-label="Back to standards" className="mt-1 shrink-0" />
@@ -586,7 +586,7 @@ export default function QualifyingTimesPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-0 sm:px-4 md:px-6 lg:px-8 py-0 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="max-w-5xl mx-auto px-0 sm:px-4 md:px-6 lg:px-8 py-0 sm:py-6 space-y-4 sm:space-y-5">
       <PageHeader
         title="Qualifying Times"
         subtitle="Olympic & World Championship entry standards"

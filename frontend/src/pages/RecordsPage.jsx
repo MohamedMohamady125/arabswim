@@ -172,7 +172,7 @@ export default function RecordsPage() {
   )
 
   const RecordSection = ({ title, columns, data, mobileRender, emptyMessage }) => (
-    <section className="mb-5 sm:mb-6 md:mb-8">
+    <section className="mb-4 sm:mb-5">
       <h2 className="text-title text-ink-900 mb-3">{title}</h2>
       <DataTable columns={columns} data={data} mobileRender={mobileRender} emptyMessage={emptyMessage} />
     </section>

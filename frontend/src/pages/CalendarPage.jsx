@@ -545,7 +545,7 @@ export default function CalendarPage() {
       <div key={c.id}>
         <div
           onClick={() => setSelectedMeet(isSelected ? null : c)}
-          className={`bg-white border px-3 md:px-6 py-3.5 md:py-5 flex items-center gap-3 md:gap-6 cursor-pointer transition-colors ${
+          className={`bg-white border px-3 md:px-4 py-3 md:py-4 flex items-center gap-3 md:gap-4 cursor-pointer transition-colors ${
             isSelected ? 'border-aqua-500 rounded-t-md shadow-card' : 'border-ink-100 rounded-md shadow-card hover:border-aqua-500/40'
           }`}
         >
@@ -742,7 +742,7 @@ export default function CalendarPage() {
       )}
 
       {Object.entries(grouped).sort(([a], [b]) => b.localeCompare(a)).map(([key, group]) => (
-        <div key={key} className="mb-6 sm:mb-8">
+        <div key={key} className="mb-4 sm:mb-5">
           {/* Month header */}
           <div className="flex items-center gap-3 mb-3 sm:mb-4">
             <h2 className="text-label text-ink-500">
@@ -807,7 +807,7 @@ export default function CalendarPage() {
                           } catch { /* not admin — card stays as-is */ }
                         }
                       }}
-                      className="bg-white border border-ink-100 shadow-card rounded-md px-3 py-3.5 md:px-6 md:py-5 flex items-center gap-3 md:gap-6 transition-colors hover:border-aqua-500/40 cursor-pointer">
+                      className="bg-white border border-ink-100 shadow-card rounded-md px-3 py-3 md:px-4 md:py-4 flex items-center gap-3 md:gap-4 transition-colors hover:border-aqua-500/40 cursor-pointer">
                       <div className="w-14 h-14 md:w-20 md:h-20 bg-ink-900 rounded-md flex flex-col items-center justify-center text-white shrink-0">
                         <span className="text-display leading-none tnum">{d.date()}</span>
                         <span className="text-label text-aqua-400 mt-0.5 md:mt-1">{MONTH_SHORT[d.month()]}</span>

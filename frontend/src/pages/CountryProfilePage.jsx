@@ -59,7 +59,7 @@ export default function CountryProfilePage() {
   }
   if (!data) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-5">
         <Skeleton className="h-32 w-full rounded-md" />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-md" />)}
@@ -104,7 +104,7 @@ export default function CountryProfilePage() {
   )
 
   return (
-    <div className="max-w-6xl mx-auto space-y-5 sm:space-y-6 md:space-y-8">
+    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-5">
       <nav className="flex items-center gap-1 text-body-sm text-ink-400" aria-label="Breadcrumb">
         <Link to="/countries" className="hover:text-aqua-600">Federations</Link>
         <span>/</span>
@@ -113,7 +113,7 @@ export default function CountryProfilePage() {
 
       {/* Identity header */}
       <Card className="!mt-3">
-        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <img
             src={`https://flagcdn.com/w160/${alpha2}.png`}
             alt={country.name}
@@ -183,7 +183,7 @@ export default function CountryProfilePage() {
         )}
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-5 sm:gap-6 items-start">
+      <div className="grid lg:grid-cols-2 gap-3 sm:gap-4 items-start">
         {/* Top swimmers by FINA */}
         <div>
           <h2 className="text-title text-ink-900 mb-3">
@@ -345,7 +345,7 @@ export default function CountryProfilePage() {
         </Card>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-5 sm:gap-6 items-start">
+      <div className="grid lg:grid-cols-2 gap-3 sm:gap-4 items-start">
         {/* Championships hosted */}
         <Card padding="none" title={(
           <>Championships Hosted <span className="text-ink-400 font-normal text-body-sm">({stats.championships_hosted})</span></>

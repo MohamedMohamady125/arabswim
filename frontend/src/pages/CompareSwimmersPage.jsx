@@ -148,7 +148,7 @@ export default function CompareSwimmersPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-4 sm:py-6 pb-12">
+    <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-4 sm:py-6 pb-8">
       <nav className="flex items-center gap-1 text-body-sm text-ink-400 mb-2" aria-label="Breadcrumb">
         <button onClick={() => navigate('/swimmers')} className="inline-flex items-center gap-1 hover:text-aqua-600 transition-colors">
           <ChevronLeft size={14} />
@@ -173,7 +173,7 @@ export default function CompareSwimmersPage() {
 
       {/* Compare Button */}
       {selected.length >= 2 && (
-        <div className="flex justify-center mb-6 sm:mb-8 animate-fade-up">
+        <div className="flex justify-center mb-4 sm:mb-5 animate-fade-up">
           <Button icon={ArrowLeftRight} loading={loading} onClick={doCompare}>
             {loading ? 'Comparing...' : `Compare ${selected.length} Swimmers`}
           </Button>
@@ -192,7 +192,7 @@ export default function CompareSwimmersPage() {
 
       {/* Results */}
       {comparison && data.length >= 2 && (
-        <div className="space-y-6 md:space-y-8 animate-fade-up">
+        <div className="space-y-4 sm:space-y-5 animate-fade-up">
           {/* Career Overview */}
           <Card title="Career Overview" padding="none">
             <div className="overflow-x-auto max-w-full min-w-0">

@@ -153,7 +153,7 @@ export default function TeamProfilePage() {
       </div>
 
       {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3 sm:gap-4">
         {/* Main content */}
         <div className="min-w-0">
           {/* Team Info */}

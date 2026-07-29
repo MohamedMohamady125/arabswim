@@ -89,7 +89,7 @@ export default function ChampionshipFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-5 sm:space-y-6">
+          <div className="space-y-4 sm:space-y-5">
             <section>
               <h3 className="text-label text-ink-400 mb-4">Meet Details</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

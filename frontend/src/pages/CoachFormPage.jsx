@@ -92,7 +92,7 @@ export default function CoachFormPage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <div className="space-y-5 sm:space-y-6">
+          <div className="space-y-4 sm:space-y-5">
             {/* Personal Info */}
             <section>
               <h3 className="text-label text-ink-400 mb-4">Personal Information</h3>

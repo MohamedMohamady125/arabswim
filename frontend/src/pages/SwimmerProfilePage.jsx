@@ -340,7 +340,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
                 )
               })}
               {history.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-ink-400 text-body-sm">No times recorded</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-ink-400 text-body-sm">No times recorded</td></tr>
               )}
             </tbody>
           </table>
@@ -672,7 +672,7 @@ function MedalsTab({ stats }) {
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-center gap-5 sm:gap-8 mt-4">
+          <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4">
             {[['GOLD', GOLD], ['SILVER', SILVER], ['BRONZE', BRONZE]].map(([label, color]) => (
               <span key={label} className="flex items-center gap-2">
                 <span className="w-4 h-4 rounded-[2px]" style={{ background: color }} />
@@ -804,7 +804,7 @@ function StatsTab({ stats, events, swimmerId }) {
   if (!stats) return null
   const { best_fina, season_best_fina, best_event, records, total_records, fina_distribution } = stats
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Performance Index + Highlights */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         <PerformanceIndex finaDistribution={fina_distribution} bestFina={best_fina} />
@@ -996,7 +996,7 @@ function InternationalParticipation({ championships }) {
     <div className="rounded-md overflow-hidden mb-4 sm:mb-6 relative bg-ink-50 border border-ink-100">
       {/* faint dotted backdrop */}
       <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: `radial-gradient(${AQUA} 1.2px, transparent 1.2px)`, backgroundSize: '14px 14px' }} />
-      <div className="relative px-4 sm:px-8 py-6 sm:py-8">
+      <div className="relative px-4 sm:px-6 py-5 sm:py-6">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-3 mb-1.5">
@@ -1330,7 +1330,7 @@ function RecordsTab({ swimmerId, swimmer }) {
     {subTabs}
     <div className="rounded-md overflow-hidden bg-ink-50 border border-ink-100 p-4 sm:p-8">
       {/* Header banner pill */}
-      <div className="flex justify-center mb-6 sm:mb-8">
+      <div className="flex justify-center mb-4">
         <div className="inline-flex items-center gap-2 sm:gap-4 px-4 sm:px-10 py-3 max-w-full rounded-full shadow-pop bg-gradient-to-b from-ink-700 to-ink-950 border-2 border-aqua-500">
           <Star size={18} className="text-gold fill-gold shrink-0" />
           <span className="text-white font-bold uppercase tracking-[0.06em] sm:tracking-[0.12em] text-body-sm sm:text-xl text-center">
@@ -1341,7 +1341,7 @@ function RecordsTab({ swimmerId, swimmer }) {
       </div>
 
       {/* Stat tiles */}
-      <div className="flex flex-wrap justify-center gap-2.5 sm:gap-4 mb-8 sm:mb-10">
+      <div className="flex flex-wrap justify-center gap-2.5 sm:gap-4 mb-5 sm:mb-6">
         <div className="rounded-md shadow-card px-3 sm:px-5 pt-3 sm:pt-4 pb-3 text-center min-w-[92px] sm:min-w-[130px] bg-gradient-to-br from-ink-700 to-ink-950">
           <div className="text-white font-bold tnum text-4xl sm:text-6xl leading-none"><AnimatedNumber value={totalCount} /></div>
           <div className="text-white text-label mt-2">Total Records</div>
@@ -1362,7 +1362,7 @@ function RecordsTab({ swimmerId, swimmer }) {
         const list = byType[type]
         const cfg = typeConfig[type]
         return (
-          <div key={type} className="mb-8 last:mb-0">
+          <div key={type} className="mb-5 sm:mb-6 last:mb-0">
             {/* Section header: ink banner + records count with rules */}
             <div className="flex items-center gap-3 mb-3">
               <div className="inline-flex items-center gap-2.5 ps-4 pe-8 py-2.5 shadow-card shrink-0 bg-gradient-to-b from-ink-700 to-ink-900 rounded-sm"
@@ -1452,7 +1452,7 @@ function GalleryTab({ swimmerId }) {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Photos Grid */}
       {photos.length > 0 && (
         <div>
@@ -1579,7 +1579,7 @@ function TransferHistoryTab({ swimmerId }) {
   if (!data) return <div className="text-center py-8 text-ink-400 text-body-sm">Failed to load transfer history</div>
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Club History */}
       <Card padding="none" className="overflow-hidden">
         <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-ink-100 bg-ink-50">
@@ -1876,7 +1876,7 @@ export default function SwimmerProfilePage() {
 
   if (!loaded) {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-12 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-8 space-y-4 sm:space-y-5">
         <Skeleton className="h-8 w-40 mt-4" />
         <Skeleton className="h-44 w-full rounded-lg" />
         <Skeleton className="h-10 w-full" />
@@ -1927,7 +1927,7 @@ export default function SwimmerProfilePage() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-5">
           {/* Photo */}
           <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-aqua-400/50">
             {swimmer.photo ? (
@@ -2022,7 +2022,7 @@ export default function SwimmerProfilePage() {
       {/* Tab Content */}
       <div key={effectiveTab} className="animate-fade-up">
         {effectiveTab === 'times' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-3 sm:gap-4">
             <PersonalBestsTable events={events} onEventClick={handleEventClick} selectedEvent={selectedEvent} />
             <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} navigate={navigate} />
           </div>

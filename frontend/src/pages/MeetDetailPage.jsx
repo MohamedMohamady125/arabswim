@@ -218,7 +218,7 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
     : safeMedals.filter(m => m.medal_type === medalFilter)
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Medal Count Cards */}
       {safeMedals.length > 0 && (
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
@@ -578,7 +578,7 @@ export default function MeetDetailPage() {
 
   if (!meet || !stats) {
     return (
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-5">
         <Skeleton className="h-48 w-full rounded-lg" />
         <Skeleton className="h-11 w-full" />
         <TableSkeleton rows={8} />
@@ -720,7 +720,7 @@ export default function MeetDetailPage() {
           })()}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-3 sm:gap-4">
         {/* Left: Events sidebar */}
         <div className="space-y-4 min-w-0">
           <Card padding="none">
@@ -1076,7 +1076,7 @@ export default function MeetDetailPage() {
 
       {/* Statistics Tab */}
       {activeTab === 'statistics' && stats && (
-        <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-5">
           {/* Overview Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 md:gap-4">
             {[

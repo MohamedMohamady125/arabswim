@@ -265,15 +265,15 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, navigate }) 
         <div className="overflow-x-auto max-w-full min-w-0">
           <table className="w-full text-body-sm">
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50">
-                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-ink-400">#</th>
-                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-ink-400">Time</th>
-                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-ink-400 hidden sm:table-cell">Age</th>
-                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-ink-400 hidden md:table-cell">Round</th>
-                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-ink-400 hidden lg:table-cell">Team</th>
-                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-ink-400">Meet</th>
-                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-ink-400 hidden md:table-cell">Date</th>
-                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-ink-400 hidden sm:table-cell">FINA</th>
+              <tr className="bg-ink-900">
+                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-white/70">#</th>
+                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-white/70">Time</th>
+                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-white/70 hidden sm:table-cell">Age</th>
+                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-white/70 hidden md:table-cell">Round</th>
+                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-white/70 hidden lg:table-cell">Team</th>
+                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-white/70">Meet</th>
+                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-white/70 hidden md:table-cell">Date</th>
+                <th scope="col" className="px-2 sm:px-3 py-2.5 text-start text-label text-white/70 hidden sm:table-cell">FINA</th>
               </tr>
             </thead>
             <tbody>

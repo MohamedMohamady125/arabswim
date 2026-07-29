@@ -55,8 +55,8 @@ const GENDER_OPTIONS = [
   { key: 'F', label: 'Female' },
 ]
 
-const TH = 'px-2 md:px-4 py-2.5 text-label text-ink-400 text-start whitespace-nowrap'
-const TH_END = 'px-2 md:px-4 py-2.5 text-label text-ink-400 text-end whitespace-nowrap'
+const TH = 'px-2 md:px-4 py-2.5 text-label text-white/70 text-start whitespace-nowrap'
+const TH_END = 'px-2 md:px-4 py-2.5 text-label text-white/70 text-end whitespace-nowrap'
 const TD = 'px-2 md:px-4 py-2.5 text-body-sm text-ink-900'
 
 function finaTierClass(points) {
@@ -90,7 +90,7 @@ function TopPerformersTable({ performers, navigate }) {
         <div className="overflow-x-auto mt-2">
           <table className="w-full">
             <thead>
-              <tr className="bg-ink-50 border-b border-ink-100">
+              <tr className="bg-ink-900">
                 <th scope="col" className={`${TH} w-10`}>#</th>
                 <th scope="col" className={TH}>Swimmer</th>
                 <th scope="col" className={TH}>Event</th>
@@ -142,7 +142,7 @@ function MostImprovedTable({ swimmers, navigate }) {
         <div className="overflow-x-auto mt-2">
           <table className="w-full">
             <thead>
-              <tr className="bg-ink-50 border-b border-ink-100">
+              <tr className="bg-ink-900">
                 <th scope="col" className={`${TH} w-10`}>#</th>
                 <th scope="col" className={TH}>Swimmer</th>
                 <th scope="col" className={TH}>Event</th>
@@ -365,7 +365,7 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-ink-50 border-b border-ink-100">
+                <tr className="bg-ink-900">
                   <th scope="col" className={`${TH} w-14`}>Medal</th>
                   <th scope="col" className={TH}>Swimmer</th>
                   <th scope="col" className={TH}>Event</th>
@@ -859,7 +859,7 @@ export default function MeetDetailPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="bg-ink-50 border-b border-ink-100">
+                      <tr className="bg-ink-900">
                         <th scope="col" className={`${TH} w-14`}>Rank</th>
                         <th scope="col" className={TH}>Swimmer</th>
                         <th scope="col" className={`${TH} hidden md:table-cell`}>Age</th>
@@ -1120,7 +1120,7 @@ export default function MeetDetailPage() {
               <div className="overflow-x-auto mt-2">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-ink-50 border-b border-ink-100">
+                    <tr className="bg-ink-900">
                       <th scope="col" className={`${TH} w-10`}>#</th>
                       <th scope="col" className={TH}>Swimmer</th>
                       <th scope="col" className={TH}>Event</th>
@@ -1157,7 +1157,7 @@ export default function MeetDetailPage() {
               <div className="overflow-x-auto mt-2">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-ink-50 border-b border-ink-100">
+                    <tr className="bg-ink-900">
                       <th scope="col" className={`${TH} w-16`}>Record</th>
                       <th scope="col" className={TH}>Swimmer</th>
                       <th scope="col" className={TH}>Event</th>
@@ -1197,7 +1197,7 @@ export default function MeetDetailPage() {
               <div className="overflow-x-auto mt-2">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-ink-50 border-b border-ink-100">
+                    <tr className="bg-ink-900">
                       <th scope="col" className={TH}>Championship</th>
                       <th scope="col" className={TH}>Host</th>
                       <th scope="col" className={TH_END}>Year</th>

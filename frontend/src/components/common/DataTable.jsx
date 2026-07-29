@@ -25,15 +25,15 @@ export default function DataTable({ columns, data, onRowClick, emptyMessage = 'N
       <div className="overflow-x-auto overscroll-x-contain max-w-full">
         <table className="w-full">
           <thead>
-            <tr className="bg-ink-50 border-b border-ink-100">
+            <tr className="bg-ink-900">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   scope="col"
                   className={clsx(
-                    'px-2.5 md:px-4 py-2.5 text-label text-ink-400 whitespace-nowrap',
+                    'px-2.5 md:px-4 py-2.5 text-label text-white/70 whitespace-nowrap',
                     col.align === 'end' || col.numeric ? 'text-end' : 'text-start',
-                    col.sticky && 'sticky start-0 bg-ink-50 z-10',
+                    col.sticky && 'sticky start-0 bg-ink-900 z-10',
                   )}
                 >
                   {col.label}

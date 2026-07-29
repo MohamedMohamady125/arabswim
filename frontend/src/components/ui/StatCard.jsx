@@ -7,7 +7,8 @@ import { TrendingUp, TrendingDown } from 'lucide-react'
  */
 export default function StatCard({ label, value, delta, deltaGood, icon: Icon, animate = false, className }) {
   return (
-    <div className={clsx('bg-white rounded-md shadow-card border border-ink-100 p-3 sm:p-4 flex items-start justify-between gap-2 sm:gap-3', className)}>
+    <div className={clsx('relative overflow-hidden bg-white rounded-md shadow-card border border-ink-100 p-3 sm:p-4 flex items-start justify-between gap-2 sm:gap-3', className)}>
+      <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-aqua-600 via-aqua-400 to-aqua-600" aria-hidden="true" />
       <div className="min-w-0">
         <div className="text-label text-ink-400 mb-1">{label}</div>
         <div className={clsx('text-time-lg text-ink-900 truncate', animate && 'animate-count-up')}>{value}</div>

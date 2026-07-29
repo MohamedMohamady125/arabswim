@@ -215,11 +215,11 @@ export default function TeamProfilePage() {
                 <div className="overflow-x-auto max-w-full min-w-0">
                   <table className="w-full">
                     <thead>
-                      <tr className="bg-ink-50 border-b border-ink-100">
-                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-start text-label text-ink-400">Name</th>
-                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-start text-label text-ink-400">Nationality</th>
-                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-start text-label text-ink-400">Gender</th>
-                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-end text-label text-ink-400">Age</th>
+                      <tr className="bg-ink-900">
+                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-start text-label text-white/70">Name</th>
+                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-start text-label text-white/70">Nationality</th>
+                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-start text-label text-white/70">Gender</th>
+                        <th scope="col" className="px-3 sm:px-4 py-2.5 text-end text-label text-white/70">Age</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-ink-100">

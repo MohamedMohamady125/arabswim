@@ -480,9 +480,9 @@ function StandardDetail({ standardId, onBack, isAdmin }) {
               <div className="overflow-x-auto overscroll-x-contain max-w-full min-w-0">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-ink-50 border-b border-ink-100">
-                    <th scope="col" className="ps-3 pe-2 sm:px-4 md:px-5 py-2.5 text-start text-label text-ink-400">Event</th>
-                    <th scope="col" className="px-3 sm:px-4 py-2.5 text-end text-label text-ink-400">
+                  <tr className="bg-ink-900">
+                    <th scope="col" className="ps-3 pe-2 sm:px-4 md:px-5 py-2.5 text-start text-label text-white/70">Event</th>
+                    <th scope="col" className="px-3 sm:px-4 py-2.5 text-end text-label text-white/70">
                       {cutFilter === 'A' ? 'A Standard' : 'B Standard'}
                     </th>
                     {isAdmin && <th scope="col" className="px-2 py-2.5 w-10" aria-label="Actions" />}

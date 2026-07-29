@@ -23,7 +23,7 @@ export default function Tabs({ tabs, active, onChange, sticky = false, className
               className={clsx(
                 'flex items-center gap-1.5 whitespace-nowrap px-3 py-3 text-body-sm font-medium border-b-2 -mb-px transition-colors min-h-11',
                 isActive
-                  ? 'text-ink-900 border-aqua-600'
+                  ? 'text-aqua-600 border-aqua-600 bg-aqua-50/60 rounded-t-sm'
                   : 'text-ink-400 border-transparent hover:text-ink-700',
               )}
             >

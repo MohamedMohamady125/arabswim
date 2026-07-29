@@ -50,7 +50,12 @@
 }
 
 html, body { overflow-x: hidden; max-width: 100vw; }
-body { background-color: var(--color-ink-50); color: var(--color-ink-900); }
+body {
+  background-color: #EDF4F8;
+  background-image: linear-gradient(180deg, rgba(8, 145, 178, 0.08) 0%, rgba(8, 145, 178, 0) 360px);
+  background-repeat: no-repeat;
+  color: var(--color-ink-900);
+}
 
 /* Tabular numerals — apply on every time, count, rank, points value */
 .tnum { font-variant-numeric: tabular-nums; }

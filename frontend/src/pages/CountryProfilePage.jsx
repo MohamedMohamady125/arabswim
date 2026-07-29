@@ -115,10 +115,10 @@ export default function CountryProfilePage() {
       <Card className="!mt-3">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <img
-            src={`https://flagcdn.com/112x84/${alpha2}.png`}
-            srcSet={`https://flagcdn.com/224x168/${alpha2}.png 2x`}
+            src={`https://flagcdn.com/w160/${alpha2}.png`}
+            srcSet={`https://flagcdn.com/w320/${alpha2}.png 2x`}
             alt={country.name}
-            className="w-[84px] h-[63px] sm:w-[112px] sm:h-[84px] object-contain rounded-sm border border-ink-100 shadow-card"
+            className="w-[84px] h-[63px] sm:w-[112px] sm:h-[84px] object-cover rounded-sm border border-ink-100 shadow-card"
             onError={(e) => { e.target.style.display = 'none' }}
           />
           <div>

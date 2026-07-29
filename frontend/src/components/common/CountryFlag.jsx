@@ -54,16 +54,15 @@ export default function CountryFlag({ code, flagUrl, name, className = '' }) {
 
   return (
     <span className={`inline-flex items-center gap-2 min-w-0 max-w-full ${className}`}>
-      {/* Fixed-size flagcdn endpoints pad to 4:3 so the whole flag is always
-          visible — never cropped by object-cover. */}
+      {/* Flat rectangular flags (width-based flagcdn endpoints — not the wavy icons) */}
       <img
-        src={`https://flagcdn.com/28x21/${alpha2}.png`}
-        srcSet={`https://flagcdn.com/56x42/${alpha2}.png 2x`}
+        src={`https://flagcdn.com/w40/${alpha2}.png`}
+        srcSet={`https://flagcdn.com/w80/${alpha2}.png 2x`}
         width={28}
         height={21}
         alt={name || code}
         loading="lazy"
-        className="w-7 h-[21px] shrink-0 grow-0 object-contain rounded-[3px] ring-1 ring-black/10 shadow-card"
+        className="w-7 h-[21px] shrink-0 grow-0 object-cover rounded-[3px] ring-1 ring-black/10 shadow-card"
         onError={(e) => { e.target.style.display = 'none' }}
       />
       {name && <span className="min-w-0 truncate">{name}</span>}

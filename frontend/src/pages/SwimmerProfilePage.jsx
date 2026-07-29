@@ -454,8 +454,9 @@ function PercentRing({ pct, tone, title, desc, icon }) {
     ? { a: '#22D3EE', b: AQUA, track: '#CFFAFE' }
     : { a: '#E9C65B', b: GOLD, track: '#F4E8C8' }
   return (
-    <Card className="flex flex-col items-center">
+    <Card>
       <InkBar>{title}</InkBar>
+      <div className="flex flex-col items-center">
       <div className="relative my-4">
         <svg viewBox="0 0 120 120" className="w-32 h-32 sm:w-36 sm:h-36 -rotate-90">
           <defs>
@@ -475,6 +476,7 @@ function PercentRing({ pct, tone, title, desc, icon }) {
       </div>
       <p className="text-body-sm text-ink-500 text-center leading-snug">{desc}</p>
       <div className="mt-3">{icon}</div>
+      </div>
     </Card>
   )
 }

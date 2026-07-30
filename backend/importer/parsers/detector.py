@@ -114,7 +114,10 @@ def _parse_pdf(file_path, filename=''):
         full_text = _extract_simple(file_path)
         meet = frmn_parser.parse(full_text)
     elif ffn_parser.detect_format(detect_text):
-        full_text = _extract_simple(file_path)
+        # FFN PDFs have overlapping text layers that garble default
+        # extraction (inserted stray letters, split times like "00:25 .44").
+        # Stream order keeps each result line intact.
+        full_text = _extract_text_flow(file_path)
         meet = ffn_parser.parse(full_text)
     else:
         simple_text = _extract_simple(file_path)

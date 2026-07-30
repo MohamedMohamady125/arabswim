@@ -1810,6 +1810,49 @@ class CountryCodeAliasTests(TestCase):
             self.assertIn(alias, ARAB_COUNTRY_CODES, f'{alias} missing from ARAB_COUNTRY_CODES')
 
 
+class FederationTeamNameTests(TestCase):
+    """GCC/international meets list national federations in the Team column
+    ("Kuwait Swimming", "Bahrain Aquatics", "Saudi Swimming Federation").
+    These must resolve to countries or every swimmer silently falls back to
+    the meet host country (happened on the GCC championship import)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Country
+        for code, name in [('KUW', 'Kuwait'), ('BHR', 'Bahrain'),
+                           ('KSA', 'Saudi Arabia'), ('UAE', 'UAE'),
+                           ('OMA', 'Oman'), ('QAT', 'Qatar')]:
+            Country.objects.create(name=name, code=code)
+
+    def setUp(self):
+        from importer import matcher
+        matcher._country_cache = None
+        self.addCleanup(lambda: setattr(matcher, '_country_cache', None))
+
+    def test_federation_names_resolve(self):
+        from importer.matcher import resolve_country
+        cases = {
+            'Kuwait Swimming': 'KUW',
+            'Bahrain Aquatics': 'BHR',
+            'Saudi Swimming Federation': 'KSA',
+            'Uae Aquatics Federation': 'UAE',
+            'Oman National Team': 'OMA',
+            'Qatar National Team': 'QAT',
+            'Qatar Swimming Association': 'QAT',
+        }
+        for team, code in cases.items():
+            country = resolve_country(team)
+            self.assertIsNotNone(country, f'{team!r} did not resolve')
+            self.assertEqual(country.code, code, f'{team!r} resolved to {country.code}')
+
+    def test_real_clubs_do_not_resolve(self):
+        from importer.matcher import resolve_country
+        # "Club" is not a federation word — Kuwait Club is a real club
+        self.assertIsNone(resolve_country('Kuwait Club'))
+        self.assertIsNone(resolve_country('Alexandria Swimming'))
+        self.assertIsNone(resolve_country('Swimming'))
+
+
 class MissingAgeLineTests(SimpleTestCase):
     """When a result line has no age/birth-year token, the parsers must not
     swallow the country code or team into the swimmer's name (user-reported:
@@ -2167,3 +2210,221 @@ class FFNNameReorderTests(TestCase):
         from importer.parsers.ffn_parser import _reorder_ffn_name
         # No TitleCase given name to move — leave as-is
         self.assertEqual(_reorder_ffn_name('MOHAMED ALI'), 'MOHAMED ALI')
+
+
+class SurnameCapsTests(SimpleTestCase):
+    """Names without an all-caps word get their surname uppercased so every
+    stored name follows the 'Given SURNAME' convention."""
+
+    def test_plain_title_case(self):
+        from importer.services import uppercase_surname
+        self.assertEqual(uppercase_surname('Dora Buklu'), 'Dora BUKLU')
+
+    def test_particle_surnames(self):
+        from importer.services import uppercase_surname
+        self.assertEqual(uppercase_surname('Maha Al Shehhi'), 'Maha AL SHEHHI')
+        self.assertEqual(uppercase_surname('Mohamed-Yassine Ben Abbes'),
+                         'Mohamed-Yassine BEN ABBES')
+        self.assertEqual(uppercase_surname('Pablo De La Torre'),
+                         'Pablo DE LA TORRE')
+
+    def test_multiple_middle_initials(self):
+        from importer.services import uppercase_surname
+        self.assertEqual(uppercase_surname('Saba A A H Sultan'),
+                         'Saba A A H SULTAN')
+
+    def test_single_word_unchanged(self):
+        from importer.services import uppercase_surname
+        self.assertEqual(uppercase_surname('Madonna'), 'Madonna')
+
+    def test_normalize_swimmer_name_no_caps_source(self):
+        from importer.services import normalize_swimmer_name
+        # Source PDFs without a caps surname ("dora buklu" / "Dora Buklu")
+        self.assertEqual(normalize_swimmer_name('dora buklu'), 'Dora BUKLU')
+        self.assertEqual(normalize_swimmer_name('Dora Buklu'), 'Dora BUKLU')
+        self.assertEqual(normalize_swimmer_name('DORA BUKLU'), 'Dora BUKLU')
+
+    def test_normalize_swimmer_name_correct_names_untouched(self):
+        from importer.services import normalize_swimmer_name
+        self.assertEqual(normalize_swimmer_name('Malak MEQDAR'), 'Malak MEQDAR')
+        self.assertEqual(normalize_swimmer_name('Mohamed-Yassine BEN ABBES'),
+                         'Mohamed-Yassine BEN ABBES')
+
+
+class ClubEquivalenceTests(SimpleTestCase):
+    """Fuzzy club comparison so a stray extraction character doesn't split
+    one athlete into two ('GRENOBLE ALP'38' vs 'GRENOBsLE ALP'38')."""
+
+    def test_extraction_glitch_is_same_club(self):
+        from importer.matcher import clubs_equivalent
+        self.assertTrue(clubs_equivalent("GRENOBLE ALP'38", "GRENOBsLE ALP'38"))
+
+    def test_case_and_punctuation_variants(self):
+        from importer.matcher import clubs_equivalent
+        self.assertTrue(clubs_equivalent("Grenoble Alp'38", 'GRENOBLE ALP 38'))
+        self.assertTrue(clubs_equivalent('C.N. ALGER', 'CN ALGER'))
+
+    def test_different_clubs(self):
+        from importer.matcher import clubs_equivalent
+        self.assertFalse(clubs_equivalent('CA', 'OLYMPICA'))
+        self.assertFalse(clubs_equivalent('CN ALGER', 'USM ALGER'))
+
+    def test_empty_values(self):
+        from importer.matcher import clubs_equivalent
+        self.assertFalse(clubs_equivalent('', "GRENOBLE ALP'38"))
+        self.assertFalse(clubs_equivalent(None, None))
+
+
+class HytekTiePointsTests(SimpleTestCase):
+    """Tied places (*4) split scoring points fractionally, so the points
+    column looks like a third time on the line. With take_last_time on,
+    the parser must not read '14.50' points as the swim time."""
+
+    def _event(self, distance=50):
+        from importer.parsers.base import ParsedEvent
+        return ParsedEvent(event_name=f'{distance} M Freestyle',
+                           distance=distance, stroke='Freestyle',
+                           gender='F', round_type='Finals', age_group='')
+
+    def test_tied_place_points_tail_not_taken_as_time(self):
+        from importer.parsers.hytek_parser import _parse_result_line
+        r = _parse_result_line(
+            '*4 Abou Antoun, Jane 14 Lebanon 30.20 31.38 14.50',
+            self._event(50), take_last_time=True)
+        self.assertIsNotNone(r)
+        self.assertEqual(r.time_text, '31.38')
+        self.assertEqual(r.rank, 4)
+
+    def test_implausibly_fast_tail_rejected(self):
+        from importer.parsers.hytek_parser import _parse_result_line
+        r = _parse_result_line(
+            '3 Doe, Jane 15 Club 1:10.50 1:09.80 12.00',
+            self._event(100), take_last_time=True)
+        self.assertIsNotNone(r)
+        self.assertEqual(r.time_text, '1:09.80')
+
+    def test_normal_two_time_line_still_takes_last(self):
+        from importer.parsers.hytek_parser import _parse_result_line
+        r = _parse_result_line(
+            '1 Alabed, Hadi 19 ORTH 5:35.64 4:50.92 525',
+            self._event(400), take_last_time=True)
+        self.assertEqual(r.time_text, '4:50.92')
+        self.assertEqual(r.fina_points, 525)
+
+
+class FFNTextFlowExtractionTests(SimpleTestCase):
+    """FFN PDFs have overlapping text layers that garble default
+    extraction; the detector must extract them in stream order."""
+
+    def test_ffn_branch_uses_text_flow(self):
+        from unittest import mock
+        from importer.parsers import detector
+
+        fake_pdf = mock.MagicMock()
+        fake_page = mock.MagicMock()
+        fake_page.extract_text.return_value = 'some ffn-looking text'
+        fake_pdf.__enter__.return_value.pages = [fake_page]
+        with mock.patch.object(detector.pdfplumber, 'open',
+                               return_value=fake_pdf), \
+             mock.patch.object(detector.splash_parser, 'detect_format',
+                               return_value=False), \
+             mock.patch.object(detector.hytek_parser, 'detect_format',
+                               return_value=False), \
+             mock.patch.object(detector.omega_parser, 'detect_format',
+                               return_value=False), \
+             mock.patch.object(detector.frmn_parser, 'detect_format',
+                               return_value=False), \
+             mock.patch.object(detector.ffn_parser, 'detect_format',
+                               return_value=True), \
+             mock.patch.object(detector, '_extract_text_flow',
+                               return_value='x') as flow, \
+             mock.patch.object(detector, '_extract_simple',
+                               return_value='ffn text') as simple, \
+             mock.patch.object(detector.ffn_parser, 'parse') as parse:
+            from importer.parsers.base import ParsedMeet
+            parse.return_value = ParsedMeet(source_format='ffn')
+            detector._parse_pdf('/tmp/fake.pdf', 'fake.pdf')
+        flow.assert_called_once()
+        parse.assert_called_once_with('x')
+        # _extract_simple is only for the initial detect pass, not parsing
+        simple.assert_not_called()
+
+
+class OmegaGamesVariantTests(SimpleTestCase):
+    """Hangzhou/Asian-Games results book: bare event header line, round on
+    a separate date line, NOC-Country relay lines, DOB inside result rows."""
+
+    GAMES_TEXT = """19th Asian Games Hangzhou
+Results Summary
+Women's 50m Freestyle
+THU 28 SEP 2023 Heats
+1 4 5 ZHANG Yufei CHN 3 APR 1998 0.65 24.26 Q
+2 4 4 IKEE Rikako JPN 4 JUL 2000 0.68 24.71 Q
+Men's 4 x 100m Freestyle Relay
+SUN 24 SEP 2023 Finals
+1 4 CHN-People's Republic of China 3:37.53 Q
+2 5 KOR-Republic of Korea 3:37.96
+"""
+
+    def test_detect_format(self):
+        from importer.parsers import omega_parser
+        self.assertTrue(omega_parser.detect_format(self.GAMES_TEXT))
+
+    def test_parse_games_variant(self):
+        from importer.parsers import omega_parser
+        meet = omega_parser.parse(self.GAMES_TEXT)
+        by_name = {(e.event_name, e.round_type): e for e in meet.events}
+
+        free50 = by_name[('50 M Freestyle', 'Heats')]
+        self.assertEqual(free50.gender, 'F')
+        self.assertEqual(len(free50.results), 2)
+        r1 = free50.results[0]
+        self.assertEqual(r1.time_text, '24.26')
+        self.assertEqual(r1.nationality_code, 'CHN')
+        # DOB "3 APR 1998" must set birth year, not corrupt the time
+        self.assertEqual(r1.birth_year, 1998)
+
+        relay = by_name[('4x100 M Freestyle Relay', 'Finals')]
+        self.assertEqual(relay.gender, 'M')
+        self.assertEqual(len(relay.results), 2)
+        self.assertEqual(relay.results[0].time_text, '3:37.53')
+        self.assertEqual(relay.results[0].nationality_code, 'CHN')
+        self.assertEqual(relay.results[1].rank, 2)
+
+        # Meet dates collected from the round lines
+        self.assertEqual(meet.date_text, '2023-09-24')
+        self.assertEqual(meet.date_end, '2023-09-28')
+
+    def test_chinese_header_on_detailed_pages(self):
+        """Detailed per-event pages print the English header in a display
+        font whose glyphs don't extract ('omen s m utter'); the Chinese
+        header must open a new event so results don't leak into the
+        previous one as garbage split times."""
+        from importer.parsers import omega_parser
+        text = """19th Asian Games Hangzhou
+Results Summary
+omen s m utter
+女子50米蝶泳
+FRI 29 SEP 2023 Heats
+1 4 SOMA Ai JPN 0.65 26.28
+2 3 QUAH Jing Wen SGP 0.62 26.97 0.69
+男子4x100米自由泳接力
+SUN 24 SEP 2023 Finals
+1 4 CHN-People's Republic of China 3:10.88 Q
+混合4x100米混合泳接力
+WED 27 SEP 2023 Finals
+1 4 CHN-People's Republic of China 3:37.73
+"""
+        meet = omega_parser.parse(text)
+        by_key = {(e.event_name, e.gender): e for e in meet.events}
+
+        fly = by_key[('50 M Butterfly', 'F')]
+        self.assertEqual(fly.round_type, 'Heats')
+        self.assertEqual(len(fly.results), 2)
+        self.assertEqual(fly.results[1].time_text, '26.97')
+
+        free_relay = by_key[('4x100 M Freestyle Relay', 'M')]
+        self.assertEqual(free_relay.results[0].time_text, '3:10.88')
+
+        medley_mixed = by_key[('4x100 M Medley Relay', 'X')]
+        self.assertEqual(medley_mixed.results[0].time_text, '3:37.73')

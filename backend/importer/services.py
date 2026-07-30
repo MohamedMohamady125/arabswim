@@ -55,6 +55,34 @@ def source_rank(value):
     return rank or None
 
 
+# Compound-surname particles: when one of these sits directly before the
+# last word of a name, it belongs to the surname ("Maha Al Shehhi" ->
+# surname "Al Shehhi", "Sara Ben Ali" -> surname "Ben Ali").
+SURNAME_PARTICLES = {
+    'AL', 'EL', 'BEN', 'BIN', 'BOU', 'ABOU', 'ABU', 'ABD', 'ABDEL',
+    'ABDUL', 'OULD', 'VAN', 'DER', 'DE', 'DA', 'DI', 'DEL', 'LA', 'LE',
+}
+
+
+def uppercase_surname(name):
+    """Uppercase the trailing surname of a "Given Surname" name.
+
+    Site convention is "Given SURNAME". Some PDFs emit names without any
+    uppercase surname ("Dora Buklu") — this fixes them to "Dora BUKLU".
+    Compound particles directly before the last word are part of the
+    surname; single-letter initials stay as given-name parts
+    ("Saba A A H Sultan" -> "Saba A A H SULTAN"). Single-word names are
+    left untouched (given/surname can't be told apart).
+    """
+    words = name.split()
+    if len(words) < 2:
+        return name
+    start = len(words) - 1
+    while start > 1 and words[start - 1].upper() in SURNAME_PARTICLES:
+        start -= 1
+    return ' '.join(words[:start] + [w.upper() for w in words[start:]])
+
+
 def normalize_swimmer_name(text):
     """Normalize a swimmer name while preserving parser-formatted surnames.
 
@@ -75,7 +103,10 @@ def normalize_swimmer_name(text):
     has_mixed_word = any(not w.isupper() and any(c.isalpha() for c in w) for w in words)
     if has_upper_word and has_mixed_word:
         return text
-    return normalize_name(text)
+    # No uppercase surname in the source ("Dora Buklu", "DORA BUKLU",
+    # "dora buklu"): title-case, then uppercase the surname so every
+    # import ends up on the "Given SURNAME" convention.
+    return uppercase_surname(normalize_name(text))
 
 
 def normalize_club_name(text):
@@ -569,7 +600,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     # name within one meet (e.g. two "Youssef Trabelsi"s, one Cadet, one
     # Minime) — so the identity is name + birth year when known, otherwise
     # name + exclusive age band.
-    from .matcher import category_band, bands_conflict
+    from .matcher import category_band, bands_conflict, clubs_equivalent
     swimmer_map = {}
     name_bands = {}  # NAME -> {band: identity_key} for birth-year-less rows
     # Result rows matched/updated/created during this run. Legacy merged
@@ -584,7 +615,10 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             base = (name_upper, 'Y', birth_year)
             club_norm = (club or '').strip().upper()
             first_club = year_clubs.setdefault(base, club_norm)
-            if club_norm and first_club and club_norm != first_club:
+            # Fuzzy club comparison: PDF extraction glitches ("GRENOBLE
+            # ALP'38" vs "GRENOBsLE ALP'38") must not split one athlete
+            # into two identities.
+            if club_norm and first_club and not clubs_equivalent(club_norm, first_club):
                 # Same name AND same birth year but different club — two
                 # different athletes (e.g. two "Mohamed Amine DRIDI"
                 # b.2010, clubs CA and OLYMPICA).

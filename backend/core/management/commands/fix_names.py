@@ -17,18 +17,10 @@ class Command(BaseCommand):
                 last = parts[1].strip().upper()
                 new_name = f'{first} {last}'
 
-            # Fix wrongly swapped Lebanon names: "Jaber ABBAS" → "Abbas JABER"
-            # Detect: if first word(s) are Title case and last word(s) are UPPER,
-            # AND the swimmer is Lebanese, they were swapped wrong
-            if new_name == s.name:
-                words = new_name.split()
-                if len(words) >= 2 and hasattr(s, 'nationality') and s.nationality and s.nationality.code == 'LBN':
-                    upper_words = [w for w in words if w.isupper() and len(w) > 1]
-                    title_words = [w for w in words if not w.isupper() or len(w) <= 1]
-                    if upper_words and title_words:
-                        first = ' '.join(w.title() for w in upper_words)
-                        last = ' '.join(w.upper() for w in title_words)
-                        new_name = f'{first} {last}'
+            # NOTE: do NOT add order-swapping here. "Title CAPS" order is
+            # ambiguous ("Marie KHOURY" vs "Khoury MARIE" both match), so any
+            # swap flip-flops names on every deploy. One-off repairs belong in
+            # the championship-scoped `swap_name_order` command.
 
             if new_name != s.name:
                 s.name = new_name

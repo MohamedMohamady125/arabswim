@@ -139,7 +139,8 @@ export default function RecordsPage() {
               <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Swimmer</th>
               <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden sm:table-cell">Nationality</th>
               <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Time</th>
-              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden lg:table-cell">Location / Meet</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden lg:table-cell">Meet</th>
+              <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden lg:table-cell">Location</th>
               <th className="px-2.5 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden md:table-cell">Date</th>
               {token && <th className="px-2.5 sm:px-4 py-2 sm:py-3" />}
             </tr>
@@ -161,7 +162,16 @@ export default function RecordsPage() {
                   )}
                 </td>
                 <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-mono font-medium whitespace-nowrap">{r.formatted_time}</td>
-                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell">{r.location || '-'}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell">{r.meet_name || '-'}</td>
+                <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden lg:table-cell">
+                  <span className="inline-flex items-center gap-1.5">
+                    {r.country_detail && (
+                      <CountryFlag code={r.country_detail.code} flagUrl={r.country_detail.flag_url} name={r.country_detail.name} />
+                    )}
+                    {r.location && <span>{r.location}</span>}
+                    {!r.country_detail && !r.location && '-'}
+                  </span>
+                </td>
                 <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm hidden md:table-cell whitespace-nowrap">{formatDate(r.result_date)}</td>
                 {token && (
                   <td className="px-2.5 sm:px-4 py-2 sm:py-3 text-right whitespace-nowrap">
@@ -176,7 +186,7 @@ export default function RecordsPage() {
               </tr>
             ))}
             {data.length === 0 && (
-              <tr><td colSpan={token ? 7 : 6} className="px-4 py-8 text-center text-gray-500">No records added yet.</td></tr>
+              <tr><td colSpan={token ? 8 : 7} className="px-4 py-8 text-center text-gray-500">No records added yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -264,6 +274,11 @@ export default function RecordsPage() {
         <div className="text-center py-8 text-gray-500">Select a country to view national records</div>
       ) : loading ? (
         <div className="text-center py-8 text-gray-500">Loading records...</div>
+      ) : records.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No {filters.pool === 'LCM' ? '50m (LCM)' : '25m (SCM)'} records found for this selection.
+          <div className="text-sm mt-1">Try switching the pool to {filters.pool === 'LCM' ? '25m (SCM)' : '50m (LCM)'} or changing the age group.</div>
+        </div>
       ) : (
         <>
           {(!filters.gender || filters.gender === 'M') && <RecordTable title="Men" data={menRecords} />}

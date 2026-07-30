@@ -33,7 +33,9 @@ export default function RecordFormPage() {
     event: '',
     pool: 'LCM',
     time: '',
+    meet_name: '',
     location: '',
+    country: '',
     result_date: '',
   })
 
@@ -52,7 +54,9 @@ export default function RecordFormPage() {
           event: r.event,
           pool: r.pool || 'LCM',
           time: formatTime(r.time_centiseconds),
+          meet_name: r.meet_name || '',
           location: r.location || '',
+          country: r.country || '',
           result_date: r.result_date || '',
         })
         if (r.swimmer_detail) setSwimmer(r.swimmer_detail)
@@ -116,7 +120,9 @@ export default function RecordFormPage() {
         record_type: form.record_type,
         pool: form.pool,
         time_centiseconds: cs,
+        meet_name: form.meet_name,
         location: form.location,
+        country: form.country || null,
         result_date: form.result_date,
         is_new: true,
       }
@@ -259,9 +265,21 @@ export default function RecordFormPage() {
               className="w-full border rounded-lg px-3 py-2 text-sm" />
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <label className="block text-sm font-medium mb-1">Location / Meet</label>
+            <label className="block text-sm font-medium mb-1">Meet Name</label>
+            <input type="text" value={form.meet_name} onChange={set('meet_name')}
+              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. World Championships 2024" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Location</label>
             <input type="text" value={form.location} onChange={set('location')}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Doha 2024 Worlds" />
+              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Doha" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Country</label>
+            <select value={form.country} onChange={set('country')} className="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="">— Select —</option>
+              {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </div>
         </div>
 

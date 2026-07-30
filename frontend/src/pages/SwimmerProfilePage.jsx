@@ -1254,10 +1254,27 @@ function RecordsTab({ swimmerId, swimmer }) {
   const activeScope = gapScope && availableScopes.includes(gapScope) ? gapScope : availableScopes[0]
 
   const subTabs = (
-    <div className="flex justify-center mb-4">
-      <SegmentedControl
-        options={[{ key: 'records', label: 'Records' }, { key: 'gaps', label: 'Record Gaps' }]}
-        value={view} onChange={setView} />
+    <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 max-w-lg mx-auto">
+      {[
+        { key: 'records', label: 'Records', icon: Star, hint: 'Records held' },
+        { key: 'gaps', label: 'Record Gaps', icon: TrendingUp, hint: 'How close to records' },
+      ].map(({ key, label, icon: Icon, hint }) => {
+        const active = view === key
+        return (
+          <button key={key} onClick={() => setView(key)}
+            className={`flex items-center justify-center gap-2 sm:gap-2.5 px-3 py-3 sm:py-3.5 rounded-md border-2 transition-colors ${
+              active
+                ? 'bg-gradient-to-b from-ink-700 to-ink-950 border-aqua-500 text-white shadow-pop'
+                : 'bg-white border-ink-100 text-ink-500 hover:border-aqua-500/50 hover:text-ink-900 shadow-card'
+            }`}>
+            <Icon size={18} className={active ? 'text-gold fill-gold' : 'text-aqua-600'} />
+            <span className="text-start">
+              <span className={`block text-body-sm sm:text-body font-bold uppercase tracking-wide leading-tight ${active ? 'text-white' : 'text-ink-900'}`}>{label}</span>
+              <span className={`hidden sm:block text-label normal-case tracking-normal ${active ? 'text-white/70' : 'text-ink-400'}`}>{hint}</span>
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 
@@ -1434,23 +1451,6 @@ function RecordsTab({ swimmerId, swimmer }) {
           </span>
           <Star size={18} className="text-gold fill-gold shrink-0" />
         </div>
-      </div>
-
-      {/* Stat tiles */}
-      <div className="flex flex-wrap justify-center gap-2.5 sm:gap-4 mb-5 sm:mb-6">
-        <div className="rounded-md shadow-card px-3 sm:px-5 pt-3 sm:pt-4 pb-3 text-center min-w-[92px] sm:min-w-[130px] bg-gradient-to-br from-ink-700 to-ink-950">
-          <div className="text-white font-bold tnum text-4xl sm:text-6xl leading-none"><AnimatedNumber value={totalCount} /></div>
-          <div className="text-white text-label mt-2">Total Records</div>
-          <div className="h-0.5 w-8 bg-aqua-400 mx-auto mt-1.5 rounded-full" />
-        </div>
-        {sectionOrder.map(t => (
-          <div key={t} className="rounded-md shadow-card px-3 sm:px-5 pt-3 sm:pt-4 pb-3 text-center min-w-[80px] sm:min-w-[110px]"
-            style={{ background: typeConfig[t].tile }}>
-            <div className="text-white font-bold tnum text-4xl sm:text-6xl leading-none"><AnimatedNumber value={byType[t].length} /></div>
-            <div className="text-white text-label mt-2">{typeConfig[t].label}</div>
-            <div className="h-0.5 w-8 bg-white/80 mx-auto mt-1.5 rounded-full" />
-          </div>
-        ))}
       </div>
 
       {/* Sections per record type */}

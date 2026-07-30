@@ -992,10 +992,6 @@ export default function MeetDetailPage() {
                                           </button>
                                         )}
                                       </span>
-                                      {/* Phone: Team column is hidden, so show the club under the time */}
-                                      {r.team && (r.team || '').toUpperCase() !== 'LP' && (
-                                        <span className="block md:hidden text-[11px] leading-tight text-ink-400 truncate max-w-[130px] ms-auto">{r.team}</span>
-                                      )}
                                     </>
                                   )}
                                 </td>

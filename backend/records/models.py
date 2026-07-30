@@ -1,5 +1,5 @@
 from django.db import models
-from core.models import Event
+from core.models import Country, Event
 from swimmers.models import Swimmer
 from championships.models import Result
 
@@ -18,6 +18,9 @@ class Record(models.Model):
     pool = models.CharField(max_length=3, choices=POOL_CHOICES, default='LCM')
     time_centiseconds = models.IntegerField()
     location = models.CharField(max_length=200, blank=True, default='')
+    meet_name = models.CharField(max_length=200, blank=True, default='')
+    country = models.ForeignKey(Country, on_delete=models.SET_NULL, blank=True, null=True,
+                                related_name='manual_records')
     result_date = models.DateField()
     result = models.ForeignKey(Result, on_delete=models.SET_NULL, blank=True, null=True, related_name='records')
     is_new = models.BooleanField(default=True)

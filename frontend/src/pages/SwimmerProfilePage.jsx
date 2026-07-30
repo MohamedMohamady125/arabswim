@@ -1075,13 +1075,6 @@ const PARTICIPATION_TILES = [
     icon: <svg viewBox="0 0 24 24" className="w-9 h-9" fill="none" stroke="white" strokeWidth="1.8"><circle cx="12" cy="12" r="8"/><path fill="white" stroke="none" d="M12 6.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z"/></svg> },
 ]
 
-const PARTICIPATION_FOOTER = [
-  { title: 'UNITED SPIRIT', sub: 'Stronger together', bg: '#ECFEFF', color: '#0891B2', icon: <User size={22} /> },
-  { title: 'DRIVEN BY EXCELLENCE', sub: 'Committed to success', bg: '#D9F2E8', color: '#059669', icon: <Trophy size={22} /> },
-  { title: 'DIVERSE NATIONS', sub: 'One aquatic family', bg: '#F4E8C8', color: '#D4A017', icon: <Award size={22} /> },
-  { title: 'BUILDING LEGACIES', sub: 'For today and tomorrow', bg: '#EDE4FB', color: '#7C3AED', icon: <TrendingUp size={22} /> },
-]
-
 function InternationalParticipation({ championships }) {
   const counts = {}
   championships.forEach(c => {
@@ -1093,24 +1086,6 @@ function InternationalParticipation({ championships }) {
       {/* faint dotted backdrop */}
       <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: `radial-gradient(${AQUA} 1.2px, transparent 1.2px)`, backgroundSize: '14px 14px' }} />
       <div className="relative px-4 sm:px-6 py-5 sm:py-6">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-3 mb-1.5">
-            <span className="h-[3px] w-10 sm:w-16 rounded-full bg-aqua-600" />
-            <span className="text-label text-aqua-600 tracking-[0.25em]">WE ARE GLOBAL</span>
-            <span className="h-[3px] w-10 sm:w-16 rounded-full bg-aqua-600" />
-          </div>
-          <h2 className="text-display sm:text-display-xl text-ink-900">
-            INTERNATIONAL PARTICIPATION
-          </h2>
-          <p className="text-body-sm sm:text-body text-ink-500 mt-2">Uniting nations. Celebrating excellence. Inspiring generations.</p>
-          <svg viewBox="0 0 48 24" className="w-10 h-5 mx-auto mt-2" fill={AQUA} aria-hidden="true">
-            <circle cx="34" cy="6" r="3.2"/>
-            <path d="M10 12l14-5 5 4-6 3-13-2z"/>
-            <path d="M4 18c3-2.2 6-2.2 9 0s6 2.2 9 0 6-2.2 9-0 6 2.2 9 0v2.5c-3 2.2-6 2.2-9 0s-6-2.2-9 0-6 2.2-9 0-6-2.2-9 0z" opacity="0.9"/>
-          </svg>
-        </div>
-
         {/* Tiles */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
           {PARTICIPATION_TILES.map((t) => {
@@ -1129,21 +1104,6 @@ function InternationalParticipation({ championships }) {
               </div>
             )
           })}
-        </div>
-
-        {/* Footer strip */}
-        <div className="mt-5 sm:mt-7 bg-white rounded-md shadow-card border border-ink-100 px-3 sm:px-6 py-3 sm:py-4 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-0">
-          {PARTICIPATION_FOOTER.map((f, i) => (
-            <div key={f.title} className={`flex items-center gap-2.5 sm:gap-3 sm:px-4 ${i > 0 ? 'lg:border-s lg:border-ink-100' : ''}`}>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: f.bg, color: f.color }}>
-                {f.icon}
-              </div>
-              <div className="min-w-0">
-                <div className="text-label truncate text-ink-900">{f.title}</div>
-                <div className="text-label normal-case tracking-normal font-normal text-ink-400 truncate">{f.sub}</div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>

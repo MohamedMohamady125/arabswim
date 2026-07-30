@@ -190,7 +190,6 @@ export default function RankingsPage() {
                     name: r.swimmer_name,
                     countryCode: r.nationality_code,
                     flagUrl: r.nationality_flag,
-                    meta: !isRelay && r.age_at_competition ? `Age ${r.age_at_competition}` : undefined,
                   }}
                   time={r.time}
                   points={r.fina_points || undefined}

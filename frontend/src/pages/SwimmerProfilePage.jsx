@@ -1209,8 +1209,12 @@ function RecordsTab({ swimmerId, swimmer }) {
 
   if (loading) return <TableSkeleton rows={6} />
 
-  const scopeLabels = { national: 'NATIONAL', gcc: 'GCC', arab: 'ARAB' }
-  const availableScopes = ['national', 'gcc', 'arab'].filter(s => gaps.some(g => g.scope === s))
+  const scopeLabels = {
+    national: 'NATIONAL', gcc: 'GCC', arab: 'ARAB',
+    african: 'AFRICAN', asian: 'ASIAN', mediterranean: 'MEDITERRANEAN',
+  }
+  const availableScopes = ['national', 'gcc', 'arab', 'african', 'asian', 'mediterranean']
+    .filter(s => gaps.some(g => g.scope === s))
   const activeScope = gapScope && availableScopes.includes(gapScope) ? gapScope : availableScopes[0]
 
   const subTabs = (

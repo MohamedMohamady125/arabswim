@@ -145,7 +145,12 @@ export default function RecordsPage() {
       />
     ) : '-' },
     { key: 'time', label: 'Time', align: 'end', render: r => <TimeDisplay time={r.formatted_time} /> },
-    { key: 'location', label: 'Location / Meet', render: r => r.location || '-' },
+    { key: 'location', label: 'Meet / Location', render: r => (
+      <span className="flex items-center gap-1.5 min-w-0">
+        {r.country_detail && <CountryFlag code={r.country_detail.code} flagUrl={r.country_detail.flag_url} className="shrink-0" />}
+        <span className="truncate">{[r.meet_name, r.location].filter(Boolean).join(' · ') || '-'}</span>
+      </span>
+    ) },
     { key: 'result_date', label: 'Date', render: r => formatDate(r.result_date) },
     ...(isAdmin ? [{ key: 'actions', label: '', align: 'end', render: r => (
       <span className="inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -163,7 +168,7 @@ export default function RecordsPage() {
         <EventLabel name={r.event_detail?.name} className="mb-0.5" />
         <div className="text-body-sm font-medium text-ink-900 truncate">{r.swimmer_detail?.name || '-'}</div>
         <div className="text-body-sm text-ink-400 truncate">
-          {[r.location, formatDate(r.result_date)].filter(Boolean).join(' · ')}
+          {[r.meet_name, r.location, formatDate(r.result_date)].filter(Boolean).join(' · ')}
         </div>
       </div>
       <TimeDisplay time={r.formatted_time} className="shrink-0" />

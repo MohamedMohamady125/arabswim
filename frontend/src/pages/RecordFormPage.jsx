@@ -34,7 +34,9 @@ export default function RecordFormPage() {
     event: '',
     pool: 'LCM',
     time: '',
+    meet_name: '',
     location: '',
+    country: '',
     result_date: '',
   })
 
@@ -53,7 +55,9 @@ export default function RecordFormPage() {
           event: r.event,
           pool: r.pool || 'LCM',
           time: formatTime(r.time_centiseconds),
+          meet_name: r.meet_name || '',
           location: r.location || '',
+          country: r.country || '',
           result_date: r.result_date || '',
         })
         if (r.swimmer_detail) setSwimmer(r.swimmer_detail)
@@ -117,7 +121,9 @@ export default function RecordFormPage() {
         record_type: form.record_type,
         pool: form.pool,
         time_centiseconds: cs,
+        meet_name: form.meet_name,
         location: form.location,
+        country: form.country || null,
         result_date: form.result_date,
         is_new: true,
       }
@@ -261,10 +267,22 @@ export default function RecordFormPage() {
                   <FieldLabel required>Date</FieldLabel>
                   <Input type="date" value={form.result_date} onChange={set('result_date')} />
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <FieldLabel>Location / Meet</FieldLabel>
+                <div className="col-span-2 sm:col-span-3">
+                  <FieldLabel>Meet</FieldLabel>
+                  <Input type="text" value={form.meet_name} onChange={set('meet_name')}
+                    placeholder="e.g. World Aquatics Championships 2024" />
+                </div>
+                <div className="col-span-2 sm:col-span-2">
+                  <FieldLabel>Location</FieldLabel>
                   <Input type="text" value={form.location} onChange={set('location')}
-                    placeholder="e.g. Doha 2024 Worlds" />
+                    placeholder="e.g. Doha" />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <FieldLabel>Country</FieldLabel>
+                  <Select value={form.country} onChange={set('country')}>
+                    <option value="">— Select —</option>
+                    {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </Select>
                 </div>
               </div>
             </section>

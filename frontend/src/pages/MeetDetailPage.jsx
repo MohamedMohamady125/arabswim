@@ -432,6 +432,11 @@ export default function MeetDetailPage() {
   const [pendingDeleteResult, setPendingDeleteResult] = useState(null)  // result row awaiting confirm
   const [pendingDeleteMedia, setPendingDeleteMedia] = useState(null)    // media item awaiting confirm
 
+  // National/Other meets show team column; international meets already show the country flag
+  const isNational = meet?.classification_name
+    ? ['National', 'Other'].includes(meet.classification_name)
+    : (stats ? (stats.countries?.length || 0) <= 1 : false)
+
   // Medals tab state
   const [medals, setMedals] = useState([])
   const [medalSummary, setMedalSummary] = useState([])
@@ -865,7 +870,7 @@ export default function MeetDetailPage() {
                         <th scope="col" className={`${TH} w-14`}>Rank</th>
                         <th scope="col" className={TH}>Swimmer</th>
                         <th scope="col" className={`${TH} hidden md:table-cell`}>Age</th>
-                        <th scope="col" className={`${TH} hidden md:table-cell`}>Team</th>
+                        {isNational && <th scope="col" className={`${TH} hidden md:table-cell`}>Team</th>}
                         <th scope="col" className={TH_END}>Time</th>
                         <th scope="col" className={TH_END}>FINA</th>
                         {editMode && <th scope="col" className={TH_END}>Actions</th>}
@@ -960,16 +965,18 @@ export default function MeetDetailPage() {
                                   </div>
                                 </td>
                                 <td className={`${TD} text-ink-500 tnum hidden md:table-cell`}>{r.age_at_competition || '-'}</td>
-                                <td className={`${TD} text-ink-500 hidden md:table-cell`}>
-                                  {isEditing ? (
-                                    <Input
-                                      value={editValues.team}
-                                      onChange={e => setEditValues(v => ({ ...v, team: e.target.value }))}
-                                      className="w-28 h-8"
-                                      placeholder="Club"
-                                    />
-                                  ) : (r.team || '-')}
-                                </td>
+                                {isNational && (
+                                  <td className={`${TD} text-ink-500 hidden md:table-cell`}>
+                                    {isEditing ? (
+                                      <Input
+                                        value={editValues.team}
+                                        onChange={e => setEditValues(v => ({ ...v, team: e.target.value }))}
+                                        className="w-28 h-8"
+                                        placeholder="Club"
+                                      />
+                                    ) : (r.team || '-')}
+                                  </td>
+                                )}
                                 <td className={`${TD} text-end whitespace-nowrap`}>
                                   {isEditing ? (
                                     <Input

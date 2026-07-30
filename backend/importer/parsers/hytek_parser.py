@@ -545,6 +545,8 @@ def _time_plausible(time_cs, distance):
         return True
     # Minimum possible times (centiseconds) — generous but catches column interleaving
     min_times = {
+        50: 1500,      # 15.00 — WR is ~20.9; catches points/split misreads
+        100: 3500,     # 35.00 — WR is ~46
         200: 10000,    # 1:40.00 — WR is ~1:51, age group ~2:00+
         400: 22000,    # 3:40.00 — WR is ~3:40
         800: 45000,    # 7:30.00 — WR is ~7:32
@@ -606,7 +608,27 @@ def _parse_result_line(line, event, comma_order='last_first', take_last_time=Fal
     times = list(TIME_PATTERN.finditer(line))
     if not times:
         return None
-    time_match = times[-1] if (take_last_time and len(times) >= 2) else times[0]
+    if take_last_time and len(times) >= 2:
+        time_match = times[-1]
+        # Tied places split scoring points fractionally, which makes the
+        # points column look like a third time on the line:
+        #   "*4 Abou Antoun, Jane 14 Lebanon 30.20 31.38 14.50"
+        # The swim is 31.38 — 14.50 is the points. When the trailing
+        # "time" ends the line on a tied row and is smaller than the
+        # previous time (or is impossibly fast for the distance), the
+        # real swim time is the previous one.
+        if len(times) >= 3:
+            last_cs = parse_time_to_centiseconds(time_match.group(1))
+            prev_cs = parse_time_to_centiseconds(times[-2].group(1))
+            tie_points_tail = (
+                line.lstrip().startswith('*')
+                and not line[time_match.end():].strip()
+                and last_cs < prev_cs
+            )
+            if tie_points_tail or not _time_plausible(last_cs, event.distance):
+                time_match = times[-2]
+    else:
+        time_match = times[0]
 
     time_text = time_match.group(1)
     time_cs = parse_time_to_centiseconds(time_text)

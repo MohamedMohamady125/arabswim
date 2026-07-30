@@ -54,6 +54,51 @@ HC_INDIVIDUAL_PREFIX = re.compile(
 # All time-like values on a line (split times + final time)
 _TIME_RE = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})')
 
+# Games-style variant (e.g. Hangzhou Asian Games results book): the event
+# header has no round on the same line — the round follows on a date line.
+#   "Women's 4 x 100m Freestyle Relay"
+#   "SUN 24 SEP 2023 Heats"
+EVENT_HEADER_NOROUND = re.compile(
+    r"^(Men|Women|Mixed)'?s?\s+"
+    r"(?:(\d+)\s*x\s*)?(\d+)m\s+"
+    r"([A-Za-z ]+?)\s*$"
+)
+ROUND_LINE = re.compile(
+    r'^(?:[A-Z]{3}\s+\d{1,2}\s+[A-Z]{3}\s+\d{4}\s+)?'
+    r'(Heats?|Finals?|Semifinals?|Swim-?offs?)\s*$',
+    re.IGNORECASE,
+)
+# Date on the round line: "SUN 24 SEP 2023 Heats"
+ROUND_DATE = re.compile(r'^[A-Z]{3}\s+(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\b')
+# Detailed per-event pages in Games books print the English header in a
+# display font whose glyphs don't extract ("omen s m utter"), but the
+# Chinese header right above the round line is always intact:
+#   "女子50米蝶泳" / "男子4x100米自由泳接力" / "混合4x100米混合泳接力"
+EVENT_HEADER_CN = re.compile(
+    r'^(男子|女子|混合)\s*'
+    r'(?:(\d+)\s*[xX×]\s*)?(\d+)\s*米\s*'
+    r'(个人混合泳|混合泳|自由泳|仰泳|蛙泳|蝶泳)'
+    r'(接力)?\s*$'
+)
+CN_GENDERS = {'男子': 'Men', '女子': 'Women', '混合': 'Mixed'}
+CN_STROKES = {
+    '自由泳': 'Freestyle',
+    '仰泳': 'Backstroke',
+    '蛙泳': 'Breaststroke',
+    '蝶泳': 'Butterfly',
+    '个人混合泳': 'Individual Medley',
+    '混合泳': 'Medley',
+}
+# Date of birth inside a result line: "19 APR 1998"
+DOB_RE = re.compile(r'\b\d{1,2}\s+[A-Z]{3}\s+(\d{4})\b')
+
+# Games-style relay team: "1 4 CHN-People's Republic of China 3:37.53 Q"
+RELAY_TEAM_DASH = re.compile(
+    r'^\s*(\d{1,2})\s+'           # rank
+    r'(?:\d{1,2}\s+)?'            # optional lane
+    r'([A-Z]{3})-\S'              # NOC-CountryName (no space around dash)
+)
+
 # Relay team: "1 5 KUW -Kuwait 7:52.94"
 RELAY_TEAM = re.compile(
     r'^\s*(\d{1,2})\s+'           # rank
@@ -100,7 +145,15 @@ def detect_format(text):
     has_results_summary = 'Results Summary' in text or 'Results\n' in text
     has_event = bool(EVENT_HEADER.search(text))
     has_noc = bool(re.search(r'\b[A-Z]{3}\s+\.\d{3}\s+\d', text))
-    return has_event and (has_results_summary or has_noc)
+    if has_event and (has_results_summary or has_noc):
+        return True
+    # Games-style variant: bare event header + a separate date/round line
+    has_bare_event = any(
+        EVENT_HEADER_NOROUND.match(ln.strip()) for ln in text.split('\n'))
+    has_round_line = any(
+        ROUND_LINE.match(ln.strip()) and ROUND_DATE.match(ln.strip())
+        for ln in text.split('\n'))
+    return has_results_summary and has_bare_event and has_round_line
 
 
 def parse(text):
@@ -155,14 +208,34 @@ def parse(text):
 
         # Event header
         em = EVENT_HEADER.search(stripped)
-        if em:
-            gender_raw = em.group(1)
-            legs = em.group(2)  # None for individual, "4" for relay
-            distance = int(em.group(3))
-            stroke_raw = em.group(4)
-            round_raw = em.group(5)
+        em_noround = None if em else EVENT_HEADER_NOROUND.match(stripped)
+        em_cn = None if (em or em_noround) else EVENT_HEADER_CN.match(stripped)
+        if em or em_noround or em_cn:
+            if em:
+                gender_raw = em.group(1)
+                legs = em.group(2)  # None for individual, "4" for relay
+                distance = int(em.group(3))
+                stroke_raw = em.group(4)
+                round_raw = em.group(5)
+            elif em_noround:
+                gender_raw = em_noround.group(1)
+                legs = em_noround.group(2)
+                distance = int(em_noround.group(3))
+                stroke_raw = em_noround.group(4)
+                round_raw = 'Final'  # updated by the following date/round line
+            else:
+                gender_raw = CN_GENDERS[em_cn.group(1)]
+                legs = em_cn.group(2)
+                distance = int(em_cn.group(3))
+                stroke_raw = CN_STROKES[em_cn.group(4)]
+                if em_cn.group(5):  # 接力 = relay
+                    stroke_raw += ' Relay'
+                round_raw = 'Final'  # updated by the following date/round line
 
-            gender = 'M' if gender_raw.upper() == 'MEN' else 'F'
+            if gender_raw.upper() == 'MIXED':
+                gender = 'X'
+            else:
+                gender = 'M' if gender_raw.upper() == 'MEN' else 'F'
             in_relay = legs is not None or 'relay' in stroke_raw.lower()
 
             if in_relay and legs:
@@ -188,10 +261,35 @@ def parse(text):
                 gender=gender,
                 round_type=round_type,
             )
+            current_event._round_pending = bool(em_noround or em_cn)
             meet.events.append(current_event)
             continue
 
         if current_event is None:
+            continue
+
+        # Games-style date/round line right after a bare event header:
+        # "SUN 24 SEP 2023 Heats" — sets the round (and collects meet dates)
+        rl = ROUND_LINE.match(stripped)
+        if rl and getattr(current_event, '_round_pending', False) and not current_event.results:
+            round_word = rl.group(1).upper()
+            if round_word.startswith('SEMI'):
+                current_event.round_type = 'Semis'
+            elif round_word.startswith('HEAT'):
+                current_event.round_type = 'Heats'
+            else:
+                current_event.round_type = 'Finals'
+            dm = ROUND_DATE.match(stripped)
+            if dm:
+                months = {'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5,
+                          'JUN': 6, 'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10,
+                          'NOV': 11, 'DEC': 12}
+                d = f'{int(dm.group(3)):04d}-{months.get(dm.group(2).upper(), 1):02d}-{int(dm.group(1)):02d}'
+                if not meet.date_text or d < meet.date_text:
+                    meet.date_text = d
+                if not getattr(meet, 'date_end', '') or d > meet.date_end:
+                    meet.date_end = d
+            current_event._round_pending = False
             continue
 
         # Skip split lines, echo times, metadata
@@ -238,6 +336,29 @@ def parse(text):
                 ))
                 continue
 
+            # Games-style relay team: "1 4 CHN-People's Republic of China 3:37.53 Q"
+            dm2 = RELAY_TEAM_DASH.match(stripped)
+            if dm2:
+                all_times = _TIME_RE.findall(stripped[dm2.end():])
+                if all_times:
+                    time_text = max(all_times, key=parse_time_to_centiseconds)
+                    time_cs = parse_time_to_centiseconds(time_text)
+                    noc = dm2.group(2)
+                    current_event.results.append(ParsedResult(
+                        swimmer_name=f'{noc} A',
+                        time_text=time_text,
+                        time_centiseconds=time_cs,
+                        event_name=current_event.event_name,
+                        event_distance=current_event.distance,
+                        event_stroke=current_event.stroke,
+                        gender=current_event.gender,
+                        rank=int(dm2.group(1)),
+                        nationality_code=noc,
+                        round_type=current_event.round_type,
+                        age_group=current_event.age_group,
+                    ))
+                continue
+
             # Relay leg swimmer — attach to last result
             lm = RELAY_LEG.match(stripped)
             if lm and current_event.results:
@@ -275,6 +396,14 @@ def parse(text):
                 # The actual time is always the largest value (splits are
                 # cumulative, time-behind is a delta).
                 after_noc = stripped[im.end():]
+                # Games-style lines carry a full date of birth after the NOC
+                # ("ZHANG Yufei CHN 19 APR 1998 0.62 24.50") — take the year
+                # and drop the DOB so its day number is never read as a time.
+                dob = DOB_RE.search(after_noc)
+                if dob:
+                    if not birth_year:
+                        birth_year = int(dob.group(1))
+                    after_noc = after_noc[:dob.start()] + after_noc[dob.end():]
                 all_times = _TIME_RE.findall(after_noc)
                 if not all_times:
                     continue

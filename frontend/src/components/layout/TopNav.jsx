@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  ChevronDown, Menu, X, Upload, BarChart3, LogOut, Plus,
+  ChevronDown, Menu, X, Upload, BarChart3, LogOut, Plus, Search,
   Trophy, CalendarDays, Medal, Award, Sparkles, Users, Shield, Crown,
   Newspaper, Image, ShoppingBag, Globe, Target, Handshake, UserCheck, ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import SearchCommand from '../ui/SearchCommand'
 
 /** Primary links shown directly in the bar on desktop. */
 const PRIMARY = [
@@ -97,7 +98,7 @@ function MoreDropdown() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className={`flex items-center gap-1 h-14 px-3 text-body-sm font-medium transition-colors border-b-2 ${
+        className={`flex items-center gap-1 h-16 px-3 text-body-sm font-medium transition-colors border-b-[3px] ${
           active ? 'text-white border-aqua-400' : 'text-ink-200 border-transparent hover:text-white'
         }`}
       >
@@ -105,7 +106,7 @@ function MoreDropdown() {
         <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute end-0 top-full mt-1 w-56 bg-white rounded-md shadow-pop border border-ink-100 py-1.5 z-50">
+        <div className="absolute end-0 top-full mt-1 w-64 bg-white rounded-md shadow-dropdown border border-ink-100 py-1.5 z-50">
           {MORE.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -182,7 +183,7 @@ function MobileMenu({ onClose, isAdmin }) {
 
   return (
     <div className="fixed inset-0 z-[70] bg-ink-950 overflow-y-auto md:hidden">
-      <div className="flex items-center justify-between h-14 px-4 border-b border-white/10">
+      <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
         <Link to="/" onClick={onClose} className="flex items-center gap-2.5">
           <img src="/logo.webp" alt="" className="h-8 w-8 object-contain" />
           <span className="font-display font-bold text-white text-lg">ArabSwiM</span>
@@ -246,49 +247,84 @@ function MobileMenu({ onClose, isAdmin }) {
 
 export default function TopNav() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const { token } = useAuth()
   const isAdmin = !!token
   const location = useLocation()
   useEffect(() => setMenuOpen(false), [location.pathname])
 
+  // Global Cmd+K / Ctrl+K shortcut
+  const handleGlobalKey = useCallback((e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault()
+      setSearchOpen(true)
+    }
+  }, [])
+  useEffect(() => {
+    document.addEventListener('keydown', handleGlobalKey)
+    return () => document.removeEventListener('keydown', handleGlobalKey)
+  }, [handleGlobalKey])
+
   return (
-    <header className="sticky top-0 z-40 bg-ink-950 text-white">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 flex items-center h-14 gap-2">
-        <Link to="/" className="flex items-center gap-2.5 me-4 shrink-0">
-          <img src="/logo.webp" alt="" className="h-8 w-8 object-contain" />
-          <span className="font-display font-bold text-lg tracking-tight">ArabSwiM</span>
-        </Link>
+    <>
+      <header className="sticky top-0 z-40 bg-ink-950 text-white">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 flex items-center h-16 gap-2">
+          <Link to="/" className="flex items-center gap-2.5 me-6 shrink-0">
+            <img src="/logo.webp" alt="" className="h-8 w-8 object-contain" />
+            <span className="font-display font-bold text-lg tracking-tight">ArabSwiM</span>
+          </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center flex-1 min-w-0">
-          {PRIMARY.map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `flex items-center h-14 px-3 text-body-sm font-medium transition-colors border-b-2 ${
-                  isActive ? 'text-white border-aqua-400' : 'text-ink-200 border-transparent hover:text-white'
-                }`
-              }
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center flex-1 min-w-0">
+            {PRIMARY.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `flex items-center h-16 px-4 text-body-sm font-medium transition-colors border-b-[3px] ${
+                    isActive ? 'text-white border-aqua-400' : 'text-ink-200 border-transparent hover:text-white'
+                  }`
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+            <MoreDropdown />
+          </nav>
+
+          <div className="flex items-center gap-2.5 ms-auto">
+            {/* Desktop search pill */}
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="hidden md:flex items-center gap-2 h-9 px-4 rounded-full bg-white/10 text-ink-200 text-body-sm hover:bg-white/15 transition-colors cursor-pointer"
             >
-              {label}
-            </NavLink>
-          ))}
-          <MoreDropdown />
-        </nav>
-
-        <div className="flex items-center gap-2 ms-auto">
-          {isAdmin && <div className="hidden md:block"><AdminMenu /></div>}
-          <button
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-            className="md:hidden p-2 -me-2 min-h-11 min-w-11 flex items-center justify-center text-ink-200 hover:text-white"
-          >
-            <Menu size={22} />
-          </button>
+              <Search size={14} />
+              <span className="text-ink-400">Search...</span>
+              <kbd className="ms-2 h-5 px-1.5 flex items-center rounded border border-white/20 text-[10px] text-ink-400 font-mono">
+                ⌘K
+              </kbd>
+            </button>
+            {/* Mobile search icon */}
+            <button
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search"
+              className="md:hidden p-2 min-h-11 min-w-11 flex items-center justify-center text-ink-200 hover:text-white"
+            >
+              <Search size={20} />
+            </button>
+            {isAdmin && <div className="hidden md:block"><AdminMenu /></div>}
+            <button
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
+              className="md:hidden p-2 -me-2 min-h-11 min-w-11 flex items-center justify-center text-ink-200 hover:text-white"
+            >
+              <Menu size={22} />
+            </button>
+          </div>
         </div>
-      </div>
-      {menuOpen && <MobileMenu onClose={() => setMenuOpen(false)} isAdmin={isAdmin} />}
-    </header>
+        {menuOpen && <MobileMenu onClose={() => setMenuOpen(false)} isAdmin={isAdmin} />}
+      </header>
+      <SearchCommand open={searchOpen} onClose={() => setSearchOpen(false)} />
+    </>
   )
 }

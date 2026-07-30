@@ -11,7 +11,7 @@ import AddResultsModal from '../components/championships/AddResultsModal'
 import MeetEditModal from '../components/championships/MeetEditModal'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { Hero, Tabs, SegmentedControl, Card, Button, Badge, PoolBadge, ConfirmDialog, EmptyState, Skeleton, TableSkeleton, Input } from '../components/ui'
+import { Hero, Tabs, SegmentedControl, Card, Button, Badge, PoolBadge, ConfirmDialog, EmptyState, Skeleton, TableSkeleton, Input, Breadcrumbs } from '../components/ui'
 import { SwimmerCell, TimeDisplay, MedalTally, RankNumber } from '../components/domain'
 import {
   ArrowLeft, Pencil, Plus, Users, Timer, ChevronRight, ChevronUp, ChevronDown,
@@ -600,9 +600,12 @@ export default function MeetDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Top row: back + admin actions */}
-      <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
-        <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/calendar')}>Back</Button>
+      <Breadcrumbs items={[
+        { label: 'Championships', to: '/championships' },
+        { label: meet.name },
+      ]} />
+      {/* Top row: admin actions */}
+      <div className="flex items-center justify-end gap-3 mb-3 sm:mb-4">
         {isAdmin && (
           <div className="flex items-center gap-1.5">
             <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setShowEditModal(true)}>

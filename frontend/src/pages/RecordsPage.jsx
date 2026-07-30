@@ -5,7 +5,7 @@ import { getComputedRecords, getRecords, deleteRecord } from '../api/records'
 import { getCountries } from '../api/core'
 import DataTable from '../components/common/DataTable'
 import CountryFlag from '../components/common/CountryFlag'
-import { PageHeader, Tabs, FilterBar, Select, FieldLabel, Button, ConfirmDialog, EmptyState, TableSkeleton, SegmentedControl } from '../components/ui'
+import { PageHeader, Tabs, FilterBar, Select, FieldLabel, Button, ConfirmDialog, EmptyState, TableSkeleton, SegmentedControl, Breadcrumbs } from '../components/ui'
 import { TimeDisplay, EventLabel, SwimmerCell } from '../components/domain'
 import { POOL_TYPES, AGE_GROUPS, MANUAL_RECORD_SCOPES, formatDate } from '../utils/constants'
 import { useAuth } from '../context/AuthContext'
@@ -206,6 +206,7 @@ export default function RecordsPage() {
 
   return (
     <div>
+      <Breadcrumbs items={[{ label: 'Records' }]} />
       <PageHeader
         title="Records"
         subtitle="National, Arab and continental swimming records"

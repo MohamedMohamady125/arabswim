@@ -24,7 +24,7 @@ export default function DataTable({ columns, data, onRowClick, emptyMessage = 'N
     <div className="bg-white rounded-md border border-ink-100 shadow-card overflow-hidden">
       <div className="overflow-x-auto overscroll-x-contain max-w-full">
         <table className="w-full">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="bg-ink-900">
               {columns.map((col) => (
                 <th
@@ -46,7 +46,11 @@ export default function DataTable({ columns, data, onRowClick, emptyMessage = 'N
               <tr
                 key={row.id || i}
                 onClick={() => onRowClick?.(row)}
-                className={clsx('h-11', onRowClick && 'hover:bg-ink-50 cursor-pointer transition-colors')}
+                className={clsx(
+                  'h-12 transition-colors',
+                  i % 2 === 1 && 'bg-ink-25',
+                  onRowClick ? 'hover:bg-aqua-50/50 cursor-pointer' : 'hover:bg-aqua-50/30',
+                )}
               >
                 {columns.map((col) => (
                   <td
@@ -55,7 +59,8 @@ export default function DataTable({ columns, data, onRowClick, emptyMessage = 'N
                       'px-2.5 md:px-4 py-2.5 text-body-sm text-ink-900 whitespace-nowrap',
                       (col.align === 'end' || col.numeric) && 'text-end',
                       col.numeric && 'tnum font-medium',
-                      col.sticky && 'sticky start-0 bg-white z-10',
+                      col.sticky && 'sticky start-0 z-10',
+                      col.sticky && (i % 2 === 1 ? 'bg-ink-25' : 'bg-white'),
                     )}
                   >
                     {col.render ? col.render(row) : row[col.key]}

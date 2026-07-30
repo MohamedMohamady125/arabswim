@@ -3,7 +3,7 @@ import { ListOrdered } from 'lucide-react'
 import { getRankings } from '../api/rankings'
 import { getCountries, getEvents } from '../api/core'
 import Pagination from '../components/common/Pagination'
-import { PageHeader, Tabs, FilterBar, Select, FieldLabel, SegmentedControl, Card, EmptyState } from '../components/ui'
+import { PageHeader, Tabs, FilterBar, Select, FieldLabel, SegmentedControl, Card, EmptyState, Breadcrumbs } from '../components/ui'
 import { RankRow } from '../components/domain'
 import { POOL_TYPES, AGE_GROUPS, formatDate } from '../utils/constants'
 
@@ -82,6 +82,7 @@ export default function RankingsPage() {
 
   return (
     <div>
+      <Breadcrumbs items={[{ label: 'Rankings' }]} />
       <PageHeader title="Rankings" subtitle="All-time and yearly best performances by event" />
 
       <Tabs

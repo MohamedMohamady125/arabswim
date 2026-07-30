@@ -5,13 +5,14 @@ import customParseFormat from 'dayjs/plugin/customParseFormat'
 import {
   Trophy, CalendarDays, BarChart3, Medal, Award, Sparkles,
   Users, Shield, Crown, Newspaper, Image, ShoppingBag,
-  Globe, Handshake, UserCheck, Target, ArrowRight, MapPin,
+  Globe, Handshake, UserCheck, Target, ArrowRight, MapPin, Search,
 } from 'lucide-react'
 import api from '../api/client'
 import { getRecords } from '../api/records'
 import { getChampionships } from '../api/championships'
 import Hero from '../components/ui/Hero'
 import Button from '../components/ui/Button'
+import SearchCommand from '../components/ui/SearchCommand'
 import { RecordCard } from '../components/domain'
 import { formatDate } from '../utils/constants'
 
@@ -95,6 +96,7 @@ export default function HomePage() {
   const [counts, setCounts] = useState({})
   const [nextMeet, setNextMeet] = useState(null)
   const [newRecords, setNewRecords] = useState([])
+  const [searchOpen, setSearchOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -137,15 +139,26 @@ export default function HomePage() {
     <div className="space-y-4 sm:space-y-6 animate-fade-up">
       {/* ── Hero ── */}
       <Hero>
-        <div className="max-w-2xl">
+        <div className="text-center max-w-2xl mx-auto">
           <div className="text-label text-aqua-400 mb-2">The home of Arab swimming</div>
           <h1 className="font-display font-extrabold text-[28px] leading-[34px] md:text-[36px] md:leading-[40px] text-white break-words">
             Every result. Every record. Every swimmer.
           </h1>
-          <p className="text-body text-ink-200 mt-3 max-w-xl">
+          <p className="text-body text-ink-200 mt-3 mx-auto max-w-xl">
             Championship results, continental records and live rankings for Arab swimming — all in one place.
           </p>
-          <div className="flex flex-wrap gap-2.5 mt-5">
+          {/* Search bar as primary CTA */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="mt-6 w-full max-w-lg mx-auto flex items-center gap-3 h-14 px-5 rounded-lg bg-white/10 backdrop-blur border border-white/20 text-white/60 hover:bg-white/15 hover:border-white/30 transition-all cursor-pointer"
+          >
+            <Search size={18} className="text-ink-400 shrink-0" />
+            <span className="text-body text-ink-400">Search swimmers, championships, records...</span>
+            <kbd className="ms-auto hidden sm:inline-flex h-6 px-2 items-center rounded border border-white/20 text-[11px] text-ink-400 font-mono shrink-0">
+              ⌘K
+            </kbd>
+          </button>
+          <div className="flex flex-wrap justify-center gap-2.5 mt-4">
             <Link to="/championships"><Button icon={Trophy}>Championships</Button></Link>
             <Link to="/rankings">
               <Button variant="secondary" className="bg-white/10 border-white/20 text-white hover:bg-white/15 hover:border-white/30" icon={BarChart3}>
@@ -154,13 +167,13 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 sm:mt-6 sm:pt-5 border-t border-white/10">
-          {HERO_STATS.map(({ key, label }) => (
-            <div key={key}>
-              <div className="text-time-lg text-white tnum animate-count-up">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10">
+          {HERO_STATS.map(({ key, label }, i) => (
+            <div key={key} className="text-center">
+              <div className={`text-[28px] leading-[34px] font-bold text-white tnum animate-count-up stagger-${i + 1}`}>
                 {counts[key] !== undefined ? counts[key].toLocaleString() : '—'}
               </div>
-              <div className="text-label text-ink-400 mt-0.5">{label}</div>
+              <div className="text-label text-ink-400 mt-1">{label}</div>
             </div>
           ))}
         </div>
@@ -224,26 +237,28 @@ export default function HomePage() {
       {/* ── Explore the site ── */}
       <section>
         <h2 className="text-title text-ink-900 mb-3">Explore</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {SECTIONS.map(({ to, label, icon: Icon, countKey }) => (
             <Link
               key={to}
               to={to}
-              className="bg-white rounded-md shadow-card border border-ink-100 hover:border-aqua-500/40 transition-colors p-3 sm:p-4 h-full flex items-center gap-2.5 sm:gap-3 min-h-11"
+              className="group bg-white rounded-md shadow-card border border-ink-100 hover:shadow-hover hover:border-aqua-500/25 transition-all duration-200 p-4 sm:p-5 h-full flex items-center gap-3 min-h-11"
             >
-              <span className="shrink-0 w-9 h-9 rounded-sm bg-aqua-50 text-aqua-600 flex items-center justify-center">
+              <span className="shrink-0 w-10 h-10 rounded-sm bg-aqua-50 text-aqua-600 flex items-center justify-center group-hover:bg-aqua-100 transition-colors">
                 <Icon size={18} />
               </span>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-body-sm font-medium text-ink-900 truncate">{label}</div>
                 <div className="text-label normal-case tracking-normal font-normal text-ink-400 tnum h-4">
                   {countKey && counts[countKey] !== undefined ? counts[countKey].toLocaleString() : '\u00A0'}
                 </div>
               </div>
+              <ArrowRight size={14} className="text-ink-200 group-hover:text-aqua-500 transition-colors shrink-0 hidden sm:block" />
             </Link>
           ))}
         </div>
       </section>
+      <SearchCommand open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   )
 }

@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import { Loader2 } from 'lucide-react'
 
 const VARIANTS = {
-  primary: 'bg-aqua-600 text-white hover:bg-aqua-500 disabled:hover:bg-aqua-600',
+  primary: 'bg-aqua-600 text-white shadow-sm hover:bg-aqua-500 hover:shadow-md disabled:hover:bg-aqua-600',
   secondary: 'bg-white text-ink-900 border border-ink-200 hover:border-aqua-500/40 hover:bg-aqua-50',
   ghost: 'bg-transparent text-ink-500 hover:text-ink-900 hover:bg-ink-50',
   danger: 'bg-neg text-white hover:opacity-90',
@@ -25,7 +25,7 @@ export default function Button({
   return (
     <button
       className={clsx(
-        'inline-flex items-center justify-center rounded-sm font-medium transition-colors select-none',
+        'inline-flex items-center justify-center rounded-sm font-medium transition-all select-none active:scale-[0.98]',
         'disabled:opacity-50 disabled:cursor-not-allowed min-w-10',
         VARIANTS[variant], SIZES[size], className,
       )}

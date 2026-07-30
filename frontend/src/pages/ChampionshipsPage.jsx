@@ -4,7 +4,7 @@ import { Calendar, MapPin, Plus, Waves, Pencil, Trash2, ChevronRight, Trophy, Ba
 import { getChampionships, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
-import { Button, Badge, PoolBadge, FilterBar, Select, SearchInput, EmptyState, Hero, ConfirmDialog, CardsSkeleton } from '../components/ui'
+import { Button, Badge, PoolBadge, FilterBar, Select, SearchInput, EmptyState, Hero, ConfirmDialog, CardsSkeleton, Breadcrumbs } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { POOL_TYPES, mediaUrl, formatDate } from '../utils/constants'
@@ -89,6 +89,7 @@ export default function ChampionshipsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <Breadcrumbs items={[{ label: 'Championships' }]} />
       {/* Hero — page title + featured/nearest meet */}
       <Hero image={featured?.meet_photo ? mediaUrl(featured.meet_photo) : undefined}>
         <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">

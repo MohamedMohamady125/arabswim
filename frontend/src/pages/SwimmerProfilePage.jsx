@@ -10,7 +10,7 @@ import { AFRICA_PATH, ASIA_PATH, ARAB_PATH, GCC_PATH } from '../assets/mapPaths'
 import { FaSchoolFlag, FaGraduationCap, FaLandmarkFlag } from 'react-icons/fa6'
 import { formatDate } from '../utils/constants'
 import { useAuth } from '../context/AuthContext'
-import { Button, Card, Badge, PoolBadge, Tabs, SegmentedControl, EmptyState, Skeleton, TableSkeleton, Hero } from '../components/ui'
+import { Button, Card, Badge, PoolBadge, Tabs, SegmentedControl, EmptyState, Skeleton, TableSkeleton, Hero, Breadcrumbs } from '../components/ui'
 import { TimeDisplay, EventLabel } from '../components/domain'
 import { CHART, formatCs } from '../components/charts/theme'
 import {
@@ -1952,10 +1952,10 @@ export default function SwimmerProfilePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-12">
-      {/* Back */}
-      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/swimmers')} className="my-3">
-        Back to Swimmers
-      </Button>
+      <Breadcrumbs items={[
+        { label: 'Swimmers', to: '/swimmers' },
+        { label: swimmer.name },
+      ]} />
 
       {/* Hero Header */}
       <Hero className="mb-4">

@@ -5,7 +5,7 @@ import { getTeamProfile, getTeamTimes, getTeamMedals, getTeamProgression } from 
 import ProgressionChart from '../components/common/ProgressionChart'
 import CountryFlag from '../components/common/CountryFlag'
 import MedalIcon from '../components/common/MedalIcon'
-import { Button, Badge, Card, Tabs, SegmentedControl, Select, Skeleton, EmptyState } from '../components/ui'
+import { Button, Badge, Card, Tabs, SegmentedControl, Select, Skeleton, EmptyState, Breadcrumbs } from '../components/ui'
 import { SwimmerCell, TimeDisplay } from '../components/domain'
 import { useAuth } from '../context/AuthContext'
 import { formatDate } from '../utils/constants'
@@ -110,17 +110,16 @@ export default function TeamProfilePage() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      <Breadcrumbs items={[
+        { label: 'Teams', to: '/teams' },
+        { label: team.name },
+      ]} />
       {/* Banner */}
       <div className="relative h-32 sm:h-48 rounded-t-lg overflow-hidden bg-gradient-to-br from-ink-950 to-ink-900">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-aqua-600 via-aqua-400 to-aqua-600 z-10" />
         {team.banner && (
           <img src={team.banner} alt="" className="w-full h-full object-cover" />
         )}
-        <div className="absolute top-3 start-3 sm:top-4 sm:start-4 z-10">
-          <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={() => navigate('/teams')}>
-            Back
-          </Button>
-        </div>
       </div>
 
       {/* Header Card */}

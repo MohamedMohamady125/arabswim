@@ -7,7 +7,7 @@ import { mergeSwimmers } from '../api/importer'
 import DataTable from '../components/common/DataTable'
 import Pagination from '../components/common/Pagination'
 import CountryFlag from '../components/common/CountryFlag'
-import { Button, PageHeader, FilterBar, Select, SearchInput, Modal, ConfirmDialog, EmptyState, Breadcrumbs } from '../components/ui'
+import { Button, PageHeader, FilterBar, Select, SearchInput, Modal, ConfirmDialog, EmptyState } from '../components/ui'
 import { SwimmerCell } from '../components/domain'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -178,7 +178,6 @@ export default function SwimmersPage() {
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: 'Swimmers' }]} />
       <PageHeader
         title="Swimmers"
         subtitle="Browse every swimmer in the database"

@@ -1,12 +1,8 @@
 import clsx from 'clsx'
 
-export default function Card({ title, action, footer, padding = 'md', hoverable = false, flush = false, className, children }) {
+export default function Card({ title, action, footer, padding = 'md', className, children }) {
   return (
-    <section className={clsx(
-      'bg-white rounded-md shadow-card border border-ink-100',
-      hoverable && 'transition-all duration-200 hover:shadow-hover hover:border-aqua-500/25',
-      className,
-    )}>
+    <section className={clsx('bg-white rounded-md shadow-card border border-ink-100', className)}>
       {(title || action) && (
         <header className="flex items-center justify-between px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-b border-ink-100 bg-ink-50/50">
           {title && (
@@ -18,7 +14,7 @@ export default function Card({ title, action, footer, padding = 'md', hoverable 
           {action}
         </header>
       )}
-      <div className={clsx(flush ? '' : padding === 'none' ? '' : 'p-3 sm:p-4 md:p-5')}>{children}</div>
+      <div className={clsx(padding === 'none' ? '' : 'p-3 sm:p-4 md:p-5')}>{children}</div>
       {footer && (
         <footer className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-t border-ink-100">{footer}</footer>
       )}

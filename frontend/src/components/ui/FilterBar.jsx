@@ -20,7 +20,7 @@ export default function FilterBar({ children, chips = [], onReset, className }) 
   return (
     <div className={clsx('mb-3 md:mb-5', className)}>
       {/* Desktop row */}
-      <div className="hidden md:flex flex-wrap items-center gap-3 bg-ink-50 border border-ink-100 rounded-sm px-4 py-3 [&>*]:min-w-0 [&>*]:max-w-full">{children}</div>
+      <div className="hidden md:flex flex-wrap items-center gap-2.5 [&>*]:min-w-0 [&>*]:max-w-full">{children}</div>
 
       {/* Mobile: chips + Filters button */}
       <div className="flex md:hidden items-center gap-2 min-w-0 max-w-full">

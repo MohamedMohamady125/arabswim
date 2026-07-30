@@ -9,7 +9,7 @@ import DataTable from '../components/common/DataTable'
 import { formatDate } from '../utils/constants'
 import MedalIcon from '../components/common/MedalIcon'
 import { CODE_TO_ALPHA2 } from '../components/common/CountryFlag'
-import { Card, Badge, Select, SegmentedControl, StatCard, Skeleton, TableSkeleton, EmptyState, Breadcrumbs } from '../components/ui'
+import { Card, Badge, Select, SegmentedControl, StatCard, Skeleton, TableSkeleton, EmptyState } from '../components/ui'
 import { TimeDisplay, MedalDot } from '../components/domain'
 
 const STROKES = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
@@ -105,10 +105,11 @@ export default function CountryProfilePage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 sm:space-y-5">
-      <Breadcrumbs items={[
-        { label: 'Federations', to: '/countries' },
-        { label: country.name },
-      ]} />
+      <nav className="flex items-center gap-1 text-body-sm text-ink-400" aria-label="Breadcrumb">
+        <Link to="/countries" className="hover:text-aqua-600">Federations</Link>
+        <span>/</span>
+        <span className="text-ink-500">{country.name}</span>
+      </nav>
 
       {/* Identity header */}
       <Card className="!mt-3">

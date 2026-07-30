@@ -37,10 +37,8 @@ const COLUMNS = [
 export default function Footer() {
   return (
     <footer className="bg-ink-950 text-ink-200 mt-10 md:mt-12">
-      {/* Aqua accent line */}
-      <div className="h-px bg-gradient-to-r from-transparent via-aqua-600 to-transparent" />
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-8 md:gap-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-7 md:gap-8">
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2.5">
               <img src="/logo.webp" alt="" className="h-9 w-9 object-contain" />

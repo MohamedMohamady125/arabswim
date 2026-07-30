@@ -274,6 +274,9 @@ export default function RecordsPage() {
         <EmptyState icon={Trophy} title="Select a country" hint="Choose a country above to view its national records." />
       ) : loading ? (
         <TableSkeleton rows={8} />
+      ) : records.length === 0 ? (
+        <EmptyState icon={Trophy} title={`No ${filters.pool === 'LCM' ? '50m (LCM)' : '25m (SCM)'} records found`}
+          hint={`Try switching the pool to ${filters.pool === 'LCM' ? '25m (SCM)' : '50m (LCM)'} or changing the age group.`} />
       ) : (
         <>
           {(!filters.gender || filters.gender === 'M') &&

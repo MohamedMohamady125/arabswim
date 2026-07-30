@@ -15,7 +15,7 @@ import { Hero, Tabs, SegmentedControl, Card, Button, Badge, PoolBadge, ConfirmDi
 import { SwimmerCell, TimeDisplay, MedalTally, RankNumber } from '../components/domain'
 import {
   ArrowLeft, Pencil, Plus, Users, Timer, ChevronRight, ChevronUp, ChevronDown,
-  Trash2, X, Camera, Medal, MapPin, Calendar, ListOrdered, Waves,
+  Trash2, X, Camera, Medal, MapPin, Calendar, ListOrdered, Waves, Upload,
 } from 'lucide-react'
 
 // Display categories oldest → youngest (bigger age first).
@@ -605,6 +605,9 @@ export default function MeetDetailPage() {
             </Button>
             <Button variant="ghost" size="sm" icon={Plus} onClick={() => setShowAddModal(true)}>
               <span className="hidden sm:inline">Add Results</span><span className="sm:hidden">Add</span>
+            </Button>
+            <Button variant="ghost" size="sm" icon={Upload} onClick={() => navigate(`/import?championship=${id}`)}>
+              <span className="hidden sm:inline">Import File</span><span className="sm:hidden">Import</span>
             </Button>
           </div>
         )}

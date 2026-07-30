@@ -3,9 +3,10 @@ import {
   Check, X, FileText, FileSpreadsheet, Globe, PenLine, Upload,
   AlertTriangle, Info, Users, ListChecks, CalendarDays, CheckCircle2, XCircle,
 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { uploadFile, matchSwimmers, confirmImport } from '../api/importer'
 import { getCountries } from '../api/core'
-import { getClassifications, getSubClassifications, getResultsBySwimmer, bulkDeleteResults } from '../api/championships'
+import { getChampionships, getClassifications, getSubClassifications, getResultsBySwimmer, bulkDeleteResults } from '../api/championships'
 import { POOL_TYPES, ARAB_COUNTRY_CODES } from '../utils/constants'
 import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
@@ -19,6 +20,9 @@ const emptyForm = {
 }
 
 export default function ImportPage() {
+  const [searchParams] = useSearchParams()
+  // Pre-selected target meet (e.g. arriving from a meet's "Import File" button)
+  const presetChampId = searchParams.get('championship') || ''
   const [importMethod, setImportMethod] = useState(null) // null, 'pdf', 'excel', 'html', 'manual'
   const [step, setStep] = useState(0) // 0=method, 1=upload, 2=details+edit, 3=match, 4=done
   const [loading, setLoading] = useState(false)
@@ -35,6 +39,7 @@ export default function ImportPage() {
   const [countries, setCountries] = useState([])
   const [classifications, setClassifications] = useState([])
   const [subClassifications, setSubClassifications] = useState([])
+  const [existingMeets, setExistingMeets] = useState([])
 
   const meet = meets[active] || null
 
@@ -47,6 +52,11 @@ export default function ImportPage() {
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
     getClassifications().then(res => setClassifications(res.data)).catch(() => {})
+    // Existing meets (incl. future/calendar-only) so files can be imported
+    // into a manually created meet instead of always creating a new one
+    getChampionships({ page_size: 1000, ordering: '-date', include_calendar_only: 1 })
+      .then(res => setExistingMeets(res.data?.results || res.data || []))
+      .catch(() => {})
   }, [])
 
   const activeClassification = meet?.champForm?.classification
@@ -96,6 +106,7 @@ export default function ImportPage() {
           location: m.location || '',
         },
         arabOnly: false,
+        existingChampId: presetChampId,
         matches: [], matchStats: {}, decisions: {}, result: null, confirmError: '',
       }
     }
@@ -165,7 +176,7 @@ export default function ImportPage() {
     }
   }
 
-  const formComplete = (m) => m.champForm.name && m.champForm.country && m.champForm.date
+  const formComplete = (m) => !!m.existingChampId || (m.champForm.name && m.champForm.country && m.champForm.date)
   const allFormsComplete = meets.every(formComplete)
 
   const handleMatch = async () => {
@@ -209,7 +220,11 @@ export default function ImportPage() {
         const payload = {
           import_id: m.importId,
           swimmer_decisions: m.decisions,
-          championship_details: m.champForm,
+        }
+        if (m.existingChampId) {
+          payload.championship_id = Number(m.existingChampId)
+        } else {
+          payload.championship_details = m.champForm
         }
         if (m.editedPreview && m.editedPreview !== m.preview) {
           payload.modified_preview = m.editedPreview
@@ -437,6 +452,29 @@ export default function ImportPage() {
           <Card title="Championship Details" className="mb-4">
             <p className="text-body-sm text-ink-400 mb-4">Review and complete the championship information. Fields marked with * are required.</p>
 
+            {/* Target meet: create new or add into an existing one */}
+            <div className="mb-4 bg-aqua-500/5 border border-aqua-500/30 rounded-md p-3">
+              <FieldLabel>Import into</FieldLabel>
+              <Select
+                value={meet.existingChampId}
+                onChange={(e) => updateMeet(active, { existingChampId: e.target.value })}
+              >
+                <option value="">New championship — fill the form below</option>
+                {existingMeets.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.date}{c.results_count ? `, ${c.results_count} results` : ', no results yet'})
+                  </option>
+                ))}
+              </Select>
+              {meet.existingChampId && (
+                <p className="text-caption text-ink-400 mt-1.5">
+                  Results will be added to this meet — the form below is ignored. Re-imported duplicates are skipped automatically.
+                </p>
+              )}
+            </div>
+
+            {!meet.existingChampId && (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="sm:col-span-2">
                 <FieldLabel required>Championship Name</FieldLabel>
@@ -510,6 +548,8 @@ export default function ImportPage() {
                 </div>
               </div>
             </div>
+            </>
+            )}
           </Card>
 
           {/* Editable Results Table */}

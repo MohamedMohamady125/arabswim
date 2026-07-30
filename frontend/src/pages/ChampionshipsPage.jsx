@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, MapPin, Plus, Waves, Pencil, Trash2, ChevronRight, Trophy, BarChart3, Medal, Images } from 'lucide-react'
+import { Calendar, MapPin, Plus, Waves, Pencil, Trash2, ChevronRight, Trophy, BarChart3, Medal, Images, Upload } from 'lucide-react'
 import { getChampionships, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import CountryFlag from '../components/common/CountryFlag'
@@ -266,6 +266,18 @@ export default function ChampionshipsPage() {
                           <Button variant="secondary" size="sm" icon={Medal}
                             onClick={(e) => { e.stopPropagation(); navigate({ pathname: `/meets/${c.id}`, search: '?tab=medals' }) }}>
                             Medals
+                          </Button>
+                        )}
+                        {isAdmin && !c.results_count && (
+                          <Button size="sm" icon={Plus}
+                            onClick={(e) => { e.stopPropagation(); navigate({ pathname: `/meets/${c.id}`, search: '?tab=results' }) }}>
+                            Add Results
+                          </Button>
+                        )}
+                        {isAdmin && !c.results_count && (
+                          <Button variant="secondary" size="sm" icon={Upload}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/import?championship=${c.id}`) }}>
+                            Import File
                           </Button>
                         )}
                         <Button variant="secondary" size="sm" icon={Images}

@@ -53,7 +53,7 @@ class RecordViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def held(self, request):
         """All computed records held by one swimmer, across every scope
-        (national/gcc/arab), pool (LCM/SCM) and age group (U10..U19, OPEN).
+        (national/gcc/arab), pool (LCM/SCM) and age group (U10..U18, OPEN).
 
         Query params:
           swimmer – swimmer id (required)
@@ -71,7 +71,8 @@ class RecordViewSet(viewsets.ModelViewSet):
             return Response([])
 
         region = swimmer.nationality.region if swimmer.nationality else None
-        age_groups = [f'U{n}' for n in range(10, 20)] + ['OPEN']
+        # U18 is the oldest age category shown anywhere on the site (no U19)
+        age_groups = [f'U{n}' for n in range(10, 19)] + ['OPEN']
 
         held = []
         for pool in ('LCM', 'SCM'):

@@ -140,10 +140,21 @@ class RecordViewSet(viewsets.ModelViewSet):
         results.sort(key=lambda r: (r['scope'], r['pool'], r['event_sort_order'], r['event_distance']))
         return Response(results)
 
+    # Which Arab countries are eligible for each continental record scope
+    # (IOC codes incl. legacy variants still present in older data).
+    CONTINENTAL_ELIGIBILITY = {
+        'AFRICAN': {'MTN', 'MAR', 'ALG', 'TUN', 'LBY', 'LBA', 'EGY', 'SUD', 'COM', 'DJI', 'SOM'},
+        'ASIAN': {'PLE', 'JOR', 'LBN', 'LIB', 'SYR', 'YEM', 'IRQ', 'QAT', 'KSA',
+                  'BHR', 'BRN', 'KWT', 'KUW', 'UAE', 'OMA'},
+        'MEDITERRANEAN': {'MAR', 'ALG', 'TUN', 'LBY', 'LBA', 'EGY', 'LBN', 'LIB', 'SYR'},
+    }
+
     @action(detail=False, methods=['get'])
     def gaps(self, request):
         """Gap between a swimmer's all-time best times and the current records
-        for every scope (national/gcc/arab) and pool the swimmer has swum.
+        for every scope the swimmer is eligible for: national/gcc/arab
+        (computed from results) plus african/asian/mediterranean (manual
+        records, only for swimmers from eligible countries).
 
         Query params:
           swimmer – swimmer id (required)
@@ -223,6 +234,43 @@ class RecordViewSet(viewsets.ModelViewSet):
                         'gap_time': fmt(abs(gap_cs)),
                         'gap_pct': round((b['best'] / record_cs - 1) * 100, 2) if record_cs else 0,
                         'holds': rec['swimmer_id'] == swimmer.id,
+                    })
+
+            # Continental scopes come from manually-added records; each is only
+            # visible to swimmers from an eligible country (per federation lists).
+            nat_code = (swimmer.nationality.code or '').upper() if swimmer.nationality else ''
+            for record_type, eligible in self.CONTINENTAL_ELIGIBILITY.items():
+                if nat_code not in eligible:
+                    continue
+                manual = Record.objects.filter(
+                    record_type=record_type, pool=pool,
+                    swimmer__sex=swimmer.sex,
+                    event_id__in=best_by_event.keys(),
+                ).select_related('swimmer').order_by('event_id', 'time_centiseconds')
+                best_manual = {}
+                for m in manual:
+                    if m.event_id not in best_manual:
+                        best_manual[m.event_id] = m
+                for ev_id, m in best_manual.items():
+                    b = best_by_event[ev_id]
+                    record_cs = m.time_centiseconds
+                    gap_cs = b['best'] - record_cs
+                    out.append({
+                        'scope': record_type.lower(),
+                        'pool': pool,
+                        'event_id': ev_id,
+                        'event_name': b['event__name'],
+                        'event_sort_order': b['event__sort_order'],
+                        'event_distance': b['event__distance'],
+                        'swimmer_best_cs': b['best'],
+                        'swimmer_best': fmt(b['best']),
+                        'record_cs': record_cs,
+                        'record_time': fmt(record_cs),
+                        'record_holder': m.swimmer.name,
+                        'gap_cs': gap_cs,
+                        'gap_time': fmt(abs(gap_cs)),
+                        'gap_pct': round((b['best'] / record_cs - 1) * 100, 2) if record_cs else 0,
+                        'holds': m.swimmer_id == swimmer.id,
                     })
 
         out.sort(key=lambda g: (g['scope'], g['pool'], g['gap_cs']))

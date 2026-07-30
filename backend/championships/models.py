@@ -54,6 +54,13 @@ class Championship(models.Model):
 
     class Meta:
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['-date']),
+            models.Index(fields=['pool']),
+            models.Index(fields=['country']),
+            models.Index(fields=['classification']),
+            models.Index(fields=['is_calendar_only', '-date']),
+        ]
 
     def __str__(self):
         return f'{self.name} ({self.date.year})'
@@ -95,6 +102,10 @@ class Result(models.Model):
         indexes = [
             models.Index(fields=['event', 'time_centiseconds']),
             models.Index(fields=['championship']),
+            models.Index(fields=['swimmer']),
+            models.Index(fields=['swimmer', 'event', 'time_centiseconds']),
+            models.Index(fields=['time_centiseconds']),
+            models.Index(fields=['championship', 'event']),
         ]
 
     def __str__(self):

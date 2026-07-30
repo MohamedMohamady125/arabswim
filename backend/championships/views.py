@@ -559,31 +559,66 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 if len(top_list) >= 30:
                     break
 
-        # Personal bests achieved at this meet
+        # Personal bests achieved at this meet (batched — no N+1)
         personal_bests = []
-        pb_candidates = athletes.filter(
+        pb_candidates = list(athletes.filter(
             swimmer__is_relay_team=False, time_centiseconds__gt=0
         ).values('swimmer_id', 'event_id').annotate(
             meet_best=Min('time_centiseconds')
-        )
-        for pb in pb_candidates:
-            sid, eid, meet_best = pb['swimmer_id'], pb['event_id'], pb['meet_best']
-            # Check if this is their all-time best
-            all_time_best = (
+        ))
+        if pb_candidates:
+            # Batch: get all-time bests for all swimmer+event combos in one query
+            from django.db.models import Q as _Q
+            combo_filter = _Q()
+            for pb in pb_candidates:
+                combo_filter |= _Q(swimmer_id=pb['swimmer_id'], event_id=pb['event_id'])
+            all_time_bests = dict(
                 Result.objects.filter(
-                    swimmer_id=sid, event_id=eid,
+                    combo_filter,
                     championship__pool=championship.pool,
                     swimmer__is_relay_team=False,
                     time_centiseconds__gt=0,
-                )
-                .aggregate(best=Min('time_centiseconds'))['best']
+                ).values('swimmer_id', 'event_id').annotate(
+                    best=Min('time_centiseconds')
+                ).values_list(
+                    'swimmer_id', 'event_id', 'best'
+                ).order_by()  # drop default ordering for performance
+            # Convert to dict keyed by (swimmer_id, event_id)
             )
-            if all_time_best == meet_best:
-                # This IS their PB — get the result
-                result = athletes.filter(
-                    swimmer_id=sid, event_id=eid, time_centiseconds=meet_best
-                ).select_related('swimmer', 'swimmer__nationality', 'event').first()
-                if result:
+            # Re-query: values_list returns tuples, build a proper lookup
+            all_time_lookup = {}
+            for row in Result.objects.filter(
+                combo_filter,
+                championship__pool=championship.pool,
+                swimmer__is_relay_team=False,
+                time_centiseconds__gt=0,
+            ).values('swimmer_id', 'event_id').annotate(
+                best=Min('time_centiseconds')
+            ):
+                all_time_lookup[(row['swimmer_id'], row['event_id'])] = row['best']
+
+            # Collect PB swimmer+event pairs
+            pb_pairs = []
+            for pb in pb_candidates:
+                key = (pb['swimmer_id'], pb['event_id'])
+                if all_time_lookup.get(key) == pb['meet_best']:
+                    pb_pairs.append(pb)
+
+            # Fetch all PB results in one query
+            if pb_pairs:
+                pb_filter = _Q()
+                for pb in pb_pairs:
+                    pb_filter |= _Q(swimmer_id=pb['swimmer_id'], event_id=pb['event_id'],
+                                    time_centiseconds=pb['meet_best'])
+                pb_results = athletes.filter(pb_filter).select_related(
+                    'swimmer', 'swimmer__nationality', 'event'
+                ).order_by('swimmer_id', 'event_id', 'time_centiseconds')
+                seen = set()
+                for result in pb_results:
+                    key = (result.swimmer_id, result.event_id)
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     personal_bests.append({
                         'swimmer_id': result.swimmer.id,
                         'swimmer_name': result.swimmer.name,

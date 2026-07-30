@@ -24,6 +24,12 @@ class Swimmer(models.Model):
 
     class Meta:
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['nationality']),
+            models.Index(fields=['sex']),
+            models.Index(fields=['is_relay_team']),
+            models.Index(fields=['nationality', 'sex']),
+        ]
 
     def __str__(self):
         return self.name

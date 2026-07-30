@@ -660,6 +660,12 @@ export default function MeetDetailPage() {
             >
               <span className="text-sm sm:text-base leading-none">＋</span> <span className="hidden sm:inline">Add Results</span><span className="sm:hidden">Add</span>
             </button>
+            <button
+              onClick={() => navigate(`/import?championship=${id}`)}
+              className="flex items-center gap-1 sm:gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium"
+            >
+              <span className="text-sm sm:text-base leading-none">⇪</span> <span className="hidden sm:inline">Import File</span><span className="sm:hidden">Import</span>
+            </button>
           </div>
         </div>
 

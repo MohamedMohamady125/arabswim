@@ -227,6 +227,18 @@ export default function ChampionshipsPage() {
                             Medals
                           </button>
                         )}
+                        {!c.results_count && (
+                          <button onClick={(e) => { e.stopPropagation(); navigate({ pathname: `/meets/${c.id}`, search: '?tab=results' }) }}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+                            + Add Results
+                          </button>
+                        )}
+                        {!c.results_count && (
+                          <button onClick={(e) => { e.stopPropagation(); navigate(`/import?championship=${c.id}`) }}
+                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700">
+                            Import File
+                          </button>
+                        )}
                         <button onClick={(e) => { e.stopPropagation(); navigate({ pathname: `/meets/${c.id}`, search: '?tab=gallery' }) }}
                           className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700">
                           Galleries

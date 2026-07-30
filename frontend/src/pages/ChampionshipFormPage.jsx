@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Save } from 'lucide-react'
-import { getChampionship, createChampionship, updateChampionship, getClassificationCategories, getClassifications, getSubClassifications } from '../api/championships'
+import { getChampionship, createChampionship, updateChampionship, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries } from '../api/core'
 import { POOL_TYPES, mediaUrl } from '../utils/constants'
 import { useToast } from '../context/ToastContext'
@@ -18,11 +18,10 @@ export default function ChampionshipFormPage() {
   const toast = useToast()
   const isEdit = !!id
   const [countries, setCountries] = useState([])
-  const [categories, setCategories] = useState([])
   const [classifications, setClassifications] = useState([])
   const [subClassifications, setSubClassifications] = useState([])
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', classification_category: '', classification: '', sub_classification: '', website: '', live_results_url: '', registration_url: '' })
+  const [form, setForm] = useState({ name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '', classification: '', sub_classification: '', website: '', live_results_url: '', registration_url: '' })
   const [policyPdf, setPolicyPdf] = useState(null)
   const [meetGuidePdf, setMeetGuidePdf] = useState(null)
   const [meetPhoto, setMeetPhoto] = useState(null)
@@ -30,23 +29,15 @@ export default function ChampionshipFormPage() {
 
   useEffect(() => {
     getCountries().then(res => setCountries(res.data)).catch(() => {})
-    getClassificationCategories().then(res => setCategories(res.data)).catch(() => {})
+    getClassifications().then(res => setClassifications(res.data)).catch(() => {})
     if (isEdit) {
       getChampionship(id).then(res => {
         const c = res.data
-        setForm({ name: c.name, date: c.date, end_date: c.end_date || '', pool: c.pool, country: c.country, location: c.location || '', classification_category: c.classification_category || '', classification: c.classification || '', sub_classification: c.sub_classification || '', website: c.website || '', live_results_url: c.live_results_url || '', registration_url: c.registration_url || '' })
+        setForm({ name: c.name, date: c.date, end_date: c.end_date || '', pool: c.pool, country: c.country, location: c.location || '', classification: c.classification || '', sub_classification: c.sub_classification || '', website: c.website || '', live_results_url: c.live_results_url || '', registration_url: c.registration_url || '' })
         setCurrentPhoto(c.meet_photo || null)
       }).catch(() => {})
     }
   }, [id, isEdit])
-
-  useEffect(() => {
-    if (form.classification_category) {
-      getClassifications(form.classification_category).then(res => setClassifications(res.data)).catch(() => {})
-    } else {
-      setClassifications([])
-    }
-  }, [form.classification_category])
 
   useEffect(() => {
     if (form.classification) {
@@ -163,14 +154,7 @@ export default function ChampionshipFormPage() {
 
             <section className="border-t border-ink-100 pt-5">
               <h3 className="text-label text-ink-400 mb-4">Classification</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div>
-                  <FieldLabel>Category</FieldLabel>
-                  <Select value={form.classification_category} onChange={(e) => setForm({ ...form, classification_category: e.target.value, classification: '', sub_classification: '' })}>
-                    <option value="">Select category</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <FieldLabel>Classification</FieldLabel>
                   <Select value={form.classification} onChange={(e) => setForm({ ...form, classification: e.target.value, sub_classification: '' })} disabled={!classifications.length}>

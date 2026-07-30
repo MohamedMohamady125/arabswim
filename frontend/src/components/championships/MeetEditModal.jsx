@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { ClipboardList, Waves, ChevronDown } from 'lucide-react'
-import { updateChampionship, getAllResults, bulkDeleteResultIds, getClassificationCategories, getClassifications, getSubClassifications } from '../../api/championships'
+import { updateChampionship, getAllResults, bulkDeleteResultIds, getClassifications, getSubClassifications } from '../../api/championships'
 import { getCountries } from '../../api/core'
 import CountryFlag from '../common/CountryFlag'
 import { useToast } from '../../context/ToastContext'
@@ -21,7 +21,6 @@ export default function MeetEditModal({ meet, onClose, onSaved }) {
 
   // ── Meet Info state ──
   const [countries, setCountries] = useState([])
-  const [categories, setCategories] = useState([])
   const [classifications, setClassifications] = useState([])
   const [subClassifications, setSubClassifications] = useState([])
   const [saving, setSaving] = useState(false)
@@ -32,7 +31,6 @@ export default function MeetEditModal({ meet, onClose, onSaved }) {
     pool: meet.pool || 'LCM',
     country: meet.country || '',
     location: meet.location || '',
-    classification_category: meet.classification_category || '',
     classification: meet.classification || '',
     sub_classification: meet.sub_classification || '',
     website: meet.website || '',
@@ -53,16 +51,8 @@ export default function MeetEditModal({ meet, onClose, onSaved }) {
   // Load reference data
   useEffect(() => {
     getCountries().then(r => setCountries(r.data)).catch(() => {})
-    getClassificationCategories().then(r => setCategories(r.data)).catch(() => {})
+    getClassifications().then(r => setClassifications(r.data)).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    if (form.classification_category) {
-      getClassifications(form.classification_category).then(r => setClassifications(r.data)).catch(() => {})
-    } else {
-      setClassifications([])
-    }
-  }, [form.classification_category])
 
   useEffect(() => {
     if (form.classification) {
@@ -83,10 +73,6 @@ export default function MeetEditModal({ meet, onClose, onSaved }) {
   const handleFormChange = (field, value) => {
     setForm(prev => {
       const next = { ...prev, [field]: value }
-      if (field === 'classification_category') {
-        next.classification = ''
-        next.sub_classification = ''
-      }
       if (field === 'classification') {
         next.sub_classification = ''
       }
@@ -100,7 +86,7 @@ export default function MeetEditModal({ meet, onClose, onSaved }) {
       const fd = new FormData()
       Object.entries(form).forEach(([k, v]) => {
         if (v !== '' && v !== null && v !== undefined) fd.append(k, v)
-        else if (k === 'end_date' || k === 'classification_category' || k === 'classification' || k === 'sub_classification') {
+        else if (k === 'end_date' || k === 'classification' || k === 'sub_classification') {
           // Allow clearing these nullable fields
           fd.append(k, '')
         }
@@ -240,18 +226,11 @@ export default function MeetEditModal({ meet, onClose, onSaved }) {
           {/* Classification */}
           <div>
             <h3 className="text-body font-semibold text-ink-900 mb-3">Classification</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <FieldLabel>Category</FieldLabel>
-                <Select value={form.classification_category} onChange={e => handleFormChange('classification_category', e.target.value)}>
-                  <option value="">None</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </Select>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <FieldLabel>Classification</FieldLabel>
                 <Select value={form.classification} onChange={e => handleFormChange('classification', e.target.value)}
-                  disabled={!form.classification_category}>
+                  disabled={!classifications.length}>
                   <option value="">None</option>
                   {classifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select>

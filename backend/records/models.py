@@ -28,6 +28,13 @@ class Record(models.Model):
 
     class Meta:
         ordering = ['-result_date']
+        indexes = [
+            models.Index(fields=['swimmer']),
+            models.Index(fields=['event']),
+            models.Index(fields=['record_type', 'pool']),
+            models.Index(fields=['event', 'record_type', 'pool']),
+            models.Index(fields=['is_new']),
+        ]
 
     def __str__(self):
         return f'{self.swimmer.name} - {self.event.name} - {self.get_record_type_display()}'

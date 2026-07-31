@@ -14,6 +14,12 @@ class Medal(models.Model):
 
     class Meta:
         ordering = ['championship', 'event']
+        indexes = [
+            models.Index(fields=['swimmer']),
+            models.Index(fields=['championship']),
+            models.Index(fields=['medal_type']),
+            models.Index(fields=['championship', 'medal_type']),
+        ]
 
     def __str__(self):
         return f'{self.swimmer.name} - {self.get_medal_type_display()} - {self.event.name}'

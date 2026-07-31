@@ -560,30 +560,48 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     break
 
         # Personal bests achieved at this meet
+        # Use a subquery approach: get each swimmer+event best at this meet,
+        # then compare with their all-time best in one aggregated query.
         personal_bests = []
-        pb_candidates = athletes.filter(
+        pb_candidates = list(athletes.filter(
             swimmer__is_relay_team=False, time_centiseconds__gt=0
         ).values('swimmer_id', 'event_id').annotate(
             meet_best=Min('time_centiseconds')
-        )
-        for pb in pb_candidates:
-            sid, eid, meet_best = pb['swimmer_id'], pb['event_id'], pb['meet_best']
-            # Check if this is their all-time best
-            all_time_best = (
-                Result.objects.filter(
-                    swimmer_id=sid, event_id=eid,
-                    championship__pool=championship.pool,
-                    swimmer__is_relay_team=False,
-                    time_centiseconds__gt=0,
-                )
-                .aggregate(best=Min('time_centiseconds'))['best']
+        ))
+        if pb_candidates:
+            # Get all-time bests in a single query for all swimmers at this meet
+            swimmer_ids = list({pb['swimmer_id'] for pb in pb_candidates})
+            all_time_rows = Result.objects.filter(
+                swimmer_id__in=swimmer_ids,
+                championship__pool=championship.pool,
+                swimmer__is_relay_team=False,
+                time_centiseconds__gt=0,
+            ).values('swimmer_id', 'event_id').annotate(
+                best=Min('time_centiseconds')
             )
-            if all_time_best == meet_best:
-                # This IS their PB — get the result
-                result = athletes.filter(
-                    swimmer_id=sid, event_id=eid, time_centiseconds=meet_best
-                ).select_related('swimmer', 'swimmer__nationality', 'event').first()
-                if result:
+            all_time_lookup = {
+                (row['swimmer_id'], row['event_id']): row['best']
+                for row in all_time_rows
+            }
+            # Find which meet bests are also all-time bests
+            pb_keys = set()
+            for pb in pb_candidates:
+                key = (pb['swimmer_id'], pb['event_id'])
+                if all_time_lookup.get(key) == pb['meet_best']:
+                    pb_keys.add(key)
+            if pb_keys:
+                # Fetch the actual result rows for PBs
+                pb_results = athletes.filter(
+                    swimmer__is_relay_team=False, time_centiseconds__gt=0
+                ).select_related(
+                    'swimmer', 'swimmer__nationality', 'event'
+                ).order_by('swimmer_id', 'event_id', 'time_centiseconds')
+                seen = set()
+                for result in pb_results:
+                    key = (result.swimmer_id, result.event_id)
+                    if key not in pb_keys or key in seen:
+                        continue
+                    seen.add(key)
                     personal_bests.append({
                         'swimmer_id': result.swimmer.id,
                         'swimmer_name': result.swimmer.name,

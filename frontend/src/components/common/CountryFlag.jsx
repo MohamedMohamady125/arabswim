@@ -50,7 +50,10 @@ export const CODE_TO_ALPHA2 = {
 }
 
 export default function CountryFlag({ code, flagUrl, name, className = '' }) {
-  const alpha2 = flagUrl || CODE_TO_ALPHA2[code?.toUpperCase()] || (code || '').toLowerCase().slice(0, 2)
+  // Always prefer the hardcoded IOC→alpha2 mapping — it is authoritative.
+  // flagUrl from the DB is only used if the code isn't in the map (unknown country).
+  const upperCode = code?.toUpperCase()
+  const alpha2 = CODE_TO_ALPHA2[upperCode] || flagUrl || ''
 
   return (
     <span className={`inline-flex items-center gap-2 min-w-0 max-w-full ${className}`}>

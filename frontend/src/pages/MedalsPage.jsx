@@ -140,16 +140,6 @@ export default function MedalsPage() {
 
   return (
     <div>
-      <PageHeader title="Medal Tally" subtitle="Arab countries medal standings" />
-
-      {/* Totals */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
-        <StatCard label="Gold" value={totalGold} icon={GoldDot} />
-        <StatCard label="Silver" value={totalSilver} icon={SilverDot} />
-        <StatCard label="Bronze" value={totalBronze} icon={BronzeDot} />
-        <StatCard label="Total" value={totalAll} icon={Medal} />
-      </div>
-
       <FilterBar chips={chips} onReset={hasFilters ? clearFilters : undefined}>
         <div className="w-full md:w-44">
           <FieldLabel>Classification</FieldLabel>

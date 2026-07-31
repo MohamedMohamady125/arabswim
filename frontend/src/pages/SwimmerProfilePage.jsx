@@ -906,7 +906,7 @@ function StatsTab({ stats, events, swimmerId }) {
         <PerformanceIndex finaDistribution={fina_distribution} bestFina={best_fina} />
         <div className="space-y-3 sm:space-y-4">
           {best_fina && (
-            <Card className="border-aqua-600/30">
+            <Card className="border-aqua-600/40 bg-aqua-50/40">
               <div className="text-label text-aqua-600 mb-2">Best FINA Points</div>
               <div className="text-4xl sm:text-5xl font-bold tnum text-aqua-600"><AnimatedNumber value={best_fina.points} /></div>
               <div className="text-body-sm font-semibold text-ink-700 mt-2">{best_fina.event_name}</div>
@@ -914,7 +914,7 @@ function StatsTab({ stats, events, swimmerId }) {
             </Card>
           )}
           {season_best_fina && (
-            <Card className="border-pos/30">
+            <Card className="border-pos/40 bg-pos/5">
               <div className="text-label text-pos mb-2">Season Best FINA Points · {season_best_fina.year}</div>
               <div className="text-4xl sm:text-5xl font-bold tnum text-pos"><AnimatedNumber value={season_best_fina.points} /></div>
               <div className="text-body-sm font-semibold text-ink-700 mt-2">{season_best_fina.event_name}</div>
@@ -922,7 +922,7 @@ function StatsTab({ stats, events, swimmerId }) {
             </Card>
           )}
           {best_event && (
-            <Card className="border-gold/40">
+            <Card className="border-gold/50 bg-gold/5">
               <div className="text-label text-gold mb-2">Signature Event</div>
               <div className="text-display text-ink-900">{best_event}</div>
               <div className="text-body-sm text-ink-400 mt-1">Highest FINA points across all events</div>

@@ -399,6 +399,7 @@ CATEGORY_CANONICAL = {
     'CADETS': 'Cadets',
     'JUNIOR': 'Juniors',
     'JUNIORS': 'Juniors',
+    'JUNORS': 'Juniors',  # common typo in Tunisian data
     'SENIOR': 'Seniors',
     'SENIORS': 'Seniors',
     'OPEN': 'Open',

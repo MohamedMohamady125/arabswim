@@ -235,13 +235,21 @@ def parse(html_content):
                     current_event.age_group = category
                 continue
 
-            # Check for round type
-            if 'séries' in text.lower() or 'series' in text.lower():
-                if current_event:
-                    current_event.round_type = 'Heats'
-            elif 'finale' in text.lower():
-                if current_event:
-                    current_event.round_type = 'Finals'
+            # Check for round type.  When the round changes within the same
+            # event+category, fork a sibling so each round keeps its own results.
+            text_lower = text.lower()
+            new_round = None
+            if 'séries' in text_lower or 'series' in text_lower:
+                new_round = 'Heats'
+            elif re.search(r'finale?\s+[bc]', text_lower):
+                new_round = 'Consolation'
+            elif 'finale' in text_lower or 'final' in text_lower:
+                new_round = 'Finals'
+            if new_round and current_event:
+                if current_event.results and current_event.round_type != new_round:
+                    current_event = _sibling_event(current_event, current_event.age_group)
+                    meet.events.append(current_event)
+                current_event.round_type = new_round
 
         elif element.name == 'table' and current_event:
             is_relay = 'relay' in current_event.event_name.lower() or '4x' in current_event.event_name.lower()

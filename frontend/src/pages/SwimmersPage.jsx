@@ -299,26 +299,62 @@ export default function SwimmersPage() {
         onCancel={() => setPendingDelete(null)}
       />
 
-      <FilterBar
-        chips={chips}
-        onReset={() => { setFilterNationality(''); setFilterSex(''); setPage(1) }}
-      >
+      {/* Mobile: search + gender chips + country select always visible */}
+      <div className="md:hidden mb-3 space-y-2.5">
         <SearchInput
           placeholder="Search swimmer..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-          className="w-full md:w-64"
+          className="w-full"
         />
-        <Select value={filterNationality} onChange={(e) => { setFilterNationality(e.target.value); setPage(1) }} className="md:w-44" aria-label="Nationality">
-          <option value="">All countries</option>
-          {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </Select>
-        <Select value={filterSex} onChange={(e) => { setFilterSex(e.target.value); setPage(1) }} className="md:w-32" aria-label="Sex">
-          <option value="">All</option>
-          <option value="M">Men</option>
-          <option value="F">Women</option>
-        </Select>
-      </FilterBar>
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          {[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { setFilterSex(opt.value); setPage(1) }}
+              className={`shrink-0 px-4 h-9 rounded-full text-body-sm font-medium transition-colors ${
+                filterSex === opt.value
+                  ? 'bg-aqua-600 text-white'
+                  : 'bg-white border border-ink-200 text-ink-700 hover:border-aqua-500/40'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+          <Select
+            value={filterNationality}
+            onChange={(e) => { setFilterNationality(e.target.value); setPage(1) }}
+            className="shrink-0 h-9 rounded-full text-body-sm"
+            aria-label="Country"
+          >
+            <option value="">All countries</option>
+            {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
+        </div>
+      </div>
+      {/* Desktop: full filter bar */}
+      <div className="hidden md:block">
+        <FilterBar
+          chips={chips}
+          onReset={() => { setFilterNationality(''); setFilterSex(''); setPage(1) }}
+        >
+          <SearchInput
+            placeholder="Search swimmer..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            className="w-64"
+          />
+          <Select value={filterNationality} onChange={(e) => { setFilterNationality(e.target.value); setPage(1) }} className="w-44" aria-label="Nationality">
+            <option value="">All countries</option>
+            {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
+          <Select value={filterSex} onChange={(e) => { setFilterSex(e.target.value); setPage(1) }} className="w-32" aria-label="Sex">
+            <option value="">All</option>
+            <option value="M">Men</option>
+            <option value="F">Women</option>
+          </Select>
+        </FilterBar>
+      </div>
 
       {swimmers.length === 0 ? (
         <EmptyState icon={Users} title="No swimmers found" hint="Try adjusting the search or filters." />

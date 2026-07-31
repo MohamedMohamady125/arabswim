@@ -1091,14 +1091,14 @@ function InternationalParticipation({ championships }) {
           {PARTICIPATION_TILES.map((t) => {
             const n = counts[t.match] || 0
             return (
-              <div key={t.label} className="flex rounded-md overflow-hidden bg-white shadow-card border border-ink-100">
-                <div className="w-[42%] shrink-0 flex items-center justify-center py-6 sm:py-7 [&_svg]:scale-[1.35] sm:[&_svg]:scale-150" style={{ background: t.grad }}>
+              <div key={t.label} className="flex flex-col sm:flex-row rounded-md overflow-hidden bg-white shadow-card border border-ink-100">
+                <div className="h-16 sm:h-auto sm:w-[38%] shrink-0 flex items-center justify-center [&_svg]:scale-[1.6] sm:[&_svg]:scale-[2]" style={{ background: t.grad }}>
                   {t.icon}
                 </div>
-                <div className="flex-1 flex flex-col items-center justify-center gap-1.5 px-1 py-3">
-                  <div className="text-label text-center leading-tight text-ink-900">{t.label}</div>
-                  <div className="text-white text-2xl sm:text-4xl font-bold px-3 sm:px-4 py-1 rounded-sm tnum" style={{ background: t.badge }}>
-                    <AnimatedNumber value={n} pad={2} />
+                <div className="flex-1 flex flex-col items-center justify-center gap-2 px-2 py-4 sm:py-6">
+                  <div className="text-body-sm sm:text-body font-semibold text-center leading-tight text-ink-900">{t.label}</div>
+                  <div className="text-white text-6xl sm:text-8xl font-bold px-5 sm:px-6 py-2 rounded-sm tnum" style={{ background: t.badge }}>
+                    <AnimatedNumber value={n} />
                   </div>
                 </div>
               </div>

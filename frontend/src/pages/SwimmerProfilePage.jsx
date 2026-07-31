@@ -1406,17 +1406,6 @@ function RecordsTab({ swimmerId, swimmer }) {
     <div>
     {subTabs}
     <div className="rounded-md overflow-hidden bg-ink-50 border border-ink-100 p-4 sm:p-8">
-      {/* Header banner pill */}
-      <div className="flex justify-center mb-4">
-        <div className="inline-flex items-center gap-2 sm:gap-4 px-4 sm:px-10 py-3 max-w-full rounded-full shadow-pop bg-gradient-to-b from-ink-700 to-ink-950 border-2 border-aqua-500">
-          <Star size={18} className="text-gold fill-gold shrink-0" />
-          <span className="text-white font-bold uppercase tracking-[0.06em] sm:tracking-[0.12em] text-body-sm sm:text-xl text-center">
-            {genderLabel} RECORD HOLDER <span className="mx-1">&bull;</span> {totalCount} RECORD{totalCount !== 1 ? 'S' : ''}
-          </span>
-          <Star size={18} className="text-gold fill-gold shrink-0" />
-        </div>
-      </div>
-
       {/* Sections per record type */}
       {sectionOrder.map(type => {
         const list = byType[type]

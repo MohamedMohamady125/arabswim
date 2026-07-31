@@ -166,7 +166,12 @@ export default function RecordsPage() {
     <div className="flex items-center gap-2.5 sm:gap-3">
       <div className="flex-1 min-w-0">
         <EventLabel name={r.event_detail?.name} className="mb-0.5" />
-        <div className="text-body-sm font-medium text-ink-900 truncate">{r.swimmer_detail?.name || '-'}</div>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {r.swimmer_detail?.nationality_detail && (
+            <CountryFlag code={r.swimmer_detail.nationality_detail.code} flagUrl={r.swimmer_detail.nationality_detail.flag_url} className="shrink-0 [&>img]:w-5 [&>img]:h-[15px]" />
+          )}
+          <span className="text-body-sm font-medium text-ink-900 truncate">{r.swimmer_detail?.name || '-'}</span>
+        </div>
         <div className="text-body-sm text-ink-400 truncate">
           {[r.meet_name, r.location, formatDate(r.result_date)].filter(Boolean).join(' · ')}
         </div>

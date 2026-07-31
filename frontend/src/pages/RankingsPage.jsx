@@ -193,7 +193,6 @@ export default function RankingsPage() {
                     flagUrl: r.nationality_flag,
                   }}
                   time={r.time}
-                  points={r.fina_points || undefined}
                   meta={[r.championship_name, r.championship_country, formatDate(r.date)].filter(Boolean).join(' · ')}
                 />
               )

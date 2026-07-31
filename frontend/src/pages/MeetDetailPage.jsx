@@ -15,7 +15,7 @@ import { Hero, Tabs, SegmentedControl, Card, Button, Badge, PoolBadge, ConfirmDi
 import { SwimmerCell, TimeDisplay, MedalTally, RankNumber } from '../components/domain'
 import {
   ArrowLeft, Pencil, Plus, Users, Timer, ChevronRight, ChevronUp, ChevronDown,
-  Trash2, X, Camera, Medal, MapPin, Calendar, ListOrdered, Waves, Upload,
+  Trash2, X, Camera, Medal, MapPin, Calendar, ListOrdered, Waves, Upload, Shield, Globe,
 } from 'lucide-react'
 
 // Display categories oldest → youngest (bigger age first).
@@ -590,10 +590,15 @@ export default function MeetDetailPage() {
     )
   }
 
+  const clubCount = stats.clubs?.length || 0
+  const countryCount = stats.countries?.length || 0
   const heroStats = [
     { label: 'Swimmers', value: stats.total_swimmers },
     { label: 'Results', value: stats.total_results },
     { label: 'Events', value: stats.events.length },
+    isNational
+      ? { label: 'Clubs', value: clubCount, icon: Shield }
+      : { label: 'Countries', value: countryCount, icon: Globe },
     { label: 'Male', value: stats.male_count, hideMobile: true },
     { label: 'Female', value: stats.female_count, hideMobile: true },
   ]
@@ -639,13 +644,19 @@ export default function MeetDetailPage() {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 mt-5 sm:mt-6">
-          {heroStats.map(s => (
-            <div key={s.label} className={`bg-white/10 rounded-sm px-2 py-2.5 sm:p-3 text-center ${s.hideMobile ? 'hidden sm:block' : ''}`}>
-              <div className="text-time-lg text-white">{s.value}</div>
-              <div className="text-label text-white/60">{s.label}</div>
-            </div>
-          ))}
+        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-3 mt-5 sm:mt-6">
+          {heroStats.map(s => {
+            const Icon = s.icon
+            return (
+              <div key={s.label} className={`bg-white/10 rounded-sm px-2 py-2.5 sm:p-3 text-center ${s.hideMobile ? 'hidden sm:block' : ''}`}>
+                <div className="text-time-lg text-white">{s.value}</div>
+                <div className="text-label text-white/60 flex items-center justify-center gap-1">
+                  {Icon && <Icon size={12} />}
+                  {s.label}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </Hero>
 

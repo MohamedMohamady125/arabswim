@@ -70,7 +70,7 @@ export default function CountryProfilePage() {
   if (!data) return <div className="text-center text-gray-400 py-20">Loading…</div>
 
   const { country, stats, medals, top_swimmers, top_medalists, best_times, records, championships_hosted, championships_participated, teams } = data
-  const alpha2 = country.flag_url || CODE_TO_ALPHA2[country.code?.toUpperCase()] || (country.code || '').toLowerCase().slice(0, 2)
+  const alpha2 = CODE_TO_ALPHA2[country.code?.toUpperCase()] || country.flag_url || ''
   const filteredBest = best_times.filter((b) =>
     (!btSex || b.sex === btSex) && (!btPool || b.pool === btPool))
   const currentRecords = records.filter((r) => !r.is_new)

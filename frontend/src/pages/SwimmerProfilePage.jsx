@@ -876,8 +876,8 @@ function PerformanceIndex({ finaDistribution, bestFina }) {
   )
 }
 
-/* ───────── Stats Tab ───────── */
-function StatsTab({ stats, events, swimmerId }) {
+/* ───────── Qualifying Tab ───────── */
+function QualifyingTab({ swimmerId }) {
   const [qualifyingGaps, setQualifyingGaps] = useState([])
   const [gapPool, setGapPool] = useState('LCM')
   const [gapCut, setGapCut] = useState('A')
@@ -896,6 +896,100 @@ function StatsTab({ stats, events, swimmerId }) {
         .then(res => setQualifyingGaps(res.data || [])).catch(() => {})
     }
   }, [swimmerId, gapStandard])
+
+  if (standards.length === 0) return <Card><EmptyState icon={Target} title="No qualifying standards available" /></Card>
+
+  const filteredGaps = (qualifyingGaps || []).filter(g => g.pool === gapPool && g.cut === gapCut)
+  const activeStandard = standards.find(s => s.id === gapStandard)
+
+  return (
+    <Card padding="none" className="overflow-hidden">
+      <div className="p-4 border-b border-ink-100">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="text-title text-ink-900">Qualifying Standards Gap</h3>
+            <p className="text-body-sm text-ink-400 mt-0.5">{activeStandard?.name || qualifyingGaps[0]?.standard_name} — Based on {new Date().getFullYear()} best times</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <SegmentedControl
+              options={[{ key: 'LCM', label: 'LCM' }, { key: 'SCM', label: 'SCM' }]}
+              value={gapPool} onChange={setGapPool} />
+            <SegmentedControl
+              options={[{ key: 'A', label: 'A Cut' }, { key: 'B', label: 'B Cut' }]}
+              value={gapCut} onChange={setGapCut} />
+          </div>
+        </div>
+        <div className="mt-3 rounded-sm border border-ink-100 bg-white p-2 flex flex-wrap gap-1.5">
+          {standards.map(s => (
+            <button key={s.id} onClick={() => setGapStandard(s.id)}
+              className={`px-3 py-2 min-h-10 rounded-sm text-body-sm font-medium transition-colors ${
+                gapStandard === s.id
+                  ? 'bg-aqua-600 text-white'
+                  : 'bg-ink-50 text-ink-500 hover:bg-ink-100 border border-ink-100'
+              }`}>
+              {s.name}
+            </button>
+          ))}
+        </div>
+      </div>
+      {filteredGaps.length === 0 ? (
+        <div className="p-8 text-center text-ink-400 text-body-sm">No qualifying gaps for {gapPool} {gapCut} Cut</div>
+      ) : (
+      <div className="divide-y divide-ink-100">
+        {filteredGaps.map((g) => {
+          const maxGap = Math.max(...filteredGaps.map(x => Math.abs(x.gap_cs)))
+          const barPct = maxGap > 0 ? (Math.abs(g.gap_cs) / maxGap) * 100 : 0
+          return (
+            <div key={g.event_id} className="px-3 sm:px-5 py-3.5 sm:py-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <EventLabel name={g.event_name} className="font-semibold" />
+                  {g.pool && <PoolBadge pool={g.pool} />}
+                  <Badge variant="status">{g.cut} Cut</Badge>
+                </div>
+                {g.qualified ? (
+                  <Badge variant="pos">QUALIFIED</Badge>
+                ) : (
+                  <span className="text-body-sm font-semibold tnum text-ink-500">+{g.gap_pct}%</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex-1">
+                  <div className="flex justify-between text-label normal-case tracking-normal mb-1">
+                    <span className="text-ink-400">Your Best</span>
+                    <span className="text-ink-400">Qualifying</span>
+                  </div>
+                  <div className="relative h-6 bg-ink-50 rounded-full overflow-hidden">
+                    <div
+                      className={`absolute start-0 top-0 h-full rounded-full transition-all duration-700 ${g.qualified ? 'bg-pos' : 'bg-aqua-600'}`}
+                      style={{ width: `${g.qualified ? 100 : Math.max(100 - barPct * 0.6, 15)}%` }}
+                    />
+                    {!g.qualified && (
+                      <div className="absolute end-0 top-0 h-full border-s-2 border-dashed border-scm" style={{ width: `${barPct * 0.6}%` }}>
+                        <div className="absolute -top-0.5 -start-1 w-2 h-7 bg-scm rounded-full opacity-50" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-time text-aqua-600">{g.swimmer_best}</span>
+                <span className={`text-body-sm tnum font-semibold ${g.qualified ? 'text-pos' : 'text-neg'}`}>
+                  {g.qualified ? '-' : '+'}{g.gap_time}
+                </span>
+                <span className="text-time text-scm">{g.qualifying_time}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      )}
+    </Card>
+  )
+}
+
+/* ───────── Stats Tab ───────── */
+function StatsTab({ stats, events, swimmerId }) {
 
   if (!stats) return null
   const { best_fina, season_best_fina, best_event, records, total_records, fina_distribution } = stats
@@ -930,97 +1024,6 @@ function StatsTab({ stats, events, swimmerId }) {
           )}
         </div>
       </div>
-
-      {/* Qualifying Gaps */}
-      {standards.length > 0 && (() => {
-        const filteredGaps = (qualifyingGaps || []).filter(g => g.pool === gapPool && g.cut === gapCut)
-        const activeStandard = standards.find(s => s.id === gapStandard)
-        return (
-        <Card padding="none" className="overflow-hidden">
-          <div className="p-4 border-b border-ink-100">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h3 className="text-title text-ink-900">Qualifying Standards Gap</h3>
-                <p className="text-body-sm text-ink-400 mt-0.5">{activeStandard?.name || qualifyingGaps[0]?.standard_name} — Based on {new Date().getFullYear()} best times</p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <SegmentedControl
-                  options={[{ key: 'LCM', label: 'LCM' }, { key: 'SCM', label: 'SCM' }]}
-                  value={gapPool} onChange={setGapPool} />
-                <SegmentedControl
-                  options={[{ key: 'A', label: 'A Cut' }, { key: 'B', label: 'B Cut' }]}
-                  value={gapCut} onChange={setGapCut} />
-              </div>
-            </div>
-            {/* Standard selector */}
-            <div className="mt-3 rounded-sm border border-ink-100 bg-white p-2 flex flex-wrap gap-1.5">
-              {standards.map(s => (
-                <button key={s.id} onClick={() => setGapStandard(s.id)}
-                  className={`px-3 py-2 min-h-10 rounded-sm text-body-sm font-medium transition-colors ${
-                    gapStandard === s.id
-                      ? 'bg-aqua-600 text-white'
-                      : 'bg-ink-50 text-ink-500 hover:bg-ink-100 border border-ink-100'
-                  }`}>
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          </div>
-          {filteredGaps.length === 0 ? (
-            <div className="p-8 text-center text-ink-400 text-body-sm">No qualifying gaps for {gapPool} {gapCut} Cut</div>
-          ) : (
-          <div className="divide-y divide-ink-100">
-            {filteredGaps.map((g) => {
-              const maxGap = Math.max(...filteredGaps.map(x => Math.abs(x.gap_cs)))
-              const barPct = maxGap > 0 ? (Math.abs(g.gap_cs) / maxGap) * 100 : 0
-              return (
-                <div key={g.event_id} className="px-3 sm:px-5 py-3.5 sm:py-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <EventLabel name={g.event_name} className="font-semibold" />
-                      {g.pool && <PoolBadge pool={g.pool} />}
-                      <Badge variant="status">{g.cut} Cut</Badge>
-                    </div>
-                    {g.qualified ? (
-                      <Badge variant="pos">QUALIFIED</Badge>
-                    ) : (
-                      <span className="text-body-sm font-semibold tnum text-ink-500">+{g.gap_pct}%</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="flex-1">
-                      <div className="flex justify-between text-label normal-case tracking-normal mb-1">
-                        <span className="text-ink-400">Your Best</span>
-                        <span className="text-ink-400">Qualifying</span>
-                      </div>
-                      <div className="relative h-6 bg-ink-50 rounded-full overflow-hidden">
-                        <div
-                          className={`absolute start-0 top-0 h-full rounded-full transition-all duration-700 ${g.qualified ? 'bg-pos' : 'bg-aqua-600'}`}
-                          style={{ width: `${g.qualified ? 100 : Math.max(100 - barPct * 0.6, 15)}%` }}
-                        />
-                        {!g.qualified && (
-                          <div className="absolute end-0 top-0 h-full border-s-2 border-dashed border-scm" style={{ width: `${barPct * 0.6}%` }}>
-                            <div className="absolute -top-0.5 -start-1 w-2 h-7 bg-scm rounded-full opacity-50" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-time text-aqua-600">{g.swimmer_best}</span>
-                    <span className={`text-body-sm tnum font-semibold ${g.qualified ? 'text-pos' : 'text-neg'}`}>
-                      {g.qualified ? '-' : '+'}{g.gap_time}
-                    </span>
-                    <span className="text-time text-scm">{g.qualifying_time}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          )}
-        </Card>
-        )
-      })()}
 
       {/* Records Held */}
       {total_records > 0 && (
@@ -1859,6 +1862,7 @@ const TABS = [
   { key: 'medals', label: 'Medals', icon: Medal },
   { key: 'rankings', label: 'Rankings', icon: BarChart3 },
   { key: 'records', label: 'Records', icon: Star },
+  { key: 'qualifying', label: 'Qualifying', icon: Target },
   { key: 'progression', label: 'Progression', icon: TrendingUp },
   { key: 'stats', label: 'Stats', icon: ChartLine },
   { key: 'compare', label: 'Compare', icon: GitCompare },
@@ -2075,6 +2079,7 @@ export default function SwimmerProfilePage() {
         {effectiveTab === 'medals' && <MedalsTab stats={stats} />}
         {effectiveTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
         {effectiveTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
+        {effectiveTab === 'qualifying' && <QualifyingTab swimmerId={parseInt(id)} />}
         {effectiveTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
         {effectiveTab === 'stats' && <StatsTab stats={stats} events={events} swimmerId={parseInt(id)} />}
         {effectiveTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}

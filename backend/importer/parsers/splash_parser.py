@@ -358,7 +358,7 @@ def parse(text):
                     if d not in existing:
                         result._split_pairs.append((d, cum_time))
                 result._split_pairs.sort(key=lambda p: p[0])
-                result.split_times = [t for _, t in result._split_pairs]
+                result.split_times = [f'{t} ({d}m)' for d, t in result._split_pairs]
             continue
 
         event_is_relay = _is_relay(current_event.event_name)

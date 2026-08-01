@@ -835,30 +835,11 @@ export default function MeetDetailPage() {
                 </div>
               </div>
 
-              {/* Round tabs (Finals / Prelims / Heats) */}
+              {/* Age category filter pills — shown first when categories exist */}
               {!loadingResults && (() => {
-                const rounds = [...new Set(results.map(r => r.round_type || ''))]
-                if (rounds.length <= 1) return null
-                rounds.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
-                return (
-                  <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-ink-100 max-w-full overflow-x-auto">
-                    <SegmentedControl
-                      className="whitespace-nowrap"
-                      options={rounds.map(round => ({ key: round, label: roundLabel(round) }))}
-                      value={selectedRound}
-                      onChange={(round) => { setSelectedRound(round); setSelectedCategory(null); setExpandedRelay(null) }}
-                    />
-                  </div>
-                )
-              })()}
-
-              {/* Age category filter pills */}
-              {!loadingResults && (() => {
-                const roundResults = results.filter(r => (r.round_type || '') === (selectedRound ?? ''))
-                const cats = [...new Set(roundResults.map(r => r.category || ''))]
+                const cats = [...new Set(results.map(r => r.category || ''))]
                 if (cats.filter(c => c !== '').length === 0 || cats.length <= 1) return null
                 cats.sort((a, b) => catRank(a) - catRank(b))
-                // Auto-select first category when none is selected
                 if (selectedCategory === null && cats.length > 0) {
                   setTimeout(() => setSelectedCategory(cats[0]), 0)
                 }
@@ -877,6 +858,30 @@ export default function MeetDetailPage() {
                         </button>
                       )
                     })}
+                  </div>
+                )
+              })()}
+
+              {/* Round tabs (Final A / Final B / Heats) — filtered by selected category */}
+              {!loadingResults && (() => {
+                const catResults = selectedCategory !== null
+                  ? results.filter(r => (r.category || '') === selectedCategory)
+                  : results
+                const rounds = [...new Set(catResults.map(r => r.round_type || ''))]
+                if (rounds.length <= 1) return null
+                rounds.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
+                // Auto-select first round if current selection isn't available for this category
+                if (!rounds.includes(selectedRound)) {
+                  setTimeout(() => setSelectedRound(rounds[0] ?? ''), 0)
+                }
+                return (
+                  <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-ink-100 max-w-full overflow-x-auto">
+                    <SegmentedControl
+                      className="whitespace-nowrap"
+                      options={rounds.map(round => ({ key: round, label: roundLabel(round) }))}
+                      value={selectedRound}
+                      onChange={(round) => { setSelectedRound(round); setExpandedRelay(null) }}
+                    />
                   </div>
                 )
               })()}

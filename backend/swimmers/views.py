@@ -512,6 +512,27 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         while fina_distribution and fina_distribution[-1]['count'] == 0:
             fina_distribution.pop()
 
+        # Top 3 personal bests by FINA points (one per event, best time)
+        from django.db.models import Subquery, OuterRef
+        top_events = (
+            Result.objects.filter(swimmer=swimmer, fina_points__isnull=False, fina_points__gt=0)
+            .values('event_id').annotate(best_fina=Max('fina_points'))
+            .order_by('-best_fina')[:3]
+        )
+        top_pbs = []
+        for te in top_events:
+            r = (Result.objects.filter(
+                swimmer=swimmer, event_id=te['event_id'], fina_points=te['best_fina']
+            ).select_related('event', 'championship').first())
+            if r:
+                top_pbs.append({
+                    'event_name': r.event.name,
+                    'time': format_centiseconds(r.time_centiseconds),
+                    'fina_points': r.fina_points,
+                    'meet_name': r.championship.name,
+                    'meet_date': r.championship.date,
+                })
+
         return Response({
             'total_championships': len(champs_data),
             'total_races': Result.objects.filter(swimmer=swimmer).count(),
@@ -525,6 +546,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'records': records,
             'total_records': len(records),
             'fina_distribution': fina_distribution,
+            'top_personal_bests': top_pbs,
         })
 
     @action(detail=False, methods=['get'])

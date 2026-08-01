@@ -468,7 +468,7 @@ export default function ImportPage() {
               </Select>
               {meet.existingChampId && (
                 <p className="text-caption text-ink-400 mt-1.5">
-                  Results will be added to this meet — the form below is ignored. Re-imported duplicates are skipped automatically.
+                  Supplementary data will be merged into this meet. New results are added, existing swimmers are matched by name, and duplicates are skipped automatically.
                 </p>
               )}
             </div>
@@ -721,16 +721,21 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
               <span className="mx-auto mb-4 w-14 h-14 rounded-full bg-pos/10 text-pos flex items-center justify-center">
                 <CheckCircle2 size={28} />
               </span>
-              <h2 className="text-title text-ink-900 mb-4">
-                Import Complete{meets.length > 1 ? `: ${m.result.championship_name}` : '!'}
+              <h2 className="text-title text-ink-900 mb-2">
+                {m.existingChampId ? 'Merge Complete!' : meets.length > 1 ? `Import Complete: ${m.result.championship_name}` : 'Import Complete!'}
               </h2>
+              {m.existingChampId && (
+                <p className="text-body-sm text-ink-500 mb-4">
+                  Supplementary data merged into <strong className="text-ink-900">{m.result.championship_name}</strong>
+                </p>
+              )}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 max-w-2xl mx-auto mb-4 sm:mb-6 text-start">
-                <StatCard label="Results Created" value={m.result.created_results} icon={ListChecks} />
+                <StatCard label={m.existingChampId ? "New Results Added" : "Results Created"} value={m.result.created_results} icon={ListChecks} />
                 <StatCard label="New Swimmers" value={m.result.created_swimmers} icon={Users} />
                 <StatCard label="Matched Swimmers" value={m.result.matched_swimmers} icon={CheckCircle2} />
-                <StatCard label="Skipped (Duplicates)" value={m.result.skipped_results} icon={XCircle} />
+                <StatCard label={m.existingChampId ? "Already Existed" : "Skipped (Duplicates)"} value={m.result.skipped_results} icon={XCircle} />
               </div>
-              <p className="text-body-sm text-ink-400 mb-4">Championship: {m.result.championship_name}</p>
+              {!m.existingChampId && <p className="text-body-sm text-ink-400 mb-4">Championship: {m.result.championship_name}</p>}
 
               {m.result.skipped_details && m.result.skipped_details.length > 0 && (
                 <details className="text-start max-w-2xl mx-auto mb-4">

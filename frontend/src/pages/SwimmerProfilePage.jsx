@@ -1956,6 +1956,7 @@ const TABS = [
   { key: 'medals', label: 'Medals', icon: Medal },
   { key: 'rankings', label: 'Rankings', icon: BarChart3 },
   { key: 'records', label: 'Records', icon: Star },
+  { key: 'qualifying', label: 'Qualifying', icon: Target },
   { key: 'progression', label: 'Progression', icon: TrendingUp },
   { key: 'compare', label: 'Compare', icon: GitCompare },
   { key: 'transfers', label: 'Transfers', icon: ArrowLeftRight },
@@ -2171,6 +2172,7 @@ export default function SwimmerProfilePage() {
         {effectiveTab === 'medals' && <MedalsTab stats={stats} />}
         {effectiveTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
         {effectiveTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
+        {effectiveTab === 'qualifying' && <QualifyingTab swimmerId={parseInt(id)} />}
         {effectiveTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
         {effectiveTab === 'overall' && <OverallTab stats={stats} swimmerId={parseInt(id)} navigate={navigate} />}
         {effectiveTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}

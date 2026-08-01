@@ -933,8 +933,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             s = str(split_str).strip()
                             # "50m: 00:25.77" / "50m : 25.77" → labeled split
                             m = _re.match(r'^(\d{2,4})m\s*:?\s*(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})$', s)
+                            # "25.77 (50m)" / "1:06.56 (100m)" → time-first labeled split
+                            m2 = _re.match(r'^(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*\((\d{2,4})\s*m\)$', s)
                             if m:
                                 dist, t = int(m.group(1)), m.group(2)
+                            elif m2:
+                                dist, t = int(m2.group(2)), m2.group(1)
                             elif _re.match(r'^(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})$', s):
                                 dist, t = None, s
                             else:

@@ -555,9 +555,9 @@ export default function CalendarPage() {
               <img src={mediaUrl(c.meet_photo)} alt={c.name} className="w-full h-full object-cover" />
             </div>
           ) : (
-            <div className="w-14 h-14 md:w-20 md:h-20 bg-ink-900 rounded-md flex flex-col items-center justify-center text-white shrink-0">
-              <span className="text-display leading-none tnum">{d.date()}</span>
-              <span className="text-label text-aqua-400 mt-0.5 md:mt-1">{MONTH_SHORT[d.month()]}</span>
+            <div className="w-18 h-18 md:w-24 md:h-24 bg-ink-900 rounded-md flex flex-col items-center justify-center text-white shrink-0">
+              <span className="text-[32px] md:text-[44px] font-bold leading-none tnum">{d.date()}</span>
+              <span className="text-body-sm md:text-body font-semibold text-aqua-400 mt-0.5 md:mt-1 tracking-wide">{MONTH_SHORT[d.month()]}</span>
             </div>
           )}
 

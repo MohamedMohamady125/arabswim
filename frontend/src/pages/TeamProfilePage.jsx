@@ -21,13 +21,13 @@ import { formatDate } from '../utils/constants'
 
 const TEAM_TABS = [
   { key: 'club', label: 'Club', icon: Waves },
+  { key: 'news', label: 'News', icon: Newspaper },
   { key: 'team', label: 'Team', icon: Users },
-  { key: 'trophies', label: 'Trophies', icon: Trophy },
-  { key: 'records', label: 'Records', icon: Star },
   { key: 'stats', label: 'Stats', icon: BarChart3 },
   { key: 'ranking', label: 'Ranking', icon: MedalLucide },
-  { key: 'news', label: 'News', icon: Newspaper },
+  { key: 'records', label: 'Records', icon: Star },
   { key: 'gallery', label: 'Gallery', icon: ImageIcon },
+  { key: 'prediction', label: 'Prediction', icon: Trophy },
 ]
 
 export default function TeamProfilePage() {
@@ -144,6 +144,7 @@ export default function TeamProfilePage() {
       {/* Tab Content */}
       <div key={activeTab} className="animate-fade-up">
         {activeTab === 'club' && <ClubTab team={team} country={country} profile={profile} />}
+        {activeTab === 'news' && <NewsTab articles={news} />}
         {activeTab === 'team' && (
           <TeamTab
             profile={profile}
@@ -153,12 +154,11 @@ export default function TeamProfilePage() {
             setSection={setTeamSection}
           />
         )}
-        {activeTab === 'trophies' && <TrophiesTab trophies={team.trophies || []} />}
-        {activeTab === 'records' && <RecordsTab records={teamRecords} navigate={navigate} />}
         {activeTab === 'stats' && <StatsTab stats={teamStats} profile={profile} navigate={navigate} />}
         {activeTab === 'ranking' && <RankingTab ranking={teamRanking} teamId={parseInt(id)} navigate={navigate} />}
-        {activeTab === 'news' && <NewsTab articles={news} />}
+        {activeTab === 'records' && <RecordsTab records={teamRecords} navigate={navigate} />}
         {activeTab === 'gallery' && <GalleryTab teamId={id} />}
+        {activeTab === 'prediction' && <PredictionTab profile={profile} />}
       </div>
     </div>
   )
@@ -166,9 +166,11 @@ export default function TeamProfilePage() {
 
 /* ── Club Tab ── */
 function ClubTab({ team, country, profile }) {
+  const trophies = team.trophies || []
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3 sm:gap-4">
       <div className="space-y-4">
+        {/* About */}
         <Card title="About">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-body-sm break-words">
             {team.founded_year && (
@@ -210,6 +212,53 @@ function ClubTab({ team, country, profile }) {
               </div>
             )}
           </div>
+        </Card>
+
+        {/* Contact */}
+        {(team.email || team.phone || team.website) && (
+          <Card title="Contact">
+            <div className="space-y-3">
+              {team.email && (
+                <a href={`mailto:${team.email}`} className="flex items-center gap-3 text-body-sm text-aqua-600 hover:text-aqua-500">
+                  <div className="w-9 h-9 rounded-full bg-aqua-50 flex items-center justify-center shrink-0"><Mail size={16} className="text-aqua-600" /></div>
+                  {team.email}
+                </a>
+              )}
+              {team.phone && (
+                <a href={`tel:${team.phone}`} className="flex items-center gap-3 text-body-sm text-ink-900">
+                  <div className="w-9 h-9 rounded-full bg-ink-50 flex items-center justify-center shrink-0"><Phone size={16} className="text-ink-500" /></div>
+                  {team.phone}
+                </a>
+              )}
+              {team.website && (
+                <a href={team.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 text-body-sm text-aqua-600 hover:text-aqua-500">
+                  <div className="w-9 h-9 rounded-full bg-aqua-50 flex items-center justify-center shrink-0"><Globe size={16} className="text-aqua-600" /></div>
+                  {team.website}
+                </a>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Trophies */}
+        <Card padding="none" title={`Trophies (${trophies.length})`}>
+          {trophies.length === 0 ? (
+            <EmptyState icon={Trophy} title="No trophies yet" />
+          ) : (
+            <div className="divide-y divide-ink-100">
+              {trophies.map((t, i) => (
+                <div key={t.id || i} className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+                    <Trophy size={18} className="text-gold" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-body-sm font-semibold text-ink-900">{t.name}</div>
+                  </div>
+                  <span className="text-body-sm font-bold text-ink-400 tnum">{t.year}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
@@ -309,26 +358,6 @@ function TeamTab({ profile, coaches, navigate, section, setSection }) {
 }
 
 /* ── Trophies Tab ── */
-function TrophiesTab({ trophies }) {
-  if (trophies.length === 0) return <Card><EmptyState icon={Trophy} title="No trophies yet" /></Card>
-  return (
-    <Card padding="none">
-      <div className="divide-y divide-ink-100">
-        {trophies.map((t, i) => (
-          <div key={t.id || i} className="flex items-center gap-3 px-4 py-3.5">
-            <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
-              <Trophy size={18} className="text-gold" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-body-sm font-semibold text-ink-900">{t.name}</div>
-            </div>
-            <span className="text-body-sm font-bold text-ink-400 tnum">{t.year}</span>
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
-}
 
 /* ── Records Tab ── */
 function RecordsTab({ records, navigate }) {
@@ -538,6 +567,44 @@ function GalleryTab({ teamId }) {
           </Card>
         </a>
       ))}
+    </div>
+  )
+}
+
+/* ── Prediction Tab ── */
+function PredictionTab({ profile }) {
+  const topSwimmers = profile?.best_swimmers?.slice(0, 5) || []
+  return (
+    <div className="space-y-4">
+      <Card title="Performance Prediction">
+        <div className="bg-aqua-50/50 border border-aqua-600/20 rounded-md p-4 mb-4">
+          <div className="text-body-sm text-aqua-600 font-medium">
+            Based on current progression trends and FINA points trajectory, here are the club's projected improvements.
+          </div>
+        </div>
+        {topSwimmers.length === 0 ? (
+          <EmptyState icon={BarChart3} title="Not enough data" hint="Need more competition results to generate predictions." />
+        ) : (
+          <div className="divide-y divide-ink-100">
+            {topSwimmers.map((s, i) => {
+              const trend = s.fina_points > 700 ? 'Improving' : s.fina_points > 500 ? 'Steady' : 'Developing'
+              const trendColor = trend === 'Improving' ? 'text-pos' : trend === 'Steady' ? 'text-aqua-600' : 'text-ink-400'
+              return (
+                <div key={i} className="flex items-center gap-3 py-3">
+                  <span className="w-6 text-center text-body-sm font-bold text-ink-400 tnum">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-body-sm font-medium text-ink-900 truncate">{s.name}</div>
+                    <div className="text-body-sm text-ink-400">FINA: {s.fina_points}</div>
+                  </div>
+                  <Badge variant={trend === 'Improving' ? 'pos' : trend === 'Steady' ? 'aqua' : 'status'}>
+                    {trend}
+                  </Badge>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

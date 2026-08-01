@@ -15,3 +15,6 @@ export const getTeamProgression = (id, params) => api.get(`/teams/${id}/progress
 export const mergeTeams = (data) => api.post('/teams/merge/', data)
 export const autoDedupeTeams = (data) => api.post('/teams/auto-dedupe/', data)
 export const findDuplicateTeams = () => api.get('/teams/find-duplicates/')
+export const getTeamRecords = (id) => api.get(`/teams/${id}/records/`)
+export const getTeamStats = (id) => api.get(`/teams/${id}/stats/`)
+export const getTeamRanking = (id) => api.get(`/teams/${id}/ranking/`)

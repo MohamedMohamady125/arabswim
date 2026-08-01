@@ -989,56 +989,80 @@ function QualifyingTab({ swimmerId }) {
 }
 
 /* ───────── Stats Tab ───────── */
-function StatsTab({ stats, events, swimmerId }) {
-
+function OverallTab({ stats, swimmerId, navigate }) {
   if (!stats) return null
-  const { best_fina, season_best_fina, best_event, records, total_records, fina_distribution } = stats
+  const { medals, total_championships, total_races, best_fina, total_records, top_personal_bests, records } = stats
+
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Performance Index + Highlights */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-        <PerformanceIndex finaDistribution={fina_distribution} bestFina={best_fina} />
-        <div className="space-y-3 sm:space-y-4">
+      {/* Quick Stats Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="bg-white rounded-md shadow-card border border-ink-100 p-4 sm:p-5 text-center">
+          <div className="text-3xl sm:text-4xl font-bold tnum text-ink-900"><AnimatedNumber value={total_championships} /></div>
+          <div className="text-label text-ink-400 mt-1">Meets</div>
+        </div>
+        <div className="bg-white rounded-md shadow-card border border-gold/30 p-4 sm:p-5 text-center">
+          <div className="text-3xl sm:text-4xl font-bold tnum text-gold"><AnimatedNumber value={medals?.total || 0} /></div>
+          <div className="text-label text-ink-400 mt-1">Medals</div>
+          {medals?.total > 0 && (
+            <div className="flex items-center justify-center gap-2 mt-2 text-body-sm tnum">
+              <span className="text-gold font-semibold">{medals.gold}G</span>
+              <span className="text-silver font-semibold">{medals.silver}S</span>
+              <span className="text-bronze font-semibold">{medals.bronze}B</span>
+            </div>
+          )}
+        </div>
+        <div className="bg-white rounded-md shadow-card border border-record/30 p-4 sm:p-5 text-center">
+          <div className="text-3xl sm:text-4xl font-bold tnum text-record"><AnimatedNumber value={total_records} /></div>
+          <div className="text-label text-ink-400 mt-1">Records</div>
+        </div>
+        <div className="bg-white rounded-md shadow-card border border-aqua-600/30 p-4 sm:p-5 text-center">
+          <div className="text-3xl sm:text-4xl font-bold tnum text-aqua-600"><AnimatedNumber value={best_fina?.points || 0} /></div>
+          <div className="text-label text-ink-400 mt-1">Best FINA</div>
           {best_fina && (
-            <Card className="border-aqua-600/40 bg-aqua-50/40">
-              <div className="text-label text-aqua-600 mb-2">Best FINA Points</div>
-              <div className="text-4xl sm:text-5xl font-bold tnum text-aqua-600"><AnimatedNumber value={best_fina.points} /></div>
-              <div className="text-body-sm font-semibold text-ink-700 mt-2">{best_fina.event_name}</div>
-              <div className="text-body-sm text-ink-400 mt-0.5">{best_fina.championship_name}</div>
-            </Card>
-          )}
-          {season_best_fina && (
-            <Card className="border-pos/40 bg-pos/5">
-              <div className="text-label text-pos mb-2">Season Best FINA Points · {season_best_fina.year}</div>
-              <div className="text-4xl sm:text-5xl font-bold tnum text-pos"><AnimatedNumber value={season_best_fina.points} /></div>
-              <div className="text-body-sm font-semibold text-ink-700 mt-2">{season_best_fina.event_name}</div>
-              <div className="text-body-sm text-ink-400 mt-0.5">{season_best_fina.championship_name}</div>
-            </Card>
-          )}
-          {best_event && (
-            <Card className="border-gold/50 bg-gold/5">
-              <div className="text-label text-gold mb-2">Signature Event</div>
-              <div className="text-display text-ink-900">{best_event}</div>
-              <div className="text-body-sm text-ink-400 mt-1">Highest FINA points across all events</div>
-            </Card>
+            <div className="text-body-sm text-ink-400 mt-1 truncate">{best_fina.event_name}</div>
           )}
         </div>
       </div>
 
+      {/* Top Personal Bests */}
+      {top_personal_bests?.length > 0 && (
+        <Card padding="none" title="Top Personal Bests">
+          <div className="divide-y divide-ink-100">
+            {top_personal_bests.map((pb, i) => (
+              <div key={i} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 hover:bg-ink-50 transition-colors">
+                <div className="w-9 h-9 rounded-full bg-aqua-50 text-aqua-600 flex items-center justify-center shrink-0 font-bold text-body-sm">
+                  #{i + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <EventLabel name={pb.event_name} className="font-semibold" />
+                  <div className="text-body-sm text-ink-400 truncate mt-0.5">
+                    {pb.meet_name}{pb.meet_date ? ` · ${formatDate(pb.meet_date)}` : ''}
+                  </div>
+                </div>
+                <div className="text-end shrink-0">
+                  <TimeDisplay time={pb.time} />
+                  <div className="text-label normal-case tracking-normal font-semibold text-aqua-600 tnum">{pb.fina_points} pts</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Best Rankings */}
+      <RankingsPreview swimmerId={swimmerId} navigate={navigate} />
+
       {/* Records Held */}
       {total_records > 0 && (
-        <Card padding="none" className="overflow-hidden">
-          <div className="p-4 border-b border-ink-100">
-            <h3 className="text-title text-ink-900">Records Held</h3>
-            <p className="text-body-sm text-ink-400 mt-0.5">{total_records} active record{total_records !== 1 ? 's' : ''}</p>
-          </div>
+        <Card padding="none" title={`Records Held (${total_records})`}>
           <div className="divide-y divide-ink-100">
             {records.map((r) => (
-              <div key={r.id} className="px-3 sm:px-5 py-3 sm:py-3.5 flex items-center gap-3 sm:gap-4 hover:bg-ink-50 transition-colors">
+              <div key={r.id} className="px-4 sm:px-5 py-3 sm:py-3.5 flex items-center gap-3 sm:gap-4 hover:bg-ink-50 transition-colors">
                 <Badge variant={r.record_type === 'ARAB' ? 'pos' : r.record_type === 'GCC' ? 'aqua' : 'record'}>{r.record_type}</Badge>
                 <div className="flex-1 min-w-0">
                   <EventLabel name={r.event_name} className="font-semibold" />
-                  <div className="text-body-sm text-ink-400">{r.location}{r.location && r.date ? ' \u00b7 ' : ''}{formatDate(r.date)}</div>
+                  <div className="text-body-sm text-ink-400">{r.location}{r.location && r.date ? ' · ' : ''}{formatDate(r.date)}</div>
                 </div>
                 <TimeDisplay time={r.time} record />
               </div>
@@ -1047,6 +1071,73 @@ function StatsTab({ stats, events, swimmerId }) {
         </Card>
       )}
     </div>
+  )
+}
+
+/* Rankings preview for Overall tab — shows top 3 rankings across scopes */
+function RankingsPreview({ swimmerId, navigate }) {
+  const [rankings, setRankings] = useState(null)
+  const [events, setEvents] = useState([])
+  useEffect(() => {
+    Promise.all([
+      getSwimmerRankings(swimmerId),
+      getSwimmerEvents(swimmerId),
+    ]).then(([r, e]) => { setRankings(r.data); setEvents(e.data) }).catch(() => {})
+  }, [swimmerId])
+
+  if (!rankings || rankings.length === 0) return null
+
+  const eventMap = {}
+  for (const e of events) { eventMap[`${e.event_id}-${e.pool}`] = e.event_name; eventMap[`${e.event_id}`] = e.event_name }
+  const eventName = (r) => eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`
+
+  // Collect best rank per event across all scopes, pick top 3
+  const best = []
+  for (const r of rankings) {
+    for (const [scope, rk] of Object.entries(r.rankings)) {
+      best.push({ ...rk, scope, event_id: r.event_id, pool: r.pool, best_time: r.best_time })
+    }
+  }
+  best.sort((a, b) => a.rank - b.rank)
+  // Dedupe by event — show each event's best scope only
+  const seen = new Set()
+  const top = []
+  for (const b2 of best) {
+    const key = `${b2.event_id}-${b2.pool}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    top.push(b2)
+    if (top.length >= 3) break
+  }
+
+  if (top.length === 0) return null
+
+  const scopeLabel = { arab: 'Arab', gcc: 'GCC', national: 'National' }
+  const ordSuffix = (n) => { if (n % 100 >= 11 && n % 100 <= 13) return 'th'; const l = n % 10; return l === 1 ? 'st' : l === 2 ? 'nd' : l === 3 ? 'rd' : 'th' }
+
+  return (
+    <Card padding="none" title="Best Rankings" action={
+      <button onClick={() => navigate('?tab=rankings')} className="text-body-sm text-aqua-600 font-medium hover:text-aqua-500">View all</button>
+    }>
+      <div className="divide-y divide-ink-100">
+        {top.map((r, i) => (
+          <div key={i} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4">
+            <div className="w-12 h-12 rounded-md bg-aqua-600 text-white flex items-center justify-center shrink-0">
+              <span className="text-xl font-extrabold tnum">{r.rank}</span>
+              <span className="text-[10px] font-bold mt-0.5">{ordSuffix(r.rank)}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-body-sm font-bold text-ink-900 uppercase truncate">{eventName(r)}</div>
+              <div className="text-body-sm text-ink-400 mt-0.5">
+                <Badge variant="aqua" className="me-1.5">{scopeLabel[r.scope] || r.scope}</Badge>
+                {r.pool} · {r.total ? `out of ${r.total}` : ''}
+              </div>
+            </div>
+            <div className="text-time text-ink-900 shrink-0">{r.best_time}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
   )
 }
 
@@ -1857,6 +1948,7 @@ function RankingsTab({ swimmerId, swimmer }) {
 
 /* ───────── TAB CONFIG ───────── */
 const TABS = [
+  { key: 'overall', label: 'Overall', icon: ChartLine },
   { key: 'times', label: 'Times', icon: Clock },
   { key: 'meets', label: 'Meets', icon: CalendarDays },
   { key: 'medals', label: 'Medals', icon: Medal },
@@ -1864,7 +1956,6 @@ const TABS = [
   { key: 'records', label: 'Records', icon: Star },
   { key: 'qualifying', label: 'Qualifying', icon: Target },
   { key: 'progression', label: 'Progression', icon: TrendingUp },
-  { key: 'stats', label: 'Stats', icon: ChartLine },
   { key: 'compare', label: 'Compare', icon: GitCompare },
   { key: 'transfers', label: 'Transfers', icon: ArrowLeftRight },
   { key: 'gallery', label: 'Gallery', icon: Images },
@@ -1877,7 +1968,7 @@ export default function SwimmerProfilePage() {
   const { token } = useAuth()
   const isAdmin = !!token
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get('tab') || 'times'
+  const activeTab = searchParams.get('tab') || 'overall'
   const setActiveTab = (tab) => setSearchParams({ tab })
   const [swimmer, setSwimmer] = useState(null)
   const [events, setEvents] = useState([])
@@ -2081,7 +2172,7 @@ export default function SwimmerProfilePage() {
         {effectiveTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
         {effectiveTab === 'qualifying' && <QualifyingTab swimmerId={parseInt(id)} />}
         {effectiveTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
-        {effectiveTab === 'stats' && <StatsTab stats={stats} events={events} swimmerId={parseInt(id)} />}
+        {effectiveTab === 'overall' && <OverallTab stats={stats} swimmerId={parseInt(id)} navigate={navigate} />}
         {effectiveTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}
         {effectiveTab === 'gallery' && <GalleryTab swimmerId={parseInt(id)} />}
       </div>

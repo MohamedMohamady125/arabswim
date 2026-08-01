@@ -355,6 +355,16 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
         )
+        # International medals only (exclude National/Other classification categories)
+        intl_medals_qs = medals_qs.exclude(
+            championship__classification_category__name__in=['National', 'Other']
+        )
+        intl_medal_counts = intl_medals_qs.aggregate(
+            gold=Count('id', filter=Q(medal_type='GOLD')),
+            silver=Count('id', filter=Q(medal_type='SILVER')),
+            bronze=Count('id', filter=Q(medal_type='BRONZE')),
+            total=Count('id'),
+        )
 
         # Medals by classification category (for the stacked bar chart)
         medals_by_level = list(
@@ -538,6 +548,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'total_races': Result.objects.filter(swimmer=swimmer).count(),
             'championships': champs_data,
             'medals': medal_counts,
+            'intl_medals': intl_medal_counts,
             'medals_by_level': medals_by_level,
             'medals_hierarchy': medals_hierarchy,
             'best_fina': best_fina,

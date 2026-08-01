@@ -197,10 +197,9 @@ function MedalsTab({ stats, meet, medals, medalSummary, medalClubSummary, medalS
   const [tallyFilter, setTallyFilter] = useState('ALL')
   const [tallySection, setTallySection] = useState('main')   // 'main' = country/club tally, 'swimmers'
   const [swimmerGender, setSwimmerGender] = useState('ALL')
-  // National/Other meets: no country tally — clubs + swimmers tallies instead
-  const isNational = meet?.classification_name
-    ? ['National', 'Other'].includes(meet.classification_name)
-    : (stats ? (stats.countries?.length || 0) <= 1 : false)
+  // National/Other meets: no country tally — clubs + swimmers tallies instead.
+  // Strict: driven ONLY by the meet's classification, never by a country-count guess.
+  const isNational = ['National', 'Other'].includes(meet?.classification_name)
   const safeMedals = Array.isArray(medals) ? medals : []
   const safeSummary = Array.isArray(medalSummary) ? medalSummary : []
   const safeClubSummary = Array.isArray(medalClubSummary) ? medalClubSummary : []
@@ -432,10 +431,9 @@ export default function MeetDetailPage() {
   const [pendingDeleteResult, setPendingDeleteResult] = useState(null)  // result row awaiting confirm
   const [pendingDeleteMedia, setPendingDeleteMedia] = useState(null)    // media item awaiting confirm
 
-  // National/Other meets show team column; international meets already show the country flag
-  const isNational = meet?.classification_name
-    ? ['National', 'Other'].includes(meet.classification_name)
-    : (stats ? (stats.countries?.length || 0) <= 1 : false)
+  // National/Other meets show team column; international meets already show the country flag.
+  // Strict: driven ONLY by the meet's classification, never by a country-count guess.
+  const isNational = ['National', 'Other'].includes(meet?.classification_name)
 
   // Medals tab state
   const [medals, setMedals] = useState([])

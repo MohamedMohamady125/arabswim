@@ -129,9 +129,9 @@ function BroadcastChart({ lines, title, showSwimmer = false, chartId = 'main', t
         fontFamily={FONT_STACK}>
         <defs>
           <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor={tint} stopOpacity="0.05" />
+            <stop offset="0" stopColor={tint} stopOpacity="0.065" />
             <stop offset="0.5" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="1" stopColor={tint} stopOpacity="0.03" />
+            <stop offset="1" stopColor={tint} stopOpacity="0.039" />
           </linearGradient>
           <pattern id={stripesId} width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)">
             <line x1="0" y1="0" x2="0" y2="26" stroke={INK} strokeOpacity="0.02" strokeWidth="2.4" />

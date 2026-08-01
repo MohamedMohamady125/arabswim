@@ -106,7 +106,12 @@ export default function ImportPage() {
           location: m.location || '',
         },
         arabOnly: false,
-        existingChampId: presetChampId,
+        // Auto-select existing meet if duplicate/partial match detected
+        existingChampId: presetChampId || (() => {
+          const warnings = meetData.meet_warnings || []
+          const match = warnings.find(w => w.type === 'exact_duplicate' || w.type === 'partial_new')
+          return match ? String(match.championship_id) : ''
+        })(),
         matches: [], matchStats: {}, decisions: {}, result: null, confirmError: '',
       }
     }
@@ -432,6 +437,17 @@ export default function ImportPage() {
                         <div className="text-body-sm mt-1 opacity-75 tnum">
                           Existing: {w.db_results} results, {w.db_events} events, {w.db_swimmers} swimmers
                         </div>
+                        {(w.type === 'exact_duplicate' || w.type === 'partial_new') && meet.existingChampId !== String(w.championship_id) && (
+                          <button
+                            onClick={() => updateMeet(active, { existingChampId: String(w.championship_id) })}
+                            className="mt-2 px-3 py-1.5 rounded-sm bg-aqua-600 text-white text-body-sm font-medium hover:bg-aqua-500 transition-colors"
+                          >
+                            Merge into this meet
+                          </button>
+                        )}
+                        {meet.existingChampId === String(w.championship_id) && (
+                          <div className="mt-2 text-pos font-medium">Will merge into this meet</div>
+                        )}
                       </div>
                     </div>
                   </div>

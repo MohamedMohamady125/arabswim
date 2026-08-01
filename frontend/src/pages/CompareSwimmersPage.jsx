@@ -150,9 +150,9 @@ export default function CompareSwimmersPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-4 sm:py-6 pb-8">
       <nav className="flex items-center gap-1 text-body-sm text-ink-400 mb-2" aria-label="Breadcrumb">
-        <button onClick={() => navigate('/swimmers')} className="inline-flex items-center gap-1 hover:text-aqua-600 transition-colors">
+        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 hover:text-aqua-600 transition-colors">
           <ChevronLeft size={14} />
-          Swimmers
+          Back
         </button>
       </nav>
       <div className="mb-5 md:mb-6 animate-fade-up">

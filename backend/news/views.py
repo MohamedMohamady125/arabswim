@@ -21,4 +21,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
             qs = qs.filter(status=status_param)
         if country:
             qs = qs.filter(country_id=country)
+        team = self.request.query_params.get('team')
+        if team:
+            qs = qs.filter(team_id=team)
         return qs

@@ -9,6 +9,7 @@ class Article(models.Model):
     cover_image = models.ImageField(upload_to='news/covers/', blank=True, null=True)
     body = models.TextField(blank=True, default='')
     country = models.ForeignKey(Country, on_delete=models.SET_NULL, blank=True, null=True, related_name='articles')
+    team = models.ForeignKey('teams.Team', on_delete=models.CASCADE, blank=True, null=True, related_name='articles')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='DRAFT')
     published_at = models.DateField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

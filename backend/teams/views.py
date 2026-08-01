@@ -448,6 +448,101 @@ class TeamViewSet(viewsets.ModelViewSet):
             'orphan_clubs': orphans[:50],
         })
 
+    @action(detail=True, methods=['get'])
+    def records(self, request, pk=None):
+        """Records held by swimmers of this team."""
+        from records.models import Record
+        from importer.parsers.base import format_centiseconds
+        team = self.get_object()
+        records = Record.objects.filter(
+            Q(swimmer__club__iexact=team.name) |
+            Q(swimmer__results__team__iexact=team.name)
+        ).select_related(
+            'swimmer', 'swimmer__nationality', 'event'
+        ).distinct().order_by('event__sort_order', 'event__distance')
+        data = [{
+            'id': r.id,
+            'record_type': r.record_type,
+            'event_name': r.event.name,
+            'swimmer_id': r.swimmer_id,
+            'swimmer_name': r.swimmer.name,
+            'nationality_code': r.swimmer.nationality.code,
+            'nationality_flag': r.swimmer.nationality.flag_url,
+            'time': format_centiseconds(r.time_centiseconds),
+            'pool': r.pool,
+            'date': r.result_date,
+        } for r in records]
+        return Response(data)
+
+    @action(detail=True, methods=['get'])
+    def stats(self, request, pk=None):
+        """Aggregate stats for a team."""
+        from django.db.models import Min
+        team = self.get_object()
+        swimmers = Swimmer.objects.filter(
+            Q(club__iexact=team.name) | Q(results__team__iexact=team.name)
+        ).exclude(is_relay_team=True).distinct()
+        swimmer_ids = list(swimmers.values_list('id', flat=True))
+        results_qs = Result.objects.filter(swimmer_id__in=swimmer_ids)
+        medals_qs = Medal.objects.filter(swimmer_id__in=swimmer_ids)
+        total_medals = medals_qs.aggregate(
+            gold=Count('id', filter=Q(medal_type='GOLD')),
+            silver=Count('id', filter=Q(medal_type='SILVER')),
+            bronze=Count('id', filter=Q(medal_type='BRONZE')),
+            total=Count('id'),
+        )
+        champ_count = results_qs.values('championship').distinct().count()
+        best_fina = results_qs.filter(fina_points__isnull=False).order_by('-fina_points').select_related('swimmer', 'event').first()
+        # Most decorated swimmer
+        top_medalist = medals_qs.values('swimmer_id', 'swimmer__name').annotate(
+            count=Count('id')
+        ).order_by('-count').first()
+        return Response({
+            'swimmers': len(swimmer_ids),
+            'results': results_qs.count(),
+            'championships': champ_count,
+            'medals': total_medals,
+            'records': Result.objects.none().count(),  # placeholder
+            'best_fina': {
+                'points': best_fina.fina_points,
+                'swimmer_name': best_fina.swimmer.name,
+                'swimmer_id': best_fina.swimmer_id,
+                'event_name': best_fina.event.name,
+            } if best_fina else None,
+            'top_medalist': {
+                'swimmer_id': top_medalist['swimmer_id'],
+                'swimmer_name': top_medalist['swimmer__name'],
+                'count': top_medalist['count'],
+            } if top_medalist else None,
+        })
+
+    @action(detail=True, methods=['get'])
+    def ranking(self, request, pk=None):
+        """Rank this team among clubs in the same country by medal count."""
+        team = self.get_object()
+        country_teams = Team.objects.filter(country=team.country, is_national_team=False)
+        ranking = []
+        for t in country_teams:
+            t_swimmers = Swimmer.objects.filter(
+                Q(club__iexact=t.name) | Q(results__team__iexact=t.name)
+            ).exclude(is_relay_team=True).distinct().values_list('id', flat=True)
+            counts = Medal.objects.filter(swimmer_id__in=t_swimmers).aggregate(
+                gold=Count('id', filter=Q(medal_type='GOLD')),
+                silver=Count('id', filter=Q(medal_type='SILVER')),
+                bronze=Count('id', filter=Q(medal_type='BRONZE')),
+                total=Count('id'),
+            )
+            ranking.append({
+                'team_id': t.id,
+                'team_name': t.name,
+                'is_current': t.id == team.id,
+                **counts,
+            })
+        ranking.sort(key=lambda r: (-(r['gold']), -(r['silver']), -(r['bronze'])))
+        for i, r in enumerate(ranking):
+            r['rank'] = i + 1
+        return Response(ranking)
+
 
 class TrophyViewSet(viewsets.ModelViewSet):
     queryset = Trophy.objects.all()

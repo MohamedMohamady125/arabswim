@@ -20,6 +20,13 @@ class AlbumViewSet(viewsets.ModelViewSet):
             return AlbumListSerializer
         return AlbumDetailSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        team = self.request.query_params.get('team')
+        if team:
+            qs = qs.filter(team_id=team)
+        return qs
+
     @action(detail=False, methods=['post'], url_path='for-championship')
     def for_championship(self, request):
         """Get or create an album for a championship."""

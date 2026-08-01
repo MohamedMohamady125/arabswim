@@ -23,6 +23,7 @@ class Coach(models.Model):
     level = models.CharField(max_length=20, choices=LEVEL_CHOICES, blank=True, default='')
     years_experience = models.PositiveIntegerField(blank=True, null=True)
     current_club = models.CharField(max_length=200, blank=True, default='')
+    team = models.ForeignKey('teams.Team', on_delete=models.SET_NULL, blank=True, null=True, related_name='coaches')
     specializations = models.CharField(max_length=500, blank=True, default='',
         help_text='Comma-separated, e.g. Sprint Freestyle, Open Water, Youth')
     certifications = models.TextField(blank=True, default='',

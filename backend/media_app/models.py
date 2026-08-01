@@ -8,6 +8,8 @@ class Album(models.Model):
     description = models.TextField(blank=True, default='')
     championship = models.ForeignKey(Championship, on_delete=models.SET_NULL, blank=True, null=True,
                                      related_name='albums')
+    team = models.ForeignKey('teams.Team', on_delete=models.SET_NULL, blank=True, null=True,
+                             related_name='albums')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

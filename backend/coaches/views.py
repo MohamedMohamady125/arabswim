@@ -23,4 +23,7 @@ class CoachViewSet(viewsets.ModelViewSet):
             qs = qs.filter(level=level)
         if available is not None:
             qs = qs.filter(is_available=available.lower() == 'true')
+        team = self.request.query_params.get('team')
+        if team:
+            qs = qs.filter(team_id=team)
         return qs

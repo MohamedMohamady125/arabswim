@@ -9,4 +9,4 @@ class ArticleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
         fields = ['id', 'title', 'cover_image', 'body', 'country', 'country_detail',
-                  'status', 'published_at', 'created_at', 'updated_at']
+                  'team', 'status', 'published_at', 'created_at', 'updated_at']

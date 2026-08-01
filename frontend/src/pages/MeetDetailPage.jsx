@@ -538,7 +538,14 @@ export default function MeetDetailPage() {
 
   // Round display order: finals first, then semis/consolation, prelims/heats
   const ROUND_ORDER = ['Finals', 'Consolation', 'Prelims', 'Heats', '']
-  const roundLabel = (r) => r || 'Timed Finals'
+  const roundLabel = (r) => {
+    if (!r) return 'Timed Finals'
+    if (r === 'Consolation') return 'Final B'
+    if (r === 'Finals') return 'Final A'
+    if (r === 'Heats') return 'Heats'
+    if (r === 'Prelims') return 'Prelims'
+    return r
+  }
 
   const handleEventClick = async (event) => {
     setSelectedEvent(event)

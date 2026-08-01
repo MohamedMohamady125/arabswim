@@ -991,7 +991,9 @@ function QualifyingTab({ swimmerId }) {
 /* ───────── Stats Tab ───────── */
 function OverallTab({ stats, swimmerId, navigate }) {
   if (!stats) return null
-  const { medals, total_championships, total_races, best_fina, total_records, top_personal_bests, records } = stats
+  const { medals, intl_medals, total_championships, total_races, best_fina, total_records, top_personal_bests, records } = stats
+  const intlRecords = (records || []).filter(r => r.record_type !== 'NATIONAL')
+  const im = intl_medals || { gold: 0, silver: 0, bronze: 0, total: 0 }
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -1002,19 +1004,19 @@ function OverallTab({ stats, swimmerId, navigate }) {
           <div className="text-label text-ink-400 mt-1">Meets</div>
         </div>
         <div className="bg-white rounded-md shadow-card border border-gold/30 p-4 sm:p-5 text-center">
-          <div className="text-3xl sm:text-4xl font-bold tnum text-gold"><AnimatedNumber value={medals?.total || 0} /></div>
-          <div className="text-label text-ink-400 mt-1">Medals</div>
-          {medals?.total > 0 && (
+          <div className="text-3xl sm:text-4xl font-bold tnum text-gold"><AnimatedNumber value={im.total} /></div>
+          <div className="text-label text-ink-400 mt-1">Int'l Medals</div>
+          {im.total > 0 && (
             <div className="flex items-center justify-center gap-2 mt-2 text-body-sm tnum">
-              <span className="text-gold font-semibold">{medals.gold}G</span>
-              <span className="text-silver font-semibold">{medals.silver}S</span>
-              <span className="text-bronze font-semibold">{medals.bronze}B</span>
+              <span className="text-gold font-semibold">{im.gold}G</span>
+              <span className="text-silver font-semibold">{im.silver}S</span>
+              <span className="text-bronze font-semibold">{im.bronze}B</span>
             </div>
           )}
         </div>
         <div className="bg-white rounded-md shadow-card border border-record/30 p-4 sm:p-5 text-center">
-          <div className="text-3xl sm:text-4xl font-bold tnum text-record"><AnimatedNumber value={total_records} /></div>
-          <div className="text-label text-ink-400 mt-1">Records</div>
+          <div className="text-3xl sm:text-4xl font-bold tnum text-record"><AnimatedNumber value={intlRecords.length} /></div>
+          <div className="text-label text-ink-400 mt-1">Int'l Records</div>
         </div>
         <div className="bg-white rounded-md shadow-card border border-aqua-600/30 p-4 sm:p-5 text-center">
           <div className="text-3xl sm:text-4xl font-bold tnum text-aqua-600"><AnimatedNumber value={best_fina?.points || 0} /></div>
@@ -1053,11 +1055,11 @@ function OverallTab({ stats, swimmerId, navigate }) {
       {/* Best Rankings */}
       <RankingsPreview swimmerId={swimmerId} navigate={navigate} />
 
-      {/* Records Held */}
-      {total_records > 0 && (
-        <Card padding="none" title={`Records Held (${total_records})`}>
+      {/* International Records Held */}
+      {intlRecords.length > 0 && (
+        <Card padding="none" title={`International Records (${intlRecords.length})`}>
           <div className="divide-y divide-ink-100">
-            {records.map((r) => (
+            {intlRecords.map((r) => (
               <div key={r.id} className="px-4 sm:px-5 py-3 sm:py-3.5 flex items-center gap-3 sm:gap-4 hover:bg-ink-50 transition-colors">
                 <Badge variant={r.record_type === 'ARAB' ? 'pos' : r.record_type === 'GCC' ? 'aqua' : 'record'}>{r.record_type}</Badge>
                 <div className="flex-1 min-w-0">
@@ -1954,7 +1956,6 @@ const TABS = [
   { key: 'medals', label: 'Medals', icon: Medal },
   { key: 'rankings', label: 'Rankings', icon: BarChart3 },
   { key: 'records', label: 'Records', icon: Star },
-  { key: 'qualifying', label: 'Qualifying', icon: Target },
   { key: 'progression', label: 'Progression', icon: TrendingUp },
   { key: 'compare', label: 'Compare', icon: GitCompare },
   { key: 'transfers', label: 'Transfers', icon: ArrowLeftRight },
@@ -2170,7 +2171,6 @@ export default function SwimmerProfilePage() {
         {effectiveTab === 'medals' && <MedalsTab stats={stats} />}
         {effectiveTab === 'rankings' && <RankingsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
         {effectiveTab === 'records' && <RecordsTab swimmerId={parseInt(id)} swimmer={swimmer} />}
-        {effectiveTab === 'qualifying' && <QualifyingTab swimmerId={parseInt(id)} />}
         {effectiveTab === 'progression' && <ProgressionTab swimmerId={parseInt(id)} />}
         {effectiveTab === 'overall' && <OverallTab stats={stats} swimmerId={parseInt(id)} navigate={navigate} />}
         {effectiveTab === 'transfers' && <TransferHistoryTab swimmerId={parseInt(id)} />}

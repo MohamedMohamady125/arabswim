@@ -7,7 +7,7 @@ import {
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
-import { Loading, Empty, Seg, MedalIcon } from '../components/ui'
+import { Loading, Empty, Seg, MedalIcon, Pager } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { formatDateRange, formatNumber, mediaUrl, parseTime } from '../utils'
 
@@ -61,6 +61,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
   const [editMode, setEditMode] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editValues, setEditValues] = useState({ time: '', team: '' })
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const filteredEvents = useMemo(
     () => events.filter((e) => !genderFilter || e.gender === genderFilter),
@@ -142,6 +144,21 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
     order.sort((a, b) => catRank(a) - catRank(b))
     return order.map((cat) => [cat, byCat.get(cat)])
   }, [rows, selectedRound, selectedCategory])
+
+  // client-side pagination: 10 rows per page across the grouped selection
+  useEffect(() => { setPage(1); setExpandedRow(null) }, [eventKey, selectedRound, selectedCategory])
+  const flatRows = useMemo(() => grouped.flatMap(([cat, rs]) => rs.map((r) => ({ cat, r }))), [grouped])
+  const pageGroups = useMemo(() => {
+    const slice = flatRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    const gs = []
+    slice.forEach(({ cat, r }) => {
+      const last = gs[gs.length - 1]
+      if (last && last[0] === cat) last[1].push(r)
+      else gs.push([cat, [r]])
+    })
+    return gs
+  }, [flatRows, page])
+  const fullByCat = useMemo(() => new Map(grouped), [grouped])
 
   const isRelay = selectedEvent?.event_name?.toLowerCase().includes('relay')
     || selectedEvent?.display_name?.toLowerCase().includes('relay')
@@ -378,18 +395,19 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
               </tr>
             </thead>
             <tbody>
-              {grouped.map(([cat, catRows]) => (
-                <React.Fragment key={cat || '_general'}>
+              {pageGroups.map(([cat, catRows], gi) => (
+                <React.Fragment key={`${cat || '_general'}-${gi}`}>
                   {selectedCategory === 'ALL' && grouped.some(([c]) => c !== '') && (
                     <tr style={{ background: 'var(--color-surface)' }}>
                       <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>{cat || 'General'}</td>
                     </tr>
                   )}
-                  {catRows.map((r) => renderRow(r, catRows))}
+                  {catRows.map((r) => renderRow(r, fullByCat.get(cat) || catRows))}
                 </React.Fragment>
               ))}
             </tbody>
           </table>
+          <Pager page={page} pageSize={PAGE_SIZE} count={flatRows.length} onPage={(p) => { setPage(p); setExpandedRow(null) }} />
         </div>
       )}
     </div>

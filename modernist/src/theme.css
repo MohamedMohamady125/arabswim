@@ -297,6 +297,26 @@ figure { margin: 0; }
   .loading, .empty { padding: 32px 16px; }
   .pager { flex-wrap: wrap; }
   .sect-head { flex-wrap: wrap; }
+
+  /* page-level tab bars: swipeable single-row underline strip */
+  .tabbar { padding: 0 !important; }
+  .seg-tabs {
+    flex-wrap: nowrap; overflow-x: auto; gap: 0;
+    background: transparent; border: 0; border-radius: 0;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    width: 100%; padding: 0 8px;
+  }
+  .seg-tabs::-webkit-scrollbar { display: none; }
+  .seg-tabs .seg-opt {
+    flex: none; min-height: 46px; padding: 12px 13px;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+    background: transparent; color: var(--color-neutral-700);
+    border-bottom: 3px solid transparent; white-space: nowrap;
+  }
+  .seg-tabs .seg-opt.on {
+    background: transparent; color: var(--color-accent-800);
+    border-bottom-color: var(--asw-gold); font-weight: 800;
+  }
 }
 
 /* ── Micro animations ─────────────────────────────────────────────────── */

@@ -9,7 +9,7 @@ import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
 import { Loading, Empty, Seg, MedalIcon, Pager } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
-import { formatDateRange, formatNumber, mediaUrl, parseTime } from '../utils'
+import { formatDateRange, formatNumber, parseTime } from '../utils'
 
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -1015,18 +1015,6 @@ export default function MeetDetail() {
 
   return (
     <div>
-      {/* featured meet photo */}
-      {meet.meet_photo && (
-        <div className="rule-b" style={{ maxHeight: 300, overflow: 'hidden' }}>
-          <img
-            src={mediaUrl(meet.meet_photo)}
-            alt={meet.name}
-            className="grayscale"
-            style={{ width: '100%', height: 300, objectFit: 'cover' }}
-          />
-        </div>
-      )}
-
       {/* header */}
       <div className="pad-lg rule-b">
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
@@ -1061,8 +1049,9 @@ export default function MeetDetail() {
       )}
 
       {/* tabs */}
-      <div className="rule-b" style={{ padding: '14px 32px', overflowX: 'auto' }}>
+      <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>
         <Seg
+          tabs
           options={[
             { value: 'results', label: 'Results' },
             { value: 'medals', label: 'Medals' },

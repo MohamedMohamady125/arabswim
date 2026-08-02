@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
 export function Loading({ label = 'Loading' }) {
@@ -31,10 +32,17 @@ export function PageHead({ kicker, title, sub, children }) {
   )
 }
 
-// Segmented control: options [{value,label}]
-export function Seg({ options, value, onChange }) {
+// Segmented control: options [{value,label}]. `tabs` renders a page-level tab
+// bar that turns into a swipeable underline strip on phones.
+export function Seg({ options, value, onChange, tabs = false }) {
+  const wrapRef = useRef(null)
+  useEffect(() => {
+    if (!tabs) return
+    const el = wrapRef.current?.querySelector('.seg-opt.on')
+    el?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [tabs, value])
   return (
-    <div className="seg">
+    <div ref={wrapRef} className={`seg${tabs ? ' seg-tabs' : ''}`}>
       {options.map((o) => (
         <button
           key={o.value}

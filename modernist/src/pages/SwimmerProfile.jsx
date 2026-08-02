@@ -625,8 +625,9 @@ export default function SwimmerProfile() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="rule-b" style={{ padding: '14px 32px', overflowX: 'auto' }}>
+      <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>
         <Seg
+          tabs
           options={visibleTabs}
           value={effectiveTab}
           onChange={setActiveTab}

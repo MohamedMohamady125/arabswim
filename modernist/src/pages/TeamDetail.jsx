@@ -511,8 +511,8 @@ export default function TeamDetail() {
       </div>
 
       {/* tabs */}
-      <div className="pad" style={{ paddingBottom: 0 }}>
-        <Seg options={TABS} value={tab} onChange={setTab} />
+      <div className="pad tabbar" style={{ paddingBottom: 0 }}>
+        <Seg tabs options={TABS} value={tab} onChange={setTab} />
       </div>
 
       <div className="pad">

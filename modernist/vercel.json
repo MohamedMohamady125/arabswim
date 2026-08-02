@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/((?!assets|logo|medal_|favicon).*)", "destination": "/index.html" }
+  ]
+}

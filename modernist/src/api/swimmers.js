@@ -1,0 +1,18 @@
+import api from './client'
+
+export const getSwimmers = (params) => api.get('/swimmers/', { params })
+export const getSwimmer = (id) => api.get(`/swimmers/${id}/`)
+export const createSwimmer = (data) => api.post('/swimmers/', data)
+export const updateSwimmer = (id, data) => api.patch(`/swimmers/${id}/`, data)
+export const deleteSwimmer = (id) => api.delete(`/swimmers/${id}/`)
+export const searchSwimmers = (q) => api.get('/swimmers/search/', { params: { q } })
+export const getSwimmerBirthdays = (month) => api.get('/swimmers/birthdays/', { params: { month } })
+export const uploadSwimmerPhoto = (id, formData) => api.post(`/swimmers/${id}/upload_photo/`, formData)
+export const getSwimmerEvents = (id) => api.get(`/swimmers/${id}/events/`)
+export const getSwimmerEventHistory = (id, eventId, pool) => api.get(`/swimmers/${id}/events/${eventId}/history/`, { params: pool ? { pool } : {} })
+export const getSwimmerProfileStats = (id) => api.get(`/swimmers/${id}/profile-stats/`)
+export const compareSwimmers = (ids) => api.get('/swimmers/compare/', { params: { ids: ids.join(',') } })
+export const getSwimmerProgression = (id, pool) => api.get(`/swimmers/${id}/progression/`, { params: { pool } })
+export const getSwimmerTransferHistory = (id) => api.get(`/swimmers/${id}/transfer-history/`)
+export const getSwimmerRankings = (id) => api.get(`/swimmers/${id}/rankings/`)
+export const getSwimmerQualifyingGaps = (id, params) => api.get(`/swimmers/${id}/qualifying-gaps/`, { params })

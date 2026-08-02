@@ -242,7 +242,21 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
               {!isRelay && (r.team || '').toUpperCase() === 'LP' && (
                 <span className="tag tag-outline" title="No club — transferring (libre passage)">LP</span>
               )}
-              {hasSub && <span className="micro" style={{ fontSize: 10 }}>{isExpanded ? '▴' : '▾'}</span>}
+              {hasSub && (
+                <span
+                  style={{
+                    flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '2px 8px', cursor: 'pointer',
+                    fontSize: 10, fontWeight: 800, letterSpacing: '0.07em',
+                    fontFamily: 'var(--font-heading)',
+                    border: `1px solid ${isExpanded ? 'var(--color-accent-800)' : 'var(--asw-gold)'}`,
+                    background: isExpanded ? 'var(--color-accent-800)' : 'color-mix(in srgb, var(--asw-gold) 14%, transparent)',
+                    color: isExpanded ? '#fff' : 'var(--color-accent-800)',
+                  }}
+                >
+                  {isRelay ? 'TEAM' : 'SPLITS'} {isExpanded ? '▲' : '▼'}
+                </span>
+              )}
             </div>
           </td>
           <td className="num asw-num hide-mobile">{r.age_at_competition ?? '—'}</td>
@@ -897,7 +911,8 @@ function MostImprovedTab({ meetId }) {
 
   if (rows === null) return <Loading label="Loading most improved" />
 
-  const filtered = gender === 'overall' ? rows : rows.filter((s) => s.gender === gender)
+  // Only genuine improvements — swimmers with no previous time never appear
+  const filtered = rows.filter((s) => !s.is_new_entry && (gender === 'overall' || s.gender === gender))
 
   return (
     <div className="pad">
@@ -915,12 +930,12 @@ function MostImprovedTab({ meetId }) {
       {filtered.length === 0 ? (
         <Empty label="No improvements recorded for this meet" />
       ) : (() => {
-        const maxDrop = Math.max(0.01, ...filtered.map((s) => (s.is_new_entry ? 0 : parseFloat(s.improvement) || 0)))
+        const maxDrop = Math.max(0.01, ...filtered.map((s) => parseFloat(s.improvement) || 0))
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 10 }}>
             {filtered.map((s, i) => {
-              const drop = s.is_new_entry ? 0 : parseFloat(s.improvement) || 0
-              const top3 = i < 3 && !s.is_new_entry
+              const drop = parseFloat(s.improvement) || 0
+              const top3 = i < 3
               return (
                 <div
                   key={i}
@@ -928,67 +943,37 @@ function MostImprovedTab({ meetId }) {
                   style={{
                     border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
                     borderTop: `3px solid ${top3 ? 'var(--asw-gold)' : 'var(--color-accent-800)'}`,
-                    padding: '14px 16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10,
+                    padding: '10px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 7,
                   }}
                 >
                   {/* rank + swimmer + headline drop */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className="asw-num" style={{
-                      width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13,
+                      width: 22, height: 22, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11,
                       background: top3 ? 'var(--asw-gold)' : 'var(--color-accent-800)', color: '#fff',
                     }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Flag code={s.nationality_code} name={s.swimmer_name} />
-                        <span style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.swimmer_name}</span>
+                        <span style={{ fontWeight: 700, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.swimmer_name}</span>
                       </div>
-                      <div className="micro" style={{ marginTop: 2 }}>{s.event_name}</div>
+                      <div className="micro" style={{ marginTop: 1, fontSize: 10 }}>{s.event_name}</div>
                     </div>
-                    <div style={{ textAlign: 'right', flex: 'none' }}>
-                      {s.is_new_entry ? (
-                        <span className="tag tag-accent">New entry</span>
-                      ) : (
-                        <>
-                          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1, color: 'var(--asw-fast)' }}>
-                            −{s.improvement}
-                          </div>
-                          <div className="micro" style={{ marginTop: 2 }}>seconds</div>
-                        </>
-                      )}
-                    </div>
+                    <span className="asw-num" style={{ flex: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1, color: 'var(--asw-fast)' }}>
+                      −{s.improvement}s
+                    </span>
                   </div>
 
-                  {/* time journey: previous → new */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                    {!s.is_new_entry && (
-                      <>
-                        <span className="asw-num" style={{ fontSize: 15, color: 'var(--color-neutral-600)', textDecoration: 'line-through' }}>{s.previous_best}</span>
-                        <span style={{ color: 'var(--asw-fast)', fontWeight: 700 }}>→</span>
-                      </>
-                    )}
-                    <span className="asw-time" style={{ fontSize: 19 }}>{s.current_time}</span>
+                  {/* time journey + relative drop bar */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span className="asw-num" style={{ fontSize: 13, color: 'var(--color-neutral-600)', textDecoration: 'line-through' }}>{s.previous_best}</span>
+                    <span style={{ color: 'var(--asw-fast)', fontWeight: 700, fontSize: 12 }}>→</span>
+                    <span className="asw-time" style={{ fontSize: 16 }}>{s.current_time}</span>
                   </div>
-
-                  {/* relative drop bar */}
-                  {!s.is_new_entry && (
-                    <div className="bar" style={{ height: 5 }}>
-                      <div style={{ width: `${Math.max(4, Math.round((drop / maxDrop) * 100))}%`, background: 'var(--asw-fast)' }} />
-                    </div>
-                  )}
-
-                  {/* previous best origin */}
-                  {!s.is_new_entry && s.previous_best_meet && (
-                    <div
-                      className="micro"
-                      style={{ textTransform: 'none', letterSpacing: 0, fontSize: 11, color: 'var(--color-neutral-700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                      onClick={(e) => { e.stopPropagation(); if (s.previous_best_meet_id) navigate(`/meets/${s.previous_best_meet_id}`) }}
-                      title={s.previous_best_meet}
-                    >
-                      was at {s.previous_best_meet}
-                      {s.previous_best_date ? ` (${new Date(s.previous_best_date).getFullYear()})` : ''}
-                    </div>
-                  )}
+                  <div className="bar" style={{ height: 4 }}>
+                    <div style={{ width: `${Math.max(4, Math.round((drop / maxDrop) * 100))}%`, background: 'var(--asw-fast)' }} />
+                  </div>
                 </div>
               )
             })}

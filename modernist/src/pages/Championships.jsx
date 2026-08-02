@@ -123,12 +123,12 @@ export default function Championships() {
       {featured && (
         <div className="rule-b" style={{ display: 'flex', flexWrap: 'wrap' }}>
           {featured.m.meet_photo && (
-            <div className="hide-mobile" style={{ width: 300, flex: 'none', borderRight: '2px solid var(--color-divider)' }}>
+            <div className="hide-mobile" style={{ width: 220, alignSelf: 'stretch', flex: 'none', borderRight: '2px solid var(--color-divider)', overflow: 'hidden' }}>
               <img
                 src={mediaUrl(featured.m.meet_photo)}
                 alt={featured.m.name}
                 className="grayscale"
-                style={{ width: '100%', height: '100%', minHeight: 140, objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', maxHeight: 150, objectFit: 'cover', display: 'block' }}
               />
             </div>
           )}

@@ -330,7 +330,7 @@ function SummaryTable({ lines, showSwimmer }) {
             <th className="time">Best</th>
             <th className="time">Latest</th>
             <th className="num">Change</th>
-            <th>{showSwimmer ? 'Best swimmer' : 'Best meet'}</th>
+            <th className="hide-mobile">{showSwimmer ? 'Best swimmer' : 'Best meet'}</th>
           </tr>
         </thead>
         <tbody>
@@ -357,7 +357,7 @@ function SummaryTable({ lines, showSwimmer }) {
                 <td className="num asw-num" style={{ fontWeight: 700, color: pts.length > 1 ? (improved ? 'var(--asw-fast)' : 'var(--asw-slow)') : 'var(--color-neutral-500)' }}>
                   {pts.length > 1 ? `${improved ? '\u2193' : '\u2191'} ${formatCs(Math.abs(diff))}` : '—'}
                 </td>
-                <td className="text-muted" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <td className="text-muted hide-mobile" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {showSwimmer && bestPoint?.swimmer ? bestPoint.swimmer : bestPoint?.meet}
                 </td>
               </tr>

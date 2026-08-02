@@ -81,7 +81,7 @@ function RecordTable({ rows, showFina }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.key}>
-              <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{r.eventName}</td>
+              <td style={{ fontWeight: 600 }}>{r.eventName}</td>
               <td className="time asw-time">{r.time}</td>
               {showFina && <td className="num asw-num hide-mobile">{r.fina || '—'}</td>}
               <td>

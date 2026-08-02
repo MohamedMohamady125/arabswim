@@ -337,9 +337,9 @@ export default function Swimmers() {
                   <th>Swimmer</th>
                   <th className="num">Born</th>
                   <th className="num">Age</th>
-                  <th>Sex</th>
-                  <th>Club</th>
-                  <th>Country</th>
+                  <th className="hide-mobile">Sex</th>
+                  <th className="hide-mobile">Club</th>
+                  <th className="hide-mobile">Country</th>
                   {isAdmin && <th />}
                 </tr>
               </thead>
@@ -355,12 +355,15 @@ export default function Swimmers() {
                         </Link>
                         {s.is_retired && <span className="tag tag-neutral">Retired</span>}
                       </div>
+                      <div className="show-mobile micro" style={{ margin: '3px 0 0 38px', textTransform: 'none', letterSpacing: 0 }}>
+                        {[s.sex === 'F' ? 'W' : 'M', s.club, s.nationality_detail?.name].filter(Boolean).join(' · ')}
+                      </div>
                     </td>
                     <td className="num asw-num">{s.birth_year ?? '—'}</td>
                     <td className="num asw-num">{s.age ?? '—'}</td>
-                    <td className="text-muted">{s.sex === 'F' ? 'W' : 'M'}</td>
-                    <td className="text-muted">{s.club || '—'}</td>
-                    <td className="text-muted">{s.nationality_detail?.name || '—'}</td>
+                    <td className="text-muted hide-mobile">{s.sex === 'F' ? 'W' : 'M'}</td>
+                    <td className="text-muted hide-mobile">{s.club || '—'}</td>
+                    <td className="text-muted hide-mobile">{s.nationality_detail?.name || '—'}</td>
                     {isAdmin && (
                       <td className="num">
                         <button className="btn btn-secondary btn-icon" title="Delete swimmer" aria-label="Delete swimmer" onClick={() => handleDelete(s)}>

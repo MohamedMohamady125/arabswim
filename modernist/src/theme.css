@@ -188,7 +188,9 @@ figure { margin: 0; }
 .table td { padding: var(--space-2); border-bottom: 1px solid var(--color-divider); }
 .table tbody tr:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
 .table .num, .table .time { text-align: right; }
-.table-scroll { overflow-x: auto; }
+.table-scroll { overflow-x: auto; max-width: 100%; }
+/* grid children default to min-width auto, which lets wide tables blow out the track */
+.grid-2 > *, .grid-3 > *, .two-col > * { min-width: 0; }
 
 /* ═══ ArabSwiM specifics (from theme) ═══ */
 .asw-flag { display: block; width: 26px; height: 17px; flex: none; object-fit: cover; border: 1px solid var(--color-divider); }
@@ -220,6 +222,7 @@ figure { margin: 0; }
 .hair-b { border-bottom: 1px solid var(--color-divider); }
 .pad { padding: 24px 32px; }
 .pad-lg { padding: 28px 32px; }
+.bleed { margin: -24px -32px; }
 
 /* — section header row — */
 .sect-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
@@ -259,14 +262,33 @@ figure { margin: 0; }
   .hide-mobile { display: none !important; }
   .show-mobile { display: block !important; }
   .show-mobile-flex { display: inline-flex !important; }
-  h1 { font-size: 30px; }
-  h2 { font-size: 25px; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 24px; }
+  h3 { font-size: 19px; }
   .pad, .pad-lg { padding: 18px 16px; }
+  .bleed { margin: -18px -16px; }
   .counts { grid-template-columns: repeat(2, 1fr); }
   .counts > div { padding: 14px 16px; border-bottom: 1px solid var(--color-divider); }
   .counts .n { font-size: 24px; }
   .two-col, .grid-2, .grid-3 { grid-template-columns: 1fr !important; }
   .rule-r { border-right: 0; }
+
+  /* segmented controls wrap into a hairline grid instead of overflowing */
+  .seg { display: flex; flex-wrap: wrap; gap: 1px; background: var(--color-divider); }
+  .seg-opt { flex: 1 1 auto; justify-content: center; min-height: 38px; }
+  .seg-opt + .seg-opt { border-left: 0; }
+
+  /* denser tables */
+  .table { font-size: 13px; }
+  .table th { padding: 8px 6px; letter-spacing: 0.05em; }
+  .table td { padding: 8px 6px; }
+  .table th:first-child, .table td:first-child { padding-left: 0; }
+  .table th:last-child, .table td:last-child { padding-right: 0; }
+
+  .cellgrid > * { padding: 12px; }
+  .loading, .empty { padding: 32px 16px; }
+  .pager { flex-wrap: wrap; }
+  .sect-head { flex-wrap: wrap; }
 }
 
 /* ── Micro animations ─────────────────────────────────────────────────── */

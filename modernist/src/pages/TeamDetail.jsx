@@ -517,7 +517,7 @@ export default function TeamDetail() {
 
       <div className="pad">
         {tab === 'overview' && (
-          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 0, margin: '-24px -28px' }}>
+          <div className="grid-2 bleed" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 0 }}>
             <div className="rule-r pad">
               {team.description && (
                 <div className="rule-b" style={{ paddingBottom: 20, marginBottom: 20 }}>
@@ -775,8 +775,8 @@ export default function TeamDetail() {
                       <th>Swimmer</th>
                       <th className="time">Time</th>
                       <th className="num">FINA</th>
-                      <th>Meet</th>
-                      <th>Date</th>
+                      <th className="hide-mobile">Meet</th>
+                      <th className="hide-mobile">Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -788,8 +788,8 @@ export default function TeamDetail() {
                         </td>
                         <td className="time asw-time">{t.time}</td>
                         <td className="num asw-num">{t.fina_points ?? '—'}</td>
-                        <td className="text-muted">{t.championship_name}</td>
-                        <td className="asw-num" style={{ whiteSpace: 'nowrap' }}>{formatDate(t.championship_date)}</td>
+                        <td className="text-muted hide-mobile">{t.championship_name}</td>
+                        <td className="asw-num hide-mobile" style={{ whiteSpace: 'nowrap' }}>{formatDate(t.championship_date)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -855,7 +855,7 @@ export default function TeamDetail() {
                       <th>Event</th>
                       <th>Swimmer</th>
                       <th className="time">Time</th>
-                      <th>Date</th>
+                      <th className="hide-mobile">Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -874,7 +874,7 @@ export default function TeamDetail() {
                           </div>
                         </td>
                         <td className="time asw-time">{typeof r.time === 'number' ? formatTime(r.time) : r.time}</td>
-                        <td className="asw-num" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
+                        <td className="asw-num hide-mobile" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -510,8 +510,8 @@ export default function Teams() {
                     </th>
                   )}
                   <th>Club</th>
-                  <th>Country</th>
-                  <th className="num">Founded</th>
+                  <th className="hide-mobile">Country</th>
+                  <th className="num hide-mobile">Founded</th>
                   <th className="num">Swimmers</th>
                   {isAdmin && <th />}
                 </tr>
@@ -532,14 +532,17 @@ export default function Teams() {
                         </Link>
                         {t.is_national_team && <span className="tag tag-accent">National team</span>}
                       </div>
+                      <div className="show-mobile micro" style={{ margin: '3px 0 0 40px', textTransform: 'none', letterSpacing: 0 }}>
+                        {[t.country_detail?.name, t.founded_year ? `Est. ${t.founded_year}` : null].filter(Boolean).join(' · ')}
+                      </div>
                     </td>
-                    <td>
+                    <td className="hide-mobile">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Flag code={t.country_detail?.code} name={t.country_detail?.name} />
                         <span className="text-muted">{t.country_detail?.name || '—'}</span>
                       </div>
                     </td>
-                    <td className="num asw-num">{t.founded_year ?? '—'}</td>
+                    <td className="num asw-num hide-mobile">{t.founded_year ?? '—'}</td>
                     <td className="num asw-num">{t.swimmers_count ?? '—'}</td>
                     {isAdmin && (
                       <td className="num">

@@ -1,16 +1,68 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Search, X } from 'lucide-react'
 import api from '../api/client'
 import { getCountries } from '../api/core'
-import { getChampionships } from '../api/championships'
+import { getChampionships, getMostImproved } from '../api/championships'
 import { getMedalSummary } from '../api/medals'
 import { getNewRecords } from '../api/records'
 import { getInductees } from '../api/fame'
 import { getArticles } from '../api/news'
 import { getAlbums } from '../api/media'
+import { getRankings } from '../api/rankings'
+import { searchSwimmers, getSwimmerBirthdays } from '../api/swimmers'
 import Flag from '../components/Flag'
 import { SectHead, Loading } from '../components/ui'
 import { formatDate, formatNumber, mediaUrl, formatDateRange } from '../utils'
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+// Debounced swimmer search input with a dropdown of matches.
+function SwimmerSearchInput({ placeholder, onPick, dark = false }) {
+  const [q, setQ] = useState('')
+  const [results, setResults] = useState([])
+  const timer = useRef(null)
+  useEffect(() => {
+    if (q.trim().length < 2) { setResults([]); return }
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      searchSwimmers(q.trim())
+        .then((res) => {
+          const l = Array.isArray(res.data) ? res.data : res.data?.results || []
+          setResults(l.slice(0, 6))
+        })
+        .catch(() => setResults([]))
+    }, 250)
+    return () => clearTimeout(timer.current)
+  }, [q])
+  return (
+    <div style={{ position: 'relative' }}>
+      <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: dark ? 'rgba(255,255,255,0.5)' : 'var(--color-neutral-600)', pointerEvents: 'none' }} />
+      <input
+        className="input"
+        style={{ width: '100%', paddingLeft: 32, ...(dark ? { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff' } : {}) }}
+        placeholder={placeholder}
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
+      {results.length > 0 && (
+        <div style={{ position: 'absolute', zIndex: 30, left: 0, right: 0, background: '#fff', border: '2px solid var(--color-divider)', borderTop: 0, boxShadow: 'var(--shadow-md)' }}>
+          {results.map((s) => (
+            <button key={s.id} type="button" className="hair-b"
+              onClick={() => { onPick(s); setQ(''); setResults([]) }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px', border: 0, background: 'transparent', cursor: 'pointer', font: 'inherit', textAlign: 'left', color: 'var(--color-text)' }}>
+              <Flag code={s.nationality_detail?.code || s.nationality_code} name={s.nationality_detail?.name || s.nationality} />
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</span>
+              {s.birth_year && <span className="text-muted" style={{ fontSize: 12, marginLeft: 'auto' }}>{s.birth_year}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const initials = (name) => (name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')
 
 function parseMeetDate(d) {
   if (!d) return null
@@ -53,13 +105,29 @@ export default function Home() {
   const [articles, setArticles] = useState([])
   const [albums, setAlbums] = useState([])
   const [arabCountries, setArabCountries] = useState([])
+  const [topGlobal, setTopGlobal] = useState([]) // best swims all-time by FINA (spotlight pool)
+  const [leaders, setLeaders] = useState([]) // season leaders strip
+  const [leadersYear, setLeadersYear] = useState(null)
+  const [improved, setImproved] = useState([])
+  const [birthdays, setBirthdays] = useState([])
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
+  const [cmpA, setCmpA] = useState(null)
+  const [cmpB, setCmpB] = useState(null)
 
   useEffect(() => {
     let alive = true
     async function load() {
       try {
-        const [swimmersRes, meetsRes, resultsRes, recordsRes, countriesRes, newRecRes, fameRes, newsRes, albumsRes] =
+        const now = new Date()
+        const year = now.getFullYear()
+        const leaderSpecs = [
+          { event: 1, gender: 'M', label: '50 Free · Men' },
+          { event: 1, gender: 'F', label: '50 Free · Women' },
+          { event: 2, gender: 'M', label: '100 Free · Men' },
+          { event: 2, gender: 'F', label: '100 Free · Women' },
+        ]
+        const [swimmersRes, meetsRes, resultsRes, recordsRes, countriesRes, newRecRes, fameRes, newsRes, albumsRes, topRes, bdayRes, ...leaderRes] =
           await Promise.allSettled([
             api.get('/swimmers/', { params: { page_size: 1 } }),
             getChampionships({ page_size: 50 }),
@@ -70,6 +138,10 @@ export default function Home() {
             getInductees(),
             getArticles({ page_size: 6, status: 'PUBLISHED' }),
             getAlbums({ page_size: 8 }),
+            api.get('/results/', { params: { ordering: '-fina_points', page_size: 30 } }),
+            getSwimmerBirthdays(now.getMonth() + 1),
+            ...leaderSpecs.map((s) =>
+              getRankings({ scope: 'arab', gender: s.gender, pool: 'LCM', event: s.event, age_group: 'OPEN', year, page_size: 1 })),
           ])
         if (!alive) return
         const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
@@ -91,6 +163,31 @@ export default function Home() {
         setInductees(list(val(fameRes)).slice(0, 4))
         setArticles(list(val(newsRes)))
         setAlbums(list(val(albumsRes)).slice(0, 4))
+        setTopGlobal(list(val(topRes)))
+
+        // Birthdays: sane ages, upcoming this month first
+        const today = now.getDate()
+        const bdays = list(val(bdayRes))
+          .filter((b) => b.age > 4 && b.age < 70)
+          .sort((a, b) => {
+            const au = a.day >= today ? 0 : 1
+            const bu = b.day >= today ? 0 : 1
+            return au - bu || a.day - b.day
+          })
+        setBirthdays(bdays.slice(0, 4))
+
+        // Season leaders: current year, fall back to all-time if the season is empty
+        let leaderRows = leaderRes.map((r, i) => ({ ...leaderSpecs[i], row: list(val(r))[0] || null }))
+        if (leaderRows.every((l) => !l.row)) {
+          const retry = await Promise.allSettled(leaderSpecs.map((s) =>
+            getRankings({ scope: 'arab', gender: s.gender, pool: 'LCM', event: s.event, age_group: 'OPEN', page_size: 1 })))
+          if (!alive) return
+          leaderRows = retry.map((r, i) => ({ ...leaderSpecs[i], row: list(val(r))[0] || null }))
+          setLeadersYear(null)
+        } else {
+          setLeadersYear(year)
+        }
+        setLeaders(leaderRows.filter((l) => l.row))
 
         // latest meet → headline results + medal tally
         const latest = meetList[0]
@@ -102,6 +199,18 @@ export default function Home() {
           if (!alive) return
           setTopResults(list(val(resTop)))
           setMedalTally(list(val(medals)).slice(0, 6))
+          getMostImproved(latest.id)
+            .then((res) => {
+              if (!alive) return
+              const seen = new Set()
+              const rows = (Array.isArray(res.data) ? res.data : []).filter((r) => {
+                if (r.is_new_entry || seen.has(r.swimmer_id)) return false
+                seen.add(r.swimmer_id)
+                return true
+              })
+              setImproved(rows.slice(0, 3))
+            })
+            .catch(() => {})
         }
       } finally {
         if (alive) setLoading(false)
@@ -120,11 +229,90 @@ export default function Home() {
       .sort((a, b) => a.d - b.d)[0]
   }, [meets])
 
+  // Spotlight: a different elite swimmer every visit (variable reward)
+  const spotlight = useMemo(() => {
+    if (!topGlobal.length) return null
+    const bySwimmer = new Map()
+    topGlobal.forEach((r) => {
+      if (r.swimmer_detail && !r.swimmer_detail.is_relay_team && !bySwimmer.has(r.swimmer)) bySwimmer.set(r.swimmer, r)
+    })
+    const arr = [...bySwimmer.values()]
+    return arr[Math.floor(Math.random() * arr.length)] || null
+  }, [topGlobal])
+
   if (loading) return <Loading label="Loading the database" />
   const featured = upcoming?.m || latest
+  const sd = spotlight?.swimmer_detail
 
   return (
     <div>
+      {/* hero — identity + instant search + rotating spotlight */}
+      <div className="rule-b" style={{ background: 'var(--color-accent-800)', color: '#fff' }}>
+        <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 380px' }}>
+          <div style={{ padding: '44px 32px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div className="kicker" style={{ color: 'var(--asw-gold)', marginBottom: 10 }}>The record of Arab swimming</div>
+            <h1 style={{ margin: 0, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+              Every meet. Every swimmer.<br />One home.
+            </h1>
+            <p style={{ margin: '14px 0 22px', fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,0.72)', maxWidth: 460 }}>
+              {formatNumber(counts?.results)} swims, {formatNumber(counts?.swimmers)} swimmers and every record across{' '}
+              {counts?.federations} federations — updated with every championship.
+            </p>
+            <div style={{ maxWidth: 380 }}>
+              <SwimmerSearchInput dark placeholder="Find a swimmer by name…" onPick={(s) => navigate(`/swimmers/${s.id}`)} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+              <Link className="btn btn-primary" to="/rankings" style={{ background: 'var(--asw-gold)', borderColor: 'var(--asw-gold)' }}>Explore rankings</Link>
+              <Link className="btn" to="/records" style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.4)', background: 'transparent' }}>Record books</Link>
+              <Link className="btn" to="/compare" style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.4)', background: 'transparent' }}>Head-to-head</Link>
+            </div>
+          </div>
+
+          {/* spotlight */}
+          {spotlight && sd && (
+            <div style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', padding: '28px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+                <span className="kicker" style={{ color: 'var(--asw-gold)' }}>Spotlight</span>
+                <span style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>Changes every visit</span>
+              </div>
+              <Link to={`/swimmers/${spotlight.swimmer}`} style={{ color: 'inherit', textDecoration: 'none', display: 'flex', gap: 16, alignItems: 'center' }}>
+                {sd.photo ? (
+                  <img src={mediaUrl(sd.photo)} alt={sd.name} className="grayscale"
+                    style={{ width: 84, height: 84, objectFit: 'cover', objectPosition: 'top', flex: 'none' }} />
+                ) : (
+                  <div style={{ width: 84, height: 84, flex: 'none', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30 }}>
+                    {initials(sd.name)}
+                  </div>
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1.15 }}>{sd.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                    <Flag code={sd.nationality_detail?.code} name={sd.nationality_detail?.name} />
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)' }}>
+                      {sd.nationality_detail?.name}{sd.age != null ? ` · ${sd.age}` : ''}
+                    </span>
+                  </div>
+                  {sd.club && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 3 }}>{sd.club}</div>}
+                </div>
+              </Link>
+              <div className="rule-t" style={{ borderColor: 'rgba(255,255,255,0.15)', marginTop: 18, paddingTop: 14 }}>
+                <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>Signature swim</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                  <span className="asw-time" style={{ fontSize: 30, color: 'var(--asw-gold)' }}>{spotlight.formatted_time}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>{spotlight.event_detail?.name}</span>
+                </div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 3 }}>
+                  {spotlight.fina_points} FINA points
+                </div>
+              </div>
+              <Link to={`/swimmers/${spotlight.swimmer}`} style={{ marginTop: 'auto', paddingTop: 16, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--asw-gold)', textDecoration: 'none' }}>
+                Full profile →
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* counts strip */}
       <div className="counts">
         <div><div className="n">{formatNumber(counts?.swimmers)}</div><div className="l">Swimmers</div></div>
@@ -192,6 +380,25 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {/* season leaders */}
+          {leaders.length > 0 && (
+            <div className="rule-t" style={{ padding: '24px 32px 28px' }}>
+              <SectHead title={leadersYear ? `${leadersYear} season leaders · LCM` : 'All-time leaders · LCM'} to="/rankings" linkLabel="Full rankings" />
+              <div className="cellgrid" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(160px, 1fr))` }}>
+                {leaders.map((l) => (
+                  <Link key={l.label} to="/rankings" style={{ color: 'inherit', textDecoration: 'none' }}>
+                    <div className="card-kicker">{l.label}</div>
+                    <div className="asw-time" style={{ fontSize: 24, margin: '6px 0 4px' }}>{l.row.time}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Flag code={l.row.nationality_code} name={l.row.nationality} />
+                      <span style={{ fontSize: 12, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.row.swimmer_name}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* new records */}
           <div className="rule-t" style={{ padding: '24px 32px 30px' }}>
@@ -275,28 +482,72 @@ export default function Home() {
             </table>
           </div>
 
-          {/* top performers */}
-          <div style={{ padding: '24px 28px' }}>
-            <h4 style={{ margin: '0 0 12px' }}>Top performers · FINA points</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {topResults.slice(0, 5).map((r, i) => {
-                const max = topResults[0]?.fina_points || 1
-                return (
-                  <div key={r.id}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
-                      <span>
-                        <Link to={`/swimmers/${r.swimmer}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_detail?.name}</Link>
-                        <span className="text-muted"> · {r.swimmer_detail?.nationality_detail?.code}</span>
-                      </span>
-                      <span className="asw-num" style={{ fontWeight: 800 }}>{r.fina_points}</span>
+          {/* most improved — progress stories */}
+          {improved.length > 0 && (
+            <div className="rule-b" style={{ padding: '24px 28px' }}>
+              <SectHead title="Most improved" to={latest ? `/meets/${latest.id}?tab=most-improved` : '/championships'} linkLabel="More" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {improved.map((r, i) => (
+                  <div key={`${r.swimmer_id}-${r.event_name}`} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, borderBottom: i < improved.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
+                    <Flag code={r.nationality_code} name={r.nationality} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600, fontSize: 13 }}>{r.swimmer_name}</Link>
+                      <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>{r.event_name} · {r.previous_best} → {r.current_time}</div>
                     </div>
-                    <div className="bar">
-                      <div style={{ width: `${Math.round(((r.fina_points || 0) / max) * 100)}%`, background: i < 2 ? 'var(--color-accent)' : 'var(--color-neutral-800)' }} />
-                    </div>
+                    <span className="asw-num" style={{ fontWeight: 800, fontSize: 15, color: 'var(--asw-fast)', flex: 'none' }}>−{r.improvement}</span>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* birthdays this month */}
+          {birthdays.length > 0 && (
+            <div className="rule-b" style={{ padding: '24px 28px' }}>
+              <SectHead title={`Birthdays · ${MONTHS[new Date().getMonth()]}`} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {birthdays.map((b, i) => (
+                  <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10, borderBottom: i < birthdays.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
+                    <Flag code={b.nationality_code} name={b.nationality} />
+                    <Link to={`/swimmers/${b.id}`} style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</Link>
+                    <span className="text-muted" style={{ fontSize: 12, flex: 'none' }}>
+                      turns {b.age + (b.day >= new Date().getDate() ? 1 : 0)} · {b.day} {MONTHS[new Date().getMonth()].slice(0, 3)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* head-to-head teaser */}
+          <div style={{ padding: '24px 28px' }}>
+            <SectHead title="Head-to-head" />
+            <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
+              Pick two swimmers and see who wins, event by event.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[{ v: cmpA, set: setCmpA, ph: 'First swimmer…' }, { v: cmpB, set: setCmpB, ph: 'Second swimmer…' }].map(({ v, set, ph }, i) =>
+                v ? (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-divider)', padding: '8px 10px' }}>
+                    <Flag code={v.nationality_detail?.code || v.nationality_code} name={v.nationality_detail?.name || v.nationality} />
+                    <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{v.name}</span>
+                    <button type="button" onClick={() => set(null)} aria-label="Remove"
+                      style={{ border: 0, background: 'transparent', cursor: 'pointer', padding: 0, display: 'inline-flex', color: 'var(--color-neutral-700)' }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <SwimmerSearchInput key={i} placeholder={ph} onPick={set} />
                 )
-              })}
-              {topResults.length === 0 && <div className="text-muted" style={{ fontSize: 13 }}>No data yet.</div>}
+              )}
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!cmpA || !cmpB}
+                style={{ opacity: cmpA && cmpB ? 1 : 0.45, cursor: cmpA && cmpB ? 'pointer' : 'default' }}
+                onClick={() => cmpA && cmpB && navigate(`/compare?ids=${cmpA.id},${cmpB.id}`)}>
+                Compare →
+              </button>
             </div>
           </div>
         </div>

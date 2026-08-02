@@ -179,18 +179,28 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         # Check both LCM and SCM qualifying times
         for pool in ('LCM', 'SCM'):
             # Get swimmer's best times per event for this pool in the current year
+            base_qs = Result.objects.filter(
+                swimmer=swimmer,
+                championship__pool=pool,
+                time_centiseconds__gt=0,
+                event__is_relay=False,
+            )
             bests = (
-                Result.objects.filter(
-                    swimmer=swimmer,
-                    championship__pool=pool,
-                    championship__date__year=current_year,
-                    time_centiseconds__gt=0,
-                    event__is_relay=False,
-                )
+                base_qs.filter(championship__date__year=current_year)
                 .values('event__id', 'event__name')
                 .annotate(best_cs=Min('time_centiseconds'))
             )
             best_by_event = {b['event__id']: b for b in bests}
+            basis = 'current_year'
+            if not best_by_event:
+                # No current-season swims — fall back to all-time bests so the
+                # tab still shows meaningful gaps for every swimmer.
+                bests = (
+                    base_qs.values('event__id', 'event__name')
+                    .annotate(best_cs=Min('time_centiseconds'))
+                )
+                best_by_event = {b['event__id']: b for b in bests}
+                basis = 'all_time'
             if not best_by_event:
                 continue
 
@@ -222,6 +232,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'gap_time': format_centiseconds(abs(gap_cs)),
                     'gap_pct': pct,
                     'qualified': gap_cs <= 0,
+                    'basis': basis,
                 })
 
         # Sort by gap (closest first)

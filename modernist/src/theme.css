@@ -268,3 +268,10 @@ figure { margin: 0; }
   .two-col, .grid-2, .grid-3 { grid-template-columns: 1fr !important; }
   .rule-r { border-right: 0; }
 }
+
+/* ── Micro animations ─────────────────────────────────────────────────── */
+@keyframes asw-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.asw-fade-up { animation: asw-fade-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }

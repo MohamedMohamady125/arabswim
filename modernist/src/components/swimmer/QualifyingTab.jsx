@@ -46,7 +46,8 @@ export default function QualifyingTab({ swimmerId }) {
       <div className="sect-head">
         <h4>Qualifying standards gap</h4>
         <span className="micro">
-          {activeStandard?.name || qualifyingGaps[0]?.standard_name} — based on {new Date().getFullYear()} best times
+          {activeStandard?.name || qualifyingGaps[0]?.standard_name} — based on{' '}
+          {qualifyingGaps[0]?.basis === 'all_time' ? 'all-time' : new Date().getFullYear()} best times
         </span>
       </div>
 

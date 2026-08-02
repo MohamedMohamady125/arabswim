@@ -38,7 +38,7 @@ class TeamCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Team
-        fields = ['id', 'name', 'country', 'logo', 'banner', 'founded_year',
+        fields = ['id', 'name', 'country', 'logo', 'banner', 'founded_year', 'description',
                   'website', 'address', 'email', 'phone', 'is_national_team', 'trophies_data']
 
     def _parse_trophies(self, value):

@@ -543,6 +543,96 @@ class TeamViewSet(viewsets.ModelViewSet):
             r['rank'] = i + 1
         return Response(ranking)
 
+    @action(detail=True, methods=['get'])
+    def prediction(self, request, pk=None):
+        """Project next-season best times per swimmer/event.
+
+        Linear fit over seasonal bests (min 2 seasons, active within the
+        last 2 years). Returns items sorted by projected improvement.
+        """
+        team = self.get_object()
+        pool = request.query_params.get('pool', 'LCM')
+        from datetime import date
+        current_year = date.today().year
+
+        def _fmt_cs(cs):
+            cs = int(round(cs))
+            minutes = cs // 6000
+            seconds = (cs % 6000) // 100
+            centis = cs % 100
+            if minutes:
+                return f'{minutes}:{seconds:02d}.{centis:02d}'
+            return f'{seconds}.{centis:02d}'
+
+        from django.db.models import Min
+        seasonal = (
+            self._full_report_results(team)
+            .filter(swimmer__is_relay_team=False, event__is_relay=False,
+                    championship__pool=pool, time_centiseconds__gt=0)
+            .values('swimmer_id', 'swimmer__name', 'event_id', 'event__name',
+                    'championship__date__year')
+            .annotate(best_cs=Min('time_centiseconds'))
+            .order_by('swimmer_id', 'event_id', 'championship__date__year')
+        )
+
+        groups = {}
+        for row in seasonal:
+            key = (row['swimmer_id'], row['event_id'])
+            groups.setdefault(key, {
+                'swimmer_id': row['swimmer_id'],
+                'swimmer_name': row['swimmer__name'],
+                'event_id': row['event_id'],
+                'event_name': row['event__name'],
+                'seasons': [],
+            })['seasons'].append(
+                {'year': row['championship__date__year'], 'best_cs': row['best_cs']})
+
+        items = []
+        for g in groups.values():
+            seasons = g['seasons']
+            last_year = seasons[-1]['year']
+            if len(seasons) < 2 or last_year < current_year - 2:
+                continue
+            # Least-squares fit best_cs = a + b*year over the last 4 seasons
+            fit = seasons[-4:]
+            n = len(fit)
+            mean_x = sum(s['year'] for s in fit) / n
+            mean_y = sum(s['best_cs'] for s in fit) / n
+            sxx = sum((s['year'] - mean_x) ** 2 for s in fit)
+            if sxx == 0:
+                continue
+            slope = sum((s['year'] - mean_x) * (s['best_cs'] - mean_y) for s in fit) / sxx
+            current_best = seasons[-1]['best_cs']
+            predicted_cs = current_best + slope
+            # A projection can't be slower than a total collapse or absurdly
+            # fast — clamp within ±8% of the current best.
+            predicted_cs = max(current_best * 0.92, min(current_best * 1.08, predicted_cs))
+            delta_cs = predicted_cs - current_best
+            delta_pct = round((delta_cs / current_best) * 100, 2)
+            trend = 'improving' if delta_cs < -25 else 'declining' if delta_cs > 25 else 'steady'
+            items.append({
+                'swimmer_id': g['swimmer_id'],
+                'swimmer_name': g['swimmer_name'],
+                'event_id': g['event_id'],
+                'event_name': g['event_name'],
+                'pool': pool,
+                'seasons': [
+                    {'year': s['year'], 'best_cs': s['best_cs'], 'best': _fmt_cs(s['best_cs'])}
+                    for s in seasons
+                ],
+                'current_best': _fmt_cs(current_best),
+                'current_best_cs': current_best,
+                'predicted': _fmt_cs(predicted_cs),
+                'predicted_cs': int(round(predicted_cs)),
+                'delta_cs': int(round(delta_cs)),
+                'delta_pct': delta_pct,
+                'target_year': last_year + 1,
+                'trend': trend,
+            })
+
+        items.sort(key=lambda x: x['delta_cs'])
+        return Response({'pool': pool, 'items': items[:60]})
+
 
 class TrophyViewSet(viewsets.ModelViewSet):
     queryset = Trophy.objects.all()

@@ -8,6 +8,7 @@ class Team(models.Model):
     logo = models.ImageField(upload_to='teams/logos/', blank=True, null=True)
     banner = models.ImageField(upload_to='teams/banners/', blank=True, null=True)
     founded_year = models.IntegerField(blank=True, null=True)
+    description = models.TextField(blank=True, default='')
     website = models.URLField(blank=True, default='')
     address = models.TextField(blank=True, default='')
     email = models.EmailField(blank=True, default='')

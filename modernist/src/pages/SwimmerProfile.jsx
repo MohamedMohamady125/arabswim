@@ -560,15 +560,15 @@ export default function SwimmerProfile() {
       {/* ── Header ── */}
       <div className="pad-lg rule-b" style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap', position: 'relative' }}>
         {swimmer.photo ? (
-          <div className="grayscale" style={{ width: 128, height: 128, flex: 'none', overflow: 'hidden' }}>
+          <div className="grayscale swimmer-photo" style={{ flex: 'none', overflow: 'hidden' }}>
             <img src={mediaUrl(swimmer.photo)} alt={swimmer.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
         ) : (
-          <div style={{ width: 128, height: 128, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 42 }}>
+          <div className="swimmer-photo" style={{ flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800 }}>
             {initials(swimmer.name)}
           </div>
         )}
-        <div style={{ flex: 1, minWidth: 260 }}>
+        <div className="swimmer-head-info" style={{ flex: 1 }}>
           <div className="kicker" style={{ marginBottom: 6 }}>Swimmer profile</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>{swimmer.name}</h1>

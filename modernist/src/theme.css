@@ -257,6 +257,10 @@ figure { margin: 0; }
 /* — responsive visibility — */
 .show-mobile, .show-mobile-flex { display: none !important; }
 
+/* — swimmer profile header — */
+.swimmer-photo { width: 128px; height: 128px; font-size: 42px; }
+.swimmer-head-info { min-width: 260px; }
+
 /* — mobile — */
 @media (max-width: 900px) {
   .hide-mobile { display: none !important; }
@@ -284,6 +288,10 @@ figure { margin: 0; }
   .table td { padding: 8px 6px; }
   .table th:first-child, .table td:first-child { padding-left: 0; }
   .table th:last-child, .table td:last-child { padding-right: 0; }
+
+  /* keep swimmer details beside the photo on phones */
+  .swimmer-photo { width: 92px; height: 92px; font-size: 30px; }
+  .swimmer-head-info { min-width: 0; }
 
   .cellgrid > * { padding: 12px; }
   .loading, .empty { padding: 32px 16px; }

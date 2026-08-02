@@ -914,60 +914,87 @@ function MostImprovedTab({ meetId }) {
       </div>
       {filtered.length === 0 ? (
         <Empty label="No improvements recorded for this meet" />
-      ) : (
-        <div className="table-scroll">
-          <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 30 }}>#</th>
-                <th>Swimmer</th>
-                <th>Event</th>
-                <th>Previous best</th>
-                <th className="time">New time</th>
-                <th className="num">Improvement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s, i) => (
-                <tr key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
-                  <td className="asw-num">{i + 1}</td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Flag code={s.nationality_code} name={s.swimmer_name} />
-                      {s.swimmer_name}
-                    </div>
-                  </td>
-                  <td>{s.event_name}</td>
-                  <td>
-                    {s.is_new_entry ? (
-                      <span className="tag tag-accent">New entry</span>
-                    ) : (
-                      <div>
-                        <span className="asw-num text-muted">{s.previous_best}</span>
-                        {s.previous_best_meet && (
-                          <div
-                            className="micro"
-                            style={{ textTransform: 'none', letterSpacing: 0, fontSize: 11, marginTop: 2, color: 'var(--color-accent)', cursor: 'pointer' }}
-                            onClick={(e) => { e.stopPropagation(); if (s.previous_best_meet_id) navigate(`/meets/${s.previous_best_meet_id}`) }}
-                            title={s.previous_best_meet}
-                          >
-                            {s.previous_best_meet}
-                            {s.previous_best_date ? ` (${new Date(s.previous_best_date).getFullYear()})` : ''}
-                          </div>
-                        )}
+      ) : (() => {
+        const maxDrop = Math.max(0.01, ...filtered.map((s) => (s.is_new_entry ? 0 : parseFloat(s.improvement) || 0)))
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+            {filtered.map((s, i) => {
+              const drop = s.is_new_entry ? 0 : parseFloat(s.improvement) || 0
+              const top3 = i < 3 && !s.is_new_entry
+              return (
+                <div
+                  key={i}
+                  onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}
+                  style={{
+                    border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
+                    borderTop: `3px solid ${top3 ? 'var(--asw-gold)' : 'var(--color-accent-800)'}`,
+                    padding: '14px 16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10,
+                  }}
+                >
+                  {/* rank + swimmer + headline drop */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className="asw-num" style={{
+                      width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13,
+                      background: top3 ? 'var(--asw-gold)' : 'var(--color-accent-800)', color: '#fff',
+                    }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <Flag code={s.nationality_code} name={s.swimmer_name} />
+                        <span style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.swimmer_name}</span>
                       </div>
+                      <div className="micro" style={{ marginTop: 2 }}>{s.event_name}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flex: 'none' }}>
+                      {s.is_new_entry ? (
+                        <span className="tag tag-accent">New entry</span>
+                      ) : (
+                        <>
+                          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1, color: 'var(--asw-fast)' }}>
+                            −{s.improvement}
+                          </div>
+                          <div className="micro" style={{ marginTop: 2 }}>seconds</div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* time journey: previous → new */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                    {!s.is_new_entry && (
+                      <>
+                        <span className="asw-num" style={{ fontSize: 15, color: 'var(--color-neutral-600)', textDecoration: 'line-through' }}>{s.previous_best}</span>
+                        <span style={{ color: 'var(--asw-fast)', fontWeight: 700 }}>→</span>
+                      </>
                     )}
-                  </td>
-                  <td className="time asw-time">{s.current_time}</td>
-                  <td className="num asw-num asw-fast" style={{ fontWeight: 800 }}>
-                    {s.is_new_entry ? <span className="text-muted" style={{ fontWeight: 400 }}>—</span> : `-${s.improvement}`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                    <span className="asw-time" style={{ fontSize: 19 }}>{s.current_time}</span>
+                  </div>
+
+                  {/* relative drop bar */}
+                  {!s.is_new_entry && (
+                    <div className="bar" style={{ height: 5 }}>
+                      <div style={{ width: `${Math.max(4, Math.round((drop / maxDrop) * 100))}%`, background: 'var(--asw-fast)' }} />
+                    </div>
+                  )}
+
+                  {/* previous best origin */}
+                  {!s.is_new_entry && s.previous_best_meet && (
+                    <div
+                      className="micro"
+                      style={{ textTransform: 'none', letterSpacing: 0, fontSize: 11, color: 'var(--color-neutral-700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      onClick={(e) => { e.stopPropagation(); if (s.previous_best_meet_id) navigate(`/meets/${s.previous_best_meet_id}`) }}
+                      title={s.previous_best_meet}
+                    >
+                      was at {s.previous_best_meet}
+                      {s.previous_best_date ? ` (${new Date(s.previous_best_date).getFullYear()})` : ''}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
     </div>
   )
 }

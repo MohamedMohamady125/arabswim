@@ -17,6 +17,7 @@ import {
   Clock, CalendarDays, Medal, Trophy, Star, TrendingUp, BarChart3, ChartLine,
   GitCompare, ArrowLeftRight, Images, ChevronRight, ChevronUp, ChevronDown,
   ArrowLeft, Pencil, User, Play, X, Award, Target, Image as ImageIcon,
+  Maximize2, Minimize2,
 } from 'lucide-react'
 
 /* Token hexes for hand-drawn SVG infographics (mirror @theme values) */
@@ -152,20 +153,29 @@ function csToSplitTime(cs) {
   return neg ? `-${body}` : body
 }
 
-function deriveSplitRows(splits) {
-  // splits are cumulative {distance, time}; derive lap times + diffs
-  const rows = []
-  let prevCum = 0
-  let prevLap = null
-  for (let i = 0; i < (splits || []).length; i++) {
-    const cumCs = splitTimeToCs(splits[i].time)
-    const lapCs = cumCs != null ? cumCs - prevCum : null
-    const diffCs = lapCs != null && prevLap != null ? lapCs - prevLap : null
-    rows.push({ distance: splits[i].distance, cum: splits[i].time, cumCs, lapCs, diffCs })
-    if (cumCs != null) prevCum = cumCs
-    if (lapCs != null) prevLap = lapCs
+// Regroup cumulative splits at 50m or 100m granularity → [{distance, cum, cumCs, lapCs}]
+function regroupSplits(splits, by) {
+  const parsed = (splits || [])
+    .map(s => ({ distance: s.distance, cum: s.time, cumCs: splitTimeToCs(s.time) }))
+    .filter(s => s.cumCs != null)
+  let pts = parsed
+  if (by === 100) {
+    const hundreds = parsed.filter(s => s.distance != null && s.distance % 100 === 0)
+    if (hundreds.length >= 2) pts = hundreds
   }
-  return rows
+  let prev = 0
+  return pts.map(p => { const lapCs = p.cumCs - prev; prev = p.cumCs; return { ...p, lapCs } })
+}
+
+// Split label with European comma decimal, e.g. "28,69"
+function fmtSplitComma(cs) {
+  return cs == null ? '-' : csToSplitTime(cs).replace('.', ',')
+}
+
+// hex → rgba string for subtle column tints
+function hexRgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
 }
 
 // Broadcast-style series colors: Finals = solid deep aqua w/ round markers,
@@ -175,20 +185,33 @@ const PRELIMS_COLOR = '#22D3EE'
 
 function SplitsBreakdown({ splits, eventName, roundType, compareSplits, compareRoundType }) {
   const stroke = (eventName || '').replace(/^\d+\s*[Mm]?\s*/, '').trim() || ''
-  const rows = deriveSplitRows(splits)
-  const laps = rows.filter(r => r.lapCs != null)
-  const totalCum = rows.length ? rows[rows.length - 1].cum : null
+  const isPrelims = (rt) => /prelim|heat/i.test(rt || '')
 
-  const compareRows = compareSplits ? deriveSplitRows(compareSplits) : []
-  const compareLaps = compareRows.filter(r => r.lapCs != null)
+  const [by, setBy] = useState(50)
+  const [fs, setFs] = useState(false)
 
-  // Build series list: primary = the row the user expanded, compare = sibling round
-  const isPrelims = (rt) => rt === 'Prelims'
+  // Can we offer a 50/100 toggle? Only if raw splits include sub-100 marks.
+  const rawDists = (splits || []).map(s => s.distance).filter(d => d != null)
+  const canToggle = rawDists.some(d => d % 100 !== 0) && rawDists.some(d => d % 100 === 0)
+  const gran = canToggle ? by : 50
+
+  const laps = regroupSplits(splits, gran)
+  const compareLaps = (compareSplits || []).length ? regroupSplits(compareSplits, gran) : []
+
+  // Build series: primary = expanded row, compare = sibling round (if compatible)
   const series = [{ laps, roundType: roundType || 'Finals' }]
   if (compareLaps.length >= 2 && compareLaps.length === laps.length) {
     series.push({ laps: compareLaps, roundType: compareRoundType || (isPrelims(roundType) ? 'Finals' : 'Prelims') })
   }
   const hasBoth = series.length === 2
+
+  // Order columns Prelims → Finals for the comparison table
+  const pSeries = series.find(s => isPrelims(s.roundType))
+  const fSeries = series.find(s => !isPrelims(s.roundType))
+  const cols = hasBoth ? [pSeries || series[0], fSeries || series[1]] : [series[0]]
+  const colColor = (col, idx) =>
+    (hasBoth ? idx === 0 : isPrelims(col.roundType)) ? PRELIMS_COLOR : FINALS_COLOR
+  const nRows = Math.max(...cols.map(c => c.laps.length))
 
   let chart = null
   if (laps.length >= 2) {
@@ -249,7 +272,7 @@ function SplitsBreakdown({ splits, eventName, roundType, compareSplits, compareR
               )}
               <text x={x(i)} y={labelAbove ? y(r.lapCs) - 9 : y(r.lapCs) + 16} textAnchor="middle" fill={st.color}
                 style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                {csToSplitTime(r.lapCs)}
+                {fmtSplitComma(r.lapCs)}
               </text>
             </g>
           ))
@@ -257,65 +280,116 @@ function SplitsBreakdown({ splits, eventName, roundType, compareSplits, compareR
         {/* x-axis distance labels */}
         {laps.map((r, i) => (
           <text key={i} x={x(i)} y={H - 6} textAnchor="middle" fill={CHART.axisText} style={{ fontSize: 9, fontWeight: 600 }}>
-            {r.distance ? `${r.distance}m` : `#${i + 1}`}
+            {r.distance ? `${r.distance}` : `#${i + 1}`}
           </text>
         ))}
       </svg>
     )
   }
 
-  return (
-    <div className="max-w-md">
+  const controls = (
+    <div className="flex items-center justify-between mb-2">
+      {canToggle ? (
+        <div className="inline-flex rounded-full bg-ink-100 p-0.5 text-label">
+          {[50, 100].map(v => (
+            <button key={v} type="button" onClick={() => setBy(v)}
+              className={`px-3 py-1 rounded-full font-semibold transition-colors ${by === v ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500'}`}>
+              Split by {v}
+            </button>
+          ))}
+        </div>
+      ) : <span />}
+      <button type="button" onClick={() => setFs(f => !f)}
+        className="p-1.5 rounded-lg text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"
+        aria-label={fs ? 'Exit fullscreen' : 'Fullscreen'}>
+        {fs ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+      </button>
+    </div>
+  )
+
+  const legend = chart && (
+    <div className="flex items-center gap-4 mb-1.5">
+      {(hasBoth ? ['Prelims', 'Finals'] : [roundType || 'Finals']).map((rt) => (
+        <span key={rt} className="inline-flex items-center gap-1.5 text-label text-ink-500">
+          <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
+            <line x1="1" y1="5" x2="21" y2="5" stroke={isPrelims(rt) ? PRELIMS_COLOR : FINALS_COLOR}
+              strokeWidth="2.5" strokeDasharray={isPrelims(rt) ? '5 3' : undefined} strokeLinecap="round" />
+            {isPrelims(rt)
+              ? <rect x="8" y="2" width="6" height="6" fill={PRELIMS_COLOR} stroke="#fff" strokeWidth="1" />
+              : <circle cx="11" cy="5" r="3.5" fill={FINALS_COLOR} stroke="#fff" strokeWidth="1" />}
+          </svg>
+          {rt}
+        </span>
+      ))}
+    </div>
+  )
+
+  const table = (
+    <table className="w-full text-body-sm border-collapse">
+      <thead>
+        <tr>
+          <th scope="col" className="py-1.5 pe-2 text-start text-label text-ink-400"></th>
+          {cols.map((c, idx) => (
+            <th key={idx} scope="col" className="py-1.5 px-2 text-center text-label font-bold text-white rounded-t-md"
+              style={{ backgroundColor: colColor(c, idx) }}>
+              {isPrelims(c.roundType) ? 'Prelims' : 'Finals'}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: nRows }).map((_, i) => (
+          <tr key={i} className="border-t border-ink-100">
+            <td className="py-1.5 pe-2 font-medium text-ink-700 whitespace-nowrap">
+              {cols[0].laps[i]?.distance ? `${cols[0].laps[i].distance} ${stroke}`.trim() : `Split ${i + 1}`}
+            </td>
+            {cols.map((c, idx) => {
+              const r = c.laps[i]
+              const prev = c.laps[i - 1]
+              const diffCs = r && prev ? r.lapCs - prev.lapCs : null
+              return (
+                <td key={idx} className="py-1.5 px-2 text-center align-top"
+                  style={{ backgroundColor: hexRgba(colColor(c, idx), i % 2 === 0 ? 0.09 : 0.03) }}>
+                  <div className="text-time tnum font-bold text-ink-900">{r ? fmtSplitComma(r.lapCs) : '-'}</div>
+                  <div className={`text-label tnum ${diffCs == null ? 'text-ink-300' : diffCs > 0 ? 'text-neg' : diffCs < 0 ? 'text-pos' : 'text-ink-400'}`}>
+                    {diffCs == null ? '—' : `${diffCs > 0 ? '+' : diffCs < 0 ? '-' : ''}${fmtSplitComma(Math.abs(diffCs))}`}
+                  </div>
+                </td>
+              )
+            })}
+          </tr>
+        ))}
+        <tr className="border-t-2 border-ink-200">
+          <td className="py-1.5 pe-2 font-bold text-ink-900">Total</td>
+          {cols.map((c, idx) => {
+            const last = c.laps[c.laps.length - 1]
+            return (
+              <td key={idx} className="py-1.5 px-2 text-center tnum font-bold text-ink-900"
+                style={{ backgroundColor: hexRgba(colColor(c, idx), 0.13) }}>
+                {last ? last.cum : '-'}
+              </td>
+            )
+          })}
+        </tr>
+      </tbody>
+    </table>
+  )
+
+  const body = (
+    <div className={fs ? 'max-w-2xl mx-auto' : 'max-w-md'}>
+      {controls}
       {chart && (
-        <div className="mb-2">
-          <div className="flex items-center gap-4 mb-1.5">
-            {(hasBoth ? ['Prelims', 'Finals'] : [roundType || 'Finals']).map((rt) => (
-              <span key={rt} className="inline-flex items-center gap-1.5 text-label text-ink-500">
-                <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
-                  <line x1="1" y1="5" x2="21" y2="5" stroke={rt === 'Prelims' ? PRELIMS_COLOR : FINALS_COLOR}
-                    strokeWidth="2.5" strokeDasharray={rt === 'Prelims' ? '5 3' : undefined} strokeLinecap="round" />
-                  {rt === 'Prelims'
-                    ? <rect x="8" y="2" width="6" height="6" fill={PRELIMS_COLOR} stroke="#fff" strokeWidth="1" />
-                    : <circle cx="11" cy="5" r="3.5" fill={FINALS_COLOR} stroke="#fff" strokeWidth="1" />}
-                </svg>
-                {rt}
-              </span>
-            ))}
-          </div>
+        <div className="mb-3">
+          {legend}
           {chart}
         </div>
       )}
-      <table className="w-full text-body-sm">
-        <thead>
-          <tr>
-            <th scope="col" className="py-1 pe-2 text-start text-label text-ink-400"></th>
-            <th scope="col" className="py-1 px-2 text-end text-label text-ink-400">Split</th>
-            <th scope="col" className="py-1 px-2 text-end text-label text-ink-400">Diff</th>
-            <th scope="col" className="py-1 ps-2 text-end text-label text-ink-400">Time</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-t border-ink-100">
-              <td className="py-1.5 pe-2 font-medium text-ink-700 whitespace-nowrap">{r.distance ? `${r.distance} ${stroke}`.trim() : `Split ${i + 1}`}</td>
-              <td className="py-1.5 px-2 text-end tnum font-semibold text-ink-900">{r.lapCs != null ? csToSplitTime(r.lapCs) : '-'}</td>
-              <td className={`py-1.5 px-2 text-end tnum font-medium ${r.diffCs == null ? 'text-ink-200' : r.diffCs > 0 ? 'text-neg' : r.diffCs < 0 ? 'text-pos' : 'text-ink-400'}`}>
-                {r.diffCs == null ? '—' : `${r.diffCs > 0 ? '+' : r.diffCs < 0 ? '-' : ''}${csToSplitTime(Math.abs(r.diffCs))}`}
-              </td>
-              <td className="py-1.5 ps-2 text-end tnum text-ink-500">{r.cum}</td>
-            </tr>
-          ))}
-          {totalCum && (
-            <tr className="border-t-2 border-ink-200">
-              <td className="py-1.5 pe-2 font-bold text-ink-900">Total</td>
-              <td></td><td></td>
-              <td className="py-1.5 ps-2 text-end tnum font-bold text-ink-900">{totalCum}</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      {table}
     </div>
   )
+
+  if (fs) return <div className="fixed inset-0 z-50 bg-white overflow-auto p-4 sm:p-6">{body}</div>
+  return body
 }
 
 /* ───────── Time History ───────── */
@@ -644,21 +718,8 @@ function MedalsTab({ stats }) {
 
   return (
     <div className="rounded-md bg-ink-50 border border-ink-100 p-3 sm:p-5 space-y-4 sm:space-y-5">
-      {/* ── Top: title + medal stat cards ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-4 items-stretch">
-        <div className="flex flex-col items-center justify-center text-center py-4">
-          <div className="text-label text-aqua-600 tracking-[0.25em]">OUR ACHIEVEMENTS</div>
-          <div className="text-display-xl sm:text-[64px] sm:leading-none text-ink-900">MEDALS</div>
-          <div className="flex gap-1.5 my-2 text-gold">
-            <Star size={18} className="fill-gold" /><Star size={18} className="fill-gold" /><Star size={18} className="fill-gold" />
-          </div>
-          <p className="text-body-sm sm:text-body text-ink-500 leading-snug">Celebrating excellence.<br />Honoring every podium finish.</p>
-          <svg viewBox="0 0 48 24" className="w-10 h-5 mt-2" fill={AQUA} aria-hidden="true">
-            <circle cx="34" cy="6" r="3.2"/>
-            <path d="M10 12l14-5 5 4-6 3-13-2z"/>
-            <path d="M4 18c3-2.2 6-2.2 9 0s6 2.2 9 0 6-2.2 9 0v2.5c-3 2.2-6 2.2-9 0s-6-2.2-9 0-6-2.2-9 0z" opacity="0.9"/>
-          </svg>
-        </div>
+      {/* ── Top: medal stat cards ── */}
+      <div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {statCards.map(c => (
             <div key={c.title} className="bg-white rounded-md border border-ink-100 shadow-card p-3 flex flex-col items-center justify-between">

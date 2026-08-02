@@ -73,7 +73,7 @@ function RecordTable({ rows, showFina }) {
             <th>Event</th>
             <th className="time">Time</th>
             {showFina && <th className="num hide-mobile">FINA</th>}
-            <th>Swimmer</th>
+            <th className="hide-mobile">Swimmer</th>
             <th className="hide-mobile">Meet</th>
             <th className="hide-mobile">Date</th>
           </tr>
@@ -81,10 +81,23 @@ function RecordTable({ rows, showFina }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.key}>
-              <td style={{ fontWeight: 600 }}>{r.eventName}</td>
+              <td style={{ fontWeight: 600 }}>
+                {r.eventName}
+                {/* phone: swimmer folds under the event name */}
+                <div className="show-mobile">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4, fontWeight: 400, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                    <Flag code={r.natCode} name={r.natName} />
+                    {r.swimmerId ? (
+                      <Link to={`/swimmers/${r.swimmerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
+                    ) : (
+                      r.swimmerName
+                    )}
+                  </div>
+                </div>
+              </td>
               <td className="time asw-time">{r.time}</td>
               {showFina && <td className="num asw-num hide-mobile">{r.fina || '—'}</td>}
-              <td>
+              <td className="hide-mobile">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Flag code={r.natCode} name={r.natName} />
                   {r.swimmerId ? (

@@ -94,7 +94,6 @@ export default function MedalsTab({ stats }) {
     { title: 'Gold', img: '/medal_gold.png', n: active.gold, color: GOLD },
     { title: 'Silver', img: '/medal_silver.png', n: active.silver, color: SILVER },
     { title: 'Bronze', img: '/medal_bronze.png', n: active.bronze, color: BRONZE },
-    { title: 'Total', img: null, n: active.total, color: 'var(--color-accent)' },
   ]
 
   const barRow = (label, n, color) => (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { searchSwimmers, compareSwimmers, getSwimmerEvents } from '../api/swimmers'
+import { Link, useSearchParams } from 'react-router-dom'
+import { searchSwimmers, compareSwimmers, getSwimmerEvents, getSwimmer } from '../api/swimmers'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty } from '../components/ui'
 
@@ -8,6 +8,7 @@ const MAX = 5
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
 export default function Compare() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [selected, setSelected] = useState([])
   const [q, setQ] = useState('')
   const [results, setResults] = useState([])
@@ -16,6 +17,30 @@ export default function Compare() {
   const [loading, setLoading] = useState(false)
   const debounceRef = useRef(null)
   const boxRef = useRef(null)
+  const hydratedRef = useRef(false)
+  const startedRef = useRef(false)
+
+  // hydrate selection from ?ids= (swimmer profiles link here)
+  useEffect(() => {
+    if (startedRef.current) return
+    startedRef.current = true
+    const ids = (searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, MAX)
+    if (ids.length === 0) { hydratedRef.current = true; return }
+    Promise.allSettled(ids.map((id) => getSwimmer(id))).then((res) => {
+      const swimmers = res.filter((r) => r.status === 'fulfilled').map((r) => r.value.data).filter(Boolean)
+      hydratedRef.current = true
+      if (swimmers.length) setSelected(swimmers)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // keep ?ids= in sync with selection (after hydration completes)
+  useEffect(() => {
+    if (!hydratedRef.current) return
+    const ids = selected.map((s) => s.id).join(',')
+    setSearchParams(ids ? { ids } : {}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected])
 
   // search dropdown (debounced)
   useEffect(() => {
@@ -221,6 +246,11 @@ export default function Compare() {
                         const isBest = pb?.best_cs != null && pb.best_cs === best && values.length > 1
                         return (
                           <td key={sw.id} className="time asw-time" style={isBest ? { color: 'var(--asw-fast)', fontWeight: 800 } : undefined}>
+                            {isBest && (
+                              <span className="tag" style={{ background: 'var(--asw-fast)', color: '#fff', marginRight: 8, fontWeight: 600 }}>
+                                Best
+                              </span>
+                            )}
                             {pb?.best_time || '—'}
                           </td>
                         )

@@ -4,27 +4,34 @@ import { getRecords, getComputedRecords } from '../api/records'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
-import { formatDate } from '../utils'
+import { formatDate, AGE_GROUPS } from '../utils'
 
-const COMPUTED_SCOPES = ['ARAB', 'GCC', 'NATIONAL']
+// Computed scopes are calculated live from the results database;
+// the rest are curated manual record books.
+const COMPUTED_SCOPES = ['arab', 'gcc', 'national']
 const SCOPE_OPTIONS = [
-  { value: 'ARAB', label: 'Arab' },
-  { value: 'GCC', label: 'GCC' },
-  { value: 'NATIONAL', label: 'National' },
+  { value: 'arab', label: 'Arab' },
+  { value: 'gcc', label: 'GCC' },
+  { value: 'national', label: 'National' },
   { value: 'AFRICAN', label: 'African' },
   { value: 'ASIAN', label: 'Asian' },
   { value: 'MEDITERRANEAN', label: 'Mediterranean' },
   { value: 'ISLAMIC', label: 'Islamic' },
 ]
 
+const sortByEvent = (a, b) => (a.sortOrder - b.sortOrder) || (a.distance - b.distance)
+
 // Normalize computed + manual record rows into one shape.
 function normalizeComputed(r) {
   return {
     key: `${r.event_id}-${r.gender}-${r.swimmer_id}-${r.time_centiseconds}`,
     eventName: r.event_name,
-    sortOrder: r.event_sort_order ?? 0,
+    sortOrder: r.event_sort_order ?? 99,
+    distance: r.event_distance ?? 0,
     gender: r.gender,
+    isRelay: !!r.is_relay,
     time: r.time,
+    fina: r.fina_points,
     swimmerId: r.is_relay_team ? null : r.swimmer_id,
     swimmerName: r.swimmer_name,
     natCode: r.nationality_code,
@@ -39,9 +46,12 @@ function normalizeManual(r) {
   return {
     key: `m-${r.id}`,
     eventName: r.event_detail?.name,
-    sortOrder: r.event_detail?.sort_order ?? 0,
+    sortOrder: r.event_detail?.sort_order ?? 99,
+    distance: r.event_detail?.distance ?? 0,
     gender: r.swimmer_detail?.sex,
+    isRelay: !!r.event_detail?.is_relay,
     time: r.formatted_time,
+    fina: null,
     swimmerId: r.swimmer_detail?.is_relay_team ? null : r.swimmer,
     swimmerName: r.swimmer_detail?.name,
     natCode: r.swimmer_detail?.nationality_detail?.code,
@@ -52,7 +62,7 @@ function normalizeManual(r) {
   }
 }
 
-function RecordTable({ rows }) {
+function RecordTable({ rows, isRelay, showFina }) {
   return (
     <div className="table-scroll">
       <table className="table">
@@ -60,7 +70,8 @@ function RecordTable({ rows }) {
           <tr>
             <th>Event</th>
             <th className="time">Time</th>
-            <th>Swimmer</th>
+            {showFina && <th className="num hide-mobile">FINA</th>}
+            <th>{isRelay ? 'Team' : 'Swimmer'}</th>
             <th className="hide-mobile">Meet</th>
             <th className="hide-mobile">Date</th>
           </tr>
@@ -68,8 +79,9 @@ function RecordTable({ rows }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.key}>
-              <td style={{ fontWeight: 600 }}>{r.eventName}</td>
+              <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{r.eventName}</td>
               <td className="time asw-time">{r.time}</td>
+              {showFina && <td className="num asw-num hide-mobile">{r.fina || '—'}</td>}
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Flag code={r.natCode} name={r.natName} />
@@ -92,9 +104,24 @@ function RecordTable({ rows }) {
   )
 }
 
+function Section({ label, pool, rows, isRelay, showFina, last }) {
+  return (
+    <div className={last ? 'pad' : 'rule-b pad'}>
+      <div className="kicker" style={{ marginBottom: 12 }}>{label} · {pool}</div>
+      {rows.length === 0 ? (
+        <div className="text-muted" style={{ fontSize: 13 }}>No records yet.</div>
+      ) : (
+        <RecordTable rows={rows} isRelay={isRelay} showFina={showFina} />
+      )}
+    </div>
+  )
+}
+
 export default function Records() {
-  const [scope, setScope] = useState('ARAB')
+  const [scope, setScope] = useState('arab')
   const [pool, setPool] = useState('LCM')
+  const [gender, setGender] = useState('')
+  const [ageGroup, setAgeGroup] = useState('OPEN')
   const [country, setCountry] = useState('')
   const [countries, setCountries] = useState([])
   const [rows, setRows] = useState([])
@@ -110,15 +137,23 @@ export default function Records() {
   }, [])
 
   const isComputed = COMPUTED_SCOPES.includes(scope)
-  const needsCountry = scope === 'NATIONAL'
+  const needsCountry = scope === 'national'
 
   useEffect(() => {
     if (needsCountry && !country) { setRows([]); setLoading(false); return }
     let alive = true
     setLoading(true)
-    const req = isComputed
-      ? getComputedRecords({ record_type: scope, pool, ...(needsCountry ? { country } : {}) })
-      : getRecords({ record_type: scope, pool, page_size: 300 })
+    let req
+    if (isComputed) {
+      const params = { scope, pool, age_group: ageGroup }
+      if (needsCountry) params.country = country
+      if (gender) params.gender = gender
+      req = getComputedRecords(params)
+    } else {
+      const params = { record_type: scope, pool, page_size: 500 }
+      if (gender) params.gender = gender
+      req = getRecords(params)
+    }
     req
       .then((res) => {
         if (!alive) return
@@ -129,16 +164,26 @@ export default function Records() {
       .catch(() => { if (alive) setRows([]) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [scope, pool, country, isComputed, needsCountry])
+  }, [scope, pool, gender, ageGroup, country, isComputed, needsCountry])
 
-  const men = useMemo(
-    () => rows.filter((r) => r.gender === 'M').sort((a, b) => a.sortOrder - b.sortOrder),
-    [rows]
-  )
-  const women = useMemo(
-    () => rows.filter((r) => r.gender === 'F').sort((a, b) => a.sortOrder - b.sortOrder),
-    [rows]
-  )
+  const bySection = useMemo(() => {
+    const sorted = [...rows].sort(sortByEvent)
+    return {
+      menInd: sorted.filter((r) => r.gender === 'M' && !r.isRelay),
+      womenInd: sorted.filter((r) => r.gender === 'F' && !r.isRelay),
+      menRelay: sorted.filter((r) => r.gender === 'M' && r.isRelay),
+      womenRelay: sorted.filter((r) => r.gender === 'F' && r.isRelay),
+    }
+  }, [rows])
+
+  const showMen = !gender || gender === 'M'
+  const showWomen = !gender || gender === 'F'
+
+  const sections = []
+  if (showMen) sections.push({ label: 'Men', rows: bySection.menInd, isRelay: false })
+  if (showWomen) sections.push({ label: 'Women', rows: bySection.womenInd, isRelay: false })
+  if (showMen && bySection.menRelay.length > 0) sections.push({ label: 'Men relay', rows: bySection.menRelay, isRelay: true })
+  if (showWomen && bySection.womenRelay.length > 0) sections.push({ label: 'Women relay', rows: bySection.womenRelay, isRelay: true })
 
   return (
     <div>
@@ -152,10 +197,20 @@ export default function Records() {
           value={pool}
           onChange={setPool}
         />
+        <Seg
+          options={[{ value: '', label: 'Both' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+          value={gender}
+          onChange={setGender}
+        />
         {needsCountry && (
           <select className="select" style={{ width: 190 }} value={country} onChange={(e) => setCountry(e.target.value)}>
             <option value="">Select country…</option>
             {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+        {isComputed && (
+          <select className="select" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+            {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
           </select>
         )}
       </div>
@@ -165,26 +220,19 @@ export default function Records() {
       ) : loading ? (
         <Loading label="Loading records" />
       ) : rows.length === 0 ? (
-        <Empty label="No records for this scope yet" />
+        <Empty label={`No ${pool} records for this scope yet — try switching the pool or age group`} />
       ) : (
-        <>
-          <div className="rule-b pad">
-            <div className="kicker" style={{ marginBottom: 12 }}>Men · {pool}</div>
-            {men.length === 0 ? (
-              <div className="text-muted" style={{ fontSize: 13 }}>No men's records yet.</div>
-            ) : (
-              <RecordTable rows={men} />
-            )}
-          </div>
-          <div className="pad">
-            <div className="kicker" style={{ marginBottom: 12 }}>Women · {pool}</div>
-            {women.length === 0 ? (
-              <div className="text-muted" style={{ fontSize: 13 }}>No women's records yet.</div>
-            ) : (
-              <RecordTable rows={women} />
-            )}
-          </div>
-        </>
+        sections.map((s, i) => (
+          <Section
+            key={s.label}
+            label={s.label}
+            pool={pool}
+            rows={s.rows}
+            isRelay={s.isRelay}
+            showFina={isComputed}
+            last={i === sections.length - 1}
+          />
+        ))
       )}
     </div>
   )

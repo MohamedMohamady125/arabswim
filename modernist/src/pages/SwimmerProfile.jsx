@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState, Fragment } from 'react'
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { AtSign, ExternalLink } from 'lucide-react'
 import {
   getSwimmer,
+  updateSwimmer,
   getSwimmerEvents,
   getSwimmerEventHistory,
   getSwimmerProfileStats,
@@ -9,139 +11,349 @@ import {
   getSwimmerRankings,
   getSwimmerTransferHistory,
 } from '../api/swimmers'
-import { getHeldRecords } from '../api/records'
-import { getMedals } from '../api/medals'
+import { useAuth } from '../context/AuthContext'
 import Flag from '../components/Flag'
-import { Loading, Empty, Seg, MedalIcon } from '../components/ui'
-import { formatDate, formatNumber, mediaUrl } from '../utils'
+import { Loading, Empty, Seg } from '../components/ui'
+import { formatDate, mediaUrl } from '../utils'
+import SplitsBreakdown from '../components/swimmer/SplitsBreakdown'
+import ProgressionChart from '../components/charts/ProgressionChart'
+import MeetsTab from '../components/swimmer/MeetsTab'
+import MedalsTab from '../components/swimmer/MedalsTab'
+import RankingsTab, { ordSuffix } from '../components/swimmer/RankingsTab'
+import RecordsTab from '../components/swimmer/RecordsTab'
+import QualifyingTab from '../components/swimmer/QualifyingTab'
+import TransfersTab from '../components/swimmer/TransfersTab'
+import GalleryTab from '../components/swimmer/GalleryTab'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
 function initials(name) {
   return String(name || '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
+    .split(/\s+/).filter(Boolean).slice(0, 2)
+    .map((w) => w[0]).join('').toUpperCase()
 }
+
+const finaColor = (points) =>
+  points >= 1000 ? 'var(--asw-gold)'
+  : points >= 900 ? 'var(--asw-fast)'
+  : points >= 800 ? 'var(--color-accent-2)'
+  : points >= 600 ? 'var(--color-text)'
+  : 'var(--color-neutral-600)'
 
 /* ── Times tab ─────────────────────────────────────────────────────────── */
 
-function EventHistory({ swimmerId, eventId, pool }) {
-  const [rows, setRows] = useState(null)
-  useEffect(() => {
-    let alive = true
-    getSwimmerEventHistory(swimmerId, eventId, pool)
-      .then((res) => { if (alive) setRows(list(res.data)) })
-      .catch(() => { if (alive) setRows([]) })
-    return () => { alive = false }
-  }, [swimmerId, eventId, pool])
+function EventList({ events, selected, onSelect }) {
+  const lcm = events.filter((e) => e.pool === 'LCM' && !e.is_relay)
+  const scm = events.filter((e) => e.pool === 'SCM' && !e.is_relay)
+  const relays = events.filter((e) => e.is_relay)
 
-  if (rows === null) return <div className="micro" style={{ padding: '10px 8px' }}>Loading…</div>
-  if (rows.length === 0) return <div className="micro" style={{ padding: '10px 8px' }}>No swims</div>
-
-  // chronological order for delta computation (oldest → newest), display newest first
-  const chron = [...rows].sort((a, b) => String(a.championship_date || '').localeCompare(String(b.championship_date || '')) || a.id - b.id)
-  const deltas = new Map()
-  chron.forEach((r, i) => {
-    if (i > 0 && r.time_centiseconds != null && chron[i - 1].time_centiseconds != null) {
-      deltas.set(r.id, r.time_centiseconds - chron[i - 1].time_centiseconds)
-    }
-  })
-  const display = [...chron].reverse()
-
-  return (
-    <table className="table" style={{ fontSize: 13 }}>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Meet</th>
-          <th>Round</th>
-          <th className="time">Time</th>
-          <th className="num">Δ</th>
-          <th className="num">FINA</th>
-          <th className="num">Age</th>
-        </tr>
-      </thead>
-      <tbody>
-        {display.map((r) => {
-          const d = deltas.get(r.id)
+  const section = (label, rows) => {
+    if (!rows.length) return null
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <div className="rule-b" style={{ paddingBottom: 4, marginBottom: 2 }}>
+          <span className="kicker">{label}</span>
+        </div>
+        {rows.map((e) => {
+          const isSel = selected?.event_id === e.event_id && selected?.pool === e.pool
           return (
-            <tr key={r.id}>
-              <td className="asw-num" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.championship_date)}</td>
-              <td>
-                <Link to={`/meets/${r.championship_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                  {r.championship_name}
-                </Link>
-              </td>
-              <td className="text-muted">{r.round_type || '—'}</td>
-              <td className="time asw-time">{r.time}</td>
-              <td className="num asw-num" style={{ color: d == null ? 'var(--color-neutral-500)' : d < 0 ? 'var(--asw-fast)' : d > 0 ? 'var(--asw-slow)' : 'var(--color-neutral-500)', fontWeight: d != null && d < 0 ? 600 : 400 }}>
-                {d == null ? '—' : `${d > 0 ? '+' : d < 0 ? '−' : ''}${(Math.abs(d) / 100).toFixed(2)}`}
-              </td>
-              <td className="num asw-num">{r.fina_points ?? '—'}</td>
-              <td className="num asw-num">{r.age_at_competition ?? '—'}</td>
-            </tr>
+            <button key={`${e.event_id}-${e.pool}`} type="button" onClick={() => onSelect(e)}
+              className="hair-b"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                padding: '9px 6px', border: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left',
+                background: isSel ? 'var(--color-accent-100)' : 'transparent',
+              }}>
+              <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 13, color: isSel ? 'var(--color-accent)' : 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {e.event_name}
+              </span>
+              <span className="asw-time" style={{ flex: 'none', fontSize: 13 }}>{e.best_time}</span>
+              <span className="micro asw-num" style={{ flex: 'none', width: 34, textAlign: 'right' }}>{e.times_count}x</span>
+            </button>
           )
         })}
-      </tbody>
-    </table>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {section('Long course', lcm)}
+      {section('Short course', scm)}
+      {section('Relay', relays)}
+      {events.length === 0 && <Empty label="No competition results yet" />}
+    </div>
   )
 }
 
-function TimesTab({ swimmerId, events }) {
-  const [pool, setPool] = useState('LCM')
-  const [open, setOpen] = useState(null)
-  const rows = useMemo(
-    () => events.filter((e) => e.pool === pool && (e.times_count || 0) > 0),
-    [events, pool]
-  )
+function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
+  const [expandedSplits, setExpandedSplits] = useState(null)
+
+  if (!selectedEvent) return <Empty label="Select an event to view full time history" />
+  if (loadingHistory) return <Loading label="Loading history" />
+
+  const officialHistory = history.filter((x) => !x.is_hc)
+  const bestCs = officialHistory.length ? Math.min(...officialHistory.map((x) => x.time_centiseconds)) : null
+
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Seg
-          options={[{ value: 'LCM', label: 'Long course' }, { value: 'SCM', label: 'Short course' }]}
-          value={pool}
-          onChange={(v) => { setPool(v); setOpen(null) }}
-        />
+      <div className="sect-head">
+        <h4>{selectedEvent.event_name}</h4>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <span className="micro asw-num">{history.length} race{history.length !== 1 ? 's' : ''}</span>
+          <span className={`tag ${selectedEvent.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{selectedEvent.pool}</span>
+          {selectedEvent.is_relay && <span className="tag tag-neutral">Relay</span>}
+        </span>
       </div>
-      {rows.length === 0 ? (
-        <Empty label={`No ${pool} times`} />
-      ) : (
-        <table className="table">
+      <div className="table-scroll">
+        <table className="table" style={{ fontSize: 13 }}>
           <thead>
             <tr>
-              <th>Event</th>
-              <th className="time">Best time</th>
-              <th className="num">Swims</th>
-              <th style={{ width: 30 }} />
+              <th style={{ width: 30 }}>#</th>
+              <th className="time">Time</th>
+              <th className="num">Age</th>
+              <th className="hide-mobile">Round</th>
+              <th className="hide-mobile">Team</th>
+              <th>Meet</th>
+              <th className="hide-mobile">Date</th>
+              <th className="num">FINA</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((e) => (
-              [
-                <tr key={e.event_id} onClick={() => setOpen(open === e.event_id ? null : e.event_id)} style={{ cursor: 'pointer' }}>
-                  <td style={{ fontWeight: 600 }}>
-                    {e.event_name}
-                    {e.is_relay && <span className="tag tag-neutral" style={{ marginLeft: 8 }}>Relay</span>}
-                  </td>
-                  <td className="time asw-time">{e.best_time}</td>
-                  <td className="num asw-num">{e.times_count}</td>
-                  <td className="num text-muted">{open === e.event_id ? '−' : '+'}</td>
-                </tr>,
-                open === e.event_id && (
-                  <tr key={`${e.event_id}-x`}>
-                    <td colSpan={4} style={{ background: 'var(--color-neutral-100)', padding: '8px 16px 16px' }}>
-                      <EventHistory swimmerId={swimmerId} eventId={e.event_id} pool={pool} />
+            {history.map((h, i) => {
+              const isBest = h.time_centiseconds === bestCs
+              const splits = h.splits || []
+              const showSplits = expandedSplits === h.id
+              return (
+                <Fragment key={h.id}>
+                  <tr>
+                    <td className="asw-num text-muted">{i + 1}</td>
+                    <td className="time" style={{ whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                        <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : 'inherit' }}>{h.time}</span>
+                        {!h.is_relay && isBest && <span className="tag tag-dark">PB</span>}
+                        {h.is_hc && (
+                          <span className="tag tag-neutral" title={h.hc_type === 'TLD' ? 'Time limit exceeded – does not count in rankings' : 'Hors concours – does not count in rankings'}>
+                            {h.hc_type || 'HC'}
+                          </span>
+                        )}
+                        {splits.length > 0 && (
+                          <button type="button"
+                            onClick={(e) => { e.stopPropagation(); setExpandedSplits(showSplits ? null : h.id) }}
+                            className={showSplits ? 'tag tag-dark' : 'tag tag-outline'}
+                            style={{ cursor: 'pointer', border: showSplits ? 0 : undefined, font: 'inherit', fontSize: 11 }}
+                            title="Show split times">
+                            Splits {showSplits ? '−' : '+'}
+                          </button>
+                        )}
+                      </span>
+                    </td>
+                    <td className="num asw-num">{h.age_at_competition || '—'}</td>
+                    <td className="hide-mobile">
+                      {h.round_type ? (
+                        <span className={`tag ${h.round_type === 'Finals' ? 'tag-accent' : 'tag-neutral'}`}>{h.round_type}</span>
+                      ) : <span className="text-muted">—</span>}
+                    </td>
+                    <td className="hide-mobile text-muted">
+                      {(h.team || '').toUpperCase() === 'LP' ? (
+                        <span className="tag tag-neutral" title="No club — transferring (libre passage)">LP</span>
+                      ) : (h.team || '—')}
+                    </td>
+                    <td>
+                      <Link to={`/meets/${h.championship_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                        {h.championship_name}
+                      </Link>
+                    </td>
+                    <td className="hide-mobile asw-num" style={{ whiteSpace: 'nowrap' }}>{formatDate(h.championship_date)}</td>
+                    <td className="num asw-num" style={{ fontWeight: 700, color: h.fina_points ? finaColor(h.fina_points) : 'var(--color-neutral-500)' }}>
+                      {h.fina_points || '—'}
                     </td>
                   </tr>
-                ),
-              ]
-            ))}
+                  {showSplits && (() => {
+                    // sibling round (prelims vs finals) from the same meet, if it has splits
+                    const sibling = h.round_type ? history.find((x) =>
+                      x.id !== h.id && x.championship_id === h.championship_id &&
+                      x.round_type && x.round_type !== h.round_type && (x.splits || []).length > 0
+                    ) : null
+                    return (
+                      <tr>
+                        <td colSpan={8} style={{ background: 'var(--color-neutral-100)', padding: '14px 16px' }}>
+                          <SplitsBreakdown splits={splits} eventName={selectedEvent.event_name}
+                            roundType={h.round_type} compareSplits={sibling?.splits} compareRoundType={sibling?.round_type} />
+                        </td>
+                      </tr>
+                    )
+                  })()}
+                </Fragment>
+              )
+            })}
+            {history.length === 0 && (
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }} className="text-muted">No times recorded</td></tr>
+            )}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+/* ── Overall tab ───────────────────────────────────────────────────────── */
+
+function RankingsPreview({ swimmerId, onViewAll }) {
+  const [rankings, setRankings] = useState(null)
+  const [events, setEvents] = useState([])
+  useEffect(() => {
+    let alive = true
+    Promise.all([getSwimmerRankings(swimmerId), getSwimmerEvents(swimmerId)])
+      .then(([r, e]) => { if (alive) { setRankings(r.data); setEvents(e.data || []) } })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [swimmerId])
+
+  if (!rankings || rankings.length === 0) return null
+
+  const eventMap = {}
+  for (const e of events) { eventMap[`${e.event_id}-${e.pool}`] = e.event_name; eventMap[`${e.event_id}`] = e.event_name }
+  const eventName = (r) => eventMap[`${r.event_id}-${r.pool}`] || eventMap[`${r.event_id}`] || `Event ${r.event_id}`
+
+  // Flatten all scopes, best rank first, dedupe by event, top 3
+  const best = []
+  for (const r of rankings) {
+    for (const [scope, rk] of Object.entries(r.rankings || {})) {
+      best.push({ ...rk, scope, event_id: r.event_id, pool: r.pool, best_time: r.best_time })
+    }
+  }
+  best.sort((a, b) => a.rank - b.rank)
+  const seen = new Set()
+  const top = []
+  for (const b of best) {
+    const key = `${b.event_id}-${b.pool}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    top.push(b)
+    if (top.length >= 3) break
+  }
+  if (top.length === 0) return null
+
+  const scopeLabel = { arab: 'Arab', gcc: 'GCC', national: 'National' }
+
+  return (
+    <div>
+      <div className="sect-head">
+        <h4>Best rankings</h4>
+        <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={onViewAll}>View all →</button>
+      </div>
+      <div className="rule-t">
+        {top.map((r, i) => (
+          <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
+            <div style={{ background: 'var(--color-accent)', color: '#fff', width: 48, height: 48, flex: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 8 }}>
+              <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, lineHeight: 1 }}>{r.rank}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, marginTop: 1 }}>{ordSuffix(r.rank)}</span>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {eventName(r)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
+                <span className="tag tag-accent">{scopeLabel[r.scope] || r.scope}</span>
+                <span className="micro asw-num">{r.pool}{r.total ? ` · out of ${r.total}` : ''}</span>
+              </div>
+            </div>
+            <span className="asw-time" style={{ fontSize: 16, flex: 'none' }}>{r.best_time}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function OverallTab({ stats, swimmerId, onViewRankings }) {
+  if (!stats) return <Empty label="No stats available" />
+  const { intl_medals, total_championships, best_fina, top_personal_bests, records } = stats
+  const intlRecords = (records || []).filter((r) => r.record_type !== 'NATIONAL')
+  const im = intl_medals || { gold: 0, silver: 0, bronze: 0, total: 0 }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {/* Stat cards */}
+      <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+        <div>
+          <div className="card-kicker">Meets</div>
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, lineHeight: 1.1, marginTop: 4 }}>{total_championships ?? 0}</div>
+        </div>
+        <div>
+          <div className="card-kicker">Int'l medals</div>
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, lineHeight: 1.1, marginTop: 4, color: 'var(--asw-gold)' }}>{im.total}</div>
+          {im.total > 0 && (
+            <div className="asw-num" style={{ fontSize: 12, marginTop: 4, display: 'flex', gap: 8 }}>
+              <span style={{ color: 'var(--asw-gold)', fontWeight: 700 }}>{im.gold}G</span>
+              <span style={{ color: 'var(--asw-silver)', fontWeight: 700 }}>{im.silver}S</span>
+              <span style={{ color: 'var(--asw-bronze)', fontWeight: 700 }}>{im.bronze}B</span>
+            </div>
+          )}
+        </div>
+        <div>
+          <div className="card-kicker">Int'l records</div>
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, lineHeight: 1.1, marginTop: 4, color: 'var(--color-accent-2)' }}>{intlRecords.length}</div>
+        </div>
+        <div>
+          <div className="card-kicker">Best FINA</div>
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, lineHeight: 1.1, marginTop: 4, color: 'var(--color-accent)' }}>{best_fina?.points || 0}</div>
+          {best_fina?.event_name && <div className="micro" style={{ marginTop: 4 }}>{best_fina.event_name}</div>}
+        </div>
+      </div>
+
+      {/* Top personal bests */}
+      {top_personal_bests?.length > 0 && (
+        <div>
+          <div className="sect-head"><h4>Top personal bests</h4></div>
+          <div className="rule-t">
+            {top_personal_bests.map((pb, i) => (
+              <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
+                <span className="asw-num" style={{ width: 30, height: 30, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13 }}>
+                  {i + 1}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase' }}>{pb.event_name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {pb.meet_name}{pb.meet_date ? ` · ${formatDate(pb.meet_date)}` : ''}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', flex: 'none' }}>
+                  <div className="asw-time" style={{ fontSize: 16 }}>{pb.time}</div>
+                  <div className="micro asw-num" style={{ color: 'var(--color-accent)' }}>{pb.fina_points} pts</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Best rankings preview */}
+      <RankingsPreview swimmerId={swimmerId} onViewAll={onViewRankings} />
+
+      {/* International records */}
+      {intlRecords.length > 0 && (
+        <div>
+          <div className="sect-head">
+            <h4>International records</h4>
+            <span className="micro asw-num">{intlRecords.length}</span>
+          </div>
+          <div className="rule-t">
+            {intlRecords.map((r) => (
+              <div key={r.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
+                <span className={`tag ${r.record_type === 'ARAB' ? 'tag-dark' : r.record_type === 'GCC' ? 'tag-accent' : 'tag-outline'}`}>{r.record_type}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase' }}>{r.event_name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>
+                    {r.location}{r.location && r.date ? ' · ' : ''}{formatDate(r.date)}
+                  </div>
+                </div>
+                <span className="asw-time" style={{ fontSize: 16, flex: 'none' }}>{r.time}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
@@ -149,355 +361,227 @@ function TimesTab({ swimmerId, events }) {
 
 /* ── Progression tab ───────────────────────────────────────────────────── */
 
-function ProgressionChart({ series }) {
-  // best time per year for the selected event
-  const byYear = new Map()
-  for (const p of series?.points || []) {
-    const y = parseInt(String(p.date || '').slice(0, 4))
-    if (!y || p.time_cs == null) continue
-    if (!byYear.has(y) || p.time_cs < byYear.get(y)) byYear.set(y, p.time_cs)
-  }
-  const data = [...byYear.entries()].sort((a, b) => a[0] - b[0])
-  if (data.length === 0) return <Empty label="No progression data" />
-
-  const W = 640, H = 280, PL = 64, PR = 20, PT = 16, PB = 36
-  const years = data.map(([y]) => y)
-  const times = data.map(([, t]) => t)
-  let minT = Math.min(...times), maxT = Math.max(...times)
-  if (minT === maxT) { minT -= 100; maxT += 100 }
-  const span = maxT - minT
-  minT -= span * 0.1; maxT += span * 0.1
-  const minY = years[0], maxY = years[years.length - 1]
-  const x = (yr) => (maxY === minY ? PL + (W - PL - PR) / 2 : PL + ((yr - minY) / (maxY - minY)) * (W - PL - PR))
-  const y = (t) => PT + ((t - minT) / (maxT - minT)) * (H - PT - PB) // faster (lower cs) at top
-  const fmt = (cs) => {
-    const m = Math.floor(cs / 6000), s = ((cs % 6000) / 100)
-    return m ? `${m}:${s.toFixed(1).padStart(4, '0')}` : s.toFixed(1)
-  }
-  const gridT = [0, 0.25, 0.5, 0.75, 1].map((f) => minT + f * (maxT - minT))
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: 720, display: 'block' }}>
-      {gridT.map((t, i) => (
-        <g key={i}>
-          <line x1={PL} x2={W - PR} y1={y(t)} y2={y(t)} stroke="var(--color-neutral-300)" strokeWidth="1" />
-          <text x={PL - 8} y={y(t) + 4} textAnchor="end" fontSize="11" fill="var(--color-neutral-700)" style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {fmt(t)}
-          </text>
-        </g>
-      ))}
-      {years.map((yr) => (
-        <text key={yr} x={x(yr)} y={H - PB + 20} textAnchor="middle" fontSize="11" fill="var(--color-neutral-700)" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {yr}
-        </text>
-      ))}
-      <polyline
-        points={data.map(([yr, t]) => `${x(yr)},${y(t)}`).join(' ')}
-        fill="none"
-        stroke="var(--color-accent)"
-        strokeWidth="2.5"
-      />
-      {data.map(([yr, t]) => (
-        <g key={yr}>
-          <circle cx={x(yr)} cy={y(t)} r="4" fill="var(--color-accent)" />
-          <text x={x(yr)} y={y(t) - 10} textAnchor="middle" fontSize="11" fontWeight="800" fill="var(--color-text)" style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-heading)' }}>
-            {fmt(t)}
-          </text>
-        </g>
-      ))}
-    </svg>
-  )
-}
-
 function ProgressionTab({ swimmerId }) {
   const [pool, setPool] = useState('LCM')
-  const [seriesList, setSeriesList] = useState(null)
-  const [eventId, setEventId] = useState(null)
+  const [lines, setLines] = useState(null)
 
   useEffect(() => {
     let alive = true
-    setSeriesList(null)
+    setLines(null)
     getSwimmerProgression(swimmerId, pool)
-      .then((res) => {
-        if (!alive) return
-        const l = list(res.data)
-        setSeriesList(l)
-        setEventId((prev) => (l.some((s) => s.event_id === prev) ? prev : l[0]?.event_id ?? null))
-      })
-      .catch(() => { if (alive) setSeriesList([]) })
+      .then((res) => { if (alive) setLines(list(res.data)) })
+      .catch(() => { if (alive) setLines([]) })
     return () => { alive = false }
   }, [swimmerId, pool])
 
-  if (seriesList === null) return <Loading label="Loading progression" />
-  const selected = seriesList.find((s) => s.event_id === eventId)
-
   return (
     <div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ marginBottom: 20 }}>
         <Seg
           options={[{ value: 'LCM', label: 'Long course' }, { value: 'SCM', label: 'Short course' }]}
           value={pool}
           onChange={setPool}
         />
-        {seriesList.length > 0 && (
-          <select className="select" style={{ maxWidth: 240 }} value={eventId ?? ''} onChange={(e) => setEventId(Number(e.target.value))}>
-            {seriesList.map((s) => (
-              <option key={s.event_id} value={s.event_id}>{s.event_name}</option>
-            ))}
-          </select>
-        )}
       </div>
-      {seriesList.length === 0 ? (
-        <Empty label={`No ${pool} progression data`} />
+      {lines === null ? (
+        <Loading label="Loading progression" />
+      ) : lines.length === 0 ? (
+        <Empty label={`No ${pool === 'LCM' ? 'long course' : 'short course'} progression data`} />
       ) : (
-        <>
-          <div className="micro" style={{ marginBottom: 10 }}>Best time per year · {selected?.event_name} · {pool}</div>
-          <ProgressionChart series={selected} />
-        </>
+        <ProgressionChart lines={lines} />
       )}
     </div>
   )
 }
 
-/* ── main page ─────────────────────────────────────────────────────────── */
+/* ── Tab config ────────────────────────────────────────────────────────── */
+
+const TABS = [
+  { value: 'overall', label: 'Overall' },
+  { value: 'times', label: 'Times' },
+  { value: 'meets', label: 'Meets' },
+  { value: 'medals', label: 'Medals' },
+  { value: 'rankings', label: 'Rankings' },
+  { value: 'records', label: 'Records' },
+  { value: 'qualifying', label: 'Qualifying' },
+  { value: 'progression', label: 'Progression' },
+  { value: 'compare', label: 'Compare' },
+  { value: 'transfers', label: 'Transfers' },
+  { value: 'gallery', label: 'Gallery' },
+]
+
+/* ── Main page ─────────────────────────────────────────────────────────── */
 
 export default function SwimmerProfile() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const { isAdmin } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') || 'overall'
+  const setActiveTab = (tab) => setSearchParams({ tab })
+
   const [swimmer, setSwimmer] = useState(null)
   const [events, setEvents] = useState([])
   const [stats, setStats] = useState(null)
-  const [medals, setMedals] = useState([])
-  const [records, setRecords] = useState([])
-  const [rankings, setRankings] = useState([])
-  const [transfers, setTransfers] = useState(null)
-  const [tab, setTab] = useState('times')
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
+  const [clubHistory, setClubHistory] = useState([])
+  const [loaded, setLoaded] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState(null)
+  const [history, setHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   useEffect(() => {
     let alive = true
-    setLoading(true)
-    setNotFound(false)
-    setTab('times')
-    async function load() {
-      try {
-        const [swimRes, eventsRes, statsRes, medalsRes, recordsRes, rankRes, transRes] = await Promise.allSettled([
-          getSwimmer(id),
-          getSwimmerEvents(id),
-          getSwimmerProfileStats(id),
-          getMedals({ swimmer: id, page_size: 100 }),
-          getHeldRecords({ swimmer: id }),
-          getSwimmerRankings(id),
-          getSwimmerTransferHistory(id),
-        ])
-        if (!alive) return
-        const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
-        const s = val(swimRes)
-        if (!s) { setNotFound(true); return }
-        setSwimmer(s)
-        setEvents(list(val(eventsRes)))
-        setStats(val(statsRes))
-        setMedals(list(val(medalsRes)))
-        setRecords(list(val(recordsRes)))
-        setRankings(list(val(rankRes)))
-        setTransfers(val(transRes))
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    load()
+    setLoaded(false)
+    setSelectedEvent(null)
+    setHistory([])
+    Promise.allSettled([
+      getSwimmer(id),
+      getSwimmerEvents(id),
+      getSwimmerProfileStats(id),
+      getSwimmerTransferHistory(id),
+    ]).then(([sRes, eRes, stRes, tRes]) => {
+      if (!alive) return
+      const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
+      setSwimmer(val(sRes))
+      setEvents(list(val(eRes)))
+      setStats(val(stRes))
+      setClubHistory(val(tRes)?.clubs || [])
+      setLoaded(true)
+    })
     return () => { alive = false }
   }, [id])
 
-  const eventNames = useMemo(() => {
-    const m = new Map()
-    events.forEach((e) => m.set(e.event_id, e.event_name))
-    return m
-  }, [events])
+  const currentClubs = useMemo(
+    () => clubHistory.filter((c) => c.is_current && !c.is_national),
+    [clubHistory]
+  )
 
-  if (loading) return <Loading label="Loading swimmer" />
-  if (notFound || !swimmer) return <Empty label="Swimmer not found" />
+  const handleEventClick = async (event) => {
+    setSelectedEvent(event)
+    setLoadingHistory(true)
+    try {
+      const res = await getSwimmerEventHistory(id, event.event_id, event.pool)
+      setHistory(list(res.data))
+    } catch {
+      setHistory([])
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
 
-  const isArab = swimmer.nationality_detail?.region === 'ARAB' || swimmer.nationality_detail?.region === 'GCC'
-  const tabs = [
-    { value: 'times', label: 'Times' },
-    { value: 'progression', label: 'Progression' },
-    { value: 'medals', label: 'Medals' },
-    ...(isArab ? [{ value: 'records', label: 'Records' }, { value: 'rankings', label: 'Rankings' }] : []),
-    { value: 'transfers', label: 'Transfers' },
-  ]
+  if (!loaded) return <Loading label="Loading swimmer" />
+  if (!swimmer) return <Empty label="Swimmer not found" />
+
+  // Non-Arab swimmers keep a normal profile but Records and Rankings are
+  // Arab-only features (their scopes are national/Arab/GCC)
+  const isNonArab = swimmer.nationality_detail?.region === 'OTHER'
+  const visibleTabs = isNonArab ? TABS.filter((t) => !['records', 'rankings'].includes(t.value)) : TABS
+  const effectiveTab = isNonArab && ['records', 'rankings'].includes(activeTab) ? 'times' : activeTab
+
+  const chip = (label, value) => (
+    <span className="tag tag-neutral" style={{ gap: 6 }}>
+      {label && <span className="micro" style={{ letterSpacing: '0.06em' }}>{label}</span>}
+      <span className="asw-num" style={{ fontWeight: 700 }}>{value}</span>
+    </span>
+  )
 
   return (
     <div>
-      {/* header */}
-      <div className="pad-lg rule-b" style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {/* ── Header ── */}
+      <div className="pad-lg rule-b" style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap', position: 'relative' }}>
         {swimmer.photo ? (
-          <div className="grayscale" style={{ width: 120, height: 120, flex: 'none', overflow: 'hidden' }}>
+          <div className="grayscale" style={{ width: 128, height: 128, flex: 'none', overflow: 'hidden' }}>
             <img src={mediaUrl(swimmer.photo)} alt={swimmer.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
         ) : (
-          <div style={{ width: 120, height: 120, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40 }}>
+          <div style={{ width: 128, height: 128, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 42 }}>
             {initials(swimmer.name)}
           </div>
         )}
         <div style={{ flex: 1, minWidth: 260 }}>
           <div className="kicker" style={{ marginBottom: 6 }}>Swimmer profile</div>
-          <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>{swimmer.name}</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)', flexWrap: 'wrap' }}>
-            <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} />
-            <span>{swimmer.nationality_detail?.name}</span>
-            <span>·</span>
-            <span className="asw-num">
-              {swimmer.birth_year ? `b. ${swimmer.birth_year}` : ''}
-              {swimmer.age != null ? ` · age ${swimmer.age}` : ''}
-            </span>
-            {swimmer.club && <><span>·</span><span>{swimmer.club}</span></>}
-            <span>·</span>
-            <span>{swimmer.sex === 'F' ? 'Women' : 'Men'}</span>
-            {swimmer.is_retired && <span className="tag tag-neutral">Retired</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>{swimmer.name}</h1>
+            {swimmer.is_retired && <span className="tag tag-dark">Retired</span>}
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
+            <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} flagUrl={swimmer.nationality_detail?.flag_url} />
+            <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            {swimmer.date_of_birth
+              ? chip('DOB', formatDate(swimmer.date_of_birth))
+              : swimmer.birth_year ? chip('Born', swimmer.birth_year) : null}
+            {swimmer.age != null && chip('Age', swimmer.age)}
+            {swimmer.sex && chip('', swimmer.sex === 'M' ? 'Male' : 'Female')}
+            {currentClubs.length > 0
+              ? currentClubs.map((c, i) => (
+                  <Fragment key={i}>{chip('Club', `${c.club}${c.country ? ` · ${c.country}` : ''}`)}</Fragment>
+                ))
+              : swimmer.club ? chip('Club', swimmer.club) : null}
+            {swimmer.instagram_url && (
+              <a href={swimmer.instagram_url} target="_blank" rel="noopener noreferrer" title="Instagram" aria-label="Instagram"
+                className="btn btn-secondary btn-icon" style={{ width: 30, height: 30 }}>
+                <AtSign size={15} />
+              </a>
+            )}
+            {swimmer.facebook_url && (
+              <a href={swimmer.facebook_url} target="_blank" rel="noopener noreferrer" title="Facebook" aria-label="Facebook"
+                className="btn btn-secondary btn-icon" style={{ width: 30, height: 30 }}>
+                <ExternalLink size={15} />
+              </a>
+            )}
+          </div>
+          {swimmer.nicknames?.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+              {swimmer.nicknames.map((n, i) => (
+                <span key={i} className="tag tag-accent-2">{n.nickname}</span>
+              ))}
+            </div>
+          )}
         </div>
+        {isAdmin && (
+          <div style={{ position: 'absolute', top: 16, right: 24, display: 'flex', gap: 8 }}>
+            <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }}
+              onClick={async () => {
+                const next = !swimmer.is_retired
+                await updateSwimmer(id, { is_retired: next })
+                setSwimmer({ ...swimmer, is_retired: next })
+              }}>
+              {swimmer.is_retired ? 'Mark active' : 'Mark retired'}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* career counts strip */}
-      <div className="counts">
-        <div><div className="n">{formatNumber(stats?.total_races)}</div><div className="l">Career swims</div></div>
-        <div><div className="n">{formatNumber(stats?.total_championships)}</div><div className="l">Meets</div></div>
-        <div><div className="n">{formatNumber(stats?.medals?.total)}</div><div className="l">Medals</div></div>
-        <div><div className="n">{formatNumber(stats?.total_records ?? records.length)}</div><div className="l">Records held</div></div>
-        <div><div className="n">{formatNumber(stats?.best_fina?.points)}</div><div className="l">Best FINA</div></div>
+      {/* ── Tabs ── */}
+      <div className="rule-b" style={{ padding: '14px 32px', overflowX: 'auto' }}>
+        <Seg
+          options={visibleTabs}
+          value={effectiveTab}
+          onChange={(v) => (v === 'compare' ? navigate(`/compare?ids=${id}`) : setActiveTab(v))}
+        />
       </div>
 
-      {/* tabs */}
-      <div style={{ padding: '20px 32px 0' }}>
-        <Seg options={tabs} value={tab} onChange={setTab} />
-      </div>
-
-      <div className="pad" style={{ paddingTop: 20 }}>
-        {tab === 'times' && <TimesTab swimmerId={id} events={events} />}
-
-        {tab === 'progression' && <ProgressionTab swimmerId={id} />}
-
-        {tab === 'medals' && (
-          medals.length === 0 ? (
-            <Empty label="No medals" />
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 40 }} />
-                  <th>Event</th>
-                  <th>Championship</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {medals.map((m) => (
-                  <tr key={m.id}>
-                    <td><MedalIcon type={m.medal_type} /></td>
-                    <td style={{ fontWeight: 600 }}>{m.event_detail?.name}</td>
-                    <td>
-                      <Link to={`/meets/${m.championship}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                        {m.championship_detail?.name}
-                      </Link>
-                    </td>
-                    <td className="asw-num" style={{ whiteSpace: 'nowrap' }}>{formatDate(m.championship_detail?.date)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
+      {/* ── Tab content ── */}
+      <div className="pad">
+        {effectiveTab === 'overall' && (
+          <OverallTab stats={stats} swimmerId={id} onViewRankings={() => setActiveTab('rankings')} />
         )}
-
-        {tab === 'records' && (
-          records.length === 0 ? (
-            <Empty label="No records held" />
-          ) : (
-            <div className="cellgrid grid-3" style={{ gridTemplateColumns: `repeat(${Math.min(3, records.length)}, 1fr)` }}>
-              {records.map((r, i) => (
-                <div key={`${r.scope}-${r.event_id}-${r.pool}-${i}`}>
-                  <div className="card-kicker">{r.scope} record · {r.pool}</div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, margin: '4px 0 2px' }}>{r.time}</div>
-                  <div style={{ fontSize: 12 }}>{r.event_name}{r.categories?.length ? ` · ${r.categories.join(', ')}` : ''}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>
-                    {r.championship_name} · {formatDate(r.date)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
+        {effectiveTab === 'times' && (
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 32, alignItems: 'start' }}>
+            <EventList events={events} selected={selectedEvent} onSelect={handleEventClick} />
+            <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} />
+          </div>
         )}
-
-        {tab === 'rankings' && (
-          rankings.length === 0 ? (
-            <Empty label="No rankings" />
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Event</th>
-                  <th>Pool</th>
-                  <th className="time">Best time</th>
-                  <th className="num">National</th>
-                  <th className="num">Arab</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rankings.map((r, i) => (
-                  <tr key={`${r.event_id}-${r.pool}-${i}`}>
-                    <td style={{ fontWeight: 600 }}>{eventNames.get(r.event_id) || `Event ${r.event_id}`}</td>
-                    <td className="text-muted">{r.pool}</td>
-                    <td className="time asw-time">{r.best_time}</td>
-                    <td className="num asw-num">
-                      {r.rankings?.national ? <><strong>#{r.rankings.national.rank}</strong><span className="text-muted"> / {r.rankings.national.total}</span></> : '—'}
-                    </td>
-                    <td className="num asw-num">
-                      {r.rankings?.arab ? <><strong>#{r.rankings.arab.rank}</strong><span className="text-muted"> / {r.rankings.arab.total}</span></> : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        )}
-
-        {tab === 'transfers' && (
-          !transfers || (transfers.clubs || []).length === 0 ? (
-            <Empty label="No club history" />
-          ) : (
-            <div style={{ maxWidth: 640 }}>
-              {(transfers.clubs || []).map((c, i) => (
-                <div key={i} style={{ display: 'flex', gap: 16, padding: '14px 0', borderBottom: '1px solid var(--color-divider)' }}>
-                  <div style={{ width: 10, flex: 'none', paddingTop: 5 }}>
-                    <div style={{ width: 10, height: 10, background: c.is_current ? 'var(--color-accent)' : 'var(--color-neutral-400)' }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16 }}>{c.club}</span>
-                      {c.country_code && <Flag code={c.country_code} name={c.country} />}
-                      {c.is_current && <span className="tag tag-dark">Current</span>}
-                      {c.is_national && <span className="tag tag-accent">National team</span>}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }} className="asw-num">
-                      {formatDate(c.first_meet)}{c.last_meet && c.last_meet !== c.first_meet ? ` — ${formatDate(c.last_meet)}` : ''}
-                      {' · '}{c.meets} meet{c.meets === 1 ? '' : 's'} · {c.results} swim{c.results === 1 ? '' : 's'}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {(transfers.nationality_changes || []).length > 0 && (
-                <div style={{ marginTop: 20 }}>
-                  <div className="micro" style={{ marginBottom: 8 }}>Nationality changes</div>
-                  {transfers.nationality_changes.map((n, i) => (
-                    <div key={i} style={{ fontSize: 13, padding: '6px 0', borderBottom: '1px solid var(--color-divider)' }}>
-                      {n.from_country || n.from} → {n.to_country || n.to}{n.date ? ` · ${formatDate(n.date)}` : ''}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        )}
+        {effectiveTab === 'meets' && <MeetsTab stats={stats} />}
+        {effectiveTab === 'medals' && <MedalsTab stats={stats} />}
+        {effectiveTab === 'rankings' && <RankingsTab swimmerId={id} swimmer={swimmer} />}
+        {effectiveTab === 'records' && <RecordsTab swimmerId={id} />}
+        {effectiveTab === 'qualifying' && <QualifyingTab swimmerId={id} />}
+        {effectiveTab === 'progression' && <ProgressionTab swimmerId={id} />}
+        {effectiveTab === 'transfers' && <TransfersTab swimmerId={id} />}
+        {effectiveTab === 'gallery' && <GalleryTab swimmerId={id} />}
       </div>
     </div>
   )

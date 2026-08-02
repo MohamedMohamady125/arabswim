@@ -48,6 +48,7 @@ function CountryTable({ countries, showRegion = true }) {
 
 export default function Countries() {
   const [countries, setCountries] = useState([])
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -66,18 +67,34 @@ export default function Countries() {
   const bySwimmers = (a, b) =>
     (b.swimmers_count || 0) - (a.swimmers_count || 0) || String(a.name).localeCompare(String(b.name))
 
+  const q = search.trim().toLowerCase()
+  const matches = (c) =>
+    !q || String(c.name).toLowerCase().includes(q) || String(c.code).toLowerCase().includes(q)
+
   const arab = useMemo(
-    () => countries.filter((c) => c.region === 'ARAB' || c.region === 'GCC').sort(bySwimmers),
-    [countries]
+    () => countries.filter((c) => (c.region === 'ARAB' || c.region === 'GCC') && matches(c)).sort(bySwimmers),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [countries, q]
   )
   const others = useMemo(
-    () => countries.filter((c) => c.region === 'OTHER' && (c.swimmers_count || 0) > 0).sort(bySwimmers),
-    [countries]
+    () => countries.filter((c) => c.region === 'OTHER' && (c.swimmers_count || 0) > 0 && matches(c)).sort(bySwimmers),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [countries, q]
   )
 
   return (
     <div>
       <PageHead kicker="Data" title="Countries" sub="Arab swimming federations and their databases" />
+      <div className="rule-b" style={{ padding: '14px 32px' }}>
+        <input
+          className="input"
+          style={{ maxWidth: 320 }}
+          placeholder="Search countries…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search countries"
+        />
+      </div>
       {loading ? (
         <Loading label="Loading countries" />
       ) : countries.length === 0 ? (
@@ -86,7 +103,7 @@ export default function Countries() {
         <>
           <div className="pad-lg">
             <SectHead title={`Arab federations · ${arab.length}`} />
-            <CountryTable countries={arab} />
+            {arab.length === 0 ? <Empty label="No countries match" /> : <CountryTable countries={arab} />}
           </div>
           {others.length > 0 && (
             <div className="rule-t pad-lg">

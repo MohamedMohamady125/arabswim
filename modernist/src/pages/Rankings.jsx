@@ -7,6 +7,7 @@ import { PageHead, Loading, Empty, Seg, Pager } from '../components/ui'
 import { formatDate, AGE_GROUPS } from '../utils'
 
 const PAGE_SIZE = 25
+const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley', 'Freestyle Relay', 'Medley Relay']
 
 export default function Rankings() {
   const [countries, setCountries] = useState([])
@@ -26,40 +27,69 @@ export default function Rankings() {
   const years = useMemo(() => {
     const cur = new Date().getFullYear()
     const out = []
-    for (let y = cur; y >= 2015; y--) out.push(y)
+    for (let y = cur; y >= 2000; y--) out.push(y)
     return out
   }, [])
 
   useEffect(() => {
     let alive = true
-    Promise.allSettled([getCountries(), getEvents()]).then(([cRes, eRes]) => {
+    Promise.allSettled([getCountries(), getEvents({ has_results: true })]).then(([cRes, eRes]) => {
       if (!alive) return
       const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
       const list = (d) => (Array.isArray(d) ? d : d?.results || [])
       setCountries(list(val(cRes)).filter((c) => c.region === 'ARAB' || c.region === 'GCC'))
       const evs = list(val(eRes))
-      const sorted = [
-        ...evs.filter((e) => !e.is_relay),
-        ...evs.filter((e) => e.is_relay),
-      ]
-      setEvents(sorted)
-      if (sorted[0]) setEvent(String(sorted[0].id))
+      setEvents(evs)
+      // Auto-select first non-relay event
+      const first = evs.find((e) => !e.is_relay) || evs[0]
+      if (first) setEvent(String(first.id))
     })
     return () => { alive = false }
   }, [])
 
+  // 100 IM only exists in SCM; group by stroke, distance-sorted within group.
+  const eventGroups = useMemo(() => {
+    const filtered = pool === 'LCM'
+      ? events.filter((e) => !(e.stroke === 'Individual Medley' && e.distance === 100))
+      : events
+    const grouped = {}
+    for (const e of filtered) {
+      const stroke = e.stroke || 'Other'
+      if (!grouped[stroke]) grouped[stroke] = []
+      grouped[stroke].push(e)
+    }
+    Object.values(grouped).forEach((arr) => arr.sort((a, b) => a.distance - b.distance))
+    const strokes = Object.keys(grouped).sort((a, b) => {
+      const ai = STROKE_ORDER.indexOf(a)
+      const bi = STROKE_ORDER.indexOf(b)
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+    })
+    return strokes.map((stroke) => ({ stroke, events: grouped[stroke] }))
+  }, [events, pool])
+
+  // If the selected event disappears with the pool switch (100 IM), pick a valid one.
+  useEffect(() => {
+    if (!event) return
+    const stillValid = eventGroups.some((g) => g.events.some((e) => String(e.id) === event))
+    if (!stillValid) {
+      const first = eventGroups[0]?.events[0]
+      setEvent(first ? String(first.id) : '')
+    }
+  }, [eventGroups, event])
+
   useEffect(() => { setPage(1) }, [scope, country, gender, pool, year, event, ageGroup])
 
   useEffect(() => {
-    if (!event) return
+    if (!event) { setRows([]); setCount(0); setLoading(false); return }
     if (scope === 'national' && !country) { setRows([]); setCount(0); setLoading(false); return }
     let alive = true
     setLoading(true)
     const params = {
-      scope, gender, pool, year, event,
+      scope, gender, pool, event,
       age_group: ageGroup,
       page, page_size: PAGE_SIZE,
     }
+    if (year) params.year = year
     if (scope === 'national') params.country = country
     getRankings(params)
       .then((res) => {
@@ -73,14 +103,16 @@ export default function Rankings() {
     return () => { alive = false }
   }, [scope, country, gender, pool, year, event, ageGroup, page])
 
+  const selectedEvent = events.find((e) => String(e.id) === event)
+
   return (
     <div>
-      <PageHead kicker="Data" title="Rankings" sub="Season best times across the Arab world" />
+      <PageHead kicker="Data" title="Rankings" sub="All-time and yearly best performances by event" />
 
       {/* filter bar */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Seg
-          options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }, { value: 'national', label: 'National' }]}
+          options={[{ value: 'national', label: 'National' }, { value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }]}
           value={scope}
           onChange={setScope}
         />
@@ -100,25 +132,40 @@ export default function Rankings() {
           value={pool}
           onChange={setPool}
         />
-        <select className="select" style={{ width: 100 }} value={year} onChange={(e) => setYear(e.target.value)}>
+        <select className="select" style={{ width: 110 }} value={year} onChange={(e) => setYear(e.target.value)}>
+          <option value="">All-time</option>
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
-        <select className="select" style={{ width: 190 }} value={event} onChange={(e) => setEvent(e.target.value)}>
-          {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+        <select className="select" style={{ width: 200 }} value={event} onChange={(e) => setEvent(e.target.value)}>
+          <option value="">Select event…</option>
+          {eventGroups.map((g) => (
+            <optgroup key={g.stroke} label={g.stroke}>
+              {g.events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+            </optgroup>
+          ))}
         </select>
-        <select className="select" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-          {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
-        </select>
+        <Seg
+          options={AGE_GROUPS.map((g) => ({ value: g, label: g === 'OPEN' ? 'Open' : g }))}
+          value={ageGroup}
+          onChange={setAgeGroup}
+        />
       </div>
 
       {scope === 'national' && !country ? (
         <Empty label="Select a country to view national rankings" />
+      ) : !event ? (
+        <Empty label="Select an event to view rankings" />
       ) : loading ? (
         <Loading label="Loading rankings" />
       ) : rows.length === 0 ? (
         <Empty label="No rankings for this selection" />
       ) : (
         <div className="pad">
+          {selectedEvent && (
+            <div className="kicker" style={{ marginBottom: 12 }}>
+              {selectedEvent.name} · {gender === 'M' ? 'Men' : 'Women'} · {pool} · {year || 'All-time'}
+            </div>
+          )}
           <div className="table-scroll">
             <table className="table">
               <thead>
@@ -133,25 +180,29 @@ export default function Rankings() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
-                  <tr key={`${r.rank}-${r.swimmer_id}`}>
-                    <td className="asw-num" style={{ fontWeight: 800 }}>{r.rank}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Flag code={r.nationality_code} name={r.nationality} />
-                        <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>
-                      </div>
-                    </td>
-                    <td className="num asw-num">{r.age_at_competition ?? '—'}</td>
-                    <td className="time asw-time">{r.time}</td>
-                    <td className="num asw-num">{r.fina_points ?? '—'}</td>
-                    <td className="text-muted hide-mobile">
-                      {r.championship_name}
-                      {r.championship_location ? ` · ${r.championship_location}` : ''}
-                    </td>
-                    <td className="hide-mobile" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
-                  </tr>
-                ))}
+                {rows.map((r, i) => {
+                  const prevCs = i > 0 ? rows[i - 1].time_centiseconds : null
+                  const isTied = prevCs !== null && r.time_centiseconds === prevCs
+                  return (
+                    <tr key={`${r.rank}-${r.swimmer_id}`}>
+                      <td className="asw-num" style={{ fontWeight: 800 }}>{isTied ? '=' : r.rank}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <Flag code={r.nationality_code} name={r.nationality} />
+                          <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>
+                        </div>
+                      </td>
+                      <td className="num asw-num">{r.age_at_competition ?? '—'}</td>
+                      <td className="time asw-time">{r.time}</td>
+                      <td className="num asw-num">{r.fina_points ?? '—'}</td>
+                      <td className="text-muted hide-mobile">
+                        {r.championship_name}
+                        {r.championship_location ? ` · ${r.championship_location}` : ''}
+                      </td>
+                      <td className="hide-mobile" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

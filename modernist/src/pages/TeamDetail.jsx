@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getTeamProfile, getTeamMedals, getTeamTimes } from '../api/teams'
+import { getArticles } from '../api/news'
+import { getAlbums } from '../api/media'
+import { getCoaches } from '../api/coaches'
+import api from '../api/client'
 import Flag from '../components/Flag'
 import { Loading, Empty, SectHead, MedalIcon } from '../components/ui'
-import { formatDate, formatNumber, mediaUrl } from '../utils'
+import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
+
+// Not yet in src/api/teams.js — defined locally
+const getTeamRecords = (id) => api.get(`/teams/${id}/records/`)
+const getTeamStats = (id) => api.get(`/teams/${id}/stats/`)
+const getTeamRanking = (id) => api.get(`/teams/${id}/ranking/`)
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
@@ -13,11 +22,26 @@ function acronym(name) {
   return words.slice(0, 3).map((w) => w[0]).join('').toUpperCase()
 }
 
+const COACH_LEVELS = {
+  HEAD: 'Head Coach',
+  ASSISTANT: 'Assistant Coach',
+  TECHNIQUE: 'Technique Coach',
+  FITNESS: 'Fitness / S&C Coach',
+  YOUTH: 'Youth Development',
+  PRIVATE: 'Private Coach',
+}
+
 export default function TeamDetail() {
   const { id } = useParams()
   const [profile, setProfile] = useState(null)
   const [medals, setMedals] = useState([])
   const [times, setTimes] = useState([])
+  const [records, setRecords] = useState([])
+  const [stats, setStats] = useState(null)
+  const [ranking, setRanking] = useState([])
+  const [coaches, setCoaches] = useState([])
+  const [articles, setArticles] = useState([])
+  const [albums, setAlbums] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,16 +49,28 @@ export default function TeamDetail() {
     setLoading(true)
     async function load() {
       try {
-        const [profRes, medalsRes, timesRes] = await Promise.allSettled([
+        const [profRes, medalsRes, timesRes, recRes, statsRes, rankRes, coachRes, newsRes, albumRes] = await Promise.allSettled([
           getTeamProfile(id),
           getTeamMedals(id),
           getTeamTimes(id),
+          getTeamRecords(id),
+          getTeamStats(id),
+          getTeamRanking(id),
+          getCoaches({ team: id }),
+          getArticles({ team: id, status: 'PUBLISHED' }),
+          getAlbums({ team: id }),
         ])
         if (!alive) return
         const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
         setProfile(val(profRes))
         setMedals(list(val(medalsRes)))
         setTimes(list(val(timesRes)).slice(0, 20))
+        setRecords(list(val(recRes)))
+        setStats(val(statsRes))
+        setRanking(list(val(rankRes)))
+        setCoaches(list(val(coachRes)))
+        setArticles(list(val(newsRes)))
+        setAlbums(list(val(albumRes)))
       } finally {
         if (alive) setLoading(false)
       }
@@ -46,6 +82,7 @@ export default function TeamDetail() {
   const team = profile?.team
   const roster = useMemo(() => (profile?.roster || []).filter((s) => !s.is_relay_team), [profile])
   const medalCounts = profile?.medal_counts
+  const trophies = team?.trophies || []
   const totalMedals = useMemo(() => {
     let n = 0
     for (const scope of Object.values(medalCounts || {})) {
@@ -77,7 +114,15 @@ export default function TeamDetail() {
             <Flag code={team.country_detail?.code} name={team.country_detail?.name} />
             <span>{team.country_detail?.name}</span>
             {team.founded_year && <><span>·</span><span className="asw-num">Founded {team.founded_year}</span></>}
+            {team.address && <><span>·</span><span>{team.address}</span></>}
           </div>
+          {(team.website || team.email || team.phone) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, fontSize: 13, flexWrap: 'wrap' }}>
+              {team.website && <a href={team.website} target="_blank" rel="noreferrer">{team.website}</a>}
+              {team.email && <a href={`mailto:${team.email}`}>{team.email}</a>}
+              {team.phone && <a className="asw-num" href={`tel:${team.phone}`}>{team.phone}</a>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -85,9 +130,9 @@ export default function TeamDetail() {
       <div className="counts">
         <div><div className="n">{formatNumber(roster.length)}</div><div className="l">Swimmers</div></div>
         <div><div className="n">{formatNumber(totalMedals || medals.length)}</div><div className="l">Medals</div></div>
-        <div><div className="n">{formatNumber(medalCounts?.national ? (medalCounts.national.GOLD || 0) + (medalCounts.international?.GOLD || 0) : null)}</div><div className="l">Gold</div></div>
-        <div><div className="n">{formatNumber(profile?.best_swimmers?.[0]?.fina_points)}</div><div className="l">Top FINA</div></div>
-        <div><div className="n">{formatNumber(times.length ? times.length : null)}</div><div className="l">Best times listed</div></div>
+        <div><div className="n">{formatNumber(stats?.championships)}</div><div className="l">Championships</div></div>
+        <div><div className="n">{formatNumber(stats?.best_fina?.points ?? profile?.best_swimmers?.[0]?.fina_points)}</div><div className="l">Best FINA</div></div>
+        <div><div className="n">{formatNumber(records.length ? records.length : null)}</div><div className="l">Records held</div></div>
       </div>
 
       <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 380px' }}>
@@ -127,9 +172,35 @@ export default function TeamDetail() {
               </table>
             </div>
           )}
+
+          {/* coaches */}
+          {coaches.length > 0 && (
+            <div className="rule-t" style={{ marginTop: 24, paddingTop: 24 }}>
+              <SectHead title={`Coaching staff · ${coaches.length}`} to="/coaches" linkLabel="All coaches" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                {coaches.map((c) => (
+                  <div key={c.id} style={{ border: '1px solid var(--color-divider)', padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {c.photo ? (
+                      <div className="grayscale" style={{ width: 36, height: 36, flex: 'none', overflow: 'hidden' }}>
+                        <img src={mediaUrl(c.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    ) : (
+                      <div style={{ width: 36, height: 36, flex: 'none', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12 }}>
+                        {acronym(c.name)}
+                      </div>
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</div>
+                      {c.level && <div className="text-muted" style={{ fontSize: 12 }}>{COACH_LEVELS[c.level] || c.level}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* right rail: top swimmers + medals */}
+        {/* right rail: top swimmers + medal breakdown + medals + trophies */}
         <div>
           <div className="rule-b" style={{ padding: '24px 28px' }}>
             <SectHead title="Top swimmers · FINA" />
@@ -158,7 +229,55 @@ export default function TeamDetail() {
             )}
           </div>
 
-          <div style={{ padding: '24px 28px' }}>
+          {/* medal breakdown + top medalist */}
+          <div className="rule-b" style={{ padding: '24px 28px' }}>
+            <SectHead title="Medal breakdown" />
+            {totalMedals === 0 ? (
+              <div className="text-muted" style={{ fontSize: 13 }}>No medals yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {['international', 'national'].map((scope) => {
+                  const c = medalCounts?.[scope]
+                  if (!c) return null
+                  const total = (c.GOLD || 0) + (c.SILVER || 0) + (c.BRONZE || 0)
+                  if (!total) return null
+                  return (
+                    <div key={scope}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                        <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{scope}</span>
+                        <span className="asw-num" style={{ fontWeight: 800 }}>{total}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, fontSize: 13 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MedalIcon type="GOLD" size={15} /> <span className="asw-num">{c.GOLD || 0}</span></span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MedalIcon type="SILVER" size={15} /> <span className="asw-num">{c.SILVER || 0}</span></span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MedalIcon type="BRONZE" size={15} /> <span className="asw-num">{c.BRONZE || 0}</span></span>
+                      </div>
+                    </div>
+                  )
+                })}
+                {stats?.top_medalist && (
+                  <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: 12, fontSize: 13 }}>
+                    <div className="micro" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Most decorated</div>
+                    <Link to={`/swimmers/${stats.top_medalist.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
+                      {stats.top_medalist.swimmer_name}
+                    </Link>
+                    <span className="text-muted"> · <span className="asw-num">{stats.top_medalist.count}</span> medals</span>
+                  </div>
+                )}
+                {stats?.best_fina && (
+                  <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: 12, fontSize: 13 }}>
+                    <div className="micro" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Highest FINA points</div>
+                    <Link to={`/swimmers/${stats.best_fina.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
+                      {stats.best_fina.swimmer_name}
+                    </Link>
+                    <span className="text-muted"> · <span className="asw-num" style={{ fontWeight: 800 }}>{stats.best_fina.points}</span> · {stats.best_fina.event_name}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="rule-b" style={{ padding: '24px 28px' }}>
             <SectHead title="Medals" />
             {medals.length === 0 ? (
               <div className="text-muted" style={{ fontSize: 13 }}>No medals recorded.</div>
@@ -178,8 +297,106 @@ export default function TeamDetail() {
               </div>
             )}
           </div>
+
+          {/* trophies */}
+          <div style={{ padding: '24px 28px' }}>
+            <SectHead title={`Trophies · ${trophies.length}`} />
+            {trophies.length === 0 ? (
+              <div className="text-muted" style={{ fontSize: 13 }}>No trophies yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {trophies.map((t, i) => (
+                  <div key={t.id ?? i} style={{ display: 'flex', alignItems: 'baseline', gap: 10, paddingBottom: 10, borderBottom: '1px solid var(--color-divider)', fontSize: 13 }}>
+                    <span style={{ flex: 1, fontWeight: 600 }}>{t.name}</span>
+                    <span className="asw-num text-muted" style={{ fontWeight: 800 }}>{t.year}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* records held */}
+      <div className="rule-t pad">
+        <SectHead title={`Records held · ${records.length}`} />
+        {records.length === 0 ? (
+          <Empty label="No records held" />
+        ) : (
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Event</th>
+                  <th>Swimmer</th>
+                  <th className="time">Time</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((r, i) => (
+                  <tr key={r.id ?? i}>
+                    <td><span className={r.record_type === 'ARAB' ? 'tag tag-dark' : 'tag tag-accent'}>{r.record_type}</span></td>
+                    <td style={{ fontWeight: 600 }}>{r.event_name}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Flag code={r.nationality_code} name={r.swimmer_name} />
+                        {r.swimmer_id ? (
+                          <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>
+                        ) : (
+                          <span>{r.swimmer_name}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="time asw-time">{typeof r.time === 'number' ? formatTime(r.time) : r.time}</td>
+                    <td className="asw-num" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* club ranking */}
+      {ranking.length > 0 && (
+        <div className="rule-t pad">
+          <SectHead title="Club ranking" />
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="num">#</th>
+                  <th>Club</th>
+                  <th className="num">Gold</th>
+                  <th className="num">Silver</th>
+                  <th className="num">Bronze</th>
+                  <th className="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranking.map((r) => (
+                  <tr key={r.team_id} style={r.is_current ? { background: 'var(--color-accent-100)', fontWeight: 600 } : undefined}>
+                    <td className="num asw-num" style={{ fontWeight: 800 }}>{r.rank}</td>
+                    <td>
+                      {r.team_id !== Number(id) ? (
+                        <Link to={`/teams/${r.team_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>{r.team_name}</Link>
+                      ) : (
+                        <span style={{ fontWeight: 700 }}>{r.team_name} <span className="tag tag-dark">This club</span></span>
+                      )}
+                    </td>
+                    <td className="num asw-num">{r.gold}</td>
+                    <td className="num asw-num">{r.silver}</td>
+                    <td className="num asw-num">{r.bronze}</td>
+                    <td className="num asw-num" style={{ fontWeight: 800 }}>{r.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* best times */}
       <div className="rule-t pad">
@@ -217,6 +434,52 @@ export default function TeamDetail() {
           </div>
         )}
       </div>
+
+      {/* news */}
+      {articles.length > 0 && (
+        <div className="rule-t pad">
+          <SectHead title="News" to="/news" linkLabel="All news" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+            {articles.slice(0, 6).map((a) => (
+              <Link key={a.id} to={`/news/${a.id}`} style={{ color: 'inherit', textDecoration: 'none', border: '1px solid var(--color-divider)' }}>
+                {a.cover_image && (
+                  <div className="grayscale" style={{ height: 140, overflow: 'hidden' }}>
+                    <img src={mediaUrl(a.cover_image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                )}
+                <div style={{ padding: 12 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.35 }}>{a.title}</div>
+                  {a.published_at && <div className="text-muted asw-num" style={{ fontSize: 12, marginTop: 6 }}>{formatDate(a.published_at)}</div>}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* gallery */}
+      {albums.length > 0 && (
+        <div className="rule-t pad">
+          <SectHead title="Gallery" to="/media" linkLabel="All media" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+            {albums.slice(0, 6).map((a) => (
+              <Link key={a.id} to={`/media/albums/${a.id}`} style={{ color: 'inherit', textDecoration: 'none', border: '1px solid var(--color-divider)' }}>
+                {a.cover ? (
+                  <div className="grayscale" style={{ height: 120, overflow: 'hidden' }}>
+                    <img src={mediaUrl(a.cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : (
+                  <div style={{ height: 120, background: 'var(--color-neutral-200)' }} />
+                )}
+                <div style={{ padding: 12 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{a.title}</div>
+                  <div className="text-muted asw-num" style={{ fontSize: 12, marginTop: 4 }}>{a.items_count || 0} photos</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

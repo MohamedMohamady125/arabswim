@@ -645,7 +645,7 @@ class _MeetFixtureMixin:
         # Write endpoints require authentication
         from django.contrib.auth import get_user_model
         user = get_user_model().objects.create_user(
-            username='tester', password='test-pass-123')
+            username='tester', password='test-pass-123', role='ADMIN')
         self.client.force_login(user)
         super().setUp()
 

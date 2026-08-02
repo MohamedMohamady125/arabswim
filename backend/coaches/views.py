@@ -12,6 +12,10 @@ class CoachViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'years_experience', 'created_at']
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    def get_permissions(self):
+        from core.permissions import CanManageTeamPortal
+        return [CanManageTeamPortal()]
+
     def get_queryset(self):
         qs = super().get_queryset()
         country = self.request.query_params.get('country')

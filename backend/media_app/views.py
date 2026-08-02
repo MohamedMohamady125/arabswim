@@ -15,6 +15,13 @@ class AlbumViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'title']
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    def get_permissions(self):
+        # for_championship stays admin-only (global default)
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            from core.permissions import CanManageTeamPortal
+            return [CanManageTeamPortal()]
+        return super().get_permissions()
+
     def get_serializer_class(self):
         if self.action == 'list':
             return AlbumListSerializer
@@ -51,6 +58,12 @@ class MediaItemViewSet(viewsets.ModelViewSet):
     pagination_class = None
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    def get_permissions(self):
+        if self.action in ('upload', 'update', 'partial_update', 'destroy'):
+            from core.permissions import CanManageTeamPortal
+            return [CanManageTeamPortal()]
+        return super().get_permissions()
+
     def get_queryset(self):
         qs = super().get_queryset()
         album = self.request.query_params.get('album')
@@ -70,6 +83,9 @@ class MediaItemViewSet(viewsets.ModelViewSet):
             album = Album.objects.get(pk=album_id)
         except Album.DoesNotExist:
             return Response({'error': 'Album not found'}, status=404)
+        from core.permissions import user_manages_team
+        if not user_manages_team(request.user, album.team):
+            return Response({'error': 'You do not manage this album'}, status=403)
         files = request.FILES.getlist('images') or request.FILES.getlist('image')
         if not files:
             return Response({'error': 'No image files provided'}, status=400)

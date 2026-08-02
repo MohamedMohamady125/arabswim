@@ -13,6 +13,10 @@ class ArticleViewSet(viewsets.ModelViewSet):
     ordering_fields = ['published_at', 'created_at', 'title']
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    def get_permissions(self):
+        from core.permissions import CanManageTeamPortal
+        return [CanManageTeamPortal()]
+
     def get_queryset(self):
         qs = super().get_queryset()
         status_param = self.request.query_params.get('status')

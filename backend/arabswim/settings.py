@@ -154,14 +154,15 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # DRF — reads are public (rankings, results, profiles); every write
-# (POST/PUT/PATCH/DELETE) requires a logged-in user.
+# (POST/PUT/PATCH/DELETE) requires an ADMIN-role user by default.
+# Scoped exceptions (athlete self-edit, club portal) override per-viewset.
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'core.permissions.IsAdminOrReadOnly',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 25,

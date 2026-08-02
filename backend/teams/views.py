@@ -22,6 +22,14 @@ class TeamViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'founded_year']
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    def get_permissions(self):
+        # Club/federation accounts may edit their own team's portal;
+        # everything else (create/destroy/merge/dedupe) stays admin-only.
+        if self.action in ('update', 'partial_update', 'upload_logo', 'upload_banner'):
+            from core.permissions import CanManageTeamPortal
+            return [CanManageTeamPortal()]
+        return super().get_permissions()
+
     def get_serializer_class(self):
         if self.action == 'list':
             return TeamListSerializer
@@ -638,6 +646,10 @@ class TrophyViewSet(viewsets.ModelViewSet):
     queryset = Trophy.objects.all()
     serializer_class = TrophySerializer
     pagination_class = None
+
+    def get_permissions(self):
+        from core.permissions import CanManageTeamPortal
+        return [CanManageTeamPortal()]
 
     def get_queryset(self):
         qs = super().get_queryset()

@@ -3,8 +3,49 @@ from django.db import models
 
 
 class User(AbstractUser):
-    ROLE_CHOICES = [('ADMIN', 'Admin'), ('VIEWER', 'Viewer')]
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='ADMIN')
+    ROLE_CHOICES = [
+        ('ADMIN', 'Admin'),
+        ('ATHLETE', 'Athlete'),
+        ('CLUB', 'Club'),
+        ('FEDERATION', 'Federation'),
+        ('VIEWER', 'Viewer'),
+    ]
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='VIEWER')
+    swimmer = models.OneToOneField(
+        'swimmers.Swimmer', null=True, blank=True, on_delete=models.SET_NULL, related_name='account'
+    )
+    team = models.ForeignKey(
+        'teams.Team', null=True, blank=True, on_delete=models.SET_NULL, related_name='accounts'
+    )
+    country = models.ForeignKey(
+        'core.Country', null=True, blank=True, on_delete=models.SET_NULL, related_name='federation_accounts'
+    )
+
+
+def claim_document_path(instance, filename):
+    import uuid
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'jpg'
+    return f'claims/ids/{uuid.uuid4().hex}.{ext}'
+
+
+class ProfileClaim(models.Model):
+    STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('DECLINED', 'Declined')]
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='claims')
+    swimmer = models.ForeignKey('swimmers.Swimmer', on_delete=models.CASCADE, related_name='claims')
+    id_document = models.ImageField(upload_to=claim_document_path)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
+    note = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        'core.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='reviewed_claims'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user} → {self.swimmer} ({self.status})'
 
 
 class Country(models.Model):

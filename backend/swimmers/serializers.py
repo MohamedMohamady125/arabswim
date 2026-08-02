@@ -12,23 +12,33 @@ class SwimmerNicknameSerializer(serializers.ModelSerializer):
 class SwimmerListSerializer(serializers.ModelSerializer):
     nationality_detail = CountrySerializer(source='nationality', read_only=True)
     age = serializers.IntegerField(read_only=True)
+    is_verified = serializers.SerializerMethodField()
 
     class Meta:
         model = Swimmer
         fields = ['id', 'name', 'date_of_birth', 'birth_year', 'nationality', 'nationality_detail',
-                  'sex', 'club', 'photo', 'email', 'phone', 'age', 'is_relay_team', 'is_retired']
+                  'sex', 'club', 'photo', 'email', 'phone', 'age', 'is_relay_team', 'is_retired',
+                  'is_verified']
+
+    def get_is_verified(self, obj):
+        return hasattr(obj, 'account') and obj.account is not None
 
 
 class SwimmerDetailSerializer(serializers.ModelSerializer):
     nationality_detail = CountrySerializer(source='nationality', read_only=True)
     age = serializers.IntegerField(read_only=True)
     nicknames = SwimmerNicknameSerializer(many=True, read_only=True)
+    is_verified = serializers.SerializerMethodField()
 
     class Meta:
         model = Swimmer
         fields = ['id', 'name', 'date_of_birth', 'birth_year', 'nationality', 'nationality_detail',
                   'sex', 'club', 'photo', 'email', 'phone', 'instagram_url', 'facebook_url',
-                  'age', 'nicknames', 'is_relay_team', 'is_retired', 'created_at', 'updated_at']
+                  'age', 'nicknames', 'is_relay_team', 'is_retired', 'is_verified',
+                  'created_at', 'updated_at']
+
+    def get_is_verified(self, obj):
+        return hasattr(obj, 'account') and obj.account is not None
 
 
 class SwimmerCreateUpdateSerializer(serializers.ModelSerializer):

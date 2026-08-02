@@ -1,9 +1,16 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
-from .models import Country, Event
-from .serializers import UserSerializer, CountrySerializer, EventSerializer
+from django.utils import timezone
+from django.utils.crypto import get_random_string
+from .models import Country, Event, ProfileClaim
+from .permissions import IsAdmin, is_admin
+from .serializers import (
+    UserSerializer, CountrySerializer, EventSerializer,
+    RegisterSerializer, ProfileClaimSerializer,
+)
 
 User = get_user_model()
 
@@ -12,6 +19,147 @@ User = get_user_model()
 @permission_classes([permissions.IsAuthenticated])
 def me(request):
     return Response(UserSerializer(request.user).data)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def register(request):
+    serializer = RegisterSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = serializer.save()
+    from rest_framework_simplejwt.tokens import RefreshToken
+    refresh = RefreshToken.for_user(user)
+    return Response({
+        'user': UserSerializer(user).data,
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+    }, status=201)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdmin])
+def create_org_account(request):
+    """Admin creates a CLUB or FEDERATION account for an org's email.
+    The generated password is returned exactly once."""
+    kind = str(request.data.get('kind', '')).upper()
+    email = str(request.data.get('email', '')).strip().lower()
+    if kind not in ('CLUB', 'FEDERATION'):
+        return Response({'error': 'kind must be CLUB or FEDERATION'}, status=400)
+    if not email or '@' not in email:
+        return Response({'error': 'A valid email is required'}, status=400)
+    if User.objects.filter(email__iexact=email).exists():
+        return Response({'error': 'An account with this email already exists'}, status=400)
+
+    team = country = None
+    if kind == 'CLUB':
+        from teams.models import Team
+        team = Team.objects.filter(pk=request.data.get('team')).first()
+        if not team:
+            return Response({'error': 'A valid team is required for a club account'}, status=400)
+        if team.accounts.exists():
+            return Response({'error': 'This club already has an account'}, status=400)
+    else:
+        country = Country.objects.filter(pk=request.data.get('country')).first()
+        if not country:
+            return Response({'error': 'A valid country is required for a federation account'}, status=400)
+        if country.federation_accounts.exists():
+            return Response({'error': 'This federation already has an account'}, status=400)
+
+    base = email.split('@')[0][:24] or kind.lower()
+    username = base
+    suffix = 1
+    while User.objects.filter(username=username).exists():
+        suffix += 1
+        username = f'{base}{suffix}'
+
+    password = get_random_string(14)
+    user = User.objects.create_user(
+        username=username, email=email, password=password,
+        role=kind, team=team, country=country,
+    )
+    data = UserSerializer(user).data
+    data['password'] = password
+    return Response(data, status=201)
+
+
+class ProfileClaimViewSet(viewsets.ModelViewSet):
+    queryset = ProfileClaim.objects.select_related('user', 'swimmer')
+    serializer_class = ProfileClaimSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def get_permissions(self):
+        if self.action in ('create', 'mine'):
+            return [permissions.IsAuthenticated()]
+        return [IsAdmin()]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param.upper())
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        if user.swimmer_id:
+            return Response({'error': 'Your account is already linked to a swimmer profile'}, status=400)
+        if user.claims.filter(status='PENDING').exists():
+            return Response({'error': 'You already have a claim pending review'}, status=400)
+
+        from swimmers.models import Swimmer
+        swimmer = Swimmer.objects.filter(pk=request.data.get('swimmer')).first()
+        if not swimmer or swimmer.is_relay_team:
+            return Response({'error': 'A valid swimmer is required'}, status=400)
+        if hasattr(swimmer, 'account') and swimmer.account:
+            return Response({'error': 'This swimmer profile has already been claimed'}, status=400)
+
+        document = request.FILES.get('id_document')
+        from core.uploads import validate_image
+        err = validate_image(document)
+        if err:
+            return Response({'error': err}, status=400)
+
+        claim = ProfileClaim.objects.create(user=user, swimmer=swimmer, id_document=document)
+        return Response(ProfileClaimSerializer(claim, context={'request': request}).data, status=201)
+
+    @action(detail=False, methods=['get'])
+    def mine(self, request):
+        claims = self.get_queryset().filter(user=request.user)
+        return Response(ProfileClaimSerializer(claims, many=True, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        claim = self.get_object()
+        if claim.status != 'PENDING':
+            return Response({'error': 'This claim has already been reviewed'}, status=400)
+        if hasattr(claim.swimmer, 'account') and claim.swimmer.account:
+            return Response({'error': 'This swimmer profile has already been claimed'}, status=400)
+        claim.user.role = 'ATHLETE'
+        claim.user.swimmer = claim.swimmer
+        claim.user.save(update_fields=['role', 'swimmer'])
+        claim.status = 'APPROVED'
+        claim.reviewed_at = timezone.now()
+        claim.reviewed_by = request.user
+        claim.save(update_fields=['status', 'reviewed_at', 'reviewed_by'])
+        # Auto-decline other pending claims on the same swimmer
+        ProfileClaim.objects.filter(swimmer=claim.swimmer, status='PENDING').exclude(pk=claim.pk).update(
+            status='DECLINED', note='Profile was claimed by another verified account',
+            reviewed_at=timezone.now(), reviewed_by=request.user,
+        )
+        return Response(ProfileClaimSerializer(claim, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'])
+    def decline(self, request, pk=None):
+        claim = self.get_object()
+        if claim.status != 'PENDING':
+            return Response({'error': 'This claim has already been reviewed'}, status=400)
+        claim.status = 'DECLINED'
+        claim.note = str(request.data.get('note', '') or '')
+        claim.reviewed_at = timezone.now()
+        claim.reviewed_by = request.user
+        claim.save(update_fields=['status', 'note', 'reviewed_at', 'reviewed_by'])
+        return Response(ProfileClaimSerializer(claim, context={'request': request}).data)
 
 
 @api_view(['GET'])

@@ -13,11 +13,31 @@ class SwimmerPagination(PageNumberPagination):
 
 
 class SwimmerViewSet(viewsets.ModelViewSet):
-    queryset = Swimmer.objects.select_related('nationality').prefetch_related('nicknames')
+    queryset = Swimmer.objects.select_related('nationality', 'account').prefetch_related('nicknames')
     pagination_class = SwimmerPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['name', 'date_of_birth', 'created_at']
+
+    # Fields a verified athlete may edit on their own profile
+    ATHLETE_EDITABLE = {'email', 'phone', 'instagram_url', 'facebook_url'}
+
+    def get_permissions(self):
+        if self.action in ('partial_update', 'update', 'upload_photo'):
+            from core.permissions import CanEditOwnSwimmer
+            return [CanEditOwnSwimmer()]
+        return super().get_permissions()
+
+    def partial_update(self, request, *args, **kwargs):
+        from core.permissions import is_admin
+        if not is_admin(request.user):
+            bad = set(request.data.keys()) - self.ATHLETE_EDITABLE
+            if bad:
+                return Response(
+                    {'error': f'You may only edit: {", ".join(sorted(self.ATHLETE_EDITABLE))}'},
+                    status=400,
+                )
+        return super().partial_update(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'list':

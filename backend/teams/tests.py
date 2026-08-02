@@ -57,7 +57,7 @@ class AutoDedupeTests(TestCase):
 
     def _admin(self):
         from django.contrib.auth import get_user_model
-        return get_user_model().objects.create_user('admin', password='x', is_staff=True)
+        return get_user_model().objects.create_user('admin', password='x', is_staff=True, role='ADMIN')
 
     def _result(self, team_name):
         sw = Swimmer.objects.create(name=f'Swimmer {team_name}', sex='M',

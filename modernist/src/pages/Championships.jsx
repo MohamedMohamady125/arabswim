@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getChampionships } from '../api/championships'
+import { getChampionships, updateChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
@@ -25,6 +25,22 @@ export default function Championships() {
   const [pool, setPool] = useState('ALL')
   const [country, setCountry] = useState('')
   const [expandedId, setExpandedId] = useState(null)
+  const [uploadingId, setUploadingId] = useState(null)
+
+  const handlePhotoUpload = async (meetId, file) => {
+    if (!file) return
+    const fd = new FormData()
+    fd.append('meet_photo', file)
+    setUploadingId(meetId)
+    try {
+      const res = await updateChampionship(meetId, fd)
+      setMeets((prev) => prev.map((x) => (x.id === meetId ? { ...x, meet_photo: res.data.meet_photo } : x)))
+    } catch {
+      window.alert('Failed to upload the photo — use a JPG/PNG under the size limit')
+    } finally {
+      setUploadingId(null)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -180,7 +196,13 @@ export default function Championships() {
                     background: isExpanded ? 'var(--color-surface)' : undefined,
                   }}
                 >
-                  <Flag code={m.country_detail?.code} name={m.country_detail?.name} large />
+                  {m.meet_photo ? (
+                    <div className="grayscale" style={{ width: 72, height: 52, flex: 'none', overflow: 'hidden' }}>
+                      <img src={mediaUrl(m.meet_photo)} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ) : (
+                    <Flag code={m.country_detail?.code} name={m.country_detail?.name} large />
+                  )}
                   <div style={{ flex: 1, minWidth: 220 }}>
                     <Link to={`/meets/${m.id}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>
                       <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{m.name}</div>
@@ -221,6 +243,18 @@ export default function Championships() {
                     <Link className="btn btn-secondary" to={`/meets/${m.id}?tab=gallery`}>Gallery</Link>
                     {isAdmin && !hasResults && (
                       <Link className="btn btn-primary" to={`/import?championship=${m.id}`}>Import results</Link>
+                    )}
+                    {isAdmin && (
+                      <label className="btn btn-secondary" style={{ cursor: uploadingId === m.id ? 'wait' : 'pointer' }}>
+                        {uploadingId === m.id ? 'Uploading…' : m.meet_photo ? 'Replace photo' : 'Upload photo'}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          style={{ display: 'none' }}
+                          disabled={uploadingId === m.id}
+                          onChange={(e) => { handlePhotoUpload(m.id, e.target.files?.[0]); e.target.value = '' }}
+                        />
+                      </label>
                     )}
                   </div>
                 )}

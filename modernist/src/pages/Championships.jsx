@@ -101,7 +101,7 @@ export default function Championships() {
 
   return (
     <div>
-      <PageHead kicker="Competition" title="Championships" sub={`${formatNumber(meets.length)} meets in the database`} />
+      <PageHead kicker="Competition" title="Championships" />
 
       {/* featured meet */}
       {featured && (
@@ -128,7 +128,6 @@ export default function Championships() {
               {featured.m.location}
               {featured.m.country_detail ? `${featured.m.location ? ', ' : ''}${featured.m.country_detail.name}` : ''}
               {' · '}{formatDateRange(featured.m.date, featured.m.end_date)}
-              {' · '}<span className="tag tag-dark" style={{ verticalAlign: 'middle' }}>{featured.m.pool}</span>
             </div>
           </div>
         </div>
@@ -165,12 +164,8 @@ export default function Championships() {
 
       {groups.map((g) => (
         <div key={g.key} className="rule-b">
-          <div className="pad" style={{ paddingBottom: 12, display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <div className="pad" style={{ paddingBottom: 12 }}>
             <div className="kicker">{g.key}</div>
-            <span className="micro" style={{ marginLeft: 'auto' }}>
-              <span className="asw-num" style={{ color: 'var(--color-text)' }}>{g.items.length}</span>
-              {' '}meet{g.items.length !== 1 ? 's' : ''}
-            </span>
           </div>
           {g.items.map((m, i) => {
             const isExpanded = expandedId === m.id
@@ -197,18 +192,19 @@ export default function Championships() {
                       {m.classification_name ? ` · ${m.classification_name}` : ''}
                     </div>
                   </div>
-                  <span className="tag tag-dark">{m.pool}</span>
-                  <div className="micro hide-mobile" style={{ textAlign: 'right', minWidth: 150 }}>
-                    {hasResults ? (
-                      <>
-                        <span className="asw-num" style={{ color: 'var(--color-text)' }}>{formatNumber(m.results_count ?? 0)}</span> results
-                        {' · '}
-                        <span className="asw-num" style={{ color: 'var(--color-text)' }}>{formatNumber(m.swimmers_count ?? 0)}</span> swimmers
-                      </>
-                    ) : (
-                      <span className="tag tag-neutral">No results</span>
-                    )}
-                  </div>
+                  {isAdmin && (
+                    <div className="micro hide-mobile" style={{ textAlign: 'right', minWidth: 150 }}>
+                      {hasResults ? (
+                        <>
+                          <span className="asw-num" style={{ color: 'var(--color-text)' }}>{formatNumber(m.results_count ?? 0)}</span> results
+                          {' · '}
+                          <span className="asw-num" style={{ color: 'var(--color-text)' }}>{formatNumber(m.swimmers_count ?? 0)}</span> swimmers
+                        </>
+                      ) : (
+                        <span className="tag tag-neutral">No results</span>
+                      )}
+                    </div>
+                  )}
                   <span className="micro" style={{ fontSize: 10, width: 12, textAlign: 'center' }}>{isExpanded ? '▴' : '▾'}</span>
                 </div>
 

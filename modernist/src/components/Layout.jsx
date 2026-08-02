@@ -70,16 +70,23 @@ function SearchBox({ compact = false, onDone }) {
 function Header() {
   const [open, setOpen] = useState(false)
   const location = useLocation()
-  const { isAdmin, logout } = useAuth()
+  const { isAdmin, isAuthed, user, logout } = useAuth()
   const navigate = useNavigate()
   useEffect(() => { setOpen(false) }, [location])
 
   return (
     <header>
-      {isAdmin && (
+      {isAuthed && (
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '8px 32px', background: 'var(--color-surface)' }}>
-          <span className="kicker">Admin</span>
-          <Link to="/import" style={{ fontSize: 13, fontWeight: 600 }}>Import data</Link>
+          <span className="kicker">{isAdmin ? 'Admin' : user?.username || 'Account'}</span>
+          {isAdmin && <Link to="/import" style={{ fontSize: 13, fontWeight: 600 }}>Import data</Link>}
+          {isAdmin && <Link to="/admin" style={{ fontSize: 13, fontWeight: 600 }}>Dashboard</Link>}
+          {user?.role === 'ATHLETE' && user?.swimmer && (
+            <Link to={`/swimmers/${user.swimmer}`} style={{ fontSize: 13, fontWeight: 600 }}>My profile</Link>
+          )}
+          {(user?.role === 'CLUB' || user?.role === 'FEDERATION') && user?.team && (
+            <Link to={`/teams/${user.team}`} style={{ fontSize: 13, fontWeight: 600 }}>My club</Link>
+          )}
           <button
             className="btn btn-secondary"
             style={{ height: 28, marginLeft: 'auto', fontSize: 12 }}
@@ -168,7 +175,7 @@ function Footer() {
       <div style={{ marginTop: 28, paddingTop: 16, borderTop: '1px solid var(--color-accent-700)', fontSize: 12, color: 'var(--color-accent-2-400)' }}>
         <span>© {new Date().getFullYear()} ArabSwiM — Arab Swim</span>
         <Link to={isAdmin ? '/import' : '/login'} style={{ color: 'var(--color-accent-2-400)', marginLeft: 16, fontSize: 12 }}>
-          {isAdmin ? 'Import data' : 'Admin sign in'}
+          {isAdmin ? 'Import data' : 'Sign in'}
         </Link>
       </div>
     </footer>

@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import { useAuth } from './context/AuthContext'
 import Login from './pages/Login'
+import Register from './pages/Register'
+import AdminDashboard from './pages/AdminDashboard'
 import Import from './pages/Import'
 import Home from './pages/Home'
 import Championships from './pages/Championships'
@@ -28,7 +30,8 @@ import Countries from './pages/Countries'
 import CountryProfile from './pages/CountryProfile'
 
 function RequireAdmin({ children }) {
-  const { isAdmin } = useAuth()
+  const { isAdmin, authLoading } = useAuth()
+  if (authLoading) return <div className="loading">Loading…</div>
   return isAdmin ? children : <Navigate to="/login" replace />
 }
 
@@ -37,6 +40,8 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="/import" element={<RequireAdmin><Import /></RequireAdmin>} />
         <Route path="/" element={<Home />} />
         <Route path="/championships" element={<Championships />} />

@@ -404,7 +404,7 @@ function PredictionTab({ id }) {
 
 export default function TeamDetail() {
   const { id } = useParams()
-  const { isAdmin } = useAuth()
+  const { isAdmin, managesTeam } = useAuth()
   const [profile, setProfile] = useState(null)
   const [medals, setMedals] = useState([])
   const [times, setTimes] = useState([])
@@ -451,10 +451,12 @@ export default function TeamDetail() {
     return () => { alive.current = false }
   }, [load])
 
+  const canManage = managesTeam(profile?.team)
+
   useEffect(() => {
-    if (!isAdmin) return
+    if (!canManage) return
     getCountries({ page_size: 300 }).then((res) => setCountries(list(res.data))).catch(() => {})
-  }, [isAdmin])
+  }, [canManage])
 
   const refresh = () => { setModal(null); load() }
 
@@ -496,7 +498,7 @@ export default function TeamDetail() {
             {team.address && <><span>·</span><span>{team.address}</span></>}
           </div>
         </div>
-        {isAdmin && (
+        {canManage && (
           <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'club' })}>Edit club</button>
         )}
       </div>
@@ -618,7 +620,7 @@ export default function TeamDetail() {
           <div>
             <div className="sect-head">
               <h4>Club news</h4>
-              {isAdmin && <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'article' })}>+ Add news</button>}
+              {canManage && <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'article' })}>+ Add news</button>}
             </div>
             {articles.length === 0 ? (
               <Empty label="No news from this club yet" />
@@ -646,7 +648,7 @@ export default function TeamDetail() {
           <div>
             <div className="sect-head">
               <h4>Coaching staff · {coaches.length}</h4>
-              {isAdmin && <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'coach' })}>+ Add coach</button>}
+              {canManage && <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'coach' })}>+ Add coach</button>}
             </div>
             {coaches.length === 0 ? (
               <Empty label="No coaches listed" />
@@ -671,7 +673,7 @@ export default function TeamDetail() {
                       </div>
                     </div>
                     {c.bio && <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.5, margin: '10px 0 0' }}>{c.bio.slice(0, 140)}{c.bio.length > 140 ? '…' : ''}</p>}
-                    {isAdmin && (
+                    {canManage && (
                       <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                         <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setModal({ type: 'coach', payload: c })}>Edit</button>
                         <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={async () => { if (window.confirm(`Remove coach ${c.name}?`)) { await deleteCoach(c.id); load() } }}>Remove</button>
@@ -888,7 +890,7 @@ export default function TeamDetail() {
           <div>
             <div className="sect-head">
               <h4>Gallery</h4>
-              {isAdmin && <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'album' })}>+ Add album</button>}
+              {canManage && <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'album' })}>+ Add album</button>}
             </div>
             {albums.length === 0 ? (
               <Empty label="No albums yet" />

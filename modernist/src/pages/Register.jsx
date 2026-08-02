@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getMe, login as loginApi } from '../api/core'
+import { register as registerApi } from '../api/core'
 
-export default function Login() {
+export default function Register() {
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,15 +17,15 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      const res = await loginApi(username, password)
+      const res = await registerApi({ username, email, password })
       login(res.data.access, res.data.refresh)
-      const user = (await getMe()).data
-      if (user.role === 'ADMIN') navigate('/import')
-      else if (user.role === 'CLUB' && user.team) navigate(`/teams/${user.team}`)
-      else if (user.role === 'ATHLETE' && user.swimmer) navigate(`/swimmers/${user.swimmer}`)
-      else navigate('/')
-    } catch {
-      setError('Invalid username or password')
+      navigate('/swimmers')
+    } catch (err) {
+      const data = err.response?.data
+      const msg =
+        data?.username?.[0] || data?.email?.[0] || data?.password?.[0] || data?.error ||
+        'Could not create the account'
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -36,7 +37,10 @@ export default function Login() {
         <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: 'contain' }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em' }}>ARABSWIM</span>
       </div>
-      <div className="kicker" style={{ marginBottom: 20 }}>Sign in</div>
+      <div className="kicker" style={{ marginBottom: 8 }}>Create account</div>
+      <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 20 }}>
+        Athletes: after signing up, find your profile in the swimmers section and claim it.
+      </div>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && (
           <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>
@@ -48,15 +52,19 @@ export default function Login() {
           <input className="input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
         </div>
         <div className="field">
+          <label>Email</label>
+          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </div>
+        <div className="field">
           <label>Password</label>
-          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         </div>
         <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 40 }}>
-          {loading ? 'Signing in…' : 'Sign in'}
+          {loading ? 'Creating…' : 'Create account'}
         </button>
       </form>
       <div style={{ marginTop: 18, fontSize: 13, color: 'var(--color-neutral-700)' }}>
-        Are you an athlete? <Link to="/register">Create an account</Link> to claim your profile.
+        Already have an account? <Link to="/login">Sign in</Link>
       </div>
     </div>
   )

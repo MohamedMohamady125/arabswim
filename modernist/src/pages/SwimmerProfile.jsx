@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, Fragment } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { AtSign, ExternalLink } from 'lucide-react'
+import { AtSign, ExternalLink, X, BadgeCheck } from 'lucide-react'
 import {
   getSwimmer,
   updateSwimmer,
+  uploadSwimmerPhoto,
   getSwimmerEvents,
   getSwimmerEventHistory,
   getSwimmerProfileStats,
@@ -11,6 +12,7 @@ import {
   getSwimmerRankings,
   getSwimmerTransferHistory,
 } from '../api/swimmers'
+import { createClaim, getMyClaims } from '../api/claims'
 import { useAuth } from '../context/AuthContext'
 import Flag from '../components/Flag'
 import { Loading, Empty, Seg } from '../components/ui'
@@ -27,6 +29,136 @@ import TransfersTab from '../components/swimmer/TransfersTab'
 import GalleryTab from '../components/swimmer/GalleryTab'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
+
+function Modal({ title, onClose, children, width = 520 }) {
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(20,24,31,0.55)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: 'var(--color-bg, #fff)', border: '2px solid var(--color-text)', width: '100%', maxWidth: width }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+          <div className="kicker">{title}</div>
+          <button className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close"><X size={14} /></button>
+        </div>
+        <div style={{ padding: 20 }}>{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function ClaimModal({ swimmer, onClose, onSubmitted }) {
+  const [file, setFile] = useState(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!file) return
+    setLoading(true)
+    setError('')
+    try {
+      const fd = new FormData()
+      fd.append('swimmer', swimmer.id)
+      fd.append('id_document', file)
+      await createClaim(fd)
+      onSubmitted()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not submit the claim')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal title="Claim this profile" onClose={onClose}>
+      <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 14, lineHeight: 1.5 }}>
+        To verify that you are <strong>{swimmer.name}</strong>, upload a photo of your
+        passport or national ID. Our team reviews every claim manually — the document is
+        only visible to admins.
+      </div>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {error && (
+          <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
+        )}
+        <input
+          className="input"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          required
+        />
+        <button type="submit" className="btn btn-primary" disabled={loading || !file} style={{ height: 40 }}>
+          {loading ? 'Submitting…' : 'Submit claim'}
+        </button>
+      </form>
+    </Modal>
+  )
+}
+
+function EditMyProfileModal({ swimmer, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    email: swimmer.email || '',
+    phone: swimmer.phone || '',
+    instagram_url: swimmer.instagram_url || '',
+    facebook_url: swimmer.facebook_url || '',
+  })
+  const [photo, setPhoto] = useState(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      await updateSwimmer(swimmer.id, form)
+      if (photo) {
+        const fd = new FormData()
+        fd.append('photo', photo)
+        await uploadSwimmerPhoto(swimmer.id, fd)
+      }
+      onSaved()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not save the changes')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const field = (label, key, type = 'text') => (
+    <label style={{ display: 'block' }}>
+      <div className="card-kicker" style={{ marginBottom: 4 }}>{label}</div>
+      <input className="input" type={type} value={form[key]} style={{ width: '100%' }}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+    </label>
+  )
+
+  return (
+    <Modal title="Edit my profile" onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {error && (
+          <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
+        )}
+        <label style={{ display: 'block' }}>
+          <div className="card-kicker" style={{ marginBottom: 4 }}>Profile photo</div>
+          <input className="input" type="file" accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+        </label>
+        {field('Email', 'email', 'email')}
+        {field('Phone', 'phone')}
+        {field('Instagram URL', 'instagram_url', 'url')}
+        {field('Facebook URL', 'facebook_url', 'url')}
+        <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 40 }}>
+          {loading ? 'Saving…' : 'Save changes'}
+        </button>
+      </form>
+    </Modal>
+  )
+}
 
 function initials(name) {
   return String(name || '')
@@ -485,12 +617,15 @@ const TABS = [
 export default function SwimmerProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin, isAuthed, mySwimmerId, refreshUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') || 'overall'
   const setActiveTab = (tab) => setSearchParams({ tab })
 
   const [swimmer, setSwimmer] = useState(null)
+  const [claimOpen, setClaimOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [myClaims, setMyClaims] = useState([])
   const [events, setEvents] = useState([])
   const [stats, setStats] = useState(null)
   const [clubHistory, setClubHistory] = useState([])
@@ -520,6 +655,11 @@ export default function SwimmerProfile() {
     })
     return () => { alive = false }
   }, [id])
+
+  useEffect(() => {
+    if (!isAuthed || isAdmin || mySwimmerId) { setMyClaims([]); return }
+    getMyClaims().then((res) => setMyClaims(list(res.data))).catch(() => setMyClaims([]))
+  }, [id, isAuthed, isAdmin, mySwimmerId])
 
   const currentClubs = useMemo(
     () => clubHistory.filter((c) => c.is_current && !c.is_national),
@@ -572,6 +712,11 @@ export default function SwimmerProfile() {
           <div className="kicker" style={{ marginBottom: 6 }}>Swimmer profile</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>{swimmer.name}</h1>
+            {swimmer.is_verified && (
+              <span className="tag tag-accent-2" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <BadgeCheck size={14} /> Verified athlete
+              </span>
+            )}
             {swimmer.is_retired && <span className="tag tag-dark">Retired</span>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
@@ -610,19 +755,62 @@ export default function SwimmerProfile() {
             </div>
           )}
         </div>
-        {isAdmin && (
-          <div style={{ position: 'absolute', top: 16, right: 24, display: 'flex', gap: 8 }}>
-            <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }}
-              onClick={async () => {
-                const next = !swimmer.is_retired
-                await updateSwimmer(id, { is_retired: next })
-                setSwimmer({ ...swimmer, is_retired: next })
-              }}>
-              {swimmer.is_retired ? 'Mark active' : 'Mark retired'}
-            </button>
-          </div>
-        )}
+        {(() => {
+          const isMine = mySwimmerId != null && Number(id) === mySwimmerId
+          const pendingHere = myClaims.some((c) => c.swimmer === Number(id) && c.status === 'PENDING')
+          const canClaim = isAuthed && !isAdmin && !isMine && mySwimmerId == null &&
+            !swimmer.is_verified && !swimmer.is_relay_team
+          if (!isAdmin && !isMine && !canClaim && !pendingHere) return null
+          return (
+            <div style={{ position: 'absolute', top: 16, right: 24, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {isAdmin && (
+                <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }}
+                  onClick={async () => {
+                    const next = !swimmer.is_retired
+                    await updateSwimmer(id, { is_retired: next })
+                    setSwimmer({ ...swimmer, is_retired: next })
+                  }}>
+                  {swimmer.is_retired ? 'Mark active' : 'Mark retired'}
+                </button>
+              )}
+              {isMine && (
+                <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setEditOpen(true)}>
+                  Edit my profile
+                </button>
+              )}
+              {pendingHere && <span className="tag tag-neutral">Claim pending review</span>}
+              {canClaim && !pendingHere && (
+                <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setClaimOpen(true)}>
+                  This is me — claim profile
+                </button>
+              )}
+            </div>
+          )
+        })()}
       </div>
+
+      {claimOpen && (
+        <ClaimModal
+          swimmer={swimmer}
+          onClose={() => setClaimOpen(false)}
+          onSubmitted={() => {
+            setClaimOpen(false)
+            setMyClaims([...myClaims, { swimmer: Number(id), status: 'PENDING' }])
+          }}
+        />
+      )}
+      {editOpen && (
+        <EditMyProfileModal
+          swimmer={swimmer}
+          onClose={() => setEditOpen(false)}
+          onSaved={async () => {
+            setEditOpen(false)
+            const res = await getSwimmer(id).catch(() => null)
+            if (res) setSwimmer(res.data)
+            refreshUser()
+          }}
+        />
+      )}
 
       {/* ── Tabs ── */}
       <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>

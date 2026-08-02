@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, Search, X } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 const NAV = [
   {
@@ -69,10 +70,25 @@ function SearchBox({ compact = false, onDone }) {
 function Header() {
   const [open, setOpen] = useState(false)
   const location = useLocation()
+  const { isAdmin, logout } = useAuth()
+  const navigate = useNavigate()
   useEffect(() => { setOpen(false) }, [location])
 
   return (
     <header>
+      {isAdmin && (
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '8px 32px', background: 'var(--color-surface)' }}>
+          <span className="kicker">Admin</span>
+          <Link to="/import" style={{ fontSize: 13, fontWeight: 600 }}>Import data</Link>
+          <button
+            className="btn btn-secondary"
+            style={{ height: 28, marginLeft: 'auto', fontSize: 12 }}
+            onClick={() => { logout(); navigate('/') }}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
       {/* brand bar */}
       <div className="rule-b" style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '14px 32px' }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto', textDecoration: 'none', color: 'inherit' }}>
@@ -121,6 +137,7 @@ function Header() {
 }
 
 function Footer() {
+  const { isAdmin } = useAuth()
   return (
     <footer className="rule-t" style={{ background: 'var(--color-accent-800)', color: '#ffffff', padding: '32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
@@ -149,7 +166,10 @@ function Footer() {
         ))}
       </div>
       <div style={{ marginTop: 28, paddingTop: 16, borderTop: '1px solid var(--color-accent-700)', fontSize: 12, color: 'var(--color-accent-2-400)' }}>
-        © {new Date().getFullYear()} ArabSwiM — Arab Swim
+        <span>© {new Date().getFullYear()} ArabSwiM — Arab Swim</span>
+        <Link to={isAdmin ? '/import' : '/login'} style={{ color: 'var(--color-accent-2-400)', marginLeft: 16, fontSize: 12 }}>
+          {isAdmin ? 'Import data' : 'Admin sign in'}
+        </Link>
       </div>
     </footer>
   )

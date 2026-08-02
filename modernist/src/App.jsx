@@ -1,5 +1,8 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import { useAuth } from './context/AuthContext'
+import Login from './pages/Login'
+import Import from './pages/Import'
 import Home from './pages/Home'
 import Championships from './pages/Championships'
 import MeetDetail from './pages/MeetDetail'
@@ -24,10 +27,17 @@ import Market from './pages/Market'
 import Countries from './pages/Countries'
 import CountryProfile from './pages/CountryProfile'
 
+function RequireAdmin({ children }) {
+  const { isAdmin } = useAuth()
+  return isAdmin ? children : <Navigate to="/login" replace />
+}
+
 export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/import" element={<RequireAdmin><Import /></RequireAdmin>} />
         <Route path="/" element={<Home />} />
         <Route path="/championships" element={<Championships />} />
         <Route path="/meets/:id" element={<MeetDetail />} />

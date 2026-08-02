@@ -591,6 +591,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     # Process results
     created_swimmers = 0
     matched_swimmers = 0
+    nationality_changes = 0
     skipped_swimmers = 0
     created_results = 0
     skipped_results = 0
@@ -728,6 +729,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     elif action == 'match' and decision.get('swimmer_id'):
                         swimmer_map[ind_key] = Swimmer.objects.get(id=decision['swimmer_id'])
                         matched_swimmers += 1
+                        if _maybe_record_nationality_change(
+                                swimmer_map[ind_key], result_data, championship):
+                            nationality_changes += 1
                     elif action == 'create':
                         swimmer_map[ind_key] = _create_swimmer(result_data, meet_country)
                         created_swimmers += 1
@@ -768,6 +772,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         if swimmer:
                             swimmer_map[ind_key] = swimmer
                             matched_swimmers += 1
+                            if _maybe_record_nationality_change(
+                                    swimmer, result_data, championship):
+                                nationality_changes += 1
                         else:
                             swimmer_map[ind_key] = _create_swimmer(result_data, meet_country)
                             created_swimmers += 1
@@ -1017,12 +1024,53 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         'championship_name': championship.name,
         'created_swimmers': created_swimmers,
         'matched_swimmers': matched_swimmers,
+        'nationality_changes': nationality_changes,
         'skipped_swimmers': skipped_swimmers,
         'created_results': created_results,
         'skipped_results': skipped_results,
         'skipped_details': skipped_details,
         'teams_created': teams_created,
     }
+
+
+def _maybe_record_nationality_change(swimmer, result_data, championship):
+    """When a matched swimmer shows up under a new country, keep the same
+    profile but switch their current nationality and record the transfer.
+
+    Only fires when the result carries an explicit nationality code (never
+    the meet-country fallback), and only when this meet is at least as
+    recent as everything already known about the swimmer — importing an
+    old historical meet must not revert a nationality.
+    """
+    if swimmer is None or swimmer.is_relay_team or not championship.date:
+        return False
+    nat_code = (result_data.get('nationality_code') or '').strip()
+    if not nat_code:
+        return False
+    new_country = resolve_country(nat_code)
+    if not new_country or new_country.id == swimmer.nationality_id:
+        return False
+
+    from django.db.models import Max
+    latest_result_date = Result.objects.filter(swimmer=swimmer).aggregate(
+        d=Max('championship__date'))['d']
+    if latest_result_date and championship.date < latest_result_date:
+        return False
+    last_change = swimmer.nationality_changes.order_by('-effective_date').first()
+    if last_change and championship.date < last_change.effective_date:
+        return False
+
+    from swimmers.models import NationalityChange
+    NationalityChange.objects.create(
+        swimmer=swimmer,
+        from_country=swimmer.nationality,
+        to_country=new_country,
+        effective_date=championship.date,
+        notes=f'Auto-detected during import of {championship.name}',
+    )
+    swimmer.nationality = new_country
+    swimmer.save(update_fields=['nationality'])
+    return True
 
 
 def _create_swimmer(result_data, fallback_country=None):

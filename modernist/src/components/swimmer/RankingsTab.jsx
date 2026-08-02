@@ -77,7 +77,7 @@ export default function RankingsTab({ swimmerId, swimmer }) {
                   <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 52, lineHeight: 1 }}>{sel.rank}</span>
                   <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, marginLeft: 2, marginTop: 4 }}>{ordSuffix(sel.rank)}</span>
                 </div>
-                <span className="asw-time" style={{ fontSize: 40, color: 'var(--color-accent)' }}>{selected.best_time}</span>
+                <span className="asw-time" style={{ fontSize: 52, lineHeight: 1, color: 'var(--color-accent)' }}>{selected.best_time}</span>
               </div>
 
               {/* Event rows */}

@@ -1,4 +1,5 @@
-import { Empty } from '../ui'
+import { useState } from 'react'
+import { Empty, Seg } from '../ui'
 import { CLASSIFICATIONS } from './MeetsTab'
 
 const GOLD = 'var(--asw-gold)'
@@ -31,14 +32,15 @@ function PercentRing({ pct, color, title, desc }) {
 }
 
 export default function MedalsTab({ stats }) {
+  const [cat, setCat] = useState('All')
   if (!stats) return null
   const { medals, medals_hierarchy, total_races } = stats
   if (!medals || medals.total === 0) return <Empty label="No medals yet" />
 
   // Aggregate per-competition counts from the classification hierarchy
   const compCounts = {}
-  ;(medals_hierarchy || []).forEach((cat) => {
-    ;(cat.classifications || []).forEach((cls) => {
+  ;(medals_hierarchy || []).forEach((c) => {
+    ;(c.classifications || []).forEach((cls) => {
       if (!compCounts[cls.name]) compCounts[cls.name] = { gold: 0, silver: 0, bronze: 0 }
       compCounts[cls.name].gold += cls.gold
       compCounts[cls.name].silver += cls.silver
@@ -46,30 +48,37 @@ export default function MedalsTab({ stats }) {
     })
   })
 
-  const pctOf = (n) => (medals.total > 0 ? ((n / medals.total) * 100).toFixed(1) : '0.0')
+  const chartComps = CLASSIFICATIONS.filter((c) => {
+    const cc = compCounts[c]
+    return cc && cc.gold + cc.silver + cc.bronze > 0
+  })
+
+  // Category tabs: only categories the athlete has medals in
+  const isAll = cat === 'All'
+  const active = isAll || !compCounts[cat]
+    ? medals
+    : { ...compCounts[cat], total: compCounts[cat].gold + compCounts[cat].silver + compCounts[cat].bronze }
+  const catOptions = [{ value: 'All', label: 'All' }, ...chartComps.map((c) => ({ value: c, label: c }))]
+
+  const pctOf = (n) => (active.total > 0 ? ((n / active.total) * 100).toFixed(1) : '0.0')
   const races = total_races || 0
   const medalRacePct = races > 0 ? Math.min(100, Math.round((medals.total / races) * 100)) : 0
   const goldRacePct = races > 0 ? Math.min(100, Math.round((medals.gold / races) * 100)) : 0
-  const goldSharePct = medals.total > 0 ? Math.round((medals.gold / medals.total) * 1000) / 10 : 0
+  const goldSharePct = active.total > 0 ? Math.round((active.gold / active.total) * 1000) / 10 : 0
 
   // Flat donut
   const donutR = 44
   const donutC = 2 * Math.PI * donutR
   let acc = 0
   const donutSegs = [
-    { key: 'gold', n: medals.gold, color: GOLD_HEX },
-    { key: 'silver', n: medals.silver, color: SILVER_HEX },
-    { key: 'bronze', n: medals.bronze, color: BRONZE_HEX },
+    { key: 'gold', n: active.gold, color: GOLD_HEX },
+    { key: 'silver', n: active.silver, color: SILVER_HEX },
+    { key: 'bronze', n: active.bronze, color: BRONZE_HEX },
   ].map((s) => {
-    const frac = medals.total > 0 ? s.n / medals.total : 0
+    const frac = active.total > 0 ? s.n / active.total : 0
     const seg = { ...s, dash: frac * donutC, offset: -acc * donutC }
     acc += frac
     return seg
-  })
-
-  const chartComps = CLASSIFICATIONS.filter((c) => {
-    const cc = compCounts[c]
-    return cc && cc.gold + cc.silver + cc.bronze > 0
   })
   const chartMax = Math.max(1, ...chartComps.flatMap((c) => {
     const cc = compCounts[c]
@@ -77,10 +86,10 @@ export default function MedalsTab({ stats }) {
   }))
 
   const statCards = [
-    { title: 'Gold', img: '/medal_gold.png', n: medals.gold, color: GOLD },
-    { title: 'Silver', img: '/medal_silver.png', n: medals.silver, color: SILVER },
-    { title: 'Bronze', img: '/medal_bronze.png', n: medals.bronze, color: BRONZE },
-    { title: 'Total', img: null, n: medals.total, color: 'var(--color-accent)' },
+    { title: 'Gold', img: '/medal_gold.png', n: active.gold, color: GOLD },
+    { title: 'Silver', img: '/medal_silver.png', n: active.silver, color: SILVER },
+    { title: 'Bronze', img: '/medal_bronze.png', n: active.bronze, color: BRONZE },
+    { title: 'Total', img: null, n: active.total, color: 'var(--color-accent)' },
   ]
 
   const barRow = (label, n, color) => (
@@ -95,6 +104,11 @@ export default function MedalsTab({ stats }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {/* Category filter — only competitions this athlete has medals in */}
+      {chartComps.length > 1 && (
+        <Seg options={catOptions} value={isAll || !compCounts[cat] ? 'All' : cat} onChange={setCat} />
+      )}
+
       {/* Medal count cards */}
       <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
         {statCards.map((c) => (
@@ -123,15 +137,15 @@ export default function MedalsTab({ stats }) {
                 ))}
               </svg>
               <span style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, lineHeight: 1 }}>{medals.total}</span>
+                <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, lineHeight: 1 }}>{active.total}</span>
                 <span className="micro">Total</span>
               </span>
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
               {[
-                { label: 'Gold', n: medals.gold, color: GOLD },
-                { label: 'Silver', n: medals.silver, color: SILVER },
-                { label: 'Bronze', n: medals.bronze, color: BRONZE },
+                { label: 'Gold', n: active.gold, color: GOLD },
+                { label: 'Silver', n: active.silver, color: SILVER },
+                { label: 'Bronze', n: active.bronze, color: BRONZE },
               ].map((row) => (
                 <div key={row.label} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                   <span style={{ width: 14, height: 14, background: row.color, flex: 'none' }} />
@@ -158,12 +172,12 @@ export default function MedalsTab({ stats }) {
               </tr>
             </thead>
             <tbody>
-              {CLASSIFICATIONS.map((cls) => {
-                const cc = compCounts[cls] || { gold: 0, silver: 0, bronze: 0 }
-                const has = cc.gold + cc.silver + cc.bronze > 0
+              {chartComps.map((cls) => {
+                const cc = compCounts[cls]
+                const isSel = cls === cat
                 return (
-                  <tr key={cls} style={{ opacity: has ? 1 : 0.45 }}>
-                    <td style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: 12, letterSpacing: '0.04em' }}>{cls}</td>
+                  <tr key={cls} style={{ background: isSel ? 'var(--color-accent-100)' : undefined }}>
+                    <td style={{ fontWeight: isSel ? 800 : 600, textTransform: 'uppercase', fontSize: 12, letterSpacing: '0.04em' }}>{cls}</td>
                     <td className="num asw-num" style={{ fontWeight: cc.gold ? 700 : 400 }}>{cc.gold}</td>
                     <td className="num asw-num" style={{ fontWeight: cc.silver ? 700 : 400 }}>{cc.silver}</td>
                     <td className="num asw-num" style={{ fontWeight: cc.bronze ? 700 : 400 }}>{cc.bronze}</td>
@@ -176,7 +190,7 @@ export default function MedalsTab({ stats }) {
       </div>
 
       {/* Horizontal bar summary per competition */}
-      {chartComps.length > 0 && (
+      {isAll && chartComps.length > 0 && (
         <div>
           <div className="sect-head"><h4>Medal summary</h4></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px 32px' }}>
@@ -197,12 +211,16 @@ export default function MedalsTab({ stats }) {
         </div>
       )}
 
-      {/* Percentage rings */}
-      <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
-        <PercentRing pct={medalRacePct} color={NAVY} title="Medal-winning races"
-          desc="Races that earned at least one medal" />
-        <PercentRing pct={goldRacePct} color={GOLD_HEX} title="Gold-winning races"
-          desc="Races that resulted in a gold medal" />
+      {/* Percentage rings — race-based rings only make sense across all meets */}
+      <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: `repeat(${isAll ? 3 : 1}, 1fr)`, gap: 24 }}>
+        {isAll && (
+          <>
+            <PercentRing pct={medalRacePct} color={NAVY} title="Medal-winning races"
+              desc="Races that earned at least one medal" />
+            <PercentRing pct={goldRacePct} color={GOLD_HEX} title="Gold-winning races"
+              desc="Races that resulted in a gold medal" />
+          </>
+        )}
         <PercentRing pct={goldSharePct} color={GOLD_HEX} title="Gold share"
           desc="Percentage of gold medals out of total medals" />
       </div>

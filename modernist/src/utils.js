@@ -65,6 +65,7 @@ export const RECORD_TYPES = [
   { value: 'ASIAN', label: 'Asian' },
   { value: 'MEDITERRANEAN', label: 'Mediterranean' },
   { value: 'ISLAMIC', label: 'Islamic' },
+  { value: 'WORLD', label: 'World' },
 ]
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

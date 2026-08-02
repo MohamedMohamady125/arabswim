@@ -3,16 +3,21 @@ import { Link } from 'react-router-dom'
 import { getRecords } from '../api/records'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
-import { formatDate, RECORD_TYPES } from '../utils'
+import { formatDate, RECORD_TYPES, mediaUrl } from '../utils'
 
 const TYPE_LABEL = Object.fromEntries(RECORD_TYPES.map((t) => [t.value, t.label]))
-const SCOPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC']
+const SCOPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
 
 const SCOPE_OPTIONS = [
   { value: '', label: 'All' },
   { value: 'NATIONAL', label: 'National' },
   { value: 'ARAB', label: 'Arab' },
   { value: 'GCC', label: 'GCC' },
+  { value: 'AFRICAN', label: 'African' },
+  { value: 'ASIAN', label: 'Asian' },
+  { value: 'MEDITERRANEAN', label: 'Mediterranean' },
+  { value: 'ISLAMIC', label: 'Islamic' },
+  { value: 'WORLD', label: 'World' },
 ]
 
 export default function NewRecords() {
@@ -79,6 +84,24 @@ export default function NewRecords() {
             >
               {rows.map((r) => (
                 <div key={r.id}>
+                  {r.swimmer_detail?.photo ? (
+                    <img
+                      src={mediaUrl(r.swimmer_detail.photo)}
+                      alt={r.swimmer_detail?.name}
+                      className="grayscale"
+                      style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', objectPosition: 'top', display: 'block', marginBottom: 10 }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%', aspectRatio: '4 / 3', marginBottom: 10,
+                        background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, color: 'var(--color-accent)',
+                      }}
+                    >
+                      {(r.swimmer_detail?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')}
+                    </div>
+                  )}
                   <div className="card-kicker">
                     {r.record_type} record · {r.pool} <span className="tag tag-dark" style={{ marginLeft: 6 }}>New</span>
                   </div>

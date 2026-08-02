@@ -17,9 +17,11 @@ const SCOPE_OPTIONS = [
   { value: 'ASIAN', label: 'Asian' },
   { value: 'MEDITERRANEAN', label: 'Mediterranean' },
   { value: 'ISLAMIC', label: 'Islamic' },
+  { value: 'WORLD', label: 'World' },
 ]
 
-const sortByEvent = (a, b) => (a.sortOrder - b.sortOrder) || (a.distance - b.distance)
+const sortByEvent = (a, b) =>
+  (a.isRelay - b.isRelay) || (a.sortOrder - b.sortOrder) || (a.distance - b.distance)
 
 // Normalize computed + manual record rows into one shape.
 function normalizeComputed(r) {
@@ -62,7 +64,7 @@ function normalizeManual(r) {
   }
 }
 
-function RecordTable({ rows, isRelay, showFina }) {
+function RecordTable({ rows, showFina }) {
   return (
     <div className="table-scroll">
       <table className="table">
@@ -71,7 +73,7 @@ function RecordTable({ rows, isRelay, showFina }) {
             <th>Event</th>
             <th className="time">Time</th>
             {showFina && <th className="num hide-mobile">FINA</th>}
-            <th>{isRelay ? 'Team' : 'Swimmer'}</th>
+            <th>Swimmer</th>
             <th className="hide-mobile">Meet</th>
             <th className="hide-mobile">Date</th>
           </tr>
@@ -104,14 +106,14 @@ function RecordTable({ rows, isRelay, showFina }) {
   )
 }
 
-function Section({ label, pool, rows, isRelay, showFina, last }) {
+function Section({ label, pool, rows, showFina, last }) {
   return (
     <div className={last ? 'pad' : 'rule-b pad'}>
       <div className="kicker" style={{ marginBottom: 12 }}>{label} · {pool}</div>
       {rows.length === 0 ? (
         <div className="text-muted" style={{ fontSize: 13 }}>No records yet.</div>
       ) : (
-        <RecordTable rows={rows} isRelay={isRelay} showFina={showFina} />
+        <RecordTable rows={rows} showFina={showFina} />
       )}
     </div>
   )
@@ -169,10 +171,8 @@ export default function Records() {
   const bySection = useMemo(() => {
     const sorted = [...rows].sort(sortByEvent)
     return {
-      menInd: sorted.filter((r) => r.gender === 'M' && !r.isRelay),
-      womenInd: sorted.filter((r) => r.gender === 'F' && !r.isRelay),
-      menRelay: sorted.filter((r) => r.gender === 'M' && r.isRelay),
-      womenRelay: sorted.filter((r) => r.gender === 'F' && r.isRelay),
+      men: sorted.filter((r) => r.gender === 'M'),
+      women: sorted.filter((r) => r.gender === 'F'),
     }
   }, [rows])
 
@@ -180,14 +180,12 @@ export default function Records() {
   const showWomen = !gender || gender === 'F'
 
   const sections = []
-  if (showMen) sections.push({ label: 'Men', rows: bySection.menInd, isRelay: false })
-  if (showWomen) sections.push({ label: 'Women', rows: bySection.womenInd, isRelay: false })
-  if (showMen && bySection.menRelay.length > 0) sections.push({ label: 'Men relay', rows: bySection.menRelay, isRelay: true })
-  if (showWomen && bySection.womenRelay.length > 0) sections.push({ label: 'Women relay', rows: bySection.womenRelay, isRelay: true })
+  if (showMen) sections.push({ label: 'Men', rows: bySection.men })
+  if (showWomen) sections.push({ label: 'Women', rows: bySection.women })
 
   return (
     <div>
-      <PageHead kicker="Record books" title="Records" sub="Fastest swims ever by Arab swimmers, by scope and pool" />
+      <PageHead title="Records" />
 
       {/* filter bar */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -228,7 +226,6 @@ export default function Records() {
             label={s.label}
             pool={pool}
             rows={s.rows}
-            isRelay={s.isRelay}
             showFina={isComputed}
             last={i === sections.length - 1}
           />

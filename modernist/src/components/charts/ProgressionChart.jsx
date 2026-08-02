@@ -48,17 +48,15 @@ function Chart({ lines, title, showSwimmer = false }) {
   const [tooltip, setTooltip] = useState(null)
   const mobile = useIsMobile()
 
-  // Collect all dates, dedup to best time per date per line
+  // Keep every swim (no per-day dedupe) so close times at the same meet —
+  // e.g. prelims vs finals — are all visible; sort chronologically, slower
+  // swims first within a day so the line reads top-to-bottom
   const allDates = new Set()
   const processedLines = lines.map((line) => {
-    const bestByDate = {}
-    line.points.forEach((p) => {
-      allDates.add(p.date)
-      if (!bestByDate[p.date] || p.time_cs < bestByDate[p.date].time_cs) {
-        bestByDate[p.date] = p
-      }
-    })
-    const pts = Object.values(bestByDate).sort((a, b) => a.date.localeCompare(b.date))
+    const pts = [...(line.points || [])]
+      .filter((p) => p.time_cs != null)
+      .sort((a, b) => a.date.localeCompare(b.date) || b.time_cs - a.time_cs)
+    pts.forEach((p) => allDates.add(p.date))
     return { ...line, points: pts }
   })
   const sortedDates = [...allDates].sort()
@@ -112,27 +110,38 @@ function Chart({ lines, title, showSwimmer = false }) {
     i === 0 || i === sortedDates.length - 1 || i % Math.ceil(sortedDates.length / (mobile ? 4 : 10)) === 0
   )
 
-  // Label collision detection
+  // Label collision detection — multi-pass so clusters of close times all
+  // get pushed apart instead of only the first overlapping pair
   const allLabels = []
   processedLines.forEach((line, li) => {
-    line.points.forEach((p) => {
-      allLabels.push({ x: dateToX(p.date), y: timeToY(p.time_cs) - 16, cs: p.time_cs, li })
+    line.points.forEach((p, pi) => {
+      allLabels.push({ x: dateToX(p.date), y: timeToY(p.time_cs) - 16, cs: p.time_cs, li, pi })
     })
   })
   allLabels.sort((a, b) => a.x - b.x || a.y - b.y)
-  for (let i = 1; i < allLabels.length; i++) {
-    const prev = allLabels[i - 1]
-    const curr = allLabels[i]
-    if (Math.abs(curr.x - prev.x) < 40 && Math.abs(curr.y - prev.y) < 18) {
-      curr.y = prev.y + (curr.y > prev.y ? 18 : -18)
+  const LBL_W = mobile ? 52 : 44
+  const LBL_H = 17
+  for (let pass = 0; pass < 4; pass++) {
+    let moved = false
+    for (let i = 1; i < allLabels.length; i++) {
+      for (let j = Math.max(0, i - 4); j < i; j++) {
+        const a = allLabels[j]
+        const b = allLabels[i]
+        if (Math.abs(b.x - a.x) < LBL_W && Math.abs(b.y - a.y) < LBL_H) {
+          b.y = a.y + (b.y >= a.y ? LBL_H : -LBL_H)
+          moved = true
+        }
+      }
     }
+    if (!moved) break
   }
   const labelMap = {}
-  allLabels.forEach((l) => { labelMap[`${l.li}-${l.cs}-${Math.round(l.x)}`] = l.y })
+  allLabels.forEach((l) => { labelMap[`${l.li}-${l.pi}`] = l.y })
 
   return (
     <div style={{ position: 'relative' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }} fontFamily={FONT_STACK}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }} fontFamily={FONT_STACK}
+        onClick={() => setTooltip(null)}>
         {/* Flat white canvas */}
         <rect width={W} height={H} fill="#ffffff" />
 
@@ -229,23 +238,32 @@ function Chart({ lines, title, showSwimmer = false }) {
           )
         })}
 
-        {/* Triangle markers */}
+        {/* Triangle markers — hover on desktop, tap-to-toggle on touch */}
         {processedLines.map((line, li) => {
           const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
-          return line.points.map((p, i) => (
-            <g key={`m${li}-${i}`}
-              onMouseEnter={() => setTooltip({ x: dateToX(p.date), y: timeToY(p.time_cs), line: line.event_name, ...p })}
-              onMouseLeave={() => setTooltip(null)}
-              style={{ cursor: 'pointer' }}>
-              <Triangle x={dateToX(p.date)} y={timeToY(p.time_cs)} color={color} />
-            </g>
-          ))
+          return line.points.map((p, i) => {
+            const key = `m${li}-${i}`
+            const px = dateToX(p.date)
+            const py = timeToY(p.time_cs)
+            const tip = { key, x: px, y: py, line: line.event_name, ...p }
+            return (
+              <g key={key}
+                onMouseEnter={() => setTooltip(tip)}
+                onMouseLeave={() => setTooltip((t) => (t && t.key === key ? null : t))}
+                onClick={(e) => { e.stopPropagation(); setTooltip((t) => (t && t.key === key ? null : tip)) }}
+                style={{ cursor: 'pointer' }}>
+                {/* generous invisible hit area so fingers can hit the point */}
+                <circle cx={px} cy={py} r={mobile ? 18 : 12} fill="transparent" />
+                <Triangle x={px} y={py} color={color} />
+              </g>
+            )
+          })
         })}
 
         {/* Time labels (white halo + ink text) */}
         {processedLines.map((line, li) => line.points.map((p, i) => {
           const x = dateToX(p.date)
-          const key = `${li}-${p.time_cs}-${Math.round(x)}`
+          const key = `${li}-${i}`
           const y = labelMap[key] !== undefined ? labelMap[key] : timeToY(p.time_cs) - 16
           const lbl = formatCs(p.time_cs)
           return (
@@ -256,32 +274,37 @@ function Chart({ lines, title, showSwimmer = false }) {
           )
         }))}
 
-        {/* Tooltip — flat white card, square corners */}
+        {/* Tooltip — flat white card, square corners; flips above the point
+            when there is no room below, and never leaves the canvas */}
         {tooltip && (() => {
+          const dt = tooltip.date ? new Date(tooltip.date) : null
+          const dateLbl = dt && !Number.isNaN(dt.getTime())
+            ? dt.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+            : ''
           const line1 = tooltip.line || ''
-          const line2 = `${formatCs(tooltip.time_cs)} · ${(tooltip.meet || '').substring(0, 22)}${tooltip.fina ? ` · ${tooltip.fina}pts` : ''}`
-          const line3 = showSwimmer && tooltip.swimmer ? tooltip.swimmer : ''
-          const f1 = mobile ? 13 : 12
-          const f2 = mobile ? 11.5 : 10.5
-          const f3 = mobile ? 11 : 10
-          const tw = Math.min(W - 12, Math.max(160, line1.length * f1 * 0.62, line2.length * f2 * 0.56, line3.length * f3 * 0.56) + 28)
+          const line2 = `${formatCs(tooltip.time_cs)}${tooltip.fina ? ` · ${tooltip.fina} FINA` : ''}${dateLbl ? ` · ${dateLbl}` : ''}`
+          const line3 = (tooltip.meet || '').substring(0, 34)
+          const line4 = showSwimmer && tooltip.swimmer ? tooltip.swimmer : ''
+          const rows = [line1, line2, line3, line4].filter(Boolean)
+          const f1 = mobile ? 13.5 : 12.5
+          const f2 = mobile ? 12 : 11
+          const th = 22 + rows.length * (mobile ? 17 : 16)
+          const tw = Math.min(W - 12, Math.max(170, ...rows.map((r, i) => r.length * (i === 0 ? f1 : f2) * 0.58)) + 28)
           const tx = Math.max(6, Math.min(tooltip.x - tw / 2, W - tw - 6))
+          const below = tooltip.y + 18 + th <= H - 6
+          const ty = below ? tooltip.y + 18 : Math.max(6, tooltip.y - 18 - th)
           const tcx = tx + tw / 2
           return (
-            <g>
-              <rect x={tx} y={tooltip.y + 18} width={tw} height={line3 ? 66 : 50}
-                fill="#ffffff" stroke={INK} strokeWidth="1.5" />
-              <text x={tcx} y={tooltip.y + 35} textAnchor="middle" fill={INK} fontSize={f1} fontWeight="bold">
-                {line1}
-              </text>
-              <text x={tcx} y={tooltip.y + 52} textAnchor="middle" fill="#58687c" fontSize={f2}>
-                {line2}
-              </text>
-              {line3 && (
-                <text x={tcx} y={tooltip.y + 66} textAnchor="middle" fill={CHART.axisText} fontSize={f3}>
-                  {line3}
+            <g style={{ pointerEvents: 'none' }}>
+              <rect x={tx} y={ty} width={tw} height={th} fill="#ffffff" stroke={INK} strokeWidth="1.5" />
+              {rows.map((r, i) => (
+                <text key={i} x={tcx} y={ty + 17 + i * (mobile ? 17 : 16)} textAnchor="middle"
+                  fill={i === 0 ? INK : i === 1 ? '#12253d' : '#58687c'}
+                  fontSize={i === 0 ? f1 : f2} fontWeight={i <= 1 ? 'bold' : 'normal'}
+                  style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {r}
                 </text>
-              )}
+              ))}
             </g>
           )
         })()}

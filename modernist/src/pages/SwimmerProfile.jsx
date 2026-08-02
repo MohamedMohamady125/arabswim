@@ -16,6 +16,7 @@ import Flag from '../components/Flag'
 import { Loading, Empty, Seg } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import SplitsBreakdown from '../components/swimmer/SplitsBreakdown'
+import CompareTab from '../components/swimmer/CompareTab'
 import ProgressionChart from '../components/charts/ProgressionChart'
 import MeetsTab from '../components/swimmer/MeetsTab'
 import MedalsTab from '../components/swimmer/MedalsTab'
@@ -634,7 +635,7 @@ export default function SwimmerProfile() {
         <Seg
           options={visibleTabs}
           value={effectiveTab}
-          onChange={(v) => (v === 'compare' ? navigate(`/compare?ids=${id}`) : setActiveTab(v))}
+          onChange={setActiveTab}
         />
       </div>
 
@@ -655,6 +656,7 @@ export default function SwimmerProfile() {
         {effectiveTab === 'records' && <RecordsTab swimmerId={id} />}
         {effectiveTab === 'qualifying' && <QualifyingTab swimmerId={id} />}
         {effectiveTab === 'progression' && <ProgressionTab swimmerId={id} />}
+        {effectiveTab === 'compare' && <CompareTab swimmerId={id} />}
         {effectiveTab === 'transfers' && <TransfersTab swimmerId={id} />}
         {effectiveTab === 'gallery' && <GalleryTab swimmerId={id} />}
       </div>

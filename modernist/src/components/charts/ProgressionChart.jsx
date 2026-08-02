@@ -121,22 +121,28 @@ function Chart({ lines, title, showSwimmer = false }) {
   allLabels.sort((a, b) => a.x - b.x || a.y - b.y)
   const LBL_W = mobile ? 52 : 44
   const LBL_H = 17
-  for (let pass = 0; pass < 4; pass++) {
+  // Colliding labels spread SIDEWAYS into a row next to each other —
+  // never stacked vertically on top of one another
+  for (let pass = 0; pass < 6; pass++) {
     let moved = false
     for (let i = 1; i < allLabels.length; i++) {
-      for (let j = Math.max(0, i - 4); j < i; j++) {
+      for (let j = 0; j < i; j++) {
         const a = allLabels[j]
         const b = allLabels[i]
-        if (Math.abs(b.x - a.x) < LBL_W && Math.abs(b.y - a.y) < LBL_H) {
-          b.y = a.y + (b.y >= a.y ? LBL_H : -LBL_H)
+        if (Math.abs(b.x - a.x) < LBL_W + 2 && Math.abs(b.y - a.y) < LBL_H) {
+          if (a.x + LBL_W + 2 <= plotR - LBL_W / 2) b.x = a.x + LBL_W + 2
+          else b.x = Math.min(a.x, b.x) - LBL_W - 2
           moved = true
         }
       }
     }
     if (!moved) break
   }
+  allLabels.forEach((l) => {
+    l.x = Math.max(plotL + LBL_W / 2, Math.min(plotR - LBL_W / 2, l.x))
+  })
   const labelMap = {}
-  allLabels.forEach((l) => { labelMap[`${l.li}-${l.pi}`] = l.y })
+  allLabels.forEach((l) => { labelMap[`${l.li}-${l.pi}`] = { x: l.x, y: l.y } })
 
   return (
     <div style={{ position: 'relative' }}>
@@ -262,9 +268,10 @@ function Chart({ lines, title, showSwimmer = false }) {
 
         {/* Time labels (white halo + ink text) */}
         {processedLines.map((line, li) => line.points.map((p, i) => {
-          const x = dateToX(p.date)
           const key = `${li}-${i}`
-          const y = labelMap[key] !== undefined ? labelMap[key] : timeToY(p.time_cs) - 16
+          const pos = labelMap[key] || { x: dateToX(p.date), y: timeToY(p.time_cs) - 16 }
+          const x = pos.x
+          const y = pos.y
           const lbl = formatCs(p.time_cs)
           return (
             <g key={`lbl${li}-${i}`}>

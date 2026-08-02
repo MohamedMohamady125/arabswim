@@ -48,10 +48,15 @@ export default function MedalsTab({ stats }) {
     })
   })
 
-  const chartComps = CLASSIFICATIONS.filter((c) => {
+  const hasMedals = (c) => {
     const cc = compCounts[c]
     return cc && cc.gold + cc.silver + cc.bronze > 0
-  })
+  }
+  const chartComps = [
+    ...CLASSIFICATIONS.filter(hasMedals),
+    // Classification names outside the known list still get a button
+    ...Object.keys(compCounts).filter((c) => !CLASSIFICATIONS.includes(c) && hasMedals(c)),
+  ]
 
   // Category tabs: only categories the athlete has medals in
   const isAll = cat === 'All'
@@ -105,7 +110,7 @@ export default function MedalsTab({ stats }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       {/* Category filter — only competitions this athlete has medals in */}
-      {chartComps.length > 1 && (
+      {chartComps.length > 0 && (
         <Seg options={catOptions} value={isAll || !compCounts[cat] ? 'All' : cat} onChange={setCat} />
       )}
 

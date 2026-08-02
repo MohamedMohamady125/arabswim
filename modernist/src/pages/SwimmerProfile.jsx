@@ -270,17 +270,28 @@ function RankingsPreview({ swimmerId, onViewAll }) {
   )
 }
 
+const PERFORMANCE_TIERS = [
+  { min: 1000, max: null, label: 'World-Class' },
+  { min: 900, max: 1000, label: 'International Elite' },
+  { min: 800, max: 900, label: 'Elite' },
+  { min: 700, max: 800, label: 'High Performance' },
+  { min: 600, max: 700, label: 'Advanced' },
+  { min: 500, max: 600, label: 'Competitive' },
+  { min: 400, max: 500, label: 'Developing' },
+  { min: 300, max: 400, label: 'Foundation' },
+  { min: 200, max: 300, label: 'Novice' },
+  { min: 100, max: 200, label: 'Entry Level' },
+]
+
 function OverallTab({ stats, swimmerId, onViewRankings }) {
   if (!stats) return <Empty label="No stats available" />
   const {
-    intl_medals, medals, total_championships, total_records, best_fina,
+    medals, total_championships, total_records, best_fina,
     season_best_fina, best_event, top_personal_bests, records, fina_distribution,
   } = stats
   const intlRecords = (records || []).filter((r) => r.record_type !== 'NATIONAL')
-  const im = intl_medals || { gold: 0, silver: 0, bronze: 0, total: 0 }
   const md = medals || { gold: 0, silver: 0, bronze: 0, total: 0 }
   const bestEventPb = (top_personal_bests || []).find((pb) => pb.event_name === best_event)
-  const distMax = Math.max(1, ...(fina_distribution || []).map((d) => d.count || 0))
 
   const bandCell = { padding: '16px 20px', flex: '1 1 0', minWidth: 140, borderLeft: '1px solid rgba(255,255,255,0.15)' }
   const bandNum = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30, lineHeight: 1.1, marginTop: 4, color: '#fff' }
@@ -330,51 +341,34 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         </div>
       </div>
 
-      {/* Secondary metrics */}
-      <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+      {/* Performance index */}
+      {(best_fina?.points || 0) > 0 && (
         <div>
-          <div className="card-kicker">Int'l medals</div>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 4, color: 'var(--asw-gold)' }}>{im.total}</div>
-          {im.total > 0 && (
-            <div className="asw-num" style={{ fontSize: 12, marginTop: 4, display: 'flex', gap: 8 }}>
-              <span style={{ color: 'var(--asw-gold)', fontWeight: 700 }}>{im.gold}G</span>
-              <span style={{ color: 'var(--asw-silver)', fontWeight: 700 }}>{im.silver}S</span>
-              <span style={{ color: 'var(--asw-bronze)', fontWeight: 700 }}>{im.bronze}B</span>
-            </div>
-          )}
-        </div>
-        <div>
-          <div className="card-kicker">Int'l records</div>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 4, color: 'var(--color-accent-2)' }}>{intlRecords.length}</div>
-        </div>
-        {best_fina?.championship_name && (
-          <div>
-            <div className="card-kicker">Best FINA set at</div>
-            <div style={{ fontWeight: 700, fontSize: 13, marginTop: 6, textTransform: 'uppercase' }}>{best_fina.championship_name}</div>
-          </div>
-        )}
-      </div>
-
-      {/* FINA performance distribution */}
-      {fina_distribution?.length > 0 && (
-        <div>
-          <div className="sect-head"><h4>Performance distribution</h4><span className="micro">FINA point tiers · personal bests</span></div>
-          <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {fina_distribution.map((d) => (
-              <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 150, flex: 'none' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d.label}</div>
-                  <div className="micro asw-num">{d.low}–{d.high}</div>
+          <div className="sect-head"><h4>Performance index</h4><span className="micro">FINA points · career best {best_fina.points}</span></div>
+          <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {PERFORMANCE_TIERS.map((t) => {
+              const isCurrent = best_fina.points >= t.min && (t.max == null || best_fina.points < t.max)
+              const isSeason = !isCurrent && season_best_fina?.points != null
+                && season_best_fina.points >= t.min && (t.max == null || season_best_fina.points < t.max)
+              const count = (fina_distribution || [])
+                .filter((d) => d.low >= t.min && (t.max == null || d.low < t.max))
+                .reduce((n, d) => n + (d.count || 0), 0)
+              const reached = best_fina.points >= t.min
+              return (
+                <div key={t.min} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '7px 10px',
+                  background: isCurrent ? 'var(--color-accent-800)' : 'transparent',
+                  color: isCurrent ? '#fff' : 'inherit',
+                  borderLeft: `4px solid ${isCurrent ? 'var(--asw-gold)' : reached ? 'var(--color-accent)' : 'var(--color-divider)'}`,
+                }}>
+                  <span className="asw-num" style={{ width: 52, flex: 'none', fontWeight: 800, fontSize: 14, opacity: reached ? 1 : 0.5 }}>{t.min}+</span>
+                  <span style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: reached ? 1 : 0.5 }}>{t.label}</span>
+                  {isCurrent && <span className="tag" style={{ background: 'var(--asw-gold)', color: '#fff', border: 0 }}>CAREER BEST</span>}
+                  {isSeason && <span className="tag tag-accent">THIS SEASON</span>}
+                  {count > 0 && <span className="asw-num micro" style={{ opacity: isCurrent ? 0.8 : 0.6 }}>{count} PB{count !== 1 ? 's' : ''}</span>}
                 </div>
-                <div style={{ flex: 1, height: 18, background: 'var(--color-surface)' }}>
-                  <div style={{
-                    width: `${(d.count / distMax) * 100}%`, height: '100%', minWidth: d.count ? 3 : 0,
-                    background: d.low >= 800 ? 'var(--color-accent)' : d.low >= 600 ? 'var(--color-accent-2)' : 'var(--color-neutral-400)',
-                  }} />
-                </div>
-                <span className="asw-num" style={{ width: 26, flex: 'none', textAlign: 'right', fontWeight: 800, fontSize: 13 }}>{d.count}</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

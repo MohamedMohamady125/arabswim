@@ -469,11 +469,18 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'championship_id': best_fina_result.championship.id,
             }
 
-        # Best FINA points this season (current year)
+        # Best FINA points this season — fall back to the swimmer's most
+        # recent active season when they have no current-year results.
         from datetime import date as _date
         season_year = _date.today().year
-        season_best_result = Result.objects.filter(
-            swimmer=swimmer, fina_points__isnull=False,
+        season_qs = Result.objects.filter(
+            swimmer=swimmer, fina_points__isnull=False)
+        if not season_qs.filter(championship__date__year=season_year).exists():
+            latest_date = (season_qs.order_by('-championship__date')
+                           .values_list('championship__date', flat=True).first())
+            if latest_date:
+                season_year = latest_date.year
+        season_best_result = season_qs.filter(
             championship__date__year=season_year,
         ).select_related('event', 'championship').order_by('-fina_points').first()
         season_best_fina = None

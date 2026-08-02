@@ -22,14 +22,37 @@ export function csToSplitTime(cs) {
   return neg ? `-${body}` : body
 }
 
-// Regroup cumulative splits at 50m or 100m granularity → [{distance, cum, cumCs, lapCs}]
-export function regroupSplits(splits, by) {
+// Regroup splits at 50m or 100m granularity → [{distance, cum, cumCs, lapCs}]
+// Sources are inconsistent: some store cumulative times (26.25, 56.19, ...),
+// others store per-lap times (26.25, 29.94, ...). Detect which by comparing
+// against the race total when available, else by shape.
+export function regroupSplits(splits, by, totalCs) {
   const parsed = (splits || [])
-    .map((s) => ({ distance: s.distance, cum: s.time, cumCs: splitTimeToCs(s.time) }))
-    .filter((s) => s.cumCs != null)
-  let pts = parsed
+    .map((s) => ({ distance: s.distance, cs: splitTimeToCs(s.time) }))
+    .filter((s) => s.cs != null)
+  if (!parsed.length) return []
+
+  const sum = parsed.reduce((a, s) => a + s.cs, 0)
+  const last = parsed[parsed.length - 1].cs
+  let cumulative
+  if (totalCs) {
+    // Whichever interpretation lands closer to the official total wins
+    cumulative = Math.abs(last - totalCs) <= Math.abs(sum - totalCs)
+  } else {
+    const increasing = parsed.every((s, i) => i === 0 || s.cs > parsed[i - 1].cs)
+    cumulative = increasing && last > parsed[0].cs * 1.8
+  }
+
+  // Normalize to cumulative
+  let run = 0
+  const cum = parsed.map((s) => {
+    run = cumulative ? s.cs : run + s.cs
+    return { distance: s.distance, cumCs: run, cum: csToSplitTime(run) }
+  })
+
+  let pts = cum
   if (by === 100) {
-    const hundreds = parsed.filter((s) => s.distance != null && s.distance % 100 === 0)
+    const hundreds = cum.filter((s) => s.distance != null && s.distance % 100 === 0)
     if (hundreds.length >= 2) pts = hundreds
   }
   let prev = 0
@@ -54,7 +77,7 @@ const PRELIMS_COLOR = '#4a8fc0'
 const GRID = '#dde4ec'
 const AXIS_TEXT = '#78879a'
 
-export default function SplitsBreakdown({ splits, eventName, roundType, compareSplits, compareRoundType }) {
+export default function SplitsBreakdown({ splits, eventName, roundType, totalCs, compareSplits, compareRoundType, compareTotalCs }) {
   const stroke = (eventName || '').replace(/^\d+\s*[Mm]?\s*/, '').trim() || ''
   const isPrelims = (rt) => /prelim|heat/i.test(rt || '')
 
@@ -66,8 +89,8 @@ export default function SplitsBreakdown({ splits, eventName, roundType, compareS
   const canToggle = rawDists.some((d) => d % 100 !== 0) && rawDists.some((d) => d % 100 === 0)
   const gran = canToggle ? by : 50
 
-  const laps = regroupSplits(splits, gran)
-  const compareLaps = (compareSplits || []).length ? regroupSplits(compareSplits, gran) : []
+  const laps = regroupSplits(splits, gran, totalCs)
+  const compareLaps = (compareSplits || []).length ? regroupSplits(compareSplits, gran, compareTotalCs) : []
 
   // Build series: primary = expanded row, compare = sibling round (if compatible)
   const series = [{ laps, roundType: roundType || 'Finals' }]
@@ -87,25 +110,25 @@ export default function SplitsBreakdown({ splits, eventName, roundType, compareS
   let chart = null
   if (laps.length >= 2) {
     const W = 480
-    const H = hasBoth ? 190 : 160
+    const H = hasBoth ? 210 : 170
     const PX = 40
-    const PY = 26
+    const PY = 28
     const allLaps = series.flatMap((s) => s.laps.map((r) => r.lapCs))
     const minCs = Math.min(...allLaps)
     const maxCs = Math.max(...allLaps)
-    // Round y-domain to whole seconds with breathing room
-    const lo = Math.floor((minCs - 40) / 100) * 100
-    const hi = Math.ceil((maxCs + 40) / 100) * 100
-    const range = Math.max(hi - lo, 100)
+    // Snap y-domain to half-seconds so near-identical rounds still spread out
+    const lo = Math.floor((minCs - 30) / 50) * 50
+    const hi = Math.ceil((maxCs + 30) / 50) * 50
+    const range = Math.max(hi - lo, 50)
     const n = laps.length
     const x = (i) => PX + (i * (W - PX - 16)) / (n - 1)
     // Slower lap sits higher on the chart
     const y = (v) => H - PY - ((v - lo) / range) * (H - 2 * PY)
 
-    // ~4 whole-second gridlines
+    // ~4 whole-second gridlines within the domain
     const tickStep = Math.max(100, Math.ceil(range / 4 / 100) * 100)
     const ticks = []
-    for (let t = lo; t <= hi; t += tickStep) ticks.push(t)
+    for (let t = Math.ceil(lo / 100) * 100; t <= hi; t += tickStep) ticks.push(t)
 
     const styleFor = (rt) => isPrelims(rt)
       ? { color: PRELIMS_COLOR, dash: '6 4', marker: 'square' }
@@ -135,9 +158,18 @@ export default function SplitsBreakdown({ splits, eventName, roundType, compareS
         {series.map((s, si) => {
           const st = styleFor(s.roundType)
           const prelims = isPrelims(s.roundType)
-          // when both shown: prelims labels above, finals labels below
-          const labelAbove = hasBoth ? prelims : true
-          return s.laps.map((r, i) => (
+          return s.laps.map((r, i) => {
+            // Per-point label placement: the higher point labels above, the
+            // lower one below, so labels never cover each other or the lines
+            let labelAbove = true
+            if (hasBoth) {
+              const other = series[1 - si].laps[i]
+              if (other) {
+                const dy = y(r.lapCs) - y(other.lapCs)
+                labelAbove = dy !== 0 ? dy < 0 : prelims
+              }
+            }
+            return (
             <g key={`${si}-${i}`}>
               {st.marker === 'square' ? (
                 <rect x={x(i) - 3.5} y={y(r.lapCs) - 3.5} width="7" height="7" fill={st.color} stroke="#ffffff" strokeWidth="1.5" />
@@ -149,7 +181,8 @@ export default function SplitsBreakdown({ splits, eventName, roundType, compareS
                 {fmtSplitComma(r.lapCs)}
               </text>
             </g>
-          ))
+            )
+          })
         })}
         {/* x-axis distance labels */}
         {laps.map((r, i) => (
@@ -166,15 +199,17 @@ export default function SplitsBreakdown({ splits, eventName, roundType, compareS
       {canToggle ? (
         <div className="seg">
           {[50, 100].map((v) => (
-            <button key={v} type="button" className={`seg-opt${by === v ? ' on' : ''}`} onClick={() => setBy(v)}>
-              Split by {v}
+            <button key={v} type="button" className={`seg-opt${by === v ? ' on' : ''}`} onClick={() => setBy(v)}
+              style={{ fontSize: 10, padding: '3px 8px' }}>
+              By {v}
             </button>
           ))}
         </div>
       ) : <span />}
       <button type="button" className="btn btn-secondary btn-icon" onClick={() => setFs((f) => !f)}
+        style={{ width: 26, height: 26, minWidth: 26 }}
         aria-label={fs ? 'Exit fullscreen' : 'Fullscreen'}>
-        {fs ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        {fs ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
       </button>
     </div>
   )

@@ -38,18 +38,15 @@ export default function MeetsTab({ stats }) {
           <span className="micro asw-num">{championships.length} meets</span>
         </div>
         <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
-          {CLASSIFICATIONS.map((cls) => {
-            const n = counts[cls] || 0
-            return (
-              <div key={cls} style={{ opacity: n > 0 ? 1 : 0.45 }}>
-                <div className="card-kicker">{cls}</div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 4, color: n > 0 ? 'var(--color-text)' : 'var(--color-neutral-500)' }}>
-                  {n}
-                </div>
-                <div className="micro">meet{n !== 1 ? 's' : ''}</div>
+          {CLASSIFICATIONS.filter((cls) => (counts[cls] || 0) > 0).map((cls) => (
+            <div key={cls}>
+              <div className="card-kicker">{cls}</div>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 4 }}>
+                {counts[cls]}
               </div>
-            )
-          })}
+              <div className="micro">meet{counts[cls] !== 1 ? 's' : ''}</div>
+            </div>
+          ))}
         </div>
       </div>
 

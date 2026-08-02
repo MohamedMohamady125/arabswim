@@ -141,7 +141,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                           <button type="button"
                             onClick={(e) => { e.stopPropagation(); setExpandedSplits(showSplits ? null : h.id) }}
                             className={showSplits ? 'tag tag-dark' : 'tag tag-outline'}
-                            style={{ cursor: 'pointer', border: showSplits ? 0 : undefined, font: 'inherit', fontSize: 11 }}
+                            style={{ cursor: 'pointer', border: showSplits ? 0 : undefined, font: 'inherit', fontSize: 9, padding: '1px 6px' }}
                             title="Show split times">
                             Splits {showSplits ? '−' : '+'}
                           </button>
@@ -179,7 +179,9 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                       <tr>
                         <td colSpan={8} style={{ background: 'var(--color-neutral-100)', padding: '14px 16px' }}>
                           <SplitsBreakdown splits={splits} eventName={selectedEvent.event_name}
-                            roundType={h.round_type} compareSplits={sibling?.splits} compareRoundType={sibling?.round_type} />
+                            roundType={h.round_type} totalCs={h.time_centiseconds}
+                            compareSplits={sibling?.splits} compareRoundType={sibling?.round_type}
+                            compareTotalCs={sibling?.time_centiseconds} />
                         </td>
                       </tr>
                     )
@@ -269,21 +271,69 @@ function RankingsPreview({ swimmerId, onViewAll }) {
 
 function OverallTab({ stats, swimmerId, onViewRankings }) {
   if (!stats) return <Empty label="No stats available" />
-  const { intl_medals, total_championships, best_fina, top_personal_bests, records } = stats
+  const {
+    intl_medals, medals, total_championships, total_records, best_fina,
+    season_best_fina, best_event, top_personal_bests, records, fina_distribution,
+  } = stats
   const intlRecords = (records || []).filter((r) => r.record_type !== 'NATIONAL')
   const im = intl_medals || { gold: 0, silver: 0, bronze: 0, total: 0 }
+  const md = medals || { gold: 0, silver: 0, bronze: 0, total: 0 }
+  const bestEventPb = (top_personal_bests || []).find((pb) => pb.event_name === best_event)
+  const distMax = Math.max(1, ...(fina_distribution || []).map((d) => d.count || 0))
+
+  const bandCell = { padding: '16px 20px', flex: '1 1 0', minWidth: 140, borderLeft: '1px solid rgba(255,255,255,0.15)' }
+  const bandNum = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30, lineHeight: 1.1, marginTop: 4, color: '#fff' }
+  const bandKicker = { fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)' }
+  const bandSub = { fontSize: 11, marginTop: 4, color: 'rgba(255,255,255,0.65)' }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-      {/* Stat cards */}
+      {/* Season stat band */}
+      <div style={{ background: 'var(--color-accent-800)', display: 'flex', flexWrap: 'wrap', margin: '0 -1px' }}>
+        <div style={{ ...bandCell, borderLeft: 'none' }}>
+          <div style={bandKicker}>Meets</div>
+          <div className="asw-num" style={bandNum}>{total_championships ?? 0}</div>
+        </div>
+        <div style={bandCell}>
+          <div style={bandKicker}>Medals</div>
+          <div className="asw-num" style={{ ...bandNum, color: 'var(--asw-gold)' }}>{md.total}</div>
+          <div className="asw-num" style={{ fontSize: 12, marginTop: 4, display: 'flex', gap: 8 }}>
+            <span style={{ color: 'var(--asw-gold)', fontWeight: 700 }}>{md.gold}G</span>
+            <span style={{ color: 'var(--asw-silver)', fontWeight: 700 }}>{md.silver}S</span>
+            <span style={{ color: 'var(--asw-bronze)', fontWeight: 700 }}>{md.bronze}B</span>
+          </div>
+        </div>
+        <div style={bandCell}>
+          <div style={bandKicker}>Records</div>
+          <div className="asw-num" style={bandNum}>{total_records ?? (records || []).length}</div>
+          {intlRecords.length > 0 && <div className="asw-num" style={bandSub}>{intlRecords.length} international</div>}
+        </div>
+        <div style={bandCell}>
+          <div style={bandKicker}>Best FINA</div>
+          <div className="asw-num" style={bandNum}>{best_fina?.points || '—'}</div>
+          {best_fina?.event_name && <div style={bandSub}>{best_fina.event_name}</div>}
+        </div>
+        <div style={bandCell}>
+          <div style={bandKicker}>Season best FINA</div>
+          <div className="asw-num" style={bandNum}>{season_best_fina?.points || '—'}</div>
+          {season_best_fina?.event_name && (
+            <div style={bandSub}>{season_best_fina.event_name}{season_best_fina.year ? ` · ${season_best_fina.year}` : ''}</div>
+          )}
+        </div>
+        <div style={bandCell}>
+          <div style={bandKicker}>Fastest event</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1.2, marginTop: 6, color: '#fff', textTransform: 'uppercase' }}>
+            {best_event || '—'}
+          </div>
+          {bestEventPb && <div className="asw-time" style={{ ...bandSub, fontSize: 13, color: '#fff' }}>{bestEventPb.time}</div>}
+        </div>
+      </div>
+
+      {/* Secondary metrics */}
       <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
         <div>
-          <div className="card-kicker">Meets</div>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, lineHeight: 1.1, marginTop: 4 }}>{total_championships ?? 0}</div>
-        </div>
-        <div>
           <div className="card-kicker">Int'l medals</div>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, lineHeight: 1.1, marginTop: 4, color: 'var(--asw-gold)' }}>{im.total}</div>
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 4, color: 'var(--asw-gold)' }}>{im.total}</div>
           {im.total > 0 && (
             <div className="asw-num" style={{ fontSize: 12, marginTop: 4, display: 'flex', gap: 8 }}>
               <span style={{ color: 'var(--asw-gold)', fontWeight: 700 }}>{im.gold}G</span>
@@ -294,14 +344,39 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         </div>
         <div>
           <div className="card-kicker">Int'l records</div>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, lineHeight: 1.1, marginTop: 4, color: 'var(--color-accent-2)' }}>{intlRecords.length}</div>
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 4, color: 'var(--color-accent-2)' }}>{intlRecords.length}</div>
         </div>
-        <div>
-          <div className="card-kicker">Best FINA</div>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, lineHeight: 1.1, marginTop: 4, color: 'var(--color-accent)' }}>{best_fina?.points || 0}</div>
-          {best_fina?.event_name && <div className="micro" style={{ marginTop: 4 }}>{best_fina.event_name}</div>}
-        </div>
+        {best_fina?.championship_name && (
+          <div>
+            <div className="card-kicker">Best FINA set at</div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginTop: 6, textTransform: 'uppercase' }}>{best_fina.championship_name}</div>
+          </div>
+        )}
       </div>
+
+      {/* FINA performance distribution */}
+      {fina_distribution?.length > 0 && (
+        <div>
+          <div className="sect-head"><h4>Performance distribution</h4><span className="micro">FINA point tiers · personal bests</span></div>
+          <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {fina_distribution.map((d) => (
+              <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 150, flex: 'none' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d.label}</div>
+                  <div className="micro asw-num">{d.low}–{d.high}</div>
+                </div>
+                <div style={{ flex: 1, height: 18, background: 'var(--color-surface)' }}>
+                  <div style={{
+                    width: `${(d.count / distMax) * 100}%`, height: '100%', minWidth: d.count ? 3 : 0,
+                    background: d.low >= 800 ? 'var(--color-accent)' : d.low >= 600 ? 'var(--color-accent-2)' : 'var(--color-neutral-400)',
+                  }} />
+                </div>
+                <span className="asw-num" style={{ width: 26, flex: 'none', textAlign: 'right', fontWeight: 800, fontSize: 13 }}>{d.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Top personal bests */}
       {top_personal_bests?.length > 0 && (

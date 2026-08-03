@@ -144,4 +144,13 @@ class MedalViewSet(viewsets.ModelViewSet):
                 }
         out = sorted(merged.values(),
                      key=lambda r: (-r['gold'], -r['silver'], -r['bronze']))
+        # Attach club logos (matched via the same canonical team key)
+        from teams.models import Team
+        team_by_key = {}
+        for t in Team.objects.only('id', 'name', 'logo'):
+            team_by_key.setdefault(normalize_team_key(t.name), t)
+        for row in out:
+            t = team_by_key.get(normalize_team_key(row['result__team']))
+            row['team_id'] = t.id if t else None
+            row['team_logo'] = t.logo.url if t and t.logo else None
         return Response(out)

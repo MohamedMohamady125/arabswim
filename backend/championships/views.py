@@ -868,6 +868,18 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             })
         return Response(data)
 
+    @action(detail=True, methods=['post'], url_path='recompute-medals')
+    def recompute_medals_action(self, request, pk=None):
+        """Re-run country fixes and medal awarding for this championship.
+        Lets admins apply importer post-processing fixes to meets that were
+        imported before the fix existed."""
+        championship = self.get_object()
+        from teams.utils import apply_subclassification_country
+        from medals.utils import recompute_medals
+        teams_updated = apply_subclassification_country(championship)
+        medal_count = recompute_medals(championship)
+        return Response({'medals': medal_count, 'teams_updated': teams_updated})
+
     @action(detail=True, methods=['post'], url_path='bulk-delete-results')
     def bulk_delete_results(self, request, pk=None):
         """Delete all results for given swimmer_ids in this championship."""

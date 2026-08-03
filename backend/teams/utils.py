@@ -340,6 +340,17 @@ def apply_subclassification_country(championship):
             team.country = country
             team.save(update_fields=['country'])
             updated += 1
+
+    # Relay-team placeholder swimmers carry a nationality too (shown as the
+    # flag next to relay squads). Source PDFs sometimes tag them with a wrong
+    # code (e.g. extranat prints FRA), so force them onto the meet country.
+    from swimmers.models import Swimmer
+    relay_ids = (championship.results
+                 .filter(swimmer__is_relay_team=True)
+                 .values_list('swimmer_id', flat=True).distinct())
+    updated += (Swimmer.objects.filter(id__in=relay_ids)
+                .exclude(nationality=country)
+                .update(nationality=country))
     return updated
 
 

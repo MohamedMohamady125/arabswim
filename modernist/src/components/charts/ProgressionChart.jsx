@@ -53,13 +53,29 @@ function Chart({ lines, title, showSwimmer = false }) {
   // swims first within a day so the line reads top-to-bottom
   const allDates = new Set()
   const processedLines = lines.map((line) => {
+    const seen = {}
     const pts = [...(line.points || [])]
       .filter((p) => p.time_cs != null)
       .sort((a, b) => a.date.localeCompare(b.date) || b.time_cs - a.time_cs)
+      .map((p) => ({ ...p, _k: (seen[p.date] = (seen[p.date] ?? -1) + 1) }))
     pts.forEach((p) => allDates.add(p.date))
     return { ...line, points: pts }
   })
   const sortedDates = [...allDates].sort()
+
+  // Same-date swims (heats → Final B → Final A at one meet) each get their
+  // own x-slot so they sit NEXT TO each other instead of stacking vertically
+  const dateCounts = {}
+  processedLines.forEach((l) => {
+    const c = {}
+    l.points.forEach((p) => { c[p.date] = (c[p.date] || 0) + 1 })
+    Object.entries(c).forEach(([d, n]) => { dateCounts[d] = Math.max(dateCounts[d] || 0, n) })
+  })
+  const slotIndex = {}
+  let slotCount = 0
+  sortedDates.forEach((d) => {
+    for (let k = 0; k < (dateCounts[d] || 1); k++) slotIndex[`${d}#${k}`] = slotCount++
+  })
 
   let globalMin = Infinity
   let globalMax = -Infinity
@@ -87,10 +103,16 @@ function Chart({ lines, title, showSwimmer = false }) {
   const pW = plotR - plotL
   const pH = plotB - plotT
 
+  const slotToX = (date, k) => {
+    if (slotCount <= 1) return plotL + pW / 2
+    return plotL + (slotIndex[`${date}#${k}`] / (slotCount - 1)) * pW
+  }
+  // Each point maps to its own slot; date gridlines/labels sit at the
+  // center of that date's slots
+  const pointX = (p) => slotToX(p.date, p._k ?? 0)
   const dateToX = (date) => {
-    if (sortedDates.length === 1) return plotL + pW / 2
-    const idx = sortedDates.indexOf(date)
-    return plotL + (idx / (sortedDates.length - 1)) * pW
+    const n = dateCounts[date] || 1
+    return (slotToX(date, 0) + slotToX(date, n - 1)) / 2
   }
 
   // Y inverted: faster (lower cs) at bottom
@@ -115,7 +137,7 @@ function Chart({ lines, title, showSwimmer = false }) {
   const allLabels = []
   processedLines.forEach((line, li) => {
     line.points.forEach((p, pi) => {
-      allLabels.push({ x: dateToX(p.date), y: timeToY(p.time_cs) - 16, cs: p.time_cs, li, pi })
+      allLabels.push({ x: pointX(p), y: timeToY(p.time_cs) - 16, cs: p.time_cs, li, pi })
     })
   })
   allLabels.sort((a, b) => a.x - b.x || a.y - b.y)
@@ -233,9 +255,8 @@ function Chart({ lines, title, showSwimmer = false }) {
           const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
           const pts = line.points
           if (pts.length === 0) return null
-          const uniqueDates = new Set(pts.map((p) => p.date))
-          const pathD = uniqueDates.size > 1
-            ? pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${dateToX(p.date).toFixed(1)},${timeToY(p.time_cs).toFixed(1)}`).join(' ')
+          const pathD = pts.length > 1
+            ? pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${pointX(p).toFixed(1)},${timeToY(p.time_cs).toFixed(1)}`).join(' ')
             : null
           return (
             <g key={line.event_id || line.event_name}>
@@ -249,7 +270,7 @@ function Chart({ lines, title, showSwimmer = false }) {
           const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
           return line.points.map((p, i) => {
             const key = `m${li}-${i}`
-            const px = dateToX(p.date)
+            const px = pointX(p)
             const py = timeToY(p.time_cs)
             const tip = { key, x: px, y: py, line: line.event_name, ...p }
             return (
@@ -269,7 +290,7 @@ function Chart({ lines, title, showSwimmer = false }) {
         {/* Time labels (white halo + ink text) */}
         {processedLines.map((line, li) => line.points.map((p, i) => {
           const key = `${li}-${i}`
-          const pos = labelMap[key] || { x: dateToX(p.date), y: timeToY(p.time_cs) - 16 }
+          const pos = labelMap[key] || { x: pointX(p), y: timeToY(p.time_cs) - 16 }
           const x = pos.x
           const y = pos.y
           const lbl = formatCs(p.time_cs)

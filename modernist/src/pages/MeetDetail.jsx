@@ -169,7 +169,11 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
 
   // rows for the selected round + category, grouped by category
   const roundsPresent = new Set(rows.map((r) => r.round_type || ''))
-  const showMedals = selectedRound === 'Finals' || roundsPresent.size <= 1
+  // National meets run Finale A/B/C — each finale has its own podium, so
+  // Final B (Consolation) rows also carry medals (matches backend recompute)
+  const showMedals = selectedRound === 'Finals'
+    || (isNational && selectedRound === 'Consolation')
+    || roundsPresent.size <= 1
     // National meets (Finale A/B/C): each finale has its own podium
     || (isNational && selectedRound === 'Consolation')
   const grouped = useMemo(() => {
@@ -357,9 +361,11 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
         {isExpanded && !isRelay && splits.length > 0 && (
           <tr style={{ background: 'var(--color-surface)' }}>
             <td colSpan={colCount} style={{ padding: '8px 12px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 104px)', gap: 6 }}>
+              {/* chips flow left→right and wrap only when the line is full,
+                  so all available width is used on phone and laptop */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {splits.map((s, j) => (
-                  <span key={j} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', padding: '3px 8px' }}>
+                  <span key={j} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', padding: '3px 8px' }}>
                     <span className="micro" style={{ fontSize: 10 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</span>
                     <span className="asw-num" style={{ fontSize: 13, fontWeight: 700 }}>{s.time}</span>
                   </span>

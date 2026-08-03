@@ -264,9 +264,12 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
                 <span className="tag tag-outline" title="No club — transferring (libre passage)">LP</span>
               )}
               {hasSub && (
+                // marginLeft auto pins every SPLITS/TEAM badge to the cell's
+                // right edge so they line up in one column across all rows
                 <span
                   style={{
-                    flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
+                    flex: 'none', marginLeft: 'auto',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
                     padding: '2px 8px', cursor: 'pointer',
                     fontSize: 10, fontWeight: 800, letterSpacing: '0.07em',
                     fontFamily: 'var(--font-heading)',
@@ -367,6 +370,21 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
             ))}
           </select>
         </div>
+        {hasCategories && (
+          <div className="field" style={{ width: 180, maxWidth: '100%' }}>
+            <label>Category</label>
+            <select
+              className="select"
+              value={selectedCategory}
+              onChange={(e) => { setSelectedCategory(e.target.value); setExpandedRow(null) }}
+            >
+              <option value="ALL">All categories</option>
+              {categories.map((c) => (
+                <option key={c || '_general'} value={c}>{c || 'General'}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <Seg
           options={[
             { value: 'M', label: 'Men' },
@@ -388,17 +406,6 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
           </div>
         )}
       </div>
-
-      {/* category filter */}
-      {hasCategories && (
-        <div style={{ marginBottom: 12, overflowX: 'auto' }}>
-          <Seg
-            options={[{ value: 'ALL', label: 'All categories' }, ...categories.map((c) => ({ value: c, label: c || 'General' }))]}
-            value={selectedCategory}
-            onChange={(c) => { setSelectedCategory(c); setExpandedRow(null) }}
-          />
-        </div>
-      )}
 
       {/* round filter */}
       {rounds.length > 1 && (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getChampionships, updateChampionship } from '../api/championships'
+import { getChampionships, updateChampionship, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
@@ -26,6 +26,25 @@ export default function Championships() {
   const [country, setCountry] = useState('')
   const [expandedId, setExpandedId] = useState(null)
   const [uploadingId, setUploadingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+
+  const handleDelete = async (m) => {
+    const results = m.results_count ?? 0
+    const msg = results > 0
+      ? `Delete "${m.name}" and its ${formatNumber(results)} results? This cannot be undone.`
+      : `Delete "${m.name}"? This cannot be undone.`
+    if (!window.confirm(msg)) return
+    setDeletingId(m.id)
+    try {
+      await deleteChampionship(m.id)
+      setMeets((prev) => prev.filter((x) => x.id !== m.id))
+      setExpandedId(null)
+    } catch {
+      window.alert('Failed to delete the championship')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const handlePhotoUpload = async (meetId, file) => {
     if (!file) return
@@ -255,6 +274,16 @@ export default function Championships() {
                           onChange={(e) => { handlePhotoUpload(m.id, e.target.files?.[0]); e.target.value = '' }}
                         />
                       </label>
+                    )}
+                    {isAdmin && (
+                      <button
+                        className="btn btn-secondary"
+                        style={{ color: 'var(--asw-slow)', marginLeft: 'auto' }}
+                        disabled={deletingId === m.id}
+                        onClick={() => handleDelete(m)}
+                      >
+                        {deletingId === m.id ? 'Deleting…' : 'Delete'}
+                      </button>
                     )}
                   </div>
                 )}

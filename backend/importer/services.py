@@ -9,7 +9,7 @@ Flow:
 5. System saves confirmed data to DB
 """
 import re
-from datetime import date
+from datetime import date, timedelta
 from django.db import transaction
 
 from .parsers.detector import detect_and_parse, detect_and_parse_upload
@@ -505,6 +505,43 @@ def match_swimmers_preview(preview_data):
 
 
 @transaction.atomic
+def _find_same_meet(meet_name, champ_date, pool, country):
+    """Find an existing championship that is the same physical meet.
+
+    Same country + pool, near-identical name, and dates at most 45 days
+    apart. Keeps annual editions separate (a year apart) while merging
+    multi-file releases of one championship.
+    """
+    from thefuzz import fuzz
+    meet_name = normalize_name(meet_name or '').strip()
+    if not meet_name or not champ_date or not country:
+        return None
+    window = timedelta(days=45)
+    candidates = (Championship.objects
+                  .filter(country=country, pool=pool,
+                          date__gte=champ_date - window,
+                          date__lte=champ_date + window))
+    for champ in candidates:
+        if fuzz.token_sort_ratio(meet_name.upper(), champ.name.upper()) >= 90:
+            return champ
+    return None
+
+
+def _extend_meet_dates(championship, new_date, new_end_date=None):
+    """Widen the championship's date range to cover a newly imported file."""
+    changed = []
+    if new_date and championship.date and new_date < championship.date:
+        championship.date = new_date
+        changed.append('date')
+    last = new_end_date or new_date
+    current_end = championship.end_date or championship.date
+    if last and current_end and last > current_end:
+        championship.end_date = last
+        changed.append('end_date')
+    if changed:
+        championship.save(update_fields=changed)
+
+
 def confirm_import(preview_data, swimmer_decisions, championship_id=None, championship_details=None):
     """
     Step 3: Confirm and save the imported data.
@@ -548,6 +585,24 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         championship = Championship.objects.get(id=championship_id)
         if championship.is_calendar_only:
             # Real results are being imported: promote from calendar-only
+            championship.is_calendar_only = False
+            championship.save(update_fields=['is_calendar_only'])
+    elif (existing := _find_same_meet(
+            (championship_details or {}).get('name') or meet_info.get('name', ''),
+            _parse_date((championship_details or {}).get('date') or meet_info.get('date', '')),
+            (championship_details or {}).get('pool') or meet_info.get('pool', 'LCM'),
+            meet_country)):
+        # Federations often release the same championship as several files
+        # (e.g. Tunisia: one per age category plus a "TC" overall version,
+        # each stamped with a different session date). Attach to the
+        # existing meet instead of creating a duplicate.
+        championship = existing
+        _extend_meet_dates(
+            championship,
+            _parse_date((championship_details or {}).get('date') or meet_info.get('date', '')),
+            _parse_date((championship_details or {}).get('end_date') or '') if (championship_details or {}).get('end_date') else None,
+        )
+        if championship.is_calendar_only:
             championship.is_calendar_only = False
             championship.save(update_fields=['is_calendar_only'])
     elif championship_details:

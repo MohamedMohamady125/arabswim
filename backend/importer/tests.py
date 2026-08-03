@@ -2428,3 +2428,71 @@ WED 27 SEP 2023 Finals
 
         medley_mixed = by_key[('4x100 M Medley Relay', 'X')]
         self.assertEqual(medley_mixed.results[0].time_text, '3:37.73')
+
+
+class SameMeetMergeTests(TestCase):
+    """Federations release one championship as several files (Tunisia:
+    categorized + TC versions, stamped with different session dates).
+    confirm_import must attach to the existing meet, not duplicate it."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from datetime import date
+        from core.models import Country
+        cls.country = Country.objects.create(name='Tunisia', code='TUN')
+        cls.champ = Championship.objects.create(
+            name="Championnat D'Ete M/C Et J/S Tc",
+            date=date(2026, 7, 27), end_date=date(2026, 7, 29),
+            pool='LCM', country=cls.country,
+        )
+
+    def test_near_date_same_name_reuses_meet(self):
+        from datetime import date
+        from .services import _find_same_meet
+        found = _find_same_meet(
+            "CHAMPIONNAT D'ETE M/C ET J/S TC", date(2026, 7, 31), 'LCM', self.country)
+        self.assertEqual(found, self.champ)
+
+    def test_different_year_stays_separate(self):
+        from datetime import date
+        from .services import _find_same_meet
+        self.assertIsNone(_find_same_meet(
+            "CHAMPIONNAT D'ETE M/C ET J/S TC", date(2025, 7, 31), 'LCM', self.country))
+
+    def test_different_name_stays_separate(self):
+        from datetime import date
+        from .services import _find_same_meet
+        self.assertIsNone(_find_same_meet(
+            'CHAMPIONNAT DE TUNISIE BENJAMINS', date(2026, 7, 28), 'LCM', self.country))
+
+    def test_different_pool_stays_separate(self):
+        from datetime import date
+        from .services import _find_same_meet
+        self.assertIsNone(_find_same_meet(
+            "CHAMPIONNAT D'ETE M/C ET J/S TC", date(2026, 7, 31), 'SCM', self.country))
+
+    def test_confirm_import_attaches_and_extends_dates(self):
+        from datetime import date
+        from .services import confirm_import
+        preview = {
+            'meet': {'name': "CHAMPIONNAT D'ETE M/C ET J/S TC",
+                     'date': '2026-07-31', 'pool': 'LCM', 'location': 'Rades'},
+            'events': [{
+                'event_name': '50 M Freestyle', 'distance': 50, 'stroke': 'Freestyle',
+                'gender': 'M', 'round_type': 'Finals', 'age_group': '', 'is_relay': False,
+                'results': [{
+                    'swimmer_name': 'Firas BRIGUI', 'time_text': '23.30',
+                    'time_centiseconds': 2330, 'rank': 1, 'birth_year': 2002,
+                    'age': 24, 'nationality_code': 'TUN', 'club': 'OLYMPICA',
+                    'fina_points': 722, 'gender': 'M', 'is_relay': False,
+                    'category': '', 'status': 'OK',
+                }],
+            }],
+            'swimmers': [],
+            'stats': {'total_events': 1, 'total_results': 1, 'total_swimmers': 1},
+        }
+        res = confirm_import(preview, {})
+        self.assertEqual(res['championship_id'], self.champ.id)
+        self.champ.refresh_from_db()
+        self.assertEqual(self.champ.end_date, date(2026, 7, 31))
+        self.assertEqual(self.champ.date, date(2026, 7, 27))

@@ -44,7 +44,10 @@ function SwimmerLink({ swimmerId, detail }) {
       <Flag code={detail?.nationality_detail?.code} name={detail?.nationality_detail?.name} />
       {detail?.is_relay_team ? (
         // Relay-team placeholders are clubs, not swimmers — no profile to open
-        <span>{detail?.name}</span>
+        <>
+          <span>{detail?.name}</span>
+          <span className="tag tag-neutral" style={{ flex: 'none' }}>Club</span>
+        </>
       ) : (
         <Link to={`/swimmers/${swimmerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>{detail?.name}</Link>
       )}
@@ -646,6 +649,9 @@ function MedalsTab({ meetId, isNational }) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <Flag code={m.swimmer_detail?.nationality_detail?.code} name={m.swimmer_detail?.nationality_detail?.name} />
                           {m.swimmer_detail?.name}
+                          {m.swimmer_detail?.is_relay_team && (
+                            <span className="tag tag-neutral" style={{ flex: 'none' }}>Club</span>
+                          )}
                         </div>
                       </td>
                       <td>{m.event_detail?.name}</td>

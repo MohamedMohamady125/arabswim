@@ -38,18 +38,21 @@ const roundLabel = (r) => {
 
 const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
 
+// Long names ellipsize instead of stretching the column
+const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+
 function SwimmerLink({ swimmerId, detail }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
       <Flag code={detail?.nationality_detail?.code} name={detail?.nationality_detail?.name} />
       {detail?.is_relay_team ? (
         // Relay-team placeholders are clubs, not swimmers — no profile to open
         <>
-          <span>{detail?.name}</span>
+          <span style={NAME_ELLIPSIS}>{detail?.name}</span>
           <span className="tag tag-neutral" style={{ flex: 'none' }}>Club</span>
         </>
       ) : (
-        <Link to={`/swimmers/${swimmerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>{detail?.name}</Link>
+        <Link to={`/swimmers/${swimmerId}`} style={{ color: 'inherit', textDecoration: 'none', ...NAME_ELLIPSIS }}>{detail?.name}</Link>
       )}
     </div>
   )
@@ -287,7 +290,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
               rank || '—'
             )}
           </td>
-          <td>
+          <td className="swimmer-cell">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <SwimmerLink swimmerId={r.swimmer_detail?.id || r.swimmer} detail={r.swimmer_detail} />
               {!isRelay && (r.team || '').toUpperCase() === 'LP' && (
@@ -455,10 +458,10 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
 
       {!loading && grouped.length > 0 && (
         <div className="table-scroll">
-          <table className="table">
+          <table className="table results-table">
             <thead>
               <tr>
-                <th style={{ width: 44 }}>Rank</th>
+                <th className="rank-col">Rank</th>
                 <th>Swimmer</th>
                 <th className="num hide-mobile">Age</th>
                 {isNational && <th className="hide-mobile">Team</th>}

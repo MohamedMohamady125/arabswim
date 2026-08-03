@@ -55,6 +55,32 @@ function SwimmerLink({ swimmerId, detail }) {
   )
 }
 
+// Fixed-size round club logo; falls back to an initials monogram so every
+// row in the club tally stays perfectly aligned.
+function ClubLogo({ logo, name, size = 26 }) {
+  const [failed, setFailed] = useState(false)
+  const initials = (name || '')
+    .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?'
+  const base = {
+    width: size, height: size, flex: 'none', borderRadius: '50%',
+    border: '1px solid var(--color-neutral-300)',
+  }
+  if (logo && !failed) {
+    return (
+      <img src={mediaUrl(logo)} alt="" width={size} height={size}
+        onError={() => setFailed(true)}
+        style={{ ...base, objectFit: 'contain', background: '#fff' }} />
+    )
+  }
+  return (
+    <span style={{
+      ...base, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.38, fontWeight: 700, letterSpacing: '.02em',
+      background: 'var(--color-neutral-200)', color: 'var(--color-neutral-600)',
+    }}>{initials}</span>
+  )
+}
+
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
 function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
@@ -590,12 +616,11 @@ function MedalsTab({ meetId, isNational }) {
                             </div>
                           )}
                           {scope === 'club' && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              {row.team_logo && (
-                                <img src={mediaUrl(row.team_logo)} alt="" width={24} height={24}
-                                  style={{ objectFit: 'contain', flex: 'none' }} />
-                              )}
-                              {row.result__team || '—'}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                              <ClubLogo logo={row.team_logo} name={row.result__team} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {row.result__team || '—'}
+                              </span>
                             </div>
                           )}
                           {scope === 'swimmer' && (

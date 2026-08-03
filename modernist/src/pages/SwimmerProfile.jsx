@@ -184,8 +184,8 @@ function EventList({ events, selected, onSelect }) {
     if (!rows.length) return null
     return (
       <div style={{ marginBottom: 16 }}>
-        <div className="rule-b" style={{ paddingBottom: 4, marginBottom: 2 }}>
-          <span className="kicker">{label}</span>
+        <div style={{ background: 'var(--color-accent-800)', padding: '7px 10px', marginBottom: 2 }}>
+          <span className="kicker" style={{ color: '#ffffff' }}>{label}</span>
         </div>
         {rows.map((e) => {
           const isSel = selected?.event_id === e.event_id && selected?.pool === e.pool
@@ -722,6 +722,12 @@ export default function SwimmerProfile() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} flagUrl={swimmer.nationality_detail?.flag_url} />
             <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
+            {(currentClubs[0]?.club || swimmer.club) && (
+              <>
+                <span style={{ color: 'var(--color-neutral-400)' }}>·</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{currentClubs[0]?.club || swimmer.club}</span>
+              </>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {swimmer.date_of_birth
@@ -729,11 +735,6 @@ export default function SwimmerProfile() {
               : swimmer.birth_year ? chip('Born', swimmer.birth_year) : null}
             {swimmer.age != null && chip('Age', swimmer.age)}
             {swimmer.sex && chip('', swimmer.sex === 'M' ? 'Male' : 'Female')}
-            {currentClubs.length > 0
-              ? currentClubs.map((c, i) => (
-                  <Fragment key={i}>{chip('Club', `${c.club}${c.country ? ` · ${c.country}` : ''}`)}</Fragment>
-                ))
-              : swimmer.club ? chip('Club', swimmer.club) : null}
             {swimmer.instagram_url && (
               <a href={swimmer.instagram_url} target="_blank" rel="noopener noreferrer" title="Instagram" aria-label="Instagram"
                 className="btn btn-secondary btn-icon" style={{ width: 30, height: 30 }}>

@@ -263,6 +263,12 @@ export default function RecordsTab({ swimmerId }) {
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--color-accent)', marginTop: 2 }}>{r.location}</div>
                   <div className="asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{fmtDate(r.result_date)}</div>
+                  <div className="show-mobile-flex" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    {compressCategories(r.categories).map((cat) => (
+                      <span key={cat} className="tag tag-neutral">{cat}</span>
+                    ))}
+                    <span className={`tag ${r.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{r.pool}</span>
+                  </div>
                 </div>
                 <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
                   {compressCategories(r.categories).map((cat) => (

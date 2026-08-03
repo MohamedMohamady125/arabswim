@@ -77,6 +77,7 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
   line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 var(--space-2);
+  text-transform: capitalize;
 }
 h1 { font-size: 42px; }
 h2 { font-size: 32px; }
@@ -235,6 +236,7 @@ figure { margin: 0; }
 .counts > div:last-child { border-right: 0; }
 .counts .n { font-family: var(--font-heading); font-weight: 800; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
 .counts .l { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-700); margin-top: 6px; }
+.counts-4 { grid-template-columns: repeat(4, 1fr); }
 
 /* — stat bar (progress) — */
 .bar { height: 6px; background: var(--color-neutral-300); }

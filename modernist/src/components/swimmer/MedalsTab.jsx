@@ -114,7 +114,7 @@ export default function MedalsTab({ stats }) {
       )}
 
       {/* Medal count cards */}
-      <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
+      <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {statCards.map((c) => (
           <div key={c.title} style={{ textAlign: 'center' }}>
             <div className="card-kicker" style={{ color: c.color }}>{c.title} medals</div>

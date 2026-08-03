@@ -9,7 +9,7 @@ import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
 import { Loading, Empty, Seg, MedalIcon, Pager } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
-import { formatDateRange, formatNumber, parseTime } from '../utils'
+import { formatDateRange, formatNumber, mediaUrl, parseTime } from '../utils'
 
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -69,6 +69,16 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
     [events, genderFilter],
   )
 
+  // no "All" option — default to the first gender that has events (Men first)
+  useEffect(() => {
+    if (events.length === 0) return
+    if (!genderFilter || !events.some((e) => e.gender === genderFilter)) {
+      const first = ['M', 'F', 'X'].find((g) => events.some((e) => e.gender === g))
+      if (first) setGenderFilter(first)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events])
+
   // keep a valid event selected whenever the gender filter changes the list
   useEffect(() => {
     if (filteredEvents.length === 0) { setEventKey(''); return }
@@ -126,6 +136,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
   // rows for the selected round + category, grouped by category
   const roundsPresent = new Set(rows.map((r) => r.round_type || ''))
   const showMedals = selectedRound === 'Finals' || roundsPresent.size <= 1
+    // National meets (Finale A/B/C): each finale has its own podium
+    || (isNational && selectedRound === 'Consolation')
   const grouped = useMemo(() => {
     let sel = rows.filter((r) => (r.round_type || '') === (selectedRound ?? ''))
     if (selectedCategory !== 'ALL') sel = sel.filter((r) => (r.category || '') === selectedCategory)
@@ -307,9 +319,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
         {isExpanded && !isRelay && splits.length > 0 && (
           <tr style={{ background: 'var(--color-surface)' }}>
             <td colSpan={colCount} style={{ padding: '8px 12px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 104px)', gap: 6 }}>
                 {splits.map((s, j) => (
-                  <span key={j} style={{ display: 'inline-flex', gap: 8, alignItems: 'baseline', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', padding: '3px 8px' }}>
+                  <span key={j} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', padding: '3px 8px' }}>
                     <span className="micro" style={{ fontSize: 10 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</span>
                     <span className="asw-num" style={{ fontSize: 13, fontWeight: 700 }}>{s.time}</span>
                   </span>
@@ -341,18 +353,17 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
           <select className="select" value={eventKey} onChange={(e) => setEventKey(e.target.value)}>
             {filteredEvents.map((ev) => (
               <option key={`${ev.event_id}|${ev.gender}`} value={`${ev.event_id}|${ev.gender}`}>
-                {ev.display_name || `${ev.event_name} — ${ev.gender_label || GENDER_LABEL[ev.gender] || ev.gender}`} ({ev.results_count})
+                {ev.display_name || `${ev.event_name} — ${ev.gender_label || GENDER_LABEL[ev.gender] || ev.gender}`}
               </option>
             ))}
           </select>
         </div>
         <Seg
           options={[
-            { value: '', label: 'All' },
             { value: 'M', label: 'Men' },
             { value: 'F', label: 'Women' },
             { value: 'X', label: 'Mixed' },
-          ].filter((o) => !o.value || events.some((e) => e.gender === o.value))}
+          ].filter((o) => events.some((e) => e.gender === o.value))}
           value={genderFilter}
           onChange={setGenderFilter}
         />
@@ -562,7 +573,15 @@ function MedalsTab({ meetId, isNational }) {
                               {row.swimmer__nationality__name}
                             </div>
                           )}
-                          {scope === 'club' && (row.result__team || '—')}
+                          {scope === 'club' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              {row.team_logo && (
+                                <img src={mediaUrl(row.team_logo)} alt="" width={24} height={24}
+                                  style={{ objectFit: 'contain', flex: 'none' }} />
+                              )}
+                              {row.result__team || '—'}
+                            </div>
+                          )}
                           {scope === 'swimmer' && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
@@ -751,14 +770,12 @@ function StatisticsTab({ meetId, stats }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
               {performers.map((t, i) => (
                 <div key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4, gap: 12 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <span className="asw-num text-muted" style={{ width: 22, flex: 'none' }}>{i + 1}</span>
-                      <Flag code={t.nationality_code} name={t.swimmer_name} />
-                      <span style={{ fontWeight: 600 }}>{t.swimmer_name}</span>
-                      <span className="text-muted">· {t.event_name} · <span className="asw-num">{t.time}</span></span>
-                    </span>
-                    <span className="asw-num" style={{ fontWeight: 800 }}>{t.fina_points}</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 4 }}>
+                    <span className="asw-num text-muted">{i + 1}</span>
+                    <Flag code={t.nationality_code} name={t.swimmer_name} />
+                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.swimmer_name}</span>
+                    <span className="text-muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.event_name}</span>
+                    <span className="asw-num" style={{ fontWeight: 800, textAlign: 'right' }}>{t.fina_points}</span>
                   </div>
                   <div className="bar">
                     <div style={{ width: `${Math.round(((t.fina_points || 0) / maxFina) * 100)}%`, background: i < 3 ? 'var(--color-accent)' : 'var(--color-neutral-800)' }} />
@@ -1052,11 +1069,11 @@ export default function MeetDetail() {
 
       {/* counts strip */}
       {stats && (
-        <div className="counts" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="counts counts-4">
           <div><div className="n">{formatNumber(stats.total_results ?? 0)}</div><div className="l">Results</div></div>
           <div><div className="n">{formatNumber(stats.total_swimmers ?? 0)}</div><div className="l">Swimmers</div></div>
           <div><div className="n">{formatNumber(stats.total_events ?? events.length)}</div><div className="l">Events</div></div>
-          <div><div className="n">{formatNumber(stats.male_count ?? 0)} / {formatNumber(stats.female_count ?? 0)}</div><div className="l">Men / Women</div></div>
+          <div><div className="n" style={{ whiteSpace: 'nowrap' }}>{formatNumber(stats.male_count ?? 0)} / {formatNumber(stats.female_count ?? 0)}</div><div className="l" style={{ whiteSpace: 'nowrap' }}>Men / Women</div></div>
         </div>
       )}
 

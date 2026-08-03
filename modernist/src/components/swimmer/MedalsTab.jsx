@@ -117,7 +117,8 @@ export default function MedalsTab({ stats }) {
       <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {statCards.map((c) => (
           <div key={c.title} style={{ textAlign: 'center' }}>
-            <div className="card-kicker" style={{ color: c.color }}>{c.title} medals</div>
+            {/* single-line label so all three cards stay perfectly level on phones */}
+            <div className="card-kicker" style={{ color: c.color, whiteSpace: 'nowrap' }}>{c.title}</div>
             {c.img && (
               <img src={c.img} alt={c.title} width={44} height={44} style={{ margin: '8px auto 0' }} />
             )}

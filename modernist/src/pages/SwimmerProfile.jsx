@@ -661,11 +661,6 @@ export default function SwimmerProfile() {
     getMyClaims().then((res) => setMyClaims(list(res.data))).catch(() => setMyClaims([]))
   }, [id, isAuthed, isAdmin, mySwimmerId])
 
-  const currentClubs = useMemo(
-    () => clubHistory.filter((c) => c.is_current && !c.is_national),
-    [clubHistory]
-  )
-
   const handleEventClick = async (event) => {
     setSelectedEvent(event)
     setLoadingHistory(true)
@@ -722,12 +717,6 @@ export default function SwimmerProfile() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} flagUrl={swimmer.nationality_detail?.flag_url} />
             <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
-            {(currentClubs[0]?.club || swimmer.club) && (
-              <>
-                <span style={{ color: 'var(--color-neutral-400)' }}>·</span>
-                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{currentClubs[0]?.club || swimmer.club}</span>
-              </>
-            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {swimmer.date_of_birth

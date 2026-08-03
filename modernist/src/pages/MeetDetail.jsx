@@ -42,7 +42,12 @@ function SwimmerLink({ swimmerId, detail }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
       <Flag code={detail?.nationality_detail?.code} name={detail?.nationality_detail?.name} />
-      <Link to={`/swimmers/${swimmerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>{detail?.name}</Link>
+      {detail?.is_relay_team ? (
+        // Relay-team placeholders are clubs, not swimmers — no profile to open
+        <span>{detail?.name}</span>
+      ) : (
+        <Link to={`/swimmers/${swimmerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>{detail?.name}</Link>
+      )}
     </div>
   )
 }
@@ -236,7 +241,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
           onClick={() => {
             if (editMode) return
             if (hasSub) setExpandedRow(isExpanded ? null : r.id)
-            else navigate(`/swimmers/${r.swimmer_detail?.id || r.swimmer}`)
+            // Relay-team placeholders are clubs, not swimmers — no profile to open
+            else if (!r.swimmer_detail?.is_relay_team) navigate(`/swimmers/${r.swimmer_detail?.id || r.swimmer}`)
           }}
         >
           <td className="asw-num">
@@ -629,7 +635,12 @@ function MedalsTab({ meetId, isNational }) {
                 </thead>
                 <tbody>
                   {filteredMedals.map((m, i) => (
-                    <tr key={m.id || i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}>
+                    // Relay-team placeholders are clubs, not swimmers — no profile to open
+                    <tr
+                      key={m.id || i}
+                      style={{ cursor: m.swimmer_detail?.is_relay_team ? 'default' : 'pointer' }}
+                      onClick={m.swimmer_detail?.is_relay_team ? undefined : () => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}
+                    >
                       <td><MedalIcon type={m.medal_type} size={18} /></td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

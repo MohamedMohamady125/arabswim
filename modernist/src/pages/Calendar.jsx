@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
 } from '../api/calendar'
-import { getChampionships, createChampionship, deleteChampionship } from '../api/championships'
+import { getChampionships, createChampionship, updateChampionship, deleteChampionship } from '../api/championships'
 import { getCountries } from '../api/core'
 import { getSwimmerBirthdays } from '../api/swimmers'
 import Flag from '../components/Flag'
@@ -71,8 +71,59 @@ function Modal({ open, title, onClose, children }) {
 
 const LINK_STYLE = { flex: '1 1 140px', textAlign: 'center' }
 
+/* Admin: add/edit live results, entry pack and registration links on a meet */
+function MeetLinksModal({ meet, onClose, onSaved }) {
+  const [liveUrl, setLiveUrl] = useState(meet.live_results_url || '')
+  const [regUrl, setRegUrl] = useState(meet.registration_url || '')
+  const [packFile, setPackFile] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const fd = new FormData()
+      fd.append('live_results_url', liveUrl.trim())
+      fd.append('registration_url', regUrl.trim())
+      if (packFile) fd.append('meet_guide_pdf', packFile)
+      const res = await updateChampionship(meet.id, fd)
+      onSaved(res.data)
+    } catch (err) {
+      const d = err.response?.data
+      setError(d ? (typeof d === 'string' ? d : Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' ') : v}`).join(' · ')) : 'Could not save links')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal open title="Meet links" onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="field">
+          <label>Live results URL</label>
+          <input className="input" type="url" value={liveUrl} onChange={(e) => setLiveUrl(e.target.value)} placeholder="https://…" />
+        </div>
+        <div className="field">
+          <label>Registration link</label>
+          <input className="input" type="url" value={regUrl} onChange={(e) => setRegUrl(e.target.value)} placeholder="https://…" />
+        </div>
+        <div className="field">
+          <label>Entry pack (PDF{meet.meet_guide_pdf ? ' — already uploaded, choose a file to replace' : ''})</label>
+          <input className="input" type="file" accept=".pdf,application/pdf" onChange={(e) => setPackFile(e.target.files?.[0] || null)} />
+        </div>
+        {error && <div style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save links'}</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 /* Expanded panel under a meet row: info grid + public links; admin can delete calendar-only meets */
-function MeetExpandedPanel({ meet: c, isAdmin, onDelete }) {
+function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
   const showAny = c.live_results_url || c.meet_guide_pdf || c.registration_url || c.website || c.policy_pdf
   return (
     <div style={{ padding: '14px 32px 20px', background: 'var(--color-surface)' }}>
@@ -115,8 +166,11 @@ function MeetExpandedPanel({ meet: c, isAdmin, onDelete }) {
         {(c.results_count ?? 0) > 0 && (
           <Link className="btn btn-secondary" style={LINK_STYLE} to={`/meets/${c.id}`}>Meet page</Link>
         )}
+        {isAdmin && (
+          <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => onEditLinks(c)}>Edit links</button>
+        )}
         {isAdmin && c.is_calendar_only && (
-          <button className="btn btn-ghost" style={{ marginLeft: 'auto', color: 'var(--asw-slow)' }} onClick={() => onDelete(c)}>Delete meet</button>
+          <button className="btn btn-ghost" style={{ color: 'var(--asw-slow)' }} onClick={() => onDelete(c)}>Delete meet</button>
         )}
       </div>
     </div>
@@ -234,6 +288,7 @@ export default function Calendar() {
   const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()))
   const [filterCountry, setFilterCountry] = useState('')
   const [expandedMeetId, setExpandedMeetId] = useState(null)
+  const [editLinksMeet, setEditLinksMeet] = useState(null)
   const [featuredMeet, setFeaturedMeet] = useState(null)
 
   // admin: add event modal
@@ -525,7 +580,7 @@ export default function Calendar() {
                         <span className="micro" style={{ fontSize: 10, width: 12, textAlign: 'center' }}>{isExpanded ? '▴' : '▾'}</span>
                       </div>
                       {isExpanded && (
-                        <MeetExpandedPanel meet={c} isAdmin={isAdmin} onDelete={handleDeleteCalendarMeet} />
+                        <MeetExpandedPanel meet={c} isAdmin={isAdmin} onDelete={handleDeleteCalendarMeet} onEditLinks={setEditLinksMeet} />
                       )}
                     </div>
                   )
@@ -603,6 +658,20 @@ export default function Calendar() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* ── Edit meet links modal (admin) ── */}
+      {isAdmin && editLinksMeet && (
+        <MeetLinksModal
+          meet={editLinksMeet}
+          onClose={() => setEditLinksMeet(null)}
+          onSaved={(d) => {
+            setMeets((prev) => prev.map((m) => m.id === d.id
+              ? { ...m, live_results_url: d.live_results_url, registration_url: d.registration_url, meet_guide_pdf: d.meet_guide_pdf }
+              : m))
+            setEditLinksMeet(null)
+          }}
+        />
       )}
 
       {/* ── Add event modal (admin) ── */}

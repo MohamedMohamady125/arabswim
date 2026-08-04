@@ -756,6 +756,7 @@ function StatisticsTab({ meetId, stats }) {
           ['Events', stats.total_events ?? stats.events?.length],
           ['Male', stats.male_count],
           ['Female', stats.female_count],
+          ...(stats.clubs?.length ? [['Clubs', stats.clubs.length]] : []),
         ].map(([l, n]) => (
           <div key={l}>
             <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1 }}>{formatNumber(n ?? 0)}</div>

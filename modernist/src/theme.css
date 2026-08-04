@@ -265,8 +265,9 @@ figure { margin: 0; }
 
 /* — swimmer profile header — */
 /* photo stretches to the full header height (top down to the Born/Age
-   chips) instead of a fixed square */
-.swimmer-photo { width: 148px; align-self: stretch; min-height: 148px; font-size: 42px; }
+   chips) instead of a fixed square; capped so long wrapped names don't
+   balloon it into a tall sliver */
+.swimmer-photo { width: 148px; align-self: stretch; min-height: 148px; max-height: 210px; font-size: 42px; }
 .swimmer-head-info { min-width: 260px; }
 
 /* — mobile — */
@@ -306,8 +307,11 @@ figure { margin: 0; }
   .results-table td.swimmer-cell, .results-table th:nth-child(2) { padding-left: 4px; }
 
   /* keep swimmer details beside the photo on phones */
-  .swimmer-photo { width: 104px; align-self: stretch; min-height: 104px; font-size: 30px; }
+  .swimmer-photo { width: 104px; align-self: stretch; min-height: 104px; max-height: 176px; font-size: 30px; }
   .swimmer-head-info { min-width: 0; }
+  /* long names (3+ words) wrap into a tower on phones — tighter type keeps
+     the header, and therefore the stretched photo, compact */
+  .swimmer-head-info h1 { font-size: 23px; line-height: 1.15; }
 
   .cellgrid > * { padding: 12px; }
   .loading, .empty { padding: 32px 16px; }

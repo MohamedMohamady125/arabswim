@@ -489,7 +489,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
               return (
                 <div key={t.min} style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '7px 10px',
-                  background: isCurrent ? 'var(--color-accent-800)' : 'transparent',
+                  background: isCurrent ? 'var(--color-accent)' : 'transparent',
                   color: isCurrent ? '#fff' : 'inherit',
                   borderLeft: `4px solid ${isCurrent ? 'var(--asw-gold)' : reached ? 'var(--color-accent)' : 'var(--color-divider)'}`,
                 }}>

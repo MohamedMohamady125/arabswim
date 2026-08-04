@@ -12,7 +12,7 @@ import { getAlbums } from '../api/media'
 import { getRankings } from '../api/rankings'
 import { searchSwimmers, getSwimmerBirthdays } from '../api/swimmers'
 import Flag from '../components/Flag'
-import { SectHead, Loading } from '../components/ui'
+import { SectHead, Loading, Pager } from '../components/ui'
 import { formatDate, formatNumber, mediaUrl, formatDateRange } from '../utils'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -98,6 +98,7 @@ export default function Home() {
   const [counts, setCounts] = useState(null)
   const [meets, setMeets] = useState([])
   const [topResults, setTopResults] = useState([])
+  const [topPage, setTopPage] = useState(1)
   const [medalTally, setMedalTally] = useState([])
   const [newRecords, setNewRecords] = useState([])
   const [inductees, setInductees] = useState([])
@@ -198,7 +199,7 @@ export default function Home() {
         const latest = meetList[0]
         if (latest) {
           const [resTop, medals] = await Promise.allSettled([
-            api.get('/results/', { params: { championship: latest.id, ordering: '-fina_points', page_size: 8 } }),
+            api.get('/results/', { params: { championship: latest.id, ordering: '-fina_points', page_size: 50 } }),
             getMedalSummary({ championship: latest.id }),
           ])
           if (!alive) return
@@ -339,9 +340,9 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {topResults.map((r, i) => (
+                {topResults.slice((topPage - 1) * 10, topPage * 10).map((r, i) => (
                   <tr key={r.id}>
-                    <td className="asw-num">{i + 1}</td>
+                    <td className="asw-num">{(topPage - 1) * 10 + i + 1}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Flag code={r.swimmer_detail?.nationality_detail?.code} name={r.swimmer_detail?.nationality_detail?.name} />
@@ -358,6 +359,7 @@ export default function Home() {
                 )}
               </tbody>
             </table>
+            <Pager page={topPage} pageSize={10} count={topResults.length} onPage={setTopPage} />
             {latest && (
               <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
                 <Link className="btn btn-secondary" to={`/meets/${latest.id}`}>All results from this meet</Link>

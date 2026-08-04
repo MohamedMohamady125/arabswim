@@ -313,16 +313,16 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
                 <span
                   style={{
                     flex: 'none', marginLeft: 'auto',
-                    display: 'inline-flex', alignItems: 'center', gap: 2,
-                    padding: '1px 4px', cursor: 'pointer',
-                    fontSize: 8, fontWeight: 800, letterSpacing: '0.03em',
+                    display: 'inline-flex', alignItems: 'center', gap: 3,
+                    padding: '2px 5px', cursor: 'pointer',
+                    fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
                     fontFamily: 'var(--font-heading)',
                     border: `1px solid ${isExpanded ? 'var(--color-accent-800)' : 'var(--asw-gold)'}`,
                     background: isExpanded ? 'var(--color-accent-800)' : 'color-mix(in srgb, var(--asw-gold) 14%, transparent)',
                     color: isExpanded ? '#fff' : 'var(--color-accent-800)',
                   }}
                 >
-                  <span className="hide-mobile">{isRelay ? 'TEAM' : 'SPLITS'}</span> {isExpanded ? '▲' : '▼'}
+                  {isRelay ? 'TEAM' : 'SPLITS'} {isExpanded ? '▲' : '▼'}
                 </span>
               )}
             </div>

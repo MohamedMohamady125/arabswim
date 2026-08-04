@@ -353,9 +353,18 @@ export default function Swimmers() {
                         </Link>
                         {s.is_retired && <span className="tag tag-neutral">Retired</span>}
                       </div>
-                      <div className="show-mobile micro" style={{ margin: '3px 0 0 38px', textTransform: 'none', letterSpacing: 0 }}>
-                        {s.club || ''}
-                      </div>
+                      {s.sex && (
+                        <div className="show-mobile" style={{ margin: '5px 0 0 38px' }}>
+                          <span style={{
+                            display: 'inline-block', fontSize: 10, fontWeight: 700,
+                            letterSpacing: '0.07em', textTransform: 'uppercase',
+                            padding: '2px 8px', border: '1px solid #22a7c4',
+                            color: '#0e7490', background: 'rgba(34, 167, 196, 0.08)',
+                          }}>
+                            {s.sex === 'M' ? 'Male' : 'Female'}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="num asw-num">{s.birth_year ?? '—'}</td>
                     <td className="num asw-num">{s.age ?? '—'}</td>

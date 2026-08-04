@@ -892,6 +892,11 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             return Response({'error': 'swimmer_ids required'}, status=400)
         qs = championship.results.filter(swimmer_id__in=swimmer_ids)
         count = qs.count()
+        # Medal.result is SET_NULL: deleting results would orphan their
+        # medals into "manual" ones that recompute can never remove (and
+        # that block re-awarding to the same swimmer/event).
+        from medals.models import Medal
+        Medal.objects.filter(result__in=qs).delete()
         qs.delete()
         # Recompute medals after cleanup
         from medals.utils import recompute_medals
@@ -927,6 +932,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         # Gather swimmer ids before deleting so we can check for orphans
         swimmer_ids = list(qs.values_list('swimmer_id', flat=True).distinct())
         count = qs.count()
+        # See bulk_delete_results: never orphan medals into manual ones.
+        from medals.models import Medal
+        Medal.objects.filter(result__in=qs).delete()
         qs.delete()
         from medals.utils import recompute_medals
         recompute_medals(championship)

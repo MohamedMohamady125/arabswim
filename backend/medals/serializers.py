@@ -13,7 +13,7 @@ class MedalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Medal
         fields = ['id', 'swimmer', 'swimmer_detail', 'championship', 'championship_detail',
-                  'event', 'event_detail', 'medal_type', 'result']
+                  'event', 'event_detail', 'medal_type', 'result', 'scope']
 
 
 class MedalCreateSerializer(serializers.ModelSerializer):

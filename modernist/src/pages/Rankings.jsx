@@ -117,7 +117,7 @@ export default function Rankings() {
           onChange={setScope}
         />
         {scope === 'national' && (
-          <select className="select" style={{ width: 170 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+          <select className="select" style={{ flex: '2 1 170px', width: 'auto' }} value={country} onChange={(e) => setCountry(e.target.value)}>
             <option value="">Select country…</option>
             {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -132,11 +132,11 @@ export default function Rankings() {
           value={pool}
           onChange={setPool}
         />
-        <select className="select" style={{ width: 110 }} value={year} onChange={(e) => setYear(e.target.value)}>
+        <select className="select" style={{ flex: '1 1 110px', width: 'auto' }} value={year} onChange={(e) => setYear(e.target.value)}>
           <option value="">All-time</option>
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
-        <select className="select" style={{ width: 200 }} value={event} onChange={(e) => setEvent(e.target.value)}>
+        <select className="select" style={{ flex: '3 1 200px', width: 'auto' }} value={event} onChange={(e) => setEvent(e.target.value)}>
           <option value="">Select event…</option>
           {eventGroups.map((g) => (
             <optgroup key={g.stroke} label={g.stroke}>
@@ -144,7 +144,7 @@ export default function Rankings() {
             </optgroup>
           ))}
         </select>
-        <select className="select" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+        <select className="select" style={{ flex: '1 1 110px', width: 'auto' }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
           {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
         </select>
       </div>

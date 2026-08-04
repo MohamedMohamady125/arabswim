@@ -183,6 +183,11 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
     : (selectedRound === 'Finals'
       || (isNational && selectedRound === 'Consolation')
       || roundsPresent.size <= 1)
+  // Small categories (e.g. Benjamins) often swim heats only — that heats
+  // classement IS their podium, so their rows medal even in the Heats view.
+  const finalsCats = useMemo(() => new Set(
+    rows.filter((r) => r.round_type === 'Finals' || r.round_type === 'Consolation')
+      .map((r) => r.category || '')), [rows])
   const grouped = useMemo(() => {
     let sel
     if (isOpenView) {
@@ -269,7 +274,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
     // competition ranking: tied times share a rank (1,2,2,4); HC unranked
     const ranked = arr.filter((x) => !x.is_hc)
     const rank = r.is_hc ? 0 : ranked.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
-    const medalOnRow = showMedals && !r.is_manual && !r.is_hc && rank >= 1 && rank <= 3
+    const heatsOnlyCat = !isOpenView && !!r.category && !finalsCats.has(r.category)
+    const medalOnRow = (showMedals || heatsOnlyCat) && !r.is_manual && !r.is_hc && rank >= 1 && rank <= 3
     const swimmers = r.relay_swimmers || []
     const splits = r.splits || []
     const hasSub = (isRelay && swimmers.length > 0) || (!isRelay && splits.length > 0)
@@ -405,7 +411,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
           <select className="select" value={eventKey} onChange={(e) => setEventKey(e.target.value)}>
             {filteredEvents.map((ev) => (
               <option key={`${ev.event_id}|${ev.gender}`} value={`${ev.event_id}|${ev.gender}`}>
-                {ev.display_name || `${ev.event_name} — ${ev.gender_label || GENDER_LABEL[ev.gender] || ev.gender}`}
+                {(ev.display_name || ev.event_name || '').replace(/\s*[—–-]\s*(Men|Women|Mixed)\s*$/i, '')}
               </option>
             ))}
           </select>
@@ -419,7 +425,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
               onChange={(e) => { setSelectedCategory(e.target.value); setExpandedRow(null) }}
             >
               <option value="ALL">All categories</option>
-              {hasOpenPodium && <option value="OPEN">General (open — by time)</option>}
+              {hasOpenPodium && <option value="OPEN">TC</option>}
               {categories.map((c) => (
                 <option key={c || '_general'} value={c}>{c || 'General'}</option>
               ))}
@@ -481,7 +487,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
                 <React.Fragment key={`${cat || '_general'}-${gi}`}>
                   {isOpenView && gi === 0 && (
                     <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>General — all categories, ranked by time</td>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>TC — all categories, ranked by time</td>
                     </tr>
                   )}
                   {selectedCategory === 'ALL' && grouped.some(([c]) => c !== '') && (

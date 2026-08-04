@@ -182,6 +182,30 @@ class OpenPodiumTests(TCMeetTestCase):
         self.assertFalse(
             Medal.objects.filter(championship=self.champ, scope='OPEN').exists())
 
+    def test_heats_only_category_with_merged_ranks_gets_reranked(self):
+        # Real-world Benjamins case: rows created from the TC file first, then
+        # categorized by the dedupe when the per-category file merged in.
+        # No blanks remain, but the small category swam Séries only and kept
+        # merged open ranks (32, 38...) — its Séries classement IS its podium.
+        self._tc_meet()
+        infer_blank_categories(self.champ)  # sets has_open_podium
+        bj1, bj2 = self._swimmer('BJ One'), self._swimmer('BJ Two')
+        r1 = self._result(bj1, self.free, 3400, category='Benjamins',
+                          round_type='Heats', rank=32, age=11)
+        r2 = self._result(bj2, self.free, 3500, category='Benjamins',
+                          round_type='Heats', rank=38, age=11)
+        # Prelims below a final must keep their rank untouched.
+        pre = self._result(self.sr2, self.free, 2810, category='Seniors/Juniors',
+                           round_type='Heats', rank=3, age=19)
+        self.assertEqual(infer_blank_categories(self.champ), 0)
+        r1.refresh_from_db(); r2.refresh_from_db(); pre.refresh_from_db()
+        self.assertEqual((r1.original_rank, r2.original_rank), (1, 2))
+        self.assertEqual(pre.original_rank, 3)
+        recompute_medals(self.champ)
+        cat_medals = self._medals(self.free, 'CATEGORY')
+        self.assertIn(('BJ One', 'GOLD'), cat_medals)
+        self.assertIn(('BJ Two', 'SILVER'), cat_medals)
+
     def test_relay_legs_get_open_medals_too(self):
         self._tc_meet()
         infer_blank_categories(self.champ)

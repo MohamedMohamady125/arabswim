@@ -41,7 +41,16 @@ def infer_blank_categories(championship):
                    .select_related('swimmer'))
     categorized = [r for r in results if r.category]
     blanks = [r for r in results if not r.category]
-    if not categorized or not blanks:
+    if not categorized:
+        return 0
+    if not blanks:
+        # Nothing to infer, but a TC meet may still carry merged source
+        # ranks on categorized rows (rows created from the TC file first,
+        # then categorized by the dedupe when the per-category file merged
+        # in) — e.g. a Benjamins girl ranked 32nd overall who is 1st in
+        # her category. Re-rank so every category keeps its podium.
+        if championship.has_open_podium:
+            _rerank_tc_groups(championship)
         return 0
 
     # Categorized meet + a TC (open) file in the same import is the
@@ -72,20 +81,34 @@ def infer_blank_categories(championship):
             else:
                 continue
         changed.append(r)
-    if not changed:
-        return 0
-    Result.objects.bulk_update(changed, ['category'])
+    if changed:
+        Result.objects.bulk_update(changed, ['category'])
 
-    # Source ranks on re-categorized finals rows come from the merged open
-    # ranking (1..N across all categories) — kept as-is they would deny
-    # podiums to everyone outside the overall top 3. Re-rank each affected
-    # finals group per category with competition ranking (ties share).
-    affected = {(r.event_id, r.swimmer.sex, r.category, r.round_type)
-                for r in changed if r.round_type in ('Finals', 'Consolation')}
+    # Source ranks on TC-meet rows come from the merged open ranking
+    # (1..N across all categories) — kept as-is they would deny podiums
+    # to everyone outside the overall top 3. Re-rank per category.
+    _rerank_tc_groups(championship)
+    return len(changed)
+
+
+def _rerank_tc_groups(championship):
+    """Re-rank every per-category group of a TC meet by time (competition
+    ranking, ties share). Covers finals plus heats-only categories — small
+    categories (e.g. Benjamins) often swim Séries only, and their Séries
+    classement IS their podium. Heats below a final are left alone."""
+    from .models import Result
+
+    rows = [r for r in championship.results.select_related('swimmer')
+            if r.category and not r.is_hc]
+    groups = defaultdict(list)
+    for r in rows:
+        groups[(r.event_id, r.swimmer.sex, r.category, r.round_type)].append(r)
+    finals_cats = {(e, s, c) for (e, s, c, rt) in groups
+                   if rt in ('Finals', 'Consolation')}
     reranked = []
-    for key in affected:
-        group = [r for r in results if not r.is_hc and r.category
-                 and (r.event_id, r.swimmer.sex, r.category, r.round_type) == key]
+    for (e, s, c, rt), group in groups.items():
+        if rt not in ('Finals', 'Consolation') and (e, s, c) in finals_cats:
+            continue  # prelims below a final: rank has no podium meaning
         group.sort(key=lambda r: r.time_centiseconds or 0)
         for r in group:
             rank = next(i for i, x in enumerate(group)
@@ -95,4 +118,4 @@ def infer_blank_categories(championship):
                 reranked.append(r)
     if reranked:
         Result.objects.bulk_update(reranked, ['original_rank'])
-    return len(changed)
+    return len(reranked)

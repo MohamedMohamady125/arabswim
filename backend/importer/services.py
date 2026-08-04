@@ -1106,6 +1106,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     # so every club in this meet belongs to that country.
     apply_subclassification_country(championship)
 
+    # TC source files publish some events without age categories: infer them
+    # from the meet's own categorized results before awarding medals, so
+    # every category keeps its own podium.
+    from championships.categories import infer_blank_categories
+    categories_inferred = infer_blank_categories(championship)
+
     # Re-award medals with Olympic tie rules
     from medals.utils import recompute_medals
     recompute_medals(championship)
@@ -1121,6 +1127,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         'skipped_results': skipped_results,
         'skipped_details': skipped_details,
         'teams_created': teams_created,
+        'categories_inferred': categories_inferred,
     }
 
 

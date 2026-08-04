@@ -876,9 +876,12 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         championship = self.get_object()
         from teams.utils import apply_subclassification_country
         from medals.utils import recompute_medals
+        from .categories import infer_blank_categories
         teams_updated = apply_subclassification_country(championship)
+        categories_inferred = infer_blank_categories(championship)
         medal_count = recompute_medals(championship)
-        return Response({'medals': medal_count, 'teams_updated': teams_updated})
+        return Response({'medals': medal_count, 'teams_updated': teams_updated,
+                         'categories_inferred': categories_inferred})
 
     @action(detail=True, methods=['post'], url_path='bulk-delete-results')
     def bulk_delete_results(self, request, pk=None):

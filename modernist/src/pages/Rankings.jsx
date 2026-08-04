@@ -144,11 +144,9 @@ export default function Rankings() {
             </optgroup>
           ))}
         </select>
-        <Seg
-          options={AGE_GROUPS.map((g) => ({ value: g, label: g === 'OPEN' ? 'Open' : g }))}
-          value={ageGroup}
-          onChange={setAgeGroup}
-        />
+        <select className="select" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+          {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
+        </select>
       </div>
 
       {scope === 'national' && !country ? (

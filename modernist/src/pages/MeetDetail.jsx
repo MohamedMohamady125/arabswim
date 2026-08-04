@@ -882,6 +882,7 @@ function StatisticsTab({ meetId, stats }) {
                   <th>Swimmer</th>
                   <th>Event</th>
                   <th className="time">Time</th>
+                  <th className="time">Previous PB</th>
                   <th className="num">FINA</th>
                 </tr>
               </thead>
@@ -897,6 +898,18 @@ function StatisticsTab({ meetId, stats }) {
                     </td>
                     <td>{s.event_name}</td>
                     <td className="time asw-time asw-fast">{s.time}</td>
+                    <td className="time asw-time">
+                      {s.previous_best ? (
+                        <span>
+                          {s.previous_best}
+                          {s.improvement_cs > 0 && (
+                            <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontSize: 11, marginLeft: 6 }}>
+                              −{(s.improvement_cs / 100).toFixed(2)}s
+                            </span>
+                          )}
+                        </span>
+                      ) : <span className="text-muted">first swim</span>}
+                    </td>
                     <td className="num asw-num">{s.fina_points ?? '—'}</td>
                   </tr>
                 ))}

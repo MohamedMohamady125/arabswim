@@ -593,6 +593,21 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 (row['swimmer_id'], row['event_id']): row['best']
                 for row in all_time_rows
             }
+            # Previous PB: best time set before this meet (same pool), so the
+            # stats page can show what each swimmer improved on.
+            prev_rows = Result.objects.filter(
+                swimmer_id__in=swimmer_ids,
+                championship__pool=championship.pool,
+                championship__date__lt=championship.date,
+                swimmer__is_relay_team=False,
+                time_centiseconds__gt=0,
+            ).values('swimmer_id', 'event_id').annotate(
+                best=Min('time_centiseconds')
+            )
+            prev_lookup = {
+                (row['swimmer_id'], row['event_id']): row['best']
+                for row in prev_rows
+            }
             # Find which meet bests are also all-time bests
             pb_keys = set()
             for pb in pb_candidates:
@@ -606,12 +621,14 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 ).select_related(
                     'swimmer', 'swimmer__nationality', 'event'
                 ).order_by('swimmer_id', 'event_id', 'time_centiseconds')
+                from importer.parsers.base import format_centiseconds
                 seen = set()
                 for result in pb_results:
                     key = (result.swimmer_id, result.event_id)
                     if key not in pb_keys or key in seen:
                         continue
                     seen.add(key)
+                    prev = prev_lookup.get(key)
                     personal_bests.append({
                         'swimmer_id': result.swimmer.id,
                         'swimmer_name': result.swimmer.name,
@@ -622,6 +639,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                         'event_name': result.event.name,
                         'time': result.formatted_time,
                         'fina_points': result.fina_points,
+                        'previous_best': format_centiseconds(prev) if prev else None,
+                        'improvement_cs': (prev - result.time_centiseconds) if prev else None,
                     })
         personal_bests.sort(key=lambda x: -(x['fina_points'] or 0))
 

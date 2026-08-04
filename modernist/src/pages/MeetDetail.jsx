@@ -43,7 +43,7 @@ const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis
 
 function SwimmerLink({ swimmerId, detail }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 auto' }}>
       <Flag code={detail?.nationality_detail?.code} name={detail?.nationality_detail?.name} />
       {detail?.is_relay_team ? (
         // Relay-team placeholders are clubs, not swimmers — no profile to open
@@ -313,16 +313,16 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
                 <span
                   style={{
                     flex: 'none', marginLeft: 'auto',
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '2px 8px', cursor: 'pointer',
-                    fontSize: 10, fontWeight: 800, letterSpacing: '0.07em',
+                    display: 'inline-flex', alignItems: 'center', gap: 2,
+                    padding: '1px 4px', cursor: 'pointer',
+                    fontSize: 8, fontWeight: 800, letterSpacing: '0.03em',
                     fontFamily: 'var(--font-heading)',
                     border: `1px solid ${isExpanded ? 'var(--color-accent-800)' : 'var(--asw-gold)'}`,
                     background: isExpanded ? 'var(--color-accent-800)' : 'color-mix(in srgb, var(--asw-gold) 14%, transparent)',
                     color: isExpanded ? '#fff' : 'var(--color-accent-800)',
                   }}
                 >
-                  {isRelay ? 'TEAM' : 'SPLITS'} {isExpanded ? '▲' : '▼'}
+                  <span className="hide-mobile">{isRelay ? 'TEAM' : 'SPLITS'}</span> {isExpanded ? '▲' : '▼'}
                 </span>
               )}
             </div>

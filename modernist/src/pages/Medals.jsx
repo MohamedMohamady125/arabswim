@@ -110,21 +110,31 @@ export default function Medals() {
         />
       </div>
 
-      {/* totals strip */}
-      <div className="rule-b" style={{ display: 'flex', flexWrap: 'wrap' }}>
+      {/* totals cards */}
+      <div className="rule-b" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, padding: '20px 32px' }}>
         {[
-          { label: 'Gold', value: totalGold, icon: 'GOLD' },
-          { label: 'Silver', value: totalSilver, icon: 'SILVER' },
-          { label: 'Bronze', value: totalBronze, icon: 'BRONZE' },
-          { label: 'Total medals', value: totalAll },
-        ].map((s, i) => (
-          <div key={s.label} className={i < 3 ? 'rule-r' : undefined} style={{ padding: '14px 32px', flex: '1 1 0', minWidth: 130 }}>
-            <div className="card-kicker" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {s.icon && <MedalIcon type={s.icon} size={14} />}{s.label}
-            </div>
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, marginTop: 2 }}>
+          { label: 'Gold', value: totalGold, icon: 'GOLD', accent: 'var(--asw-gold)' },
+          { label: 'Silver', value: totalSilver, icon: 'SILVER', accent: 'var(--asw-silver)' },
+          { label: 'Bronze', value: totalBronze, icon: 'BRONZE', accent: 'var(--asw-bronze)' },
+          { label: 'Total medals', value: totalAll, accent: 'var(--color-accent)' },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className="card elev-sm"
+            style={{
+              alignItems: 'center', textAlign: 'center', gap: 6,
+              padding: '18px 12px',
+              border: '1px solid var(--color-divider)',
+              borderTop: `3px solid ${s.accent}`,
+            }}
+          >
+            {s.icon
+              ? <MedalIcon type={s.icon} size={26} />
+              : <span className="asw-num" style={{ fontSize: 20, fontWeight: 800, lineHeight: '26px', color: 'var(--color-accent)' }}>Σ</span>}
+            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1 }}>
               {loading ? '—' : s.value.toLocaleString('en-US')}
             </div>
+            <div className="card-kicker">{s.label}</div>
           </div>
         ))}
       </div>

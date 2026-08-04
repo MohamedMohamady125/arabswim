@@ -743,7 +743,9 @@ function StatisticsTab({ meetId, stats }) {
 
   const total = (stats.male_count || 0) + (stats.female_count || 0)
   const malePct = total ? Math.round(((stats.male_count || 0) / total) * 100) : 0
-  const performers = (stats.top_performers || []).filter((t) => perfGender === 'overall' || t.gender === perfGender)
+  const performers = (stats.top_performers || [])
+    .filter((t) => perfGender === 'overall' || t.gender === perfGender)
+    .slice(0, 30)
   const maxFina = performers[0]?.fina_points || 1
 
   return (
@@ -1161,16 +1163,6 @@ export default function MeetDetail() {
           )}
         </div>
       </div>
-
-      {/* counts strip */}
-      {stats && (
-        <div className="counts counts-4">
-          <div><div className="n">{formatNumber(stats.total_results ?? 0)}</div><div className="l">Results</div></div>
-          <div><div className="n">{formatNumber(stats.total_swimmers ?? 0)}</div><div className="l">Swimmers</div></div>
-          <div><div className="n">{formatNumber(stats.total_events ?? events.length)}</div><div className="l">Events</div></div>
-          <div><div className="n" style={{ whiteSpace: 'nowrap' }}>{formatNumber(stats.male_count ?? 0)} / {formatNumber(stats.female_count ?? 0)}</div><div className="l" style={{ whiteSpace: 'nowrap' }}>Men / Women</div></div>
-        </div>
-      )}
 
       {/* tabs */}
       <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>

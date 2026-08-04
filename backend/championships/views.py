@@ -549,12 +549,18 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         ).order_by('-fina_points').select_related('swimmer', 'swimmer__nationality', 'event')
         top_list = []
         seen = set()
+        # Cap per gender, not overall — otherwise a men-dominant meet fills
+        # the whole list and the Women filter shows almost nothing.
+        gender_counts = {}
         for r in top_candidates:
             key = (r.swimmer_id, r.event_id)
             if key in seen:
                 continue
+            if gender_counts.get(r.swimmer.sex, 0) >= 30:
+                continue
             if r.fina_points == best_lookup.get(key):
                 seen.add(key)
+                gender_counts[r.swimmer.sex] = gender_counts.get(r.swimmer.sex, 0) + 1
                 top_list.append({
                     'swimmer_id': r.swimmer.id,
                     'swimmer_name': r.swimmer.name,
@@ -566,7 +572,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     'time': r.formatted_time,
                     'fina_points': r.fina_points,
                 })
-                if len(top_list) >= 30:
+                if all(c >= 30 for c in gender_counts.values()) and len(gender_counts) >= 2:
                     break
 
         # Personal bests achieved at this meet

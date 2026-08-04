@@ -264,12 +264,17 @@ figure { margin: 0; }
 .show-mobile, .show-mobile-flex { display: none !important; }
 
 /* — swimmer profile header — */
-.swimmer-photo { width: 128px; height: 128px; font-size: 42px; }
+/* photo stretches to the full header height (top down to the Born/Age
+   chips) instead of a fixed square */
+.swimmer-photo { width: 148px; align-self: stretch; min-height: 148px; font-size: 42px; }
 .swimmer-head-info { min-width: 260px; }
 
 /* — mobile — */
 @media (max-width: 900px) {
   .hide-mobile { display: none !important; }
+  /* splits/team chip: keep the label but as small as legible so athlete
+     names get the width */
+  .splits-chip { font-size: 7px !important; padding: 1px 3px !important; letter-spacing: 0.02em !important; gap: 1px !important; }
   .show-mobile { display: block !important; }
   .show-mobile-flex { display: inline-flex !important; }
   h1 { font-size: 28px; }
@@ -301,7 +306,7 @@ figure { margin: 0; }
   .results-table td.swimmer-cell, .results-table th:nth-child(2) { padding-left: 4px; }
 
   /* keep swimmer details beside the photo on phones */
-  .swimmer-photo { width: 92px; height: 92px; font-size: 30px; }
+  .swimmer-photo { width: 104px; align-self: stretch; min-height: 104px; font-size: 30px; }
   .swimmer-head-info { min-width: 0; }
 
   .cellgrid > * { padding: 12px; }

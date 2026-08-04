@@ -311,6 +311,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
                 // marginLeft auto pins every SPLITS/TEAM badge to the cell's
                 // right edge so they line up in one column across all rows
                 <span
+                  className="splits-chip"
                   style={{
                     flex: 'none', marginLeft: 'auto',
                     display: 'inline-flex', alignItems: 'center', gap: 3,

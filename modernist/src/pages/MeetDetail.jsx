@@ -791,7 +791,7 @@ function StatisticsTab({ meetId, stats }) {
               <tbody>
                 {stats.countries.map((c, i) => (
                   <tr key={c.swimmer__nationality__id ?? i}>
-                    <td>
+                    <td style={{ fontSize: 15, fontWeight: 600 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Flag code={c.swimmer__nationality__code} name={c.swimmer__nationality__name} />
                         {c.swimmer__nationality__name}
@@ -818,7 +818,14 @@ function StatisticsTab({ meetId, stats }) {
               <tbody>
                 {stats.clubs.map((c, i) => (
                   <tr key={i}>
-                    <td>{c.team || c.result__team || '—'}</td>
+                    <td style={{ fontSize: 15, fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <ClubLogo logo={c.team_logo} name={c.team || c.result__team} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.team || c.result__team || '—'}
+                        </span>
+                      </div>
+                    </td>
                     <td className="num asw-num">{c.swimmers_count}</td>
                   </tr>
                 ))}
@@ -845,7 +852,7 @@ function StatisticsTab({ meetId, stats }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
               {performers.map((t, i) => (
                 <div key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 4 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 15, marginBottom: 4 }}>
                     <span className="asw-num text-muted">{i + 1}</span>
                     <Flag code={t.nationality_code} name={t.swimmer_name} />
                     <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.swimmer_name}</span>

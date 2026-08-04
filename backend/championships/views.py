@@ -523,6 +523,16 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             )
             .order_by('-swimmers_count')
         )
+        # Attach club logos (same canonical team-key match as the medal tally)
+        from teams.models import Team
+        from teams.utils import normalize_team_key
+        team_by_key = {}
+        for t in Team.objects.only('id', 'name', 'logo'):
+            team_by_key.setdefault(normalize_team_key(t.name), t)
+        for row in clubs:
+            t = team_by_key.get(normalize_team_key(row['team']))
+            row['team_id'] = t.id if t else None
+            row['team_logo'] = t.logo.url if t and t.logo else None
 
         # Top performers (best FINA points, deduplicated per swimmer+event)
         from django.db.models import Max, Subquery, OuterRef

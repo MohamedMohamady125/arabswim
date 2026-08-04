@@ -2537,6 +2537,60 @@ class SameMeetMergeTests(TestCase):
         self.assertEqual(rows.count(), 1)
         self.assertEqual(rows.first().category, 'Seniors')
 
+    def _one_relay_preview(self, category):
+        return {
+            'meet': {'name': "CHAMPIONNAT D'ETE M/C ET J/S TC",
+                     'date': '2026-07-28', 'pool': 'LCM', 'location': 'Rades'},
+            'events': [{
+                'event_name': '4x100 M Freestyle Relay', 'distance': 400,
+                'stroke': 'Freestyle', 'gender': 'M', 'round_type': 'Finals',
+                'age_group': '', 'is_relay': True,
+                'results': [{
+                    'swimmer_name': 'ASCNS', 'time_text': '3:37.33',
+                    'time_centiseconds': 21733, 'rank': 2, 'birth_year': None,
+                    'age': None, 'nationality_code': 'TUN', 'club': 'ASCNS',
+                    'fina_points': 0, 'gender': 'M', 'is_relay': True,
+                    'category': category, 'status': 'OK',
+                    'relay_swimmers': ['Heni MESFAR', 'Hamza CHEBBI'],
+                }],
+            }],
+            'swimmers': [],
+            'stats': {'total_events': 1, 'total_results': 1, 'total_swimmers': 1},
+        }
+
+    def test_tc_then_categorized_relay_does_not_duplicate(self):
+        """Relays appear in both the TC and per-category files with the
+        same club/round/time — the second import must upgrade the row, not
+        duplicate it (which doubled every relay medal in meet 178)."""
+        from championships.models import Result
+        from .services import confirm_import
+        confirm_import(self._one_relay_preview(''), {})
+        confirm_import(self._one_relay_preview('Seniors/Juniors'), {})
+        rows = Result.objects.filter(championship=self.champ)
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.first().category, 'Seniors/Juniors')
+
+    def test_categorized_then_tc_relay_does_not_duplicate(self):
+        from championships.models import Result
+        from .services import confirm_import
+        confirm_import(self._one_relay_preview('Seniors/Juniors'), {})
+        confirm_import(self._one_relay_preview(''), {})
+        rows = Result.objects.filter(championship=self.champ)
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.first().category, 'Seniors/Juniors')
+
+    def test_two_squads_same_relay_stay_separate(self):
+        """Blank-category matching must not merge two different squads of
+        the same club (different times)."""
+        from championships.models import Result
+        from .services import confirm_import
+        confirm_import(self._one_relay_preview('Seniors/Juniors'), {})
+        other = self._one_relay_preview('')
+        other['events'][0]['results'][0]['time_centiseconds'] = 22000
+        other['events'][0]['results'][0]['time_text'] = '3:40.00'
+        confirm_import(other, {})
+        self.assertEqual(Result.objects.filter(championship=self.champ).count(), 2)
+
     def test_swimmer_club_updates_to_latest_meet(self):
         """A swimmer's club follows their most recent meet (one current
         club) — but an older meet's import never overwrites a newer club."""

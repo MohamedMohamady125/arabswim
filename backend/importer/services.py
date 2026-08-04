@@ -918,6 +918,24 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     category=category,
                     time_centiseconds=time_cs,
                 ).first()
+                if not existing:
+                    # TC and per-category files publish the same relay swim
+                    # (identical club/round/time) with and without an age
+                    # category — blank matches any category, like the
+                    # individual dedupe below.
+                    twin_qs = Result.objects.filter(
+                        swimmer=swimmer,
+                        championship=championship,
+                        event=db_event,
+                        round_type=round_type,
+                        time_centiseconds=time_cs,
+                    )
+                    existing = (twin_qs.filter(category='') if category
+                                else twin_qs.exclude(category='')).first()
+                    if existing and category and not existing.category:
+                        # Adopt the richer per-category label
+                        existing.category = category
+                        existing.save(update_fields=['category'])
                 if existing:
                     claimed_results.add(existing.id)
                     # Legacy rows stored the stripped club name; adopt the

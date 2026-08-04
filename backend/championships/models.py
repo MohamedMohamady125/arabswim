@@ -50,6 +50,11 @@ class Championship(models.Model):
     # Created from the calendar for a future meet: hidden from the meets
     # list until it gets real results.
     is_calendar_only = models.BooleanField(default=False)
+    # National meets (e.g. Tunisian "toutes catégories" championships) that
+    # award an extra open podium per event across all age categories on top
+    # of the per-category podiums. Auto-detected on import when a TC
+    # results file is merged into a categorized meet.
+    has_open_podium = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

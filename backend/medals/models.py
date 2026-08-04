@@ -11,6 +11,11 @@ class Medal(models.Model):
     event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name='medals')
     medal_type = models.CharField(max_length=10, choices=MEDAL_CHOICES)
     result = models.ForeignKey(Result, on_delete=models.SET_NULL, blank=True, null=True)
+    # CATEGORY: age-category podium (default). OPEN: the extra open/TC
+    # ("toutes catégories") podium some national meets award per event
+    # across all age groups — the same swim can earn both.
+    SCOPE_CHOICES = [('CATEGORY', 'Category'), ('OPEN', 'Open')]
+    scope = models.CharField(max_length=10, choices=SCOPE_CHOICES, default='CATEGORY')
 
     class Meta:
         ordering = ['championship', 'event']

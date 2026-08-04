@@ -15,7 +15,7 @@ from medals.models import Medal
 from medals.utils import recompute_medals
 
 
-class InferBlankCategoriesTests(TestCase):
+class TCMeetTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.country = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
@@ -62,6 +62,7 @@ class InferBlankCategoriesTests(TestCase):
                 (self.mn2, 2900, 5, 14), (self.cd2, 2950, 6, 16)]:
             self._result(sw, self.free, t, rank=rk, age=age)
 
+class InferBlankCategoriesTests(TCMeetTestCase):
     def test_categories_inferred_from_own_swims_and_age_map(self):
         self._tc_meet()
         updated = infer_blank_categories(self.champ)
@@ -137,3 +138,76 @@ class InferBlankCategoriesTests(TestCase):
         self._tc_meet()
         self.assertEqual(infer_blank_categories(self.champ), 6)
         self.assertEqual(infer_blank_categories(self.champ), 0)
+
+    def test_tc_signature_sets_open_podium_flag(self):
+        self._tc_meet()
+        self.assertFalse(self.champ.has_open_podium)
+        infer_blank_categories(self.champ)
+        self.champ.refresh_from_db()
+        self.assertTrue(self.champ.has_open_podium)
+
+
+class OpenPodiumTests(TCMeetTestCase):
+    """TC meets award an open podium per event on top of category podiums,
+    so the same swim can earn two medals (e.g. category gold + open gold)."""
+
+    def _medals(self, event, scope):
+        return {(m.swimmer.name, m.medal_type)
+                for m in Medal.objects.filter(championship=self.champ,
+                                              result__event=event, scope=scope)}
+
+    def test_open_podium_awarded_across_categories(self):
+        self._tc_meet()
+        infer_blank_categories(self.champ)
+        recompute_medals(self.champ)
+        # Open podium = top 3 by time across all categories.
+        self.assertEqual(self._medals(self.free, 'OPEN'), {
+            ('SR One', 'GOLD'), ('MN One', 'SILVER'), ('SR Two', 'BRONZE')})
+        self.assertEqual(self._medals(self.fly, 'OPEN'), {
+            ('SR One', 'GOLD'), ('CD One', 'SILVER'), ('CD Two', 'BRONZE')})
+        # Category podiums are untouched — SR One holds both golds in free.
+        self.assertIn(('SR One', 'GOLD'), self._medals(self.free, 'CATEGORY'))
+        self.assertEqual(
+            Medal.objects.filter(championship=self.champ, swimmer=self.sr1,
+                                 result__event=self.free,
+                                 medal_type='GOLD').count(), 2)
+
+    def test_no_open_podium_without_flag(self):
+        # A plain categorized national meet (no TC file) keeps single podiums.
+        self._tc_meet()
+        for r in Result.objects.filter(event=self.free):
+            r.category = 'Seniors/Juniors'
+            r.save(update_fields=['category'])
+        recompute_medals(self.champ)
+        self.assertFalse(
+            Medal.objects.filter(championship=self.champ, scope='OPEN').exists())
+
+    def test_relay_legs_get_open_medals_too(self):
+        self._tc_meet()
+        infer_blank_categories(self.champ)
+        relay = Event.objects.create(name='4x50 M Freestyle Relay', distance=200,
+                                     stroke='Freestyle', is_relay=True)
+        club_a = Swimmer.objects.create(name='ASCNS', sex='F', is_relay_team=True,
+                                        nationality=self.country)
+        club_b = Swimmer.objects.create(name='EST', sex='F', is_relay_team=True,
+                                        nationality=self.country)
+        # Two category podiums (each squad wins its category)...
+        Result.objects.create(
+            swimmer=club_a, championship=self.champ, event=relay,
+            round_type='Finals', category='Seniors/Juniors',
+            time_centiseconds=11000, original_rank=1,
+            relay_swimmers=[{'name': 'SR One'}])
+        Result.objects.create(
+            swimmer=club_b, championship=self.champ, event=relay,
+            round_type='Finals', category='Cadets',
+            time_centiseconds=11500, original_rank=1,
+            relay_swimmers=[{'name': 'CD One'}])
+        recompute_medals(self.champ)
+        # ...plus one open podium across categories, by time.
+        open_medals = {(m.swimmer.name, m.medal_type)
+                       for m in Medal.objects.filter(
+                           championship=self.champ, result__event=relay,
+                           scope='OPEN')}
+        self.assertEqual(open_medals, {
+            ('ASCNS', 'GOLD'), ('SR One', 'GOLD'),
+            ('EST', 'SILVER'), ('CD One', 'SILVER')})

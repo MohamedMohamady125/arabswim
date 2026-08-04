@@ -60,6 +60,32 @@ def recompute_medals(championship):
         groups[(r.event_id, r.swimmer.sex, r.category)].append(r)
 
     medals = []
+
+    def award(r, medal_type, scope='CATEGORY'):
+        if (r.swimmer_id, r.event_id) in manual:
+            return
+        medals.append(Medal(
+            swimmer=r.swimmer, championship=championship,
+            event_id=r.event_id, medal_type=medal_type, result=r, scope=scope,
+        ))
+        # Relays: each athlete on the squad also gets an individual
+        # medal, so a relay counts once per swimmer in personal and
+        # team/country tallies.
+        if r.swimmer.is_relay_team:
+            seen = set()
+            for leg in (r.relay_swimmers or []):
+                s = _match_relay_swimmer(leg.get('name'), r.swimmer.nationality_id)
+                if not s or s.id in seen:
+                    continue
+                if (s.id, r.event_id) in manual:
+                    continue
+                seen.add(s.id)
+                medals.append(Medal(
+                    swimmer=s, championship=championship,
+                    event_id=r.event_id, medal_type=medal_type, result=r,
+                    scope=scope,
+                ))
+
     for group_rows in groups.values():
         rounds = {r.round_type for r in group_rows}
         award_sets = []
@@ -74,30 +100,6 @@ def recompute_medals(championship):
             continue
         else:
             award_sets.append(group_rows)
-
-        def award(r, medal_type):
-            if (r.swimmer_id, r.event_id) in manual:
-                return
-            medals.append(Medal(
-                swimmer=r.swimmer, championship=championship,
-                event_id=r.event_id, medal_type=medal_type, result=r,
-            ))
-            # Relays: each athlete on the squad also gets an individual
-            # medal, so a relay counts once per swimmer in personal and
-            # team/country tallies.
-            if r.swimmer.is_relay_team:
-                seen = set()
-                for leg in (r.relay_swimmers or []):
-                    s = _match_relay_swimmer(leg.get('name'), r.swimmer.nationality_id)
-                    if not s or s.id in seen:
-                        continue
-                    if (s.id, r.event_id) in manual:
-                        continue
-                    seen.add(s.id)
-                    medals.append(Medal(
-                        swimmer=s, championship=championship,
-                        event_id=r.event_id, medal_type=medal_type, result=r,
-                    ))
 
         for rows in award_sets:
             if any(r.original_rank for r in rows):
@@ -120,6 +122,32 @@ def recompute_medals(championship):
                 if medal_type is None:
                     break  # rows are time-sorted; no more medals in this group
                 award(r, medal_type)
+
+    # TC ("toutes catégories") national meets award one extra open podium
+    # per event across all age categories, on top of the per-category
+    # podiums — the same swim can earn both a category and an open medal.
+    # The open ranking is recomputed from times (original_rank is
+    # per-category), pooling Finale A/B so every finalist competes.
+    if is_national and championship.has_open_podium:
+        open_groups = defaultdict(list)
+        for r in results:
+            open_groups[(r.event_id, r.swimmer.sex)].append(r)
+        for group_rows in open_groups.values():
+            rounds = {r.round_type for r in group_rows}
+            if 'Finals' in rounds:
+                rows = [r for r in group_rows
+                        if r.round_type in ('Finals', 'Consolation')]
+            elif len(rounds) > 1:
+                continue
+            else:
+                rows = group_rows
+            for r in rows:
+                rank = next(j for j, x in enumerate(rows)
+                            if x.time_centiseconds == r.time_centiseconds) + 1
+                medal_type = _MEDAL_BY_RANK.get(rank)
+                if medal_type is None:
+                    break  # rows are time-sorted; no more open medals
+                award(r, medal_type, scope='OPEN')
 
     Medal.objects.bulk_create(medals)
     return len(medals)

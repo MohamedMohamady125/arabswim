@@ -44,6 +44,13 @@ def infer_blank_categories(championship):
     if not categorized or not blanks:
         return 0
 
+    # Categorized meet + a TC (open) file in the same import is the
+    # signature of meets that award an extra open podium per event on top
+    # of the per-category podiums (see medals.utils.recompute_medals).
+    if not championship.has_open_podium:
+        championship.has_open_podium = True
+        championship.save(update_fields=['has_open_podium'])
+
     swimmer_cats = defaultdict(set)
     age_cats = defaultdict(Counter)
     for r in categorized:

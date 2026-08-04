@@ -135,7 +135,7 @@ function Section({ label, pool, rows, showFina, last }) {
 export default function Records() {
   const [scope, setScope] = useState('arab')
   const [pool, setPool] = useState('LCM')
-  const [gender, setGender] = useState('')
+  const [gender, setGender] = useState('M')
   const [ageGroup, setAgeGroup] = useState('OPEN')
   const [country, setCountry] = useState('')
   const [countries, setCountries] = useState([])
@@ -202,14 +202,16 @@ export default function Records() {
 
       {/* filter bar */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Seg options={SCOPE_OPTIONS} value={scope} onChange={(v) => setScope(v)} />
+        <select className="select" style={{ width: 150 }} value={scope} onChange={(e) => setScope(e.target.value)}>
+          {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
         <Seg
           options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
           value={pool}
           onChange={setPool}
         />
         <Seg
-          options={[{ value: '', label: 'Both' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+          options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
           value={gender}
           onChange={setGender}
         />

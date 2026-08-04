@@ -7,7 +7,7 @@ import {
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
-import { Loading, Empty, Seg, MedalIcon, Pager } from '../components/ui'
+import { Loading, Empty, Seg, MedalIcon } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { formatDateRange, formatNumber, mediaUrl, parseTime } from '../utils'
 
@@ -98,8 +98,6 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
   const [editMode, setEditMode] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editValues, setEditValues] = useState({ time: '', team: '' })
-  const [page, setPage] = useState(1)
-  const PAGE_SIZE = 10
 
   const filteredEvents = useMemo(
     () => events.filter((e) => !genderFilter || e.gender === genderFilter),
@@ -215,19 +213,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
     return order.map((cat) => [cat, byCat.get(cat)])
   }, [rows, selectedRound, selectedCategory, isOpenView])
 
-  // client-side pagination: 10 rows per page across the grouped selection
-  useEffect(() => { setPage(1); setExpandedRow(null) }, [eventKey, selectedRound, selectedCategory])
-  const flatRows = useMemo(() => grouped.flatMap(([cat, rs]) => rs.map((r) => ({ cat, r }))), [grouped])
-  const pageGroups = useMemo(() => {
-    const slice = flatRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-    const gs = []
-    slice.forEach(({ cat, r }) => {
-      const last = gs[gs.length - 1]
-      if (last && last[0] === cat) last[1].push(r)
-      else gs.push([cat, [r]])
-    })
-    return gs
-  }, [flatRows, page])
+  useEffect(() => { setExpandedRow(null) }, [eventKey, selectedRound, selectedCategory])
+  // full list — every swimmer in the selection, no pagination
+  const pageGroups = grouped
   const fullByCat = useMemo(() => new Map(grouped), [grouped])
 
   const isRelay = selectedEvent?.event_name?.toLowerCase().includes('relay')
@@ -506,7 +494,6 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
               ))}
             </tbody>
           </table>
-          <Pager page={page} pageSize={PAGE_SIZE} count={flatRows.length} onPage={(p) => { setPage(p); setExpandedRow(null) }} />
         </div>
       )}
     </div>

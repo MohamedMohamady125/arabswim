@@ -663,6 +663,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     # relay rows are updated in place — but never a row another squad
     # already claimed in this import.
     claimed_results = set()
+    # Swimmers whose club field was already reconciled during this run
+    club_synced = set()
 
     year_clubs = {}  # (NAME, 'Y', year) -> first club seen for that identity
 
@@ -877,12 +879,28 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 else:
                     team = normalize_club_name(raw_club)
 
-            # Update swimmer's club if they don't have one yet
-            if team and team != 'LP' and not swimmer.club and not (is_relay or result_data.get('is_relay', False)):
+            # Keep swimmer's club current: set it when blank, and update it
+            # when this meet is the swimmer's most recent one (athletes have
+            # a single current club — the one they last competed for).
+            if team and team != 'LP' and not (is_relay or result_data.get('is_relay', False)) \
+                    and swimmer.id not in club_synced:
                 from teams.utils import is_valid_team_name
                 if is_valid_team_name(team):
-                    swimmer.club = normalize_club_name(team)
-                    swimmer.save(update_fields=['club'])
+                    new_club = normalize_club_name(team)
+                    if not swimmer.club:
+                        swimmer.club = new_club
+                        swimmer.save(update_fields=['club'])
+                    elif swimmer.club != new_club and championship.date:
+                        latest = (Result.objects
+                                  .filter(swimmer=swimmer, championship__date__isnull=False)
+                                  .exclude(championship=championship)
+                                  .order_by('-championship__date')
+                                  .values_list('championship__date', flat=True)
+                                  .first())
+                        if not latest or championship.date >= latest:
+                            swimmer.club = new_club
+                            swimmer.save(update_fields=['club'])
+                club_synced.add(swimmer.id)
 
             round_type = event_data.get('round_type', '') or ''
             category = result_data.get('category', '') or event_data.get('age_group', '') or ''
@@ -954,6 +972,24 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     round_type=round_type,
                     category=category,
                 ).first()
+                if not existing:
+                    # Federations release the same meet both as a TC
+                    # ("toutes catégories") file with blank categories and a
+                    # per-category file. Both describe the same physical
+                    # swims, so a blank category matches any category —
+                    # otherwise importing both files duplicates every result.
+                    twin_qs = Result.objects.filter(
+                        swimmer=swimmer,
+                        championship=championship,
+                        event=db_event,
+                        round_type=round_type,
+                    )
+                    existing = (twin_qs.filter(category='') if category
+                                else twin_qs.exclude(category='')).first()
+                    if existing and category and not existing.category:
+                        # Adopt the richer per-category label
+                        existing.category = category
+                        existing.save(update_fields=['category'])
 
             if existing:
                 # Keep the better time

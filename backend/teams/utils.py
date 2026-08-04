@@ -196,6 +196,33 @@ def auto_create_teams():
             club_data[club_key]['nationalities'][nat_code] = \
                 club_data[club_key]['nationalities'].get(nat_code, 0) + 1
 
+    # Also scan result team names: a swimmer who changed clubs keeps their
+    # current club on the profile, so the club they swam for in a given meet
+    # may exist only on Result rows (e.g. EST in the Tunisian summer champs).
+    from championships.models import Result
+    from django.db.models import Count as _Count
+    result_rows = (Result.objects
+                   .exclude(Q(team='') | Q(team__isnull=True))
+                   .values('team', 'championship__country__code')
+                   .annotate(n=_Count('id')))
+    for row in result_rows:
+        club = strip_squad_number((row['team'] or '')).strip()
+        if not club or club == 'LP' or club in skip_names or not is_valid_team_name(club):
+            continue
+        if normalize_team_key(club) in skip_names:
+            continue
+        club_key = normalize_team_key(club)
+        if club_key not in club_data:
+            club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}}
+        club_data[club_key]['count'] += row['n']
+        # Vote the meet's host country — clubs swim mostly in their own
+        # national championships, and apply_subclassification_country
+        # corrects national meets afterwards anyway.
+        code = row['championship__country__code']
+        if code:
+            club_data[club_key]['nationalities'][code] = \
+                club_data[club_key]['nationalities'].get(code, 0) + row['n']
+
     # Existing teams indexed by normalized key so import variants
     # ("Al-Ahly", "AL AHLY 2") match instead of creating duplicates
     existing_keys = {normalize_team_key(t.name) for t in Team.objects.all()}

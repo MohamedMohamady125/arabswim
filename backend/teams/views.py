@@ -325,6 +325,17 @@ class TeamViewSet(viewsets.ModelViewSet):
         deleted, _ = Team.objects.filter(id__in=ids).delete()
         return Response({'deleted': deleted})
 
+    @action(detail=False, methods=['post'], url_path='sync-from-results')
+    def sync_from_results(self, request):
+        """Create missing Team records from swimmer clubs and result team
+        names, then drop orphan auto-created teams.
+        POST /api/v1/teams/sync-from-results/
+        """
+        from .utils import auto_create_teams, cleanup_orphan_teams
+        created = auto_create_teams()
+        deleted = cleanup_orphan_teams()
+        return Response({'created': created, 'deleted_orphans': deleted})
+
     @action(detail=False, methods=['post'], url_path='merge')
     def merge_teams(self, request):
         """Merge two duplicate teams. Keeps one, transfers everything from the other.

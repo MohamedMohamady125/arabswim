@@ -2496,3 +2496,66 @@ class SameMeetMergeTests(TestCase):
         self.champ.refresh_from_db()
         self.assertEqual(self.champ.end_date, date(2026, 7, 31))
         self.assertEqual(self.champ.date, date(2026, 7, 27))
+
+    def _one_swim_preview(self, category):
+        return {
+            'meet': {'name': "CHAMPIONNAT D'ETE M/C ET J/S TC",
+                     'date': '2026-07-28', 'pool': 'LCM', 'location': 'Rades'},
+            'events': [{
+                'event_name': '50 M Freestyle', 'distance': 50, 'stroke': 'Freestyle',
+                'gender': 'M', 'round_type': 'Finals', 'age_group': '', 'is_relay': False,
+                'results': [{
+                    'swimmer_name': 'Firas BRIGUI', 'time_text': '23.30',
+                    'time_centiseconds': 2330, 'rank': 1, 'birth_year': 2002,
+                    'age': 24, 'nationality_code': 'TUN', 'club': 'OLYMPICA',
+                    'fina_points': 722, 'gender': 'M', 'is_relay': False,
+                    'category': category, 'status': 'OK',
+                }],
+            }],
+            'swimmers': [],
+            'stats': {'total_events': 1, 'total_results': 1, 'total_swimmers': 1},
+        }
+
+    def test_tc_then_categorized_file_does_not_duplicate(self):
+        """A TC (blank-category) file plus a per-category file of the same
+        meet describe the same swims — the second import must upgrade the
+        row, not create a twin (the meet-177 duplication bug)."""
+        from championships.models import Result
+        from .services import confirm_import
+        confirm_import(self._one_swim_preview(''), {})
+        confirm_import(self._one_swim_preview('Seniors'), {})
+        rows = Result.objects.filter(championship=self.champ)
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.first().category, 'Seniors')
+
+    def test_categorized_then_tc_file_does_not_duplicate(self):
+        from championships.models import Result
+        from .services import confirm_import
+        confirm_import(self._one_swim_preview('Seniors'), {})
+        confirm_import(self._one_swim_preview(''), {})
+        rows = Result.objects.filter(championship=self.champ)
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.first().category, 'Seniors')
+
+    def test_swimmer_club_updates_to_latest_meet(self):
+        """A swimmer's club follows their most recent meet (one current
+        club) — but an older meet's import never overwrites a newer club."""
+        from datetime import date
+        from swimmers.models import Swimmer
+        from .services import confirm_import
+        confirm_import(self._one_swim_preview(''), {})
+        swimmer = Swimmer.objects.get(name__icontains='BRIGUI')
+        self.assertEqual(swimmer.club, 'OLYMPICA')
+        # Newer meet, new club → club updates
+        newer = self._one_swim_preview('')
+        newer['meet']['name'] = 'CHAMPIONNAT OPEN 2027'
+        newer['meet']['date'] = '2027-06-01'
+        newer['events'][0]['results'][0]['club'] = 'EST'
+        newer['events'][0]['results'][0]['time_centiseconds'] = 2320
+        confirm_import(newer, {})
+        swimmer.refresh_from_db()
+        self.assertEqual(swimmer.club, 'EST')
+        # Re-importing an older meet must NOT revert the club
+        confirm_import(self._one_swim_preview(''), {})
+        swimmer.refresh_from_db()
+        self.assertEqual(swimmer.club, 'EST')

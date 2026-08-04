@@ -77,6 +77,7 @@ function OrgAccountForm() {
   const [email, setEmail] = useState('')
   const [teamId, setTeamId] = useState('')
   const [countryId, setCountryId] = useState('')
+  const [teamCountry, setTeamCountry] = useState('')
   const [teams, setTeams] = useState([])
   const [countries, setCountries] = useState([])
   const [result, setResult] = useState(null)
@@ -111,6 +112,11 @@ function OrgAccountForm() {
     }
   }
 
+  const arabCountries = countries.filter((c) => c.region === 'ARAB' || c.region === 'GCC')
+  const visibleTeams = teamCountry
+    ? teams.filter((t) => String(t.country) === String(teamCountry))
+    : teams
+
   const copy = () => {
     navigator.clipboard.writeText(`Username: ${result.username}\nPassword: ${result.password}`)
     setCopied(true)
@@ -129,19 +135,28 @@ function OrgAccountForm() {
           <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         {kind === 'CLUB' ? (
-          <div className="field">
-            <label>Club</label>
-            <select className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)} required>
-              <option value="">Select club…</option>
-              {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
+          <>
+            <div className="field">
+              <label>Country</label>
+              <select className="select" value={teamCountry} onChange={(e) => { setTeamCountry(e.target.value); setTeamId('') }}>
+                <option value="">All countries</option>
+                {arabCountries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Club</label>
+              <select className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)} required>
+                <option value="">Select club…</option>
+                {visibleTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+          </>
         ) : (
           <div className="field">
             <label>Federation country</label>
             <select className="select" value={countryId} onChange={(e) => setCountryId(e.target.value)} required>
               <option value="">Select country…</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {arabCountries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         )}

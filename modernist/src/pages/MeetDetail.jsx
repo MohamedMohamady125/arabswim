@@ -86,7 +86,7 @@ function ClubLogo({ logo, name, size = 26 }) {
 
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
-function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
+function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onDataChanged }) {
   const navigate = useNavigate()
   const [genderFilter, setGenderFilter] = useState('')
   const [eventKey, setEventKey] = useState('')
@@ -157,13 +157,19 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
   }, [rows])
   const hasCategories = categories.filter((c) => c !== '').length > 0 && categories.length > 1
 
-  // rounds available for the selected category
+  // "General" view on TC meets: the open classification — every category
+  // pooled, ranked by time only (this is what the OPEN medals are based on)
+  const isOpenView = selectedCategory === 'OPEN'
+
+  // rounds available for the selected category (open view pools A/B finals,
+  // so it has no round picker)
   const rounds = useMemo(() => {
+    if (isOpenView) return []
     const catRows = selectedCategory === 'ALL' ? rows : rows.filter((r) => (r.category || '') === selectedCategory)
     const rs = [...new Set(catRows.map((r) => r.round_type || ''))]
     rs.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
     return rs
-  }, [rows, selectedCategory])
+  }, [rows, selectedCategory, isOpenView])
 
   useEffect(() => {
     if (rounds.length > 0 && !rounds.includes(selectedRound)) setSelectedRound(rounds[0])
@@ -174,19 +180,30 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
   const roundsPresent = new Set(rows.map((r) => r.round_type || ''))
   // National meets run Finale A/B/C — each finale has its own podium, so
   // Final B (Consolation) rows also carry medals (matches backend recompute)
-  const showMedals = selectedRound === 'Finals'
-    || (isNational && selectedRound === 'Consolation')
-    || roundsPresent.size <= 1
-    // National meets (Finale A/B/C): each finale has its own podium
-    || (isNational && selectedRound === 'Consolation')
+  const showMedals = isOpenView
+    ? (roundsPresent.has('Finals') || roundsPresent.size <= 1)
+    : (selectedRound === 'Finals'
+      || (isNational && selectedRound === 'Consolation')
+      || roundsPresent.size <= 1)
   const grouped = useMemo(() => {
-    let sel = rows.filter((r) => (r.round_type || '') === (selectedRound ?? ''))
-    if (selectedCategory !== 'ALL') sel = sel.filter((r) => (r.category || '') === selectedCategory)
+    let sel
+    if (isOpenView) {
+      // Open classification: pool Finale A/B across all categories (mirrors
+      // the backend's OPEN medal pass), rank purely by time.
+      const hasFinals = rows.some((r) => r.round_type === 'Finals')
+      sel = hasFinals
+        ? rows.filter((r) => r.round_type === 'Finals' || r.round_type === 'Consolation')
+        : rows
+    } else {
+      sel = rows.filter((r) => (r.round_type || '') === (selectedRound ?? ''))
+      if (selectedCategory !== 'ALL') sel = sel.filter((r) => (r.category || '') === selectedCategory)
+    }
     // HC results sink to the bottom of each category, times ascending otherwise
     const sorted = [...sel].sort((a, b) => {
       if (a.is_hc !== b.is_hc) return a.is_hc ? 1 : -1
       return (a.time_centiseconds || 0) - (b.time_centiseconds || 0)
     })
+    if (isOpenView) return sorted.length ? [['OPEN', sorted]] : []
     const order = []
     const byCat = new Map()
     sorted.forEach((r) => {
@@ -196,7 +213,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
     })
     order.sort((a, b) => catRank(a) - catRank(b))
     return order.map((cat) => [cat, byCat.get(cat)])
-  }, [rows, selectedRound, selectedCategory])
+  }, [rows, selectedRound, selectedCategory, isOpenView])
 
   // client-side pagination: 10 rows per page across the grouped selection
   useEffect(() => { setPage(1); setExpandedRow(null) }, [eventKey, selectedRound, selectedCategory])
@@ -414,6 +431,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
               onChange={(e) => { setSelectedCategory(e.target.value); setExpandedRow(null) }}
             >
               <option value="ALL">All categories</option>
+              {hasOpenPodium && <option value="OPEN">General (open — by time)</option>}
               {categories.map((c) => (
                 <option key={c || '_general'} value={c}>{c || 'General'}</option>
               ))}
@@ -473,6 +491,11 @@ function ResultsTab({ meetId, events, isNational, isAdmin, onDataChanged }) {
             <tbody>
               {pageGroups.map(([cat, catRows], gi) => (
                 <React.Fragment key={`${cat || '_general'}-${gi}`}>
+                  {isOpenView && gi === 0 && (
+                    <tr style={{ background: 'var(--color-surface)' }}>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>General — all categories, ranked by time</td>
+                    </tr>
+                  )}
                   {selectedCategory === 'ALL' && grouped.some(([c]) => c !== '') && (
                     <tr style={{ background: 'var(--color-surface)' }}>
                       <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>{cat || 'General'}</td>
@@ -1152,7 +1175,7 @@ export default function MeetDetail() {
       </div>
 
       {tab === 'results' && (
-        <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} onDataChanged={refreshStats} />
+        <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium} onDataChanged={refreshStats} />
       )}
       {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}
       {tab === 'statistics' && <StatisticsTab meetId={id} stats={stats} />}

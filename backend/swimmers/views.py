@@ -761,6 +761,49 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             })
         return Response(lines)
 
+    @action(detail=True, methods=['post'], url_path='change-nationality')
+    def change_nationality(self, request, pk=None):
+        """Admin: manually change a swimmer's nationality, recording a
+        NationalityChange entry so it shows in transfer history."""
+        import datetime
+        from core.permissions import is_admin
+        from core.models import Country
+        from .models import NationalityChange
+
+        if not is_admin(request.user):
+            return Response({'error': 'Admin only'}, status=403)
+
+        swimmer = self.get_object()
+        country_id = request.data.get('country')
+        if not country_id:
+            return Response({'error': 'country is required'}, status=400)
+        try:
+            country = Country.objects.get(pk=country_id)
+        except Country.DoesNotExist:
+            return Response({'error': 'Country not found'}, status=400)
+        if swimmer.nationality_id == country.id:
+            return Response({'error': 'Swimmer already has this nationality'}, status=400)
+
+        raw_date = request.data.get('effective_date')
+        if raw_date:
+            try:
+                effective_date = datetime.date.fromisoformat(raw_date)
+            except ValueError:
+                return Response({'error': 'effective_date must be YYYY-MM-DD'}, status=400)
+        else:
+            effective_date = datetime.date.today()
+
+        NationalityChange.objects.create(
+            swimmer=swimmer,
+            from_country=swimmer.nationality,
+            to_country=country,
+            effective_date=effective_date,
+            notes=request.data.get('notes', '') or '',
+        )
+        swimmer.nationality = country
+        swimmer.save(update_fields=['nationality'])
+        return Response(SwimmerDetailSerializer(swimmer).data)
+
     @action(detail=True, methods=['get'], url_path='transfer-history')
     def transfer_history(self, request, pk=None):
         """Club transfer history and nationality changes for a swimmer."""

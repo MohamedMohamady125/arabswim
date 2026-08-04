@@ -16,3 +16,4 @@ export const getSwimmerProgression = (id, pool) => api.get(`/swimmers/${id}/prog
 export const getSwimmerTransferHistory = (id) => api.get(`/swimmers/${id}/transfer-history/`)
 export const getSwimmerRankings = (id) => api.get(`/swimmers/${id}/rankings/`)
 export const getSwimmerQualifyingGaps = (id, params) => api.get(`/swimmers/${id}/qualifying-gaps/`, { params })
+export const changeSwimmerNationality = (id, data) => api.post(`/swimmers/${id}/change-nationality/`, data)

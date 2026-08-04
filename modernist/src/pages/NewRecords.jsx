@@ -4,7 +4,7 @@ import { getRecords, createRecord } from '../api/records'
 import { searchSwimmers } from '../api/swimmers'
 import { getEvents } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Seg } from '../components/ui'
+import { PageHead, Loading, Empty } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, RECORD_TYPES, mediaUrl, parseTime } from '../utils'
 
@@ -236,7 +236,9 @@ export default function NewRecords() {
 
       {/* scope filter */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Seg options={SCOPE_OPTIONS} value={scope} onChange={setScope} />
+        <select className="select" style={{ width: 170 }} value={scope} onChange={(e) => setScope(e.target.value)}>
+          {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label === 'All' ? 'All scopes' : o.label}</option>)}
+        </select>
         {isAdmin && (
           <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={() => setAddOpen(true)}>
             + Add record

@@ -490,7 +490,9 @@ export default function Calendar() {
           {meetGroups.map((g) => (
             <div key={g.key} className="rule-b">
               <div className="pad" style={{ paddingBottom: 10, display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                <div className="kicker">{MONTHS_FULL[g.month]} {g.year}</div>
+                <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.09em', textTransform: 'uppercase', padding: '6px 14px', display: 'inline-block' }}>
+                  {MONTHS_FULL[g.month]} {g.year}
+                </div>
                 <span className="micro" style={{ marginLeft: 'auto' }}>
                   <span className="asw-num" style={{ color: 'var(--color-text)' }}>{g.items.length}</span>
                   {' '}item{g.items.length !== 1 ? 's' : ''}

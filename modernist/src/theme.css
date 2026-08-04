@@ -273,6 +273,9 @@ figure { margin: 0; }
 /* — mobile — */
 @media (max-width: 900px) {
   .hide-mobile { display: none !important; }
+  /* compare page: stack the face-off header, VS bar between the two */
+  .faceoff { grid-template-columns: 1fr !important; }
+  .faceoff > div:last-child { justify-content: center; padding: 6px 0 !important; }
   /* medals page: force the 4 totals cards into a tight 2×2 grid */
   .medal-totals { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; padding: 14px 16px !important; }
   /* splits/team chip: keep the label but as small as legible so athlete

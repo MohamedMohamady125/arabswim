@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { searchSwimmers, compareSwimmers, getSwimmerEvents, getSwimmer } from '../api/swimmers'
+import { getRankings } from '../api/rankings'
+import { getEvents } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty } from '../components/ui'
+import { mediaUrl } from '../utils'
 
 const MAX = 5
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -15,17 +18,52 @@ export default function Compare() {
   const [open, setOpen] = useState(false)
   const [data, setData] = useState(null) // { swimmers, rows }
   const [loading, setLoading] = useState(false)
+  const [shuffling, setShuffling] = useState(false)
   const debounceRef = useRef(null)
   const boxRef = useRef(null)
   const hydratedRef = useRef(false)
   const startedRef = useRef(false)
 
-  // hydrate selection from ?ids= (swimmer profiles link here)
+  // Random face-off: pick a random event, take two swimmers from its Arab
+  // rankings (they are guaranteed to share the event), prefer ones with photos.
+  const randomMatchup = async () => {
+    setShuffling(true)
+    try {
+      const evRes = await getEvents({ has_results: true })
+      const events = list(evRes.data).filter((e) => !e.is_relay)
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const event = events[Math.floor(Math.random() * events.length)]
+        const gender = Math.random() < 0.5 ? 'M' : 'F'
+        if (!event) break
+        const res = await getRankings({ scope: 'arab', gender, pool: 'LCM', event: event.id, age_group: 'OPEN', page_size: 25 }).catch(() => null)
+        const rows = list(res?.data)
+        const uniq = [...new Map(rows.map((r) => [r.swimmer_id, r])).values()]
+        if (uniq.length < 2) continue
+        const sample = uniq.sort(() => Math.random() - 0.5).slice(0, 6)
+        const detail = await Promise.allSettled(sample.map((r) => getSwimmer(r.swimmer_id)))
+        const swimmers = detail.filter((r) => r.status === 'fulfilled').map((r) => r.value.data).filter(Boolean)
+        if (swimmers.length < 2) continue
+        // photos first — this is the shop window
+        swimmers.sort((a, b) => (b.photo ? 1 : 0) - (a.photo ? 1 : 0))
+        setSelected(swimmers.slice(0, 2))
+        return
+      }
+    } finally {
+      setShuffling(false)
+    }
+  }
+
+  // hydrate selection from ?ids= (swimmer profiles link here);
+  // with no ?ids= open on a random head-to-head so the page is never empty
   useEffect(() => {
     if (startedRef.current) return
     startedRef.current = true
     const ids = (searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, MAX)
-    if (ids.length === 0) { hydratedRef.current = true; return }
+    if (ids.length === 0) {
+      hydratedRef.current = true
+      randomMatchup()
+      return
+    }
     Promise.allSettled(ids.map((id) => getSwimmer(id))).then((res) => {
       const swimmers = res.filter((r) => r.status === 'fulfilled').map((r) => r.value.data).filter(Boolean)
       hydratedRef.current = true
@@ -145,7 +183,8 @@ export default function Compare() {
 
       {/* picker */}
       <div className="rule-b" style={{ padding: '18px 32px' }}>
-        <div ref={boxRef} style={{ position: 'relative', maxWidth: 380 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div ref={boxRef} style={{ position: 'relative', flex: '1 1 260px', maxWidth: 380 }}>
           <input
             className="input"
             placeholder={selected.length >= MAX ? `Maximum ${MAX} swimmers` : 'Search a swimmer to add…'}
@@ -171,6 +210,15 @@ export default function Compare() {
             </div>
           )}
         </div>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={shuffling}
+          onClick={() => { setSelected([]); randomMatchup() }}
+        >
+          {shuffling ? 'Drawing…' : '⚡ Random face-off'}
+        </button>
+        </div>
         {selected.length > 0 && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
             {selected.map((s) => (
@@ -191,13 +239,48 @@ export default function Compare() {
       </div>
 
       {selected.length < 2 ? (
-        <Empty label="Select at least two swimmers" />
+        shuffling ? <Loading label="Drawing a face-off" /> : <Empty label="Select at least two swimmers" />
       ) : loading ? (
         <Loading label="Comparing" />
       ) : !data || data.swimmers.length === 0 ? (
         <Empty label="Comparison unavailable" />
       ) : (
         <div className="pad">
+          {/* face-off header — the marketable bit: faces, flags, gold VS */}
+          {data.swimmers.length === 2 && (
+            <div className="faceoff" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 0, alignItems: 'stretch', border: '2px solid var(--color-text)', marginBottom: 22 }}>
+              {data.swimmers.map((sw, i) => {
+                const full = selected.find((x) => x.id === sw.id)
+                const photo = full?.photo
+                return (
+                  <div key={sw.id} style={{ order: i === 0 ? 0 : 2, display: 'flex', flexDirection: i === 0 ? 'row' : 'row-reverse', alignItems: 'stretch', minWidth: 0 }}>
+                    <div className="grayscale" style={{ width: 120, minHeight: 130, flex: 'none', background: 'var(--color-accent-800)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {photo ? (
+                        <img src={mediaUrl(photo)} alt={sw.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span style={{ color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30 }}>
+                          {String(sw.name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ padding: '16px 18px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: i === 0 ? 'flex-start' : 'flex-end', textAlign: i === 0 ? 'left' : 'right' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: i === 0 ? 'row' : 'row-reverse' }}>
+                        <Flag code={sw.nationality_code} name={sw.nationality} />
+                        <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1.2 }}>{sw.name}</Link>
+                      </div>
+                      <div className="text-muted" style={{ fontSize: 12, marginTop: 5 }}>
+                        {[sw.club, sw.age ? `Age ${sw.age}` : null].filter(Boolean).join(' · ') || '—'}
+                      </div>
+                      {sw.best_fina != null && <div className="asw-num" style={{ fontWeight: 800, fontSize: 13, marginTop: 4 }}>{sw.best_fina} <span className="micro">FINA</span></div>}
+                    </div>
+                  </div>
+                )
+              })}
+              <div style={{ order: 1, display: 'flex', alignItems: 'center', padding: '0 14px', background: 'var(--color-accent-800)' }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--asw-gold)', letterSpacing: '0.02em' }}>VS</span>
+              </div>
+            </div>
+          )}
           <div className="table-scroll">
             <table className="table">
               <thead>

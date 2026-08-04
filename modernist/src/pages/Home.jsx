@@ -203,7 +203,13 @@ export default function Home() {
             getMedalSummary({ championship: latest.id }),
           ])
           if (!alive) return
-          setTopResults(list(val(resTop)))
+          // one row per swimmer — their best swim of the meet
+          const seen = new Set()
+          setTopResults(list(val(resTop)).filter((r) => {
+            if (seen.has(r.swimmer)) return false
+            seen.add(r.swimmer)
+            return true
+          }))
           setMedalTally(list(val(medals)).slice(0, 6))
           getMostImproved(latest.id)
             .then((res) => {

@@ -273,6 +273,8 @@ figure { margin: 0; }
 /* — mobile — */
 @media (max-width: 900px) {
   .hide-mobile { display: none !important; }
+  /* medals page: force the 4 totals cards into a tight 2×2 grid */
+  .medal-totals { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; padding: 14px 16px !important; }
   /* splits/team chip: keep the label but as small as legible so athlete
      names get the width */
   .splits-chip { font-size: 7px !important; padding: 1px 3px !important; letter-spacing: 0.02em !important; gap: 1px !important; }

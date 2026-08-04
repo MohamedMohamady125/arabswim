@@ -37,6 +37,15 @@ class MedalViewSet(viewsets.ModelViewSet):
             qs = qs.filter(championship__sub_classification_id=sub_classification)
         if gender:
             qs = qs.filter(swimmer__sex=gender)
+        # country: medals won by that nation's swimmers (Arab/GCC tallies);
+        # host_country: meets held in that country (National tallies mix
+        # every federation's national championships, so this picks one)
+        country = self.request.query_params.get('country')
+        host_country = self.request.query_params.get('host_country')
+        if country:
+            qs = qs.filter(swimmer__nationality_id=country)
+        if host_country:
+            qs = qs.filter(championship__country_id=host_country)
         return qs
 
     @staticmethod
@@ -55,8 +64,6 @@ class MedalViewSet(viewsets.ModelViewSet):
         country = self.request.query_params.get('country')
         if swimmer:
             qs = qs.filter(swimmer_id=swimmer)
-        if country:
-            qs = qs.filter(swimmer__nationality_id=country)
         # Only restrict to Arab countries on the global medals page, not per-championship
         if not self.request.query_params.get('championship') and not swimmer and not country:
             qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])

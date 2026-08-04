@@ -2,10 +2,36 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getChampionships, getClassifications } from '../api/championships'
 import { getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
+import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg, MedalIcon } from '../components/ui'
+import { mediaUrl } from '../utils'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
+
+function ClubLogo({ logo, name, size = 24 }) {
+  const [failed, setFailed] = useState(false)
+  const initials = (name || '')
+    .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?'
+  const base = {
+    width: size, height: size, flex: 'none', borderRadius: '50%',
+    border: '1px solid var(--color-neutral-300)',
+  }
+  if (logo && !failed) {
+    return (
+      <img src={mediaUrl(logo)} alt="" width={size} height={size}
+        onError={() => setFailed(true)}
+        style={{ ...base, objectFit: 'contain', background: '#fff' }} />
+    )
+  }
+  return (
+    <span style={{
+      ...base, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.38, fontWeight: 700, letterSpacing: '.02em',
+      background: 'var(--color-neutral-200)', color: 'var(--color-neutral-600)',
+    }}>{initials}</span>
+  )
+}
 
 // Category → which tallies make sense. National meets are club-based;
 // Arab/GCC meets are country-based.
@@ -22,6 +48,8 @@ export default function Medals() {
   const [championship, setChampionship] = useState('')
   const [gender, setGender] = useState('')
   const [scope, setScope] = useState('country')
+  const [country, setCountry] = useState('')
+  const [countries, setCountries] = useState([])
   const [summary, setSummary] = useState([])
   const [clubRows, setClubRows] = useState([])
   const [swimmerRows, setSwimmerRows] = useState([])
@@ -31,6 +59,9 @@ export default function Medals() {
     getClassifications()
       .then((res) => setClassifications(list(res.data)))
       .catch(() => setClassifications([]))
+    getCountries()
+      .then((res) => setCountries(list(res.data).filter((c) => c.region === 'ARAB' || c.region === 'GCC')))
+      .catch(() => setCountries([]))
   }, [])
 
   const classificationId = useMemo(
@@ -61,6 +92,9 @@ export default function Medals() {
     if (championship) params.championship = championship
     else params.classification = classificationId
     if (gender) params.gender = gender
+    // National mixes every federation's championships → filter by host
+    // country; Arab/GCC tallies → medals won by that nation's swimmers
+    if (country) params[isNational ? 'host_country' : 'country'] = country
     Promise.allSettled([
       isNational ? Promise.resolve(null) : getMedalSummary(params),
       isNational ? getMedalClubSummary(params) : Promise.resolve(null),
@@ -75,7 +109,7 @@ export default function Medals() {
       setLoading(false)
     })
     return () => { alive = false }
-  }, [classificationId, championship, gender, isNational])
+  }, [classificationId, championship, gender, country, isNational])
 
   const tallyRows = isNational ? clubRows : summary
   const totalGold = tallyRows.reduce((s, r) => s + (r.gold || 0), 0)
@@ -84,6 +118,14 @@ export default function Medals() {
   const totalAll = totalGold + totalSilver + totalBronze
 
   const rows = scope === 'country' ? summary : scope === 'club' ? clubRows : swimmerRows
+
+  // National + country filter → only show that federation's meets in the picker
+  const visibleMeets = useMemo(
+    () => (isNational && country
+      ? meets.filter((m) => String(m.country?.id ?? m.country) === String(country))
+      : meets),
+    [meets, isNational, country],
+  )
 
   const scopeOptions = [
     ...(!isNational ? [{ value: 'country', label: 'Country' }] : []),
@@ -99,19 +141,26 @@ export default function Medals() {
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Seg options={CATEGORIES} value={category} onChange={setCategory} />
         <Seg options={scopeOptions} value={scope} onChange={setScope} />
-        <select className="select" style={{ width: 260 }} value={championship} onChange={(e) => setChampionship(e.target.value)}>
-          <option value="">All {category} championships</option>
-          {meets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
         <Seg
           options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
           value={gender}
           onChange={setGender}
         />
+        <select
+          className="select" style={{ flex: '1 1 150px', width: 'auto' }} value={country}
+          onChange={(e) => { setCountry(e.target.value); setChampionship('') }}
+        >
+          <option value="">All countries</option>
+          {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select className="select" style={{ flex: '2 1 220px', width: 'auto' }} value={championship} onChange={(e) => setChampionship(e.target.value)}>
+          <option value="">All {category} championships</option>
+          {visibleMeets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
       </div>
 
       {/* totals cards */}
-      <div className="rule-b" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, padding: '20px 32px' }}>
+      <div className="rule-b medal-totals" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, padding: '20px 32px' }}>
         {[
           { label: 'Gold', value: totalGold, icon: 'GOLD', accent: 'var(--asw-gold)' },
           { label: 'Silver', value: totalSilver, icon: 'SILVER', accent: 'var(--asw-silver)' },
@@ -167,7 +216,14 @@ export default function Medals() {
                         {row.swimmer__nationality__name}
                       </div>
                     )}
-                    {scope === 'club' && (row.result__team || '—')}
+                    {scope === 'club' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <ClubLogo logo={row.team_logo} name={row.result__team} />
+                        {row.team_id
+                          ? <Link to={`/teams/${row.team_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{row.result__team || '—'}</Link>
+                          : (row.result__team || '—')}
+                      </div>
+                    )}
                     {scope === 'swimmer' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />

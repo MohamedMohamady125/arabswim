@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Count, Max, Q
 
-from .models import Team, Trophy
+from .models import Team, Trophy, BoardMember
 from .serializers import (
-    TeamListSerializer, TeamDetailSerializer, TeamCreateUpdateSerializer, TrophySerializer
+    TeamListSerializer, TeamDetailSerializer, TeamCreateUpdateSerializer, TrophySerializer,
+    BoardMemberSerializer
 )
 from swimmers.serializers import SwimmerListSerializer
 from swimmers.models import Swimmer
@@ -657,6 +658,24 @@ class TrophyViewSet(viewsets.ModelViewSet):
     queryset = Trophy.objects.all()
     serializer_class = TrophySerializer
     pagination_class = None
+
+    def get_permissions(self):
+        from core.permissions import CanManageTeamPortal
+        return [CanManageTeamPortal()]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        team = self.request.query_params.get('team')
+        if team:
+            qs = qs.filter(team_id=team)
+        return qs
+
+
+class BoardMemberViewSet(viewsets.ModelViewSet):
+    queryset = BoardMember.objects.select_related('team')
+    serializer_class = BoardMemberSerializer
+    pagination_class = None
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_permissions(self):
         from core.permissions import CanManageTeamPortal

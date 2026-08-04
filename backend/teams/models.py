@@ -35,3 +35,21 @@ class Trophy(models.Model):
 
     def __str__(self):
         return f'{self.name} ({self.year})'
+
+
+class BoardMember(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='board_members')
+    name = models.CharField(max_length=200)
+    role = models.CharField(max_length=100, blank=True, default='',
+        help_text='e.g. President, Vice President, Secretary General, Treasurer')
+    photo = models.ImageField(upload_to='teams/board/', blank=True, null=True)
+    email = models.EmailField(blank=True, default='')
+    phone = models.CharField(max_length=30, blank=True, default='')
+    bio = models.TextField(blank=True, default='')
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.name} — {self.team.name}'

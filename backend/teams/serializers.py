@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Team, Trophy
+from .models import Team, Trophy, BoardMember
 from core.serializers import CountrySerializer
 
 
@@ -74,3 +74,17 @@ class TeamCreateUpdateSerializer(serializers.ModelSerializer):
                 if t.get('name') and t.get('year'):
                     Trophy.objects.create(team=instance, name=t['name'], year=int(t['year']))
         return instance
+
+
+class BoardMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BoardMember
+        fields = ['id', 'team', 'name', 'role', 'photo', 'email', 'phone', 'bio', 'order']
+
+    def validate_photo(self, value):
+        if value:
+            from core.uploads import validate_image
+            err = validate_image(value)
+            if err:
+                raise serializers.ValidationError(err)
+        return value

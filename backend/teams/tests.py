@@ -361,3 +361,43 @@ class CleanupOrphanTeamsTests(TestCase):
         Team.objects.create(name='NAT TEAM', country=self.arab, is_national_team=True)
         self.assertEqual(cleanup_orphan_teams(), 0)
         self.assertEqual(Team.objects.count(), 2)
+
+
+class BoardMemberApiTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import User
+        cls.country = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        cls.team = Team.objects.create(name='Al Ahly', country=cls.country)
+        cls.other = Team.objects.create(name='Zamalek', country=cls.country)
+        cls.admin = User.objects.create_user(username='adm', password='x', role='ADMIN')
+        cls.club = User.objects.create_user(username='club', password='x', role='CLUB', team=cls.team)
+        cls.viewer = User.objects.create_user(username='view', password='x', role='VIEWER')
+
+    def test_anonymous_can_read(self):
+        from teams.models import BoardMember
+        BoardMember.objects.create(team=self.team, name='Mr President', role='President')
+        res = self.client.get(f'/api/v1/board-members/?team={self.team.id}')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()), 1)
+
+    def test_admin_can_create(self):
+        self.client.force_login(self.admin)
+        res = self.client.post('/api/v1/board-members/',
+                               {'team': self.team.id, 'name': 'Chair', 'role': 'Chairman'})
+        self.assertEqual(res.status_code, 201)
+
+    def test_club_manages_own_team_only(self):
+        self.client.force_login(self.club)
+        ok = self.client.post('/api/v1/board-members/',
+                              {'team': self.team.id, 'name': 'Sec', 'role': 'Secretary'})
+        self.assertEqual(ok.status_code, 201)
+        bad = self.client.post('/api/v1/board-members/',
+                               {'team': self.other.id, 'name': 'X', 'role': 'Y'})
+        self.assertEqual(bad.status_code, 403)
+
+    def test_viewer_cannot_create(self):
+        self.client.force_login(self.viewer)
+        res = self.client.post('/api/v1/board-members/',
+                               {'team': self.team.id, 'name': 'Nope'})
+        self.assertEqual(res.status_code, 403)

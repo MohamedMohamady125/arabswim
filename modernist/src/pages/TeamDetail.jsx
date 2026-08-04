@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { X } from 'lucide-react'
-import { getTeamProfile, getTeamMedals, getTeamTimes, updateTeam } from '../api/teams'
+import { getTeamProfile, getTeamMedals, getTeamTimes, updateTeam, getBoardMembers, createBoardMember, updateBoardMember, deleteBoardMember } from '../api/teams'
 import { getArticles, createArticle } from '../api/news'
 import { getAlbums, createAlbum } from '../api/media'
 import { getCoaches, createCoach, updateCoach, deleteCoach } from '../api/coaches'
@@ -39,7 +39,8 @@ const COACH_LEVELS = {
 const TABS = [
   { value: 'overview', label: 'Overview' },
   { value: 'news', label: 'News' },
-  { value: 'team', label: 'Team' },
+  { value: 'team', label: 'Coaches' },
+  { value: 'board', label: 'Board' },
   { value: 'swimmers', label: 'Swimmers' },
   { value: 'stats', label: 'Stats' },
   { value: 'ranking', label: 'Ranking' },
@@ -197,6 +198,59 @@ function CoachModal({ coach, team, countries, onClose, onSaved }) {
         </Field>
         <Field label="Country"><CountrySelect value={form.nationality} onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} countries={countries} /></Field>
         <Field label="Years experience"><input className="input" style={{ width: '100%' }} type="number" value={form.years_experience} onChange={set('years_experience')} /></Field>
+        <Field label="Photo"><input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} /></Field>
+        <Field label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Field>
+        <Field label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Field>
+      </div>
+      <Field label="Bio"><textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }} value={form.bio} onChange={set('bio')} /></Field>
+      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+        <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+      </div>
+    </Modal>
+  )
+}
+
+function BoardModal({ member, team, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    name: member?.name || '',
+    role: member?.role || '',
+    email: member?.email || '',
+    phone: member?.phone || '',
+    bio: member?.bio || '',
+  })
+  const [photo, setPhoto] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const save = async () => {
+    if (!form.name.trim()) { setErr('Name is required'); return }
+    setBusy(true); setErr('')
+    try {
+      const fd = new FormData()
+      fd.append('name', form.name.trim())
+      fd.append('role', form.role)
+      fd.append('team', team.id)
+      fd.append('email', form.email)
+      fd.append('phone', form.phone)
+      fd.append('bio', form.bio)
+      if (photo) fd.append('photo', photo)
+      if (member) await updateBoardMember(member.id, fd)
+      else await createBoardMember(fd)
+      onSaved()
+    } catch (e) {
+      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title={member ? 'Edit board member' : 'Add board member'} onClose={onClose}>
+      <Field label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Field>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field label="Role"><input className="input" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Field>
         <Field label="Photo"><input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} /></Field>
         <Field label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Field>
         <Field label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Field>
@@ -412,6 +466,7 @@ export default function TeamDetail() {
   const [stats, setStats] = useState(null)
   const [ranking, setRanking] = useState([])
   const [coaches, setCoaches] = useState([])
+  const [board, setBoard] = useState([])
   const [articles, setArticles] = useState([])
   const [albums, setAlbums] = useState([])
   const [countries, setCountries] = useState([])
@@ -420,7 +475,7 @@ export default function TeamDetail() {
   const [modal, setModal] = useState(null) // {type, payload}
 
   const load = useCallback(async (alive = { current: true }) => {
-    const [profRes, medalsRes, timesRes, recRes, statsRes, rankRes, coachRes, newsRes, albumRes] = await Promise.allSettled([
+    const [profRes, medalsRes, timesRes, recRes, statsRes, rankRes, coachRes, newsRes, albumRes, boardRes] = await Promise.allSettled([
       getTeamProfile(id),
       getTeamMedals(id),
       getTeamTimes(id),
@@ -430,6 +485,7 @@ export default function TeamDetail() {
       getCoaches({ team: id }),
       getArticles({ team: id, status: 'PUBLISHED' }),
       getAlbums({ team: id }),
+      getBoardMembers({ team: id }),
     ])
     if (!alive.current) return
     const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
@@ -442,6 +498,7 @@ export default function TeamDetail() {
     setCoaches(list(val(coachRes)))
     setArticles(list(val(newsRes)))
     setAlbums(list(val(albumRes)))
+    setBoard(list(val(boardRes)))
   }, [id])
 
   useEffect(() => {
@@ -677,6 +734,47 @@ export default function TeamDetail() {
                       <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                         <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setModal({ type: 'coach', payload: c })}>Edit</button>
                         <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={async () => { if (window.confirm(`Remove coach ${c.name}?`)) { await deleteCoach(c.id); load() } }}>Remove</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'board' && (
+          <div>
+            <div className="sect-head">
+              <h4>Board · {board.length}</h4>
+              {canManage && <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'board' })}>+ Add member</button>}
+            </div>
+            {board.length === 0 ? (
+              <Empty label="No board members listed" />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+                {board.map((m) => (
+                  <div key={m.id} style={{ border: '1px solid var(--color-divider)', padding: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {m.photo ? (
+                        <div className="grayscale" style={{ width: 48, height: 48, flex: 'none', overflow: 'hidden' }}>
+                          <img src={mediaUrl(m.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                      ) : (
+                        <div style={{ width: 48, height: 48, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>
+                          {acronym(m.name)}
+                        </div>
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+                        {m.role && <div className="text-muted" style={{ fontSize: 12 }}>{m.role}</div>}
+                      </div>
+                    </div>
+                    {m.bio && <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.5, margin: '10px 0 0' }}>{m.bio.slice(0, 140)}{m.bio.length > 140 ? '…' : ''}</p>}
+                    {canManage && (
+                      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                        <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setModal({ type: 'board', payload: m })}>Edit</button>
+                        <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={async () => { if (window.confirm(`Remove ${m.name} from the board?`)) { await deleteBoardMember(m.id); load() } }}>Remove</button>
                       </div>
                     )}
                   </div>
@@ -922,6 +1020,7 @@ export default function TeamDetail() {
       {/* admin modals */}
       {modal?.type === 'club' && <EditClubModal team={team} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'coach' && <CoachModal coach={modal.payload} team={team} countries={countries} onClose={() => setModal(null)} onSaved={refresh} />}
+      {modal?.type === 'board' && <BoardModal member={modal.payload} team={team} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'swimmer' && <SwimmerModal swimmer={modal.payload} team={team} countries={countries} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'article' && <ArticleModal team={team} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'album' && <AlbumModal team={team} onClose={() => setModal(null)} onSaved={refresh} />}

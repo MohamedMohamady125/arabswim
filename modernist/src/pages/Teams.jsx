@@ -19,13 +19,13 @@ function acronym(name) {
 function TeamLogo({ logo, name, size = 36 }) {
   if (logo) {
     return (
-      <div className="grayscale" style={{ width: size, height: size, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)' }}>
+      <div className="grayscale" style={{ width: size, height: size, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)', borderRadius: '50%', background: '#fff' }}>
         <img src={mediaUrl(logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       </div>
     )
   }
   return (
-    <div style={{ width: size, height: size, flex: 'none', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11 }}>
+    <div style={{ width: size, height: size, flex: 'none', borderRadius: '50%', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11 }}>
       {acronym(name)}
     </div>
   )
@@ -525,14 +525,15 @@ export default function Teams() {
                       </td>
                     )}
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <TeamLogo logo={t.logo} name={t.name} />
+                        <Flag code={t.country_detail?.code} name={t.country_detail?.name} />
                         <Link to={`/teams/${t.id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
                           {t.name}
                         </Link>
                         {t.is_national_team && <span className="tag tag-accent">National team</span>}
                       </div>
-                      <div className="show-mobile micro" style={{ margin: '3px 0 0 40px', textTransform: 'none', letterSpacing: 0 }}>
+                      <div className="show-mobile micro" style={{ margin: '3px 0 0 46px', textTransform: 'none', letterSpacing: 0 }}>
                         {[t.country_detail?.name, t.founded_year ? `Est. ${t.founded_year}` : null].filter(Boolean).join(' · ')}
                       </div>
                     </td>

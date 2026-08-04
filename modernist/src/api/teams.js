@@ -15,3 +15,7 @@ export const getTeamProgression = (id, params) => api.get(`/teams/${id}/progress
 export const mergeTeams = (data) => api.post('/teams/merge/', data)
 export const autoDedupeTeams = (data) => api.post('/teams/auto-dedupe/', data)
 export const findDuplicateTeams = () => api.get('/teams/find-duplicates/')
+export const getBoardMembers = (params) => api.get('/board-members/', { params })
+export const createBoardMember = (data) => api.post('/board-members/', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const updateBoardMember = (id, data) => api.patch(`/board-members/${id}/`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const deleteBoardMember = (id) => api.delete(`/board-members/${id}/`)

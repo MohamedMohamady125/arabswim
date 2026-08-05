@@ -16,16 +16,16 @@ function acronym(name) {
   return words.slice(0, 3).map((w) => w[0]).join('').toUpperCase()
 }
 
-function TeamLogo({ logo, name, size = 36 }) {
+function TeamLogo({ logo, name, size = 42 }) {
   if (logo) {
     return (
-      <div className="grayscale" style={{ width: size, height: size, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)', borderRadius: '50%', background: '#fff' }}>
+      <div style={{ width: size, height: size, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)', background: '#fff', padding: 3 }}>
         <img src={mediaUrl(logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       </div>
     )
   }
   return (
-    <div style={{ width: size, height: size, flex: 'none', borderRadius: '50%', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11 }}>
+    <div style={{ width: size, height: size, flex: 'none', border: '1px solid var(--color-divider)', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12 }}>
       {acronym(name)}
     </div>
   )
@@ -457,20 +457,20 @@ export default function Teams() {
 
   return (
     <div>
-      <PageHead kicker="People" title="Clubs" sub={`${filtered.length} clubs and national teams.`} />
+      <PageHead title="Clubs" />
 
-      {/* filter bar */}
-      <div className="rule-b" style={{ padding: '16px 32px', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* filter bar: one line, scrolls sideways on phone */}
+      <div className="rule-b records-filters" style={{ padding: '12px 32px', display: 'flex', gap: 10, flexWrap: 'nowrap', alignItems: 'center' }}>
         <input
           className="input"
-          style={{ maxWidth: 320 }}
+          style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
           placeholder="Search clubs…"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1) }}
         />
         <select
           className="select"
-          style={{ maxWidth: 220 }}
+          style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 220 }}
           value={country}
           onChange={(e) => { setCountry(e.target.value); setPage(1) }}
         >
@@ -480,7 +480,7 @@ export default function Teams() {
           ))}
         </select>
         {isAdmin && (
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'nowrap' }}>
             {selected.size > 0 && (
               <button className="btn btn-primary" disabled={bulkDeleting} onClick={handleBulkDelete} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Trash2 size={14} /> Delete ({selected.size})
@@ -527,13 +527,12 @@ export default function Teams() {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <TeamLogo logo={t.logo} name={t.name} />
-                        <Flag code={t.country_detail?.code} name={t.country_detail?.name} />
                         <Link to={`/teams/${t.id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
                           {t.name}
                         </Link>
                         {t.is_national_team && <span className="tag tag-accent">National team</span>}
                       </div>
-                      <div className="show-mobile micro" style={{ margin: '3px 0 0 46px', textTransform: 'none', letterSpacing: 0 }}>
+                      <div className="show-mobile micro" style={{ margin: '3px 0 0 52px', textTransform: 'none', letterSpacing: 0 }}>
                         {[t.country_detail?.name, t.founded_year ? `Est. ${t.founded_year}` : null].filter(Boolean).join(' · ')}
                       </div>
                     </td>

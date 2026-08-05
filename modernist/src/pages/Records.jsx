@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getRecords, getComputedRecords } from '../api/records'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
@@ -27,6 +27,10 @@ const sortByEvent = (a, b) =>
 function normalizeComputed(r) {
   return {
     key: `${r.event_id}-${r.gender}-${r.swimmer_id}-${r.time_centiseconds}`,
+    // deep link to the exact swim (row expanded with splits) in the meet
+    link: r.championship_id && r.result_id
+      ? `/meets/${r.championship_id}?tab=results&event=${r.event_id}&gender=${r.gender}&result=${r.result_id}`
+      : null,
     eventName: r.event_name,
     sortOrder: r.event_sort_order ?? 99,
     distance: r.event_distance ?? 0,
@@ -65,6 +69,7 @@ function normalizeManual(r) {
 }
 
 function RecordTable({ rows, showFina }) {
+  const navigate = useNavigate()
   return (
     <div className="table-scroll">
       <table className="table">
@@ -80,7 +85,12 @@ function RecordTable({ rows, showFina }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.key}>
+            <tr
+              key={r.key}
+              onClick={() => { if (r.link) navigate(r.link) }}
+              style={r.link ? { cursor: 'pointer' } : undefined}
+              title={r.link ? 'View this swim' : undefined}
+            >
               <td style={{ fontWeight: 600 }}>
                 {r.eventName}
                 {/* phone: swimmer folds under the event name */}
@@ -88,7 +98,7 @@ function RecordTable({ rows, showFina }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4, fontWeight: 400, fontSize: 12, color: 'var(--color-neutral-700)' }}>
                     <Flag code={r.natCode} name={r.natName} />
                     {r.swimmerId ? (
-                      <Link to={`/swimmers/${r.swimmerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
+                      <Link to={`/swimmers/${r.swimmerId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
                     ) : (
                       r.swimmerName
                     )}
@@ -101,7 +111,7 @@ function RecordTable({ rows, showFina }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Flag code={r.natCode} name={r.natName} />
                   {r.swimmerId ? (
-                    <Link to={`/swimmers/${r.swimmerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
+                    <Link to={`/swimmers/${r.swimmerId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
                   ) : (
                     r.swimmerName
                   )}
@@ -201,7 +211,7 @@ export default function Records() {
       <PageHead title="Records" />
 
       {/* filter bar */}
-      <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <select className="select" style={{ width: 150 }} value={scope} onChange={(e) => setScope(e.target.value)}>
           {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -222,9 +232,14 @@ export default function Records() {
           </select>
         )}
         {isComputed && (
-          <select className="select" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-            {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
-          </select>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>
+              Age category
+            </span>
+            <select className="select" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+              {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
+            </select>
+          </div>
         )}
       </div>
 

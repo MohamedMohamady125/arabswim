@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getRankings } from '../api/rankings'
 import { getCountries, getEvents } from '../api/core'
 import Flag from '../components/Flag'
@@ -10,6 +10,7 @@ const PAGE_SIZE = 25
 const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley', 'Freestyle Relay', 'Medley Relay']
 
 export default function Rankings() {
+  const navigate = useNavigate()
   const [countries, setCountries] = useState([])
   const [events, setEvents] = useState([])
   const [scope, setScope] = useState('arab')
@@ -107,46 +108,50 @@ export default function Rankings() {
 
   return (
     <div>
-      <PageHead kicker="Data" title="Rankings" sub="All-time and yearly best performances by event" />
+      <PageHead title="Rankings" />
 
-      {/* filter bar */}
-      <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Seg
-          options={[{ value: 'national', label: 'National' }, { value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }]}
-          value={scope}
-          onChange={setScope}
-        />
-        {scope === 'national' && (
-          <select className="select" style={{ flex: '2 1 170px', width: 'auto' }} value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value="">Select country…</option>
-            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      {/* filter bar: two fixed lines — segments on top, dropdowns below */}
+      <div className="rule-b records-filters" style={{ padding: '12px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Seg
+            options={[{ value: 'national', label: 'National' }, { value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }]}
+            value={scope}
+            onChange={setScope}
+          />
+          <Seg
+            options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+            value={gender}
+            onChange={setGender}
+          />
+          <Seg
+            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
+            value={pool}
+            onChange={setPool}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {scope === 'national' && (
+            <select className="select" style={{ flex: '2 1 140px', width: 'auto', minWidth: 0 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+              <option value="">Select country…</option>
+              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+          <select className="select" style={{ flex: '3 1 170px', width: 'auto', minWidth: 0 }} value={event} onChange={(e) => setEvent(e.target.value)}>
+            <option value="">Select event…</option>
+            {eventGroups.map((g) => (
+              <optgroup key={g.stroke} label={g.stroke}>
+                {g.events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+              </optgroup>
+            ))}
           </select>
-        )}
-        <Seg
-          options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
-          value={gender}
-          onChange={setGender}
-        />
-        <Seg
-          options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
-          value={pool}
-          onChange={setPool}
-        />
-        <select className="select" style={{ flex: '1 1 110px', width: 'auto' }} value={year} onChange={(e) => setYear(e.target.value)}>
-          <option value="">All-time</option>
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <select className="select" style={{ flex: '3 1 200px', width: 'auto' }} value={event} onChange={(e) => setEvent(e.target.value)}>
-          <option value="">Select event…</option>
-          {eventGroups.map((g) => (
-            <optgroup key={g.stroke} label={g.stroke}>
-              {g.events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-            </optgroup>
-          ))}
-        </select>
-        <select className="select" style={{ flex: '1 1 110px', width: 'auto' }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-          {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
-        </select>
+          <select className="select" style={{ flex: '1 1 90px', width: 'auto', minWidth: 0 }} value={year} onChange={(e) => setYear(e.target.value)}>
+            <option value="">All-time</option>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <select className="select" style={{ flex: '1 1 84px', width: 'auto', minWidth: 0 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+            {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
+          </select>
+        </div>
       </div>
 
       {scope === 'national' && !country ? (
@@ -160,8 +165,13 @@ export default function Rankings() {
       ) : (
         <div className="pad">
           {selectedEvent && (
-            <div className="kicker" style={{ marginBottom: 12 }}>
-              {selectedEvent.name} · {gender === 'M' ? 'Men' : 'Women'} · {pool} · {year || 'All-time'}
+            <div style={{ marginBottom: 14 }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, letterSpacing: '0.01em' }}>
+                {selectedEvent.name}
+              </span>
+              <span className="kicker" style={{ marginLeft: 10 }}>
+                {gender === 'M' ? 'Men' : 'Women'} · {pool} · {year || 'All-time'}
+              </span>
             </div>
           )}
           <div className="table-scroll">
@@ -181,13 +191,25 @@ export default function Rankings() {
                 {rows.map((r, i) => {
                   const prevCs = i > 0 ? rows[i - 1].time_centiseconds : null
                   const isTied = prevCs !== null && r.time_centiseconds === prevCs
+                  // deep link to the exact swim (expanded with splits) in the meet
+                  const swimLink = r.championship_id && r.result_id
+                    ? `/meets/${r.championship_id}?tab=results&event=${event}&gender=${gender}&result=${r.result_id}`
+                    : null
                   return (
-                    <tr key={`${r.rank}-${r.swimmer_id}`}>
+                    <tr
+                      key={`${r.rank}-${r.swimmer_id}`}
+                      onClick={() => { if (swimLink) navigate(swimLink) }}
+                      style={swimLink ? { cursor: 'pointer' } : undefined}
+                      title={swimLink ? 'View this swim' : undefined}
+                    >
                       <td className="asw-num" style={{ fontWeight: 800 }}>{isTied ? '=' : r.rank}</td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <Flag code={r.nationality_code} name={r.nationality} />
-                          <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>
+                          {/* whole row goes to the swim; profile stays a click away via the meet page */}
+                          {swimLink
+                            ? <span>{r.swimmer_name}</span>
+                            : <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>}
                         </div>
                       </td>
                       <td className="num asw-num">{r.age_at_competition ?? '—'}</td>

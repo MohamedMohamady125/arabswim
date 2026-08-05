@@ -232,7 +232,7 @@ export default function NewRecords() {
 
   return (
     <div>
-      <PageHead kicker="Record books" title="New records" sub="Recently broken records across all scopes" />
+      <PageHead title="New records" />
 
       {/* scope filter */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -266,10 +266,9 @@ export default function NewRecords() {
               </h4>
               <span className="micro asw-num">{rows.length} record{rows.length !== 1 ? 's' : ''}</span>
             </div>
-            <div
-              className="cellgrid grid-3"
-              style={{ gridTemplateColumns: `repeat(${Math.min(3, rows.length)}, 1fr)` }}
-            >
+            {/* auto-fill keeps cards ~240-300px wide regardless of how many
+                records a scope has; phone override lives in theme.css */}
+            <div className="record-cards">
               {rows.map((r) => (
                 <div key={r.id}>
                   {r.swimmer_detail?.photo ? (
@@ -277,14 +276,14 @@ export default function NewRecords() {
                       src={mediaUrl(r.swimmer_detail.photo)}
                       alt={r.swimmer_detail?.name}
                       className="grayscale"
-                      style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', objectPosition: 'top', display: 'block', marginBottom: 10 }}
+                      style={{ width: '100%', aspectRatio: '3 / 2', objectFit: 'cover', objectPosition: 'top', display: 'block', marginBottom: 10 }}
                     />
                   ) : (
                     <div
                       style={{
-                        width: '100%', aspectRatio: '4 / 3', marginBottom: 10,
+                        width: '100%', aspectRatio: '3 / 2', marginBottom: 10,
                         background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, color: 'var(--color-accent)',
+                        fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30, color: 'var(--color-accent)',
                       }}
                     >
                       {(r.swimmer_detail?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')}
@@ -293,23 +292,23 @@ export default function NewRecords() {
                   <div className="card-kicker">
                     {r.record_type} record · {r.pool} <span className="tag tag-dark" style={{ marginLeft: 6 }}>New</span>
                   </div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, margin: '4px 0 2px' }}>
+                  <div className="asw-num rec-time" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, margin: '4px 0 2px' }}>
                     {r.formatted_time}
                   </div>
-                  <div style={{ fontSize: 13 }}>
+                  <div className="rec-event" style={{ fontSize: 13 }}>
                     {r.event_detail?.name} · {r.swimmer_detail?.sex === 'F' ? 'Women' : 'Men'}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                     <Flag code={r.swimmer_detail?.nationality_detail?.code} name={r.swimmer_detail?.nationality_detail?.name} />
                     {r.swimmer && !r.swimmer_detail?.is_relay_team ? (
-                      <Link to={`/swimmers/${r.swimmer}`} style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                      <Link to={`/swimmers/${r.swimmer}`} className="rec-name" style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
                         {r.swimmer_detail?.name}
                       </Link>
                     ) : (
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>{r.swimmer_detail?.name}</span>
+                      <span className="rec-name" style={{ fontSize: 13, fontWeight: 600 }}>{r.swimmer_detail?.name}</span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 6 }}>
+                  <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 6 }}>
                     {[r.meet_name, r.location].filter(Boolean).join(' · ')}
                     {r.result_date ? ` · ${formatDate(r.result_date)}` : ''}
                   </div>

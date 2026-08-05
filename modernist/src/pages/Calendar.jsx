@@ -460,7 +460,7 @@ export default function Calendar() {
 
   return (
     <div>
-      <PageHead kicker="Season" title="Calendar" sub="Upcoming championships and events across the Arab world">
+      <PageHead title="Calendar">
         {isAdmin && (
           <div style={{ marginTop: 14 }}>
             <button className="btn btn-primary" onClick={() => setShowAddEvent(true)}>Add event</button>
@@ -509,7 +509,7 @@ export default function Calendar() {
       )}
 
       {/* tabs + filters */}
-      <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Seg
           options={[
             { value: 'meets', label: 'Meets' },
@@ -548,10 +548,6 @@ export default function Calendar() {
                 <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.09em', textTransform: 'uppercase', padding: '6px 14px', display: 'inline-block' }}>
                   {MONTHS_FULL[g.month]} {g.year}
                 </div>
-                <span className="micro" style={{ marginLeft: 'auto' }}>
-                  <span className="asw-num" style={{ color: 'var(--color-text)' }}>{g.items.length}</span>
-                  {' '}item{g.items.length !== 1 ? 's' : ''}
-                </span>
               </div>
               {g.items.map(({ kind, item, d }, i) => {
                 if (kind === 'meet') {
@@ -563,11 +559,11 @@ export default function Calendar() {
                         onClick={() => setExpandedMeetId(isExpanded ? null : c.id)}
                         style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px', cursor: 'pointer', background: isExpanded ? 'var(--color-surface)' : undefined }}
                       >
-                        <div style={{ width: 44, flex: 'none', textAlign: 'center' }}>
-                          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, lineHeight: 1 }}>{d.getDate()}</div>
-                          <div className="micro" style={{ fontSize: 10 }}>{MONTH_SHORT[d.getMonth()]}</div>
+                        {/* mini calendar tile: navy month strip over the day */}
+                        <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
+                          <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 8.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
+                          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
                         </div>
-                        <Flag code={c.country_detail?.code} name={c.country_detail?.name} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: 14, fontWeight: 600 }}>{c.name}</span>
                           <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
@@ -594,9 +590,9 @@ export default function Calendar() {
                     style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px', cursor: ev.championship ? 'pointer' : 'default' }}
                     onClick={() => { if (ev.championship) navigate(`/meets/${ev.championship}`) }}
                   >
-                    <div style={{ width: 44, flex: 'none', textAlign: 'center' }}>
-                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, lineHeight: 1 }}>{d.getDate()}</div>
-                      <div className="micro" style={{ fontSize: 10 }}>{MONTH_SHORT[d.getMonth()]}</div>
+                    <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
+                      <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 8.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
+                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>{ev.title}</span>
@@ -636,9 +632,9 @@ export default function Calendar() {
               className={i < otherEvents.length - 1 ? 'hair-b' : ''}
               style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 32px' }}
             >
-              <div style={{ width: 44, flex: 'none', textAlign: 'center' }}>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, lineHeight: 1 }}>{d.getDate()}</div>
-                <div className="micro" style={{ fontSize: 10 }}>{MONTH_SHORT[d.getMonth()]} {d.getFullYear()}</div>
+              <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 8.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]} {String(d.getFullYear()).slice(2)}</div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

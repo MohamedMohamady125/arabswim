@@ -21,16 +21,19 @@ function initials(name) {
     .toUpperCase()
 }
 
-function Avatar({ photo, name, size = 32 }) {
+function Avatar({ photo, name, size = 34 }) {
+  // portrait 4:5 box — the natural shape of a headshot, so faces are not
+  // cropped into a tight square
+  const h = Math.round(size * 1.25)
   if (photo) {
     return (
-      <div className="grayscale" style={{ width: size, height: size, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)' }}>
-        <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <div className="grayscale" style={{ width: size, height: h, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)' }}>
+        <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
       </div>
     )
   }
   return (
-    <div style={{ width: size, height: size, flex: 'none', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11 }}>
+    <div style={{ width: size, height: h, flex: 'none', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11 }}>
       {initials(name)}
     </div>
   )
@@ -288,20 +291,20 @@ export default function Swimmers() {
 
   return (
     <div>
-      <PageHead kicker="People" title="Swimmers" sub="Every swimmer in the ArabSwiM database." />
+      <PageHead title="Swimmers" />
 
-      {/* filter bar */}
-      <div className="rule-b" style={{ padding: '16px 32px', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* filter bar: everything on one line */}
+      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, flexWrap: 'nowrap', alignItems: 'center' }}>
         <input
           className="input"
-          style={{ maxWidth: 320 }}
+          style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
           placeholder="Search by name…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <select
           className="select"
-          style={{ maxWidth: 220 }}
+          style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 220 }}
           value={country}
           onChange={(e) => { setCountry(e.target.value); setPage(1) }}
         >

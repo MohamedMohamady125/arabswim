@@ -88,13 +88,31 @@ function ClubLogo({ logo, name, size = 26 }) {
 
 function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onDataChanged }) {
   const navigate = useNavigate()
-  const [genderFilter, setGenderFilter] = useState('')
-  const [eventKey, setEventKey] = useState('')
+  const [initParams] = useSearchParams()
+  // deep link from Records: ?event=&gender=&result= opens that exact swim
+  const initialResult = React.useRef(initParams.get('result'))
+  const [genderFilter, setGenderFilter] = useState(initParams.get('gender') || '')
+  const [eventKey, setEventKey] = useState(() => {
+    const e = initParams.get('event')
+    const g = initParams.get('gender')
+    return e && g ? `${e}|${g}` : ''
+  })
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [selectedRound, setSelectedRound] = useState(null)
   const [expandedRow, setExpandedRow] = useState(null)
+  // deep-linked swim: gold-tinted and scrolled into view on arrival
+  const [highlightId, setHighlightId] = useState(null)
+
+  useEffect(() => {
+    if (!highlightId) return
+    const el = document.querySelector(`[data-result-id="${highlightId}"]`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const t = setTimeout(() => setHighlightId(null), 4000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, loading])
   const [editMode, setEditMode] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editValues, setEditValues] = useState({ time: '', team: '' })
@@ -136,9 +154,20 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
         setRows(data)
         const rounds = [...new Set(data.map((r) => r.round_type || ''))]
         rounds.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
-        setSelectedRound(rounds[0] ?? '')
-        setSelectedCategory('ALL')
-        setExpandedRow(null)
+        // deep-linked swim: jump to its round and open its splits
+        const target = initialResult.current
+          && data.find((r) => String(r.id) === String(initialResult.current))
+        if (target) {
+          initialResult.current = null
+          setSelectedRound(target.round_type || '')
+          setSelectedCategory('ALL')
+          setExpandedRow(target.id)
+          setHighlightId(target.id)
+        } else {
+          setSelectedRound(rounds[0] ?? '')
+          setSelectedCategory('ALL')
+          setExpandedRow(null)
+        }
         setEditingId(null)
       })
       .catch(() => setRows([]))
@@ -284,7 +313,13 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
     return (
       <React.Fragment key={r.id}>
         <tr
-          style={{ cursor: editMode ? 'default' : 'pointer', background: isEditing ? 'var(--color-accent-100)' : undefined }}
+          data-result-id={r.id}
+          style={{
+            cursor: editMode ? 'default' : 'pointer',
+            background: isEditing ? 'var(--color-accent-100)'
+              : highlightId === r.id ? 'color-mix(in srgb, var(--asw-gold) 18%, transparent)' : undefined,
+            transition: 'background 0.6s',
+          }}
           onClick={() => {
             if (editMode) return
             if (hasSub) setExpandedRow(isExpanded ? null : r.id)
@@ -375,16 +410,27 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
         </tr>
         {isExpanded && !isRelay && splits.length > 0 && (
           <tr style={{ background: 'var(--color-surface)' }}>
-            <td colSpan={colCount} style={{ padding: '8px 12px' }}>
-              {/* chips flow left→right and wrap only when the line is full,
-                  so all available width is used on phone and laptop */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {splits.map((s, j) => (
-                  <span key={j} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', padding: '3px 8px' }}>
-                    <span className="micro" style={{ fontSize: 10 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</span>
-                    <span className="asw-num" style={{ fontSize: 13, fontWeight: 700 }}>{s.time}</span>
-                  </span>
-                ))}
+            <td colSpan={colCount} style={{ padding: '10px 12px' }}>
+              {/* one continuous strip — stays on a single line and scrolls
+                  sideways for long events instead of wrapping */}
+              <div style={{ overflowX: 'auto' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--color-divider)', background: 'var(--color-bg)' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', padding: '0 10px',
+                    fontSize: 9, fontWeight: 800, letterSpacing: '0.08em',
+                    fontFamily: 'var(--font-heading)', color: 'var(--color-accent-800)',
+                    background: 'color-mix(in srgb, var(--asw-gold) 14%, transparent)',
+                    borderRight: '1px solid var(--color-divider)',
+                  }}>
+                    SPLITS
+                  </div>
+                  {splits.map((s, j) => (
+                    <div key={j} style={{ padding: '5px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: j < splits.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
+                      <div className="micro" style={{ fontSize: 9, marginBottom: 2 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</div>
+                      <div className="asw-num" style={{ fontSize: 13, fontWeight: 700 }}>{s.time}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </td>
           </tr>

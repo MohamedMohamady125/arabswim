@@ -4,7 +4,7 @@ import { getChampionships, updateChampionship, deleteChampionship } from '../api
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
-import { formatDateRange, formatNumber, mediaUrl, MONTHS_FULL } from '../utils'
+import { flagSrc, formatDateRange, formatNumber, mediaUrl, MONTHS_FULL } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
 function parseMeetDate(d) {
@@ -136,11 +136,11 @@ export default function Championships() {
 
   return (
     <div>
-      <PageHead kicker="Competition" title="Championships" />
+      <PageHead title="Championships" />
 
-      {/* featured meet */}
+      {/* featured meet (desktop only) */}
       {featured && (
-        <div className="rule-b" style={{ display: 'flex', flexWrap: 'wrap' }}>
+        <div className="rule-b hide-mobile" style={{ display: 'flex', flexWrap: 'wrap' }}>
           {featured.m.meet_photo && (
             <div className="hide-mobile" style={{ width: 220, alignSelf: 'stretch', flex: 'none', borderRight: '2px solid var(--color-divider)', overflow: 'hidden' }}>
               <img
@@ -169,7 +169,7 @@ export default function Championships() {
       )}
 
       {/* filter bar */}
-      <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="rule-b meets-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           className="input"
           style={{ width: 220 }}
@@ -178,9 +178,9 @@ export default function Championships() {
           onChange={(e) => setSearch(e.target.value)}
         />
         <Seg
-          options={[{ value: 'ALL', label: 'All pools' }, { value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
+          options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
           value={pool}
-          onChange={setPool}
+          onChange={(v) => setPool(pool === v ? 'ALL' : v)}
         />
         <select className="select" style={{ width: 120 }} value={year} onChange={(e) => setYear(e.target.value)}>
           <option value="">All years</option>
@@ -216,13 +216,19 @@ export default function Championships() {
                   }}
                 >
                   {m.meet_photo ? (
-                    <div className="grayscale" style={{ width: 72, height: 52, flex: 'none', overflow: 'hidden' }}>
+                    <div className="grayscale" style={{ width: 60, height: 40, flex: 'none', overflow: 'hidden' }}>
                       <img src={mediaUrl(m.meet_photo)} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   ) : (
-                    <Flag code={m.country_detail?.code} name={m.country_detail?.name} large />
+                    <img
+                      src={flagSrc(m.country_detail?.code, 'w160')}
+                      alt={m.country_detail?.name || ''}
+                      loading="lazy"
+                      style={{ width: 60, height: 40, flex: 'none', objectFit: 'cover', border: '1px solid var(--color-divider)', display: 'block' }}
+                      onError={(e) => { e.target.style.display = 'none' }}
+                    />
                   )}
-                  <div style={{ flex: 1, minWidth: 220 }}>
+                  <div style={{ flex: 1, minWidth: 160 }}>
                     <Link to={`/meets/${m.id}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>
                       <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{m.name}</div>
                     </Link>
@@ -246,12 +252,23 @@ export default function Championships() {
                       )}
                     </div>
                   )}
-                  <span className="micro" style={{ fontSize: 10, width: 12, textAlign: 'center' }}>{isExpanded ? '▴' : '▾'}</span>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 28, height: 28, flex: 'none',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      border: '1px solid var(--color-divider)', borderRadius: '50%',
+                      fontSize: 14, lineHeight: 1, color: 'var(--color-accent)',
+                      background: isExpanded ? 'var(--color-accent)' : 'transparent',
+                    }}
+                  >
+                    <span style={{ color: isExpanded ? '#fff' : 'inherit', transform: 'translateY(-1px)' }}>{isExpanded ? '▴' : '▾'}</span>
+                  </span>
                 </div>
 
                 {/* expanded actions */}
                 {isExpanded && (
-                  <div style={{ padding: '12px 32px 18px', background: 'var(--color-surface)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div className="meet-actions" style={{ padding: '12px 32px 18px', background: 'var(--color-surface)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     {hasResults && (
                       <>
                         <Link className="btn btn-primary" to={`/meets/${m.id}?tab=results`}>View results</Link>

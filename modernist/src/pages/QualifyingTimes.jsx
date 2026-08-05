@@ -59,9 +59,10 @@ function StandardTables({ times, gender, pool }) {
   }
 
   return (
-    <div>
+    // side-by-side stroke tables use the page width instead of one long column
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4px 28px' }}>
       {strokes.map((stroke) => (
-        <div key={stroke} style={{ marginBottom: 24 }}>
+        <div key={stroke} style={{ marginBottom: 18 }}>
           <div className="kicker" style={{ marginBottom: 8 }}>{stroke}</div>
           <div className="table-scroll">
             <table className="table">
@@ -142,41 +143,49 @@ export default function QualifyingTimes() {
 
   return (
     <div>
-      <PageHead kicker="Data" title="Qualifying times" sub="Entry standards for major international competitions" />
+      <PageHead title="Qualifying times" />
 
       {standards.length === 0 ? (
         <Empty label="No qualifying standards published" />
       ) : (
         <>
-          {/* standard selection */}
-          <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {standards.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className={s.id === selectedId ? 'btn btn-primary' : 'btn btn-secondary'}
-                onClick={() => setSelectedId(s.id)}
-              >
-                {s.name}
-                {s.times_count != null && (
-                  <span className="asw-num" style={{ fontSize: 11, opacity: 0.7 }}>· {s.times_count}</span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* filter bar */}
-          <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Seg
-              options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
-              value={gender}
-              onChange={setGender}
-            />
-            <Seg
-              options={[{ value: 'LCM', label: 'LCM 50m' }, { value: 'SCM', label: 'SCM 25m' }]}
-              value={pool}
-              onChange={setPool}
-            />
+          {/* filter bar: standard tabs on top, gender/pool segments below */}
+          <div className="rule-b records-filters" style={{ padding: '10px 32px', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {standards.map((s) => {
+                const active = s.id === selectedId
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedId(s.id)}
+                    style={{
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5,
+                      padding: '7px 13px', lineHeight: 1,
+                      background: active ? 'var(--color-accent)' : 'var(--color-bg)',
+                      color: active ? '#fff' : 'var(--color-accent-800)',
+                      border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-neutral-300)'}`,
+                      borderBottom: active ? '2px solid var(--asw-gold)' : '1px solid var(--color-neutral-300)',
+                    }}
+                  >
+                    {s.name}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Seg
+                options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+                value={gender}
+                onChange={setGender}
+              />
+              <Seg
+                options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
+                value={pool}
+                onChange={setPool}
+              />
+            </div>
           </div>
 
           {detailLoading ? (
@@ -184,16 +193,17 @@ export default function QualifyingTimes() {
           ) : !detail ? (
             <Empty label="Standard unavailable" />
           ) : (
-            <div className="pad">
-              <div className="kicker" style={{ marginBottom: 4 }}>
-                {compLabel(detail.competition_type)} {detail.year ? `· ${detail.year}` : ''}
+            <div style={{ padding: '18px 32px 28px' }}>
+              {/* the selected tab already names the standard — only show
+                  what it doesn't: competition type + qualifying period */}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+                <span className="kicker">{compLabel(detail.competition_type)}{detail.year ? ` · ${detail.year}` : ''}</span>
+                {detail.qualifying_period_start && detail.qualifying_period_end && (
+                  <span className="micro" style={{ marginLeft: 'auto' }}>
+                    Qualifying period: {formatDate(detail.qualifying_period_start)} — {formatDate(detail.qualifying_period_end)}
+                  </span>
+                )}
               </div>
-              <h3 style={{ margin: '0 0 6px' }}>{detail.name}</h3>
-              {detail.qualifying_period_start && detail.qualifying_period_end && (
-                <div className="micro" style={{ marginBottom: 14 }}>
-                  Qualifying period: {formatDate(detail.qualifying_period_start)} — {formatDate(detail.qualifying_period_end)}
-                </div>
-              )}
               <StandardTables times={detail.times || []} gender={gender} pool={pool} />
             </div>
           )}

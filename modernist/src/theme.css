@@ -199,8 +199,7 @@ figure { margin: 0; }
 
 /* ═══ ArabSwiM specifics (from theme) ═══ */
 .asw-flag { display: block; width: 26px; height: 17px; flex: none; object-fit: cover; border: 1px solid var(--color-divider); }
-.asw-flag-lg { display: block; width: 38px; height: 25px; flex: none; object-fit: cover; border: 1px solid var(--color-divider); }
-.asw-time { font-variant-numeric: tabular-nums; font-family: var(--font-heading); font-weight: 800; }
+.asw-flag-lg { display: block; width: 38px; height: 25px; flex: none; object-fit: cover; border: 1px solid var(--color-divider); }.asw-time { font-variant-numeric: tabular-nums; font-family: var(--font-heading); font-weight: 800; }
 .asw-num { font-variant-numeric: tabular-nums; }
 .asw-fast { color: var(--asw-fast); font-weight: 600; }
 .asw-slow { color: var(--asw-slow); }
@@ -250,6 +249,10 @@ figure { margin: 0; }
 .cellgrid { display: grid; gap: 1px; background: var(--color-divider); }
 .cellgrid > * { background: var(--color-surface); padding: 14px 16px; }
 
+/* — new-records card grid — bordered cards, no filler tracks */
+.record-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.record-cards > * { background: var(--color-surface); padding: 14px 16px; border: 1px solid var(--color-divider); }
+
 /* — pagination — */
 .pager { display: flex; align-items: center; gap: 8px; padding: 16px 0; font-size: 13px; }
 .pager .info { color: var(--color-neutral-700); margin-right: auto; }
@@ -278,6 +281,39 @@ figure { margin: 0; }
   .faceoff > div:last-child { justify-content: center; padding: 6px 0 !important; }
   /* medals page: force the 4 totals cards into a tight 2×2 grid */
   .medal-totals { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; padding: 14px 16px !important; }
+  /* championships page: compact filter bar on phone */
+  .meets-filters { padding: 8px 16px !important; gap: 6px !important; }
+  .meets-filters .input { width: 100% !important; height: 32px; min-height: 32px; font-size: 13px; }
+  .meets-filters .select { width: auto !important; flex: 1; min-width: 0; height: 32px; min-height: 32px; font-size: 12px; padding: 0 24px 0 6px; }
+  .meets-filters .seg { height: auto; align-items: stretch; }
+  .meets-filters .seg .seg-opt {
+    padding: 0 9px; font-size: 10px;
+    min-height: 30px; height: 30px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .meets-filters .btn { height: 30px; padding: 0 10px; font-size: 11px; }
+  /* records page: every filter on one compact line */
+  .records-filters { padding: 10px 16px !important; gap: 6px !important; flex-wrap: nowrap !important; overflow-x: auto; }
+  .records-filters .select { width: auto !important; flex: 1 1 auto; min-width: 72px; height: 32px; min-height: 32px; font-size: 12px; padding: 0 20px 0 6px; }
+  .records-filters .input { width: auto !important; flex: 1 1 auto; min-width: 110px; max-width: none !important; height: 32px; min-height: 32px; font-size: 13px; padding: 0 8px; }
+  .records-filters .seg { flex: none; height: auto; align-items: stretch; }
+  .records-filters .seg .seg-opt {
+    padding: 0 8px; font-size: 10px;
+    min-height: 30px; height: 30px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  /* expanded meet actions: keep the buttons on one line */
+  .meet-actions { padding: 10px 16px 14px !important; gap: 6px !important; flex-wrap: nowrap !important; overflow-x: auto; }
+  .meet-actions .btn { flex: 1 0 auto; height: 32px; padding: 0 8px; font-size: 11px; white-space: nowrap; justify-content: center; }
+  /* new-records: two compact cards per row reads best on a phone —
+     card width ~170px keeps photos small while text stays legible */
+  .record-cards { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+  .record-cards > * { padding: 10px !important; }
+  .record-cards .card-kicker { font-size: 8.5px; letter-spacing: 0.06em; }
+  .record-cards .rec-time { font-size: 18px !important; }
+  .record-cards .rec-event { font-size: 11px !important; }
+  .record-cards .rec-name { font-size: 11.5px !important; }
+  .record-cards .rec-meta { font-size: 10px !important; margin-top: 4px !important; }
   /* splits/team chip: keep the label but as small as legible so athlete
      names get the width */
   .splits-chip { font-size: 7px !important; padding: 1px 3px !important; letter-spacing: 0.02em !important; gap: 1px !important; }

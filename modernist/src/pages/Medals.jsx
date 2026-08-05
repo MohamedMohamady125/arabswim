@@ -111,12 +111,6 @@ export default function Medals() {
     return () => { alive = false }
   }, [classificationId, championship, gender, country, isNational])
 
-  const tallyRows = isNational ? clubRows : summary
-  const totalGold = tallyRows.reduce((s, r) => s + (r.gold || 0), 0)
-  const totalSilver = tallyRows.reduce((s, r) => s + (r.silver || 0), 0)
-  const totalBronze = tallyRows.reduce((s, r) => s + (r.bronze || 0), 0)
-  const totalAll = totalGold + totalSilver + totalBronze
-
   const rows = scope === 'country' ? summary : scope === 'club' ? clubRows : swimmerRows
 
   // National + country filter → only show that federation's meets in the picker
@@ -135,10 +129,10 @@ export default function Medals() {
 
   return (
     <div>
-      <PageHead kicker="Competition" title="Medal tables" />
+      <PageHead title="Medal tables" />
 
-      {/* filter bar */}
-      <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* filter bar: one line, scrolls sideways on phone */}
+      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Seg options={CATEGORIES} value={category} onChange={setCategory} />
         <Seg options={scopeOptions} value={scope} onChange={setScope} />
         <Seg
@@ -157,35 +151,6 @@ export default function Medals() {
           <option value="">All {category} championships</option>
           {visibleMeets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
-      </div>
-
-      {/* totals cards */}
-      <div className="rule-b medal-totals" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, padding: '20px 32px' }}>
-        {[
-          { label: 'Gold', value: totalGold, icon: 'GOLD', accent: 'var(--asw-gold)' },
-          { label: 'Silver', value: totalSilver, icon: 'SILVER', accent: 'var(--asw-silver)' },
-          { label: 'Bronze', value: totalBronze, icon: 'BRONZE', accent: 'var(--asw-bronze)' },
-          { label: 'Total medals', value: totalAll, accent: 'var(--color-accent)' },
-        ].map((s) => (
-          <div
-            key={s.label}
-            className="card elev-sm"
-            style={{
-              alignItems: 'center', textAlign: 'center', gap: 6,
-              padding: '18px 12px',
-              border: '1px solid var(--color-divider)',
-              borderTop: `3px solid ${s.accent}`,
-            }}
-          >
-            {s.icon
-              ? <MedalIcon type={s.icon} size={26} />
-              : <span className="asw-num" style={{ fontSize: 20, fontWeight: 800, lineHeight: '26px', color: 'var(--color-accent)' }}>Σ</span>}
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1 }}>
-              {loading ? '—' : s.value.toLocaleString('en-US')}
-            </div>
-            <div className="card-kicker">{s.label}</div>
-          </div>
-        ))}
       </div>
 
       {loading ? (

@@ -374,6 +374,8 @@ class RecordViewSet(viewsets.ModelViewSet):
                     time_str = f'{seconds}.{centis:02d}'
 
                 records.append({
+                    'result_id': result.id,
+                    'championship_id': result.championship_id,
                     'event_id': result.event_id,
                     'event_name': result.event.name,
                     'event_distance': result.event.distance,

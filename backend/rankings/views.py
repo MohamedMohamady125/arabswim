@@ -90,6 +90,9 @@ class RankingView(APIView):
         for i, result in enumerate(results_to_serialize):
             data.append({
                 'rank': start_rank + i,
+                # deep link target: the exact swim behind this ranking entry
+                'result_id': result.id,
+                'championship_id': result.championship_id,
                 'swimmer_id': result.swimmer.id,
                 'swimmer_name': result.swimmer.name,
                 'nationality': result.swimmer.nationality.name,

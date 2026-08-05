@@ -49,13 +49,14 @@ class MedalViewSet(viewsets.ModelViewSet):
         return qs
 
     @staticmethod
-    def _dedupe_relay_placeholders(qs):
+    def _relay_counts_once(qs):
         """A relay medal exists both on the relay-team placeholder and on
-        each individual athlete. In tallies the relay counts once per
-        athlete, so drop the placeholder row when individual rows exist."""
-        individual = Medal.objects.filter(
-            result=OuterRef('result'), swimmer__is_relay_team=False)
-        return qs.exclude(Q(swimmer__is_relay_team=True) & Q(Exists(individual)))
+        each squad athlete. Clubs/countries get ONE medal per relay podium,
+        so keep the placeholder row and drop the athlete rows here (each
+        athlete still keeps their own medal in personal tallies)."""
+        placeholder = Medal.objects.filter(
+            result=OuterRef('result'), swimmer__is_relay_team=True)
+        return qs.exclude(Q(swimmer__is_relay_team=False) & Q(Exists(placeholder)))
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -64,6 +65,9 @@ class MedalViewSet(viewsets.ModelViewSet):
         country = self.request.query_params.get('country')
         if swimmer:
             qs = qs.filter(swimmer_id=swimmer)
+        else:
+            # meet header / medal lists: relay podium shows as one row
+            qs = self._relay_counts_once(qs)
         # Only restrict to Arab countries on the global medals page, not per-championship
         if not self.request.query_params.get('championship') and not swimmer and not country:
             qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
@@ -72,7 +76,7 @@ class MedalViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def summary(self, request):
         qs = self._apply_filters(Medal.objects.all())
-        qs = self._dedupe_relay_placeholders(qs)
+        qs = self._relay_counts_once(qs)
         # Only restrict to Arab countries on the global medals page, not per-championship
         if not request.query_params.get('championship'):
             qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
@@ -117,7 +121,7 @@ class MedalViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='club-summary')
     def club_summary(self, request):
         qs = self._apply_filters(Medal.objects.all())
-        qs = self._dedupe_relay_placeholders(qs)
+        qs = self._relay_counts_once(qs)
         # Only include medals that have a team/club via result
         qs = qs.filter(
             result__isnull=False,

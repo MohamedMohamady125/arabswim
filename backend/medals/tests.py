@@ -183,14 +183,36 @@ class RelayMedalTests(TestCase):
         self.assertEqual(
             Medal.objects.filter(championship=self.champ).count(), 2)
 
-    def test_summary_counts_athletes_not_placeholder(self):
+    def test_relay_counts_once_for_country_and_club(self):
+        names = ['Ali TAMER', 'Omar SAYED']
+        for n in names:
+            Swimmer.objects.create(name=n, sex='M', nationality=self.country)
+        result = self._relay_result('Egypt Relay', 20000, names)
+        result.team = 'Egypt Relay'
+        result.save(update_fields=['team'])
+        recompute_medals(self.champ)
+        # country tally: relay podium = 1 medal
+        res = self.client.get(f'/api/v1/medals/summary/?championship={self.champ.id}')
+        self.assertEqual(res.status_code, 200)
+        row = next(r for r in res.json()
+                   if r['swimmer__nationality__code'] == 'EGY')
+        self.assertEqual(row['gold'], 1)
+        # club tally: relay podium = 1 medal
+        res = self.client.get(f'/api/v1/medals/club-summary/?championship={self.champ.id}')
+        self.assertEqual(res.status_code, 200)
+        club = next(r for r in res.json() if r['result__team'] == 'Egypt Relay')
+        self.assertEqual(club['gold'], 1)
+
+    def test_relay_still_counts_per_swimmer_personally(self):
         names = ['Ali TAMER', 'Omar SAYED']
         for n in names:
             Swimmer.objects.create(name=n, sex='M', nationality=self.country)
         self._relay_result('Egypt Relay', 20000, names)
         recompute_medals(self.champ)
-        res = self.client.get(f'/api/v1/medals/summary/?championship={self.champ.id}')
+        res = self.client.get(
+            f'/api/v1/medals/swimmer-summary/?championship={self.champ.id}&limit=all')
         self.assertEqual(res.status_code, 200)
-        row = next(r for r in res.json()
-                   if r['swimmer__nationality__code'] == 'EGY')
-        self.assertEqual(row['gold'], 2)  # athletes only, placeholder excluded
+        rows = {r['swimmer__name']: r['gold'] for r in res.json()}
+        self.assertEqual(rows.get('Ali TAMER'), 1)
+        self.assertEqual(rows.get('Omar SAYED'), 1)
+        self.assertNotIn('Egypt Relay', rows)  # placeholder never a person

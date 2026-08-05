@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'qualifying_times',
     'sponsors',
     'coaches',
+    'predictions',
 ]
 
 MIDDLEWARE = [

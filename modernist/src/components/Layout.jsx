@@ -14,6 +14,7 @@ const NAV = [
       ['Rankings', '/rankings'],
       ['Medals', '/medals'],
       ['Qualifying times', '/qualifying-times'],
+      ['Predictions', '/predictions'],
     ],
   },
   {

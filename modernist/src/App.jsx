@@ -14,6 +14,7 @@ import NewRecords from './pages/NewRecords'
 import Medals from './pages/Medals'
 import Rankings from './pages/Rankings'
 import QualifyingTimes from './pages/QualifyingTimes'
+import Predictions from './pages/Predictions'
 import Swimmers from './pages/Swimmers'
 import SwimmerProfile from './pages/SwimmerProfile'
 import Compare from './pages/Compare'
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="/medals" element={<Medals />} />
         <Route path="/rankings" element={<Rankings />} />
         <Route path="/qualifying-times" element={<QualifyingTimes />} />
+        <Route path="/predictions" element={<Predictions />} />
         <Route path="/swimmers" element={<Swimmers />} />
         <Route path="/swimmers/:id" element={<SwimmerProfile />} />
         <Route path="/compare" element={<Compare />} />

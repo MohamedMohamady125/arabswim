@@ -196,15 +196,39 @@ class CountryViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
         if request.query_params.get('with_stats'):
-            from django.db.models import Count
-            from django.db.models import Q
+            from django.db.models import Count, Q, Exists, OuterRef
+            from medals.models import Medal
             counts = dict(
                 Country.objects.annotate(
                     n=Count('swimmers', filter=Q(swimmers__is_relay_team=False))
                 ).values_list('id', 'n')
             )
+            club_counts = dict(
+                Country.objects.annotate(n=Count('teams')).values_list('id', 'n')
+            )
+            # Medals won by each nation's swimmers at Arab championships
+            # (relay podiums counted once via the relay-team placeholder row)
+            placeholder = Medal.objects.filter(
+                result=OuterRef('result'), swimmer__is_relay_team=True)
+            medal_rows = (
+                Medal.objects
+                .filter(championship__classification__name='Arab')
+                .exclude(Q(swimmer__is_relay_team=False) & Q(Exists(placeholder)))
+                .values('swimmer__nationality_id')
+                .annotate(
+                    gold=Count('id', filter=Q(medal_type='GOLD')),
+                    silver=Count('id', filter=Q(medal_type='SILVER')),
+                    bronze=Count('id', filter=Q(medal_type='BRONZE')),
+                )
+            )
+            medals = {m['swimmer__nationality_id']: m for m in medal_rows}
             for row in response.data:
                 row['swimmers_count'] = counts.get(row['id'], 0)
+                row['clubs_count'] = club_counts.get(row['id'], 0)
+                m = medals.get(row['id'])
+                row['gold'] = m['gold'] if m else 0
+                row['silver'] = m['silver'] if m else 0
+                row['bronze'] = m['bronze'] if m else 0
         return response
 
     @action(detail=True, methods=['get'])

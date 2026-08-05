@@ -2,42 +2,37 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, SectHead } from '../components/ui'
+import { PageHead, Loading, Empty, SectHead, MedalIcon } from '../components/ui'
 import { formatNumber } from '../utils'
 
-function CountryTable({ countries, showRegion = true }) {
+function CountryTable({ countries }) {
   return (
     <div className="table-scroll">
       <table className="table">
         <thead>
           <tr>
-            <th style={{ width: 50 }}>Flag</th>
-            <th>Country</th>
-            <th>Code</th>
-            {showRegion && <th>Region</th>}
+            <th>Federation</th>
             <th className="num">Swimmers</th>
+            <th className="num"><MedalIcon type="GOLD" size={16} /></th>
+            <th className="num"><MedalIcon type="SILVER" size={16} /></th>
+            <th className="num"><MedalIcon type="BRONZE" size={16} /></th>
           </tr>
         </thead>
         <tbody>
           {countries.map((c) => (
             <tr key={c.id}>
-              <td><Flag code={c.code} name={c.name} large /></td>
               <td>
-                <Link to={`/countries/${c.id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
-                  {c.name}
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Flag code={c.code} name={c.name} large />
+                  <Link to={`/countries/${c.id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
+                    {c.name}
+                  </Link>
+                </div>
               </td>
-              <td className="text-muted">{c.code}</td>
-              {showRegion && (
-                <td>
-                  {c.region === 'GCC' ? (
-                    <span className="tag tag-dark">GCC</span>
-                  ) : (
-                    <span className="tag tag-accent">Arab</span>
-                  )}
-                </td>
-              )}
               <td className="num asw-num">{formatNumber(c.swimmers_count)}</td>
+              <td className="num asw-num" style={{ fontWeight: 800 }}>{c.gold || 0}</td>
+              <td className="num asw-num">{c.silver || 0}</td>
+              <td className="num asw-num">{c.bronze || 0}</td>
             </tr>
           ))}
         </tbody>
@@ -84,34 +79,34 @@ export default function Countries() {
 
   return (
     <div>
-      <PageHead kicker="Data" title="Countries" sub="Arab swimming federations and their databases" />
-      <div className="rule-b" style={{ padding: '14px 32px' }}>
+      <PageHead title="Federations" />
+      <div className="rule-b records-filters" style={{ padding: '12px 32px', display: 'flex', gap: 10, flexWrap: 'nowrap', alignItems: 'center' }}>
         <input
           className="input"
-          style={{ maxWidth: 320 }}
-          placeholder="Search countries…"
+          style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
+          placeholder="Search federations…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search countries"
+          aria-label="Search federations"
         />
       </div>
       {loading ? (
-        <Loading label="Loading countries" />
+        <Loading label="Loading federations" />
       ) : countries.length === 0 ? (
-        <Empty label="No countries found" />
+        <Empty label="No federations found" />
       ) : (
         <>
-          <div className="pad-lg">
-            <SectHead title={`Arab federations · ${arab.length}`} />
-            {arab.length === 0 ? <Empty label="No countries match" /> : <CountryTable countries={arab} />}
+          <div className="pad">
+            {/* medal columns tally Arab-championship podiums only */}
+            <div className="micro" style={{ marginBottom: 10 }}>
+              Medals won at Arab championships
+            </div>
+            {arab.length === 0 ? <Empty label="No federations match" /> : <CountryTable countries={arab} />}
           </div>
           {others.length > 0 && (
-            <div className="rule-t pad-lg">
+            <div className="rule-t pad">
               <SectHead title="Other countries in the database" />
-              <div className="micro" style={{ marginBottom: 12 }}>
-                Non-Arab countries with swimmers on record
-              </div>
-              <CountryTable countries={others} showRegion={false} />
+              <CountryTable countries={others} />
             </div>
           )}
         </>

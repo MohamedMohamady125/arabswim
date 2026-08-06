@@ -3,11 +3,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
-from .models import ClassificationCategory, Classification, SubClassification, Championship, Result
+from .models import ClassificationCategory, Classification, SubClassification, Championship, ProgramItem, Result
 from .serializers import (
     ClassificationCategorySerializer, ClassificationSerializer, SubClassificationSerializer,
     ChampionshipListSerializer, ChampionshipDetailSerializer,
-    ResultSerializer, ResultCreateSerializer
+    ProgramItemSerializer, ResultSerializer, ResultCreateSerializer
 )
 
 
@@ -61,6 +61,43 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return ChampionshipListSerializer
         return ChampionshipDetailSerializer
+
+    @action(detail=True, methods=['get', 'put'])
+    def program(self, request, pk=None):
+        """Day-by-day meet program.
+
+        GET (public): {'days': [{day, date, items: [...]}]} — one entry per
+        meet day (Day 1 = start date), even when a day has no events yet.
+        PUT (admin): replaces the whole program with
+        {'items': [{day, event, gender, order}]}."""
+        from datetime import timedelta
+        champ = self.get_object()
+        if request.method == 'PUT':
+            ser = ProgramItemSerializer(data=request.data.get('items', []), many=True)
+            ser.is_valid(raise_exception=True)
+            ProgramItem.objects.filter(championship=champ).delete()
+            seen = set()
+            rows = []
+            for row in ser.validated_data:
+                key = (row['day'], row['event'].id, row.get('gender', 'X'))
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append(ProgramItem(championship=champ, **row))
+            ProgramItem.objects.bulk_create(rows)
+        by_day = {}
+        for item in ProgramItem.objects.filter(championship=champ).select_related('event'):
+            by_day.setdefault(item.day, []).append(item)
+        n_days = 1
+        if champ.end_date and champ.end_date >= champ.date:
+            n_days = min((champ.end_date - champ.date).days + 1, 30)
+        n_days = max(n_days, max(by_day, default=1))
+        days = [{
+            'day': d,
+            'date': str(champ.date + timedelta(days=d - 1)),
+            'items': ProgramItemSerializer(by_day.get(d, []), many=True).data,
+        } for d in range(1, n_days + 1)]
+        return Response({'days': days})
 
     def perform_update(self, serializer):
         championship = serializer.save()

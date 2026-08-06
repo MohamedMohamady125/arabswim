@@ -3,13 +3,15 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   getChampionship, getChampionshipStats, getChampionshipResults,
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
+  getMeetProgram,
 } from '../api/championships'
+import MeetProgramEditor from '../components/MeetProgramEditor'
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
 import { Loading, Empty, Seg, MedalIcon } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
-import { formatDateRange, formatNumber, mediaUrl, parseTime } from '../utils'
+import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime } from '../utils'
 
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -1145,6 +1147,57 @@ function MostImprovedTab({ meetId }) {
   )
 }
 
+/* ─────────────────────────── Program tab ─────────────────────────── */
+
+const PROGRAM_GENDER = { M: 'Men', F: 'Women', X: 'Mixed' }
+
+function ProgramTab({ meetId, isAdmin }) {
+  const [days, setDays] = useState(null)
+
+  const load = () => {
+    getMeetProgram(meetId)
+      .then((res) => setDays(res.data?.days || []))
+      .catch(() => setDays([]))
+  }
+  useEffect(load, [meetId])
+
+  if (days === null) return <Loading label="Loading program" />
+  const hasItems = days.some((d) => d.items.length > 0)
+
+  return (
+    <div className="pad-lg">
+      {hasItems ? (
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', marginBottom: isAdmin ? 26 : 0 }}>
+          {days.map((d) => (
+            <div key={d.day} style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)' }}>
+              <div style={{ padding: '10px 14px', borderBottom: '2px solid var(--asw-gold)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15 }}>Day {d.day}</span>
+                <span className="micro">{formatDate(d.date)}</span>
+              </div>
+              {d.items.length > 0 ? (
+                <div style={{ padding: '6px 0' }}>
+                  {d.items.map((it, i) => (
+                    <div key={it.id || i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', fontSize: 13 }}>
+                      <span className="asw-num" style={{ width: 20, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
+                      <span style={{ fontWeight: 600 }}>{it.event_name}</span>
+                      <span className="micro" style={{ marginLeft: 'auto' }}>{PROGRAM_GENDER[it.gender]}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="micro" style={{ padding: '10px 14px', textTransform: 'none', letterSpacing: 0 }}>Rest day / no events</div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        !isAdmin && <Empty label="The day-by-day program has not been published for this meet" />
+      )}
+      {isAdmin && <MeetProgramEditor champId={meetId} onSaved={load} />}
+    </div>
+  )
+}
+
 /* ─────────────────────────────── Page ─────────────────────────────── */
 
 export default function MeetDetail() {
@@ -1157,7 +1210,7 @@ export default function MeetDetail() {
   const [error, setError] = useState(false)
 
   const rawTab = searchParams.get('tab') || 'results'
-  const tab = ['results', 'medals', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'results'
+  const tab = ['results', 'program', 'medals', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'results'
   const setTab = (t) => setSearchParams({ tab: t }, { replace: false })
 
   const refreshStats = () => {
@@ -1217,6 +1270,7 @@ export default function MeetDetail() {
           tabs
           options={[
             { value: 'results', label: 'Results' },
+            { value: 'program', label: 'Program' },
             { value: 'medals', label: 'Medals' },
             { value: 'statistics', label: 'Statistics' },
             { value: 'improved', label: 'Most improved' },
@@ -1230,6 +1284,7 @@ export default function MeetDetail() {
       {tab === 'results' && (
         <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium} onDataChanged={refreshStats} />
       )}
+      {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} />}
       {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}
       {tab === 'statistics' && <StatisticsTab meetId={id} stats={stats} />}
       {tab === 'improved' && <MostImprovedTab meetId={id} />}

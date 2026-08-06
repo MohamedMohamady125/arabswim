@@ -71,6 +71,30 @@ class Championship(models.Model):
         return f'{self.name} ({self.date.year})'
 
 
+class ProgramItem(models.Model):
+    """One event scheduled on one day of a meet's program.
+
+    Days are 1-based and map onto the meet's date range: Day 1 is
+    championship.date, Day 2 the next day, and so on. The program is
+    entered by admins (manual meets and file imports alike) and shown
+    on the public meet page."""
+    GENDER_CHOICES = [('M', 'Men'), ('F', 'Women'), ('X', 'Mixed')]
+
+    championship = models.ForeignKey(Championship, on_delete=models.CASCADE, related_name='program_items')
+    day = models.PositiveSmallIntegerField(help_text='1-based day of the meet (Day 1 = start date)')
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='program_items')
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='X')
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        unique_together = ['championship', 'day', 'event', 'gender']
+        ordering = ['day', 'order', 'id']
+        indexes = [models.Index(fields=['championship', 'day'])]
+
+    def __str__(self):
+        return f'Day {self.day}: {self.event.name} ({self.gender}) @ {self.championship.name}'
+
+
 class Result(models.Model):
     ROUND_CHOICES = [
         ('Finals', 'Finals'),

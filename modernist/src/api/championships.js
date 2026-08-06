@@ -21,6 +21,8 @@ export const bulkDeleteResultIds = (id, resultIds) => api.post(`/championships/$
 export const getAllResults = (id) => api.get(`/championships/${id}/all-results/`)
 export const getMostImproved = (id) => api.get(`/championships/${id}/most-improved/`)
 export const getChampionshipComparison = (id) => api.get(`/championships/${id}/compare/`)
+export const getMeetProgram = (id) => api.get(`/championships/${id}/program/`)
+export const setMeetProgram = (id, items) => api.put(`/championships/${id}/program/`, { items })
 export const getClassificationCategories = () => api.get('/classification-categories/')
 export const getClassifications = (category) => api.get('/classifications/', { params: category ? { category } : {} })
 export const getSubClassifications = (classification) => api.get('/sub-classifications/', { params: { classification } })

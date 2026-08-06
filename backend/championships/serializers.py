@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ClassificationCategory, Classification, SubClassification, Championship, Result
+from .models import ClassificationCategory, Classification, SubClassification, Championship, ProgramItem, Result
 from core.serializers import CountrySerializer, EventSerializer
 from swimmers.serializers import SwimmerListSerializer
 
@@ -62,6 +62,15 @@ class ChampionshipDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Championship
         fields = '__all__'
+
+
+class ProgramItemSerializer(serializers.ModelSerializer):
+    event_name = serializers.CharField(source='event.name', read_only=True)
+    is_relay = serializers.BooleanField(source='event.is_relay', read_only=True)
+
+    class Meta:
+        model = ProgramItem
+        fields = ['id', 'day', 'event', 'event_name', 'is_relay', 'gender', 'order']
 
 
 class ResultSerializer(serializers.ModelSerializer):

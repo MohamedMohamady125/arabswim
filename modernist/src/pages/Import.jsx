@@ -12,6 +12,7 @@ import {
 import { POOL_TYPES, ARAB_COUNTRY_CODES, formatDate } from '../utils'
 import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
+import MeetProgramEditor from '../components/MeetProgramEditor'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
 
 const MAX_FILES = 200
@@ -848,6 +849,13 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
                     </table>
                   </div>
                 </details>
+              )}
+
+              {/* Day-by-day program: which events were swum on each day */}
+              {m.result.championship_id && (
+                <div style={{ textAlign: 'left', maxWidth: 760, margin: '0 auto 16px' }}>
+                  <MeetProgramEditor champId={m.result.championship_id} />
+                </div>
               )}
 
               {/* Cleanup button */}

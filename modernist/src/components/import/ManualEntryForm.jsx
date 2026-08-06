@@ -6,6 +6,7 @@ import {
 } from '../../api/championships'
 import { getCountries, getEvents, getFinaPointsPreview } from '../../api/core'
 import { POOL_TYPES, parseTime, formatDate } from '../../utils'
+import MeetProgramEditor from '../MeetProgramEditor'
 
 const dropdownStyle = {
   position: 'absolute', zIndex: 10, width: '100%', background: 'var(--color-bg)',
@@ -333,11 +334,14 @@ export default function ManualEntryForm({ onComplete }) {
       {/* Section B: Championship */}
       <Section n="2" title="Select championship *">
         {selectedChamp ? (
-          <SelectedBox
-            title={selectedChamp.name}
-            sub={`${formatDate(selectedChamp.date)} · ${selectedChamp.pool}${selectedChamp.location ? ` · ${selectedChamp.location}` : ''}`}
-            onChange={() => setSelectedChamp(null)}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <SelectedBox
+              title={selectedChamp.name}
+              sub={`${formatDate(selectedChamp.date)} · ${selectedChamp.pool}${selectedChamp.location ? ` · ${selectedChamp.location}` : ''}`}
+              onChange={() => setSelectedChamp(null)}
+            />
+            <MeetProgramEditor champId={selectedChamp.id} />
+          </div>
         ) : showNewChamp ? (
           <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-neutral-100)', padding: 16 }}>
             <div className="micro" style={{ marginBottom: 12 }}>Create new championship</div>

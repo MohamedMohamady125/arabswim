@@ -790,40 +790,6 @@ function PersonalBestsTab({ stats }) {
 
   return (
     <div className="pad">
-      {/* top performances */}
-      {hasPerformers && (
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-            <div className="kicker">Top performances — highest FINA points</div>
-            <Seg
-              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
-              value={perfGender}
-              onChange={setPerfGender}
-            />
-          </div>
-          {performers.length === 0 ? (
-            <Empty label="No performances for this filter" />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
-              {performers.map((t, i) => (
-                <div key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 15, marginBottom: 4 }}>
-                    <span className="asw-num text-muted">{i + 1}</span>
-                    <Flag code={t.nationality_code} name={t.swimmer_name} />
-                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.swimmer_name}</span>
-                    <span className="text-muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.event_name}</span>
-                    <span className="asw-num" style={{ fontWeight: 800, textAlign: 'right' }}>{t.fina_points}</span>
-                  </div>
-                  <div className="bar">
-                    <div style={{ width: `${Math.round(((t.fina_points || 0) / maxFina) * 100)}%`, background: i < 3 ? 'var(--color-accent)' : 'var(--color-neutral-800)' }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* personal bests achieved */}
       {hasPbs && (
         <div style={{ marginBottom: 28 }}>
@@ -871,6 +837,40 @@ function PersonalBestsTab({ stats }) {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* top performances */}
+      {hasPerformers && (
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+            <div className="kicker">Top performances — highest FINA points</div>
+            <Seg
+              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+              value={perfGender}
+              onChange={setPerfGender}
+            />
+          </div>
+          {performers.length === 0 ? (
+            <Empty label="No performances for this filter" />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
+              {performers.map((t, i) => (
+                <div key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 15, marginBottom: 4 }}>
+                    <span className="asw-num text-muted">{i + 1}</span>
+                    <Flag code={t.nationality_code} name={t.swimmer_name} />
+                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.swimmer_name}</span>
+                    <span className="text-muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.event_name}</span>
+                    <span className="asw-num" style={{ fontWeight: 800, textAlign: 'right' }}>{t.fina_points}</span>
+                  </div>
+                  <div className="bar">
+                    <div style={{ width: `${Math.round(((t.fina_points || 0) / maxFina) * 100)}%`, background: i < 3 ? 'var(--color-accent)' : 'var(--color-neutral-800)' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

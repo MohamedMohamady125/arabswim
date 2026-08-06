@@ -775,10 +775,111 @@ function MedalsTab({ meetId, isNational }) {
 
 /* ────────────────────────── Statistics tab ────────────────────────── */
 
+function PersonalBestsTab({ stats }) {
+  const navigate = useNavigate()
+  const [perfGender, setPerfGender] = useState('overall')
+
+  const hasPerformers = (stats?.top_performers || []).length > 0
+  const hasPbs = (stats?.personal_bests || []).length > 0
+  if (!hasPerformers && !hasPbs) return <Empty label="No personal bests or top performances yet" />
+
+  const performers = (stats.top_performers || [])
+    .filter((t) => perfGender === 'overall' || t.gender === perfGender)
+    .slice(0, 30)
+  const maxFina = performers[0]?.fina_points || 1
+
+  return (
+    <div className="pad">
+      {/* top performances */}
+      {hasPerformers && (
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+            <div className="kicker">Top performances — highest FINA points</div>
+            <Seg
+              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+              value={perfGender}
+              onChange={setPerfGender}
+            />
+          </div>
+          {performers.length === 0 ? (
+            <Empty label="No performances for this filter" />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
+              {performers.map((t, i) => (
+                <div key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 15, marginBottom: 4 }}>
+                    <span className="asw-num text-muted">{i + 1}</span>
+                    <Flag code={t.nationality_code} name={t.swimmer_name} />
+                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.swimmer_name}</span>
+                    <span className="text-muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.event_name}</span>
+                    <span className="asw-num" style={{ fontWeight: 800, textAlign: 'right' }}>{t.fina_points}</span>
+                  </div>
+                  <div className="bar">
+                    <div style={{ width: `${Math.round(((t.fina_points || 0) / maxFina) * 100)}%`, background: i < 3 ? 'var(--color-accent)' : 'var(--color-neutral-800)' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* personal bests achieved */}
+      {hasPbs && (
+        <div style={{ marginBottom: 28 }}>
+          <div className="kicker" style={{ marginBottom: 4 }}>Personal bests achieved</div>
+          <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Swimmers who set their all-time best at this meet</div>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 30 }}>#</th>
+                  <th>Swimmer</th>
+                  <th>Event</th>
+                  <th className="time">Time</th>
+                  <th className="time">Previous PB</th>
+                  <th className="num">FINA</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.personal_bests.map((s, i) => (
+                  <tr key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
+                    <td className="asw-num">{i + 1}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Flag code={s.nationality_code} name={s.swimmer_name} />
+                        {s.swimmer_name}
+                      </div>
+                    </td>
+                    <td>{s.event_name}</td>
+                    <td className="time asw-time asw-fast">{s.time}</td>
+                    <td className="time asw-time">
+                      {s.previous_best ? (
+                        <span>
+                          {s.previous_best}
+                          {s.improvement_cs > 0 && (
+                            <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontSize: 11, marginLeft: 6 }}>
+                              −{(s.improvement_cs / 100).toFixed(2)}s
+                            </span>
+                          )}
+                        </span>
+                      ) : <span className="text-muted">first swim</span>}
+                    </td>
+                    <td className="num asw-num">{s.fina_points ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function StatisticsTab({ meetId, stats }) {
   const navigate = useNavigate()
   const [comparison, setComparison] = useState([])
-  const [perfGender, setPerfGender] = useState('overall')
 
   useEffect(() => {
     let alive = true
@@ -792,10 +893,6 @@ function StatisticsTab({ meetId, stats }) {
 
   const total = (stats.male_count || 0) + (stats.female_count || 0)
   const malePct = total ? Math.round(((stats.male_count || 0) / total) * 100) : 0
-  const performers = (stats.top_performers || [])
-    .filter((t) => perfGender === 'overall' || t.gender === perfGender)
-    .slice(0, 30)
-  const maxFina = performers[0]?.fina_points || 1
 
   return (
     <div className="pad">
@@ -878,90 +975,6 @@ function StatisticsTab({ meetId, stats }) {
                       </div>
                     </td>
                     <td className="num asw-num">{c.swimmers_count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* top performances */}
-      {(stats.top_performers || []).length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-            <div className="kicker">Top performances — highest FINA points</div>
-            <Seg
-              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
-              value={perfGender}
-              onChange={setPerfGender}
-            />
-          </div>
-          {performers.length === 0 ? (
-            <Empty label="No performances for this filter" />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
-              {performers.map((t, i) => (
-                <div key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 15, marginBottom: 4 }}>
-                    <span className="asw-num text-muted">{i + 1}</span>
-                    <Flag code={t.nationality_code} name={t.swimmer_name} />
-                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.swimmer_name}</span>
-                    <span className="text-muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.event_name}</span>
-                    <span className="asw-num" style={{ fontWeight: 800, textAlign: 'right' }}>{t.fina_points}</span>
-                  </div>
-                  <div className="bar">
-                    <div style={{ width: `${Math.round(((t.fina_points || 0) / maxFina) * 100)}%`, background: i < 3 ? 'var(--color-accent)' : 'var(--color-neutral-800)' }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* personal bests achieved */}
-      {(stats.personal_bests || []).length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="kicker" style={{ marginBottom: 4 }}>Personal bests achieved</div>
-          <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Swimmers who set their all-time best at this meet</div>
-          <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 30 }}>#</th>
-                  <th>Swimmer</th>
-                  <th>Event</th>
-                  <th className="time">Time</th>
-                  <th className="time">Previous PB</th>
-                  <th className="num">FINA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.personal_bests.map((s, i) => (
-                  <tr key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
-                    <td className="asw-num">{i + 1}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Flag code={s.nationality_code} name={s.swimmer_name} />
-                        {s.swimmer_name}
-                      </div>
-                    </td>
-                    <td>{s.event_name}</td>
-                    <td className="time asw-time asw-fast">{s.time}</td>
-                    <td className="time asw-time">
-                      {s.previous_best ? (
-                        <span>
-                          {s.previous_best}
-                          {s.improvement_cs > 0 && (
-                            <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontSize: 11, marginLeft: 6 }}>
-                              −{(s.improvement_cs / 100).toFixed(2)}s
-                            </span>
-                          )}
-                        </span>
-                      ) : <span className="text-muted">first swim</span>}
-                    </td>
-                    <td className="num asw-num">{s.fina_points ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1210,7 +1223,7 @@ export default function MeetDetail() {
   const [error, setError] = useState(false)
 
   const rawTab = searchParams.get('tab') || 'results'
-  const tab = ['results', 'program', 'medals', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'results'
+  const tab = ['results', 'program', 'medals', 'pbs', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'results'
   const setTab = (t) => setSearchParams({ tab: t }, { replace: false })
 
   const refreshStats = () => {
@@ -1272,6 +1285,7 @@ export default function MeetDetail() {
             { value: 'results', label: 'Results' },
             { value: 'program', label: 'Program' },
             { value: 'medals', label: 'Medals' },
+            { value: 'pbs', label: 'Personal bests' },
             { value: 'statistics', label: 'Statistics' },
             { value: 'improved', label: 'Most improved' },
             { value: 'gallery', label: 'Gallery' },
@@ -1286,6 +1300,7 @@ export default function MeetDetail() {
       )}
       {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} />}
       {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}
+      {tab === 'pbs' && <PersonalBestsTab stats={stats} />}
       {tab === 'statistics' && <StatisticsTab meetId={id} stats={stats} />}
       {tab === 'improved' && <MostImprovedTab meetId={id} />}
       {tab === 'gallery' && <MeetGallery meetId={id} isAdmin={isAdmin} />}

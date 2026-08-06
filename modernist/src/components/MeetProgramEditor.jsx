@@ -29,15 +29,22 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
     const ev = events.find((e) => String(e.id) === String(eventId))
     if (!ev) return
     const cat = ageCat.trim()
-    if (day.items.some((i) => String(i.event) === String(eventId) && i.gender === gender
-      && (i.session || '') === session && (i.age_category || '') === cat)) {
+    // "Both" schedules the event for men and women in one click
+    const genders = gender === 'BOTH' ? ['M', 'F'] : [gender]
+    const added = []
+    for (const g of genders) {
+      if (day.items.some((i) => String(i.event) === String(eventId) && i.gender === g
+        && (i.session || '') === session && (i.age_category || '') === cat)) continue
+      added.push({
+        day: day.day, event: ev.id, event_name: ev.name, is_relay: ev.is_relay, gender: g,
+        session, age_category: cat,
+      })
+    }
+    if (added.length === 0) {
       setMsg('Already on this day')
       return
     }
-    patchDay(day.day, [...day.items, {
-      day: day.day, event: ev.id, event_name: ev.name, is_relay: ev.is_relay, gender,
-      session, age_category: cat,
-    }])
+    patchDay(day.day, [...day.items, ...added])
   }
 
   const removeItem = (idx) => patchDay(day.day, day.items.filter((_, i) => i !== idx))
@@ -50,10 +57,25 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
     patchDay(day.day, items)
   }
 
-  const eventOptions = useMemo(
-    () => [...events].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
-    [events],
-  )
+  // Events already scheduled on ANY day (per gender) drop out of the picker,
+  // so the same event can't be added twice across days by mistake.
+  const usedByGender = useMemo(() => {
+    const used = new Set()
+    days.forEach((d) => d.items.forEach((i) => used.add(`${i.event}-${i.gender}`)))
+    return used
+  }, [days])
+
+  const eventOptions = useMemo(() => {
+    const wanted = gender === 'BOTH' ? ['M', 'F'] : [gender]
+    return [...events]
+      .filter((e) => wanted.some((g) => !usedByGender.has(`${e.id}-${g}`)))
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+  }, [events, usedByGender, gender])
+
+  // Keep the selection valid when the picked event drops out of the list
+  useEffect(() => {
+    if (eventId && !eventOptions.some((e) => String(e.id) === String(eventId))) setEventId('')
+  }, [eventOptions, eventId])
 
   const inputStyle = { padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
 
@@ -102,6 +124,7 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
         <select style={inputStyle} value={gender} onChange={(e) => setGender(e.target.value)}>
           <option value="M">Men</option>
           <option value="F">Women</option>
+          <option value="BOTH">Both (Men & Women)</option>
           <option value="X">Mixed</option>
         </select>
         <select style={inputStyle} value={session} onChange={(e) => setSession(e.target.value)}>

@@ -3,15 +3,16 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   getChampionship, getChampionshipStats, getChampionshipResults,
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
-  getMeetProgram,
+  getMeetProgram, updateChampionship, getClassifications, getSubClassifications,
 } from '../api/championships'
+import { getCountries } from '../api/core'
 import MeetProgramEditor from '../components/MeetProgramEditor'
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
 import { Loading, Empty, Seg, MedalIcon } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
-import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime } from '../utils'
+import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES } from '../utils'
 
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -1328,6 +1329,152 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
   )
 }
 
+/* ────────────────────────── Admin: edit meet ─────────────────────── */
+
+function MeetEditPanel({ meet, onSaved, onClose }) {
+  const [form, setForm] = useState({
+    name: meet.name || '',
+    date: meet.date || '',
+    end_date: meet.end_date || '',
+    pool: meet.pool || 'LCM',
+    location: meet.location || '',
+    country: meet.country || '',
+    classification: meet.classification || '',
+    sub_classification: meet.sub_classification || '',
+    website: meet.website || '',
+    live_results_url: meet.live_results_url || '',
+    registration_url: meet.registration_url || '',
+  })
+  const [photo, setPhoto] = useState(null)
+  const [countries, setCountries] = useState([])
+  const [classifications, setClassifications] = useState([])
+  const [subClassifications, setSubClassifications] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getCountries().then((res) => setCountries(list(res.data))).catch(() => {})
+    getClassifications().then((res) => setClassifications(list(res.data))).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!form.classification) { setSubClassifications([]); return }
+    getSubClassifications(form.classification)
+      .then((res) => setSubClassifications(list(res.data)))
+      .catch(() => setSubClassifications([]))
+  }, [form.classification])
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const save = async () => {
+    if (!form.name.trim() || !form.date) { setError('Name and start date are required'); return }
+    if (form.end_date && form.end_date < form.date) { setError('End date cannot be before the start date'); return }
+    setSaving(true)
+    setError('')
+    try {
+      const fd = new FormData()
+      fd.append('name', form.name.trim())
+      fd.append('date', form.date)
+      fd.append('end_date', form.end_date || '')
+      fd.append('pool', form.pool)
+      fd.append('location', form.location.trim())
+      fd.append('country', form.country || '')
+      fd.append('classification', form.classification || '')
+      fd.append('sub_classification', form.sub_classification || '')
+      fd.append('website', form.website.trim())
+      fd.append('live_results_url', form.live_results_url.trim())
+      fd.append('registration_url', form.registration_url.trim())
+      if (photo) fd.append('meet_photo', photo)
+      const res = await updateChampionship(meet.id, fd)
+      onSaved(res.data)
+    } catch (err) {
+      const d = err.response?.data
+      const k = d && typeof d === 'object' ? Object.keys(d)[0] : null
+      setError(k && Array.isArray(d[k]) ? `${k}: ${d[k][0]}` : (d?.detail || 'Failed to save changes'))
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="rule-b" style={{ padding: '18px 32px', background: 'var(--color-surface)' }}>
+      <div className="kicker" style={{ marginBottom: 14 }}>Edit meet</div>
+      {error && (
+        <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>
+          {error}
+        </div>
+      )}
+      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxWidth: 760 }}>
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label>Meet name *</label>
+          <input className="input" type="text" value={form.name} onChange={set('name')} />
+        </div>
+        <div className="field">
+          <label>Start date *</label>
+          <input className="input" type="date" value={form.date} onChange={set('date')} />
+        </div>
+        <div className="field">
+          <label>End date</label>
+          <input className="input" type="date" value={form.end_date} min={form.date || undefined} onChange={set('end_date')} />
+        </div>
+        <div className="field">
+          <label>Pool</label>
+          <select className="select" value={form.pool} onChange={set('pool')}>
+            {POOL_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>Country</label>
+          <select className="select" value={form.country} onChange={set('country')}>
+            <option value="">—</option>
+            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label>Location (city / venue)</label>
+          <input className="input" type="text" value={form.location} onChange={set('location')} />
+        </div>
+        <div className="field">
+          <label>Classification</label>
+          <select className="select" value={form.classification}
+            onChange={(e) => setForm((f) => ({ ...f, classification: e.target.value, sub_classification: '' }))}>
+            <option value="">—</option>
+            {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>Sub classification</label>
+          <select className="select" value={form.sub_classification} disabled={!subClassifications.length} onChange={set('sub_classification')}>
+            <option value="">—</option>
+            {subClassifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>Website</label>
+          <input className="input" type="url" value={form.website} onChange={set('website')} placeholder="https://…" />
+        </div>
+        <div className="field">
+          <label>Live results URL</label>
+          <input className="input" type="url" value={form.live_results_url} onChange={set('live_results_url')} placeholder="https://…" />
+        </div>
+        <div className="field">
+          <label>Registration URL</label>
+          <input className="input" type="url" value={form.registration_url} onChange={set('registration_url')} placeholder="https://…" />
+        </div>
+        <div className="field">
+          <label>Meet photo {meet.meet_photo ? '(replace)' : ''}</label>
+          <input className="input" type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
 /* ─────────────────────────────── Page ─────────────────────────────── */
 
 export default function MeetDetail() {
@@ -1338,6 +1485,7 @@ export default function MeetDetail() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const rawTab = searchParams.get('tab') || 'results'
   const tab = ['results', 'program', 'medals', 'pbs', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'results'
@@ -1389,10 +1537,23 @@ export default function MeetDetail() {
             </div>
           </div>
           {isAdmin && (
-            <Link className="btn btn-secondary" to={`/import?championship=${id}`}>Import results</Link>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>
+                {editing ? 'Close editor' : 'Edit meet'}
+              </button>
+              <Link className="btn btn-secondary" to={`/import?championship=${id}`}>Import results</Link>
+            </div>
           )}
         </div>
       </div>
+
+      {isAdmin && editing && (
+        <MeetEditPanel
+          meet={meet}
+          onSaved={(m) => { setMeet(m); setEditing(false) }}
+          onClose={() => setEditing(false)}
+        />
+      )}
 
       {/* tabs */}
       <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>

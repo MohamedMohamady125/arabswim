@@ -190,6 +190,12 @@ figure { margin: 0; }
 .table tbody tr:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
 .table .num, .table .time { text-align: right; }
 .table-scroll { overflow-x: auto; max-width: 100%; }
+/* Records page: roomier type so record times read at a glance */
+.records-page .table { font-size: 16px; }
+.records-page .table th { font-size: 12px; }
+.records-page .table td { padding: 12px var(--space-2); }
+.records-page .asw-time { font-size: 17px; }
+.records-page .kicker { font-size: 14px; }
 /* meet results: the swimmer column absorbs all leftover width and long
    names ellipsize instead of squeezing the time/points columns */
 .results-table .rank-col { width: 44px; }
@@ -358,6 +364,11 @@ figure { margin: 0; }
   .table td { padding: 8px 6px; }
   .table th:first-child, .table td:first-child { padding-left: 0; }
   .table th:last-child, .table td:last-child { padding-right: 0; }
+
+  /* records stay a step larger than other tables on phones too */
+  .records-page .table { font-size: 15px; }
+  .records-page .table td { padding: 10px 6px; }
+  .records-page .asw-time { font-size: 16px; }
 
   /* meet results on phones: slim rank column and pull the flag in close */
   .results-table .rank-col { width: 30px; }

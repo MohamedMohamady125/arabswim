@@ -95,7 +95,7 @@ function RecordTable({ rows, showFina }) {
                 {r.eventName}
                 {/* phone: swimmer folds under the event name */}
                 <div className="show-mobile">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4, fontWeight: 400, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4, fontWeight: 400, fontSize: 13.5, color: 'var(--color-neutral-700)' }}>
                     <Flag code={r.natCode} name={r.natName} />
                     {r.swimmerId ? (
                       <Link to={`/swimmers/${r.swimmerId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
@@ -134,7 +134,7 @@ function Section({ label, pool, rows, showFina, last }) {
     <div className={last ? 'pad' : 'rule-b pad'}>
       <div className="kicker" style={{ marginBottom: 12 }}>{label} · {pool}</div>
       {rows.length === 0 ? (
-        <div className="text-muted" style={{ fontSize: 13 }}>No records yet.</div>
+        <div className="text-muted" style={{ fontSize: 14 }}>No records yet.</div>
       ) : (
         <RecordTable rows={rows} showFina={showFina} />
       )}
@@ -207,7 +207,7 @@ export default function Records() {
   if (showWomen) sections.push({ label: 'Women', rows: bySection.women })
 
   return (
-    <div>
+    <div className="records-page">
       <PageHead title="Records" />
 
       {/* filter bar */}

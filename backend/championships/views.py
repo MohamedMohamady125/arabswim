@@ -709,6 +709,58 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'is_new': rec.is_new,
             })
 
+        # Age profile: distribution + youngest/oldest (individual swimmers with a known age)
+        from django.db.models import Avg, Max
+        age_rows = list(
+            athletes.exclude(age_at_competition__isnull=True)
+            .values('swimmer_id', 'swimmer__name', 'swimmer__nationality__code', 'swimmer__nationality__name')
+            .annotate(age=Min('age_at_competition'))
+        )
+        age_profile = None
+        if age_rows:
+            counts = {}
+            for row in age_rows:
+                counts[row['age']] = counts.get(row['age'], 0) + 1
+
+            def _fmt_age(r):
+                return {
+                    'swimmer_id': r['swimmer_id'], 'swimmer_name': r['swimmer__name'],
+                    'nationality_code': r['swimmer__nationality__code'],
+                    'nationality': r['swimmer__nationality__name'], 'age': r['age'],
+                }
+            by_age = sorted(age_rows, key=lambda r: (r['age'], r['swimmer__name']))
+            age_profile = {
+                'average': round(sum(r['age'] for r in age_rows) / len(age_rows), 1),
+                'known_count': len(age_rows),
+                'distribution': [{'age': a, 'count': c} for a, c in sorted(counts.items())],
+                'youngest': [_fmt_age(r) for r in by_age[:3]],
+                'oldest': [_fmt_age(r) for r in by_age[::-1][:3]],
+            }
+
+        # Busiest swimmers: most races swum at this meet
+        busiest = list(
+            athletes.values(
+                'swimmer_id', 'swimmer__name', 'swimmer__sex',
+                'swimmer__nationality__code', 'swimmer__nationality__name',
+            ).annotate(
+                swims=Count('id'),
+                events_count=Count('event', distinct=True),
+                avg_fina=Avg('fina_points'),
+                best_fina=Max('fina_points'),
+            ).order_by('-swims', '-avg_fina')[:10]
+        )
+        busiest_swimmers = [{
+            'swimmer_id': b['swimmer_id'],
+            'swimmer_name': b['swimmer__name'],
+            'gender': b['swimmer__sex'],
+            'nationality_code': b['swimmer__nationality__code'],
+            'nationality': b['swimmer__nationality__name'],
+            'swims': b['swims'],
+            'events_count': b['events_count'],
+            'avg_fina': round(b['avg_fina']) if b['avg_fina'] else None,
+            'best_fina': b['best_fina'],
+        } for b in busiest]
+
         return Response({
             'total_results': total_results,
             'total_swimmers': total_swimmers,
@@ -721,6 +773,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'personal_bests': personal_bests[:50],
             'records_broken': records_broken,
             'clubs': clubs,
+            'age_profile': age_profile,
+            'busiest_swimmers': busiest_swimmers,
         })
 
 

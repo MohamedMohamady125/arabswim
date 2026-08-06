@@ -983,6 +983,82 @@ function StatisticsTab({ meetId, stats }) {
         </div>
       )}
 
+      {/* age profile */}
+      {stats.age_profile && (
+        <div style={{ marginBottom: 28 }}>
+          <div className="kicker" style={{ marginBottom: 4 }}>Age profile</div>
+          <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
+            Average age <span className="asw-num" style={{ color: 'var(--color-text)', fontWeight: 700 }}>{stats.age_profile.average}</span>
+            {' · '}{formatNumber(stats.age_profile.known_count)} swimmers with a known age
+          </div>
+          {/* distribution bars */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, maxWidth: 560, height: 90, marginBottom: 6 }}>
+            {stats.age_profile.distribution.map((d) => {
+              const maxCount = Math.max(...stats.age_profile.distribution.map((x) => x.count))
+              return (
+                <div key={d.age} title={`${d.age} years — ${d.count} swimmers`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <div style={{ width: '100%', height: Math.max(Math.round((d.count / maxCount) * 72), 3), background: 'var(--color-accent)' }} />
+                  <span className="asw-num" style={{ fontSize: 9, color: 'var(--color-neutral-600)' }}>{d.age}</span>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', marginTop: 12 }}>
+            {[['Youngest', stats.age_profile.youngest], ['Oldest', stats.age_profile.oldest]].map(([label, rows]) => (
+              <div key={label}>
+                <div className="micro" style={{ marginBottom: 6 }}>{label}</div>
+                {rows.map((s) => (
+                  <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, padding: '3px 0', cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
+                    <Flag code={s.nationality_code} name={s.nationality} />
+                    <span style={{ fontWeight: 600 }}>{s.swimmer_name}</span>
+                    <span className="asw-num text-muted">{s.age}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* busiest swimmers */}
+      {(stats.busiest_swimmers || []).length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <div className="kicker" style={{ marginBottom: 4 }}>Busiest swimmers</div>
+          <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Most races swum at this meet</div>
+          <div className="table-scroll" style={{ maxWidth: 700 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 30 }}>#</th>
+                  <th>Swimmer</th>
+                  <th className="num">Races</th>
+                  <th className="num">Events</th>
+                  <th className="num">Best FINA</th>
+                  <th className="num">Avg FINA</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.busiest_swimmers.map((s, i) => (
+                  <tr key={s.swimmer_id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
+                    <td className="asw-num">{i + 1}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Flag code={s.nationality_code} name={s.nationality} />
+                        {s.swimmer_name}
+                      </div>
+                    </td>
+                    <td className="num asw-num" style={{ fontWeight: 700 }}>{s.swims}</td>
+                    <td className="num asw-num">{s.events_count}</td>
+                    <td className="num asw-num">{s.best_fina ?? '—'}</td>
+                    <td className="num asw-num">{s.avg_fina ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* records broken */}
       {(stats.records_broken || []).length > 0 && (
         <div style={{ marginBottom: 28 }}>

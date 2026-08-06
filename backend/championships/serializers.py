@@ -90,4 +90,4 @@ class ResultCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Result
         fields = ['id', 'swimmer', 'championship', 'event', 'round_type', 'category', 'team', 'time_centiseconds',
-                  'fina_points', 'age_at_competition', 'relay_swimmers', 'original_rank']
+                  'fina_points', 'age_at_competition', 'relay_swimmers', 'splits', 'original_rank']

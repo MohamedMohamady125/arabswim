@@ -62,6 +62,7 @@ export default function ManualEntryForm({ onComplete }) {
   // Result state
   const [events, setEvents] = useState([])
   const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', medal: '' })
+  const [splitTimes, setSplitTimes] = useState({}) // distance → cumulative time text
 
   // Reference data
   const [countries, setCountries] = useState([])
@@ -185,10 +186,28 @@ export default function ManualEntryForm({ onComplete }) {
     }
   }
 
+  // Cumulative 50m marks for the selected individual event (100m and up)
+  const selectedEvent = events.find((e) => e.id === parseInt(resultForm.event))
+  const splitMarks = (selectedEvent && !selectedEvent.is_relay && selectedEvent.distance >= 100)
+    ? Array.from({ length: selectedEvent.distance / 50 }, (_, i) => (i + 1) * 50)
+    : []
+
   const handleSubmit = async () => {
     if (!selectedSwimmer || !selectedChamp || !resultForm.event || !resultForm.time) {
       setError('Please fill in all required fields: swimmer, championship, event, and time')
       return
+    }
+
+    // Collect filled split inputs (cumulative), validate each as a time
+    const splits = []
+    for (const dist of splitMarks) {
+      const t = (splitTimes[dist] || '').trim()
+      if (!t) continue
+      if (!parseTime(t)) {
+        setError(`Invalid split time "${t}" at ${dist}m — use e.g. 27.45 or 1:02.30`)
+        return
+      }
+      splits.push({ distance: dist, time: t })
     }
 
     setLoading(true)
@@ -202,6 +221,7 @@ export default function ManualEntryForm({ onComplete }) {
         team: resultForm.team || '',
         fina_points: resultForm.fina_points ? parseInt(resultForm.fina_points) : null,
         medal: resultForm.medal || '',
+        ...(splits.length > 0 ? { splits } : {}),
       })
       setSuccess({
         swimmer_name: selectedSwimmer.name,
@@ -218,6 +238,7 @@ export default function ManualEntryForm({ onComplete }) {
 
   const handleAddAnother = () => {
     setResultForm({ event: '', time: '', team: '', fina_points: '', medal: '' })
+    setSplitTimes({})
     setSuccess(null)
   }
 
@@ -447,7 +468,7 @@ export default function ManualEntryForm({ onComplete }) {
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label>Event *</label>
             <select className="select" value={resultForm.event}
-              onChange={(e) => setResultForm({ ...resultForm, event: e.target.value })}>
+              onChange={(e) => { setResultForm({ ...resultForm, event: e.target.value }); setSplitTimes({}) }}>
               <option value="">Select event</option>
               {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
@@ -473,6 +494,29 @@ export default function ManualEntryForm({ onComplete }) {
               <option value="BRONZE">Bronze</option>
             </select>
           </div>
+          {splitMarks.length > 0 && (
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label>Split times — cumulative, optional</label>
+              <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, marginBottom: 8 }}>
+                Enter the time on the clock at each mark (e.g. 27.45, then 57.80…). Leave blank to skip a mark.
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {splitMarks.map((dist) => (
+                  <div key={dist} style={{ width: 92 }}>
+                    <div className="micro" style={{ marginBottom: 2 }}>{dist}m</div>
+                    <input
+                      className="input asw-num"
+                      type="text"
+                      placeholder={dist === selectedEvent.distance ? 'final' : '0:00.00'}
+                      value={splitTimes[dist] || ''}
+                      style={{ padding: '7px 8px', fontSize: 13 }}
+                      onChange={(e) => setSplitTimes((s) => ({ ...s, [dist]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label>Team / club</label>
             <input className="input" type="text" value={resultForm.team} placeholder="Club or team name at this meet"

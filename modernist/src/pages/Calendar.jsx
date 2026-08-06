@@ -3,7 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
 } from '../api/calendar'
-import { getChampionships, createChampionship, updateChampionship, deleteChampionship } from '../api/championships'
+import {
+  getChampionships, createChampionship, updateChampionship, deleteChampionship,
+  getClassificationCategories, getClassifications, getSubClassifications,
+} from '../api/championships'
 import { getCountries } from '../api/core'
 import { getSwimmerBirthdays } from '../api/swimmers'
 import Flag from '../components/Flag'
@@ -275,7 +278,14 @@ function BirthdaysTab() {
 
 /* ─────────────────────────────── Page ─────────────────────────────── */
 
-const EMPTY_EVENT = { title: '', date: '', end_date: '', event_type: 'CUSTOM', description: '', country: '', location: '', pool: 'LCM' }
+const EMPTY_EVENT = {
+  title: '', date: '', end_date: '', event_type: 'MEET', description: '',
+  country: '', location: '', pool: 'LCM',
+  classification_category: '', classification: '', sub_classification: '',
+}
+
+// Classifications whose upcoming meets get automatic medal predictions
+const PREDICTABLE = new Set(['Arab', 'GCC', 'National'])
 
 export default function Calendar() {
   const navigate = useNavigate()
@@ -295,6 +305,24 @@ export default function Calendar() {
   const [showAddEvent, setShowAddEvent] = useState(false)
   const [newEvent, setNewEvent] = useState(EMPTY_EVENT)
   const [addLoading, setAddLoading] = useState(false)
+  const [classCategories, setClassCategories] = useState([])
+  const [classifications, setClassifications] = useState([])
+  const [subClassifications, setSubClassifications] = useState([])
+
+  // classification pickers load once, when the admin first opens the modal
+  useEffect(() => {
+    if (!showAddEvent || classifications.length > 0) return
+    getClassificationCategories().then((r) => setClassCategories(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {})
+    getClassifications().then((r) => setClassifications(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {})
+  }, [showAddEvent]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // sub-classifications follow the chosen classification
+  useEffect(() => {
+    if (!newEvent.classification) { setSubClassifications([]); return }
+    getSubClassifications(newEvent.classification)
+      .then((r) => setSubClassifications(Array.isArray(r.data) ? r.data : r.data?.results || []))
+      .catch(() => setSubClassifications([]))
+  }, [newEvent.classification])
 
   const years = []
   for (let y = new Date().getFullYear() + 2; y >= 2000; y--) years.push(y)
@@ -393,11 +421,12 @@ export default function Calendar() {
     e.preventDefault()
     setAddLoading(true)
     try {
-      const isMeetType = newEvent.event_type !== 'CUSTOM'
+      const isMeetType = newEvent.event_type === 'MEET'
       let championshipId = null
       if (isMeetType) {
         // Calendar-only championship: full meet card, hidden from the meets
-        // list until real results exist.
+        // list until real results exist. Classification makes upcoming
+        // Arab/GCC/National meets appear on the Predictions page.
         const fd = new FormData()
         fd.append('name', newEvent.title)
         fd.append('date', newEvent.date)
@@ -405,14 +434,19 @@ export default function Calendar() {
         fd.append('pool', newEvent.pool || 'LCM')
         fd.append('country', newEvent.country)
         if (newEvent.location) fd.append('location', newEvent.location)
+        if (newEvent.classification_category) fd.append('classification_category', newEvent.classification_category)
+        if (newEvent.classification) fd.append('classification', newEvent.classification)
+        if (newEvent.sub_classification) fd.append('sub_classification', newEvent.sub_classification)
         fd.append('is_calendar_only', 'true')
         const champRes = await createChampionship(fd)
         championshipId = champRes.data.id
       }
+      const isBirthday = newEvent.event_type === 'BIRTHDAY'
       const payload = {
-        title: newEvent.title,
+        title: isBirthday ? `Birthday — ${newEvent.title}` : newEvent.title,
         date: newEvent.date,
-        event_type: newEvent.event_type,
+        // the calendar model knows MEET and CUSTOM; birthdays are custom events
+        event_type: isMeetType ? 'MEET' : 'CUSTOM',
         description: newEvent.description,
       }
       if (newEvent.end_date) payload.end_date = newEvent.end_date
@@ -674,19 +708,21 @@ export default function Calendar() {
       <Modal open={isAdmin && showAddEvent} title="Add calendar event" onClose={() => setShowAddEvent(false)}>
         <form onSubmit={handleAddEvent} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="field">
-            <label>Title *</label>
-            <input className="input" type="text" required value={newEvent.title}
-              onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-              placeholder="e.g. Arab Championships, Team meeting…" />
-          </div>
-          <div className="field">
             <label>Type</label>
             <select className="select" value={newEvent.event_type}
               onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}>
-              <option value="CUSTOM">Custom event</option>
-              <option value="MEET">Meet</option>
-              <option value="CHAMPIONSHIP">Championship</option>
+              <option value="MEET">Meet / Championship</option>
+              <option value="BIRTHDAY">Birthday</option>
+              <option value="CUSTOM">Other event</option>
             </select>
+          </div>
+          <div className="field">
+            <label>{newEvent.event_type === 'MEET' ? 'Meet name *' : newEvent.event_type === 'BIRTHDAY' ? 'Name *' : 'Title *'}</label>
+            <input className="input" type="text" required value={newEvent.title}
+              onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+              placeholder={newEvent.event_type === 'MEET' ? 'e.g. Arab Swimming Championships 2026'
+                : newEvent.event_type === 'BIRTHDAY' ? 'Who is celebrating?'
+                : 'e.g. Team meeting, federation congress…'} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="field">
@@ -705,7 +741,7 @@ export default function Calendar() {
                 onChange={(e) => setNewEvent({ ...newEvent, end_date: e.target.value })} />
             </div>
           </div>
-          {newEvent.event_type !== 'CUSTOM' && (
+          {newEvent.event_type === 'MEET' && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="field">
@@ -731,6 +767,41 @@ export default function Calendar() {
                   onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
                   placeholder="City / venue" />
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="field">
+                  <label>Category</label>
+                  <select className="select" value={newEvent.classification_category}
+                    onChange={(e) => setNewEvent({ ...newEvent, classification_category: e.target.value, classification: '', sub_classification: '' })}>
+                    <option value="">Select category</option>
+                    {classCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Classification</label>
+                  <select className="select" value={newEvent.classification}
+                    onChange={(e) => setNewEvent({ ...newEvent, classification: e.target.value, sub_classification: '' })}>
+                    <option value="">Select classification</option>
+                    {classifications
+                      .filter((c) => !newEvent.classification_category || String(c.category) === String(newEvent.classification_category))
+                      .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              {subClassifications.length > 0 && (
+                <div className="field">
+                  <label>Sub-classification</label>
+                  <select className="select" value={newEvent.sub_classification}
+                    onChange={(e) => setNewEvent({ ...newEvent, sub_classification: e.target.value })}>
+                    <option value="">None</option>
+                    {subClassifications.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              )}
+              {PREDICTABLE.has(classifications.find((c) => String(c.id) === String(newEvent.classification))?.name) && (
+                <div className="micro" style={{ color: 'var(--color-accent-800)' }}>
+                  This meet will get automatic medal predictions on the Predictions page.
+                </div>
+              )}
             </>
           )}
           <div className="field">
@@ -745,7 +816,7 @@ export default function Calendar() {
               type="submit"
               className="btn btn-primary"
               style={{ flex: 1 }}
-              disabled={addLoading || !newEvent.title || !newEvent.date || (newEvent.event_type !== 'CUSTOM' && !newEvent.country)}
+              disabled={addLoading || !newEvent.title || !newEvent.date || (newEvent.event_type === 'MEET' && !newEvent.country)}
             >
               {addLoading ? 'Saving…' : 'Save'}
             </button>

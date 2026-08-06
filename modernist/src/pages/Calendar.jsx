@@ -607,7 +607,7 @@ export default function Calendar() {
                           <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 14, fontWeight: 600 }}>{c.name}</span>
+                          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{c.name}</span>
                           <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
                             {c.location}
                             {c.country_detail ? `${c.location ? ', ' : ''}${c.country_detail.name}` : ''}
@@ -637,7 +637,7 @@ export default function Calendar() {
                       <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600 }}>{ev.title}</span>
+                      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{ev.title}</span>
                       <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
                         {ev.description ? `${ev.description} · ` : ''}
                         {formatDateRange(ev.date, ev.end_date)}
@@ -680,7 +680,7 @@ export default function Calendar() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{ev.title}</span>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{ev.title}</span>
                   <span className="tag tag-outline">{ev.event_type}</span>
                 </div>
                 {ev.description && <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{ev.description}</div>}

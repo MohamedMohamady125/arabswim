@@ -13,7 +13,7 @@ from datetime import date, timedelta
 from django.db.models import Q
 
 from championships.models import Result
-from .models import PredictionEntry
+from .models import PredictionAgeGroup, PredictionEntry
 
 N_SIMS = 2000
 FIELD_CAP = 16
@@ -116,6 +116,7 @@ def _gather_event_rows(championship, event, gender, scope_q, today):
         .exclude(round_type__in=['Heats'])  # keep Finals/Prelims quality swims
         .values('swimmer_id', 'swimmer__name', 'swimmer__nationality__code',
                 'swimmer__nationality__name', 'swimmer__nationality_id',
+                'swimmer__birth_year', 'age_at_competition',
                 'team', 'time_centiseconds', 'championship__date')
     )
     by_swimmer = {}
@@ -126,9 +127,13 @@ def _gather_event_rows(championship, event, gender, scope_q, today):
             'country_name': r['swimmer__nationality__name'],
             'country_id': r['swimmer__nationality_id'],
             'club': r['team'] or '',
+            'birth_year': r['swimmer__birth_year'],
             'rows': [],
             'latest': None,
         })
+        # birth year: profile field first, else infer from age at a past meet
+        if d['birth_year'] is None and r['age_at_competition']:
+            d['birth_year'] = r['championship__date'].year - r['age_at_competition']
         d['rows'].append({'t': r['time_centiseconds'], 'date': r['championship__date']})
         if d['latest'] is None or r['championship__date'] > d['latest']:
             d['latest'] = r['championship__date']
@@ -213,6 +218,25 @@ def compute_snapshot(championship):
     club_sim_counts = {}
     is_national = bool(championship.classification and championship.classification.name == 'National')
 
+    # age-group meets: each event is contested (and predicted) per category.
+    # Age = meet year - birth year, the standard age-group convention.
+    age_groups = list(PredictionAgeGroup.objects.filter(championship=championship))
+    meet_year = championship.date.year
+
+    def eligible(d, grp):
+        if grp is None:
+            return True
+        by = d.get('birth_year')
+        if not by:
+            return False  # unverifiable age: excluded from age-group fields
+        age = meet_year - by
+        if grp.min_age is not None and age < grp.min_age:
+            return False
+        if grp.max_age is not None and age > grp.max_age:
+            return False
+        return True
+
+    race_list = []
     for (event, gender), allowed_ids in sorted(
             races.items(), key=lambda kv: (kv[0][0].sort_order or 0, kv[0][0].distance or 0, kv[0][1])):
         by_swimmer = _gather_event_rows(championship, event, gender, scope_q, today)
@@ -222,9 +246,12 @@ def compute_snapshot(championship):
             # EARLY: only swimmers active in the lookback window
             by_swimmer = {sid: d for sid, d in by_swimmer.items()
                           if d['latest'] and d['latest'] >= activity_cutoff}
-        if len(by_swimmer) < 2:
-            continue
+        for grp in (age_groups or [None]):
+            pool = {sid: d for sid, d in by_swimmer.items() if eligible(d, grp)}
+            if len(pool) >= 2:
+                race_list.append((event, gender, grp, pool))
 
+    for event, gender, grp, by_swimmer in race_list:
         field = []
         for sid, d in by_swimmer.items():
             st = SwimmerStats(d['rows'], today)
@@ -291,6 +318,7 @@ def compute_snapshot(championship):
                 'country_code': f['country_code'], 'country_name': f['country_name'],
                 'event': event.name, 'gender': gender,
                 'event_id': event.id,
+                'age_group': grp.label if grp else None,
                 'seed': _fmt(f['seed_cs']),
                 'p_gold': row['p_gold'], 'p_medal': row['p_medal'],
                 'status': row['status'], 'gold_status': row['gold_status'],
@@ -313,6 +341,7 @@ def compute_snapshot(championship):
             'event_id': event.id, 'event': event.name,
             'stroke': event.stroke, 'distance': event.distance,
             'gender': gender,
+            'age_group': grp.label if grp else None,
             'field': rows,
             'standards': {
                 'gold': _fmt(std['gold_cs']),
@@ -356,6 +385,7 @@ def compute_snapshot(championship):
         'stage': stage,
         'confidence': confidence,
         'is_national': is_national,
+        'age_groups': [g.label for g in age_groups],
         'events': event_payloads,
         'sections': {
             'top_gold': top_gold,
@@ -397,6 +427,7 @@ def fill_rising(data, previous_data):
                     'swimmer_id': r['swimmer_id'], 'name': r['name'],
                     'country_code': r['country_code'], 'country_name': r['country_name'],
                     'event': ev['event'], 'gender': ev['gender'], 'event_id': ev['event_id'],
+                    'age_group': ev.get('age_group'),
                     'seed': r['seed'],
                     'p_gold': r['p_gold'], 'p_medal': r['p_medal'],
                     'status': r['status'], 'gold_status': r['gold_status'],

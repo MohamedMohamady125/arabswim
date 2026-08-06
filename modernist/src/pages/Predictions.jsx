@@ -4,6 +4,7 @@ import {
   getPredictions, getPrediction, recomputePrediction,
   getPredictionEntries, addPredictionEntry, updatePredictionEntry,
   deletePredictionEntry, seedPredictionEntries,
+  getPredictionAgeGroups, addPredictionAgeGroup, deletePredictionAgeGroup,
 } from '../api/predictions'
 import { searchSwimmers } from '../api/swimmers'
 import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
@@ -60,7 +61,7 @@ function SwimmerCard({ c, showDelta }) {
   return (
     <div>
       <div className="card-kicker kicker" style={{ marginBottom: 6 }}>
-        {c.event} · {c.gender === 'M' ? 'Men' : 'Women'}
+        {c.event} · {c.gender === 'M' ? 'Men' : 'Women'}{c.age_group ? ` · ${c.age_group}` : ''}
       </div>
       <div className="rec-name" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
         <Flag code={c.country_code} name={c.country_name} />
@@ -194,6 +195,87 @@ function EventDetail({ ev }) {
   )
 }
 
+// ---- Admin: age-category manager -----------------------------------------
+// Defining categories makes the engine predict every event separately per
+// age group (age in the meet year), which is what age-group meets need.
+function AgeGroupsAdmin({ champId, onChanged }) {
+  const [groups, setGroups] = useState([])
+  const [label, setLabel] = useState('')
+  const [minAge, setMinAge] = useState('')
+  const [maxAge, setMaxAge] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const load = () => {
+    getPredictionAgeGroups(champId).then((res) => setGroups(res.data || [])).catch(() => setGroups([]))
+  }
+  useEffect(load, [champId])
+
+  const act = async (fn, okMsg) => {
+    setBusy(true); setMsg('')
+    try {
+      await fn()
+      load()
+      onChanged?.()
+      if (okMsg) setMsg(okMsg)
+    } catch (e) {
+      const d = e?.response?.data
+      setMsg(d && typeof d === 'object' ? Object.values(d).flat().join(' ') : 'Action failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const add = () => {
+    if (!label.trim() || (!minAge && !maxAge)) { setMsg('Give the category a name and at least one age bound'); return }
+    act(() => addPredictionAgeGroup(champId, {
+      label: label.trim(),
+      min_age: minAge ? Number(minAge) : null,
+      max_age: maxAge ? Number(maxAge) : null,
+    }), 'Category added — prediction recomputed').then(() => { setLabel(''); setMinAge(''); setMaxAge('') })
+  }
+
+  const inputStyle = { padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
+
+  return (
+    <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 18px' }}>
+      <SectHead title="Age categories (admin)" />
+      <div className="micro" style={{ margin: '-4px 0 12px', textTransform: 'none', letterSpacing: 0 }}>
+        For age-group / youth meets. Each category is predicted as its own race; swimmers are placed
+        by their age in the meet year. Leave empty for open meets. Changes recompute the prediction instantly.
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: groups.length ? 12 : 0 }}>
+        <input style={{ ...inputStyle, width: 130 }} placeholder="Label, e.g. 13-14" value={label} onChange={(e) => setLabel(e.target.value)} />
+        <input style={{ ...inputStyle, width: 90 }} type="number" placeholder="Min age" value={minAge} onChange={(e) => setMinAge(e.target.value)} />
+        <input style={{ ...inputStyle, width: 90 }} type="number" placeholder="Max age" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} />
+        <button className="btn btn-primary" disabled={busy} onClick={add}>Add category</button>
+        {msg && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{msg}</span>}
+      </div>
+      {groups.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {groups.map((g) => (
+            <span key={g.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-neutral-300)', background: '#fff', padding: '5px 10px', fontSize: 13 }}>
+              <b>{g.label}</b>
+              <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                {g.min_age != null && g.max_age != null ? `${g.min_age}–${g.max_age}`
+                  : g.min_age != null ? `${g.min_age}+` : `up to ${g.max_age}`}
+              </span>
+              <button
+                disabled={busy}
+                onClick={() => act(() => deletePredictionAgeGroup(champId, g.id), 'Category removed — prediction recomputed')}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)' }}
+                aria-label={`Remove ${g.label}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---- Admin: entry-list manager -------------------------------------------
 function EntriesAdmin({ champId, stage, events, onChanged }) {
   const [entries, setEntries] = useState([])
@@ -276,11 +358,13 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
         </div>
         <select style={inputStyle} value={eventId} onChange={(e) => setEventId(e.target.value)}>
           <option value="">Event…</option>
-          {events.map((e) => (
-            <option key={`${e.event_id}-${e.gender}`} value={e.event_id}>
-              {e.event} ({e.gender === 'M' ? 'Men' : 'Women'})
-            </option>
-          ))}
+          {events
+            .filter((e, i, arr) => arr.findIndex((x) => x.event_id === e.event_id && x.gender === e.gender) === i)
+            .map((e) => (
+              <option key={`${e.event_id}-${e.gender}`} value={e.event_id}>
+                {e.event} ({e.gender === 'M' ? 'Men' : 'Women'})
+              </option>
+            ))}
         </select>
         <input
           style={{ ...inputStyle, width: 110 }}
@@ -379,7 +463,7 @@ function PeopleTab({ snap }) {
           map.set(r.swimmer_id, {
             id: r.swimmer_id, name: r.name,
             country_code: r.country_code, country_name: r.country_name,
-            gender: ev.gender, events: [],
+            gender: ev.gender, age_group: ev.age_group || null, events: [],
             eg: 0, es: 0, eb: 0, em: 0,
           })
         }
@@ -441,7 +525,9 @@ function PeopleTab({ snap }) {
                   <Flag code={s.country_code} name={s.country_name} large />
                   <div style={{ minWidth: 0 }}>
                     <Link to={`/swimmers/${s.id}`} style={{ fontWeight: 700, fontSize: 14.5 }}>{s.name}</Link>
-                    <div className="micro" style={{ marginTop: 1 }}>{s.country_name} · {s.gender === 'M' ? 'Men' : 'Women'}</div>
+                    <div className="micro" style={{ marginTop: 1 }}>
+                      {s.country_name} · {s.gender === 'M' ? 'Men' : 'Women'}{s.age_group ? ` · ${s.age_group}` : ''}
+                    </div>
                   </div>
                   <div style={{ marginLeft: 'auto', textAlign: 'right', flex: 'none' }}>
                     <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1 }}>{s.em.toFixed(1)}</div>
@@ -510,6 +596,9 @@ function PeopleTab({ snap }) {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
                       <Flag code={s.country_code} name={s.country_name} />
                       <Link to={`/swimmers/${s.id}`}>{s.name}</Link>
+                      {s.age_group && (
+                        <span className="micro" style={{ fontWeight: 400 }}>{s.age_group}</span>
+                      )}
                     </span>
                   </td>
                   <td className="num asw-num" style={{ fontWeight: 700 }}>{s.em.toFixed(1)}</td>
@@ -580,13 +669,15 @@ export default function Predictions() {
         const sa = STROKE_ORDER[a.stroke] ?? 99
         const sb = STROKE_ORDER[b.stroke] ?? 99
         if (sa !== sb) return sa - sb
-        return (a.distance || 0) - (b.distance || 0)
+        if ((a.distance || 0) !== (b.distance || 0)) return (a.distance || 0) - (b.distance || 0)
+        return String(a.age_group || '').localeCompare(String(b.age_group || ''))
       })
   ), [events, gender])
 
+  const evKey = (e) => `${e.event_id}|${e.age_group || ''}`
   const selectedEvent = useMemo(() => {
     if (genderEvents.length === 0) return null
-    return genderEvents.find((e) => String(e.event_id) === String(eventKey)) || genderEvents[0]
+    return genderEvents.find((e) => evKey(e) === eventKey) || genderEvents[0]
   }, [genderEvents, eventKey])
 
   if (loading) return <Loading label="Loading predictions" />
@@ -645,8 +736,14 @@ export default function Predictions() {
                     {snap.stage === 'OFFICIAL' ? 'Official entries' : 'Early prediction'}
                   </Chip>
                   <Chip tone={snap.confidence === 'High' ? 'navy' : 'plain'}>{snap.confidence} confidence</Chip>
+                  {snap.age_groups?.length > 0 && <Chip tone="plain">Age-group meet</Chip>}
                 </span>
               </div>
+              {snap.age_groups?.length > 0 && (
+                <div className="micro" style={{ marginBottom: 4 }}>
+                  Age categories: {snap.age_groups.join(' · ')} — every event is predicted separately per category
+                </div>
+              )}
               <div className="micro" style={{ marginBottom: 4 }}>
                 Prediction updated: {formatDate(snap.updated_at?.slice(0, 10))} · {snap.event_count} events · {snap.swimmer_count} swimmers analysed
               </div>
@@ -684,12 +781,14 @@ export default function Predictions() {
                     onChange={(g) => { setGender(g); setEventKey('') }}
                   />
                   <select
-                    value={selectedEvent ? String(selectedEvent.event_id) : ''}
+                    value={selectedEvent ? evKey(selectedEvent) : ''}
                     onChange={(e) => setEventKey(e.target.value)}
                     style={{ padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }}
                   >
                     {genderEvents.map((e) => (
-                      <option key={e.event_id} value={e.event_id}>{e.event}</option>
+                      <option key={evKey(e)} value={evKey(e)}>
+                        {e.event}{e.age_group ? ` — ${e.age_group}` : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -704,12 +803,15 @@ export default function Predictions() {
               </div>
 
               {isAdmin && (
-                <EntriesAdmin
-                  champId={selectedId}
-                  stage={snap.stage}
-                  events={events}
-                  onChanged={() => loadDetail(selectedId)}
-                />
+                <>
+                  <AgeGroupsAdmin champId={selectedId} onChanged={() => loadDetail(selectedId)} />
+                  <EntriesAdmin
+                    champId={selectedId}
+                    stage={snap.stage}
+                    events={events}
+                    onChanged={() => loadDetail(selectedId)}
+                  />
+                </>
               )}
             </div>
           )}

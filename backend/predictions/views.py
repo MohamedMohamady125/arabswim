@@ -7,8 +7,8 @@ from rest_framework.response import Response
 
 from championships.models import Championship
 from .engine import compute_snapshot, fill_rising
-from .models import PredictionEntry, PredictionSnapshot
-from .serializers import PredictionEntrySerializer
+from .models import PredictionAgeGroup, PredictionEntry, PredictionSnapshot
+from .serializers import PredictionAgeGroupSerializer, PredictionEntrySerializer
 
 PREDICTABLE_CLASSIFICATIONS = ['Arab', 'GCC', 'National']
 STALE_AFTER = timedelta(hours=24)
@@ -75,7 +75,8 @@ class PredictionViewSet(viewsets.ViewSet):
         # keep the payload light: events index only, fields via the event action
         data['events_index'] = [
             {'event_id': e['event_id'], 'event': e['event'], 'stroke': e['stroke'],
-             'distance': e['distance'], 'gender': e['gender']}
+             'distance': e['distance'], 'gender': e['gender'],
+             'age_group': e.get('age_group')}
             for e in data.get('events', [])
         ]
         return Response(data)
@@ -84,15 +85,47 @@ class PredictionViewSet(viewsets.ViewSet):
     def event(self, request, pk=None):
         event_id = request.query_params.get('event')
         gender = request.query_params.get('gender', 'M')
+        age_group = request.query_params.get('age_group') or None
         snap = PredictionSnapshot.objects.filter(championship_id=pk).first()
         if not snap:
             return Response({'detail': 'Prediction not computed yet'},
                             status=status.HTTP_404_NOT_FOUND)
         for e in snap.data.get('events', []):
-            if str(e['event_id']) == str(event_id) and e['gender'] == gender:
+            if (str(e['event_id']) == str(event_id) and e['gender'] == gender
+                    and (e.get('age_group') or None) == age_group):
                 return Response(e)
         return Response({'detail': 'No prediction for this event'},
                         status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['get', 'post'], url_path='age-groups')
+    def age_groups(self, request, pk=None):
+        if request.method == 'GET':
+            qs = PredictionAgeGroup.objects.filter(championship_id=pk)
+            return Response(PredictionAgeGroupSerializer(qs, many=True).data)
+        payload = dict(request.data)
+        payload['championship'] = pk
+        ser = PredictionAgeGroupSerializer(data=payload)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        try:
+            _get_or_compute(Championship.objects.get(pk=pk), force=True)
+        except Championship.DoesNotExist:
+            pass
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'],
+            url_path='age-groups/(?P<group_id>[0-9]+)')
+    def age_group_detail(self, request, pk=None, group_id=None):
+        try:
+            grp = PredictionAgeGroup.objects.get(pk=group_id, championship_id=pk)
+        except PredictionAgeGroup.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        grp.delete()
+        try:
+            _get_or_compute(Championship.objects.get(pk=pk), force=True)
+        except Championship.DoesNotExist:
+            pass
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post'])
     def recompute(self, request, pk=None):

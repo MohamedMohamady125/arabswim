@@ -9,3 +9,6 @@ export const addPredictionEntry = (id, data) => api.post(`/predictions/${id}/ent
 export const updatePredictionEntry = (id, entryId, data) => api.patch(`/predictions/${id}/entries/${entryId}/`, data)
 export const deletePredictionEntry = (id, entryId) => api.delete(`/predictions/${id}/entries/${entryId}/`)
 export const seedPredictionEntries = (id) => api.post(`/predictions/${id}/entries/seed/`)
+export const getPredictionAgeGroups = (id) => api.get(`/predictions/${id}/age-groups/`)
+export const addPredictionAgeGroup = (id, data) => api.post(`/predictions/${id}/age-groups/`, data)
+export const deletePredictionAgeGroup = (id, groupId) => api.delete(`/predictions/${id}/age-groups/${groupId}/`)

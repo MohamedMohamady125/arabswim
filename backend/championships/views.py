@@ -79,7 +79,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             seen = set()
             rows = []
             for row in ser.validated_data:
-                key = (row['day'], row['event'].id, row.get('gender', 'X'))
+                key = (row['day'], row['event'].id, row.get('gender', 'X'),
+                       row.get('session', ''), row.get('age_category', ''))
                 if key in seen:
                     continue
                 seen.add(key)

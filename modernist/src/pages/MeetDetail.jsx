@@ -1164,7 +1164,11 @@ function MostImprovedTab({ meetId }) {
 
 const PROGRAM_GENDER = { M: 'Men', F: 'Women', X: 'Mixed' }
 
-function ProgramTab({ meetId, isAdmin }) {
+const PROGRAM_SESSION = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
+const SESSION_SORT = ['HEATS', 'SEMIS', 'FINALS', '']
+
+function ProgramTab({ meetId, isAdmin, resultEvents }) {
+  const [, setSearchParams] = useSearchParams()
   const [days, setDays] = useState(null)
 
   const load = () => {
@@ -1177,10 +1181,27 @@ function ProgramTab({ meetId, isAdmin }) {
   if (days === null) return <Loading label="Loading program" />
   const hasItems = days.some((d) => d.items.length > 0)
 
+  // an item links to Results only when that event+gender actually has results
+  const hasResults = (it) => (resultEvents || []).some(
+    (e) => String(e.event_id) === String(it.event) && e.gender === it.gender,
+  )
+  const openResults = (it) => setSearchParams({ tab: 'results', event: String(it.event), gender: it.gender })
+
+  // group a day's items into sessions (Heats → Semifinals → Finals → unscheduled)
+  const sessionsOf = (d) => {
+    const groups = new Map()
+    d.items.forEach((it) => {
+      const key = it.session || ''
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(it)
+    })
+    return [...groups.entries()].sort((a, b) => SESSION_SORT.indexOf(a[0]) - SESSION_SORT.indexOf(b[0]))
+  }
+
   return (
     <div className="pad-lg">
       {hasItems ? (
-        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', marginBottom: isAdmin ? 26 : 0 }}>
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', marginBottom: isAdmin ? 26 : 0 }}>
           {days.map((d) => (
             <div key={d.day} style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)' }}>
               <div style={{ padding: '10px 14px', borderBottom: '2px solid var(--asw-gold)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -1189,11 +1210,31 @@ function ProgramTab({ meetId, isAdmin }) {
               </div>
               {d.items.length > 0 ? (
                 <div style={{ padding: '6px 0' }}>
-                  {d.items.map((it, i) => (
-                    <div key={it.id || i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', fontSize: 13 }}>
-                      <span className="asw-num" style={{ width: 20, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
-                      <span style={{ fontWeight: 600 }}>{it.event_name}</span>
-                      <span className="micro" style={{ marginLeft: 'auto' }}>{PROGRAM_GENDER[it.gender]}</span>
+                  {sessionsOf(d).map(([session, items]) => (
+                    <div key={session || 'none'}>
+                      {session && (
+                        <div className="micro" style={{ padding: '7px 14px 3px', color: 'var(--color-accent-800)', fontWeight: 700 }}>
+                          {PROGRAM_SESSION[session]}
+                        </div>
+                      )}
+                      {items.map((it, i) => {
+                        const linked = hasResults(it)
+                        return (
+                          <div
+                            key={it.id || `${it.event}-${i}`}
+                            onClick={linked ? () => openResults(it) : undefined}
+                            title={linked ? 'View results' : undefined}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', fontSize: 13, cursor: linked ? 'pointer' : 'default' }}
+                          >
+                            <span className="asw-num" style={{ width: 20, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
+                            <span style={{ fontWeight: 600, textDecoration: linked ? 'underline' : 'none', textDecorationColor: 'var(--color-neutral-300)', textUnderlineOffset: 3 }}>
+                              {it.event_name}
+                            </span>
+                            {it.age_category && <span className="tag tag-neutral" style={{ flex: 'none' }}>{it.age_category}</span>}
+                            <span className="micro" style={{ marginLeft: 'auto' }}>{PROGRAM_GENDER[it.gender]}</span>
+                          </div>
+                        )
+                      })}
                     </div>
                   ))}
                 </div>
@@ -1298,7 +1339,7 @@ export default function MeetDetail() {
       {tab === 'results' && (
         <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium} onDataChanged={refreshStats} />
       )}
-      {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} />}
+      {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
       {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}
       {tab === 'pbs' && <PersonalBestsTab stats={stats} />}
       {tab === 'statistics' && <StatisticsTab meetId={id} stats={stats} />}

@@ -4,6 +4,7 @@ import { getEvents } from '../api/core'
 import { formatDate } from '../utils'
 
 const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
+const SESSION_LABEL = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
 
 // Admin editor for a meet's day-by-day program. Days come from the meet's
 // start/end dates (Day 1 = start date); per day the admin picks which
@@ -15,6 +16,8 @@ export default function MeetProgramEditor({ champId, onSaved }) {
   const [activeDay, setActiveDay] = useState(1)
   const [eventId, setEventId] = useState('')
   const [gender, setGender] = useState('M')
+  const [session, setSession] = useState('')
+  const [ageCat, setAgeCat] = useState('')
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -45,12 +48,15 @@ export default function MeetProgramEditor({ champId, onSaved }) {
     if (!eventId || !day) return
     const ev = events.find((e) => String(e.id) === String(eventId))
     if (!ev) return
-    if (day.items.some((i) => String(i.event) === String(eventId) && i.gender === gender)) {
+    const cat = ageCat.trim()
+    if (day.items.some((i) => String(i.event) === String(eventId) && i.gender === gender
+      && (i.session || '') === session && (i.age_category || '') === cat)) {
       setMsg('Already on this day')
       return
     }
     patchDay(day.day, [...day.items, {
       day: day.day, event: ev.id, event_name: ev.name, is_relay: ev.is_relay, gender,
+      session, age_category: cat,
     }])
   }
 
@@ -70,6 +76,7 @@ export default function MeetProgramEditor({ champId, onSaved }) {
     try {
       const items = days.flatMap((d) => d.items.map((it, i) => ({
         day: d.day, event: it.event, gender: it.gender, order: i,
+        session: it.session || '', age_category: it.age_category || '',
       })))
       const res = await setMeetProgram(champId, items)
       setDays(res.data?.days || days)
@@ -139,6 +146,19 @@ export default function MeetProgramEditor({ champId, onSaved }) {
           <option value="F">Women</option>
           <option value="X">Mixed</option>
         </select>
+        <select style={inputStyle} value={session} onChange={(e) => setSession(e.target.value)}>
+          <option value="">Session…</option>
+          <option value="HEATS">Heats</option>
+          <option value="SEMIS">Semifinals</option>
+          <option value="FINALS">Finals</option>
+        </select>
+        <input
+          style={{ ...inputStyle, width: 110 }}
+          value={ageCat}
+          onChange={(e) => setAgeCat(e.target.value)}
+          placeholder="Age cat. (opt.)"
+          maxLength={40}
+        />
         <button type="button" className="btn btn-secondary" onClick={addItem} disabled={!eventId}>
           Add to day {day?.day}
         </button>
@@ -153,12 +173,14 @@ export default function MeetProgramEditor({ champId, onSaved }) {
         <div>
           {day.items.map((it, i) => (
             <div
-              key={`${it.event}-${it.gender}`}
+              key={`${it.event}-${it.gender}-${it.session || ''}-${it.age_category || ''}`}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderBottom: '1px solid var(--color-divider)', fontSize: 13, background: '#fff' }}
             >
               <span className="asw-num" style={{ width: 22, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
               <span style={{ fontWeight: 600 }}>{it.event_name}</span>
               <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{GENDER_LABEL[it.gender]}</span>
+              {it.session && <span className="tag tag-neutral" style={{ flex: 'none' }}>{SESSION_LABEL[it.session]}</span>}
+              {it.age_category && <span className="tag tag-neutral" style={{ flex: 'none' }}>{it.age_category}</span>}
               <span style={{ marginLeft: 'auto', display: 'flex', gap: 2 }}>
                 <button type="button" onClick={() => moveItem(i, -1)} disabled={i === 0} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px' }} aria-label="Move up">↑</button>
                 <button type="button" onClick={() => moveItem(i, 1)} disabled={i === day.items.length - 1} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px' }} aria-label="Move down">↓</button>

@@ -10,6 +10,7 @@ import {
 import { getCountries } from '../api/core'
 import { getSwimmerBirthdays } from '../api/swimmers'
 import Flag from '../components/Flag'
+import MeetProgramEditor from '../components/MeetProgramEditor'
 import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, formatDateRange, mediaUrl, MONTHS_FULL } from '../utils'
@@ -303,6 +304,8 @@ export default function Calendar() {
 
   // admin: add event modal
   const [showAddEvent, setShowAddEvent] = useState(false)
+  // after creating a meet, the modal switches to the day-by-day program editor
+  const [programChampId, setProgramChampId] = useState(null)
   const [newEvent, setNewEvent] = useState(EMPTY_EVENT)
   const [addLoading, setAddLoading] = useState(false)
   const [classCategories, setClassCategories] = useState([])
@@ -456,7 +459,12 @@ export default function Calendar() {
       loadMeets()
       loadFeatured()
       setNewEvent(EMPTY_EVENT)
-      setShowAddEvent(false)
+      if (championshipId) {
+        // meet created — offer the day-by-day program editor right away
+        setProgramChampId(championshipId)
+      } else {
+        setShowAddEvent(false)
+      }
     } catch (err) {
       window.alert('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
     } finally {
@@ -705,7 +713,26 @@ export default function Calendar() {
       )}
 
       {/* ── Add event modal (admin) ── */}
-      <Modal open={isAdmin && showAddEvent} title="Add calendar event" onClose={() => setShowAddEvent(false)}>
+      <Modal
+        open={isAdmin && showAddEvent}
+        title={programChampId ? 'Day-by-day program' : 'Add calendar event'}
+        onClose={() => { setShowAddEvent(false); setProgramChampId(null) }}
+      >
+        {programChampId ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
+              Meet created. Optionally set which events run on each day — you can also do this later from the meet page&apos;s Program tab.
+            </div>
+            <MeetProgramEditor champId={programChampId} />
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => { setShowAddEvent(false); setProgramChampId(null) }}
+            >
+              Done
+            </button>
+          </div>
+        ) : (
         <form onSubmit={handleAddEvent} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="field">
             <label>Type</label>
@@ -822,6 +849,7 @@ export default function Calendar() {
             </button>
           </div>
         </form>
+        )}
       </Modal>
     </div>
   )

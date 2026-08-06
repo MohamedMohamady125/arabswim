@@ -6,43 +6,23 @@ import { formatDate } from '../utils'
 const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
 const SESSION_LABEL = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
 
-// Admin editor for a meet's day-by-day program. Days come from the meet's
-// start/end dates (Day 1 = start date); per day the admin picks which
-// events were swum. Used in manual meet creation, the import wizard and
-// the meet page's Program tab.
-export default function MeetProgramEditor({ champId, onSaved }) {
-  const [days, setDays] = useState([])
+// Shared editor UI: day tabs + add row + item list. Controlled via
+// `days` ([{ day, date, items }]) and `patchDay(dayNo, items)`.
+// `action` renders on the right of the add row (Save button in API
+// mode, nothing in local mode).
+function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
   const [events, setEvents] = useState([])
   const [activeDay, setActiveDay] = useState(1)
   const [eventId, setEventId] = useState('')
   const [gender, setGender] = useState('M')
   const [session, setSession] = useState('')
   const [ageCat, setAgeCat] = useState('')
-  const [dirty, setDirty] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState('')
 
   useEffect(() => {
     getEvents().then((res) => setEvents(res.data || [])).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (!champId) return
-    setDirty(false)
-    setMsg('')
-    setActiveDay(1)
-    getMeetProgram(champId)
-      .then((res) => setDays(res.data?.days || []))
-      .catch(() => setDays([]))
-  }, [champId])
-
   const day = days.find((d) => d.day === activeDay) || days[0]
-
-  const patchDay = (dayNo, items) => {
-    setDays((prev) => prev.map((d) => (d.day === dayNo ? { ...d, items } : d)))
-    setDirty(true)
-    setMsg('')
-  }
 
   const addItem = () => {
     if (!eventId || !day) return
@@ -70,26 +50,6 @@ export default function MeetProgramEditor({ champId, onSaved }) {
     patchDay(day.day, items)
   }
 
-  const save = async () => {
-    setBusy(true)
-    setMsg('')
-    try {
-      const items = days.flatMap((d) => d.items.map((it, i) => ({
-        day: d.day, event: it.event, gender: it.gender, order: i,
-        session: it.session || '', age_category: it.age_category || '',
-      })))
-      const res = await setMeetProgram(champId, items)
-      setDays(res.data?.days || days)
-      setDirty(false)
-      setMsg('Program saved')
-      onSaved?.()
-    } catch {
-      setMsg('Failed to save program')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const eventOptions = useMemo(
     () => [...events].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
     [events],
@@ -97,13 +57,11 @@ export default function MeetProgramEditor({ champId, onSaved }) {
 
   const inputStyle = { padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
 
-  if (!champId || days.length === 0) return null
-
   return (
     <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }}>
       <div className="kicker" style={{ marginBottom: 4 }}>Day-by-day program</div>
       <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0 }}>
-        Days follow the meet dates — pick which events were swum on each day.
+        {hint || 'Days follow the meet dates — pick which events were swum on each day.'}
       </div>
 
       {/* day tabs */}
@@ -162,9 +120,7 @@ export default function MeetProgramEditor({ champId, onSaved }) {
         <button type="button" className="btn btn-secondary" onClick={addItem} disabled={!eventId}>
           Add to day {day?.day}
         </button>
-        <button type="button" className="btn btn-primary" onClick={save} disabled={busy || !dirty} style={{ marginLeft: 'auto' }}>
-          {busy ? 'Saving…' : 'Save program'}
-        </button>
+        {action}
       </div>
       {msg && <div className="micro" style={{ marginBottom: 8, textTransform: 'none', letterSpacing: 0 }}>{msg}</div>}
 
@@ -195,5 +151,116 @@ export default function MeetProgramEditor({ champId, onSaved }) {
         </div>
       )}
     </div>
+  )
+}
+
+// Flatten [{ day, items }] into the API payload shape (order = index in day)
+export const flattenProgramDays = (days) => days.flatMap((d) => d.items.map((it, i) => ({
+  day: d.day, event: it.event, gender: it.gender, order: i,
+  session: it.session || '', age_category: it.age_category || '',
+})))
+
+// API-backed editor for an existing meet. Used in manual meet creation,
+// the calendar add-meet modal, the import wizard's Done step and the
+// meet page's Program tab.
+export default function MeetProgramEditor({ champId, onSaved }) {
+  const [days, setDays] = useState([])
+  const [dirty, setDirty] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    if (!champId) return
+    setDirty(false)
+    setMsg('')
+    getMeetProgram(champId)
+      .then((res) => setDays(res.data?.days || []))
+      .catch(() => setDays([]))
+  }, [champId])
+
+  const patchDay = (dayNo, items) => {
+    setDays((prev) => prev.map((d) => (d.day === dayNo ? { ...d, items } : d)))
+    setDirty(true)
+    setMsg('')
+  }
+
+  const save = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const res = await setMeetProgram(champId, flattenProgramDays(days))
+      setDays(res.data?.days || days)
+      setDirty(false)
+      setMsg('Program saved')
+      onSaved?.()
+    } catch {
+      setMsg('Failed to save program')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!champId || days.length === 0) return null
+
+  return (
+    <ProgramEditorCore
+      days={days}
+      patchDay={patchDay}
+      msg={msg}
+      setMsg={setMsg}
+      action={(
+        <button type="button" className="btn btn-primary" onClick={save} disabled={busy || !dirty} style={{ marginLeft: 'auto' }}>
+          {busy ? 'Saving…' : 'Save program'}
+        </button>
+      )}
+    />
+  )
+}
+
+const addDays = (iso, n) => {
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+// Local (pre-import) editor: the meet doesn't exist yet, so days come
+// from the given start/end dates and the picked items live in parent
+// state (`items` + `onChange`). The wizard saves them to the API right
+// after the meet is created on confirm.
+export function LocalProgramEditor({ startDate, endDate, items, onChange, hint }) {
+  const days = useMemo(() => {
+    if (!startDate) return []
+    let n = 1
+    if (endDate && endDate >= startDate) {
+      n = Math.min(Math.floor((new Date(endDate) - new Date(startDate)) / 86400000) + 1, 30)
+    }
+    n = Math.max(n, ...items.map((it) => it.day), 1)
+    return Array.from({ length: n }, (_, i) => ({
+      day: i + 1,
+      date: addDays(startDate, i),
+      items: items.filter((it) => it.day === i + 1),
+    }))
+  }, [startDate, endDate, items])
+
+  const [msg, setMsg] = useState('')
+
+  const patchDay = (dayNo, dayItems) => {
+    setMsg('')
+    onChange([
+      ...items.filter((it) => it.day !== dayNo),
+      ...dayItems.map((it) => ({ ...it, day: dayNo })),
+    ])
+  }
+
+  if (!startDate) return null
+
+  return (
+    <ProgramEditorCore
+      days={days}
+      patchDay={patchDay}
+      msg={msg}
+      setMsg={setMsg}
+      hint={hint || 'Days follow the meet dates above — pick which events run on each day. The program is saved automatically when you confirm the import.'}
+    />
   )
 }

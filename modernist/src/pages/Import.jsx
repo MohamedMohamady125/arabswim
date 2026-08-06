@@ -7,12 +7,12 @@ import {
 import { getCountries } from '../api/core'
 import {
   getChampionships, getClassifications, getSubClassifications,
-  getResultsBySwimmer, bulkDeleteResults,
+  getResultsBySwimmer, bulkDeleteResults, setMeetProgram,
 } from '../api/championships'
 import { POOL_TYPES, ARAB_COUNTRY_CODES, formatDate } from '../utils'
 import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
-import MeetProgramEditor from '../components/MeetProgramEditor'
+import MeetProgramEditor, { LocalProgramEditor } from '../components/MeetProgramEditor'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
 
 const MAX_FILES = 200
@@ -132,6 +132,7 @@ export default function Import() {
         },
         arabOnly: false,
         existingChampId: presetChampId,
+        programItems: [],
         matches: [], matchStats: {}, decisions: {}, result: null, confirmError: '',
       }
     }
@@ -257,6 +258,19 @@ export default function Import() {
         const res = await confirmImport(payload)
         updated[i] = { ...m, result: res.data, confirmError: '' }
         anyOk = true
+        // save the program planned in the review step (non-fatal on failure)
+        const champId = res.data?.championship_id
+        if (champId && !m.existingChampId && (m.programItems || []).length > 0) {
+          try {
+            const byDay = {}
+            m.programItems.forEach((it) => { (byDay[it.day] = byDay[it.day] || []).push(it) })
+            const items = Object.values(byDay).flatMap((arr) => arr.map((it, j) => ({
+              day: it.day, event: it.event, gender: it.gender, order: j,
+              session: it.session || '', age_category: it.age_category || '',
+            })))
+            await setMeetProgram(champId, items)
+          } catch { /* program can still be set on the Done step */ }
+        }
       } catch (err) {
         updated[i] = { ...m, confirmError: err.response?.data?.error || 'Failed to import' }
       }
@@ -605,6 +619,24 @@ export default function Import() {
                         </div>
                       </div>
                     </>
+                  )}
+                </div>
+
+                {/* Day-by-day program — planned here, saved when the import is confirmed */}
+                <div style={{ marginBottom: 16 }}>
+                  {meet.existingChampId ? (
+                    <MeetProgramEditor champId={Number(meet.existingChampId)} />
+                  ) : meet.champForm.date ? (
+                    <LocalProgramEditor
+                      startDate={meet.champForm.date}
+                      endDate={meet.champForm.end_date}
+                      items={meet.programItems || []}
+                      onChange={(items) => updateMeet(active, { programItems: items })}
+                    />
+                  ) : (
+                    <div className="micro" style={{ border: '1px solid var(--color-divider)', padding: '10px 14px', textTransform: 'none', letterSpacing: 0 }}>
+                      Set the meet start date above to plan the day-by-day program.
+                    </div>
                   )}
                 </div>
 

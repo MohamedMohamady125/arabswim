@@ -50,6 +50,22 @@ export function regroupSplits(splits, by, totalCs) {
     return { distance: s.distance, cumCs: run, cum: csToSplitTime(run) }
   })
 
+  // Some sources omit the final split (e.g. an 800 recorded only to 700).
+  // When the official total is known and sits about one lap beyond the last
+  // cumulative mark, append a synthetic finish split so the race reads fully.
+  if (totalCs && cum.length >= 2) {
+    const lastPt = cum[cum.length - 1]
+    const prevPt = cum[cum.length - 2]
+    const step = lastPt.distance != null && prevPt.distance != null ? lastPt.distance - prevPt.distance : 0
+    if (step > 0 && totalCs > lastPt.cumCs) {
+      const finishLap = totalCs - lastPt.cumCs
+      const avgLap = lastPt.cumCs / cum.length
+      if (finishLap > avgLap * 0.3 && finishLap < avgLap * 2) {
+        cum.push({ distance: lastPt.distance + step, cumCs: totalCs, cum: csToSplitTime(totalCs) })
+      }
+    }
+  }
+
   let pts = cum
   if (by === 100) {
     const hundreds = cum.filter((s) => s.distance != null && s.distance % 100 === 0)

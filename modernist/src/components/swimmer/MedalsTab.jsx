@@ -31,10 +31,47 @@ function PercentRing({ pct, color, title, desc }) {
   )
 }
 
+/* Flat medal donut with a centred total and a label underneath */
+function MedalDonut({ counts, label, size = 160 }) {
+  const r = 44
+  const C = 2 * Math.PI * r
+  let acc = 0
+  const segs = [
+    { key: 'gold', n: counts.gold, color: GOLD_HEX },
+    { key: 'silver', n: counts.silver, color: SILVER_HEX },
+    { key: 'bronze', n: counts.bronze, color: BRONZE_HEX },
+  ].map((s) => {
+    const frac = counts.total > 0 ? s.n / counts.total : 0
+    const seg = { ...s, dash: frac * C, offset: -acc * C }
+    acc += frac
+    return seg
+  })
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 'none' }}>
+      <div style={{ position: 'relative', width: size, height: size }}>
+        <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+          {counts.total === 0 && (
+            <circle cx="60" cy="60" r={r} fill="none" stroke="var(--color-neutral-300)" strokeWidth="22" />
+          )}
+          {segs.map((s) => s.n > 0 && (
+            <circle key={s.key} cx="60" cy="60" r={r} fill="none" stroke={s.color} strokeWidth="22"
+              strokeDasharray={`${s.dash} ${C}`} strokeDashoffset={s.offset} />
+          ))}
+        </svg>
+        <span style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size >= 160 ? 32 : 26, lineHeight: 1 }}>{counts.total}</span>
+          <span className="micro">Total</span>
+        </span>
+      </div>
+      <span className="micro" style={{ textAlign: 'center' }}>{label}</span>
+    </div>
+  )
+}
+
 export default function MedalsTab({ stats }) {
   const [cat, setCat] = useState('All')
   if (!stats) return null
-  const { medals, medals_hierarchy, total_races } = stats
+  const { medals, medals_hierarchy, total_races, intl_medals } = stats
   if (!medals || medals.total === 0) return <Empty label="No medals yet" />
 
   // Aggregate per-competition counts from the classification hierarchy
@@ -71,20 +108,10 @@ export default function MedalsTab({ stats }) {
   const goldRacePct = races > 0 ? Math.min(100, Math.round((medals.gold / races) * 100)) : 0
   const goldSharePct = active.total > 0 ? Math.round((active.gold / active.total) * 1000) / 10 : 0
 
-  // Flat donut
-  const donutR = 44
-  const donutC = 2 * Math.PI * donutR
-  let acc = 0
-  const donutSegs = [
-    { key: 'gold', n: active.gold, color: GOLD_HEX },
-    { key: 'silver', n: active.silver, color: SILVER_HEX },
-    { key: 'bronze', n: active.bronze, color: BRONZE_HEX },
-  ].map((s) => {
-    const frac = active.total > 0 ? s.n / active.total : 0
-    const seg = { ...s, dash: frac * donutC, offset: -acc * donutC }
-    acc += frac
-    return seg
-  })
+  // Second donut: international-only medals (shown in the All view when
+  // the athlete has any and they differ from the overall tally)
+  const intlDonut = isAll && intl_medals && intl_medals.total > 0
+    && intl_medals.total !== medals.total
   const chartMax = Math.max(1, ...chartComps.flatMap((c) => {
     const cc = compCounts[c]
     return [cc.gold, cc.silver, cc.bronze]
@@ -134,17 +161,11 @@ export default function MedalsTab({ stats }) {
         <div>
           <div className="sect-head"><h4>Medal distribution</h4></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', width: 160, height: 160, flex: 'none' }}>
-              <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                {donutSegs.map((s) => s.n > 0 && (
-                  <circle key={s.key} cx="60" cy="60" r={donutR} fill="none" stroke={s.color} strokeWidth="22"
-                    strokeDasharray={`${s.dash} ${donutC}`} strokeDashoffset={s.offset} />
-                ))}
-              </svg>
-              <span style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, lineHeight: 1 }}>{active.total}</span>
-                <span className="micro">Total</span>
-              </span>
+            <div style={{ display: 'flex', gap: 16, flex: 'none' }}>
+              <MedalDonut counts={active} label={isAll ? 'All medals' : cat} size={intlDonut ? 140 : 160} />
+              {intlDonut && (
+                <MedalDonut counts={intl_medals} label="International" size={140} />
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
               {[

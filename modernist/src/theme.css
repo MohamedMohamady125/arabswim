@@ -315,6 +315,11 @@ figure { margin: 0; }
      card width ~170px keeps photos small while text stays legible */
   .record-cards { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
   .record-cards > * { padding: 10px !important; }
+  /* odd count: last card spans both columns instead of sitting next to an
+     empty half-row; wider photo crop keeps it from getting huge */
+  .record-cards > *:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .record-cards > *:last-child:nth-child(odd) img,
+  .record-cards > *:last-child:nth-child(odd) > div:first-child { aspect-ratio: 5 / 2 !important; }
   .record-cards .card-kicker { font-size: 8.5px; letter-spacing: 0.06em; }
   .record-cards .rec-time { font-size: 18px !important; }
   .record-cards .rec-event { font-size: 11px !important; }

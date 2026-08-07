@@ -296,6 +296,12 @@ def _build_preview(parsed_meet):
         if club_resolves > len(all_results) * 0.5:
             is_international = True
 
+    # A file with no nationality signal anywhere (no codes, no country-like
+    # clubs) must not guess nationalities from the meet name/host country:
+    # swimmers get nationality=None rather than a wrong one polluting
+    # records and rankings.
+    file_has_nationality = is_international or has_nat_count > 0
+
     # Determine meet year for birth_year calculation from age
     meet_year = 0
     if parsed_meet.date_text:
@@ -341,7 +347,7 @@ def _build_preview(parsed_meet):
                 if club_country:
                     nat_code = club_country.code
                     club_is_country = True
-            if not nat_code:
+            if not nat_code and file_has_nationality:
                 nat_code = inferred_country_code
 
             # Compute birth_year and age from each other when one is missing
@@ -620,6 +626,16 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     if not meet_country:
         meet_country = Country.objects.first()
 
+    # Only fall back to the meet country for swimmer nationality when the
+    # file itself carried nationality info for at least some swimmers; a
+    # file with none at all creates swimmers with nationality=None so it
+    # never pollutes records/rankings with guessed nationalities.
+    file_has_nationality = any(
+        r.get('nationality_code')
+        for ev in preview_data.get('events', [])
+        for r in ev.get('results', []))
+    swimmer_fallback = meet_country if file_has_nationality else None
+
     # Get or create championship
     if championship_id:
         championship = Championship.objects.get(id=championship_id)
@@ -811,9 +827,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         if nat_code:
                             nationality = resolve_country(nat_code)
                         if not nationality:
-                            nationality = meet_country
-                        if not nationality:
-                            nationality = Country.objects.first()
+                            nationality = swimmer_fallback
 
                         swimmer_map[relay_key] = Swimmer.objects.create(
                             name=normalize_club_name(parsed_name),
@@ -846,7 +860,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                                 swimmer_map[ind_key], result_data, championship):
                             nationality_changes += 1
                     elif action == 'create':
-                        swimmer_map[ind_key] = _create_swimmer(result_data, meet_country)
+                        swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback)
                         created_swimmers += 1
                     else:
                         # Auto: try to match, create if new
@@ -889,7 +903,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                                     swimmer, result_data, championship):
                                 nationality_changes += 1
                         else:
-                            swimmer_map[ind_key] = _create_swimmer(result_data, meet_country)
+                            swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback)
                             created_swimmers += 1
 
             lookup_key = relay_key if (is_relay or result_data.get('is_relay', False)) else ind_key
@@ -1287,8 +1301,6 @@ def _create_swimmer(result_data, fallback_country=None):
         nationality = resolve_country(nat_code)
     if not nationality:
         nationality = fallback_country
-    if not nationality:
-        nationality = Country.objects.first()
 
     from teams.utils import is_valid_team_name
     club = result_data.get('club', '').strip()

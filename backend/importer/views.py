@@ -192,12 +192,12 @@ class DuplicateSwimmersView(APIView):
             data.append({
                 'swimmer1': {
                     'id': s1.id, 'name': s1.name,
-                    'nationality': s1.nationality.name,
+                    'nationality': s1.nationality.name if s1.nationality else '',
                     'date_of_birth': str(s1.date_of_birth),
                 },
                 'swimmer2': {
                     'id': s2.id, 'name': s2.name,
-                    'nationality': s2.nationality.name,
+                    'nationality': s2.nationality.name if s2.nationality else '',
                     'date_of_birth': str(s2.date_of_birth),
                 },
                 'similarity': score,

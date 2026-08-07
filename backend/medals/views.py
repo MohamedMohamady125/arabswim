@@ -80,6 +80,8 @@ class MedalViewSet(viewsets.ModelViewSet):
         # Only restrict to Arab countries on the global medals page, not per-championship
         if not request.query_params.get('championship'):
             qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
+        # Swimmers with no known nationality can't be attributed to a country
+        qs = qs.filter(swimmer__nationality__isnull=False)
         summary = qs.values(
             'swimmer__nationality__name', 'swimmer__nationality__code',
             'swimmer__nationality__flag_url', 'swimmer__nationality__region',

@@ -7,7 +7,9 @@ class Swimmer(models.Model):
     name = models.CharField(max_length=200)
     date_of_birth = models.DateField(blank=True, null=True)
     birth_year = models.IntegerField(blank=True, null=True, help_text='Year of birth when exact DOB is unknown')
-    nationality = models.ForeignKey(Country, on_delete=models.PROTECT, related_name='swimmers')
+    # Null when the source meet file carries no nationality information at
+    # all — better no nationality than a wrong one polluting records/rankings.
+    nationality = models.ForeignKey(Country, on_delete=models.PROTECT, related_name='swimmers', null=True, blank=True)
     sex = models.CharField(max_length=1, choices=SEX_CHOICES)
     club = models.CharField(max_length=200, blank=True, default='')
     photo = models.ImageField(upload_to='swimmers/photos/', blank=True, null=True)

@@ -103,7 +103,7 @@ class MedalViewSet(viewsets.ModelViewSet):
         if not request.query_params.get('championship'):
             qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
         summary = qs.values(
-            'swimmer__id', 'swimmer__name', 'swimmer__sex',
+            'swimmer__id', 'swimmer__name', 'swimmer__sex', 'swimmer__photo',
             'swimmer__nationality__name', 'swimmer__nationality__code',
             'swimmer__nationality__flag_url',
         ).annotate(
@@ -118,7 +118,12 @@ class MedalViewSet(viewsets.ModelViewSet):
                 summary = summary[:max(int(limit), 1)]
             except (TypeError, ValueError):
                 summary = summary[:10]
-        return Response(list(summary))
+        from django.conf import settings
+        data = list(summary)
+        for row in data:
+            p = row.get('swimmer__photo')
+            row['swimmer__photo'] = (settings.MEDIA_URL + p) if p else None
+        return Response(data)
 
     @action(detail=False, methods=['get'], url_path='club-summary')
     def club_summary(self, request):

@@ -443,15 +443,6 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
                   sideways for long events instead of wrapping */}
               <div style={{ overflowX: 'auto' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--color-divider)', background: 'var(--color-bg)' }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', padding: '0 10px',
-                    fontSize: 9, fontWeight: 800, letterSpacing: '0.08em',
-                    fontFamily: 'var(--font-heading)', color: 'var(--color-accent-800)',
-                    background: 'color-mix(in srgb, var(--asw-gold) 14%, transparent)',
-                    borderRight: '1px solid var(--color-divider)',
-                  }}>
-                    SPLITS
-                  </div>
                   {splits.map((s, j) => (
                     <div key={j} style={{ padding: '5px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: j < splits.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
                       <div className="micro" style={{ fontSize: 9, marginBottom: 2 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</div>

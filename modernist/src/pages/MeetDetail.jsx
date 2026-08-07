@@ -4,6 +4,7 @@ import {
   getChampionship, getChampionshipStats, getChampionshipResults,
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
   getMeetProgram, updateChampionship, getClassifications, getSubClassifications,
+  getRecordsBroken,
 } from '../api/championships'
 import { getCountries } from '../api/core'
 import MeetProgramEditor from '../components/MeetProgramEditor'
@@ -13,6 +14,7 @@ import MeetGallery from '../components/meets/MeetGallery'
 import { Loading, Empty, Seg, MedalIcon } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES } from '../utils'
+import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakdown'
 
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -40,6 +42,29 @@ const roundLabel = (r) => {
 }
 
 const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
+
+// Some sources omit the final split (e.g. an 800 recorded only to 700).
+// When the official total sits about one lap beyond the last split, append
+// a synthetic finish split so the strip reads the full race.
+function withFinishSplit(splits, totalCs) {
+  if (!totalCs || !splits || splits.length < 2) return splits || []
+  const parsed = splits.map((s) => ({ distance: s.distance, cs: splitTimeToCs(s.time) }))
+  if (parsed.some((s) => s.cs == null || s.distance == null)) return splits
+  const last = parsed[parsed.length - 1]
+  const step = last.distance - parsed[parsed.length - 2].distance
+  if (step <= 0) return splits
+  const sum = parsed.reduce((a, s) => a + s.cs, 0)
+  // Whichever interpretation lands closer to the official total wins
+  const cumulative = Math.abs(last.cs - totalCs) <= Math.abs(sum - totalCs)
+  const lastCum = cumulative ? last.cs : sum
+  const finishLap = totalCs - lastCum
+  const avgLap = lastCum / parsed.length
+  if (finishLap <= avgLap * 0.3 || finishLap >= avgLap * 2) return splits
+  return [...splits, {
+    distance: last.distance + step,
+    time: csToSplitTime(cumulative ? totalCs : finishLap),
+  }]
+}
 
 // Long names ellipsize instead of stretching the column
 const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
@@ -309,7 +334,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
     const heatsOnlyCat = !isOpenView && !!r.category && !finalsCats.has(r.category)
     const medalOnRow = (showMedals || heatsOnlyCat) && !r.is_manual && !r.is_hc && rank >= 1 && rank <= 3
     const swimmers = r.relay_swimmers || []
-    const splits = r.splits || []
+    const splits = withFinishSplit(r.splits || [], r.time_centiseconds)
     const hasSub = (isRelay && swimmers.length > 0) || (!isRelay && splits.length > 0)
     const isExpanded = expandedRow === r.id
     const isEditing = editingId === r.id
@@ -556,6 +581,51 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
   )
 }
 
+/* ──────────────────────── Featured #1 cards ─────────────────────── */
+
+// Special card with photo for the top male and top female athlete of a
+// tab (PBs, Top performances, Most improved, Most decorated).
+function FeaturedCards({ picks }) {
+  const navigate = useNavigate()
+  const shown = picks.filter(Boolean)
+  if (shown.length === 0) return null
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, marginBottom: 22, maxWidth: 680 }}>
+      {shown.map((p) => (
+        <div
+          key={p.tag}
+          onClick={p.swimmer_id ? () => navigate(`/swimmers/${p.swimmer_id}`) : undefined}
+          style={{
+            border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
+            borderTop: '3px solid var(--asw-gold)', display: 'flex', gap: 12,
+            cursor: p.swimmer_id ? 'pointer' : 'default', overflow: 'hidden',
+          }}
+        >
+          <div className="grayscale" style={{ width: 84, alignSelf: 'stretch', minHeight: 96, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, overflow: 'hidden' }}>
+            {p.photo
+              ? <img src={mediaUrl(p.photo)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : (p.name || '?').charAt(0)}
+          </div>
+          <div style={{ flex: 1, minWidth: 0, padding: '10px 12px 10px 0', display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
+            <div className="micro" style={{ color: 'var(--color-accent-800)', fontWeight: 700 }}>#1 · {p.tag}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <Flag code={p.nationality_code} name={p.name} />
+              <span style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+            </div>
+            {p.sub && <div className="micro" style={{ fontSize: 10, textTransform: 'none', letterSpacing: 0 }}>{p.sub}</div>}
+            {p.value && (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{p.value}</span>
+                {p.valueLabel && <span className="micro" style={{ fontSize: 10 }}>{p.valueLabel}</span>}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /* ─────────────────────────── Medals tab ─────────────────────────── */
 
 function MedalsTab({ meetId, isNational }) {
@@ -567,7 +637,6 @@ function MedalsTab({ meetId, isNational }) {
   const [swimmer, setSwimmer] = useState([])
   const [scope, setScope] = useState(isNational ? 'club' : 'country')
   const [swimmerGender, setSwimmerGender] = useState('ALL')
-  const [tallyFilter, setTallyFilter] = useState('ALL')
   const [medalFilter, setMedalFilter] = useState('ALL')
 
   useEffect(() => {
@@ -598,18 +667,35 @@ function MedalsTab({ meetId, isNational }) {
     return <Empty label="No medals yet — medals are computed from results" />
   }
 
+  // International meets NEVER show a club tally — only country + swimmer.
   const scopeOptions = [
     !isNational && country.length > 0 && { value: 'country', label: 'Country tally' },
-    club.length > 0 && { value: 'club', label: 'Club tally' },
+    isNational && club.length > 0 && { value: 'club', label: 'Club tally' },
     swimmer.length > 0 && { value: 'swimmer', label: 'Swimmer tally' },
   ].filter(Boolean)
 
-  let tallyRows = scope === 'country' ? country : scope === 'club' ? club : swimmer
-  if (scope === 'country' && tallyFilter === 'ARAB') {
-    tallyRows = tallyRows.filter((r) => ['ARAB', 'GCC'].includes(r.swimmer__nationality__region))
-  }
-  if (scope === 'swimmer' && swimmerGender !== 'ALL') {
+  // Keep the selected scope valid for this meet type
+  const activeScope = scopeOptions.some((o) => o.value === scope)
+    ? scope : (scopeOptions[0]?.value || 'swimmer')
+
+  let tallyRows = activeScope === 'country' ? country : activeScope === 'club' ? club : swimmer
+  if (activeScope === 'swimmer' && swimmerGender !== 'ALL') {
     tallyRows = tallyRows.filter((r) => r.swimmer__sex === swimmerGender)
+  }
+
+  // Most decorated: top male + female athletes by medal tally
+  const decoratedPick = (sex, tag) => {
+    const r = swimmer.find((x) => x.swimmer__sex === sex)
+    if (!r) return null
+    return {
+      tag,
+      swimmer_id: r.swimmer__id,
+      name: r.swimmer__name,
+      nationality_code: r.swimmer__nationality__code,
+      photo: r.swimmer__photo,
+      sub: 'Most decorated',
+      value: `${r.gold || 0}G · ${r.silver || 0}S · ${r.bronze || 0}B`,
+    }
   }
 
   const filteredMedals = medalFilter === 'ALL'
@@ -640,19 +726,13 @@ function MedalsTab({ meetId, isNational }) {
       )}
 
       <div className="pad">
+        <FeaturedCards picks={[decoratedPick('M', 'Men'), decoratedPick('F', 'Women')]} />
         {/* tally */}
         {scopeOptions.length > 0 && (
           <>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-              <Seg options={scopeOptions} value={scope} onChange={setScope} />
-              {scope === 'country' && (
-                <Seg
-                  options={[{ value: 'ALL', label: 'Overall' }, { value: 'ARAB', label: 'Arab' }]}
-                  value={tallyFilter}
-                  onChange={setTallyFilter}
-                />
-              )}
-              {scope === 'swimmer' && (
+              <Seg options={scopeOptions} value={activeScope} onChange={setScope} />
+              {activeScope === 'swimmer' && (
                 <Seg
                   options={[{ value: 'ALL', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
                   value={swimmerGender}
@@ -668,7 +748,7 @@ function MedalsTab({ meetId, isNational }) {
                   <thead>
                     <tr>
                       <th style={{ width: 30 }}>#</th>
-                      <th>{scope === 'country' ? 'Country' : scope === 'club' ? 'Club' : 'Swimmer'}</th>
+                      <th>{activeScope === 'country' ? 'Country' : activeScope === 'club' ? 'Club' : 'Swimmer'}</th>
                       <th className="num">G</th>
                       <th className="num">S</th>
                       <th className="num">B</th>
@@ -679,18 +759,18 @@ function MedalsTab({ meetId, isNational }) {
                     {tallyRows.map((row, i) => (
                       <tr
                         key={i}
-                        style={{ cursor: scope === 'swimmer' ? 'pointer' : 'default' }}
-                        onClick={() => scope === 'swimmer' && row.swimmer__id && navigate(`/swimmers/${row.swimmer__id}`)}
+                        style={{ cursor: activeScope === 'swimmer' ? 'pointer' : 'default' }}
+                        onClick={() => activeScope === 'swimmer' && row.swimmer__id && navigate(`/swimmers/${row.swimmer__id}`)}
                       >
                         <td className="asw-num">{i + 1}</td>
                         <td>
-                          {scope === 'country' && (
+                          {activeScope === 'country' && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
                               {row.swimmer__nationality__name}
                             </div>
                           )}
-                          {scope === 'club' && (
+                          {activeScope === 'club' && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                               <ClubLogo logo={row.team_logo} name={row.result__team} />
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -698,7 +778,7 @@ function MedalsTab({ meetId, isNational }) {
                               </span>
                             </div>
                           )}
-                          {scope === 'swimmer' && (
+                          {activeScope === 'swimmer' && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
                               {row.swimmer__name}
@@ -778,19 +858,29 @@ function MedalsTab({ meetId, isNational }) {
 
 function PersonalBestsTab({ stats }) {
   const navigate = useNavigate()
-  const [perfGender, setPerfGender] = useState('overall')
 
-  const hasPerformers = (stats?.top_performers || []).length > 0
   const hasPbs = (stats?.personal_bests || []).length > 0
-  if (!hasPerformers && !hasPbs) return <Empty label="No personal bests or top performances yet" />
+  if (!hasPbs) return <Empty label="No personal bests yet" />
 
-  const performers = (stats.top_performers || [])
-    .filter((t) => perfGender === 'overall' || t.gender === perfGender)
-    .slice(0, 30)
-  const maxFina = performers[0]?.fina_points || 1
+  // #1 male and female by FINA points (list is FINA-sorted)
+  const pbPick = (sex, tag) => {
+    const s = stats.personal_bests.find((x) => x.gender === sex)
+    if (!s) return null
+    return {
+      tag,
+      swimmer_id: s.swimmer_id,
+      name: s.swimmer_name,
+      nationality_code: s.nationality_code,
+      photo: s.photo,
+      sub: s.event_name,
+      value: s.time,
+      valueLabel: s.fina_points ? `${s.fina_points} FINA` : '',
+    }
+  }
 
   return (
     <div className="pad">
+      <FeaturedCards picks={[pbPick('M', 'Men'), pbPick('F', 'Women')]} />
       {/* personal bests achieved */}
       {hasPbs && (
         <div style={{ marginBottom: 28 }}>
@@ -840,9 +930,44 @@ function PersonalBestsTab({ stats }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
 
-      {/* top performances */}
-      {hasPerformers && (
+/* ──────────────────────── Top performances tab ─────────────────────── */
+
+function TopPerformancesTab({ stats }) {
+  const navigate = useNavigate()
+  const [perfGender, setPerfGender] = useState('overall')
+
+  const all = stats?.top_performers || []
+  if (all.length === 0) return <Empty label="No top performances yet" />
+
+  const performers = all
+    .filter((t) => perfGender === 'overall' || t.gender === perfGender)
+    .slice(0, 30)
+  const maxFina = performers[0]?.fina_points || 1
+
+  // #1 male and female by FINA points
+  const perfPick = (sex, tag) => {
+    const t = all.find((x) => x.gender === sex)
+    if (!t) return null
+    return {
+      tag,
+      swimmer_id: t.swimmer_id,
+      name: t.swimmer_name,
+      nationality_code: t.nationality_code,
+      photo: t.photo,
+      sub: t.event_name,
+      value: String(t.fina_points || ''),
+      valueLabel: 'FINA points',
+    }
+  }
+
+  return (
+    <div className="pad">
+      <FeaturedCards picks={[perfPick('M', 'Men'), perfPick('F', 'Women')]} />
+      {(
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
             <div className="kicker">Top performances — highest FINA points</div>
@@ -1165,10 +1290,28 @@ function MostImprovedTab({ meetId }) {
   if (rows === null) return <Loading label="Loading most improved" />
 
   // Only genuine improvements — swimmers with no previous time never appear
-  const filtered = rows.filter((s) => !s.is_new_entry && (gender === 'overall' || s.gender === gender))
+  const improvements = rows.filter((s) => !s.is_new_entry)
+  const filtered = improvements.filter((s) => gender === 'overall' || s.gender === gender)
+
+  // #1 male and female by time drop (list is sorted by improvement)
+  const improvedPick = (sex, tag) => {
+    const s = improvements.find((x) => x.gender === sex)
+    if (!s) return null
+    return {
+      tag,
+      swimmer_id: s.swimmer_id,
+      name: s.swimmer_name,
+      nationality_code: s.nationality_code,
+      photo: s.photo,
+      sub: s.event_name,
+      value: `−${s.improvement}s`,
+      valueLabel: `${s.previous_best} → ${s.current_time}`,
+    }
+  }
 
   return (
     <div className="pad">
+      <FeaturedCards picks={[improvedPick('M', 'Men'), improvedPick('F', 'Women')]} />
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
         <div>
           <div className="kicker">Most improved swimmers</div>
@@ -1233,6 +1376,103 @@ function MostImprovedTab({ meetId }) {
           </div>
         )
       })()}
+    </div>
+  )
+}
+
+/* ───────────────────────── Broken records tab ───────────────────────── */
+
+const BROKEN_SCOPE_LABEL = { arab: 'Arab records', gcc: 'GCC records', national: 'National records' }
+
+function RecordsBrokenTab({ meetId }) {
+  const navigate = useNavigate()
+  const [rows, setRows] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    getRecordsBroken(meetId)
+      .then((res) => { if (alive) setRows(list(res.data)) })
+      .catch(() => { if (alive) setRows([]) })
+    return () => { alive = false }
+  }, [meetId])
+
+  if (rows === null) return <Loading label="Computing broken records" />
+  if (rows.length === 0) return <Empty label="No records were broken at this meet" />
+
+  // Group: Arab → GCC → National (one block per country)
+  const groups = []
+  rows.forEach((r) => {
+    const key = r.scope === 'national' ? `national-${r.country_code}` : r.scope
+    let g = groups.find((x) => x.key === key)
+    if (!g) {
+      g = {
+        key,
+        label: r.scope === 'national'
+          ? `${r.country} national records`
+          : BROKEN_SCOPE_LABEL[r.scope] || r.scope,
+        rows: [],
+      }
+      groups.push(g)
+    }
+    g.rows.push(r)
+  })
+
+  return (
+    <div className="pad">
+      <div className="micro" style={{ marginBottom: 18, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
+        Computed automatically by comparing this meet's swims against the best times on record before the meet (same pool).
+      </div>
+      {groups.map((g) => (
+        <div key={g.key} style={{ marginBottom: 28 }}>
+          <div className="kicker" style={{ marginBottom: 10 }}>{g.label} ({g.rows.length})</div>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Swimmer</th>
+                  <th className="time">New record</th>
+                  <th className="time hide-mobile">Previous record</th>
+                  <th className="hide-mobile">Previous holder</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.rows.map((r, i) => (
+                  <tr
+                    key={i}
+                    style={{ cursor: r.is_relay_team ? 'default' : 'pointer' }}
+                    onClick={r.is_relay_team ? undefined : () => navigate(`/swimmers/${r.swimmer_id}`)}
+                  >
+                    <td>
+                      {r.event_name}
+                      <span className="micro" style={{ marginLeft: 6 }}>{GENDER_LABEL[r.gender]}</span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <Flag code={r.nationality_code} name={r.swimmer_name} />
+                        <span style={NAME_ELLIPSIS}>{r.swimmer_name}</span>
+                        {r.is_relay_team && <span className="tag tag-neutral" style={{ flex: 'none' }}>Relay</span>}
+                      </div>
+                    </td>
+                    <td className="time asw-time asw-fast">{r.time}</td>
+                    <td className="time asw-time hide-mobile">
+                      {r.previous_time}
+                      <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontSize: 11, marginLeft: 6 }}>
+                        −{(r.improvement_centiseconds / 100).toFixed(2)}s
+                      </span>
+                    </td>
+                    <td className="hide-mobile">
+                      {r.previous_holder
+                        ? <span>{r.previous_holder}{r.previous_date ? <span className="micro" style={{ marginLeft: 6 }}>{formatDate(r.previous_date)}</span> : null}</span>
+                        : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -1344,6 +1584,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
     website: meet.website || '',
     live_results_url: meet.live_results_url || '',
     registration_url: meet.registration_url || '',
+    has_double_podium: !!meet.has_double_podium,
   })
   const [photo, setPhoto] = useState(null)
   const [countries, setCountries] = useState([])
@@ -1384,6 +1625,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
       fd.append('website', form.website.trim())
       fd.append('live_results_url', form.live_results_url.trim())
       fd.append('registration_url', form.registration_url.trim())
+      fd.append('has_double_podium', form.has_double_podium ? 'true' : 'false')
       if (photo) fd.append('meet_photo', photo)
       const res = await updateChampionship(meet.id, fd)
       onSaved(res.data)
@@ -1464,6 +1706,16 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
           <label>Meet photo {meet.meet_photo ? '(replace)' : ''}</label>
           <input className="input" type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
         </div>
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={form.has_double_podium}
+              onChange={(e) => setForm((f) => ({ ...f, has_double_podium: e.target.checked }))}
+            />
+            Double podium — foreign guest swimmers keep their medals AND host-country swimmers get their own parallel podium (medals recompute on save)
+          </label>
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
@@ -1488,7 +1740,7 @@ export default function MeetDetail() {
   const [editing, setEditing] = useState(false)
 
   const rawTab = searchParams.get('tab') || 'results'
-  const tab = ['results', 'program', 'medals', 'pbs', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'results'
+  const tab = ['results', 'program', 'medals', 'records', 'pbs', 'top', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'results'
   const setTab = (t) => setSearchParams({ tab: t }, { replace: false })
 
   const refreshStats = () => {
@@ -1563,7 +1815,9 @@ export default function MeetDetail() {
             { value: 'results', label: 'Results' },
             { value: 'program', label: 'Program' },
             { value: 'medals', label: 'Medals' },
+            { value: 'records', label: 'Broken records' },
             { value: 'pbs', label: 'Personal bests' },
+            { value: 'top', label: 'Top performances' },
             { value: 'statistics', label: 'Statistics' },
             { value: 'improved', label: 'Most improved' },
             { value: 'gallery', label: 'Gallery' },
@@ -1578,7 +1832,9 @@ export default function MeetDetail() {
       )}
       {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
       {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}
+      {tab === 'records' && <RecordsBrokenTab meetId={id} />}
       {tab === 'pbs' && <PersonalBestsTab stats={stats} />}
+      {tab === 'top' && <TopPerformancesTab stats={stats} />}
       {tab === 'statistics' && <StatisticsTab meetId={id} stats={stats} />}
       {tab === 'improved' && <MostImprovedTab meetId={id} />}
       {tab === 'gallery' && <MeetGallery meetId={id} isAdmin={isAdmin} />}

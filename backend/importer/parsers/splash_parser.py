@@ -32,8 +32,8 @@ from .base import (
 
 # Event header: "Epreuve 36 Garçons, ..." or "Epreuve 36, Garçons, ..."
 EVENT_HEADER = re.compile(
-    r'^Epreuve\s+(\d+)\s*,?\s*'
-    r'(Messieurs|Dames|Gar[çc]ons|Filles|Mixte)\b',
+    r'^(?:Epreuve|Event)\s+(\d+)\s*,?\s*'
+    r'(Messieurs|Dames|Gar[çc]ons|Filles|Mixte|Men|Women|Ladies|Boys|Girls|Mixed)\b',
     re.IGNORECASE
 )
 
@@ -50,7 +50,8 @@ CATEGORY_RE = re.compile(
     r'(POUSSINS?|BENJAMINS?|MINIMES?|CADETS?|JUNIORS?|SENIORS?|OPEN|'
     r'Cat\.\s*g[ée]n[ée]rale|'
     r'\d{1,2}\s*-\s*\d{1,2}\s*ans|'
-    r'\d{1,2}\s*ans\s*et\s*plus)',
+    r'\d{1,2}\s*ans\s*et\s*plus|'
+    r'\d{1,2}\s*years?\s*and\s*older)',
     re.IGNORECASE
 )
 CATEGORY_LINE = re.compile(r'^\s*' + CATEGORY_RE.pattern + r'\s*$', re.IGNORECASE)
@@ -85,7 +86,7 @@ RELAY_TEAM_LINE = re.compile(
 
 # Relay DQ/forfeit line: "disq. KUW KUW" or "forf.déc. JOR JOR"
 RELAY_DQ_LINE = re.compile(
-    r'^\s*(disq[\w.]*|forf[\w.]*|abandon)\s+(.+)$',
+    r'^\s*(disq[\w.]*|forf[\w.]*|abandon|dsq|dns|dnf)\s+(.+)$',
     re.IGNORECASE
 )
 
@@ -107,16 +108,25 @@ HC_RELAY_TEAM_LINE = re.compile(
 COUNTRY_CODE = re.compile(r'^[A-Z]{3}$')
 
 ROUND_PATTERNS = {
-    'Finals': re.compile(r'\bFinale', re.IGNORECASE),
-    'Heats': re.compile(r'\bEliminatoire|\bS[ée]ries?\b', re.IGNORECASE),
+    'Finals': re.compile(r'\bFinale|\bFinals?\b', re.IGNORECASE),
+    'Heats': re.compile(r'\bEliminatoire|\bS[ée]ries?\b|\bPrelims?\b|\bHeats?\b', re.IGNORECASE),
 }
+
+# English-variant round marker line: "30/07/2026 - 9:00 Results Prelim"
+# (French equivalent carries "Liste résultats"). The leading date is the
+# session date for the event — captured into ParsedEvent.date_text.
+RESULTS_MARKER = re.compile(
+    r'^(\d{1,2})/(\d{1,2})/(\d{4})\s*-\s*\d{1,2}:\d{2}\s+'
+    r'(?:Results|Liste\s+r[ée]sultats)\b',
+    re.IGNORECASE
+)
 
 # Standalone round marker: a line that is JUST a round word (e.g. "Séries",
 # "Finale"). The "Liste résultats" check already handles those that include
 # that prefix, but standalone markers were silently consumed — causing the
 # parser to lose round context and collapse heats into finals.
 STANDALONE_ROUND = re.compile(
-    r'^\s*(Finale\w*|Demi[- ]?finale\w*|Eliminatoire\w*|S[ée]ries?\w*)\s*$',
+    r'^\s*(Finale\w*|Demi[- ]?finale\w*|Eliminatoire\w*|S[ée]ries?\w*|Finals?|Prelims?|Heats?)\s*$',
     re.IGNORECASE
 )
 
@@ -125,7 +135,7 @@ SKIP_KEYWORDS = (
     'splash meet manager', 'registered to', 'liste résultats',
     'liste resultats',
 )
-SKIP_PREFIXES = ('points:', 'rang ', 'rang\t', 'minima')
+SKIP_PREFIXES = ('points:', 'rang ', 'rang\t', 'rank ', 'rank\t', 'minima')
 
 # Qualifying-time ("MINIMA") lines in Algerian PDFs, e.g.
 # "MINIMA 13 - 14: 30.57; 15 - 16: 29.67; 17 - 18: 27.28".
@@ -158,6 +168,9 @@ def _normalize_splash_category(label):
     m = re.match(r'^(\d{1,2})\s*ans\s*et\s*plus$', label, re.IGNORECASE)
     if m:
         return f'{m.group(1)}+'
+    m = re.match(r'^(\d{1,2})\s*years?\s*and\s*older$', label, re.IGNORECASE)
+    if m:
+        return f'{m.group(1)}+'
     return normalize_category(label)
 
 
@@ -172,9 +185,9 @@ def parse(text):
     header_lines = []
     for line in lines[:10]:
         line = line.strip()
-        if not line or line.startswith('Epreuve') or 'splash meet' in line.lower():
+        if not line or line.startswith(('Epreuve', 'Event')) or 'splash meet' in line.lower():
             continue
-        if 'FINA' in line or 'AQUA' in line or line.startswith('Rang') or line.startswith('Points'):
+        if 'FINA' in line or 'AQUA' in line or line.startswith(('Rang', 'Rank', 'Points')):
             continue
         if re.match(r'^=+\s*PAGE', line):
             continue
@@ -219,6 +232,7 @@ def parse(text):
             gender=current_event.gender,
             round_type=rt,
             age_group=ag,
+            date_text=current_event.date_text,
         )
         meet.events.append(new_event)
         current_event = new_event
@@ -237,8 +251,12 @@ def parse(text):
         if header_match:
             event_number = header_match.group(1)
             gender_word = header_match.group(2).lower()
-            if gender_word == 'mixte':
+            if gender_word in ('mixte', 'mixed'):
                 gender = 'X'
+            elif gender_word in ('dames', 'filles', 'women', 'ladies', 'girls'):
+                gender = 'F'
+            elif gender_word in ('messieurs', 'men', 'boys') or gender_word.startswith('gar'):
+                gender = 'M'
             else:
                 gender = detect_gender(line)
 
@@ -308,12 +326,19 @@ def parse(text):
             prev_rank = 0
             continue
 
-        # Round marker on its own line: "20/07/2022 - 10:40 Liste résultats Eliminatoire"
-        if 'liste r' in lower and current_event is not None:
+        # Round marker on its own line:
+        #   "20/07/2022 - 10:40 Liste résultats Eliminatoire" (French)
+        #   "30/07/2026 - 9:00 Results Prelim"                (English)
+        marker = RESULTS_MARKER.match(line)
+        if (marker or 'liste r' in lower) and current_event is not None:
             for rtype, pattern in ROUND_PATTERNS.items():
-                if pattern.search(line):
+                if pattern.search(line[marker.end():] if marker else line):
                     sibling_event(round_type=rtype)
                     break
+            if marker:
+                d, mo, y = int(marker.group(1)), int(marker.group(2)), int(marker.group(3))
+                if 1 <= d <= 31 and 1 <= mo <= 12:
+                    current_event.date_text = f'{y:04d}-{mo:02d}-{d:02d}'
             continue
 
         # Standalone round marker: "Séries", "Finale", "Eliminatoire"
@@ -542,6 +567,30 @@ def _parse_relay_line(line, event, is_international):
         ))
         return True
 
+    # Rankless relay tie line: "Club X Club X 3:50.00 739 Q" (shares the
+    # previous team's rank). Only trusted when the team name is doubled —
+    # the Splash signature — so swimmer-detail lines can't false-match.
+    m = re.match(
+        r'^\s*([A-ZÀ-Ý].+?)\s*(\d{1,2}:\d{2}\.\d{2})\s*(\d+)?\s*[QqRr?*]*\s*$', line)
+    if m and event.results and '+' not in line:
+        team_name = _collapse_team_repetition(m.group(1).strip())
+        if team_name != m.group(1).strip():
+            event.results.append(ParsedResult(
+                swimmer_name=team_name,
+                time_text=m.group(2),
+                time_centiseconds=parse_time_to_centiseconds(m.group(2)),
+                event_name=event.event_name,
+                event_distance=event.distance,
+                event_stroke=event.stroke,
+                gender=event.gender,
+                rank=event.results[-1].rank,
+                club=team_name,
+                fina_points=int(m.group(3)) if m.group(3) else 0,
+                round_type=event.round_type,
+                age_group=event.age_group,
+            ))
+            return True
+
     # Relay swimmer detail lines (names with reaction times + splits)
     if event.results:
         swimmer_splits = _parse_relay_swimmers(line)
@@ -672,7 +721,7 @@ def _extract_birth_year(before_time):
 def _parse_result_line(line, event, is_international, prev_rank):
     """Try to parse a single individual result line."""
     m = re.match(r'^\s*(\d+)\.\s+(.*)$', line)
-    hc_match = None if m else re.match(r'^\s*[Hh]\.?[Cc]\.?\s+(.+)$', line)
+    hc_match = None if m else re.match(r'^\s*(?:[Hh]\.?[Cc]\.?|EXH)\s+(.+)$', line)
     nc = None if (m or hc_match) else re.match(r'^\s*[Nn]\.?[Cc]\.?\s+(.+)$', line)
     if m:
         rank = int(m.group(1))
@@ -689,6 +738,11 @@ def _parse_result_line(line, event, is_international, prev_rank):
     else:
         # Rankless tie line: "RAHMOUNI, Mahdi 12 Union Sportf Biskra 28.23 350"
         if not re.match(r'^[A-ZÀ-Ý]', line):
+            return None
+        # Status lines with a trailing time ("DSQ NAME 10 Club 1:17.43")
+        # start uppercase too — leave them to the status parser. Strict
+        # match so surnames like "FORFANO" can't be mistaken for a status.
+        if re.match(r'^(?:DSQ|DNS|DNF)\s|^(?:disq|forf)[\w.]*\.\s|^abandon\s', line, re.IGNORECASE):
             return None
         rank = prev_rank
         rest = line

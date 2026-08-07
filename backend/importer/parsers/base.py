@@ -37,6 +37,7 @@ class ParsedEvent:
     gender: str = ''  # M or F
     round_type: str = ''
     age_group: str = ''
+    date_text: str = ''  # session date (YYYY-MM-DD) when the source gives it
     results: list = field(default_factory=list)  # list of ParsedResult
 
 
@@ -105,6 +106,10 @@ _FULL_RANGE_RE = re.compile(
 _DAY_RANGE_RE = re.compile(
     r'(?<!\d)(\d{1,2})\s*[-–]\s*(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})'
 )
+# Cross-month day range with the year only at the end: "30/7 - 4/8/2026"
+_CROSS_MONTH_RANGE_RE = re.compile(
+    r'(?<!\d)(\d{1,2})/(\d{1,2})\s*[-–]\s*(\d{1,2})/(\d{1,2})/(\d{4})'
+)
 # Compact slash range: "20/21-04-2024" (day/day-month-year)
 _SLASH_RANGE_RE = re.compile(
     r'(\d{1,2})/(\d{1,2})-(\d{2})-(\d{4})'
@@ -156,6 +161,13 @@ def extract_date_and_location(text):
         start_date = _iso(int(rm.group(1)), int(rm.group(2)), int(rm.group(3)))
         end_date = _iso(int(rm.group(4)), int(rm.group(5)), int(rm.group(6)))
 
+    # --- 1.5 Cross-month day range: "30/7 - 4/8/2026" ---
+    if not start_date:
+        rm = _CROSS_MONTH_RANGE_RE.search(text)
+        if rm:
+            start_date = _iso(int(rm.group(1)), int(rm.group(2)), int(rm.group(5)))
+            end_date = _iso(int(rm.group(3)), int(rm.group(4)), int(rm.group(5)))
+
     # --- 2. Day range: "19 - 22/1/2022" ---
     if not start_date:
         rm = _DAY_RANGE_RE.search(text)
@@ -202,6 +214,7 @@ def extract_date_and_location(text):
     # --- Extract location: strip dates, keywords, and clean up ---
     loc_text = text
     loc_text = _FULL_RANGE_RE.sub('', loc_text)
+    loc_text = _CROSS_MONTH_RANGE_RE.sub('', loc_text)
     loc_text = DATE_PATTERN.sub('', loc_text)
     loc_text = _MONTH_NAME_RE.sub('', loc_text)
     loc_text = re.sub(r'(?<!\d)\d{1,2}\s*[-–]\s*(?=\s)', '', loc_text)
@@ -561,6 +574,8 @@ def merge_duplicate_events(meet):
             seen_keys[key] = set()
             order.append(ev)
         target = merged[key]
+        if not target.date_text and ev.date_text:
+            target.date_text = ev.date_text
         seen = seen_keys[key]
         incoming = ev.results if ev is not target else list(ev.results)
         if ev is target:

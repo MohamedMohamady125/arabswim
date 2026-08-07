@@ -420,35 +420,33 @@ class CountryViewSet(viewsets.ModelViewSet):
 
         lines = []
         for es in event_stats:
-            results = (
+            # Fastest swim of each meet date → one point per meet, so the
+            # chart shows the trend across meets. (Previously this took the
+            # 5 most recent results — usually all from the same meet — which
+            # collapsed into a single point.)
+            rows = (
                 Result.objects.filter(
                     swimmer__nationality=country, swimmer__is_relay_team=False,
                     event_id=es['event_id'], championship__pool=pool,
                     event__is_relay=False, time_centiseconds__gt=0,
                 )
-                .select_related('championship', 'swimmer')
-                .order_by('time_centiseconds')[:5]
+                .values('championship__date', 'championship__name',
+                        'swimmer__name', 'time_centiseconds', 'fina_points')
+                .order_by('championship__date', 'time_centiseconds')
             )
-            # Get last 5 chronologically for progression
-            chrono_results = (
-                Result.objects.filter(
-                    swimmer__nationality=country, swimmer__is_relay_team=False,
-                    event_id=es['event_id'], championship__pool=pool,
-                    event__is_relay=False, time_centiseconds__gt=0,
-                )
-                .select_related('championship', 'swimmer')
-                .order_by('-championship__date')[:5]
-            )
-            points = []
-            for r in reversed(list(chrono_results)):
-                points.append({
-                    'date': r.championship.date.isoformat(),
-                    'time': _fmt_cs(r.time_centiseconds),
-                    'time_cs': r.time_centiseconds,
-                    'meet': r.championship.name,
-                    'swimmer': r.swimmer.name,
-                    'fina': r.fina_points,
-                })
+            best_by_date = {}
+            for r in rows:
+                d = r['championship__date']
+                if d not in best_by_date:  # first per date = fastest (ordering)
+                    best_by_date[d] = r
+            points = [{
+                'date': d.isoformat(),
+                'time': _fmt_cs(best_by_date[d]['time_centiseconds']),
+                'time_cs': best_by_date[d]['time_centiseconds'],
+                'meet': best_by_date[d]['championship__name'],
+                'swimmer': best_by_date[d]['swimmer__name'],
+                'fina': best_by_date[d]['fina_points'],
+            } for d in sorted(best_by_date)]
             if points:
                 lines.append({
                     'event_id': es['event_id'],

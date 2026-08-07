@@ -4,9 +4,10 @@ import {
   getChampionship, getChampionshipStats, getChampionshipResults,
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
   getMeetProgram, updateChampionship, getClassifications, getSubClassifications,
-  getRecordsBroken,
+  getRecordsBroken, addChampionshipResult,
 } from '../api/championships'
-import { getCountries } from '../api/core'
+import { getCountries, getEvents, getFinaPointsPreview } from '../api/core'
+import { searchSwimmers } from '../api/swimmers'
 import MeetProgramEditor from '../components/MeetProgramEditor'
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import Flag from '../components/Flag'
@@ -112,6 +113,171 @@ function ClubLogo({ logo, name, size = 26 }) {
   )
 }
 
+/* ── Admin: add one manual result from inside the results tab ── */
+function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
+  const [query, setQuery] = useState('')
+  const [options, setOptions] = useState([])
+  const [swimmer, setSwimmer] = useState(null)
+  const [allEvents, setAllEvents] = useState([])
+  const [form, setForm] = useState({
+    event: defaultEventId ? String(defaultEventId) : '',
+    time: '', fina: '', team: '', category: '', medal: '', open_medal: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const searchDebounce = React.useRef(null)
+  const finaDebounce = React.useRef(null)
+
+  useEffect(() => {
+    getEvents().then((r) => setAllEvents(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {})
+  }, [])
+
+  const search = (q) => {
+    setQuery(q)
+    clearTimeout(searchDebounce.current)
+    if (q.length < 2) { setOptions([]); return }
+    searchDebounce.current = setTimeout(() => {
+      searchSwimmers(q).then((r) => setOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setOptions([]))
+    }, 300)
+  }
+
+  // FINA points auto-fill from time + event + swimmer sex
+  useEffect(() => {
+    clearTimeout(finaDebounce.current)
+    const cs = form.time ? parseTime(form.time) : null
+    if (!cs || !form.event) return
+    finaDebounce.current = setTimeout(() => {
+      getFinaPointsPreview({ time_cs: cs, event: form.event, gender: swimmer?.sex || 'M' })
+        .then((r) => { if (r.data.points > 0) setForm((f) => ({ ...f, fina: String(r.data.points) })) })
+        .catch(() => {})
+    }, 400)
+  }, [form.time, form.event, swimmer]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const submit = async () => {
+    const cs = parseTime(form.time)
+    if (!swimmer || !form.event || !cs) {
+      setError('Swimmer, event and a valid time are required (e.g. 1:02.30)')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      await addChampionshipResult(meetId, {
+        swimmer: swimmer.id,
+        event: form.event,
+        time_centiseconds: cs,
+        team: form.team || '',
+        category: form.category || '',
+        fina_points: form.fina ? parseInt(form.fina) : null,
+        medal: form.medal || '',
+        open_medal: form.open_medal || '',
+      })
+      onAdded()
+    } catch (err) {
+      const d = err.response?.data
+      setError(d ? (typeof d === 'string' ? d : JSON.stringify(d)) : 'Could not add result')
+      setSaving(false)
+    }
+  }
+
+  const medalSelect = (label, key) => (
+    <div className="field">
+      <label>{label}</label>
+      <select className="select" value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })}>
+        <option value="">No medal</option>
+        <option value="GOLD">Gold</option>
+        <option value="SILVER">Silver</option>
+        <option value="BRONZE">Bronze</option>
+      </select>
+    </div>
+  )
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(8, 24, 44, 0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px', overflowY: 'auto' }}
+    >
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-accent)' }}>
+        <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <h4 style={{ margin: 0 }}>Add result</h4>
+          <button className="btn btn-ghost" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {error && <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13 }}>{error}</div>}
+          <div className="field">
+            <label>Swimmer *</label>
+            {swimmer ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-accent-100)', padding: '8px 12px' }}>
+                <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}>
+                  {swimmer.name}
+                  <span className="text-muted" style={{ fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
+                    {swimmer.nationality_detail?.name || ''} · {swimmer.sex}
+                  </span>
+                </span>
+                <button className="btn btn-secondary" onClick={() => setSwimmer(null)}>Change</button>
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <input className="input" type="text" placeholder="Search swimmers by name…" value={query} onChange={(e) => search(e.target.value)} />
+                {options.length > 0 && (
+                  <div style={{ position: 'absolute', zIndex: 10, width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-divider)', marginTop: 2, boxShadow: 'var(--shadow-md)', maxHeight: 200, overflowY: 'auto' }}>
+                    {options.map((s) => (
+                      <button key={s.id} type="button"
+                        style={{ width: '100%', textAlign: 'left', padding: '8px 12px', border: 0, cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 10 }}
+                        onClick={() => { setSwimmer(s); setOptions([]); setQuery('') }}>
+                        <span style={{ fontWeight: 600 }}>{s.name}</span>
+                        <span className="text-muted" style={{ fontSize: 12 }}>{s.nationality_detail?.name || ''} · {s.sex}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="field">
+            <label>Event *</label>
+            <select className="select" value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })}>
+              <option value="">Select event</option>
+              {allEvents.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="field">
+              <label>Time * (e.g. 1:02.30)</label>
+              <input className="input asw-num" type="text" placeholder="0:00.00" value={form.time}
+                onChange={(e) => setForm({ ...form, time: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>FINA (auto)</label>
+              <input className="input asw-num" type="number" value={form.fina}
+                style={{ background: 'var(--color-accent-100)', fontWeight: 600 }}
+                onChange={(e) => setForm({ ...form, fina: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Team / club</label>
+              <input className="input" type="text" value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Category (optional)</label>
+              <input className="input" type="text" placeholder="e.g. Cadets" value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })} />
+            </div>
+            {medalSelect('Medal — category podium', 'medal')}
+            {medalSelect('Medal — open / TC podium', 'open_medal')}
+          </div>
+          <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
+            Double-podium meets can award both: pick a category medal and an open (TC) medal for the same swim.
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={saving} onClick={submit}>{saving ? 'Adding…' : 'Add result'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
 function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onDataChanged }) {
@@ -144,6 +310,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
   const [editMode, setEditMode] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editValues, setEditValues] = useState({ time: '', team: '' })
+  const [showAddResult, setShowAddResult] = useState(false)
 
   const filteredEvents = useMemo(
     () => events.filter((e) => !genderFilter || e.gender === genderFilter),
@@ -515,10 +682,20 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
             >
               {editMode ? 'Done editing' : 'Edit results'}
             </button>
+            <button className="btn btn-secondary" onClick={() => setShowAddResult(true)}>Add result</button>
             <Link className="btn btn-secondary" to={`/import?championship=${meetId}`}>Add results</Link>
           </div>
         )}
       </div>
+
+      {isAdmin && showAddResult && (
+        <AddResultModal
+          meetId={meetId}
+          defaultEventId={selectedEvent?.event_id}
+          onClose={() => setShowAddResult(false)}
+          onAdded={() => { setShowAddResult(false); loadResults(); if (onDataChanged) onDataChanged() }}
+        />
+      )}
 
       {/* round filter */}
       {rounds.length > 1 && (

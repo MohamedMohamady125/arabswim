@@ -256,18 +256,22 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     result.age_at_competition = d.year - sw.birth_year
                 if result.age_at_competition is not None:
                     result.save(update_fields=['age_at_competition'])
-            # Optional medal for this result. Stored with result=None so
-            # it counts as manually entered and survives medal recomputes.
-            medal_type = str(request.data.get('medal') or '').upper()
-            if medal_type in ('GOLD', 'SILVER', 'BRONZE'):
-                from medals.models import Medal
-                Medal.objects.update_or_create(
-                    swimmer=result.swimmer,
-                    championship=championship,
-                    event=result.event,
-                    result=None,
-                    defaults={'medal_type': medal_type},
-                )
+            # Optional medals for this result. Stored with result=None so
+            # they count as manually entered and survive medal recomputes.
+            # `medal` is the age-category podium; `open_medal` is the extra
+            # open/TC podium — double-podium meets can award both.
+            from medals.models import Medal
+            for field, scope in (('medal', 'CATEGORY'), ('open_medal', 'OPEN')):
+                medal_type = str(request.data.get(field) or '').upper()
+                if medal_type in ('GOLD', 'SILVER', 'BRONZE'):
+                    Medal.objects.update_or_create(
+                        swimmer=result.swimmer,
+                        championship=championship,
+                        event=result.event,
+                        result=None,
+                        scope=scope,
+                        defaults={'medal_type': medal_type},
+                    )
             return Response(ResultCreateSerializer(result).data, status=201)
 
     @action(detail=True, methods=['post'], url_path='add-results')

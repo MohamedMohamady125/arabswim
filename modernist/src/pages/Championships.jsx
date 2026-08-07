@@ -4,7 +4,7 @@ import { getChampionships, updateChampionship, deleteChampionship } from '../api
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
-import { flagSrc, formatDateRange, formatNumber, mediaUrl, MONTHS_FULL } from '../utils'
+import { formatDateRange, formatNumber, mediaUrl, MONTHS_FULL } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
 function parseMeetDate(d) {
@@ -220,13 +220,18 @@ export default function Championships() {
                       <img src={mediaUrl(m.meet_photo)} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   ) : (
-                    <img
-                      src={flagSrc(m.country_detail?.code, 'w160')}
-                      alt={m.country_detail?.name || ''}
-                      loading="lazy"
-                      style={{ width: 60, height: 40, flex: 'none', objectFit: 'cover', border: '1px solid var(--color-divider)', display: 'block' }}
-                      onError={(e) => { e.target.style.display = 'none' }}
-                    />
+                    // No meet photo yet: Arab Swim navy placeholder (never the host flag)
+                    <div
+                      aria-hidden
+                      style={{
+                        width: 60, height: 40, flex: 'none', background: 'var(--color-accent-800)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'rgba(255,255,255,0.85)', fontFamily: 'var(--font-heading)',
+                        fontWeight: 800, fontSize: 10, letterSpacing: '0.08em',
+                      }}
+                    >
+                      AS
+                    </div>
                   )}
                   <div style={{ flex: 1, minWidth: 160 }}>
                     <Link to={`/meets/${m.id}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>

@@ -127,6 +127,16 @@ export default function Medals() {
     { value: 'swimmer', label: 'Swimmer' },
   ]
 
+  const countrySelect = (
+    <select
+      className="select" style={{ flex: '1 1 150px', width: 'auto' }} value={country}
+      onChange={(e) => { setCountry(e.target.value); setChampionship('') }}
+    >
+      <option value="">All countries</option>
+      {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+    </select>
+  )
+
   return (
     <div>
       <PageHead title="Medal tables" />
@@ -134,19 +144,15 @@ export default function Medals() {
       {/* filter bar: one line, scrolls sideways on phone */}
       <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Seg options={CATEGORIES} value={category} onChange={setCategory} />
+        {/* National → country picker comes straight after the category */}
+        {isNational && countrySelect}
         <Seg options={scopeOptions} value={scope} onChange={setScope} />
         <Seg
           options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
           value={gender}
           onChange={setGender}
         />
-        <select
-          className="select" style={{ flex: '1 1 150px', width: 'auto' }} value={country}
-          onChange={(e) => { setCountry(e.target.value); setChampionship('') }}
-        >
-          <option value="">All countries</option>
-          {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        {!isNational && countrySelect}
         <select className="select" style={{ flex: '2 1 220px', width: 'auto' }} value={championship} onChange={(e) => setChampionship(e.target.value)}>
           <option value="">All {category} championships</option>
           {visibleMeets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}

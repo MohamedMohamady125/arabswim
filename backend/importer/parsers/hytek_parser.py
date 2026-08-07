@@ -123,8 +123,11 @@ RELAY_DQ_LINE = re.compile(
 )
 
 # Relay leg swimmers: "1) Ghassan, Zein 12 2) Mohamad, Chahrour 13"
+# Mixed relays carry gender+age tokens ("Yahia, Walid M13") and sometimes
+# lose the space before the next marker ("Ahmed M192) Hilal"), so the
+# lookahead allows zero spaces before "N)".
 RELAY_SWIMMER_MARK = re.compile(r'\d\)\s')
-RELAY_SWIMMER_PART = re.compile(r'(\d)\)\s*(.+?)(?=\s+\d\)|\s*$)')
+RELAY_SWIMMER_PART = re.compile(r'(\d)\)\s*(.+?)(?=\s*\d\)|\s*$)')
 
 # Rank at start of a result line
 RANK_PREFIX = re.compile(r'^\s*\*?(\d{1,3})\s+')
@@ -505,8 +508,8 @@ def _parse_relay_line(line, event, comma_order, take_last_time=False):
             result._relay_names = []
         for pm in RELAY_SWIMMER_PART.finditer(line):
             raw = pm.group(2).strip()
-            # Strip trailing age
-            raw = re.sub(r'\s+\d{1,2}$', '', raw).strip()
+            # Strip trailing age or gender+age token ("12", "M13", "W20")
+            raw = re.sub(r'\s+[MW]?\d{1,3}$', '', raw).strip()
             name = normalize_name(raw, comma_order=comma_order)
             if name:
                 result._relay_names.append(name)

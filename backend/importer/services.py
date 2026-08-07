@@ -1008,6 +1008,15 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         existing.save(update_fields=['category'])
                 if existing:
                     claimed_results.add(existing.id)
+                    # Refresh leg swimmers on re-import: earlier parser
+                    # versions stored corrupted legs (merged names, stray
+                    # "M13"/"W14" tokens from mixed relays) — a re-upload
+                    # of the source file repairs them in place.
+                    new_legs = _parse_relay_legs(
+                        result_data.get('split_times', []) or [])
+                    if new_legs and existing.relay_swimmers != new_legs:
+                        existing.relay_swimmers = new_legs
+                        existing.save(update_fields=['relay_swimmers'])
                     # Legacy rows stored the stripped club name; adopt the
                     # squad-numbered name so squads stay distinguishable.
                     if team and existing.team != team and not Result.objects.filter(
@@ -1044,6 +1053,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     same_team.time_centiseconds = time_cs
                     same_team.original_rank = source_rank(result_data.get('rank'))
                     same_team.team = team  # normalize team name
+                    same_team.relay_swimmers = _parse_relay_legs(
+                        result_data.get('split_times', []) or []) or same_team.relay_swimmers
                     same_team.fina_points = calculate_points(
                         time_cs, event_data.get('event_name', db_event.name),
                         gender_code, championship.pool) or None
@@ -1142,20 +1153,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                                         sp['distance'] = seg * (i + 1)
                         splits = splits or None
                 if is_relay or result_data.get('is_relay', False):
-                    raw_splits = result_data.get('split_times', [])
-                    if raw_splits:
-                        relay_swimmers = []
-                        for split_str in raw_splits:
-                            # Format: "Ali TAMER SAYED 0:50.38"
-                            # Find the time at the end
-                            import re as _re
-                            m = _re.search(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})$', split_str.strip())
-                            if m:
-                                swimmer_name = split_str[:m.start()].strip()
-                                split_time = m.group(1)
-                                relay_swimmers.append({'name': swimmer_name, 'split_time': split_time})
-                            else:
-                                relay_swimmers.append({'name': split_str.strip(), 'split_time': ''})
+                    relay_swimmers = _parse_relay_legs(
+                        result_data.get('split_times', []) or []) or None
 
                 # Always calculate FINA points from World Aquatics base times
                 from .points import calculate_points
@@ -1284,6 +1283,20 @@ def _maybe_record_nationality_change(swimmer, result_data, championship):
     swimmer.nationality = new_country
     swimmer.save(update_fields=['nationality'])
     return True
+
+
+def _parse_relay_legs(raw_splits):
+    """Turn parsed relay leg strings ("Ali TAMER SAYED 0:50.38" or just a
+    name) into structured {name, split_time} dicts."""
+    legs = []
+    for split_str in raw_splits:
+        m = re.search(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})$', split_str.strip())
+        if m:
+            legs.append({'name': split_str[:m.start()].strip(),
+                         'split_time': m.group(1)})
+        else:
+            legs.append({'name': split_str.strip(), 'split_time': ''})
+    return legs
 
 
 def _create_swimmer(result_data, fallback_country=None):

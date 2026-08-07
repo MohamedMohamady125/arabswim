@@ -101,12 +101,21 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         return Response({'days': days})
 
     def perform_update(self, serializer):
+        old_flags = None
+        if serializer.instance is not None:
+            old_flags = (serializer.instance.has_double_podium,
+                         serializer.instance.has_open_podium)
         championship = serializer.save()
         # Classifying a meet after import (e.g. Other/France) tells us which
         # country its clubs belong to — reapply the club-country rule so
         # foreign clubs aren't left tagged with a swimmer's nationality.
         from teams.utils import apply_subclassification_country
         apply_subclassification_country(championship)
+        # Podium rules changed → medals must be re-awarded
+        new_flags = (championship.has_double_podium, championship.has_open_podium)
+        if old_flags is not None and old_flags != new_flags:
+            from medals.utils import recompute_medals
+            recompute_medals(championship)
 
     def get_queryset(self):
         qs = super().get_queryset()

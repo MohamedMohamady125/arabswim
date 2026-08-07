@@ -86,6 +86,49 @@ def recompute_medals(championship):
                     scope=scope,
                 ))
 
+    # Double podium (meets with foreign guest swimmers): guests medal from
+    # the overall ranking, while host-country swimmers get their own
+    # parallel podium — a guest gold does not cost the best host swimmer
+    # their national title. Each swimmer medals from exactly one ranking,
+    # so nobody is counted twice.
+    host_country_id = (championship.country_id
+                       if championship.has_double_podium else None)
+
+    def award_podium(rows, scope='CATEGORY', source_rank=True):
+        if host_country_id:
+            host = [r for r in rows
+                    if r.swimmer.nationality_id == host_country_id]
+            guests = [r for r in rows
+                      if r.swimmer.nationality_id != host_country_id]
+            if host and guests:
+                _award_ranked(guests, scope, keep_source_rank=source_rank)
+                _award_ranked(host, scope)
+                return
+        _award_ranked(rows, scope, keep_source_rank=source_rank)
+
+    def _award_ranked(rows, scope, keep_source_rank=False):
+        if keep_source_rank and any(r.original_rank for r in rows):
+            # The source PDF's placement is authoritative: a swimmer who
+            # placed 5th keeps rank 5 even after other (e.g. non-Arab)
+            # results were deleted, so nobody inherits a podium spot.
+            for r in rows:
+                medal_type = _MEDAL_BY_RANK.get(r.original_rank)
+                if medal_type is not None:
+                    award(r, medal_type, scope=scope)
+            return
+
+        # Competition ranking recomputed from times (legacy results with
+        # no stored source rank, and host-only double podiums where the
+        # source rank mixes hosts with guests).
+        rows = sorted(rows, key=lambda r: r.time_centiseconds)
+        for r in rows:
+            rank = next(j for j, x in enumerate(rows)
+                        if x.time_centiseconds == r.time_centiseconds) + 1
+            medal_type = _MEDAL_BY_RANK.get(rank)
+            if medal_type is None:
+                break  # rows are time-sorted; no more medals in this group
+            award(r, medal_type, scope=scope)
+
     for group_rows in groups.values():
         rounds = {r.round_type for r in group_rows}
         award_sets = []
@@ -102,26 +145,7 @@ def recompute_medals(championship):
             award_sets.append(group_rows)
 
         for rows in award_sets:
-            if any(r.original_rank for r in rows):
-                # The source PDF's placement is authoritative: a swimmer who
-                # placed 5th keeps rank 5 even after other (e.g. non-Arab)
-                # results were deleted, so nobody inherits a podium spot.
-                for r in rows:
-                    medal_type = _MEDAL_BY_RANK.get(r.original_rank)
-                    if medal_type is not None:
-                        award(r, medal_type)
-                continue
-
-            # Legacy results without a stored source rank: competition
-            # ranking recomputed from times.
-            for i, r in enumerate(rows):
-                # Competition rank: 1 + number of strictly faster times.
-                rank = next(j for j, x in enumerate(rows)
-                            if x.time_centiseconds == r.time_centiseconds) + 1
-                medal_type = _MEDAL_BY_RANK.get(rank)
-                if medal_type is None:
-                    break  # rows are time-sorted; no more medals in this group
-                award(r, medal_type)
+            award_podium(rows)
 
     # TC ("toutes catégories") national meets award one extra open podium
     # per event across all age categories, on top of the per-category
@@ -141,13 +165,9 @@ def recompute_medals(championship):
                 continue
             else:
                 rows = group_rows
-            for r in rows:
-                rank = next(j for j, x in enumerate(rows)
-                            if x.time_centiseconds == r.time_centiseconds) + 1
-                medal_type = _MEDAL_BY_RANK.get(rank)
-                if medal_type is None:
-                    break  # rows are time-sorted; no more open medals
-                award(r, medal_type, scope='OPEN')
+            # Open podium always re-ranks from times (original_rank is
+            # per-category); the double-podium split still applies.
+            award_podium(rows, scope='OPEN', source_rank=False)
 
     Medal.objects.bulk_create(medals)
     return len(medals)

@@ -55,6 +55,11 @@ class Championship(models.Model):
     # of the per-category podiums. Auto-detected on import when a TC
     # results file is merged into a categorized meet.
     has_open_podium = models.BooleanField(default=False)
+    # Double podium for meets with foreign guest swimmers: guests keep
+    # their medals from the overall ranking, and host-country swimmers
+    # get their own parallel podium (e.g. a guest wins gold AND the best
+    # host swimmer is national champion with a gold of their own).
+    has_double_podium = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

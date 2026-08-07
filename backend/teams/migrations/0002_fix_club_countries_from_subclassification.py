@@ -9,15 +9,19 @@ from django.db import migrations
 
 
 def fix_club_countries(apps, schema_editor):
-    from championships.models import Championship
-    from teams.utils import apply_subclassification_country
-
-    qs = Championship.objects.filter(
+    # Query ids via the historical model: the live model may have columns
+    # that don't exist yet at this point in migration history (breaks fresh
+    # test/dev databases).
+    ids = list(apps.get_model('championships', 'Championship').objects.filter(
         classification__name__in=('National', 'Other'),
         sub_classification__isnull=False,
         results__isnull=False,
-    ).distinct()
-    for championship in qs:
+    ).values_list('id', flat=True).distinct())
+    if not ids:
+        return
+    from championships.models import Championship
+    from teams.utils import apply_subclassification_country
+    for championship in Championship.objects.filter(id__in=ids):
         apply_subclassification_country(championship)
 
 

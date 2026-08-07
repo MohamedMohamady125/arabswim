@@ -175,7 +175,7 @@ const finaColor = (points) =>
 
 /* ── Times tab ─────────────────────────────────────────────────────────── */
 
-function EventList({ events, selected, onSelect }) {
+function EventList({ events, selected, onSelect, detail }) {
   const lcm = events.filter((e) => e.pool === 'LCM' && !e.is_relay)
   const scm = events.filter((e) => e.pool === 'SCM' && !e.is_relay)
   const relays = events.filter((e) => e.is_relay)
@@ -190,7 +190,8 @@ function EventList({ events, selected, onSelect }) {
         {rows.map((e) => {
           const isSel = selected?.event_id === e.event_id && selected?.pool === e.pool
           return (
-            <button key={`${e.event_id}-${e.pool}`} type="button" onClick={() => onSelect(e)}
+            <Fragment key={`${e.event_id}-${e.pool}`}>
+            <button type="button" onClick={() => onSelect(e)}
               className="hair-b"
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, width: '100%',
@@ -203,6 +204,11 @@ function EventList({ events, selected, onSelect }) {
               <span className="asw-time" style={{ flex: 'none', fontSize: 13 }}>{e.best_time}</span>
               <span className="micro asw-num" style={{ flex: 'none', width: 34, textAlign: 'right' }}>{e.times_count}x</span>
             </button>
+              {/* phone: the time history opens right under the tapped event */}
+              {isSel && detail && (
+                <div className="show-mobile" style={{ padding: '10px 0 16px' }}>{detail}</div>
+              )}
+            </Fragment>
           )
         })}
       </div>
@@ -819,8 +825,15 @@ export default function SwimmerProfile() {
         )}
         {effectiveTab === 'times' && (
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 32, alignItems: 'start' }}>
-            <EventList events={events} selected={selectedEvent} onSelect={handleEventClick} />
-            <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} />
+            <EventList
+              events={events}
+              selected={selectedEvent}
+              onSelect={handleEventClick}
+              detail={<TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} />}
+            />
+            <div className="hide-mobile">
+              <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} />
+            </div>
           </div>
         )}
         {effectiveTab === 'meets' && <MeetsTab stats={stats} />}

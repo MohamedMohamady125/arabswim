@@ -37,7 +37,8 @@ class ChampionshipListSerializer(serializers.ModelSerializer):
                   'location', 'classification_category', 'classification', 'sub_classification',
                   'classification_name', 'sub_classification_name',
                   'website', 'policy_pdf', 'live_results_url', 'meet_guide_pdf', 'meet_photo',
-                  'registration_url', 'results_count', 'swimmers_count', 'is_calendar_only', 'created_at']
+                  'registration_url', 'results_count', 'swimmers_count', 'is_calendar_only',
+                  'has_open_podium', 'has_double_podium', 'created_at']
 
     def get_results_count(self, obj):
         # Annotated by the list view (single query); fall back for other callers

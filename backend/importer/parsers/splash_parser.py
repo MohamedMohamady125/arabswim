@@ -20,6 +20,16 @@ Format:
   Relay team (national):      "1. Mouloudia Club D'Alger 2 Mouloudia Club D'Alger 3:41.25 553"
   Relay swimmers w/ splits:   "MEMMOU, Illiassine +0,73 27.37 56.61 BOUDALIA, Rayane +0,30 26.42 56.57"
   DQ/DNS lines: "disq. NAME ...", "disq.sport. NAME ...", "forf.nd. NAME", "abandon NAME ..."
+
+SMT variant (Swim Meets Thailand, smt.in.th — e.g. Asian Age Group Champs):
+  Header row:  "RankName - Surname Age H/L NAT Entry time Time RT Remark"
+  Result line: "1.Hussein Mohamed Shawky 18 F / 5 UAE Aquatics 23.24 22.59 +0.58"
+    — rank glued to name, the number after the name is AGE (not birth year),
+      "F / 5" is heat/lane, the club column holds the national federation,
+      then TWO times (entry then final) and a reaction time.
+  Tie line (no rank): "Heer Sunilbhai Pitroda 18 F / 1 India 23.67 23.20 +0.64"
+  Status glued:       "DSQAbdujabbarov Samir 18 F / 1 Uzbekistan Aquatics 2:13.22"
+  Relay team:  "1.Chinese Taipei 17 F / 5 Chinese Taipei Swimming Association 3:27.53 3:23.90 +0.61"
 """
 import re
 from .base import (
@@ -49,7 +59,7 @@ TIME_RE = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})')
 CATEGORY_RE = re.compile(
     r'(POUSSINS?|BENJAMINS?|MINIMES?|CADETS?|JUNIORS?|SENIORS?|OPEN|'
     r'Cat\.\s*g[ée]n[ée]rale|'
-    r'\d{1,2}\s*-\s*\d{1,2}\s*ans|'
+    r'\d{1,2}\s*-\s*\d{1,2}\s*(?:ans|[Yy]ears?)|'
     r'\d{1,2}\s*ans\s*et\s*plus|'
     r'\d{1,2}\s*years?\s*and\s*older)',
     re.IGNORECASE
@@ -145,6 +155,77 @@ _MINIMA_PAIRS_RE = re.compile(
     r'^(\d{1,2}\s*-\s*\d{1,2}\s*:\s*\d{1,2}[:.]\d{2}(\.\d{2})?[;,\s]*)+$')
 
 
+# --- SMT (Swim Meets Thailand) Splash variant ---------------------------
+# National-federation "club" column → country code stored in our DB.
+# Nationality comes from here; the club is cleared (federation ≠ club).
+SMT_FEDERATIONS = {
+    'aquatics federation of turkmenistan': 'TKM',
+    'bhutan aquatics federation': 'BHU',
+    'lebanon swimming federation': 'LBN',
+    'oman aquatics federation': 'OMA',
+    'palestine': 'PLE',
+    'yemen swimming federation': 'YEM',
+    'china swimming association': 'CHN',
+    'chinese taipei swimming association': 'TPE',
+    'hong kong china swimming association': 'HKG',
+    'india': 'IND',
+    'indonesia': 'INA',
+    'iran amateur swimming federation': 'IRI',
+    'japan aquatics': 'JPN',
+    'jordan swimming association': 'JOR',
+    'kuwait swimming': 'KWT',
+    'malaysia aquatics': 'MAS',
+    'maldives aquatics': 'MDV',
+    'mongolian amatuer swimming federation': 'MGL',
+    'mongolian amateur swimming federation': 'MGL',
+    'nepal swimming association': 'NEP',
+    'pakistan swimming federation': 'PAK',
+    'philippine aquatics, inc': 'PHI',
+    'philippine aquatics, inc.': 'PHI',
+    'qatar swimming federation': 'QAT',
+    'rpa qazaq aquatics': 'KAZ',
+    'saudi swimming federation': 'KSA',
+    'singapore aquatics': 'SGP',
+    'sri lanka aquatics': 'SRI',
+    'swimming association of macau, china': 'MAC',
+    'swimming federation of the kyrgyz republic': 'KGZ',
+    'syrian swimming federation': 'SYR',
+    'thailand aquatics assosiation': 'THA',
+    'thailand aquatics association': 'THA',
+    'thailand aqutics assosiation': 'THA',
+    'uae aquatics': 'UAE',
+    'uzbekistan aquatics': 'UZB',
+    'vasa vietnam': 'VIE',
+}
+
+_SMT_TIME = r'(?:\d{1,2}:)?\d{1,2}\.\d{2}'
+
+# "1.Hussein Mohamed Shawky 18 F / 5 UAE Aquatics 23.24 22.59 +0.58"
+# Rank glued to name; number after the name is AGE; "F / 5" = heat/lane;
+# entry time precedes the final time; optional reaction (+0.58) and remark.
+# Status lines glue DSQ/DNS to the name and usually carry only the entry time.
+SMT_RESULT_LINE = re.compile(
+    r'^\s*(?:(?P<status>DSQ|DNS|DNF|WDR)|(?P<rank>\d+)\.)?\s*'
+    r"(?P<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'\-. ]*?)\s+"
+    r'(?P<age>\d{1,2})\s+'
+    r'(?P<heat>[A-Z0-9]{1,2})\s*/\s*(?P<lane>\d{1,2})\s+'
+    r'(?P<club>\S.*?)\s+'
+    r'(?P<entry>NT|-|' + _SMT_TIME + r')'
+    r'(?:\s+(?P<time>' + _SMT_TIME + r'))?'
+    r'(?:\s+(?P<rt>[+-]\d+\.\d{2}))?'
+    r'\s*(?P<remark>.*)$'
+)
+
+SMT_SKIP_PREFIXES = ('meet record', 'rankname', 'rank name', 'online results')
+
+
+def detect_smt(text):
+    """Detect the SMT (Swim Meets Thailand) Splash layout."""
+    return ('smt.in.th' in text.lower()
+            or 'RankName - Surname' in text
+            or re.search(r'Rank\s*Name - Surname\s+Age\s+H\s*/?\s*L', text) is not None)
+
+
 def normalize_name_splash(name):
     """Normalize name for Splash format where comma means LAST, First."""
     return normalize_name(name, comma_order='last_first')
@@ -162,7 +243,7 @@ def _normalize_splash_category(label):
     label = label.strip()
     if re.match(r'^Cat\.\s*g[ée]n[ée]rale$', label, re.IGNORECASE):
         return ''  # general/open category — no age restriction
-    m = re.match(r'^(\d{1,2})\s*-\s*(\d{1,2})\s*ans$', label, re.IGNORECASE)
+    m = re.match(r'^(\d{1,2})\s*-\s*(\d{1,2})\s*(?:ans|years?)$', label, re.IGNORECASE)
     if m:
         return f'{m.group(1)}-{m.group(2)}'
     m = re.match(r'^(\d{1,2})\s*ans\s*et\s*plus$', label, re.IGNORECASE)
@@ -206,6 +287,7 @@ def parse(text):
         meet.location = clean_text(location)
 
     is_international = _detect_international(text)
+    is_smt = detect_smt(text)
 
     current_event = None
     current_key = None       # (event_number, gender, distance, stroke)
@@ -294,6 +376,8 @@ def parse(text):
             # Strip trailing round/category words from the stroke text
             stroke_raw = re.sub(
                 r'\s*,.*$', '', stroke_raw)  # drop everything after first comma
+            # SMT: "Medley A Group, 17-18 Years" → drop the group letter
+            stroke_raw = re.sub(r'\s+[A-D]\s+Group$', '', stroke_raw, flags=re.IGNORECASE)
             stroke_raw = CATEGORY_TAIL.sub('', stroke_raw).strip()
             stroke = normalize_stroke(stroke_raw)
             relay = bool(desc_match.group(1)) or is_relay_event(line)
@@ -355,6 +439,8 @@ def parse(text):
             continue
         if any(lower.startswith(p) for p in SKIP_PREFIXES):
             continue
+        if is_smt and any(lower.startswith(p) for p in SMT_SKIP_PREFIXES):
+            continue
         if re.match(r'^=+\s*PAGE', line):
             continue
         # Qualifying-time limits, not results
@@ -387,6 +473,20 @@ def parse(text):
             continue
 
         event_is_relay = _is_relay(current_event.event_name)
+
+        if is_smt:
+            # SMT layout has its own column order — never let the Algerian
+            # line parsers touch it (they misread Age/H/L/Entry columns).
+            result = _parse_smt_line(line, current_event, prev_rank, event_is_relay)
+            if result:
+                if result.rank:
+                    prev_rank = result.rank
+                current_event.results.append(result)
+            elif event_is_relay and current_event.results:
+                swimmer_splits = _parse_relay_swimmers(line)
+                if swimmer_splits:
+                    current_event.results[-1].split_times.extend(swimmer_splits)
+            continue
 
         if event_is_relay:
             handled = _parse_relay_line(line, current_event, is_international)
@@ -640,8 +740,9 @@ def _parse_relay_swimmers(line):
         part = part.strip()
         if not part:
             continue
-        # Variant A: NAME +reaction split... final_split
-        m = re.match(r'^(.+?)\s+\+[\d,\.]+\s+(.+)$', part)
+        # Variant A: NAME +reaction split... final_split (reaction can be
+        # negative on flying starts, e.g. "-0.01")
+        m = re.match(r'^(.+?)\s+[+-][\d,\.]+\s+(.+)$', part)
         if m:
             name_raw = m.group(1)
             splits_text = m.group(2)
@@ -716,6 +817,89 @@ def _extract_birth_year(before_time):
     yy = int(m.group(1))
     birth_year = 2000 + yy if yy < 30 else 1900 + yy
     return name_part, birth_year, club
+
+
+SMT_STATUS_MAP = {'DSQ': 'DQ', 'DNS': 'DNS', 'DNF': 'DNF', 'WDR': 'DNS'}
+
+
+def _parse_smt_line(line, event, prev_rank, event_is_relay):
+    """Parse one SMT-layout line (individual result or relay team).
+
+    "1.Hussein Mohamed Shawky 18 F / 5 UAE Aquatics 23.24 22.59 +0.58"
+    Returns a ParsedResult or None. The number after the name is the
+    swimmer's AGE; the club column is a national federation that maps to a
+    nationality (club is cleared). Relay lines put the country name in the
+    name slot ("1.Chinese Taipei 17 F / 5 <federation> 3:27.53 3:23.90").
+    """
+    m = SMT_RESULT_LINE.match(line)
+    if not m:
+        return None
+
+    status = SMT_STATUS_MAP.get(m.group('status') or '', 'OK')
+    rank = int(m.group('rank')) if m.group('rank') else 0
+    if status == 'OK' and not rank:
+        rank = prev_rank  # rankless tie line shares the previous rank
+
+    time_text = m.group('time') or ''
+    entry = m.group('entry') or ''
+    if status == 'OK' and not time_text:
+        # Single-time OK line: the only time IS the final time
+        if TIME_RE.fullmatch(entry):
+            time_text = entry
+        else:
+            return None
+    if status != 'OK':
+        time_text = ''  # status lines only carry the entry time
+
+    club_raw = m.group('club').strip()
+    nationality = SMT_FEDERATIONS.get(club_raw.lower().rstrip('.'), '')
+    club = '' if nationality else club_raw
+
+    # FINA points may appear in the tail on some SMT exports ("... Time Pts")
+    fina_points = 0
+    pts_match = re.match(r'^(\d{2,4})\b', m.group('remark').strip())
+    if pts_match:
+        fina_points = int(pts_match.group(1))
+
+    if event_is_relay:
+        team_name = m.group('name').strip()
+        return ParsedResult(
+            swimmer_name=team_name,
+            time_text=time_text,
+            time_centiseconds=parse_time_to_centiseconds(time_text) if time_text else 0,
+            event_name=event.event_name,
+            event_distance=event.distance,
+            event_stroke=event.stroke,
+            gender=event.gender,
+            rank=rank,
+            nationality_code=nationality,
+            club=team_name,
+            fina_points=fina_points,
+            round_type=event.round_type,
+            age_group=event.age_group,
+            status=status,
+        )
+
+    name = normalize_name_splash(m.group('name'))
+    if not name:
+        return None
+    return ParsedResult(
+        swimmer_name=name,
+        time_text=time_text,
+        time_centiseconds=parse_time_to_centiseconds(time_text) if time_text else 0,
+        event_name=event.event_name,
+        event_distance=event.distance,
+        event_stroke=event.stroke,
+        gender=event.gender,
+        rank=rank,
+        age=int(m.group('age')),
+        nationality_code=nationality,
+        club=club,
+        fina_points=fina_points,
+        round_type=event.round_type,
+        age_group=event.age_group,
+        status=status,
+    )
 
 
 def _parse_result_line(line, event, is_international, prev_rank):

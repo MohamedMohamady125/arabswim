@@ -1027,12 +1027,15 @@ function MedalsTab({ meetId, isNational }) {
 function PersonalBestsTab({ stats }) {
   const navigate = useNavigate()
 
-  const hasPbs = (stats?.personal_bests || []).length > 0
+  // Only swims that actually improved a previous best — first-ever swims
+  // in an event are not "personal bests achieved".
+  const pbs = (stats?.personal_bests || []).filter((s) => s.previous_best)
+  const hasPbs = pbs.length > 0
   if (!hasPbs) return <Empty label="No personal bests yet" />
 
   // #1 male and female by FINA points (list is FINA-sorted)
   const pbPick = (sex, tag) => {
-    const s = stats.personal_bests.find((x) => x.gender === sex)
+    const s = pbs.find((x) => x.gender === sex)
     if (!s) return null
     return {
       tag,
@@ -1053,48 +1056,45 @@ function PersonalBestsTab({ stats }) {
       {hasPbs && (
         <div style={{ marginBottom: 28 }}>
           <div className="kicker" style={{ marginBottom: 4 }}>Personal bests achieved</div>
-          <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Swimmers who set their all-time best at this meet</div>
-          <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 30 }}>#</th>
-                  <th>Swimmer</th>
-                  <th>Event</th>
-                  <th className="time">Time</th>
-                  <th className="time">Previous PB</th>
-                  <th className="num">FINA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.personal_bests.map((s, i) => (
-                  <tr key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
-                    <td className="asw-num">{i + 1}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Flag code={s.nationality_code} name={s.swimmer_name} />
-                        {s.swimmer_name}
-                      </div>
-                    </td>
-                    <td>{s.event_name}</td>
-                    <td className="time asw-time asw-fast">{s.time}</td>
-                    <td className="time asw-time">
-                      {s.previous_best ? (
-                        <span>
-                          {s.previous_best}
-                          {s.improvement_cs > 0 && (
-                            <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontSize: 11, marginLeft: 6 }}>
-                              −{(s.improvement_cs / 100).toFixed(2)}s
-                            </span>
-                          )}
-                        </span>
-                      ) : <span className="text-muted">first swim</span>}
-                    </td>
-                    <td className="num asw-num">{s.fina_points ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Swimmers who improved their all-time best at this meet</div>
+          <div className="rule-t">
+            {pbs.map((s, i) => (
+              <div
+                key={i}
+                className="hair-b asw-fade-up"
+                style={{ padding: '12px 0', cursor: 'pointer', animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}
+              >
+                {/* Line 1 — rank + swimmer + new time */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="asw-num" style={{ width: 26, height: 26, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12 }}>
+                    {i + 1}
+                  </span>
+                  <Flag code={s.nationality_code} name={s.swimmer_name} />
+                  <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.swimmer_name}
+                  </span>
+                  <span className="asw-time asw-fast" style={{ fontSize: 18, fontWeight: 700, flex: 'none' }}>{s.time}</span>
+                </div>
+                {/* Line 2 — event + FINA */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingLeft: 36 }}>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                    {s.event_name}
+                  </span>
+                  {s.fina_points != null && <span className="tag tag-neutral asw-num" style={{ flex: 'none' }}>{s.fina_points} FINA</span>}
+                </div>
+                {/* Line 3 — previous PB */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4, paddingLeft: 36, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                  <span className="micro" style={{ flex: 'none' }}>Previous</span>
+                  <span className="asw-time" style={{ fontWeight: 700 }}>{s.previous_best}</span>
+                  {s.improvement_cs > 0 && (
+                    <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontWeight: 700 }}>
+                      −{(s.improvement_cs / 100).toFixed(2)}s
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -1551,10 +1551,12 @@ function MostImprovedTab({ meetId }) {
 /* ───────────────────────── Broken records tab ───────────────────────── */
 
 const BROKEN_SCOPE_LABEL = { arab: 'Arab records', gcc: 'GCC records', national: 'National records' }
+const BROKEN_SCOPE_COLOR = { arab: '#1c4e86', gcc: '#7d8a99', national: 'var(--color-accent-800)' }
 
 function RecordsBrokenTab({ meetId }) {
   const navigate = useNavigate()
   const [rows, setRows] = useState(null)
+  const [gender, setGender] = useState('ALL')
 
   useEffect(() => {
     let alive = true
@@ -1567,14 +1569,22 @@ function RecordsBrokenTab({ meetId }) {
   if (rows === null) return <Loading label="Computing broken records" />
   if (rows.length === 0) return <Empty label="No records were broken at this meet" />
 
+  const genderOptions = [
+    { value: 'ALL', label: 'All' },
+    ...['M', 'F', 'X'].filter((g) => rows.some((r) => r.gender === g))
+      .map((g) => ({ value: g, label: GENDER_LABEL[g] || 'Mixed' })),
+  ]
+  const filtered = gender === 'ALL' ? rows : rows.filter((r) => r.gender === gender)
+
   // Group: Arab → GCC → National (one block per country)
   const groups = []
-  rows.forEach((r) => {
+  filtered.forEach((r) => {
     const key = r.scope === 'national' ? `national-${r.country_code}` : r.scope
     let g = groups.find((x) => x.key === key)
     if (!g) {
       g = {
         key,
+        scope: r.scope,
         label: r.scope === 'national'
           ? `${r.country} national records`
           : BROKEN_SCOPE_LABEL[r.scope] || r.scope,
@@ -1587,60 +1597,68 @@ function RecordsBrokenTab({ meetId }) {
 
   return (
     <div className="pad">
-      <div className="micro" style={{ marginBottom: 18, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
-        Computed automatically by comparing this meet's swims against the best times on record before the meet (same pool).
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <Seg options={genderOptions} value={gender} onChange={setGender} />
       </div>
-      {groups.map((g) => (
-        <div key={g.key} style={{ marginBottom: 28 }}>
-          <div className="kicker" style={{ marginBottom: 10 }}>{g.label} ({g.rows.length})</div>
-          <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Event</th>
-                  <th>Swimmer</th>
-                  <th className="time">New record</th>
-                  <th className="time hide-mobile">Previous record</th>
-                  <th className="hide-mobile">Previous holder</th>
-                </tr>
-              </thead>
-              <tbody>
-                {g.rows.map((r, i) => (
-                  <tr
-                    key={i}
-                    style={{ cursor: r.is_relay_team ? 'default' : 'pointer' }}
-                    onClick={r.is_relay_team ? undefined : () => navigate(`/swimmers/${r.swimmer_id}`)}
-                  >
-                    <td>
+      <div className="micro" style={{ marginBottom: 18, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
+        Individual and relay records — computed automatically by comparing this meet's swims against the best times on record before the meet (same pool).
+      </div>
+      {filtered.length === 0 && <Empty label="No records broken for this filter" />}
+      {groups.map((g) => {
+        const c = BROKEN_SCOPE_COLOR[g.scope] || 'var(--color-accent)'
+        return (
+          <div key={g.key} style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, paddingBottom: 6, borderBottom: `2px solid ${c}`, marginBottom: 2 }}>
+              <span className="tag" style={{ background: c, color: '#fff', border: 0 }}>{g.label.toUpperCase()}</span>
+              <span className="micro asw-num">{g.rows.length} record{g.rows.length !== 1 ? 's' : ''}</span>
+            </div>
+            {g.rows.map((r, i) => (
+              <div
+                key={i}
+                className="hair-b asw-fade-up"
+                style={{
+                  padding: '12px 0 12px 12px', borderLeft: `4px solid ${c}`,
+                  cursor: r.is_relay_team ? 'default' : 'pointer',
+                  animationDelay: `${Math.min(i * 40, 320)}ms`,
+                }}
+                onClick={r.is_relay_team ? undefined : () => navigate(`/swimmers/${r.swimmer_id}`)}
+              >
+                {/* Line 1 — event + gender + new time */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
                       {r.event_name}
-                      <span className="micro" style={{ marginLeft: 6 }}>{GENDER_LABEL[r.gender]}</span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                        <Flag code={r.nationality_code} name={r.swimmer_name} />
-                        <span style={NAME_ELLIPSIS}>{r.swimmer_name}</span>
-                        {r.is_relay_team && <span className="tag tag-neutral" style={{ flex: 'none' }}>Relay</span>}
-                      </div>
-                    </td>
-                    <td className="time asw-time asw-fast">{r.time}</td>
-                    <td className="time asw-time hide-mobile">
-                      {r.previous_time}
-                      <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontSize: 11, marginLeft: 6 }}>
-                        −{(r.improvement_centiseconds / 100).toFixed(2)}s
-                      </span>
-                    </td>
-                    <td className="hide-mobile">
-                      {r.previous_holder
-                        ? <span>{r.previous_holder}{r.previous_date ? <span className="micro" style={{ marginLeft: 6 }}>{formatDate(r.previous_date)}</span> : null}</span>
-                        : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </span>
+                    <span className={`tag ${r.gender === 'F' ? 'tag-accent-2' : r.gender === 'X' ? 'tag-neutral' : 'tag-accent'}`} style={{ flex: 'none' }}>
+                      {GENDER_LABEL[r.gender] || 'Mixed'}
+                    </span>
+                    {r.is_relay_team && <span className="tag tag-outline" style={{ flex: 'none' }}>Relay</span>}
+                  </div>
+                  <span className="asw-time asw-fast" style={{ fontSize: 20, fontWeight: 700, flex: 'none' }}>{r.time}</span>
+                </div>
+                {/* Line 2 — swimmer / team */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  <Flag code={r.nationality_code} name={r.swimmer_name} />
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{r.swimmer_name}</span>
+                </div>
+                {/* Line 3 — previous record */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 6, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                  <span className="micro" style={{ flex: 'none' }}>Previous</span>
+                  <span className="asw-time" style={{ fontWeight: 700 }}>{r.previous_time}</span>
+                  <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontWeight: 700 }}>
+                    −{(r.improvement_centiseconds / 100).toFixed(2)}s
+                  </span>
+                  {r.previous_holder && (
+                    <span style={{ minWidth: 0 }}>
+                      {r.previous_holder}{r.previous_date ? ` · ${formatDate(r.previous_date)}` : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

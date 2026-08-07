@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getCountryProfile, getCountryProgression } from '../api/core'
+import { getClassifications } from '../api/championships'
+import { getMedalSummary } from '../api/medals'
 import Flag from '../components/Flag'
 import { Loading, Empty, SectHead, Seg } from '../components/ui'
 import { formatDate, formatNumber, formatTime } from '../utils'
+
+// Competition categories shown as medal boxes, in display order.
+// Arab is always shown for Arab/GCC countries; the rest only when the
+// country has medals in that competition.
+const CLASS_ORDER = ['Arab', 'GCC', 'African', 'Asian', 'Mediterranean', 'Islamic', 'World', 'Olympic']
+const CLASS_COLORS = {
+  Arab: '#1c4e86', GCC: '#7d8a99', African: '#a8402f', Asian: '#a05f2c',
+  Mediterranean: '#4a8fc0', Islamic: '#0d7a52', World: '#b98a1e', Olympic: '#0c2340',
+}
 
 const STROKES = [
   { value: 'Freestyle', label: 'Free' },
@@ -183,6 +194,30 @@ export default function CountryProfile() {
   const [progLines, setProgLines] = useState([])
   const [progLoading, setProgLoading] = useState(false)
   const [openChamp, setOpenChamp] = useState(null)
+  const [classMedals, setClassMedals] = useState(null)
+
+  // Medal tally per competition category (Arab / GCC / African / …)
+  useEffect(() => {
+    let alive = true
+    getClassifications()
+      .then(async (res) => {
+        const all = Array.isArray(res.data) ? res.data : res.data?.results || []
+        const wanted = CLASS_ORDER
+          .map((name) => all.find((c) => c.name === name))
+          .filter(Boolean)
+        const sums = await Promise.all(wanted.map((c) =>
+          getMedalSummary({ classification: c.id, country: id })
+            .then((r) => {
+              const rows = Array.isArray(r.data) ? r.data : r.data?.results || []
+              const row = rows[0] || {}
+              return { name: c.name, gold: row.gold || 0, silver: row.silver || 0, bronze: row.bronze || 0, total: row.total || 0 }
+            })
+            .catch(() => ({ name: c.name, gold: 0, silver: 0, bronze: 0, total: 0 }))))
+        if (alive) setClassMedals(sums)
+      })
+      .catch(() => { if (alive) setClassMedals([]) })
+    return () => { alive = false }
+  }, [id])
 
   useEffect(() => {
     let alive = true
@@ -208,7 +243,7 @@ export default function CountryProfile() {
   if (loading) return <Loading label="Loading country profile" />
   if (!profile?.country) return <Empty label="Country not found" />
 
-  const { country, stats, medals } = profile
+  const { country, medals } = profile
   const topSwimmers = profile.top_swimmers || []
   const topMedalists = profile.top_medalists || []
   const bestTimes = profile.best_times || []
@@ -221,14 +256,12 @@ export default function CountryProfile() {
   const newRecords = records.filter((r) => r.is_new)
   const currentRecords = records.filter((r) => !r.is_new)
 
-  const countCells = [
-    ['Swimmers', stats?.swimmers],
-    ['Results', stats?.results],
-    ['Medals', stats?.medals],
-    ['Records', stats?.records],
-    ['Meets hosted', stats?.championships_hosted],
-    ['Teams', stats?.teams],
-  ].filter(([, v]) => v != null)
+  // Arab always shown; GCC shown for GCC countries; the rest only when the
+  // country actually has medals in that competition.
+  const medalBoxes = (classMedals || []).filter((m) =>
+    m.name === 'Arab'
+    || (m.name === 'GCC' && country.region === 'GCC')
+    || m.total > 0)
 
   return (
     <div>
@@ -265,22 +298,25 @@ export default function CountryProfile() {
             </div>
           )}
         </div>
-        {(stats?.swimmers_male != null || stats?.swimmers_female != null) && (
-          <div className="micro" style={{ marginTop: 10 }}>
-            {formatNumber(stats?.swimmers_male)} men · {formatNumber(stats?.swimmers_female)} women
-          </div>
-        )}
       </div>
 
-      {/* counts strip */}
-      {countCells.length > 0 && (
-        <div className="counts" style={{ gridTemplateColumns: `repeat(${countCells.length}, 1fr)` }}>
-          {countCells.map(([l, n]) => (
-            <div key={l}>
-              <div className="n">{formatNumber(n)}</div>
-              <div className="l">{l}</div>
-            </div>
-          ))}
+      {/* medals by competition */}
+      {medalBoxes.length > 0 && (
+        <div className="pad-lg rule-b">
+          <SectHead title="Medals by competition" />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {medalBoxes.map((m) => (
+              <div key={m.name} className="asw-fade-up" style={{ background: CLASS_COLORS[m.name] || 'var(--color-accent)', color: '#fff', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.75 }}>{m.name}</div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2 }}>{formatNumber(m.total)}</div>
+                <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ color: 'var(--asw-gold)' }}>{m.gold}G</span>
+                  <span style={{ color: 'var(--asw-silver)' }}>{m.silver}S</span>
+                  <span style={{ color: '#e3a869' }}>{m.bronze}B</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

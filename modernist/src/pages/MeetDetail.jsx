@@ -73,7 +73,7 @@ const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis
 function SwimmerLink({ swimmerId, detail }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 auto' }}>
-      <Flag code={detail?.nationality_detail?.code} name={detail?.nationality_detail?.name} />
+      <Flag code={detail?.nationality_detail?.code} name={detail?.nationality_detail?.name} placeholder />
       {detail?.is_relay_team ? (
         // Relay-team placeholders are clubs, not swimmers — no profile to open
         <>
@@ -570,7 +570,13 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
                   style={{ width: 120, minHeight: 30 }}
                   onClick={(e) => e.stopPropagation()}
                 />
-              ) : (r.team || '—')}
+              ) : (
+                // single line + ellipsis so long club names never stretch
+                // row heights (keeps every meet's table looking the same)
+                <span title={r.team || undefined} style={{ display: 'inline-block', maxWidth: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom' }}>
+                  {r.team || '—'}
+                </span>
+              )}
             </td>
           )}
           <td className="time asw-time">
@@ -733,7 +739,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
                       <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>TC — all categories, ranked by time</td>
                     </tr>
                   )}
-                  {selectedCategory === 'ALL' && grouped.some(([c]) => c !== '') && (
+                  {selectedCategory === 'ALL' && hasCategories && (
                     <tr style={{ background: 'var(--color-surface)' }}>
                       <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>{cat || 'General'}</td>
                     </tr>

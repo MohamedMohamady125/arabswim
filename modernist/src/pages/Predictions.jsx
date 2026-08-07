@@ -857,204 +857,12 @@ function OverviewTab({ snap, onOpenEvent }) {
   )
 }
 
-// ---- People view ----------------------------------------------------------
-// Fan-first angle: fans follow swimmers, not events. One row per swimmer,
-// aggregated across everything they race at this meet.
-
 function shortEvent(name) {
   return String(name)
     .replace(/\s*M\s+/, ' ')
     .replace('Freestyle', 'Free').replace('Backstroke', 'Back')
     .replace('Breaststroke', 'Breast').replace('Butterfly', 'Fly')
     .replace('Individual Medley', 'IM')
-}
-
-function ChanceBar({ label, pct, gold }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span className="micro" style={{ width: 86, flex: 'none', textTransform: 'none', letterSpacing: 0 }}>{label}</span>
-      <div style={{ flex: 1, height: 8, background: 'var(--color-bg)', border: '1px solid var(--color-divider)' }}>
-        <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: gold ? 'var(--asw-gold)' : 'var(--color-accent)' }} />
-      </div>
-      <span className="asw-num" style={{ width: 38, flex: 'none', textAlign: 'right', fontSize: 12, fontWeight: 700 }}>{Math.round(pct)}%</span>
-    </div>
-  )
-}
-
-function PeopleTab({ snap }) {
-  const [gender, setGender] = useState('ALL')
-  const [country, setCountry] = useState('')
-  const [query, setQuery] = useState('')
-
-  // one entry per swimmer, aggregated across all their events
-  const swimmers = useMemo(() => {
-    const map = new Map()
-    for (const ev of snap.events || []) {
-      for (const r of ev.field || []) {
-        if (!map.has(r.swimmer_id)) {
-          map.set(r.swimmer_id, {
-            id: r.swimmer_id, name: r.name,
-            country_code: r.country_code, country_name: r.country_name,
-            gender: ev.gender, age_group: ev.age_group || null, events: [],
-            eg: 0, es: 0, eb: 0, em: 0,
-          })
-        }
-        const s = map.get(r.swimmer_id)
-        s.events.push({
-          event: ev.event, gender: ev.gender,
-          p_gold: r.p_gold, p_medal: r.p_medal,
-          status: r.status, gold_status: r.gold_status,
-          seed: r.seed, place_range: r.place_range,
-        })
-        s.eg += r.p_gold / 100
-        s.es += r.p_silver / 100
-        s.eb += r.p_bronze / 100
-        s.em += r.p_medal / 100
-      }
-    }
-    const arr = [...map.values()]
-    arr.forEach((s) => {
-      s.events.sort((a, b) => b.p_medal - a.p_medal)
-      s.best = s.events[0]
-    })
-    // meet stars first: most expected medals, golds break ties
-    arr.sort((a, b) => (b.em - a.em) || (b.eg - a.eg))
-    return arr
-  }, [snap])
-
-  const countries = useMemo(() => {
-    const seen = new Map()
-    swimmers.forEach((s) => { if (s.country_code && !seen.has(s.country_code)) seen.set(s.country_code, s.country_name) })
-    return [...seen.entries()].sort((a, b) => (a[1] || '').localeCompare(b[1] || ''))
-  }, [swimmers])
-
-  const filtered = useMemo(() => (
-    swimmers.filter((s) => (
-      (gender === 'ALL' || s.gender === gender)
-      && (!country || s.country_code === country)
-      && (!query || s.name.toLowerCase().includes(query.toLowerCase()))
-    ))
-  ), [swimmers, gender, country, query])
-
-  const noFilter = gender === 'ALL' && !country && !query
-  const stars = noFilter ? filtered.filter((s) => s.em >= 0.5).slice(0, 6) : []
-  const listed = filtered.filter((s) => s.em >= 0.02).slice(0, 60)
-
-  return (
-    <div>
-      {/* stars of the meet */}
-      {stars.length > 0 && (
-        <div style={{ marginBottom: 26 }}>
-          <SectHead title="Stars of the meet" />
-          <div className="micro" style={{ margin: '-4px 0 10px' }}>
-            The swimmers projected to take home the most medals
-          </div>
-          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-            {stars.map((s, i) => (
-              <div key={s.id} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-divider)', borderTop: i === 0 ? '3px solid var(--asw-gold)' : '3px solid var(--color-accent)', padding: '14px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color: 'var(--color-neutral-300)', width: 26, flex: 'none' }}>{i + 1}</span>
-                  <Flag code={s.country_code} name={s.country_name} large />
-                  <div style={{ minWidth: 0 }}>
-                    <Link to={`/swimmers/${s.id}`} style={{ fontWeight: 700, fontSize: 14.5 }}>{s.name}</Link>
-                    <div className="micro" style={{ marginTop: 1 }}>
-                      {s.country_name} · {s.gender === 'M' ? 'Men' : 'Women'}{s.age_group ? ` · ${s.age_group}` : ''}
-                    </div>
-                  </div>
-                  <div style={{ marginLeft: 'auto', textAlign: 'right', flex: 'none' }}>
-                    <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1 }}>{s.em.toFixed(1)}</div>
-                    <div className="micro" style={{ fontSize: 9 }}>Expected medals</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
-                  {s.events.slice(0, 3).map((e) => (
-                    <ChanceBar key={`${e.event}`} label={shortEvent(e.event)} pct={e.p_medal} gold={e.p_gold >= 50} />
-                  ))}
-                </div>
-                {s.events.length > 3 && (
-                  <div className="micro" style={{ marginTop: 8, textTransform: 'none', letterSpacing: 0 }}>
-                    +{s.events.length - 3} more event{s.events.length - 3 > 1 ? 's' : ''}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* everyone with a realistic shot */}
-      <SectHead title="Medal outlook by swimmer" />
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '4px 0 12px' }}>
-        <Seg
-          options={[{ value: 'ALL', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
-          value={gender}
-          onChange={setGender}
-        />
-        <select
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          style={{ padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }}
-        >
-          <option value="">All countries</option>
-          {countries.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
-        </select>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search swimmer…"
-          style={{ padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff', minWidth: 160 }}
-        />
-      </div>
-      {listed.length === 0 ? (
-        <Empty label="No swimmers match this filter" />
-      ) : (
-        <div className="table-scroll">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Swimmer</th>
-                <th className="num">Expected medals</th>
-                <th>Best shot</th>
-                <th>Outlook</th>
-                <th className="hide-mobile">All events</th>
-              </tr>
-            </thead>
-            <tbody>
-              {listed.map((s, i) => (
-                <tr key={s.id}>
-                  <td className="asw-num">{i + 1}</td>
-                  <td style={{ fontWeight: 600 }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                      <Flag code={s.country_code} name={s.country_name} />
-                      <Link to={`/swimmers/${s.id}`}>{s.name}</Link>
-                      {s.age_group && (
-                        <span className="micro" style={{ fontWeight: 400 }}>{s.age_group}</span>
-                      )}
-                    </span>
-                  </td>
-                  <td className="num asw-num" style={{ fontWeight: 700 }}>{s.em.toFixed(1)}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    {shortEvent(s.best.event)} <span className="asw-num" style={{ fontWeight: 700 }}>{Math.round(s.best.p_medal)}%</span>
-                  </td>
-                  <td>
-                    <StatusBadge
-                      status={String(s.best.gold_status || '').includes('Gold') ? s.best.gold_status : s.best.status}
-                      pct={String(s.best.gold_status || '').includes('Gold') ? s.best.p_gold : s.best.p_medal}
-                    />
-                  </td>
-                  <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                    {s.events.slice(0, 4).map((e) => `${shortEvent(e.event)} ${Math.round(e.p_medal)}%`).join(' · ')}
-                    {s.events.length > 4 ? ` · +${s.events.length - 4}` : ''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  )
 }
 
 // ---- Page -----------------------------------------------------------------
@@ -1193,7 +1001,6 @@ export default function Predictions() {
                 <Seg
                   options={[
                     { value: 'overview', label: 'Overview' },
-                    { value: 'people', label: 'People' },
                     { value: 'original', label: 'Original' },
                   ]}
                   value={view}
@@ -1202,8 +1009,6 @@ export default function Predictions() {
               </div>
 
               {view === 'overview' && <OverviewTab snap={snap} />}
-
-              {view === 'people' && <PeopleTab snap={snap} />}
 
               {view === 'original' && (
               <>

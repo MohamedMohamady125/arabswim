@@ -581,6 +581,7 @@ def _extend_meet_dates(championship, new_date, new_end_date=None):
         championship.save(update_fields=changed)
 
 
+@transaction.atomic
 def confirm_import(preview_data, swimmer_decisions, championship_id=None, championship_details=None):
     """
     Step 3: Confirm and save the imported data.

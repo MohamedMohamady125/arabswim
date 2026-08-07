@@ -10,6 +10,7 @@ import random
 import statistics
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.db.models import Q
 
 from championships.models import Result
@@ -116,7 +117,7 @@ def _gather_event_rows(championship, event, gender, scope_q, today):
         .exclude(round_type__in=['Heats'])  # keep Finals/Prelims quality swims
         .values('swimmer_id', 'swimmer__name', 'swimmer__nationality__code',
                 'swimmer__nationality__name', 'swimmer__nationality_id',
-                'swimmer__birth_year', 'age_at_competition',
+                'swimmer__birth_year', 'swimmer__photo', 'age_at_competition',
                 'team', 'time_centiseconds', 'championship__date')
     )
     by_swimmer = {}
@@ -127,6 +128,8 @@ def _gather_event_rows(championship, event, gender, scope_q, today):
             'country_name': r['swimmer__nationality__name'],
             'country_id': r['swimmer__nationality_id'],
             'club': r['team'] or '',
+            'photo': (settings.MEDIA_URL + r['swimmer__photo'])
+                     if r['swimmer__photo'] else None,
             'birth_year': r['swimmer__birth_year'],
             'rows': [],
             'latest': None,
@@ -263,7 +266,7 @@ def compute_snapshot(championship):
             field.append({
                 'swimmer_id': sid, 'name': d['name'],
                 'country_code': d['country_code'], 'country_name': d['country_name'],
-                'club': d['club'],
+                'club': d['club'], 'photo': d['photo'],
                 'seed_cs': int(seed), 'mu': mu, 'sigma': st.sigma,
                 'season_best_cs': st.season_best, 'pb_cs': st.pb,
             })
@@ -289,7 +292,7 @@ def compute_snapshot(championship):
             row = {
                 'swimmer_id': f['swimmer_id'], 'name': f['name'],
                 'country_code': f['country_code'], 'country_name': f['country_name'],
-                'club': f['club'],
+                'club': f['club'], 'photo': f['photo'],
                 'seed': _fmt(f['seed_cs']), 'seed_cs': f['seed_cs'],
                 'place_range': f'{p10}\u2013{p90}' if p10 != p90 else str(p10),
                 'p_gold': round(p_gold * 100, 1),
@@ -316,6 +319,7 @@ def compute_snapshot(championship):
             card = {
                 'swimmer_id': f['swimmer_id'], 'name': f['name'],
                 'country_code': f['country_code'], 'country_name': f['country_name'],
+                'photo': f['photo'],
                 'event': event.name, 'gender': gender,
                 'event_id': event.id,
                 'age_group': grp.label if grp else None,
@@ -381,6 +385,9 @@ def compute_snapshot(championship):
             'pool': championship.pool,
             'classification': championship.classification.name if championship.classification else None,
             'country': championship.country.name if championship.country else None,
+            'location': championship.location or '',
+            'meet_photo': (settings.MEDIA_URL + str(championship.meet_photo))
+                          if championship.meet_photo else None,
         },
         'stage': stage,
         'confidence': confidence,

@@ -26,7 +26,10 @@ def _upcoming_qs():
 
 def _get_or_compute(championship, force=False):
     snap = PredictionSnapshot.objects.filter(championship=championship).first()
-    stale = snap is None or (timezone.now() - snap.computed_at) > STALE_AFTER
+    stale = (snap is None
+             or (timezone.now() - snap.computed_at) > STALE_AFTER
+             # payload shape changed (photos + meet info added) → recompute
+             or 'meet_photo' not in (snap.data or {}).get('championship', {}))
     if force or stale:
         data = compute_snapshot(championship)
         previous = snap.data if snap else {}

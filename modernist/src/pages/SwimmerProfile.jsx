@@ -13,6 +13,7 @@ import {
   getSwimmerTransferHistory,
 } from '../api/swimmers'
 import { createClaim, getMyClaims } from '../api/claims'
+import { getHeldRecords } from '../api/records'
 import { useAuth } from '../context/AuthContext'
 import Flag from '../components/Flag'
 import { Loading, Empty, Seg } from '../components/ui'
@@ -422,12 +423,27 @@ const PERFORMANCE_TIERS = [
 ]
 
 function OverallTab({ stats, swimmerId, onViewRankings }) {
+  // Computed held records (same source as the Records tab) — the stats
+  // endpoint only counts manually-stored Record rows, which many swimmers
+  // don't have even though they hold computed national/GCC/Arab records.
+  const [heldRecords, setHeldRecords] = useState(null)
+  useEffect(() => {
+    let alive = true
+    getHeldRecords({ swimmer: swimmerId })
+      .then((r) => { if (alive) setHeldRecords(r.data || []) })
+      .catch(() => { if (alive) setHeldRecords([]) })
+    return () => { alive = false }
+  }, [swimmerId])
   if (!stats) return <Empty label="No stats available" />
   const {
     medals, total_championships, total_records, best_fina,
     season_best_fina, best_event, top_personal_bests, records, fina_distribution,
   } = stats
   const intlRecords = (records || []).filter((r) => r.record_type !== 'NATIONAL')
+  // Held records not covered by the Record table (national/gcc/arab computed)
+  const heldCount = (heldRecords || []).length
+  const officialExtra = (records || []).filter((r) => !['NATIONAL', 'GCC', 'ARAB'].includes(r.record_type)).length
+  const recordsTotal = Math.max(heldCount + officialExtra, total_records ?? (records || []).length)
   const md = medals || { gold: 0, silver: 0, bronze: 0, total: 0 }
   const bestEventPb = (top_personal_bests || []).find((pb) => pb.event_name === best_event)
 
@@ -455,7 +471,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         </div>
         <div style={bandCell}>
           <div style={bandKicker}>Records</div>
-          <div className="asw-num" style={bandNum}>{total_records ?? (records || []).length}</div>
+          <div className="asw-num" style={bandNum}>{recordsTotal}</div>
           {intlRecords.length > 0 && <div className="asw-num" style={bandSub}>{intlRecords.length} international</div>}
         </div>
         <div style={bandCell}>

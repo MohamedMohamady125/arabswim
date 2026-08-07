@@ -316,6 +316,9 @@ def _build_preview(parsed_meet):
             'round_type': event.round_type,
             'age_group': event.age_group,
             'is_relay': is_relay,
+            # Session date (YYYY-MM-DD) when the source file schedules the
+            # event on a specific day — powers program auto-extraction.
+            'session_date': getattr(event, 'date_text', '') or '',
             'results': [],
         }
 
@@ -414,6 +417,32 @@ def _build_preview(parsed_meet):
         if ec:
             inferred_country_code = ec.code
 
+    # Program summary: which events run on which day/session, extracted
+    # from per-event session dates in the source file (when present).
+    # Shown in the import wizard so the admin can QA it before confirm.
+    program = []
+    prog_seen = set()
+    for event_data in events:
+        sd = event_data.get('session_date')
+        if not sd:
+            continue
+        session = ROUND_TO_SESSION.get(event_data.get('round_type') or '', '')
+        ag = event_data.get('age_group') or ''
+        if ag.upper() == 'OPEN':
+            ag = ''
+        key = (sd, event_data['event_name'], event_data['gender'], session, ag)
+        if key in prog_seen:
+            continue
+        prog_seen.add(key)
+        program.append({
+            'date': sd,
+            'event_name': event_data['event_name'],
+            'gender': event_data['gender'],
+            'session': session,
+            'age_category': ag,
+        })
+    program.sort(key=lambda p: p['date'])
+
     return {
         'meet': {
             'name': parsed_meet.meet_name,
@@ -433,7 +462,17 @@ def _build_preview(parsed_meet):
         },
         'events': events,
         'swimmers': list(all_swimmers.values()),
+        'program': program,
     }
+
+
+# Parsed round_type -> ProgramItem.session value
+ROUND_TO_SESSION = {
+    'Heats': 'HEATS',
+    'Finals': 'FINALS',
+    'Semifinals': 'SEMIS',
+    'Semis': 'SEMIS',
+}
 
 
 # All codes (DB, IOC, ISO, legacy) that identify an Arab country.
@@ -701,11 +740,27 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         bands[band] = key
         return key
 
+    # Program entries extracted from per-event session dates in the source
+    program_entries = []  # (date_iso, db_event, gender, session, age_cat)
+    program_seen = set()
+
     for event_data in preview_data['events']:
         # Find or create the event
         db_event = _find_event(event_data, event_cache)
         if not db_event:
             continue
+
+        session_date = event_data.get('session_date') or ''
+        if session_date:
+            session = ROUND_TO_SESSION.get(event_data.get('round_type') or '', '')
+            prog_ag = event_data.get('age_group') or ''
+            if prog_ag.upper() == 'OPEN':
+                prog_ag = ''
+            prog_gender = event_data.get('gender') or 'X'
+            prog_key = (session_date, db_event.id, prog_gender, session, prog_ag)
+            if prog_key not in program_seen:
+                program_seen.add(prog_key)
+                program_entries.append((session_date, db_event, prog_gender, session, prog_ag))
 
         is_relay = event_data.get('is_relay', False)
 
@@ -1134,6 +1189,32 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     from medals.utils import recompute_medals
     recompute_medals(championship)
 
+    # Save the day-by-day program extracted from session dates (Day 1 =
+    # championship.date). Existing manual entries are kept; new lines slot
+    # in after them.
+    program_items_created = 0
+    if program_entries and championship.date:
+        from championships.models import ProgramItem
+        next_order = {}  # day -> next order value
+        for pi in ProgramItem.objects.filter(championship=championship):
+            next_order[pi.day] = max(next_order.get(pi.day, 0), pi.order + 1)
+        for date_iso, db_event, prog_gender, session, prog_ag in sorted(
+                program_entries, key=lambda e: e[0]):
+            d = _parse_date(date_iso)
+            if not d:
+                continue
+            day = (d - championship.date).days + 1
+            if day < 1 or day > 30:
+                continue
+            _, created = ProgramItem.objects.get_or_create(
+                championship=championship, day=day, event=db_event,
+                gender=prog_gender, session=session, age_category=prog_ag,
+                defaults={'order': next_order.get(day, 0)},
+            )
+            if created:
+                next_order[day] = next_order.get(day, 0) + 1
+                program_items_created += 1
+
     return {
         'championship_id': championship.id,
         'championship_name': championship.name,
@@ -1146,6 +1227,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         'skipped_details': skipped_details,
         'teams_created': teams_created,
         'categories_inferred': categories_inferred,
+        'program_items_created': program_items_created,
     }
 
 

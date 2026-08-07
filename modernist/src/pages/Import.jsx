@@ -32,6 +32,49 @@ const successBox = {
   padding: '10px 12px', fontSize: 13, marginBottom: 16,
 }
 
+const SESSION_LABEL = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
+const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
+
+// Read-only day-by-day program extracted from the source file's session
+// dates. Shown in the review step so the admin can QA it before confirm —
+// the backend saves it automatically with the import.
+function DetectedProgram({ program, startDate }) {
+  const dayNo = (iso) => {
+    if (!startDate || !iso) return null
+    const d = Math.round((new Date(`${iso}T00:00:00`) - new Date(`${startDate}T00:00:00`)) / 86400000) + 1
+    return d >= 1 && d <= 30 ? d : null
+  }
+  const byDate = []
+  for (const row of program) {
+    const last = byDate[byDate.length - 1]
+    if (last && last.date === row.date) last.rows.push(row)
+    else byDate.push({ date: row.date, rows: [row] })
+  }
+  return (
+    <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }}>
+      <div className="kicker" style={{ marginBottom: 4 }}>Program detected from file</div>
+      <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0 }}>
+        Session dates and rounds read from the source file — review the quality here. Saved automatically with the import; you can adjust it afterwards on the Done step or the meet page.
+      </div>
+      {byDate.map((d) => (
+        <div key={d.date} style={{ marginBottom: 10 }}>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5, marginBottom: 4 }}>
+            {dayNo(d.date) ? `Day ${dayNo(d.date)} · ` : ''}{formatDate(d.date)}
+          </div>
+          {d.rows.map((r, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderBottom: '1px solid var(--color-divider)', fontSize: 13, background: '#fff' }}>
+              <span style={{ fontWeight: 600 }}>{r.event_name}</span>
+              <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{GENDER_LABEL[r.gender] || ''}</span>
+              {r.session && <span className="tag tag-neutral" style={{ flex: 'none' }}>{SESSION_LABEL[r.session]}</span>}
+              {r.age_category && <span className="tag tag-neutral" style={{ flex: 'none' }}>{r.age_category}</span>}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function StatCells({ items }) {
   return (
     <div className="cellgrid" style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)`, border: '1px solid var(--color-divider)', marginBottom: 20 }}>
@@ -624,7 +667,12 @@ export default function Import() {
 
                 {/* Day-by-day program — planned here, saved when the import is confirmed */}
                 <div style={{ marginBottom: 16 }}>
-                  {meet.existingChampId ? (
+                  {(meet.editedPreview.program || []).length > 0 ? (
+                    <DetectedProgram
+                      program={meet.editedPreview.program}
+                      startDate={meet.champForm.date}
+                    />
+                  ) : meet.existingChampId ? (
                     <MeetProgramEditor champId={Number(meet.existingChampId)} />
                   ) : meet.champForm.date ? (
                     <LocalProgramEditor

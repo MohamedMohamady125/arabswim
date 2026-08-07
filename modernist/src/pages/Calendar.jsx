@@ -133,10 +133,6 @@ function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
     <div style={{ padding: '14px 32px 20px', background: 'var(--color-surface)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: showAny || isAdmin ? 16 : 0 }}>
         <div>
-          <div className="micro" style={{ marginBottom: 3 }}>Date</div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>{formatDateRange(c.date, c.end_date)}</div>
-        </div>
-        <div>
           <div className="micro" style={{ marginBottom: 3 }}>Pool</div>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{c.pool === 'SCM' ? 'Short Course (25m)' : 'Long Course (50m)'}</div>
         </div>
@@ -145,10 +141,6 @@ function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
           <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
             {c.country_detail ? (<><Flag code={c.country_detail.code} name={c.country_detail.name} />{c.country_detail.name}</>) : '—'}
           </div>
-        </div>
-        <div>
-          <div className="micro" style={{ marginBottom: 3 }}>Location</div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>{c.location || '—'}</div>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

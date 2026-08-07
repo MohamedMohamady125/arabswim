@@ -1008,6 +1008,136 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             })
         return Response(data)
 
+    @action(detail=True, methods=['get'], url_path='records-broken')
+    def records_broken(self, request, pk=None):
+        """Records broken during this meet, computed from existing data.
+
+        For every scope (arab / gcc / national per country), compare the
+        fastest swim of the meet per event+gender against the best time
+        recorded before the meet (same pool, OPEN age). A record is
+        "broken" only when a strictly faster swim beats an existing
+        pre-meet best — first-ever times are not listed. When several
+        swimmers beat the old record, the fastest (the record at meet
+        end) is shown.
+        """
+        from django.db.models import Min
+        championship = self.get_object()
+        pool = championship.pool
+
+        meet_rows = list(
+            championship.results
+            .filter(is_hc=False, time_centiseconds__gt=0,
+                    swimmer__nationality__isnull=False)
+            .select_related('swimmer__nationality', 'event')
+        )
+        if not meet_rows:
+            return Response([])
+
+        def gender_key(r):
+            # Mixed relays carry one placeholder swimmer whose sex is
+            # arbitrary — group them under 'X' via the event name.
+            if r.event.is_relay and 'mixed' in r.event.name.lower():
+                return 'X'
+            return r.swimmer.sex
+
+        # Best swim of the meet per (scope-eligible group, event, gender)
+        event_ids = {r.event_id for r in meet_rows}
+
+        prev = Result.objects.filter(
+            championship__pool=pool, is_hc=False, time_centiseconds__gt=0,
+            championship__date__lt=championship.date,
+            event_id__in=event_ids,
+            swimmer__nationality__region__in=['ARAB', 'GCC'],
+        ).exclude(championship=championship)
+
+        # Pre-meet bests per scope
+        def best_map(qs, extra=()):
+            rows = qs.values('event_id', 'swimmer__sex', *extra).annotate(
+                best=Min('time_centiseconds'))
+            return {tuple(r[k] for k in ('event_id', 'swimmer__sex', *extra)): r['best']
+                    for r in rows}
+
+        arab_best = best_map(prev)
+        gcc_best = best_map(prev.filter(swimmer__nationality__region='GCC'))
+        national_best = best_map(prev, extra=('swimmer__nationality_id',))
+
+        # Meet's best breaking swim per (scope, event, gender)
+        best_break = {}
+        for r in meet_rows:
+            region = r.swimmer.nationality.region
+            g = gender_key(r)
+            sexes = ('M', 'F') if g == 'X' else (g,)
+
+            def check(scope, table, key_extra=()):
+                # A mixed relay competes against pre-meet bests of either
+                # sex grouping (older data may store either placeholder sex)
+                prevs = [table.get((r.event_id, s, *key_extra)) for s in sexes]
+                prevs = [p for p in prevs if p is not None]
+                if not prevs:
+                    return
+                old = min(prevs)
+                if r.time_centiseconds >= old:
+                    return
+                k = (scope, r.event_id, g, *key_extra)
+                cur = best_break.get(k)
+                if cur is None or r.time_centiseconds < cur[0].time_centiseconds:
+                    best_break[k] = (r, old)
+
+            if region in ('ARAB', 'GCC'):
+                check('arab', arab_best)
+                if region == 'GCC':
+                    check('gcc', gcc_best)
+            check('national', national_best,
+                  key_extra=(r.swimmer.nationality_id,))
+
+        # Resolve previous holders and build the payload
+        def fmt(cs):
+            m, s, c = cs // 6000, (cs % 6000) // 100, cs % 100
+            return f'{m}:{s:02d}.{c:02d}' if m else f'{s}.{c:02d}'
+
+        out = []
+        for (scope, event_id, g, *extra), (r, old) in best_break.items():
+            holder_qs = prev.filter(event_id=event_id, time_centiseconds=old)
+            if g != 'X':
+                holder_qs = holder_qs.filter(swimmer__sex=g)
+            if scope == 'gcc':
+                holder_qs = holder_qs.filter(swimmer__nationality__region='GCC')
+            elif scope == 'national':
+                holder_qs = holder_qs.filter(swimmer__nationality_id=extra[0])
+            holder = (holder_qs.select_related('swimmer__nationality', 'championship')
+                      .order_by('championship__date').first())
+            nat = r.swimmer.nationality
+            out.append({
+                'scope': scope,
+                'country': nat.name if scope == 'national' else '',
+                'country_code': nat.code if scope == 'national' else '',
+                'event_id': event_id,
+                'event_name': r.event.name,
+                'event_sort_order': r.event.sort_order,
+                'event_distance': r.event.distance,
+                'is_relay': r.event.is_relay,
+                'gender': g,
+                'swimmer_id': r.swimmer_id,
+                'swimmer_name': r.swimmer.name,
+                'is_relay_team': r.swimmer.is_relay_team,
+                'nationality_code': nat.code,
+                'nationality_flag': nat.flag_url,
+                'time': fmt(r.time_centiseconds),
+                'time_centiseconds': r.time_centiseconds,
+                'previous_time': fmt(old),
+                'previous_time_centiseconds': old,
+                'previous_holder': holder.swimmer.name if holder else '',
+                'previous_holder_id': holder.swimmer_id if holder else None,
+                'previous_meet': holder.championship.name if holder else '',
+                'previous_date': holder.championship.date.isoformat() if holder else '',
+                'improvement_centiseconds': old - r.time_centiseconds,
+            })
+
+        scope_order = {'arab': 0, 'gcc': 1, 'national': 2}
+        out.sort(key=lambda x: (scope_order[x['scope']], x['country'],
+                                x['gender'], x['event_sort_order'], x['event_distance']))
+        return Response(out)
+
     @action(detail=True, methods=['post'], url_path='recompute-medals')
     def recompute_medals_action(self, request, pk=None):
         """Re-run country fixes and medal awarding for this championship.

@@ -20,6 +20,7 @@ export const bulkDeleteResults = (id, swimmerIds) => api.post(`/championships/${
 export const bulkDeleteResultIds = (id, resultIds) => api.post(`/championships/${id}/bulk-delete-result-ids/`, { result_ids: resultIds })
 export const getAllResults = (id) => api.get(`/championships/${id}/all-results/`)
 export const getMostImproved = (id) => api.get(`/championships/${id}/most-improved/`)
+export const getRecordsBroken = (id) => api.get(`/championships/${id}/records-broken/`)
 export const getChampionshipComparison = (id) => api.get(`/championships/${id}/compare/`)
 export const getMeetProgram = (id) => api.get(`/championships/${id}/program/`)
 export const setMeetProgram = (id, items) => api.put(`/championships/${id}/program/`, { items })

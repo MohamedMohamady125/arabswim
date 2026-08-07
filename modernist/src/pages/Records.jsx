@@ -4,7 +4,7 @@ import { getRecords, getComputedRecords } from '../api/records'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
-import { formatDate, AGE_GROUPS } from '../utils'
+import { AGE_GROUPS } from '../utils'
 
 // Computed scopes are calculated live from the results database;
 // the rest are curated manual record books.
@@ -68,7 +68,7 @@ function normalizeManual(r) {
   }
 }
 
-function RecordTable({ rows, showFina }) {
+function RecordTable({ rows }) {
   const navigate = useNavigate()
   return (
     <div className="table-scroll">
@@ -76,11 +76,9 @@ function RecordTable({ rows, showFina }) {
         <thead>
           <tr>
             <th>Event</th>
-            <th className="time">Time</th>
-            {showFina && <th className="num hide-mobile">FINA</th>}
             <th className="hide-mobile">Swimmer</th>
+            <th className="time">Time</th>
             <th className="hide-mobile">Meet</th>
-            <th className="hide-mobile">Date</th>
           </tr>
         </thead>
         <tbody>
@@ -105,8 +103,6 @@ function RecordTable({ rows, showFina }) {
                   </div>
                 </div>
               </td>
-              <td className="time asw-time">{r.time}</td>
-              {showFina && <td className="num asw-num hide-mobile">{r.fina || '—'}</td>}
               <td className="hide-mobile">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Flag code={r.natCode} name={r.natName} />
@@ -117,10 +113,8 @@ function RecordTable({ rows, showFina }) {
                   )}
                 </div>
               </td>
-              <td className="text-muted hide-mobile">
-                {[r.meet, r.location].filter(Boolean).join(' · ') || '—'}
-              </td>
-              <td className="hide-mobile" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
+              <td className="time asw-time">{r.time}</td>
+              <td className="text-muted hide-mobile">{r.meet || '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -129,14 +123,14 @@ function RecordTable({ rows, showFina }) {
   )
 }
 
-function Section({ label, pool, rows, showFina, last }) {
+function Section({ label, pool, rows, last }) {
   return (
     <div className={last ? 'pad' : 'rule-b pad'}>
       <div className="kicker" style={{ marginBottom: 12 }}>{label} · {pool}</div>
       {rows.length === 0 ? (
         <div className="text-muted" style={{ fontSize: 14 }}>No records yet.</div>
       ) : (
-        <RecordTable rows={rows} showFina={showFina} />
+        <RecordTable rows={rows} />
       )}
     </div>
   )
@@ -215,6 +209,12 @@ export default function Records() {
         <select className="select" style={{ width: 150 }} value={scope} onChange={(e) => setScope(e.target.value)}>
           {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        {needsCountry && (
+          <select className="select" style={{ width: 190 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+            <option value="">Select country…</option>
+            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
         <Seg
           options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
           value={pool}
@@ -225,12 +225,6 @@ export default function Records() {
           value={gender}
           onChange={setGender}
         />
-        {needsCountry && (
-          <select className="select" style={{ width: 190 }} value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value="">Select country…</option>
-            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        )}
         {isComputed && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>

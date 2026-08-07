@@ -85,6 +85,7 @@ export default function RecordsTab({ swimmerId }) {
   const [view, setView] = useState('records')
   const [gapScope, setGapScope] = useState(null)
   const [gapPool, setGapPool] = useState('LCM')
+  const [scopeFilter, setScopeFilter] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -233,16 +234,20 @@ export default function RecordsTab({ swimmerId }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
         {sections.map((type) => {
           const c = SCOPE_COLORS[type] || 'var(--color-accent)'
+          const active = scopeFilter === type
+          const dimmed = scopeFilter && !active
           return (
-            <div key={type} className="asw-fade-up" style={{ background: c, color: '#fff', padding: '10px 16px', minWidth: 100 }}>
+            <button key={type} type="button" className="asw-fade-up"
+              onClick={() => setScopeFilter(active ? null : type)}
+              style={{ background: c, color: '#fff', padding: '10px 16px', minWidth: 100, border: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', opacity: dimmed ? 0.4 : 1, outline: active ? '3px solid var(--color-accent-2)' : 'none', outlineOffset: 2, transition: 'opacity 0.2s' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.75 }}>{type}</div>
               <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1.1 }}>{byType[type].length}</div>
-            </div>
+            </button>
           )
         })}
       </div>
 
-      {sections.map((type) => {
+      {(scopeFilter ? sections.filter((t) => t === scopeFilter) : sections).map((type) => {
         const rows = byType[type]
         const c = SCOPE_COLORS[type] || 'var(--color-accent)'
         return (

@@ -61,8 +61,9 @@ function Modal({ title, onClose, children, width = 640 }) {
 }
 
 // Two-step merge wizard: pick primary (keep), pick duplicate, confirm
-function MergeSwimmersModal({ onClose, onMerged }) {
+function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
   const [step, setStep] = useState(1)
+  const [countryFilter, setCountryFilter] = useState('')
   const [primary, setPrimary] = useState(null)
   const [duplicate, setDuplicate] = useState(null)
   const [query, setQuery] = useState('')
@@ -76,12 +77,12 @@ function MergeSwimmersModal({ onClose, onMerged }) {
     clearTimeout(debounceRef.current)
     if (query.trim().length < 2) { setResults([]); return }
     debounceRef.current = setTimeout(() => {
-      searchSwimmers(query.trim())
+      searchSwimmers(query.trim(), countryFilter ? { nationality: countryFilter } : {})
         .then((res) => setResults(Array.isArray(res.data) ? res.data : res.data?.results || []))
         .catch(() => setResults([]))
     }, 300)
     return () => clearTimeout(debounceRef.current)
-  }, [query])
+  }, [query, countryFilter])
 
   const pick = (s) => {
     if (step === 1) {
@@ -146,16 +147,21 @@ function MergeSwimmersModal({ onClose, onMerged }) {
       </div>
 
       {(step === 1 || !duplicate) && (
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input
             className="input"
             autoFocus
+            style={{ flex: 1, minWidth: 200 }}
             placeholder={step === 1 ? 'Search for the swimmer to KEEP…' : 'Search for the DUPLICATE swimmer…'}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+          <select className="select" style={{ width: 170 }} value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)}>
+            <option value="">All countries</option>
+            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           {results.length > 0 && (
-            <div style={{ marginTop: 8, border: '1px solid var(--color-divider)', maxHeight: 220, overflowY: 'auto' }}>
+            <div style={{ marginTop: 8, flexBasis: '100%', border: '1px solid var(--color-divider)', maxHeight: 220, overflowY: 'auto' }}>
               {results.filter((s) => step === 1 || s.id !== primary?.id).map((s) => (
                 <button
                   key={s.id}
@@ -389,7 +395,7 @@ export default function Swimmers() {
       )}
 
       {isAdmin && showMerge && (
-        <MergeSwimmersModal onClose={() => setShowMerge(false)} onMerged={() => setReloadKey((k) => k + 1)} />
+        <MergeSwimmersModal countries={countries} onClose={() => setShowMerge(false)} onMerged={() => setReloadKey((k) => k + 1)} />
       )}
     </div>
   )

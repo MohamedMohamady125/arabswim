@@ -63,9 +63,13 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def search(self, request):
         q = request.query_params.get('q', '')
-        swimmers = Swimmer.objects.select_related('nationality').filter(
+        qs = Swimmer.objects.select_related('nationality').filter(
             name__icontains=q).exclude(
-            nationality__region='OTHER').exclude(is_relay_team=True)[:20]
+            nationality__region='OTHER').exclude(is_relay_team=True)
+        nationality = request.query_params.get('nationality')
+        if nationality:
+            qs = qs.filter(nationality_id=nationality)
+        swimmers = qs[:20]
         serializer = SwimmerListSerializer(swimmers, many=True)
         return Response(serializer.data)
 

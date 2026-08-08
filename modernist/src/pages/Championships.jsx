@@ -215,6 +215,7 @@ export default function Championships() {
                     background: isExpanded ? 'var(--color-surface)' : undefined,
                   }}
                 >
+                  <Flag code={m.country_detail?.code} name={m.country_detail?.name} placeholder />
                   {m.meet_photo ? (
                     <div className="grayscale" style={{ width: 60, height: 40, flex: 'none', overflow: 'hidden' }}>
                       <img src={mediaUrl(m.meet_photo)} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

@@ -865,7 +865,7 @@ export default function SwimmerProfile() {
         {effectiveTab === 'qualifying' && <QualifyingTab swimmerId={id} />}
         {effectiveTab === 'progression' && <ProgressionTab swimmerId={id} />}
         {effectiveTab === 'compare' && <CompareTab swimmerId={id} />}
-        {effectiveTab === 'transfers' && <TransfersTab swimmerId={id} />}
+        {effectiveTab === 'transfers' && <TransfersTab swimmerId={id} currentCountryId={swimmer.nationality_detail?.id ?? swimmer.nationality} />}
         {effectiveTab === 'gallery' && <GalleryTab swimmerId={id} />}
       </div>
     </div>

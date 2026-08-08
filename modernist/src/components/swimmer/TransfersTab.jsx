@@ -7,9 +7,11 @@ import Flag from '../Flag'
 import { Loading, Empty } from '../ui'
 import { formatDate } from '../../utils'
 
-function ChangeNationalityModal({ swimmerId, onClose, onSaved }) {
+function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved }) {
   const [countries, setCountries] = useState([])
   const [country, setCountry] = useState('')
+  const [fromCountry, setFromCountry] = useState(currentCountryId ? String(currentCountryId) : '')
+  const [recordOnly, setRecordOnly] = useState(false)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
@@ -30,7 +32,13 @@ function ChangeNationalityModal({ swimmerId, onClose, onSaved }) {
     setSaving(true)
     setError('')
     try {
-      await changeSwimmerNationality(swimmerId, { country, effective_date: date, notes })
+      await changeSwimmerNationality(swimmerId, {
+        country,
+        from_country: fromCountry || null,
+        effective_date: date,
+        notes,
+        record_only: recordOnly,
+      })
       onSaved()
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to change nationality')
@@ -53,6 +61,13 @@ function ChangeNationalityModal({ swimmerId, onClose, onSaved }) {
         </div>
         <form onSubmit={submit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="field">
+            <label>Old nationality</label>
+            <select className="select" value={fromCountry} onChange={(e) => setFromCountry(e.target.value)}>
+              <option value="">— none / unknown —</option>
+              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="field">
             <label>New nationality</label>
             <select className="select" value={country} onChange={(e) => setCountry(e.target.value)}>
               <option value="">— pick country —</option>
@@ -63,6 +78,10 @@ function ChangeNationalityModal({ swimmerId, onClose, onSaved }) {
             <label>Effective date</label>
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+            <input type="checkbox" checked={recordOnly} onChange={(e) => setRecordOnly(e.target.checked)} />
+            Past change — record in history only, don't update current nationality
+          </label>
           <div className="field">
             <label>Notes (optional)</label>
             <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. sports citizenship change" />
@@ -86,7 +105,7 @@ function fmtMonthYear(dateStr) {
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
-export default function TransfersTab({ swimmerId }) {
+export default function TransfersTab({ swimmerId, currentCountryId }) {
   const [data, setData] = useState(undefined)
   const [showChange, setShowChange] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
@@ -201,6 +220,7 @@ export default function TransfersTab({ swimmerId }) {
       {showChange && (
         <ChangeNationalityModal
           swimmerId={swimmerId}
+          currentCountryId={currentCountryId}
           onClose={() => setShowChange(false)}
           onSaved={() => { setShowChange(false); setReloadKey((k) => k + 1) }}
         />

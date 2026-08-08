@@ -785,7 +785,23 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             country = Country.objects.get(pk=country_id)
         except Country.DoesNotExist:
             return Response({'error': 'Country not found'}, status=400)
-        if swimmer.nationality_id == country.id:
+
+        # Optional explicit previous nationality (defaults to the swimmer's
+        # current one). Lets admins record historical changes accurately.
+        from_country = swimmer.nationality
+        raw_from = request.data.get('from_country')
+        if raw_from:
+            try:
+                from_country = Country.objects.get(pk=raw_from)
+            except Country.DoesNotExist:
+                return Response({'error': 'Previous country not found'}, status=400)
+        if from_country and from_country.id == country.id:
+            return Response({'error': 'Old and new nationality are the same'}, status=400)
+
+        # record_only: log the change in history without touching the
+        # swimmer's current nationality (for past changes).
+        record_only = str(request.data.get('record_only', '')).lower() in ('1', 'true', 'yes')
+        if not record_only and swimmer.nationality_id == country.id:
             return Response({'error': 'Swimmer already has this nationality'}, status=400)
 
         raw_date = request.data.get('effective_date')
@@ -799,13 +815,14 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
         NationalityChange.objects.create(
             swimmer=swimmer,
-            from_country=swimmer.nationality,
+            from_country=from_country,
             to_country=country,
             effective_date=effective_date,
             notes=request.data.get('notes', '') or '',
         )
-        swimmer.nationality = country
-        swimmer.save(update_fields=['nationality'])
+        if not record_only:
+            swimmer.nationality = country
+            swimmer.save(update_fields=['nationality'])
         return Response(SwimmerDetailSerializer(swimmer).data)
 
     @action(detail=True, methods=['get'], url_path='transfer-history')

@@ -740,20 +740,18 @@ def _parse_relay_swimmers(line):
         part = part.strip()
         if not part:
             continue
-        # Variant A: NAME +reaction split... final_split (reaction can be
-        # negative on flying starts, e.g. "-0.01")
-        m = re.match(r'^(.+?)\s+[+-][\d,\.]+\s+(.+)$', part)
-        if m:
-            name_raw = m.group(1)
-            splits_text = m.group(2)
-        else:
-            # Variant B: NAME YY split... final_split (birth year may be
-            # glued to the name: "EDDINE06")
-            m = re.match(r'^(.+?)\s?\d{2}\s+((?:\d{1,2}:)?\d{2}\.\d{2}.*)$', part)
-            if not m:
-                continue
-            name_raw = m.group(1)
-            splits_text = m.group(2)
+        # The name is everything before the first numeric token; the
+        # numbers that follow vary wildly between files — any mix of birth
+        # year ("08"), reaction (signed "+0,68"/"-0.01", glued to the name
+        # "Eddine+0,58", or unsigned "0.00"), lap splits and the leg time.
+        # Names never contain digits, so the first letter→number boundary
+        # is always the split point, and the leg time is simply the LAST
+        # time-shaped token (years and comma-reactions don't match TIME_RE).
+        m = re.search(r'(?<=\s)(?=[+-]?\d)|(?<=[A-Za-zÀ-ÿ])(?=[+-]?\d)', part)
+        if not m:
+            continue
+        name_raw = part[:m.start()].rstrip(' ,')
+        splits_text = part[m.start():]
         name = normalize_name_splash(name_raw)
         times = TIME_RE.findall(splits_text)
         split_time = times[-1] if times else ''

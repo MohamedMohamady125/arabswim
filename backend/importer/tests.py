@@ -2672,3 +2672,51 @@ class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
             'pool': 'LCM', 'country': self.uae.id})
         swimmer = Swimmer.objects.get(name__icontains='MABROUK')
         self.assertEqual(swimmer.nationality, self.egy)
+
+
+class RelayLegNameTests(SimpleTestCase):
+    """Relay leg lines mix birth years, signed/unsigned/glued reactions and
+    splits — the swimmer name must come out digit-free with the leg time."""
+
+    def _legs(self, line):
+        from importer.parsers.splash_parser import _parse_relay_swimmers
+        return _parse_relay_swimmers(line)
+
+    def test_year_then_reaction(self):
+        self.assertEqual(
+            self._legs('DAHAMNA, Mehdi 08 +0,68 26.62 28.81 28.49 28.94 1:52.86'),
+            ['Mehdi DAHAMNA 1:52.86'])
+
+    def test_reaction_glued_to_name(self):
+        self.assertEqual(
+            self._legs('BENFEKIH, Mehdi Charaf Eddine+0,58 24.28 50.95 '
+                       'SEMMAR, Mohamed Racim +0,26 25.59 52.95'),
+            ['Mehdi Charaf Eddine BENFEKIH 50.95',
+             'Mohamed Racim SEMMAR 52.95'])
+
+    def test_unsigned_zero_reaction(self):
+        self.assertEqual(
+            self._legs('ALLAM, Oussama 0.00 28.94 1:02.30 '
+                       'RABIA, Ilias Amine +0,41 24.58 52.26'),
+            ['Oussama ALLAM 1:02.30', 'Ilias Amine RABIA 52.26'])
+
+    def test_year_then_zero_reaction(self):
+        self.assertEqual(
+            self._legs('ILES, Yanel Amir 11 0.00 26.67 11.73 52.12 32.98 2:03.50'),
+            ['Yanel Amir ILES 2:03.50'])
+
+    def test_classic_reaction_only(self):
+        self.assertEqual(
+            self._legs('ARDJOUNE, ABDELLAH +0,57 26.66 55.39 '
+                       'SYOUD, JAOUAD +0,29 24.32 52.16'),
+            ['Abdellah ARDJOUNE 55.39', 'Jaouad SYOUD 52.16'])
+
+    def test_year_only(self):
+        self.assertEqual(
+            self._legs('BENBARA, MEHDI NAZIM 98 24.02 50.88'),
+            ['Mehdi Nazim BENBARA 50.88'])
+
+    def test_smt_given_name_order(self):
+        self.assertEqual(
+            self._legs('Yi Cheng Lin +0.61 24.13 50.72'),
+            ['Yi Cheng Lin 50.72'])

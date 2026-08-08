@@ -2613,3 +2613,62 @@ class SameMeetMergeTests(TestCase):
         confirm_import(self._one_swim_preview(''), {})
         swimmer.refresh_from_db()
         self.assertEqual(swimmer.club, 'EST')
+
+
+class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
+    """No-nationality athletes inherit the meet's host country — except in
+    UAE meets, whose expat-heavy fields stay nationality-less."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        from core.models import Country
+        cls.uae = Country.objects.create(name='UAE', code='UAE')
+        cls.egy = Country.objects.create(name='Egypt', code='EGY')
+
+    def _preview(self, nat_code=''):
+        return {
+            'meet': {'name': 'Some Meet', 'date': '2026-06-01', 'pool': 'LCM'},
+            'events': [{
+                'event_name': '100 M Freestyle',
+                'distance': 100, 'stroke': 'Freestyle',
+                'gender': 'M', 'is_relay': False, 'round_type': 'Finals',
+                'results': [
+                    {'swimmer_name': 'Karim MABROUK', 'gender': 'M',
+                     'category': '', 'time_centiseconds': 5500,
+                     'birth_year': 2008, 'nationality_code': nat_code},
+                ],
+            }],
+        }
+
+    def test_host_country_fallback_outside_uae(self):
+        from importer.services import confirm_import
+        confirm_import(self._preview(), {}, championship_details={
+            'name': 'Tunisia Nationals', 'date': '2026-06-01',
+            'pool': 'LCM', 'country': self.country.id})
+        swimmer = Swimmer.objects.get(name__icontains='MABROUK')
+        self.assertEqual(swimmer.nationality, self.country)
+
+    def test_uae_meet_leaves_nationality_empty(self):
+        from importer.services import confirm_import
+        confirm_import(self._preview(), {}, championship_details={
+            'name': 'Dubai Open', 'date': '2026-06-01',
+            'pool': 'LCM', 'country': self.uae.id})
+        swimmer = Swimmer.objects.get(name__icontains='MABROUK')
+        self.assertIsNone(swimmer.nationality)
+
+    def test_explicit_code_beats_fallback(self):
+        from importer.services import confirm_import
+        confirm_import(self._preview('EGY'), {}, championship_details={
+            'name': 'Tunisia Nationals', 'date': '2026-06-01',
+            'pool': 'LCM', 'country': self.country.id})
+        swimmer = Swimmer.objects.get(name__icontains='MABROUK')
+        self.assertEqual(swimmer.nationality, self.egy)
+
+    def test_explicit_code_honored_in_uae_meet(self):
+        from importer.services import confirm_import
+        confirm_import(self._preview('EGY'), {}, championship_details={
+            'name': 'Dubai Open', 'date': '2026-06-01',
+            'pool': 'LCM', 'country': self.uae.id})
+        swimmer = Swimmer.objects.get(name__icontains='MABROUK')
+        self.assertEqual(swimmer.nationality, self.egy)

@@ -296,10 +296,12 @@ def _build_preview(parsed_meet):
         if club_resolves > len(all_results) * 0.5:
             is_international = True
 
-    # A file with no nationality signal anywhere (no codes, no country-like
-    # clubs) must not guess nationalities from the meet name/host country:
-    # swimmers get nationality=None rather than a wrong one polluting
-    # records and rankings.
+    # Whether the file carries any nationality signal (codes or country-like
+    # clubs). Code-less swimmers in such files get the meet country stamped
+    # for the preview — except UAE meets, whose expat-heavy fields say
+    # nothing about an athlete's nationality. (Files with no signal at all
+    # leave the preview blank; confirm_import applies the host-country
+    # fallback to newly created swimmers, again outside the UAE.)
     file_has_nationality = is_international or has_nat_count > 0
 
     # Determine meet year for birth_year calculation from age
@@ -347,7 +349,7 @@ def _build_preview(parsed_meet):
                 if club_country:
                     nat_code = club_country.code
                     club_is_country = True
-            if not nat_code and file_has_nationality:
+            if not nat_code and file_has_nationality and inferred_country_code != 'UAE':
                 nat_code = inferred_country_code
 
             # Compute birth_year and age from each other when one is missing
@@ -623,18 +625,17 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         )
     if not meet_country:
         meet_country = _most_common_country(preview_data)
+    country_known = meet_country is not None
     if not meet_country:
         meet_country = Country.objects.first()
 
-    # Only fall back to the meet country for swimmer nationality when the
-    # file itself carried nationality info for at least some swimmers; a
-    # file with none at all creates swimmers with nationality=None so it
-    # never pollutes records/rankings with guessed nationalities.
-    file_has_nationality = any(
-        r.get('nationality_code')
-        for ev in preview_data.get('events', [])
-        for r in ev.get('results', []))
-    swimmer_fallback = meet_country if file_has_nationality else None
+    # New swimmers with no nationality in the file inherit the meet's host
+    # country ("National · Tunisia" ⇒ Tunisian) — except UAE meets, whose
+    # expat-heavy fields must stay nationality-less rather than all be
+    # stamped Emirati. Matched swimmers always keep their DB nationality
+    # unless the file carries an explicit different code.
+    swimmer_fallback = (
+        meet_country if country_known and meet_country.code != 'UAE' else None)
 
     # Get or create championship
     if championship_id:

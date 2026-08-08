@@ -50,6 +50,10 @@ class Championship(models.Model):
     # Created from the calendar for a future meet: hidden from the meets
     # list until it gets real results.
     is_calendar_only = models.BooleanField(default=False)
+    # Unpublished meets (e.g. a foreign meet with a single Arab swimmer,
+    # added via manual entry) feed swimmer profiles and stats only —
+    # hidden from the championships list and the calendar.
+    is_published = models.BooleanField(default=True)
     # National meets (e.g. Tunisian "toutes catégories" championships) that
     # award an extra open podium per event across all age categories on top
     # of the per-category podiums. Auto-detected on import when a TC

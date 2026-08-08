@@ -56,7 +56,7 @@ export default function ManualEntryForm({ onComplete }) {
   const [showNewChamp, setShowNewChamp] = useState(false)
   const [newChamp, setNewChamp] = useState({
     name: '', date: '', end_date: '', pool: 'LCM', country: '', location: '',
-    classification: '', sub_classification: '',
+    classification: '', sub_classification: '', is_published: true,
   })
 
   // Result state
@@ -144,7 +144,7 @@ export default function ManualEntryForm({ onComplete }) {
     if (champDebounce.current) clearTimeout(champDebounce.current)
     if (q.length < 2) { setChampResults([]); return }
     champDebounce.current = setTimeout(() => {
-      getChampionships({ search: q, page_size: 10 })
+      getChampionships({ search: q, page_size: 10, include_unpublished: 1 })
         .then((res) => setChampResults(res.data.results || res.data))
         .catch(() => setChampResults([]))
     }, 300)
@@ -176,7 +176,8 @@ export default function ManualEntryForm({ onComplete }) {
     setError('')
     try {
       const formData = new FormData()
-      Object.entries(newChamp).forEach(([k, v]) => { if (v) formData.append(k, v) })
+      Object.entries(newChamp).forEach(([k, v]) => { if (v && k !== 'is_published') formData.append(k, v) })
+      formData.append('is_published', newChamp.is_published ? 'true' : 'false')
       const res = await createChampionship(formData)
       setSelectedChamp(res.data)
       setShowNewChamp(false)
@@ -358,7 +359,7 @@ export default function ManualEntryForm({ onComplete }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <SelectedBox
               title={selectedChamp.name}
-              sub={`${formatDate(selectedChamp.date)} · ${selectedChamp.pool}${selectedChamp.location ? ` · ${selectedChamp.location}` : ''}`}
+              sub={`${formatDate(selectedChamp.date)} · ${selectedChamp.pool}${selectedChamp.location ? ` · ${selectedChamp.location}` : ''}${selectedChamp.is_published === false ? ' · UNPUBLISHED (swimmer data only)' : ''}`}
               onChange={() => setSelectedChamp(null)}
             />
             <MeetProgramEditor champId={selectedChamp.id} />
@@ -427,6 +428,16 @@ export default function ManualEntryForm({ onComplete }) {
                 </select>
               </div>
             </div>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, cursor: 'pointer', fontSize: 13 }}>
+              <input type="checkbox" checked={newChamp.is_published} style={{ marginTop: 2 }}
+                onChange={(e) => setNewChamp({ ...newChamp, is_published: e.target.checked })} />
+              <span>
+                <strong>Publish this meet</strong>
+                <span className="text-muted" style={{ display: 'block', fontSize: 12 }}>
+                  Unchecked: the meet stays off the championships list and calendar — results count only on the swimmer's profile and data.
+                </span>
+              </span>
+            </label>
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button type="button" className="btn btn-primary" onClick={handleCreateChamp}
                 disabled={!newChamp.name || !newChamp.country || !newChamp.date}>
@@ -448,7 +459,9 @@ export default function ManualEntryForm({ onComplete }) {
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                       onClick={() => { setSelectedChamp(c); setChampResults([]); setChampQuery('') }}>
                       <span style={{ fontWeight: 600 }}>{c.name}</span>
-                      <span className="text-muted" style={{ fontSize: 12 }}>{formatDate(c.date)} · {c.pool}</span>
+                      <span className="text-muted" style={{ fontSize: 12 }}>
+                        {formatDate(c.date)} · {c.pool}{c.is_published === false ? ' · UNPUBLISHED' : ''}
+                      </span>
                     </button>
                   ))}
                 </div>

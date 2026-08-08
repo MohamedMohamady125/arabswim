@@ -129,6 +129,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         # stay out of the meets list unless explicitly requested.
         if not self.request.query_params.get('include_calendar_only'):
             qs = qs.filter(is_calendar_only=False)
+        # Unpublished meets stay off the championships list and calendar;
+        # admin tools (manual entry search) pass include_unpublished=1.
+        if not self.request.query_params.get('include_unpublished'):
+            qs = qs.filter(is_published=True)
         qs = qs.annotate(
             results_count_annotated=Count('results'),
             swimmers_count_annotated=Count(

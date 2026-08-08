@@ -179,7 +179,7 @@ export default function Compare() {
 
   return (
     <div>
-      <PageHead kicker="People" title="Compare swimmers" sub={`Pick up to ${MAX} swimmers to compare personal bests side by side.`} />
+      <PageHead kicker="People" title="Compare Swimmers" sub={`Pick up to ${MAX} swimmers to compare personal bests side by side.`} />
 
       {/* picker */}
       <div className="rule-b" style={{ padding: '18px 32px' }}>

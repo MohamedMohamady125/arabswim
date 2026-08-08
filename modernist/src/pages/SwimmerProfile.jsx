@@ -75,7 +75,7 @@ function ClaimModal({ swimmer, onClose, onSubmitted }) {
   }
 
   return (
-    <Modal title="Claim this profile" onClose={onClose}>
+    <Modal title="Claim This Profile" onClose={onClose}>
       <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 14, lineHeight: 1.5 }}>
         To verify that you are <strong>{swimmer.name}</strong>, upload a photo of your
         passport or national ID. Our team reviews every claim manually — the document is
@@ -139,7 +139,7 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
   )
 
   return (
-    <Modal title="Edit my profile" onClose={onClose}>
+    <Modal title="Edit My Profile" onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {error && (
           <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
@@ -382,7 +382,7 @@ function RankingsPreview({ swimmerId, onViewAll }) {
   return (
     <div>
       <div className="sect-head">
-        <h4>Best rankings</h4>
+        <h4>Best Rankings</h4>
         <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={onViewAll}>View all →</button>
       </div>
       <div className="rule-t">
@@ -498,7 +498,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
       {/* Performance index */}
       {(best_fina?.points || 0) > 0 && (
         <div>
-          <div className="sect-head"><h4>Performance index</h4><span className="micro">FINA points · career best {best_fina.points}</span></div>
+          <div className="sect-head"><h4>Performance Index</h4><span className="micro">FINA points · career best {best_fina.points}</span></div>
           <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {PERFORMANCE_TIERS.map((t) => {
               const isCurrent = best_fina.points >= t.min && (t.max == null || best_fina.points < t.max)
@@ -530,7 +530,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
       {/* Top personal bests */}
       {top_personal_bests?.length > 0 && (
         <div>
-          <div className="sect-head"><h4>Top personal bests</h4></div>
+          <div className="sect-head"><h4>Top Personal Bests</h4></div>
           <div className="rule-t">
             {top_personal_bests.map((pb, i) => (
               <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
@@ -560,7 +560,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
       {intlRecords.length > 0 && (
         <div>
           <div className="sect-head">
-            <h4>International records</h4>
+            <h4>International Records</h4>
             <span className="micro asw-num">{intlRecords.length}</span>
           </div>
           <div className="rule-t">
@@ -602,7 +602,7 @@ function ProgressionTab({ swimmerId }) {
     <div>
       <div style={{ marginBottom: 20 }}>
         <Seg
-          options={[{ value: 'LCM', label: 'Long course' }, { value: 'SCM', label: 'Short course' }]}
+          options={[{ value: 'LCM', label: 'Long Course' }, { value: 'SCM', label: 'Short Course' }]}
           value={pool}
           onChange={setPool}
         />

@@ -199,7 +199,7 @@ function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
     >
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-accent)' }}>
         <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <h4 style={{ margin: 0 }}>Add result</h4>
+          <h4 style={{ margin: 0 }}>Add Result</h4>
           <button className="btn btn-ghost" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -843,9 +843,9 @@ function MedalsTab({ meetId, isNational }) {
 
   // International meets NEVER show a club tally — only country + swimmer.
   const scopeOptions = [
-    !isNational && country.length > 0 && { value: 'country', label: 'Country tally' },
-    isNational && club.length > 0 && { value: 'club', label: 'Club tally' },
-    swimmer.length > 0 && { value: 'swimmer', label: 'Swimmer tally' },
+    !isNational && country.length > 0 && { value: 'country', label: 'Country Tally' },
+    isNational && club.length > 0 && { value: 'club', label: 'Club Tally' },
+    swimmer.length > 0 && { value: 'swimmer', label: 'Swimmer Tally' },
   ].filter(Boolean)
 
   // Keep the selected scope valid for this meet type
@@ -2007,11 +2007,11 @@ export default function MeetDetail() {
             { value: 'results', label: 'Results' },
             { value: 'program', label: 'Program' },
             { value: 'medals', label: 'Medals' },
-            { value: 'records', label: 'Broken records' },
-            { value: 'pbs', label: 'Personal bests' },
-            { value: 'top', label: 'Top performances' },
+            { value: 'records', label: 'Broken Records' },
+            { value: 'pbs', label: 'Personal Bests' },
+            { value: 'top', label: 'Top Performances' },
             { value: 'statistics', label: 'Statistics' },
-            { value: 'improved', label: 'Most improved' },
+            { value: 'improved', label: 'Most Improved' },
             { value: 'gallery', label: 'Gallery' },
           ]}
           value={tab}

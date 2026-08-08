@@ -159,7 +159,7 @@ export default function MedalsTab({ stats }) {
       {/* Distribution donut + breakdown by competition */}
       <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, alignItems: 'start' }}>
         <div>
-          <div className="sect-head"><h4>Medal distribution</h4></div>
+          <div className="sect-head"><h4>Medal Distribution</h4></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 16, flex: 'none' }}>
               <MedalDonut counts={active} label={isAll ? 'All medals' : cat} size={intlDonut ? 140 : 160} />
@@ -187,7 +187,7 @@ export default function MedalsTab({ stats }) {
         </div>
 
         <div>
-          <div className="sect-head"><h4>By competition</h4></div>
+          <div className="sect-head"><h4>By Competition</h4></div>
           <table className="table" style={{ fontSize: 13 }}>
             <thead>
               <tr>
@@ -218,7 +218,7 @@ export default function MedalsTab({ stats }) {
       {/* Horizontal bar summary per competition */}
       {isAll && chartComps.length > 0 && (
         <div>
-          <div className="sect-head"><h4>Medal summary</h4></div>
+          <div className="sect-head"><h4>Medal Summary</h4></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px 32px' }}>
             {chartComps.map((cls) => {
               const cc = compCounts[cls]

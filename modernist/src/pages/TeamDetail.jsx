@@ -118,7 +118,7 @@ function EditClubModal({ team, onClose, onSaved }) {
   }
 
   return (
-    <Modal title="Edit club" onClose={onClose}>
+    <Modal title="Edit Club" onClose={onClose}>
       <Field label="Founded year"><input className="input" style={{ width: '100%' }} type="number" value={form.founded_year} onChange={set('founded_year')} /></Field>
       <Field label="Description"><textarea className="input" rows={5} style={{ width: '100%', resize: 'vertical' }} value={form.description} onChange={set('description')} /></Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -345,7 +345,7 @@ function ArticleModal({ team, onClose, onSaved }) {
   }
 
   return (
-    <Modal title="Add club news" onClose={onClose}>
+    <Modal title="Add Club News" onClose={onClose}>
       <Field label="Title"><input className="input" style={{ width: '100%' }} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
       <Field label="Body"><textarea className="input" rows={7} style={{ width: '100%', resize: 'vertical' }} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
       <Field label="Cover image"><input type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} /></Field>
@@ -374,7 +374,7 @@ function AlbumModal({ team, onClose, onSaved }) {
     }
   }
   return (
-    <Modal title="Add album" onClose={onClose} width={440}>
+    <Modal title="Add Album" onClose={onClose} width={440}>
       <Field label="Album title"><input className="input" style={{ width: '100%' }} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
       {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
@@ -404,7 +404,7 @@ function PredictionTab({ id }) {
   return (
     <div>
       <div className="sect-head">
-        <h4>Next-season projection</h4>
+        <h4>Next-Season Projection</h4>
         <span className="micro">Linear trend over each swimmer's seasonal bests — a forecast, not a promise</span>
       </div>
       <div style={{ marginBottom: 16 }}>
@@ -580,13 +580,13 @@ export default function TeamDetail() {
             <div className="rule-r pad">
               {team.description && (
                 <div className="rule-b" style={{ paddingBottom: 20, marginBottom: 20 }}>
-                  <SectHead title="About the club" />
+                  <SectHead title="About the Club" />
                   <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{team.description}</p>
                 </div>
               )}
 
               {/* contact */}
-              <SectHead title="Club information" />
+              <SectHead title="Club Information" />
               <div className="cellgrid" style={{ marginBottom: 24 }}>
                 <div><div className="card-kicker">Founded</div><div className="asw-num" style={{ fontWeight: 800, fontSize: 18 }}>{team.founded_year || '—'}</div></div>
                 <div><div className="card-kicker">Country</div><div style={{ fontWeight: 700, fontSize: 14 }}>{team.country_detail?.name || '—'}</div></div>
@@ -615,7 +615,7 @@ export default function TeamDetail() {
             {/* right rail */}
             <div>
               <div className="rule-b" style={{ padding: '24px 28px' }}>
-                <SectHead title="Top swimmers · FINA" />
+                <SectHead title="Top Swimmers · FINA" />
                 {(profile?.best_swimmers || []).length === 0 ? (
                   <div className="text-muted" style={{ fontSize: 13 }}>No data yet.</div>
                 ) : (
@@ -642,7 +642,7 @@ export default function TeamDetail() {
               </div>
 
               <div style={{ padding: '24px 28px' }}>
-                <SectHead title="Medal breakdown" />
+                <SectHead title="Medal Breakdown" />
                 {totalMedals === 0 ? (
                   <div className="text-muted" style={{ fontSize: 13 }}>No medals yet.</div>
                 ) : (
@@ -676,7 +676,7 @@ export default function TeamDetail() {
         {tab === 'news' && (
           <div>
             <div className="sect-head">
-              <h4>Club news</h4>
+              <h4>Club News</h4>
               {canManage && <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'article' })}>+ Add news</button>}
             </div>
             {articles.length === 0 ? (
@@ -704,7 +704,7 @@ export default function TeamDetail() {
         {tab === 'team' && (
           <div>
             <div className="sect-head">
-              <h4>Coaching staff · {coaches.length}</h4>
+              <h4>Coaching Staff · {coaches.length}</h4>
               {canManage && <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'coach' })}>+ Add coach</button>}
             </div>
             {coaches.length === 0 ? (
@@ -834,7 +834,7 @@ export default function TeamDetail() {
 
         {tab === 'stats' && (
           <div>
-            <SectHead title="Club statistics" />
+            <SectHead title="Club Statistics" />
             <div className="cellgrid" style={{ marginBottom: 24 }}>
               <div><div className="card-kicker">Swimmers</div><div className="asw-num" style={{ fontWeight: 800, fontSize: 22 }}>{formatNumber(stats?.swimmers)}</div></div>
               <div><div className="card-kicker">Race swims</div><div className="asw-num" style={{ fontWeight: 800, fontSize: 22 }}>{formatNumber(stats?.results)}</div></div>
@@ -863,7 +863,7 @@ export default function TeamDetail() {
               </div>
             )}
 
-            <SectHead title="Best times" />
+            <SectHead title="Best Times" />
             {times.length === 0 ? (
               <Empty label="No times recorded" />
             ) : (
@@ -901,7 +901,7 @@ export default function TeamDetail() {
 
         {tab === 'ranking' && (
           <div>
-            <SectHead title="Club ranking · by medals" />
+            <SectHead title="Club Ranking · by Medals" />
             {ranking.length === 0 ? (
               <Empty label="No ranking data" />
             ) : (
@@ -943,7 +943,7 @@ export default function TeamDetail() {
 
         {tab === 'records' && (
           <div>
-            <SectHead title={`Records held · ${records.length}`} />
+            <SectHead title={`Records Held · ${records.length}`} />
             {records.length === 0 ? (
               <Empty label="No records held" />
             ) : (

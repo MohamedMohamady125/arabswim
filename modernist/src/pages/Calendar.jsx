@@ -102,7 +102,7 @@ function MeetLinksModal({ meet, onClose, onSaved }) {
   }
 
   return (
-    <Modal open title="Meet links" onClose={onClose}>
+    <Modal open title="Meet Links" onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="field">
           <label>Live results URL</label>
@@ -215,7 +215,7 @@ function BirthdaysTab() {
     <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 380px' }}>
       <div className="rule-r">
         <div className="rule-b" style={{ padding: '24px 32px' }}>
-          <SectHead title="Birthdays today" />
+          <SectHead title="Birthdays Today" />
           {today.length === 0 ? (
             <div className="text-muted" style={{ fontSize: 13 }}>No birthdays today.</div>
           ) : (
@@ -229,7 +229,7 @@ function BirthdaysTab() {
           )}
         </div>
         <div style={{ padding: '24px 32px' }}>
-          <SectHead title="Next 7 days" />
+          <SectHead title="Next 7 Days" />
           {upcoming.length === 0 ? (
             <div className="text-muted" style={{ fontSize: 13 }}>No birthdays in the coming week.</div>
           ) : (
@@ -245,7 +245,7 @@ function BirthdaysTab() {
         </div>
       </div>
       <div style={{ padding: '24px 28px' }}>
-        <SectHead title={`All birthdays · ${MONTHS_FULL[now.getMonth()]}`} />
+        <SectHead title={`All Birthdays · ${MONTHS_FULL[now.getMonth()]}`} />
         {thisMonth.length === 0 ? (
           <div className="text-muted" style={{ fontSize: 13 }}>No birthdays this month.</div>
         ) : (
@@ -548,7 +548,7 @@ export default function Calendar() {
           options={[
             { value: 'meets', label: 'Meets' },
             { value: 'birthdays', label: 'Birthdays' },
-            { value: 'events', label: 'Other events' },
+            { value: 'events', label: 'Other Events' },
           ]}
           value={tab}
           onChange={setTab}

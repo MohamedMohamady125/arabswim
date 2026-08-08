@@ -110,7 +110,7 @@ export default function TransfersTab({ swimmerId }) {
       {/* Club history timeline */}
       <div>
         <div className="sect-head">
-          <h4>Club history</h4>
+          <h4>Club History</h4>
           <span className="micro">Based on competition results</span>
         </div>
         {(data.clubs || []).length === 0 ? (
@@ -177,7 +177,7 @@ export default function TransfersTab({ swimmerId }) {
       {/* Nationality changes */}
       {changes.length > 0 && (
         <div>
-          <div className="sect-head"><h4>Nationality changes</h4></div>
+          <div className="sect-head"><h4>Nationality Changes</h4></div>
           <div className="rule-t">
             {changes.map((ch, i) => (
               <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', flexWrap: 'wrap', fontSize: 13 }}>

@@ -139,7 +139,7 @@ export default function Medals() {
 
   return (
     <div>
-      <PageHead title="Medal tables" />
+      <PageHead title="Medal Tables" />
 
       {/* filter bar: one line, scrolls sideways on phone */}
       <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>

@@ -100,7 +100,7 @@ export default function CompareTab({ swimmerId }) {
   const leaders = swimmers.filter((s) => wins[s.id] === maxWins && maxWins > 0)
   const leaderId = leaders.length === 1 ? leaders[0].id : null
 
-  const poolOptions = [{ value: 'ALL', label: 'All pools' },
+  const poolOptions = [{ value: 'ALL', label: 'All Pools' },
     ...['LCM', 'SCM'].filter((p) => pools.has(p)).map((p) => ({ value: p, label: p }))]
 
   const canAdd = opponents.length < MAX_TOTAL - 1

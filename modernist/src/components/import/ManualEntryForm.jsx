@@ -272,7 +272,7 @@ export default function ManualEntryForm({ onComplete }) {
       )}
 
       {/* Section A: Swimmer */}
-      <Section n="1" title="Select swimmer *">
+      <Section n="1" title="Select Swimmer *">
         {selectedSwimmer ? (
           <SelectedBox
             title={selectedSwimmer.name}
@@ -353,7 +353,7 @@ export default function ManualEntryForm({ onComplete }) {
       </Section>
 
       {/* Section B: Championship */}
-      <Section n="2" title="Select championship *">
+      <Section n="2" title="Select Championship *">
         {selectedChamp ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <SelectedBox
@@ -463,7 +463,7 @@ export default function ManualEntryForm({ onComplete }) {
       </Section>
 
       {/* Section C: Result */}
-      <Section n="3" title="Result details *">
+      <Section n="3" title="Result Details *">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="grid-2">
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label>Event *</label>

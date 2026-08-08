@@ -303,7 +303,7 @@ export default function CountryProfile() {
       {/* medals by competition */}
       {medalBoxes.length > 0 && (
         <div className="pad-lg rule-b">
-          <SectHead title="Medals by competition" />
+          <SectHead title="Medals by Competition" />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {medalBoxes.map((m) => (
               <div key={m.name} className="asw-fade-up" style={{ background: CLASS_COLORS[m.name] || 'var(--color-accent)', color: '#fff', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
@@ -322,7 +322,7 @@ export default function CountryProfile() {
 
       {/* performance progression */}
       <div className="pad-lg rule-b">
-        <SectHead title="Performance progression">
+        <SectHead title="Performance Progression">
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <Seg options={STROKES} value={progStroke} onChange={setProgStroke} />
             <Seg
@@ -339,7 +339,7 @@ export default function CountryProfile() {
       {/* top swimmers + top medalists */}
       <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
         <div className="pad-lg rule-r">
-          <SectHead title={`Top swimmers by FINA · ${topSwimmers.length}`} />
+          <SectHead title={`Top Swimmers by FINA · ${topSwimmers.length}`} />
           {topSwimmers.length === 0 ? (
             <Empty label="No swimmers on record" />
           ) : (
@@ -373,7 +373,7 @@ export default function CountryProfile() {
           )}
         </div>
         <div className="pad-lg">
-          <SectHead title={`Top medalists · ${topMedalists.length}`} />
+          <SectHead title={`Top Medalists · ${topMedalists.length}`} />
           {topMedalists.length === 0 ? (
             <Empty label="No medals yet" />
           ) : (
@@ -409,7 +409,7 @@ export default function CountryProfile() {
 
       {/* national best times */}
       <div className="rule-t pad-lg">
-        <SectHead title={`National best times · ${filteredBest.length}`}>
+        <SectHead title={`National Best Times · ${filteredBest.length}`}>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <Seg
               options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
@@ -417,7 +417,7 @@ export default function CountryProfile() {
               onChange={setBtSex}
             />
             <Seg
-              options={[{ value: '', label: 'All pools' }, { value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
+              options={[{ value: '', label: 'All Pools' }, { value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
               value={btPool}
               onChange={setBtPool}
             />
@@ -464,19 +464,19 @@ export default function CountryProfile() {
       {/* records */}
       {newRecords.length > 0 && (
         <div className="rule-t pad-lg">
-          <SectHead title={`New records · ${newRecords.length}`} to="/new-records" linkLabel="All new records" />
+          <SectHead title={`New Records · ${newRecords.length}`} to="/new-records" linkLabel="All new records" />
           <RecordsTable records={newRecords} />
         </div>
       )}
       <div className="rule-t pad-lg">
-        <SectHead title={`Records held · ${currentRecords.length}`} />
+        <SectHead title={`Records Held · ${currentRecords.length}`} />
         {currentRecords.length === 0 ? <Empty label="No records held" /> : <RecordsTable records={currentRecords} />}
       </div>
 
       {/* championships participated */}
       {participated.length > 0 && (
         <div className="rule-t pad-lg">
-          <SectHead title={`Championships participated · ${participated.length}`} />
+          <SectHead title={`Championships Participated · ${participated.length}`} />
           <div>
             {participated.map((c) => {
               const isOpen = openChamp === c.id
@@ -537,7 +537,7 @@ export default function CountryProfile() {
       {/* hosted + teams */}
       <div className="rule-t grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
         <div className="pad-lg rule-r">
-          <SectHead title={`Championships hosted · ${hosted.length}`} />
+          <SectHead title={`Championships Hosted · ${hosted.length}`} />
           {hosted.length === 0 ? (
             <Empty label="No championships hosted" />
           ) : (

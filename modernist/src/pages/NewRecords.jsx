@@ -90,7 +90,7 @@ function AddRecordModal({ onClose, onCreated }) {
     >
       <form onSubmit={submit} style={{ width: 520, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-accent)' }}>
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
-          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Add record</strong>
+          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Add Record</strong>
           <button type="button" className="btn-ghost" onClick={onClose} aria-label="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
         </div>
 
@@ -232,7 +232,7 @@ export default function NewRecords() {
 
   return (
     <div>
-      <PageHead title="New records" />
+      <PageHead title="New Records" />
 
       {/* scope filter */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -241,7 +241,7 @@ export default function NewRecords() {
         </select>
         {isAdmin && (
           <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={() => setAddOpen(true)}>
-            + Add record
+            + Add Record
           </button>
         )}
       </div>

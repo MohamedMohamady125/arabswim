@@ -383,14 +383,14 @@ export default function Import() {
 
   return (
     <div>
-      <PageHead kicker="Admin" title="Import results" sub="Upload meet files, review parsed data, match swimmers and import" />
+      <PageHead kicker="Admin" title="Import Results" sub="Upload meet files, review parsed data, match swimmers and import" />
 
       {/* Top-level tool switcher */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Seg
           options={[
-            { value: 'file', label: 'Import file' },
-            { value: 'manual', label: 'Manual entry' },
+            { value: 'file', label: 'Import File' },
+            { value: 'manual', label: 'Manual Entry' },
             { value: 'duplicates', label: 'Duplicates' },
             { value: 'history', label: 'History' },
           ]}
@@ -1076,7 +1076,7 @@ function DuplicatesTab() {
   return (
     <div>
       <div className="sect-head">
-        <h4>Potential duplicate swimmers</h4>
+        <h4>Potential Duplicate Swimmers</h4>
         <button type="button" className="btn btn-secondary" onClick={load}>Rescan</button>
       </div>
       {message && <div style={successBox}>{message}</div>}
@@ -1155,7 +1155,7 @@ function HistoryTab() {
   return (
     <div>
       <div className="sect-head">
-        <h4>Import history</h4>
+        <h4>Import History</h4>
         <span className="micro">Last 50 imports</span>
       </div>
       {error && <div style={errorBox}>{error}</div>}

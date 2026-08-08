@@ -105,7 +105,7 @@ export default function Countries() {
           </div>
           {others.length > 0 && (
             <div className="rule-t pad">
-              <SectHead title="Other countries in the database" />
+              <SectHead title="Other Countries in the Database" />
               <CountryTable countries={others} />
             </div>
           )}

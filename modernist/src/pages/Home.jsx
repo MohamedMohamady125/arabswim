@@ -320,7 +320,7 @@ export default function Home() {
         <div className="rule-r">
           <div style={{ padding: '28px 32px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-              <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>Latest results</h1>
+              <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>Latest Results</h1>
               {latest && <span className="tag tag-accent" style={{ marginBottom: 8 }}>TOP SWIMS</span>}
             </div>
             {latest && (
@@ -377,7 +377,7 @@ export default function Home() {
           {/* season leaders */}
           {leaders.length > 0 && (
             <div className="rule-t" style={{ padding: '24px 32px 28px' }}>
-              <SectHead title={leadersYear ? `${leadersYear} season leaders · LCM` : 'All-time leaders · LCM'} to="/rankings" linkLabel="Full rankings" />
+              <SectHead title={leadersYear ? `${leadersYear} Season Leaders · LCM` : 'All-Time Leaders · LCM'} to="/rankings" linkLabel="Full rankings" />
               <div className="cellgrid" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(160px, 1fr))` }}>
                 {leaders.map((l) => (
                   <Link key={l.label} to="/rankings" style={{ color: 'inherit', textDecoration: 'none' }}>
@@ -395,7 +395,7 @@ export default function Home() {
 
           {/* new records */}
           <div className="rule-t" style={{ padding: '24px 32px 30px' }}>
-            <SectHead title="New records" to="/new-records" linkLabel="Record books" />
+            <SectHead title="New Records" to="/new-records" linkLabel="Record books" />
             {newRecords.length === 0 ? (
               <div className="text-muted" style={{ fontSize: 13 }}>No new records yet.</div>
             ) : (
@@ -440,7 +440,7 @@ export default function Home() {
 
           {/* medal tally */}
           <div className="rule-b" style={{ padding: '24px 28px' }}>
-            <SectHead title="Medal tally" to="/medals" linkLabel="All medals" />
+            <SectHead title="Medal Tally" to="/medals" linkLabel="All medals" />
             <table className="table">
               <thead>
                 <tr>
@@ -478,7 +478,7 @@ export default function Home() {
           {/* most improved — progress stories */}
           {improved.length > 0 && (
             <div className="rule-b" style={{ padding: '24px 28px' }}>
-              <SectHead title="Most improved" to={latest ? `/meets/${latest.id}?tab=most-improved` : '/championships'} linkLabel="More" />
+              <SectHead title="Most Improved" to={latest ? `/meets/${latest.id}?tab=most-improved` : '/championships'} linkLabel="More" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {improved.map((r, i) => (
                   <div key={`${r.swimmer_id}-${r.event_name}`} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, borderBottom: i < improved.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
@@ -514,7 +514,7 @@ export default function Home() {
 
           {/* head-to-head teaser */}
           <div style={{ padding: '24px 28px' }}>
-            <SectHead title="Head-to-head" />
+            <SectHead title="Head-to-Head" />
             <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
               Pick two swimmers and see who wins, event by event.
             </div>

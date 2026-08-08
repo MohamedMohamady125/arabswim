@@ -143,7 +143,7 @@ export default function QualifyingTimes() {
 
   return (
     <div>
-      <PageHead title="Qualifying times" />
+      <PageHead title="Qualifying Times" />
 
       {standards.length === 0 ? (
         <Empty label="No qualifying standards published" />

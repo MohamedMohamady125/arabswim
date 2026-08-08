@@ -52,7 +52,7 @@ export default function MeetsTab({ stats }) {
 
       {/* Year timeline */}
       <div>
-        <div className="sect-head"><h4>Meet timeline</h4></div>
+        <div className="sect-head"><h4>Meet Timeline</h4></div>
         {years.map((year) => (
           <div key={year} style={{ marginBottom: 20 }}>
             <div className="rule-b" style={{ display: 'flex', alignItems: 'baseline', gap: 12, paddingBottom: 6, marginBottom: 0 }}>

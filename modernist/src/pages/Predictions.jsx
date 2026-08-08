@@ -101,7 +101,7 @@ function TallyTable({ table, isNational }) {
   if (!table || table.length === 0) return null
   return (
     <div style={{ marginBottom: 26 }}>
-      <SectHead title={isNational ? 'Projected medal table by club' : 'Projected medal table by country'} />
+      <SectHead title={isNational ? 'Projected Medal Table by Club' : 'Projected Medal Table by Country'} />
       <div className="micro" style={{ margin: '-4px 0 10px' }}>
         Expected medal counts across all simulated outcomes — decimals are averages, not promises
       </div>
@@ -239,7 +239,7 @@ function AgeGroupsAdmin({ champId, onChanged }) {
 
   return (
     <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 18px' }}>
-      <SectHead title="Age categories (admin)" />
+      <SectHead title="Age Categories (Admin)" />
       <div className="micro" style={{ margin: '-4px 0 12px', textTransform: 'none', letterSpacing: 0 }}>
         For age-group / youth meets. Each category is predicted as its own race; swimmers are placed
         by their age in the meet year. Leave empty for open meets. Changes recompute the prediction instantly.
@@ -329,7 +329,7 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
 
   return (
     <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 18px' }}>
-      <SectHead title="Entry list (admin)" />
+      <SectHead title="Entry List (Admin)" />
       <div className="micro" style={{ margin: '-4px 0 12px' }}>
         Stage: <b>{stage}</b> — adding official entries upgrades the prediction to Official / High confidence after recompute.
       </div>
@@ -627,7 +627,7 @@ function OverviewTab({ snap, onOpenEvent }) {
       <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 22 }}>
         <div style={{ flex: '1 1 460px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-            <SectHead title="Medal projection overview" />
+            <SectHead title="Medal Projection Overview" />
             {table.length > 1 && (
               <select
                 value={selectedCountry?.name || ''}
@@ -667,7 +667,7 @@ function OverviewTab({ snap, onOpenEvent }) {
       {/* top candidates + legend */}
       <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 22 }}>
         <div style={{ flex: '1 1 520px', minWidth: 0 }}>
-          <SectHead title="Top medal candidates" />
+          <SectHead title="Top Medal Candidates" />
           {candidates.length === 0 ? (
             <Empty label="No candidates yet" />
           ) : (
@@ -696,7 +696,7 @@ function OverviewTab({ snap, onOpenEvent }) {
       {/* by event + medal table */}
       <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 22, alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 520px', minWidth: 0 }}>
-          <SectHead title="Medal predictions by event" />
+          <SectHead title="Medal Predictions by Event" />
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '8px 0 12px' }}>
             {STROKE_CHIPS.map((s) => {
               const active = stroke === s
@@ -927,7 +927,7 @@ export default function Predictions() {
 
   return (
     <div>
-      <PageHead title="Medal predictions" />
+      <PageHead title="Medal Predictions" />
 
       {champs.length === 0 ? (
         <Empty label="No upcoming Arab, GCC or national championships to predict yet" />
@@ -1012,16 +1012,16 @@ export default function Predictions() {
 
               {view === 'original' && (
               <>
-              <Section title="Top gold candidates" items={sections.top_gold} />
-              <Section title="Strongest medal chances" items={sections.strongest} />
-              <Section title="Podium challengers" items={sections.challengers} sub="Within reach of the podium — a strong swim changes everything" />
-              <Section title="Rising medal chances" items={sections.rising} sub="Biggest gains since the previous prediction update" showDelta />
+              <Section title="Top Gold Candidates" items={sections.top_gold} />
+              <Section title="Strongest Medal Chances" items={sections.strongest} />
+              <Section title="Podium Challengers" items={sections.challengers} sub="Within reach of the podium — a strong swim changes everything" />
+              <Section title="Rising Medal Chances" items={sections.rising} sub="Biggest gains since the previous prediction update" showDelta />
 
               <TallyTable table={snap.table} isNational={snap.is_national} />
 
               {/* medal chances by event */}
               <div style={{ marginBottom: 26 }}>
-                <SectHead title="Medal chances by event" />
+                <SectHead title="Medal Chances by Event" />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '4px 0 12px' }}>
                   <Seg
                     options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}

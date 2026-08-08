@@ -95,7 +95,7 @@ function AutoCleanModal({ onClose, onCleaned }) {
   }
 
   return (
-    <Modal title="Auto-clean duplicate teams" onClose={onClose}>
+    <Modal title="Auto-Clean Duplicate Teams" onClose={onClose}>
       <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
         Finds name variants (case, dashes, squad letters, national teams) and merges them.
       </p>
@@ -253,7 +253,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
   )
 
   return (
-    <Modal title="Merge teams" onClose={onClose} width={860}>
+    <Modal title="Merge Teams" onClose={onClose} width={860}>
       <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
         Select two teams to merge — all data transfers to the kept team.
       </p>

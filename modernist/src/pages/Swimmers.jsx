@@ -134,7 +134,7 @@ function MergeSwimmersModal({ onClose, onMerged }) {
   )
 
   return (
-    <Modal title="Merge swimmers" onClose={onClose}>
+    <Modal title="Merge Swimmers" onClose={onClose}>
       <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
         Select the swimmer to <strong>keep</strong> (primary), then the <strong>duplicate</strong> to merge into
         them. All results, records and medals from the duplicate will be transferred, and the duplicate deleted.

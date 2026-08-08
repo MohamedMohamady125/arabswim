@@ -190,11 +190,11 @@ export default function AdminDashboard() {
     <div>
       <PageHead kicker="Admin" title="Dashboard" />
       <div className="pad rule-b">
-        <SectHead title="Pending profile claims" />
+        <SectHead title="Pending Profile Claims" />
         <ClaimsQueue />
       </div>
       <div className="pad">
-        <SectHead title="Create club / federation account" />
+        <SectHead title="Create Club / Federation Account" />
         <OrgAccountForm />
       </div>
     </div>

@@ -120,7 +120,7 @@ export default function RecordsTab({ swimmerId }) {
   const subTabs = (
     <div style={{ marginBottom: 20 }}>
       <Seg
-        options={[{ value: 'records', label: 'Records held' }, { value: 'gaps', label: 'Record gaps' }]}
+        options={[{ value: 'records', label: 'Records Held' }, { value: 'gaps', label: 'Record Gaps' }]}
         value={view}
         onChange={setView}
       />

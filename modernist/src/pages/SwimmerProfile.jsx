@@ -684,6 +684,12 @@ export default function SwimmerProfile() {
   }, [id, isAuthed, isAdmin, mySwimmerId])
 
   const handleEventClick = async (event) => {
+    // clicking the open event again collapses it
+    if (selectedEvent?.event_id === event.event_id && selectedEvent?.pool === event.pool) {
+      setSelectedEvent(null)
+      setHistory([])
+      return
+    }
     setSelectedEvent(event)
     setLoadingHistory(true)
     try {

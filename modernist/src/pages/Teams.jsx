@@ -183,6 +183,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
   const [removeId, setRemoveId] = useState(null)
   const [searchKeep, setSearchKeep] = useState('')
   const [searchRemove, setSearchRemove] = useState('')
+  const [countryFilter, setCountryFilter] = useState('')
   const [merging, setMerging] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
@@ -201,8 +202,15 @@ function MergeTeamsModal({ onClose, onMerged }) {
 
   const keepTeam = allTeams.find((t) => t.id === keepId)
   const removeTeam = allTeams.find((t) => t.id === removeId)
-  const filteredKeep = allTeams.filter((t) => t.id !== removeId && t.name.toLowerCase().includes(searchKeep.toLowerCase()))
-  const filteredRemove = allTeams.filter((t) => t.id !== keepId && t.name.toLowerCase().includes(searchRemove.toLowerCase()))
+  const countryOptions = [...new Map(allTeams
+    .filter((t) => t.country_detail)
+    .map((t) => [t.country_detail.id, t.country_detail])).values()]
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const byCountry = countryFilter
+    ? allTeams.filter((t) => String(t.country_detail?.id) === String(countryFilter))
+    : allTeams
+  const filteredKeep = byCountry.filter((t) => t.id !== removeId && t.name.toLowerCase().includes(searchKeep.toLowerCase()))
+  const filteredRemove = byCountry.filter((t) => t.id !== keepId && t.name.toLowerCase().includes(searchRemove.toLowerCase()))
 
   const handleMerge = async () => {
     if (!keepId || !removeId) return
@@ -282,6 +290,15 @@ function MergeTeamsModal({ onClose, onMerged }) {
         </div>
       ) : (
         <div>
+          <select
+            className="select"
+            value={countryFilter}
+            onChange={(e) => setCountryFilter(e.target.value)}
+            style={{ marginBottom: 12, maxWidth: 240 }}
+          >
+            <option value="">All countries</option>
+            {countryOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 14, alignItems: 'start' }}>
             {/* KEEP */}
             <div>

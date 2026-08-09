@@ -1,658 +1,466 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
-import api from '../api/client'
-import { getCountries } from '../api/core'
-import { getChampionships, getMostImproved } from '../api/championships'
-import { getMedalSummary } from '../api/medals'
-import { getNewRecords, getComputedRecords } from '../api/records'
-import { getInductees } from '../api/fame'
-import { getArticles } from '../api/news'
-import { getAlbums } from '../api/media'
-import { getRankings } from '../api/rankings'
-import { searchSwimmers, getSwimmerBirthdays } from '../api/swimmers'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  Globe, Users, Shield, Waves, ClipboardList, Medal as MedalIcon, Trophy,
+  TrendingUp, Calendar, MapPin, Droplets, CheckCircle2, Flag as FlagIcon,
+  Award, Timer,
+} from 'lucide-react'
+import { getQuickStats } from '../api/championships'
 import Flag from '../components/Flag'
-import { SectHead, Loading, Pager } from '../components/ui'
-import { formatDate, formatNumber, mediaUrl, formatDateRange } from '../utils'
-import { useAuth } from '../context/AuthContext'
-import { useFeatures } from '../context/FeaturesContext'
+import { Loading, Empty } from '../components/ui'
+import { formatNumber, formatDateRange } from '../utils'
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const NAVY = 'var(--color-accent)'
+const NAVY_DARK = 'var(--color-accent-800)'
+const BLUE = 'var(--color-accent-2)'
+const GOLD = 'var(--asw-gold)'
+const SILVER = 'var(--asw-silver)'
+const BRONZE = 'var(--asw-bronze)'
 
-// Debounced swimmer search input with a dropdown of matches.
-function SwimmerSearchInput({ placeholder, onPick, dark = false }) {
-  const [q, setQ] = useState('')
-  const [results, setResults] = useState([])
-  const timer = useRef(null)
-  useEffect(() => {
-    if (q.trim().length < 2) { setResults([]); return }
-    clearTimeout(timer.current)
-    timer.current = setTimeout(() => {
-      searchSwimmers(q.trim())
-        .then((res) => {
-          const l = Array.isArray(res.data) ? res.data : res.data?.results || []
-          setResults(l.slice(0, 6))
-        })
-        .catch(() => setResults([]))
-    }, 250)
-    return () => clearTimeout(timer.current)
-  }, [q])
+/* ── Tiny chart primitives (flat SVG/CSS, site palette) ─────────────── */
+
+function VBars({ data, color = NAVY, height = 140 }) {
+  const max = Math.max(...data.map((d) => d.value), 1)
   return (
-    <div style={{ position: 'relative' }}>
-      <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: dark ? 'rgba(255,255,255,0.5)' : 'var(--color-neutral-600)', pointerEvents: 'none' }} />
-      <input
-        className="input"
-        style={{ width: '100%', paddingLeft: 32, ...(dark ? { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff' } : {}) }}
-        placeholder={placeholder}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
-      {results.length > 0 && (
-        <div style={{ position: 'absolute', zIndex: 30, left: 0, right: 0, background: '#fff', border: '2px solid var(--color-divider)', borderTop: 0, boxShadow: 'var(--shadow-md)' }}>
-          {results.map((s) => (
-            <button key={s.id} type="button" className="hair-b"
-              onClick={() => { onPick(s); setQ(''); setResults([]) }}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px', border: 0, background: 'transparent', cursor: 'pointer', font: 'inherit', textAlign: 'left', color: 'var(--color-text)' }}>
-              <Flag code={s.nationality_detail?.code || s.nationality_code} name={s.nationality_detail?.name || s.nationality} />
-              <span style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</span>
-              {s.birth_year && <span className="text-muted" style={{ fontSize: 12, marginLeft: 'auto' }}>{s.birth_year}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-function parseMeetDate(d) {
-  if (!d) return null
-  const m = String(d).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
-  if (m) return new Date(+m[3], +m[2] - 1, +m[1])
-  const dt = new Date(d)
-  return Number.isNaN(dt.getTime()) ? null : dt
-}
-
-function Countdown({ target }) {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 30000)
-    return () => clearInterval(t)
-  }, [])
-  const diff = Math.max(0, target - now)
-  const days = Math.floor(diff / 86400000)
-  const hrs = Math.floor((diff % 86400000) / 3600000)
-  const min = Math.floor((diff % 3600000) / 60000)
-  const cells = [[days, 'Days'], [String(hrs).padStart(2, '0'), 'Hrs'], [String(min).padStart(2, '0'), 'Min']]
-  return (
-    <div style={{ display: 'flex', gap: 1, background: 'var(--color-divider)', marginTop: 14 }}>
-      {cells.map(([v, l]) => (
-        <div key={l} style={{ flex: 1, background: 'var(--color-bg)', padding: '8px 10px' }}>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{v}</div>
-          <div className="micro" style={{ fontSize: 10 }}>{l}</div>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+      {data.map((d, i) => (
+        <div key={i} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: NAVY_DARK }}>{d.value}</span>
+          <div style={{ width: '100%', maxWidth: 26, height: Math.max(3, Math.round((d.value / max) * height)), background: d.color || color }} />
+          <span style={{ fontSize: 9.5, fontWeight: 600, color: 'var(--color-neutral-600)', textAlign: 'center', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{d.label}</span>
         </div>
       ))}
     </div>
   )
 }
 
-export default function Home() {
-  const { isAdmin } = useAuth()
-  const { features } = useFeatures()
-  // launch toggles: admin previews everything, public sees enabled sections only
-  const show = (flag) => isAdmin || features[flag] !== false
-  const [counts, setCounts] = useState(null)
-  const [meets, setMeets] = useState([])
-  const [topResults, setTopResults] = useState([])
-  const [topPage, setTopPage] = useState(1)
-  const [medalTally, setMedalTally] = useState([])
-  const [newRecords, setNewRecords] = useState([])
-  const [inductees, setInductees] = useState([])
-  const [articles, setArticles] = useState([])
-  const [albums, setAlbums] = useState([])
-  const [arabCountries, setArabCountries] = useState([])
-  const [heroRecords, setHeroRecords] = useState([]) // marquee Arab records for the hero showcase
-  const [leaders, setLeaders] = useState([]) // season leaders strip
-  const [leadersYear, setLeadersYear] = useState(null)
-  const [improved, setImproved] = useState([])
-  const [birthdays, setBirthdays] = useState([])
-  const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
-  const [cmpA, setCmpA] = useState(null)
-  const [cmpB, setCmpB] = useState(null)
-
-  useEffect(() => {
-    let alive = true
-    async function load() {
-      try {
-        const now = new Date()
-        const year = now.getFullYear()
-        const leaderSpecs = [
-          { event: 1, gender: 'M', label: '50 Free · Men' },
-          { event: 1, gender: 'F', label: '50 Free · Women' },
-          { event: 2, gender: 'M', label: '100 Free · Men' },
-          { event: 2, gender: 'F', label: '100 Free · Women' },
-        ]
-        const [swimmersRes, meetsRes, resultsRes, recordsRes, countriesRes, newRecRes, fameRes, newsRes, albumsRes, topRes, bdayRes, ...leaderRes] =
-          await Promise.allSettled([
-            api.get('/swimmers/', { params: { page_size: 1 } }),
-            getChampionships({ page_size: 50 }),
-            api.get('/results/', { params: { page_size: 1 } }),
-            api.get('/records/', { params: { page_size: 1 } }),
-            getCountries(),
-            getNewRecords(),
-            getInductees(),
-            getArticles({ page_size: 6, status: 'PUBLISHED' }),
-            getAlbums({ page_size: 8 }),
-            getComputedRecords({ scope: 'arab', pool: 'LCM', age_group: 'OPEN' }),
-            getSwimmerBirthdays(now.getMonth() + 1),
-            ...leaderSpecs.map((s) =>
-              getRankings({ scope: 'arab', gender: s.gender, pool: 'LCM', event: s.event, age_group: 'OPEN', year, page_size: 1 })),
-          ])
-        if (!alive) return
-        const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
-        const list = (d) => (Array.isArray(d) ? d : d?.results || [])
-
-        const countries = list(val(countriesRes))
-        const arab = countries.filter((c) => c.region === 'ARAB' || c.region === 'GCC')
-        setArabCountries(arab)
-        const meetList = list(val(meetsRes))
-        setMeets(meetList)
-        setCounts({
-          swimmers: val(swimmersRes)?.count,
-          meets: val(meetsRes)?.count ?? meetList.length,
-          results: val(resultsRes)?.count,
-          records: val(recordsRes)?.count,
-          federations: arab.length || 22,
-        })
-        setNewRecords(list(val(newRecRes)).slice(0, 3))
-        setInductees(list(val(fameRes)).slice(0, 4))
-        setArticles(list(val(newsRes)))
-        setAlbums(list(val(albumsRes)).slice(0, 4))
-        // Hero showcase: strongest Arab records by FINA, one per event/gender, individuals only
-        const recs = list(val(topRes))
-          .filter((r) => !r.is_relay && !r.is_relay_team && r.fina_points)
-          .sort((a, b) => b.fina_points - a.fina_points)
-        const topM = recs.filter((r) => r.gender === 'M')
-        const topF = recs.filter((r) => r.gender === 'F')
-        setHeroRecords([topM[0], topF[0], topM[1] || topF[1]].filter(Boolean))
-
-        // Birthdays: sane ages, upcoming this month first
-        const today = now.getDate()
-        const bdays = list(val(bdayRes))
-          .filter((b) => b.age > 4 && b.age < 70)
-          .sort((a, b) => {
-            const au = a.day >= today ? 0 : 1
-            const bu = b.day >= today ? 0 : 1
-            return au - bu || a.day - b.day
-          })
-        setBirthdays(bdays.slice(0, 4))
-
-        // Season leaders: current year, fall back to all-time if the season is empty
-        let leaderRows = leaderRes.map((r, i) => ({ ...leaderSpecs[i], row: list(val(r))[0] || null }))
-        if (leaderRows.every((l) => !l.row)) {
-          const retry = await Promise.allSettled(leaderSpecs.map((s) =>
-            getRankings({ scope: 'arab', gender: s.gender, pool: 'LCM', event: s.event, age_group: 'OPEN', page_size: 1 })))
-          if (!alive) return
-          leaderRows = retry.map((r, i) => ({ ...leaderSpecs[i], row: list(val(r))[0] || null }))
-          setLeadersYear(null)
-        } else {
-          setLeadersYear(year)
-        }
-        setLeaders(leaderRows.filter((l) => l.row))
-
-        // latest meet → headline results + medal tally
-        const latest = meetList[0]
-        if (latest) {
-          const [resTop, medals] = await Promise.allSettled([
-            api.get('/results/', { params: { championship: latest.id, ordering: '-fina_points', page_size: 50 } }),
-            getMedalSummary({ championship: latest.id }),
-          ])
-          if (!alive) return
-          // one row per swimmer — their best swim of the meet
-          const seen = new Set()
-          setTopResults(list(val(resTop)).filter((r) => {
-            if (seen.has(r.swimmer)) return false
-            seen.add(r.swimmer)
-            return true
-          }))
-          setMedalTally(list(val(medals)).slice(0, 6))
-          getMostImproved(latest.id)
-            .then((res) => {
-              if (!alive) return
-              const seen = new Set()
-              const rows = (Array.isArray(res.data) ? res.data : []).filter((r) => {
-                if (r.is_new_entry || seen.has(r.swimmer_id)) return false
-                seen.add(r.swimmer_id)
-                return true
-              })
-              setImproved(rows.slice(0, 3))
-            })
-            .catch(() => {})
-        }
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    load()
-    return () => { alive = false }
-  }, [])
-
-  const latest = meets[0]
-  const upcoming = useMemo(() => {
-    const today = new Date()
-    return meets
-      .map((m) => ({ m, d: parseMeetDate(m.date) }))
-      .filter((x) => x.d && x.d > today)
-      .sort((a, b) => a.d - b.d)[0]
-  }, [meets])
-
-  if (loading) return <Loading label="Loading the database" />
-  const featured = upcoming?.m || latest
-
+function Donut({ segments, size = 156, thickness = 27, centerTop, centerBot }) {
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1
+  const r = (size - thickness) / 2
+  const C = 2 * Math.PI * r
+  let acc = 0
   return (
-    <div>
-      {/* hero — identity + instant search + rotating spotlight */}
-      <div className="rule-b" style={{ background: 'var(--color-accent-800)', color: '#fff' }}>
-        <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 380px' }}>
-          <div style={{ padding: '44px 32px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div className="kicker" style={{ color: 'var(--asw-gold)', marginBottom: 10 }}>The record of Arab swimming</div>
-            <h1 style={{ margin: 0, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
-              Every meet. Every swimmer.<br />One home.
-            </h1>
-            <p style={{ margin: '14px 0 22px', fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,0.72)', maxWidth: 460 }}>
-              {formatNumber(counts?.results)} swims, {formatNumber(counts?.swimmers)} swimmers and every record across{' '}
-              {counts?.federations} federations — updated with every championship.
-            </p>
-            <div style={{ maxWidth: 380 }}>
-              <SwimmerSearchInput dark placeholder="Find a swimmer by name…" onPick={(s) => navigate(`/swimmers/${s.id}`)} />
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-              <Link className="btn btn-primary" to="/rankings" style={{ background: 'var(--asw-gold)', borderColor: 'var(--asw-gold)' }}>Explore rankings</Link>
-              <Link className="btn" to="/records" style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.4)', background: 'transparent' }}>Record books</Link>
-              <Link className="btn" to="/compare" style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.4)', background: 'transparent' }}>Head-to-head</Link>
-            </div>
-          </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-neutral-100)" strokeWidth={thickness} />
+      {segments.map((s, i) => {
+        const frac = s.value / total
+        const el = (
+          <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color}
+            strokeWidth={thickness} strokeDasharray={`${frac * C} ${C}`}
+            strokeDashoffset={-acc * C} transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+            <title>{`${s.label}: ${s.value}`}</title>
+          </circle>
+        )
+        acc += frac
+        return el
+      })}
+      <text x="50%" y={centerBot ? '48%' : '54%'} textAnchor="middle"
+        style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, fill: 'var(--color-accent-800)' }}>{centerTop}</text>
+      {centerBot && (
+        <text x="50%" y="61%" textAnchor="middle"
+          style={{ fontWeight: 700, fontSize: 8.5, letterSpacing: '0.09em', fill: 'var(--color-neutral-600)' }}>{centerBot}</text>
+      )}
+    </svg>
+  )
+}
 
-          {/* Arab records showcase — the fastest ever, front and center */}
-          {heroRecords.length > 0 && (
-            <div style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', padding: '28px', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span className="kicker" style={{ color: 'var(--asw-gold)' }}>Arab records</span>
-                <span style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>Long course</span>
-              </div>
-              <div>
-                {heroRecords.map((r, i) => (
-                  <div key={`${r.event_id}-${r.gender}`} style={{ padding: '13px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.12)' }}>
-                    <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)' }}>
-                      {r.event_name} · {r.gender === 'F' ? 'Women' : 'Men'}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 3, flexWrap: 'wrap' }}>
-                      <span className="asw-time" style={{ fontSize: 27, color: 'var(--asw-gold)' }}>{r.time}</span>
-                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{r.fina_points} FINA</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4 }}>
-                      <Flag code={r.nationality_code} name={r.nationality} />
-                      {r.swimmer_id ? (
-                        <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>{r.swimmer_name}</Link>
-                      ) : (
-                        <span style={{ fontSize: 13, fontWeight: 700 }}>{r.swimmer_name}</span>
-                      )}
-                      {r.date && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{new Date(r.date).getFullYear()}</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Link to="/records" style={{ marginTop: 'auto', paddingTop: 14, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--asw-gold)', textDecoration: 'none' }}>
-                All record books →
-              </Link>
-            </div>
-          )}
+function LineChart({ points, color = NAVY }) {
+  const W = 340; const H = 150; const padX = 26; const padT = 24; const padB = 26
+  const vals = points.map((p) => p.value)
+  const min = Math.min(...vals); const max = Math.max(...vals)
+  const span = (max - min) || 1
+  const x = (i) => padX + (i * (W - 2 * padX)) / Math.max(points.length - 1, 1)
+  const y = (v) => padT + (1 - (v - min) / span) * (H - padT - padB)
+  const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img">
+      <polyline points={`${x(0)},${H - padB + 4} ${path} ${x(points.length - 1)},${H - padB + 4}`}
+        fill="color-mix(in srgb, var(--color-accent) 8%, transparent)" stroke="none" />
+      <polyline points={path} fill="none" stroke={color} strokeWidth="2.5" />
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={x(i)} cy={y(p.value)} r="3.5" fill={color} />
+          <text x={x(i)} y={y(p.value) - 8} textAnchor="middle"
+            style={{ fontWeight: 800, fontSize: 11, fill: 'var(--color-accent-800)' }}>{p.value}</text>
+          <text x={x(i)} y={H - 8} textAnchor="middle"
+            style={{ fontWeight: 600, fontSize: 9.5, fill: 'var(--color-neutral-600)' }}>{p.label}</text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+function HBars({ rows, color = NAVY }) {
+  const max = Math.max(...rows.map((r) => r.value), 1)
+  return (
+    <div style={{ display: 'grid', gap: 9 }}>
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 150, flex: 'none', fontSize: 11, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.label}>{r.label}</span>
+          <div style={{ flex: 1, background: 'var(--color-neutral-100)' }}>
+            <div style={{ width: `${Math.max((r.value / max) * 100, 2)}%`, height: 14, background: r.color || color }} />
+          </div>
+          <span className="asw-num" style={{ width: 34, flex: 'none', textAlign: 'right', fontSize: 11.5, fontWeight: 800, color: NAVY_DARK }}>{r.value}</span>
         </div>
-      </div>
+      ))}
+    </div>
+  )
+}
 
-      {/* counts strip */}
-      <div className="counts">
-        <div><div className="n">{formatNumber(counts?.swimmers)}</div><div className="l">Swimmers</div></div>
-        <div><div className="n">{formatNumber(counts?.meets)}</div><div className="l">Meets</div></div>
-        <div><div className="n">{formatNumber(counts?.results)}</div><div className="l">Results</div></div>
-        <div><div className="n">{formatNumber(counts?.records)}</div><div className="l">Records</div></div>
-        <div><div className="n">{formatNumber(counts?.federations)}</div><div className="l">Federations</div></div>
-      </div>
-
-      {/* main grid */}
-      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 380px' }}>
-        {/* left: latest results */}
-        <div className="rule-r">
-          <div style={{ padding: '28px 32px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-              <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>Latest Results</h1>
-              {latest && <span className="tag tag-accent" style={{ marginBottom: 8 }}>TOP SWIMS</span>}
-            </div>
-            {latest && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
-                <Flag code={latest.country_detail?.code} name={latest.country_detail?.name} />
-                <span>
-                  <Link to={`/meets/${latest.id}`} style={{ color: 'inherit' }}>{latest.name}</Link>
-                  {' — '}{latest.location} · {formatDateRange(latest.date, latest.end_date)} · {latest.pool}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div style={{ padding: '0 32px 28px' }} className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 30 }}>#</th>
-                  <th>Swimmer</th>
-                  <th>Event</th>
-                  <th className="time">Time</th>
-                  <th className="num">FINA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topResults.slice((topPage - 1) * 10, topPage * 10).map((r, i) => (
-                  <tr key={r.id}>
-                    <td className="asw-num">{(topPage - 1) * 10 + i + 1}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Flag code={r.swimmer_detail?.nationality_detail?.code} name={r.swimmer_detail?.nationality_detail?.name} />
-                        <Link to={`/swimmers/${r.swimmer}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_detail?.name}</Link>
-                      </div>
-                    </td>
-                    <td className="text-muted">{r.event_detail?.name}</td>
-                    <td className="time asw-time">{r.formatted_time}</td>
-                    <td className="num asw-num">{r.fina_points ?? '—'}</td>
-                  </tr>
-                ))}
-                {topResults.length === 0 && (
-                  <tr><td colSpan={5} className="text-muted" style={{ textAlign: 'center', padding: 24 }}>No results yet</td></tr>
-                )}
-              </tbody>
-            </table>
-            <Pager page={topPage} pageSize={10} count={topResults.length} onPage={setTopPage} />
-            {latest && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
-                <Link className="btn btn-secondary" to={`/meets/${latest.id}`}>All results from this meet</Link>
-                <Link className="btn btn-ghost" to="/rankings">Rankings →</Link>
-              </div>
-            )}
-          </div>
-
-          {/* season leaders */}
-          {leaders.length > 0 && (
-            <div className="rule-t" style={{ padding: '24px 32px 28px' }}>
-              <SectHead title={leadersYear ? `${leadersYear} Season Leaders · LCM` : 'All-Time Leaders · LCM'} to="/rankings" linkLabel="Full rankings" />
-              <div className="cellgrid" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(160px, 1fr))` }}>
-                {leaders.map((l) => (
-                  <Link key={l.label} to="/rankings" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <div className="card-kicker">{l.label}</div>
-                    <div className="asw-time" style={{ fontSize: 24, margin: '6px 0 4px' }}>{l.row.time}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Flag code={l.row.nationality_code} name={l.row.nationality} />
-                      <span style={{ fontSize: 12, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.row.swimmer_name}</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* new records */}
-          <div className="rule-t" style={{ padding: '24px 32px 30px' }}>
-            <SectHead title="New Records" to="/new-records" linkLabel="Record books" />
-            {newRecords.length === 0 ? (
-              <div className="text-muted" style={{ fontSize: 13 }}>No new records yet.</div>
-            ) : (
-              <div className="cellgrid grid-3" style={{ gridTemplateColumns: `repeat(${Math.min(3, newRecords.length)}, 1fr)` }}>
-                {newRecords.map((r) => (
-                  <div key={r.id}>
-                    <div className="card-kicker">{r.record_type} record</div>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, margin: '4px 0 2px' }} className="asw-num">{r.formatted_time}</div>
-                    <div style={{ fontSize: 12 }}>{r.event_detail?.name} · {r.swimmer_detail?.sex === 'F' ? 'Women' : 'Men'} · {r.pool}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>
-                      {r.swimmer_detail?.name} · {r.swimmer_detail?.nationality_detail?.code}
-                    </div>
+function MedalStack({ rows }) {
+  const max = Math.max(...rows.map((r) => r.total), 1)
+  return (
+    <div style={{ display: 'grid', gap: 7 }}>
+      {rows.map((r) => (
+        <div key={r.code} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 34, flex: 'none', fontSize: 11, fontWeight: 800, color: NAVY_DARK }}>{r.code}</span>
+          <div style={{ flex: 1, display: 'flex', height: 15 }}>
+            <div style={{ display: 'flex', width: `${(r.total / max) * 100}%`, minWidth: 8 }}>
+              {[['gold', GOLD, '#3a2e07'], ['silver', SILVER, '#fff'], ['bronze', BRONZE, '#fff']].map(([k, bg, fg]) => (
+                r[k] > 0 ? (
+                  <div key={k} title={`${k}: ${r[k]}`}
+                    style={{ flex: r[k], background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0, overflow: 'hidden' }}>
+                    <span style={{ fontSize: 9, fontWeight: 800, color: fg }}>{r[k]}</span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* right rail */}
-        <div>
-          <div className="rule-b" style={{ padding: '28px 28px 22px' }}>
-            <div className="kicker" style={{ marginBottom: 8 }}>{upcoming ? 'Next championship' : 'Latest championship'}</div>
-            {featured ? (
-              <>
-                <Link to={`/meets/${featured.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1.15 }}>
-                    {featured.name}
-                  </div>
-                </Link>
-                <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>
-                  {featured.location}
-                  {featured.country_detail ? `, ${featured.country_detail.name}` : ''}
-                  {' · '}{formatDateRange(featured.date, featured.end_date)} · {featured.pool}
-                </div>
-                {upcoming && <Countdown target={upcoming.d.getTime()} />}
-              </>
-            ) : (
-              <div className="text-muted" style={{ fontSize: 13 }}>Nothing scheduled.</div>
-            )}
-          </div>
-
-          {/* medal tally */}
-          <div className="rule-b" style={{ padding: '24px 28px' }}>
-            <SectHead title="Medal Tally" to="/medals" linkLabel="All medals" />
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 24 }}>#</th>
-                  <th>Team</th>
-                  <th className="num">G</th>
-                  <th className="num">S</th>
-                  <th className="num">B</th>
-                  <th className="num">Σ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {medalTally.map((row, i) => (
-                  <tr key={i}>
-                    <td className="asw-num">{i + 1}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
-                        {row.swimmer__nationality__name}
-                      </div>
-                    </td>
-                    <td className="num asw-num" style={{ fontWeight: 800 }}>{row.gold}</td>
-                    <td className="num asw-num">{row.silver}</td>
-                    <td className="num asw-num">{row.bronze}</td>
-                    <td className="num asw-num">{row.total}</td>
-                  </tr>
-                ))}
-                {medalTally.length === 0 && (
-                  <tr><td colSpan={6} className="text-muted" style={{ textAlign: 'center', padding: 20 }}>No medals yet</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* most improved — progress stories */}
-          {improved.length > 0 && (
-            <div className="rule-b" style={{ padding: '24px 28px' }}>
-              <SectHead title="Most Improved" to={latest ? `/meets/${latest.id}?tab=most-improved` : '/championships'} linkLabel="More" />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {improved.map((r, i) => (
-                  <div key={`${r.swimmer_id}-${r.event_name}`} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, borderBottom: i < improved.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
-                    <Flag code={r.nationality_code} name={r.nationality} />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600, fontSize: 13 }}>{r.swimmer_name}</Link>
-                      <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>{r.event_name} · {r.previous_best} → {r.current_time}</div>
-                    </div>
-                    <span className="asw-num" style={{ fontWeight: 800, fontSize: 15, color: 'var(--asw-fast)', flex: 'none' }}>−{r.improvement}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* birthdays this month */}
-          {birthdays.length > 0 && (
-            <div className="rule-b" style={{ padding: '24px 28px' }}>
-              <SectHead title={`Birthdays · ${MONTHS[new Date().getMonth()]}`} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {birthdays.map((b, i) => (
-                  <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10, borderBottom: i < birthdays.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
-                    <Flag code={b.nationality_code} name={b.nationality} />
-                    <Link to={`/swimmers/${b.id}`} style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</Link>
-                    <span className="text-muted" style={{ fontSize: 12, flex: 'none' }}>
-                      turns {b.age + (b.day >= new Date().getDate() ? 1 : 0)} · {b.day} {MONTHS[new Date().getMonth()].slice(0, 3)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* head-to-head teaser */}
-          <div style={{ padding: '24px 28px' }}>
-            <SectHead title="Head-to-Head" />
-            <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
-              Pick two swimmers and see who wins, event by event.
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[{ v: cmpA, set: setCmpA, ph: 'First swimmer…' }, { v: cmpB, set: setCmpB, ph: 'Second swimmer…' }].map(({ v, set, ph }, i) =>
-                v ? (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-divider)', padding: '8px 10px' }}>
-                    <Flag code={v.nationality_detail?.code || v.nationality_code} name={v.nationality_detail?.name || v.nationality} />
-                    <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{v.name}</span>
-                    <button type="button" onClick={() => set(null)} aria-label="Remove"
-                      style={{ border: 0, background: 'transparent', cursor: 'pointer', padding: 0, display: 'inline-flex', color: 'var(--color-neutral-700)' }}>
-                      <X size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <SwimmerSearchInput key={i} placeholder={ph} onPick={set} />
-                )
-              )}
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!cmpA || !cmpB}
-                style={{ opacity: cmpA && cmpB ? 1 : 0.45, cursor: cmpA && cmpB ? 'pointer' : 'default' }}
-                onClick={() => cmpA && cmpB && navigate(`/compare?ids=${cmpA.id},${cmpB.id}`)}>
-                Compare →
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* news + media/HOF (launch toggles) */}
-      {(show('news') || show('media') || show('hall_of_fame')) && (
-      <div className="grid-2 rule-t" style={{ display: 'grid', gridTemplateColumns: show('news') && (show('media') || show('hall_of_fame')) ? '1fr 380px' : '1fr' }}>
-        {show('news') && (
-        <div className="rule-r" style={{ padding: '28px 32px 32px' }}>
-          <SectHead title="Featured" to="/news" linkLabel="All news" />
-          {articles.length === 0 ? (
-            <div className="text-muted" style={{ fontSize: 13 }}>No published articles yet.</div>
-          ) : (
-            <>
-              {articles[0]?.cover_image && (
-                <Link to={`/news/${articles[0].id}`}>
-                  <div className="grayscale" style={{ width: '100%', height: 340, overflow: 'hidden' }}>
-                    <img src={mediaUrl(articles[0].cover_image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                </Link>
-              )}
-              <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 18 }}>
-                <div>
-                  <div className="card-kicker">Latest story</div>
-                  <Link to={`/news/${articles[0].id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1.08, letterSpacing: '-0.02em', margin: '6px 0 8px' }}>
-                      {articles[0].title}
-                    </div>
-                  </Link>
-                  <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--color-neutral-800)', margin: '0 0 12px' }}>
-                    {String(articles[0].body || '').slice(0, 220)}…
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 12, borderTop: '1px solid var(--color-divider)', fontSize: 13, color: 'var(--color-neutral-700)' }}>
-                    {articles[0].country_detail && <Flag code={articles[0].country_detail.code} name={articles[0].country_detail.name} />}
-                    <span>{formatDate(articles[0].published_at || articles[0].created_at)}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {articles.slice(1, 4).map((a) => (
-                    <Link key={a.id} to={`/news/${a.id}`} style={{ display: 'flex', gap: 12, paddingBottom: 14, borderBottom: '1px solid var(--color-divider)', color: 'inherit', textDecoration: 'none' }}>
-                      {a.cover_image && (
-                        <div className="grayscale" style={{ width: 84, height: 60, flex: 'none', overflow: 'hidden' }}>
-                          <img src={mediaUrl(a.cover_image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </div>
-                      )}
-                      <div style={{ fontSize: 13, lineHeight: 1.35 }}>{a.title}</div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-        )}
-
-        {(show('media') || show('hall_of_fame')) && (
-        <div style={{ padding: '28px 28px 32px' }}>
-          {show('media') && (
-          <>
-          <SectHead title="Media" to="/media" linkLabel="Albums" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {albums.map((al) => (
-              <Link key={al.id} to={`/media/albums/${al.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div className="grayscale" style={{ aspectRatio: '1/1', background: 'var(--color-surface)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {al.cover ? (
-                    <img src={mediaUrl(al.cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <span className="micro" style={{ padding: 8, textAlign: 'center' }}>{al.title}</span>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-          </>
-          )}
-
-          {show('hall_of_fame') && (
-          <div className={show('media') ? 'rule-t' : ''} style={show('media') ? { marginTop: 24, paddingTop: 20 } : {}}>
-            <SectHead title="Hall of Fame" to="/hall-of-fame" linkLabel="Inductees" />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {inductees.map((p, i) => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10, borderBottom: i < inductees.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
-                  <Flag code={p.country_detail?.code} name={p.country_detail?.name} />
-                  <span style={{ fontSize: 13, flex: 1 }}>{p.name}</span>
-                  <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Class of {p.inducted_year}</span>
-                </div>
+                ) : null
               ))}
             </div>
           </div>
+          <span className="asw-num" style={{ width: 30, flex: 'none', textAlign: 'right', fontSize: 11.5, fontWeight: 800, color: NAVY_DARK }}>{r.total}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ── Layout bits ────────────────────────────────────────────────────── */
+
+function Panel({ title, children, style }) {
+  return (
+    <div className="qs-panel" style={style}>
+      {title && <div className="qs-panel-title">{title}</div>}
+      {children}
+    </div>
+  )
+}
+
+function SectionBar({ n, title }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '6px 0 2px' }}>
+      <span style={{ width: 24, height: 24, borderRadius: '50%', background: NAVY, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flex: 'none' }}>{n}</span>
+      <h2 style={{ margin: 0, fontSize: 16, letterSpacing: '0.06em', textTransform: 'uppercase', color: NAVY_DARK }}>{title}</h2>
+      <span style={{ flex: 1, height: 1, background: 'var(--color-divider)' }} />
+    </div>
+  )
+}
+
+function StatChip({ icon: Icon, value, label, color = NAVY }) {
+  return (
+    <div className="qs-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '14px 8px', textAlign: 'center' }}>
+      <Icon size={20} style={{ color }} />
+      <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, color: NAVY_DARK, lineHeight: 1.1 }}>{value}</span>
+      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>{label}</span>
+    </div>
+  )
+}
+
+function LegendDot({ color, children }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600 }}>
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flex: 'none' }} />
+      {children}
+    </span>
+  )
+}
+
+function PerfCard({ title, value, unit, name, code, event, gold = false }) {
+  return (
+    <div style={{ background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))', color: '#fff', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 128 }}>
+      <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>{title}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+        <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 800, color: gold ? GOLD : '#fff', lineHeight: 1 }}>{value}</span>
+        {unit && <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{unit}</span>}
+      </div>
+      <div style={{ marginTop: 'auto', fontSize: 11, fontWeight: 700, lineHeight: 1.3 }}>
+        {name}{code ? ` (${code})` : ''}
+        {event && <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{event}</div>}
+      </div>
+    </div>
+  )
+}
+
+function ProgressRow({ icon: Icon, label, value }) {
+  return (
+    <div className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0' }}>
+      <Icon size={15} style={{ color: NAVY, flex: 'none' }} />
+      <span style={{ fontSize: 12.5, fontWeight: 600 }}>{label}</span>
+      <span className="asw-num" style={{ marginLeft: 'auto', fontSize: 13.5, fontWeight: 800, color: NAVY_DARK }}>{value}</span>
+    </div>
+  )
+}
+
+/* ── Page ───────────────────────────────────────────────────────────── */
+
+export default function Home() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getQuickStats()
+      .then((res) => setData(res.data))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <Loading label="Loading statistics" />
+  if (!data?.championship) return <Empty label="No championship statistics available yet" />
+
+  const { championship: champ, counts, participation, medals, performance: perf, records, progress } = data
+  const mf = participation.male + participation.female || 1
+  const malePct = Math.round((participation.male / mf) * 1000) / 10
+  const femalePct = Math.round(1000 - malePct * 10) / 10
+
+  // Medal share: top 4 countries + others
+  const shareColors = [NAVY, BLUE, GOLD, 'var(--color-accent-400)']
+  const shareTop = medals.table.slice(0, 4).map((r, i) => ({ label: r.code, value: r.total, color: shareColors[i] }))
+  const othersTotal = medals.table.slice(4).reduce((s, r) => s + r.total, 0)
+  const shareSegs = othersTotal > 0 ? [...shareTop, { label: 'Others', value: othersTotal, color: 'var(--color-neutral-300)' }] : shareTop
+
+  const recCounters = [{ label: 'Total Records', count: records.total, color: NAVY_DARK }].concat(
+    records.by_type.slice(0, 5).map((t, i) => ({
+      label: `${t.label} Records`, count: t.count,
+      color: [NAVY, BLUE, GOLD, 'var(--color-accent-500)', BRONZE][i % 5],
+    })))
+
+  const chips = [
+    [Globe, counts.countries, 'Countries'],
+    [Users, counts.swimmers, 'Swimmers'],
+    [Shield, counts.clubs, 'Clubs / Teams'],
+    [Waves, counts.events, 'Events'],
+    [ClipboardList, formatNumber(counts.results), 'Results'],
+    [MedalIcon, counts.medals, 'Medals'],
+    [Trophy, counts.records, 'Records'],
+    [TrendingUp, formatNumber(counts.personal_bests), 'Personal Bests'],
+  ]
+
+  return (
+    <div className="asw-fade-up">
+      {/* ── Header band ── */}
+      <header style={{ background: 'linear-gradient(135deg, var(--color-accent-800), var(--color-accent-900))', color: '#fff', padding: '34px 0 26px', textAlign: 'center' }}>
+        <div className="container" style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: GOLD }}>Arab Swim</div>
+          <h1 style={{ margin: 0, fontSize: 'clamp(28px, 5vw, 42px)', letterSpacing: '0.02em', textTransform: 'uppercase', color: '#fff' }}>Quick Statistics</h1>
+          <Link to={`/meets/${champ.id}`} style={{ color: GOLD, textDecoration: 'none', fontSize: 'clamp(13px, 2.5vw, 16px)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {champ.name}
+          </Link>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', justifyContent: 'center', alignItems: 'center', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Calendar size={13} /> {formatDateRange(champ.date, champ.end_date)}
+            </span>
+            {(champ.location || champ.country_name) && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <MapPin size={13} /> {[champ.location, champ.country_name].filter(Boolean).join(', ')}
+              </span>
+            )}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Droplets size={13} /> {champ.pool === 'SCM' ? 'SCM (25m)' : 'LCM (50m)'}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <div className="container" style={{ display: 'grid', gap: 16, padding: '18px 16px 40px' }}>
+        {/* ── Stat chips ── */}
+        <div className="qs-cards-8">
+          {chips.map(([Icon, value, label], i) => <StatChip key={label} icon={Icon} value={value} label={label} color={i % 2 ? GOLD : NAVY} />)}
+        </div>
+
+        {/* ── 1 · Participation ── */}
+        <SectionBar n={1} title="Participation" />
+        <div className="qs-cols-3">
+          <Panel title="Swimmers by Country (Top 8)">
+            <VBars data={participation.by_country.map((c) => ({ label: c.code, value: c.count }))} />
+          </Panel>
+          <Panel title="Male vs Female">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ textAlign: 'right' }}>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: NAVY }}>{malePct}%</div>
+                <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-600)' }}>{participation.male}</div>
+              </div>
+              <Donut segments={[
+                { label: 'Male', value: participation.male, color: NAVY },
+                { label: 'Female', value: participation.female, color: GOLD },
+              ]} centerTop={counts.swimmers} centerBot="SWIMMERS" />
+              <div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: GOLD }}>{femalePct}%</div>
+                <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-600)' }}>{participation.female}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 10 }}>
+              <LegendDot color={NAVY}>Male ({participation.male})</LegendDot>
+              <LegendDot color={GOLD}>Female ({participation.female})</LegendDot>
+            </div>
+          </Panel>
+          <Panel title="Entries by Age Group">
+            {participation.age_groups
+              ? <VBars data={participation.age_groups.map((g) => ({ label: g.label, value: g.count }))} color={BLUE} />
+              : <Empty label="Age data not available" />}
+          </Panel>
+        </div>
+
+        {/* ── 2 · Medals ── */}
+        <SectionBar n={2} title="Medals" />
+        <div className="qs-cols-3">
+          <Panel title="Medal Table – Top 5">
+            <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-neutral-600)' }}>
+                  <th style={{ textAlign: 'left', paddingBottom: 6 }}>#</th>
+                  <th style={{ textAlign: 'left', paddingBottom: 6 }}>Country</th>
+                  {[GOLD, SILVER, BRONZE].map((c, i) => (
+                    <th key={i} style={{ paddingBottom: 6 }}><span style={{ display: 'inline-block', width: 11, height: 11, borderRadius: '50%', background: c }} /></th>
+                  ))}
+                  <th style={{ textAlign: 'right', paddingBottom: 6 }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {medals.table.slice(0, 5).map((r, i) => (
+                  <tr key={r.code} className="hair-t">
+                    <td className="asw-num" style={{ padding: '7px 0', fontWeight: 700, color: 'var(--color-neutral-600)' }}>{i + 1}</td>
+                    <td style={{ padding: '7px 0' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 800 }}>
+                        <Flag code={r.code} name={r.name} /> {r.code}
+                      </span>
+                    </td>
+                    <td className="asw-num" style={{ textAlign: 'center', fontWeight: 700 }}>{r.gold}</td>
+                    <td className="asw-num" style={{ textAlign: 'center', fontWeight: 700 }}>{r.silver}</td>
+                    <td className="asw-num" style={{ textAlign: 'center', fontWeight: 700 }}>{r.bronze}</td>
+                    <td className="asw-num" style={{ textAlign: 'right', fontWeight: 800, color: NAVY_DARK }}>{r.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ marginTop: 10, textAlign: 'center' }}>
+              <Link to="/medals" style={{ fontSize: 12, fontWeight: 700 }}>View full medal table →</Link>
+            </div>
+          </Panel>
+          <Panel title="Medals by Country (Top 10)">
+            <div style={{ display: 'flex', gap: 14, marginBottom: 10 }}>
+              <LegendDot color={GOLD}>Gold</LegendDot>
+              <LegendDot color={SILVER}>Silver</LegendDot>
+              <LegendDot color={BRONZE}>Bronze</LegendDot>
+            </div>
+            <MedalStack rows={medals.table.slice(0, 10)} />
+          </Panel>
+          <Panel title="Medal Share by Country">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Donut segments={shareSegs} centerTop={medals.total} centerBot="TOTAL MEDALS" />
+              <div style={{ display: 'grid', gap: 7 }}>
+                {shareSegs.map((s) => (
+                  <LegendDot key={s.label} color={s.color}>
+                    {s.label}
+                    <span className="asw-num" style={{ marginLeft: 8, fontWeight: 800, color: NAVY_DARK }}>
+                      {Math.round((s.value / (medals.total || 1)) * 100)}%
+                    </span>
+                  </LegendDot>
+                ))}
+              </div>
+            </div>
+          </Panel>
+        </div>
+
+        {/* ── 3 · Performance ── */}
+        <SectionBar n={3} title="Performance" />
+        <div className="qs-perf-6">
+          {perf.best_overall && (
+            <PerfCard title="Best Performance of Championships" value={perf.best_overall.points} unit="Points"
+              name={perf.best_overall.name} code={perf.best_overall.code} event={perf.best_overall.event} />
+          )}
+          {perf.best_male && (
+            <PerfCard title="Best Male Performance" value={perf.best_male.points} unit="Points"
+              name={perf.best_male.name} code={perf.best_male.code} event={perf.best_male.event} />
+          )}
+          {perf.best_female && (
+            <PerfCard title="Best Female Performance" value={perf.best_female.points} unit="Points"
+              name={perf.best_female.name} code={perf.best_female.code} event={perf.best_female.event} />
+          )}
+          {perf.most_golds && (
+            <PerfCard title="Most Gold Medals" value={perf.most_golds.count} unit="Gold" gold
+              name={perf.most_golds.name} code={perf.most_golds.code} />
+          )}
+          {perf.most_pbs && (
+            <PerfCard title="Most Personal Bests" value={perf.most_pbs.count} unit="PBs"
+              name={perf.most_pbs.name} code={perf.most_pbs.code} />
+          )}
+          {perf.biggest_improvement && (
+            <PerfCard title="Biggest Improvement" value={`−${perf.biggest_improvement.seconds}`} unit="Seconds"
+              name={perf.biggest_improvement.name} code={perf.biggest_improvement.code}
+              event={perf.biggest_improvement.event} />
           )}
         </div>
+        {(perf.top5.length > 0 || perf.points_by_day) && (
+          <div className="qs-perf-2">
+            {perf.top5.length > 0 && (
+              <Panel title="Top 5 Performances (by Points)">
+                <HBars color="var(--color-accent-500)" rows={perf.top5.map((t) => ({
+                  label: `${t.name} (${t.code}) – ${t.event}`, value: t.points,
+                }))} />
+              </Panel>
+            )}
+            {perf.points_by_day && (
+              <Panel title="Average Points by Day">
+                <LineChart points={perf.points_by_day.map((p) => ({ label: `Day ${p.day}`, value: p.avg }))} />
+              </Panel>
+            )}
+          </div>
         )}
-      </div>
-      )}
 
-      {/* federations */}
-      <div className="rule-t" style={{ padding: '26px 32px 30px' }}>
-        <SectHead title={`Federations · ${arabCountries.length} countries`} to="/countries" linkLabel="All countries" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '16px 12px' }}>
-          {arabCountries.map((c) => (
-            <Link key={c.id} to={`/countries/${c.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 6, textDecoration: 'none', color: 'inherit' }}>
-              <Flag code={c.code} name={c.name} large />
-              <span style={{ fontSize: 11, lineHeight: 1.15 }}>{c.name}</span>
-            </Link>
-          ))}
+        {/* ── 4 · Records + 5 · Progress ── */}
+        <div className="qs-main-2">
+          <div style={{ display: 'grid', gap: 14 }}>
+            <SectionBar n={4} title="Records" />
+            <div className="qs-rec-counters">
+              {recCounters.map((c) => (
+                <div key={c.label} className="qs-panel" style={{ padding: '12px 8px', textAlign: 'center' }}>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: c.color }}>{c.count}</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)', marginTop: 2 }}>{c.label}</div>
+                </div>
+              ))}
+            </div>
+            {(records.by_day || records.by_country.length > 0) && (
+              <div className="qs-rec-charts">
+                {records.by_day && (
+                  <Panel title="Records by Day (Cumulative)">
+                    <LineChart points={records.by_day.map((p) => ({ label: `Day ${p.day}`, value: p.cumulative }))} />
+                  </Panel>
+                )}
+                {records.by_country.length > 0 && (
+                  <Panel title="Records by Country">
+                    <HBars rows={records.by_country.map((r) => ({ label: r.code, value: r.count }))} color="var(--color-accent-500)" />
+                  </Panel>
+                )}
+              </div>
+            )}
+            {records.total === 0 && (
+              <Panel><Empty label="No records were broken at this meet" /></Panel>
+            )}
+          </div>
+          <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
+            <SectionBar n={5} title="Championship Progress" />
+            <Panel>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                <Donut segments={[
+                  { label: 'Completed', value: progress.percent, color: BLUE },
+                  { label: 'Remaining', value: Math.max(100 - progress.percent, 0), color: 'var(--color-neutral-200)' },
+                ]} centerTop={`${progress.percent}%`} centerBot="COMPLETED" />
+              </div>
+              <ProgressRow icon={CheckCircle2} label="Events Completed" value={`${progress.events_completed} / ${progress.events_total}`} />
+              <ProgressRow icon={FlagIcon} label="Finals Completed" value={progress.finals_completed} />
+              <ProgressRow icon={Timer} label="Heats Completed" value={progress.heats_completed} />
+              <ProgressRow icon={Trophy} label="Records Broken" value={progress.records_broken} />
+              <ProgressRow icon={Award} label="Medals Awarded" value={progress.medals_awarded} />
+            </Panel>
+          </div>
         </div>
       </div>
     </div>

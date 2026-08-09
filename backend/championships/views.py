@@ -796,6 +796,262 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'busiest_swimmers': busiest_swimmers,
         })
 
+    @action(detail=False, methods=['get'], url_path='quick-stats')
+    def quick_stats(self, request):
+        """Aggregate "Quick Statistics" payload for the home page.
+
+        Defaults to the latest Arab- or GCC-classified meet that has
+        results; ?championship=<id> overrides the selection."""
+        from django.db.models import Count, Min, Avg, Q
+        from medals.models import Medal
+        from medals.views import MedalViewSet
+        from records.models import Record
+        from swimmers.models import Swimmer
+        from core.models import Event
+
+        champ_id = request.query_params.get('championship')
+        base = Championship.objects.select_related('country', 'classification')
+        if champ_id:
+            champ = base.filter(pk=champ_id).first()
+        else:
+            champ = (base.filter(is_published=True, is_calendar_only=False,
+                                 classification__name__in=['Arab', 'GCC'],
+                                 results__isnull=False)
+                     .order_by('-date').first())
+        if not champ:
+            return Response({'championship': None})
+
+        results = Result.objects.filter(championship=champ)
+        athletes = results.filter(swimmer__is_relay_team=False)
+        scored = athletes.filter(fina_points__gt=0)
+
+        n_days = 1
+        if champ.end_date and champ.end_date >= champ.date:
+            n_days = min((champ.end_date - champ.date).days + 1, 30)
+
+        # ---------- medals (relay podium counted once per country) ----------
+        medal_qs = MedalViewSet._relay_counts_once(
+            Medal.objects.filter(championship=champ, swimmer__nationality__isnull=False))
+        medal_rows = list(medal_qs.values(
+            'swimmer__nationality__name', 'swimmer__nationality__code', 'swimmer__nationality__flag_url',
+        ).annotate(
+            gold=Count('id', filter=Q(medal_type='GOLD')),
+            silver=Count('id', filter=Q(medal_type='SILVER')),
+            bronze=Count('id', filter=Q(medal_type='BRONZE')),
+            total=Count('id'),
+        ).order_by('-gold', '-silver', '-bronze'))
+        medal_table = [{
+            'name': r['swimmer__nationality__name'], 'code': r['swimmer__nationality__code'],
+            'flag_url': r['swimmer__nationality__flag_url'],
+            'gold': r['gold'], 'silver': r['silver'], 'bronze': r['bronze'], 'total': r['total'],
+        } for r in medal_rows]
+        medals_total = sum(r['total'] for r in medal_table)
+
+        # ---------- records ----------
+        rec_qs = Record.objects.filter(result__championship=champ)
+        records_total = rec_qs.count()
+        type_labels = dict(Record.RECORD_TYPE_CHOICES)
+        records_by_type = [{
+            'type': r['record_type'], 'label': type_labels.get(r['record_type'], r['record_type']),
+            'count': r['count'],
+        } for r in rec_qs.values('record_type').annotate(count=Count('id')).order_by('-count')]
+        records_by_country = [{
+            'code': r['swimmer__nationality__code'], 'flag_url': r['swimmer__nationality__flag_url'],
+            'count': r['count'],
+        } for r in rec_qs.filter(swimmer__nationality__isnull=False).values(
+            'swimmer__nationality__code', 'swimmer__nationality__flag_url',
+        ).annotate(count=Count('id')).order_by('-count')[:6]]
+        records_by_day = None
+        if n_days > 1:
+            day_counts = {}
+            for rd in rec_qs.values_list('result_date', flat=True):
+                d = (rd - champ.date).days + 1
+                if 1 <= d <= n_days:
+                    day_counts[d] = day_counts.get(d, 0) + 1
+            if len(day_counts) > 1:
+                cum, records_by_day = 0, []
+                for d in range(1, n_days + 1):
+                    cum += day_counts.get(d, 0)
+                    records_by_day.append({'day': d, 'cumulative': cum})
+
+        # ---------- participation ----------
+        by_country = [{
+            'name': r['swimmer__nationality__name'], 'code': r['swimmer__nationality__code'],
+            'flag_url': r['swimmer__nationality__flag_url'], 'count': r['count'],
+        } for r in athletes.exclude(swimmer__nationality__isnull=True).values(
+            'swimmer__nationality__name', 'swimmer__nationality__code', 'swimmer__nationality__flag_url',
+        ).annotate(count=Count('swimmer', distinct=True)).order_by('-count')[:8]]
+        male = athletes.filter(swimmer__sex='M').values('swimmer').distinct().count()
+        female = athletes.filter(swimmer__sex='F').values('swimmer').distinct().count()
+        age_rows = list(athletes.exclude(age_at_competition__isnull=True)
+                        .values('swimmer_id').annotate(age=Min('age_at_competition')))
+        age_groups = None
+        if age_rows:
+            buckets = [('10 & Under', 0, 10), ('11 – 12', 11, 12), ('13 – 14', 13, 14),
+                       ('15 – 16', 15, 16), ('17 & Over', 17, 200)]
+            age_groups = [{'label': lbl, 'count': sum(1 for r in age_rows if lo <= r['age'] <= hi)}
+                          for lbl, lo, hi in buckets]
+
+        # ---------- performance ----------
+        def _perf(qs):
+            r = qs.select_related('swimmer', 'swimmer__nationality', 'event').order_by('-fina_points').first()
+            if not r:
+                return None
+            nat = r.swimmer.nationality
+            return {
+                'swimmer_id': r.swimmer_id, 'name': r.swimmer.name,
+                'code': nat.code if nat else '', 'flag_url': nat.flag_url if nat else '',
+                'photo': r.swimmer.photo.url if r.swimmer.photo else None,
+                'event': r.event.name, 'gender': r.swimmer.sex,
+                'points': r.fina_points, 'time': r.formatted_time,
+            }
+        best_overall = _perf(scored)
+        best_male = _perf(scored.filter(swimmer__sex='M'))
+        best_female = _perf(scored.filter(swimmer__sex='F'))
+
+        top5, seen = [], set()
+        for r in scored.select_related('swimmer', 'swimmer__nationality', 'event').order_by('-fina_points')[:300]:
+            key = (r.swimmer_id, r.event_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            nat = r.swimmer.nationality
+            top5.append({
+                'swimmer_id': r.swimmer_id, 'name': r.swimmer.name,
+                'code': nat.code if nat else '', 'flag_url': nat.flag_url if nat else '',
+                'event': r.event.name, 'gender': r.swimmer.sex, 'points': r.fina_points,
+            })
+            if len(top5) == 5:
+                break
+
+        mg = (Medal.objects.filter(championship=champ, medal_type='GOLD', swimmer__is_relay_team=False)
+              .values('swimmer_id', 'swimmer__name', 'swimmer__nationality__code',
+                      'swimmer__nationality__flag_url')
+              .annotate(count=Count('id')).order_by('-count').first())
+        most_golds = None
+        if mg:
+            most_golds = {
+                'swimmer_id': mg['swimmer_id'], 'name': mg['swimmer__name'],
+                'code': mg['swimmer__nationality__code'] or '',
+                'flag_url': mg['swimmer__nationality__flag_url'] or '', 'count': mg['count'],
+            }
+
+        # Personal bests: meet best equals all-time best (same pool)
+        pb_total, pb_by_swimmer, best_improvement = 0, {}, None
+        pb_candidates = list(athletes.filter(time_centiseconds__gt=0)
+                             .values('swimmer_id', 'event_id').annotate(meet_best=Min('time_centiseconds')))
+        if pb_candidates:
+            swimmer_ids = list({p['swimmer_id'] for p in pb_candidates})
+            common = dict(swimmer_id__in=swimmer_ids, championship__pool=champ.pool,
+                          swimmer__is_relay_team=False, time_centiseconds__gt=0)
+            all_time = {(r['swimmer_id'], r['event_id']): r['best'] for r in Result.objects.filter(
+                **common).values('swimmer_id', 'event_id').annotate(best=Min('time_centiseconds'))}
+            prev = {(r['swimmer_id'], r['event_id']): r['best'] for r in Result.objects.filter(
+                championship__date__lt=champ.date, **common
+            ).values('swimmer_id', 'event_id').annotate(best=Min('time_centiseconds'))}
+            for p in pb_candidates:
+                key = (p['swimmer_id'], p['event_id'])
+                if all_time.get(key) == p['meet_best']:
+                    pb_total += 1
+                    pb_by_swimmer[p['swimmer_id']] = pb_by_swimmer.get(p['swimmer_id'], 0) + 1
+                    pv = prev.get(key)
+                    if pv and pv > p['meet_best']:
+                        imp = pv - p['meet_best']
+                        if best_improvement is None or imp > best_improvement[0]:
+                            best_improvement = (imp, key)
+
+        most_pbs = None
+        if pb_by_swimmer:
+            top_count = max(pb_by_swimmer.values())
+            leaders = [sid for sid, c in pb_by_swimmer.items() if c == top_count]
+            if len(leaders) == 1:
+                sw = Swimmer.objects.select_related('nationality').filter(pk=leaders[0]).first()
+                most_pbs = {'count': top_count, 'name': sw.name if sw else '',
+                            'code': sw.nationality.code if sw and sw.nationality else '',
+                            'swimmer_id': leaders[0]}
+            else:
+                most_pbs = {'count': top_count, 'name': 'Multiple Swimmers', 'code': '', 'swimmer_id': None}
+
+        biggest_improvement = None
+        if best_improvement:
+            imp, (sid, eid) = best_improvement
+            sw = Swimmer.objects.select_related('nationality').filter(pk=sid).first()
+            ev = Event.objects.filter(pk=eid).first()
+            biggest_improvement = {
+                'swimmer_id': sid, 'name': sw.name if sw else '',
+                'code': sw.nationality.code if sw and sw.nationality else '',
+                'gender': sw.sex if sw else '', 'event': ev.name if ev else '',
+                'seconds': round(imp / 100.0, 2),
+            }
+
+        # Average points per day via the meet program (event -> day)
+        points_by_day = None
+        prog = list(ProgramItem.objects.filter(championship=champ).values('event_id', 'day', 'session'))
+        if prog and n_days > 1:
+            day_of_event = {}
+            for it in prog:
+                if it['event_id'] not in day_of_event or it['session'] == 'FINALS':
+                    day_of_event[it['event_id']] = it['day']
+            sums, cnts = {}, {}
+            for r in scored.values('event_id').annotate(avg=Avg('fina_points'), n=Count('id')):
+                d = day_of_event.get(r['event_id'])
+                if d:
+                    sums[d] = sums.get(d, 0) + r['avg'] * r['n']
+                    cnts[d] = cnts.get(d, 0) + r['n']
+            if len(cnts) > 1:
+                points_by_day = [{'day': d, 'avg': round(sums[d] / cnts[d])} for d in sorted(cnts)]
+
+        # ---------- progress ----------
+        events_done = results.values('event').distinct().count()
+        prog_events = len({it['event_id'] for it in prog}) if prog else 0
+        events_total = max(events_done, prog_events)
+        finals_done = results.filter(round_type__in=['Finals', 'Consolation', '']).values('event').distinct().count()
+        heats_done = results.filter(round_type__in=['Heats', 'Prelims']).values('event').distinct().count()
+
+        country = champ.country
+        return Response({
+            'championship': {
+                'id': champ.id, 'name': champ.name,
+                'date': str(champ.date), 'end_date': str(champ.end_date) if champ.end_date else None,
+                'location': champ.location,
+                'country_name': country.name if country else '',
+                'country_code': country.code if country else '',
+                'flag_url': country.flag_url if country else '',
+                'pool': champ.pool,
+                'classification': champ.classification.name if champ.classification else '',
+            },
+            'counts': {
+                'countries': athletes.exclude(swimmer__nationality__isnull=True)
+                                     .values('swimmer__nationality').distinct().count(),
+                'swimmers': male + female,
+                'clubs': athletes.exclude(team='').values('team').distinct().count(),
+                'events': events_done,
+                'results': results.count(),
+                'medals': medals_total,
+                'records': records_total,
+                'personal_bests': pb_total,
+            },
+            'participation': {
+                'by_country': by_country, 'male': male, 'female': female, 'age_groups': age_groups,
+            },
+            'medals': {'table': medal_table, 'total': medals_total},
+            'performance': {
+                'best_overall': best_overall, 'best_male': best_male, 'best_female': best_female,
+                'most_golds': most_golds, 'most_pbs': most_pbs,
+                'biggest_improvement': biggest_improvement,
+                'top5': top5, 'points_by_day': points_by_day,
+            },
+            'records': {
+                'total': records_total, 'by_type': records_by_type,
+                'by_day': records_by_day, 'by_country': records_by_country,
+            },
+            'progress': {
+                'percent': round(100 * events_done / events_total) if events_total else 0,
+                'events_completed': events_done, 'events_total': events_total,
+                'finals_completed': finals_done, 'heats_completed': heats_done,
+                'records_broken': records_total, 'medals_awarded': medals_total,
+            },
+        })
 
     @action(detail=True, methods=['get'], url_path='most-improved')
     def most_improved(self, request, pk=None):

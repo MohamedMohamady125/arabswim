@@ -521,16 +521,58 @@ def _parse_relay_line(line, event, comma_order, take_last_time=False):
 
 
 def _attach_relay_splits(result, line):
-    """Pair a relay splits line ("29.93 32.67 29.35 28.93") with leg swimmers."""
+    """Pair relay splits with leg swimmers, yielding each swimmer's LEG time.
+
+    Hy-Tek prints either leg durations ("29.93 32.67 29.35 28.93" for a
+    4x50) or cumulative marks every 50m ("28.01 57.69 ... 4:29.03" — 8
+    values for a 4x100, where each swimmer's touch is every 2nd value).
+    Splits can also span multiple text lines and values are sometimes
+    missing; when the shape is ambiguous, keep names without times rather
+    than assigning wrong ones."""
     times = TIME_PATTERN.findall(line)
     names = getattr(result, '_relay_names', [])
-    if names:
-        result.split_times = [
-            f'{name} {times[i]}' if i < len(times) else name
-            for i, name in enumerate(names)
-        ]
-    else:
+    if not names:
         result.split_times.extend(times)
+        return
+
+    # Accumulate across possibly-wrapped split lines for this team.
+    raw = getattr(result, '_relay_raw_splits', [])
+    raw = raw + times
+    result._relay_raw_splits = raw
+
+    cs = [parse_time_to_centiseconds(t) for t in raw]
+    n = len(names)
+    increasing = all(a < b for a, b in zip(cs, cs[1:]))
+    ends_at_final = (not result.time_centiseconds
+                     or (cs and abs(cs[-1] - result.time_centiseconds) <= 2))
+
+    sums_to_final = (not result.time_centiseconds
+                     or abs(sum(cs) - result.time_centiseconds) <= 5)
+
+    leg_times = None
+    if len(raw) == n:
+        if increasing and ends_at_final:
+            # Cumulative, one mark per leg: leg = diff to previous mark.
+            leg_times = [_fmt_cs(b - a) for a, b in zip([0] + cs[:-1], cs)]
+        elif sums_to_final:
+            # One duration per leg (they add up to the final time).
+            leg_times = raw
+    elif increasing and ends_at_final and len(raw) == 2 * n:
+        # Cumulative every 50m: each swimmer touches at every 2nd mark.
+        touches = cs[1::2]
+        leg_times = [_fmt_cs(b - a) for a, b in zip([0] + touches[:-1], touches)]
+
+    if leg_times:
+        result.split_times = [f'{name} {leg_times[i]}' for i, name in enumerate(names)]
+    else:
+        result.split_times = list(names)
+
+
+def _fmt_cs(cs):
+    minutes, rem = divmod(cs, 6000)
+    if minutes:
+        return f'{minutes}:{rem // 100:02d}.{rem % 100:02d}'
+    return f'{rem // 100}.{rem % 100:02d}'
 
 
 def _should_skip(line):

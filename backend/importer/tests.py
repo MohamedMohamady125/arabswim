@@ -2720,3 +2720,58 @@ class RelayLegNameTests(SimpleTestCase):
         self.assertEqual(
             self._legs('Yi Cheng Lin +0.61 24.13 50.72'),
             ['Yi Cheng Lin 50.72'])
+
+
+class HytekRelayCumulativeSplitTests(SimpleTestCase):
+    """Hy-Tek 4x100 relays print cumulative 50m marks (8 values); each
+    swimmer's leg time is the diff between every 2nd mark. Jordan Clubs
+    Summer AG 2026 regression: legs were being paired with the first four
+    cumulative values (50/100/150/200 marks)."""
+
+    def _result(self, names, time_text, time_cs):
+        from importer.parsers.base import ParsedResult
+        r = ParsedResult(swimmer_name='Club A', time_text=time_text,
+                         time_centiseconds=time_cs)
+        r._relay_names = names
+        r.split_times = list(names)
+        return r
+
+    NAMES = ['Abdallah TARAWNEH', 'Haya AL MASSARWEH', 'Fuad BULBAISI', 'Joud AL TAWIL']
+
+    def test_cumulative_50m_marks_become_leg_times(self):
+        from importer.parsers.hytek_parser import _attach_relay_splits
+        r = self._result(self.NAMES, '4:29.03', 26903)
+        _attach_relay_splits(r, '30.69 1:03.63 1:35.94 2:13.42 2:44.41 3:18.72 3:52.64 4:29.03')
+        self.assertEqual(r.split_times, [
+            'Abdallah TARAWNEH 1:03.63',
+            'Haya AL MASSARWEH 1:09.79',
+            'Fuad BULBAISI 1:05.30',
+            'Joud AL TAWIL 1:10.31',
+        ])
+
+    def test_missing_mark_keeps_names_without_wrong_times(self):
+        from importer.parsers.hytek_parser import _attach_relay_splits
+        # 200m mark missing from source (7 values for a 4x100)
+        r = self._result(self.NAMES, '4:06.82', 24682)
+        _attach_relay_splits(r, '28.01 57.69 1:28.54 2:35.08 3:11.63 3:37.41 4:06.82')
+        self.assertEqual(r.split_times, self.NAMES)
+
+    def test_leg_duration_line_still_paired_directly(self):
+        from importer.parsers.hytek_parser import _attach_relay_splits
+        # 4x50 style: one non-monotonic duration per leg
+        r = self._result(self.NAMES, '2:00.88', 12088)
+        _attach_relay_splits(r, '29.93 32.67 29.35 28.93')
+        self.assertEqual(r.split_times, [
+            'Abdallah TARAWNEH 29.93',
+            'Haya AL MASSARWEH 32.67',
+            'Fuad BULBAISI 29.35',
+            'Joud AL TAWIL 28.93',
+        ])
+
+    def test_wrapped_split_lines_accumulate(self):
+        from importer.parsers.hytek_parser import _attach_relay_splits
+        r = self._result(self.NAMES, '4:29.03', 26903)
+        _attach_relay_splits(r, '30.69 1:03.63 1:35.94 2:13.42')
+        _attach_relay_splits(r, '2:44.41 3:18.72 3:52.64 4:29.03')
+        self.assertEqual(r.split_times[0], 'Abdallah TARAWNEH 1:03.63')
+        self.assertEqual(r.split_times[3], 'Joud AL TAWIL 1:10.31')

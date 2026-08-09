@@ -278,6 +278,216 @@ function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
   )
 }
 
+/* ── Admin: full edit of one result — everything except FINA points,
+      which are always recomputed automatically from time + event ── */
+function EditResultModal({ result, isRelay, onClose, onSaved }) {
+  const [allEvents, setAllEvents] = useState([])
+  const [query, setQuery] = useState('')
+  const [options, setOptions] = useState([])
+  const [swimmer, setSwimmer] = useState(result.swimmer_detail || null)
+  const [form, setForm] = useState(() => ({
+    event: String(result.event),
+    round_type: result.round_type || '',
+    category: result.category || '',
+    team: result.team || '',
+    time: result.formatted_time || '',
+    age: result.age_at_competition != null ? String(result.age_at_competition) : '',
+    original_rank: result.original_rank != null ? String(result.original_rank) : '',
+    hc: result.is_hc ? (result.hc_type || 'HC') : '',
+    is_manual: !!result.is_manual,
+    splitsText: (result.splits || []).map((s) => `${s.distance} ${s.time}`).join('\n'),
+    relayText: (result.relay_swimmers || []).map((s) => `${s.name}${s.split_time ? ` | ${s.split_time}` : ''}`).join('\n'),
+  }))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const searchDebounce = React.useRef(null)
+
+  useEffect(() => {
+    getEvents().then((r) => setAllEvents(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {})
+  }, [])
+
+  const search = (q) => {
+    setQuery(q)
+    clearTimeout(searchDebounce.current)
+    if (q.length < 2) { setOptions([]); return }
+    searchDebounce.current = setTimeout(() => {
+      searchSwimmers(q).then((r) => setOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setOptions([]))
+    }, 300)
+  }
+
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const TIME_RE = /^\d{1,2}:\d{2}\.\d{2}$|^\d{1,3}\.\d{2}$/
+
+  const submit = async () => {
+    const cs = parseTime(form.time)
+    if (!cs) { setError('Invalid time — use 1:02.34 or 28.75'); return }
+
+    const payload = {
+      event: form.event,
+      round_type: form.round_type,
+      category: form.category,
+      team: form.team,
+      time_centiseconds: cs,
+      age_at_competition: form.age === '' ? null : parseInt(form.age),
+      original_rank: form.original_rank === '' ? null : parseInt(form.original_rank),
+      is_hc: !!form.hc,
+      hc_type: form.hc || '',
+      is_manual: form.is_manual,
+    }
+    if (swimmer?.id) payload.swimmer = swimmer.id
+
+    if (isRelay) {
+      const legs = form.relayText.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+        const [name, time] = l.split('|').map((p) => p.trim())
+        if (time && !TIME_RE.test(time)) return null
+        return { name: name || '', split_time: time || '' }
+      })
+      if (legs.some((l) => l === null)) { setError('Relay legs: use "Name | 1:03.63" — one swimmer per line'); return }
+      payload.relay_swimmers = legs.length ? legs : null
+    } else {
+      const splits = form.splitsText.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+        const m = l.match(/^(\d+)\s*m?\s+(\S+)$/)
+        if (!m || !TIME_RE.test(m[2])) return null
+        return { distance: parseInt(m[1]), time: m[2] }
+      })
+      if (splits.some((s) => s === null)) { setError('Splits: use "50 31.36" (distance then cumulative time), one per line'); return }
+      payload.splits = splits.length ? splits : null
+    }
+
+    setSaving(true)
+    setError('')
+    try {
+      await updateResult(result.id, payload)
+      onSaved()
+    } catch (err) {
+      const d = err.response?.data
+      setError(d ? (typeof d === 'string' ? d : JSON.stringify(d)) : 'Could not save the result')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(8, 24, 44, 0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px', overflowY: 'auto' }}
+    >
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 560, maxWidth: '100%', borderTop: '4px solid var(--color-accent)' }}>
+        <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <h4 style={{ margin: 0 }}>Edit Result</h4>
+          <button className="btn btn-ghost" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {error && <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13 }}>{error}</div>}
+          <div className="field">
+            <label>{isRelay ? 'Relay team (placeholder swimmer)' : 'Swimmer'}</label>
+            {swimmer ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-accent-100)', padding: '8px 12px' }}>
+                <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}>
+                  {swimmer.name}
+                  <span className="text-muted" style={{ fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
+                    {swimmer.nationality_detail?.name || ''}{swimmer.sex ? ` · ${swimmer.sex}` : ''}
+                  </span>
+                </span>
+                {!isRelay && <button className="btn btn-secondary" onClick={() => setSwimmer(null)}>Change</button>}
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <input className="input" type="text" placeholder="Search swimmers by name…" value={query} onChange={(e) => search(e.target.value)} />
+                {options.length > 0 && (
+                  <div style={{ position: 'absolute', zIndex: 10, width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-divider)', marginTop: 2, boxShadow: 'var(--shadow-md)', maxHeight: 200, overflowY: 'auto' }}>
+                    {options.map((s) => (
+                      <button key={s.id} type="button"
+                        style={{ width: '100%', textAlign: 'left', padding: '8px 12px', border: 0, cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 10 }}
+                        onClick={() => { setSwimmer(s); setOptions([]); setQuery('') }}>
+                        <span style={{ fontWeight: 600 }}>{s.name}</span>
+                        <span className="text-muted" style={{ fontSize: 12 }}>{s.nationality_detail?.name || ''} · {s.sex}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label>Event</label>
+              <select className="select" value={form.event} onChange={set('event')}>
+                {allEvents.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Time (e.g. 1:02.30)</label>
+              <input className="input asw-num" type="text" value={form.time} onChange={set('time')} />
+            </div>
+            <div className="field">
+              <label>Round</label>
+              <select className="select" value={form.round_type} onChange={set('round_type')}>
+                <option value="">Unknown</option>
+                <option value="Finals">Finals</option>
+                <option value="Prelims">Prelims</option>
+                <option value="Heats">Heats</option>
+                <option value="Consolation">Consolation (Final B)</option>
+              </select>
+            </div>
+            <div className="field">
+              <label>Team / club</label>
+              <input className="input" type="text" value={form.team} onChange={set('team')} />
+            </div>
+            <div className="field">
+              <label>Category</label>
+              <input className="input" type="text" placeholder="e.g. Cadets" value={form.category} onChange={set('category')} />
+            </div>
+            <div className="field">
+              <label>Age at competition</label>
+              <input className="input asw-num" type="number" value={form.age} onChange={set('age')} />
+            </div>
+            <div className="field">
+              <label>Original rank (from PDF)</label>
+              <input className="input asw-num" type="number" value={form.original_rank} onChange={set('original_rank')} />
+            </div>
+            <div className="field">
+              <label>Ranking status</label>
+              <select className="select" value={form.hc} onChange={set('hc')}>
+                <option value="">Ranked normally</option>
+                <option value="HC">HC — hors concours</option>
+                <option value="TLD">TLD — time limit exceeded</option>
+              </select>
+            </div>
+            <div className="field">
+              <label>FINA points</label>
+              <input className="input asw-num" value={result.fina_points ?? '—'} disabled title="Recomputed automatically from time and event" />
+            </div>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+            <input type="checkbox" checked={form.is_manual} onChange={(e) => setForm((f) => ({ ...f, is_manual: e.target.checked }))} />
+            Manual result — excluded from automatic medal awards
+          </label>
+          {isRelay ? (
+            <div className="field">
+              <label>Relay legs — one per line: Name | leg time (time optional)</label>
+              <textarea className="input" rows={4} value={form.relayText} onChange={set('relayText')}
+                placeholder={'Abdallah TARAWNEH | 1:03.63\nHaya AL MASSARWEH | 1:09.79'} style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }} />
+            </div>
+          ) : (
+            <div className="field">
+              <label>Splits — one per line: distance then cumulative time</label>
+              <textarea className="input" rows={4} value={form.splitsText} onChange={set('splitsText')}
+                placeholder={'50 31.36\n100 1:05.20'} style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }} />
+            </div>
+          )}
+          <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
+            FINA points are always recomputed from the time, event and pool — they can't be edited.
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={saving} onClick={submit}>{saving ? 'Saving…' : 'Save result'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
 function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onDataChanged }) {
@@ -308,8 +518,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId, loading])
   const [editMode, setEditMode] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [editValues, setEditValues] = useState({ time: '', team: '' })
+  const [editingRow, setEditingRow] = useState(null)
   const [showAddResult, setShowAddResult] = useState(false)
 
   const filteredEvents = useMemo(
@@ -450,23 +659,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
   const isRelay = selectedEvent?.event_name?.toLowerCase().includes('relay')
     || selectedEvent?.display_name?.toLowerCase().includes('relay')
 
-  const startEditRow = (r) => {
-    setEditingId(r.id)
-    setEditValues({ time: r.formatted_time || '', team: r.team || '' })
-  }
-
-  const saveEditRow = async (r) => {
-    const cs = parseTime(editValues.time)
-    if (!cs) { window.alert('Invalid time — use 1:02.34 or 28.75'); return }
-    try {
-      await updateResult(r.id, { time_centiseconds: cs, team: editValues.team })
-      setEditingId(null)
-      loadResults()
-      onDataChanged?.()
-    } catch {
-      window.alert('Failed to save the result')
-    }
-  }
+  const startEditRow = (r) => setEditingRow(r)
 
   const removeRow = async (r) => {
     if (!window.confirm(`Delete ${r.swimmer_detail?.name}'s result (${r.formatted_time})? This cannot be undone.`)) return
@@ -504,15 +697,13 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
     const splits = withFinishSplit(r.splits || [], r.time_centiseconds)
     const hasSub = (isRelay && swimmers.length > 0) || (!isRelay && splits.length > 0)
     const isExpanded = expandedRow === r.id
-    const isEditing = editingId === r.id
     return (
       <React.Fragment key={r.id}>
         <tr
           data-result-id={r.id}
           style={{
             cursor: editMode ? 'default' : 'pointer',
-            background: isEditing ? 'var(--color-accent-100)'
-              : highlightId === r.id ? 'color-mix(in srgb, var(--asw-gold) 18%, transparent)' : undefined,
+            background: highlightId === r.id ? 'color-mix(in srgb, var(--asw-gold) 18%, transparent)' : undefined,
             transition: 'background 0.6s',
           }}
           onClick={() => {
@@ -563,51 +754,21 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
           <td className="num asw-num hide-mobile">{r.age_at_competition ?? '—'}</td>
           {isNational && (
             <td className="text-muted hide-mobile">
-              {isEditing ? (
-                <input
-                  className="input"
-                  value={editValues.team}
-                  onChange={(e) => setEditValues((v) => ({ ...v, team: e.target.value }))}
-                  placeholder="Club"
-                  style={{ width: 120, minHeight: 30 }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                // single line + ellipsis so long club names never stretch
-                // row heights (keeps every meet's table looking the same)
-                <span title={r.team || undefined} style={{ display: 'inline-block', maxWidth: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom' }}>
-                  {r.team || '—'}
-                </span>
-              )}
+              {/* single line + ellipsis so long club names never stretch
+                  row heights (keeps every meet's table looking the same) */}
+              <span title={r.team || undefined} style={{ display: 'inline-block', maxWidth: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom' }}>
+                {r.team || '—'}
+              </span>
             </td>
           )}
-          <td className="time asw-time">
-            {isEditing ? (
-              <input
-                className="input asw-num"
-                value={editValues.time}
-                onChange={(e) => setEditValues((v) => ({ ...v, time: e.target.value }))}
-                onKeyDown={(e) => { if (e.key === 'Enter') saveEditRow(r); if (e.key === 'Escape') setEditingId(null) }}
-                style={{ width: 100, minHeight: 30, textAlign: 'right' }}
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : r.formatted_time}
-          </td>
+          <td className="time asw-time">{r.formatted_time}</td>
           <td className="num asw-num">{r.fina_points ?? '—'}</td>
           {editMode && (
             <td className="num" style={{ whiteSpace: 'nowrap' }}>
-              {isEditing ? (
-                <span style={{ display: 'inline-flex', gap: 6 }}>
-                  <button className="btn btn-primary" style={{ padding: '3px 10px', fontSize: 12 }} onClick={(e) => { e.stopPropagation(); saveEditRow(r) }}>Save</button>
-                  <button className="btn btn-secondary" style={{ padding: '3px 10px', fontSize: 12 }} onClick={(e) => { e.stopPropagation(); setEditingId(null) }}>Cancel</button>
-                </span>
-              ) : (
-                <span style={{ display: 'inline-flex', gap: 6 }}>
-                  <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12 }} onClick={(e) => { e.stopPropagation(); startEditRow(r) }}>Edit</button>
-                  <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12, color: 'var(--asw-slow)' }} onClick={(e) => { e.stopPropagation(); removeRow(r) }}>Delete</button>
-                </span>
-              )}
+              <span style={{ display: 'inline-flex', gap: 6 }}>
+                <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12 }} onClick={(e) => { e.stopPropagation(); startEditRow(r) }}>Edit</button>
+                <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12, color: 'var(--asw-slow)' }} onClick={(e) => { e.stopPropagation(); removeRow(r) }}>Delete</button>
+              </span>
             </td>
           )}
         </tr>
@@ -686,7 +847,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <button
               className={`btn ${editMode ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => { setEditMode((m) => !m); setEditingId(null) }}
+              onClick={() => { setEditMode((m) => !m); setEditingRow(null) }}
             >
               {editMode ? 'Done editing' : 'Edit results'}
             </button>
@@ -702,6 +863,15 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
           defaultEventId={selectedEvent?.event_id}
           onClose={() => setShowAddResult(false)}
           onAdded={() => { setShowAddResult(false); loadResults(); if (onDataChanged) onDataChanged() }}
+        />
+      )}
+
+      {isAdmin && editingRow && (
+        <EditResultModal
+          result={editingRow}
+          isRelay={isRelay}
+          onClose={() => setEditingRow(null)}
+          onSaved={() => { setEditingRow(null); loadResults(); if (onDataChanged) onDataChanged() }}
         />
       )}
 

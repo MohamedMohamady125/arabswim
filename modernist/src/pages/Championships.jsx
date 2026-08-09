@@ -215,25 +215,9 @@ export default function Championships() {
                     background: isExpanded ? 'var(--color-surface)' : undefined,
                   }}
                 >
-                  <Flag code={m.country_detail?.code} name={m.country_detail?.name} placeholder />
-                  {m.meet_photo ? (
-                    <div className="grayscale" style={{ width: 60, height: 40, flex: 'none', overflow: 'hidden' }}>
-                      <img src={mediaUrl(m.meet_photo)} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                  ) : (
-                    // No meet photo yet: Arab Swim navy placeholder (never the host flag)
-                    <div
-                      aria-hidden
-                      style={{
-                        width: 60, height: 40, flex: 'none', background: 'var(--color-accent-800)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: 'rgba(255,255,255,0.85)', fontFamily: 'var(--font-heading)',
-                        fontWeight: 800, fontSize: 10, letterSpacing: '0.08em',
-                      }}
-                    >
-                      AS
-                    </div>
-                  )}
+                  {/* List rows show the host flag only — the meet's own
+                      logo/photo lives inside the meet page header. */}
+                  <Flag code={m.country_detail?.code} name={m.country_detail?.name} large placeholder />
                   <div style={{ flex: 1, minWidth: 160 }}>
                     <Link to={`/meets/${m.id}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>
                       <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{m.name}</div>

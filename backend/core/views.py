@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.crypto import get_random_string
-from .models import Country, Event, ProfileClaim
+from .models import Country, Event, ProfileClaim, SiteFeature
 from .permissions import IsAdmin, is_admin
 from .serializers import (
     UserSerializer, CountrySerializer, EventSerializer,
@@ -80,6 +80,26 @@ def create_org_account(request):
     data = UserSerializer(user).data
     data['password'] = password
     return Response(data, status=201)
+
+
+# Site sections the admin can hide until they're ready to launch
+FEATURE_KEYS = ['hall_of_fame', 'coaches', 'news', 'marketplace', 'media']
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([permissions.AllowAny])
+def site_features(request):
+    """GET: public map of section toggles. PATCH (admin): update toggles."""
+    if request.method == 'PATCH':
+        if not is_admin(request.user):
+            return Response({'error': 'Admin only'}, status=403)
+        for key in FEATURE_KEYS:
+            if key in request.data:
+                SiteFeature.objects.update_or_create(
+                    key=key, defaults={'enabled': bool(request.data[key])}
+                )
+    stored = dict(SiteFeature.objects.filter(key__in=FEATURE_KEYS).values_list('key', 'enabled'))
+    return Response({key: stored.get(key, True) for key in FEATURE_KEYS})
 
 
 class ProfileClaimViewSet(viewsets.ModelViewSet):

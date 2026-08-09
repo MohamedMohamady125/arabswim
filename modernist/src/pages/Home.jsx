@@ -14,6 +14,8 @@ import { searchSwimmers, getSwimmerBirthdays } from '../api/swimmers'
 import Flag from '../components/Flag'
 import { SectHead, Loading, Pager } from '../components/ui'
 import { formatDate, formatNumber, mediaUrl, formatDateRange } from '../utils'
+import { useAuth } from '../context/AuthContext'
+import { useFeatures } from '../context/FeaturesContext'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -95,6 +97,10 @@ function Countdown({ target }) {
 }
 
 export default function Home() {
+  const { isAdmin } = useAuth()
+  const { features } = useFeatures()
+  // launch toggles: admin previews everything, public sees enabled sections only
+  const show = (flag) => isAdmin || features[flag] !== false
   const [counts, setCounts] = useState(null)
   const [meets, setMeets] = useState([])
   const [topResults, setTopResults] = useState([])
@@ -546,8 +552,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* news + media/HOF */}
-      <div className="grid-2 rule-t" style={{ display: 'grid', gridTemplateColumns: '1fr 380px' }}>
+      {/* news + media/HOF (launch toggles) */}
+      {(show('news') || show('media') || show('hall_of_fame')) && (
+      <div className="grid-2 rule-t" style={{ display: 'grid', gridTemplateColumns: show('news') && (show('media') || show('hall_of_fame')) ? '1fr 380px' : '1fr' }}>
+        {show('news') && (
         <div className="rule-r" style={{ padding: '28px 32px 32px' }}>
           <SectHead title="Featured" to="/news" linkLabel="All news" />
           {articles.length === 0 ? (
@@ -593,8 +601,12 @@ export default function Home() {
             </>
           )}
         </div>
+        )}
 
+        {(show('media') || show('hall_of_fame')) && (
         <div style={{ padding: '28px 28px 32px' }}>
+          {show('media') && (
+          <>
           <SectHead title="Media" to="/media" linkLabel="Albums" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {albums.map((al) => (
@@ -609,8 +621,11 @@ export default function Home() {
               </Link>
             ))}
           </div>
+          </>
+          )}
 
-          <div className="rule-t" style={{ marginTop: 24, paddingTop: 20 }}>
+          {show('hall_of_fame') && (
+          <div className={show('media') ? 'rule-t' : ''} style={show('media') ? { marginTop: 24, paddingTop: 20 } : {}}>
             <SectHead title="Hall of Fame" to="/hall-of-fame" linkLabel="Inductees" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {inductees.map((p, i) => (
@@ -622,8 +637,11 @@ export default function Home() {
               ))}
             </div>
           </div>
+          )}
         </div>
+        )}
       </div>
+      )}
 
       {/* federations */}
       <div className="rule-t" style={{ padding: '26px 32px 30px' }}>

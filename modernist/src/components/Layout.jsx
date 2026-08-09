@@ -2,6 +2,29 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, Search, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useFeatures } from '../context/FeaturesContext'
+
+// nav path → launch-toggle key (sections the admin can hide)
+const FEATURE_PATHS = {
+  '/coaches': 'coaches',
+  '/hall-of-fame': 'hall_of_fame',
+  '/news': 'news',
+  '/media': 'media',
+  '/market': 'marketplace',
+}
+
+// Admins always see every section (so they can preview before launch)
+function useNav() {
+  const { isAdmin } = useAuth()
+  const { features } = useFeatures()
+  if (isAdmin) return NAV
+  return NAV
+    .map((group) => ({
+      ...group,
+      links: group.links.filter(([, to]) => features[FEATURE_PATHS[to]] !== false),
+    }))
+    .filter((group) => group.links.length > 0)
+}
 
 const NAV = [
   {
@@ -72,6 +95,7 @@ function Header() {
   const [open, setOpen] = useState(false)
   const location = useLocation()
   const { isAdmin, isAuthed, user, logout } = useAuth()
+  const nav = useNav()
   const navigate = useNavigate()
   useEffect(() => { setOpen(false) }, [location])
 
@@ -111,9 +135,9 @@ function Header() {
       </div>
 
       {/* four-area nav grid (desktop) */}
-      <div className="hide-mobile rule-b" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 1fr 0.8fr' }}>
-        {NAV.map((group, i) => (
-          <div key={group.label} className="asw-navcol" style={{ padding: '16px 32px', borderRight: i < NAV.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
+      <div className="hide-mobile rule-b" style={{ display: 'grid', gridTemplateColumns: nav.length === 4 ? '1.4fr 1.2fr 1fr 0.8fr' : `repeat(${nav.length}, 1fr)` }}>
+        {nav.map((group, i) => (
+          <div key={group.label} className="asw-navcol" style={{ padding: '16px 32px', borderRight: i < nav.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
             <div className="kicker" style={{ marginBottom: 6 }}>{group.label}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
               {group.links.map(([label, to]) => (
@@ -129,7 +153,7 @@ function Header() {
         <div className="show-mobile rule-b" style={{ padding: '16px' }}>
           <div style={{ marginBottom: 14 }}><SearchBox compact onDone={() => setOpen(false)} /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {NAV.map((group) => (
+            {nav.map((group) => (
               <div key={group.label} className="asw-navcol">
                 <div className="kicker" style={{ marginBottom: 6 }}>{group.label}</div>
                 {group.links.map(([label, to]) => (
@@ -146,6 +170,7 @@ function Header() {
 
 function Footer() {
   const { isAdmin } = useAuth()
+  const nav = useNav()
   return (
     <footer className="rule-t" style={{ background: 'var(--color-accent-800)', color: '#ffffff', padding: '32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
@@ -164,7 +189,7 @@ function Footer() {
         @arab.swim on Instagram ↗
       </a>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 24, marginTop: 24 }}>
-        {NAV.map((group) => (
+        {nav.map((group) => (
           <div key={group.label}>
             <div className="kicker" style={{ color: 'var(--color-accent-2-400)', marginBottom: 8 }}>{group.label}</div>
             {group.links.map(([label, to]) => (

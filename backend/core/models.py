@@ -48,6 +48,15 @@ class ProfileClaim(models.Model):
         return f'{self.user} → {self.swimmer} ({self.status})'
 
 
+class SiteFeature(models.Model):
+    """Launch toggles: admin can hide whole site sections until they're ready."""
+    key = models.CharField(max_length=40, unique=True)
+    enabled = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f'{self.key}: {"on" if self.enabled else "off"}'
+
+
 class Country(models.Model):
     REGION_CHOICES = [('ARAB', 'Arab'), ('GCC', 'GCC'), ('OTHER', 'Other')]
     name = models.CharField(max_length=100, unique=True)

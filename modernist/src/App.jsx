@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import { useAuth } from './context/AuthContext'
+import { useFeatures } from './context/FeaturesContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import AdminDashboard from './pages/AdminDashboard'
@@ -36,6 +37,14 @@ function RequireAdmin({ children }) {
   return isAdmin ? children : <Navigate to="/login" replace />
 }
 
+// Section hidden by a launch toggle: only admins can preview it
+function RequireFeature({ flag, children }) {
+  const { isAdmin } = useAuth()
+  const { features } = useFeatures()
+  if (features[flag] === false && !isAdmin) return <Navigate to="/" replace />
+  return children
+}
+
 export default function App() {
   return (
     <Routes>
@@ -59,13 +68,13 @@ export default function App() {
         <Route path="/compare" element={<Compare />} />
         <Route path="/teams" element={<Teams />} />
         <Route path="/teams/:id" element={<TeamDetail />} />
-        <Route path="/coaches" element={<Coaches />} />
-        <Route path="/hall-of-fame" element={<HallOfFame />} />
-        <Route path="/news" element={<News />} />
-        <Route path="/news/:id" element={<Article />} />
-        <Route path="/media" element={<Media />} />
-        <Route path="/media/albums/:id" element={<Album />} />
-        <Route path="/market" element={<Market />} />
+        <Route path="/coaches" element={<RequireFeature flag="coaches"><Coaches /></RequireFeature>} />
+        <Route path="/hall-of-fame" element={<RequireFeature flag="hall_of_fame"><HallOfFame /></RequireFeature>} />
+        <Route path="/news" element={<RequireFeature flag="news"><News /></RequireFeature>} />
+        <Route path="/news/:id" element={<RequireFeature flag="news"><Article /></RequireFeature>} />
+        <Route path="/media" element={<RequireFeature flag="media"><Media /></RequireFeature>} />
+        <Route path="/media/albums/:id" element={<RequireFeature flag="media"><Album /></RequireFeature>} />
+        <Route path="/market" element={<RequireFeature flag="marketplace"><Market /></RequireFeature>} />
         <Route path="/countries" element={<Countries />} />
         <Route path="/countries/:id" element={<CountryProfile />} />
         <Route path="*" element={<div className="empty">Page not found</div>} />

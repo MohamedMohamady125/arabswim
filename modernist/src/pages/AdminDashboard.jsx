@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getClaims, approveClaim, declineClaim } from '../api/claims'
-import { createOrgAccount, getCountries } from '../api/core'
+import { createOrgAccount, getCountries, updateFeatures } from '../api/core'
+import { useFeatures } from '../context/FeaturesContext'
 import { getTeams } from '../api/teams'
 import { PageHead, SectHead, Loading, Empty, Seg } from '../components/ui'
 import { mediaUrl } from '../utils'
@@ -185,10 +186,70 @@ function OrgAccountForm() {
   )
 }
 
+const FEATURE_LABELS = [
+  ['news', 'News'],
+  ['media', 'Media'],
+  ['coaches', 'Coaches'],
+  ['hall_of_fame', 'Hall of Fame'],
+  ['marketplace', 'Marketplace'],
+]
+
+function SiteFeatures() {
+  const { features, refreshFeatures } = useFeatures()
+  const [busy, setBusy] = useState(null)
+
+  const toggle = async (key) => {
+    setBusy(key)
+    try {
+      await updateFeatures({ [key]: !(features[key] !== false) })
+      refreshFeatures()
+    } catch {
+      window.alert('Failed to update — try again')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div>
+      <div className="micro" style={{ marginBottom: 14 }}>
+        Hidden sections disappear from the menus and pages for visitors. You (admin) always see everything so you can prepare content before launch.
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        {FEATURE_LABELS.map(([key, label]) => {
+          const on = features[key] !== false
+          return (
+            <div key={key} className="hair" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: '1px solid var(--color-divider)', minWidth: 210 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{label}</div>
+                <div className="micro" style={{ color: on ? 'var(--asw-fast, #0d7a52)' : 'var(--color-neutral-700)' }}>
+                  {on ? 'Visible on the website' : 'Hidden from visitors'}
+                </div>
+              </div>
+              <button
+                className={`btn ${on ? 'btn-secondary' : 'btn-primary'}`}
+                style={{ height: 30, fontSize: 12 }}
+                disabled={busy === key}
+                onClick={() => toggle(key)}
+              >
+                {busy === key ? '…' : on ? 'Hide' : 'Show'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   return (
     <div>
       <PageHead kicker="Admin" title="Dashboard" />
+      <div className="pad rule-b">
+        <SectHead title="Site Sections" />
+        <SiteFeatures />
+      </div>
       <div className="pad rule-b">
         <SectHead title="Pending Profile Claims" />
         <ClaimsQueue />

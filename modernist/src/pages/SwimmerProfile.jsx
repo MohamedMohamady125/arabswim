@@ -13,6 +13,7 @@ import {
   getSwimmerTransferHistory,
 } from '../api/swimmers'
 import { createClaim, getMyClaims } from '../api/claims'
+import { getCountries } from '../api/core'
 import { getHeldRecords } from '../api/records'
 import { useAuth } from '../context/AuthContext'
 import Flag from '../components/Flag'
@@ -153,6 +154,136 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
         {field('Phone', 'phone')}
         {field('Instagram URL', 'instagram_url', 'url')}
         {field('Facebook URL', 'facebook_url', 'url')}
+        <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 40 }}>
+          {loading ? 'Saving…' : 'Save changes'}
+        </button>
+      </form>
+    </Modal>
+  )
+}
+
+function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    name: swimmer.name || '',
+    date_of_birth: swimmer.date_of_birth || '',
+    birth_year: swimmer.birth_year != null ? String(swimmer.birth_year) : '',
+    nationality: swimmer.nationality != null ? String(swimmer.nationality) : '',
+    sex: swimmer.sex || '',
+    club: swimmer.club || '',
+    email: swimmer.email || '',
+    phone: swimmer.phone || '',
+    instagram_url: swimmer.instagram_url || '',
+    facebook_url: swimmer.facebook_url || '',
+    nicknames: (swimmer.nicknames || []).map((n) => n.nickname).join(', '),
+    is_retired: !!swimmer.is_retired,
+  })
+  const [countries, setCountries] = useState([])
+  const [photo, setPhoto] = useState(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    getCountries({ page_size: 500 })
+      .then((res) => setCountries(list(res.data).sort((a, b) => a.name.localeCompare(b.name))))
+      .catch(() => setCountries([]))
+  }, [])
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const payload = {
+        name: form.name.trim(),
+        date_of_birth: form.date_of_birth || null,
+        birth_year: form.birth_year ? Number(form.birth_year) : null,
+        nationality: form.nationality ? Number(form.nationality) : null,
+        sex: form.sex || null,
+        club: form.club.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        instagram_url: form.instagram_url.trim(),
+        facebook_url: form.facebook_url.trim(),
+        nicknames: form.nicknames.split(',').map((s) => s.trim()).filter(Boolean),
+        is_retired: form.is_retired,
+      }
+      await updateSwimmer(swimmer.id, payload)
+      if (photo) {
+        const fd = new FormData()
+        fd.append('photo', photo)
+        await uploadSwimmerPhoto(swimmer.id, fd)
+      }
+      onSaved()
+    } catch (err) {
+      const data = err.response?.data
+      setError(
+        data?.error ||
+        (data && typeof data === 'object' ? Object.entries(data).map(([k, v]) => `${k}: ${v}`).join(' · ') : '') ||
+        'Could not save the changes'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const field = (label, key, type = 'text', props = {}) => (
+    <label style={{ display: 'block' }}>
+      <div className="card-kicker" style={{ marginBottom: 4 }}>{label}</div>
+      <input className="input" type={type} value={form[key]} style={{ width: '100%' }}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value })} {...props} />
+    </label>
+  )
+
+  return (
+    <Modal title="Edit Swimmer" onClose={onClose} width={620}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {error && (
+          <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
+        )}
+        {field('Full name', 'name', 'text', { required: true })}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {field('Date of birth', 'date_of_birth', 'date')}
+          {field('Birth year (if DOB unknown)', 'birth_year', 'number', { min: 1900, max: 2100 })}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <label style={{ display: 'block' }}>
+            <div className="card-kicker" style={{ marginBottom: 4 }}>Nationality</div>
+            <select className="select" value={form.nationality} style={{ width: '100%' }}
+              onChange={(e) => setForm({ ...form, nationality: e.target.value })}>
+              <option value="">— none —</option>
+              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <label style={{ display: 'block' }}>
+            <div className="card-kicker" style={{ marginBottom: 4 }}>Sex</div>
+            <select className="select" value={form.sex} style={{ width: '100%' }}
+              onChange={(e) => setForm({ ...form, sex: e.target.value })}>
+              <option value="">— unknown —</option>
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+            </select>
+          </label>
+        </div>
+        {field('Club', 'club')}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {field('Email', 'email', 'email')}
+          {field('Phone', 'phone')}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {field('Instagram URL', 'instagram_url', 'url')}
+          {field('Facebook URL', 'facebook_url', 'url')}
+        </div>
+        {field('Nicknames (comma-separated)', 'nicknames', 'text', { placeholder: 'e.g. Hamada, Mido' })}
+        <label style={{ display: 'block' }}>
+          <div className="card-kicker" style={{ marginBottom: 4 }}>Profile photo</div>
+          <input className="input" type="file" accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+          <input type="checkbox" checked={form.is_retired}
+            onChange={(e) => setForm({ ...form, is_retired: e.target.checked })} />
+          Retired
+        </label>
         <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 40 }}>
           {loading ? 'Saving…' : 'Save changes'}
         </button>
@@ -647,6 +778,7 @@ export default function SwimmerProfile() {
   const [swimmer, setSwimmer] = useState(null)
   const [claimOpen, setClaimOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [adminEditOpen, setAdminEditOpen] = useState(false)
   const [myClaims, setMyClaims] = useState([])
   const [events, setEvents] = useState([])
   const [stats, setStats] = useState(null)
@@ -782,14 +914,19 @@ export default function SwimmerProfile() {
           return (
             <div style={{ position: 'absolute', top: 16, right: 24, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {isAdmin && (
-                <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }}
-                  onClick={async () => {
-                    const next = !swimmer.is_retired
-                    await updateSwimmer(id, { is_retired: next })
-                    setSwimmer({ ...swimmer, is_retired: next })
-                  }}>
-                  {swimmer.is_retired ? 'Mark active' : 'Mark retired'}
-                </button>
+                <>
+                  <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setAdminEditOpen(true)}>
+                    Edit swimmer
+                  </button>
+                  <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }}
+                    onClick={async () => {
+                      const next = !swimmer.is_retired
+                      await updateSwimmer(id, { is_retired: next })
+                      setSwimmer({ ...swimmer, is_retired: next })
+                    }}>
+                    {swimmer.is_retired ? 'Mark active' : 'Mark retired'}
+                  </button>
+                </>
               )}
               {isMine && (
                 <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setEditOpen(true)}>
@@ -814,6 +951,17 @@ export default function SwimmerProfile() {
           onSubmitted={() => {
             setClaimOpen(false)
             setMyClaims([...myClaims, { swimmer: Number(id), status: 'PENDING' }])
+          }}
+        />
+      )}
+      {adminEditOpen && (
+        <AdminEditSwimmerModal
+          swimmer={swimmer}
+          onClose={() => setAdminEditOpen(false)}
+          onSaved={async () => {
+            setAdminEditOpen(false)
+            const res = await getSwimmer(id).catch(() => null)
+            if (res) setSwimmer(res.data)
           }}
         />
       )}

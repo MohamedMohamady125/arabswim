@@ -1024,7 +1024,11 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'countries': athletes.exclude(swimmer__nationality__isnull=True)
                                      .values('swimmer__nationality').distinct().count(),
                 'swimmers': male + female,
-                'clubs': athletes.exclude(team='').values('team').distinct().count(),
+                # National-team meets (e.g. GCC Games) carry no club names —
+                # each delegation is a team, so fall back to the country count.
+                'clubs': athletes.exclude(team='').values('team').distinct().count()
+                         or athletes.exclude(swimmer__nationality__isnull=True)
+                                    .values('swimmer__nationality').distinct().count(),
                 'events': events_done,
                 'results': results.count(),
                 'medals': medals_total,

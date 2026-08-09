@@ -2775,3 +2775,47 @@ class HytekRelayCumulativeSplitTests(SimpleTestCase):
         _attach_relay_splits(r, '2:44.41 3:18.72 3:52.64 4:29.03')
         self.assertEqual(r.split_times[0], 'Abdallah TARAWNEH 1:03.63')
         self.assertEqual(r.split_times[3], 'Joud AL TAWIL 1:10.31')
+
+
+class Nat2iSemifinalRoundTests(SimpleTestCase):
+    """2017-era Nat'2i files publish "1/2 finales" (semi-finals) between the
+    heats ("Séries") and Finale A/B — they must import as a distinct
+    Semifinals round, not be swallowed by the plain "finale" match."""
+
+    HTML = '''<html><body>
+    <p><a name="01"></a>50 m NAGE LIBRE Dames Classement</p>
+    <p><b><u>Finale A</u></b></p>
+    <table>
+    <tr><td>Place</td><td>Nom et prenom</td><td>Nation</td><td>Naissance</td><td>Club</td><td>Temps</td><td>Points</td><td>Temps de passage</td></tr>
+    <tr><td>1.</td><td>BEN KHELIL Farah</td><td>TUN</td><td>1998</td><td>OLYMPICA</td><td>26.85</td><td>787</td><td></td></tr>
+    </table>
+    <p><b><u>Finale B</u></b></p>
+    <table>
+    <tr><td>Place</td><td>Nom et prenom</td><td>Nation</td><td>Naissance</td><td>Club</td><td>Temps</td><td>Points</td><td>Temps de passage</td></tr>
+    <tr><td>1.</td><td>BARBOUCH Ines</td><td>TUN</td><td>2001</td><td>EST</td><td>27.84</td><td>711</td><td></td></tr>
+    </table>
+    <p><b><u>1/2 finales</u></b></p>
+    <table>
+    <tr><td>Place</td><td>Nom et prenom</td><td>Nation</td><td>Naissance</td><td>Club</td><td>Temps</td><td>Points</td><td>Temps de passage</td></tr>
+    <tr><td>1.</td><td>BEN KHELIL Farah</td><td>TUN</td><td>1998</td><td>OLYMPICA</td><td>27.16</td><td>750</td><td></td></tr>
+    <tr><td>2.</td><td>BARBOUCH Ines</td><td>TUN</td><td>2001</td><td>EST</td><td>27.90</td><td>700</td><td></td></tr>
+    </table>
+    <p><b><u>Séries</u></b></p>
+    <table>
+    <tr><td>Place</td><td>Nom et prenom</td><td>Nation</td><td>Naissance</td><td>Club</td><td>Temps</td><td>Points</td><td>Temps de passage</td></tr>
+    <tr><td>1.</td><td>BEN KHELIL Farah</td><td>TUN</td><td>1998</td><td>OLYMPICA</td><td>27.51</td><td>720</td><td></td></tr>
+    </table>
+    </body></html>'''
+
+    def test_half_finals_become_semifinals_round(self):
+        from importer.parsers import nat2i_parser
+        meet = nat2i_parser.parse(self.HTML)
+        rounds = [(ev.round_type, len(ev.results)) for ev in meet.events]
+        self.assertEqual(rounds, [
+            ('Finals', 1), ('Consolation', 1), ('Semifinals', 2), ('Heats', 1),
+        ])
+
+    def test_demi_finale_variant_also_matches(self):
+        from importer.parsers import nat2i_parser
+        meet = nat2i_parser.parse(self.HTML.replace('1/2 finales', 'Demi-finales'))
+        self.assertIn('Semifinals', [ev.round_type for ev in meet.events])

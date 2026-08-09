@@ -34,11 +34,12 @@ const catRank = (c) => {
 }
 
 // Round display order: finals first, then consolation, prelims, heats
-const ROUND_ORDER = ['Finals', 'Consolation', 'Prelims', 'Heats', '']
+const ROUND_ORDER = ['Finals', 'Consolation', 'Semifinals', 'Prelims', 'Heats', '']
 const roundLabel = (r) => {
   if (!r) return 'Timed Finals'
   if (r === 'Finals') return 'Final A'
   if (r === 'Consolation') return 'Final B'
+  if (r === 'Semifinals') return 'Semi-Final'
   return r
 }
 
@@ -424,6 +425,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
               <select className="select" value={form.round_type} onChange={set('round_type')}>
                 <option value="">Unknown</option>
                 <option value="Finals">Finals</option>
+                <option value="Semifinals">Semi-Final</option>
                 <option value="Prelims">Prelims</option>
                 <option value="Heats">Heats</option>
                 <option value="Consolation">Consolation (Final B)</option>

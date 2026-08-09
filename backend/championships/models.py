@@ -114,6 +114,7 @@ class ProgramItem(models.Model):
 class Result(models.Model):
     ROUND_CHOICES = [
         ('Finals', 'Finals'),
+        ('Semifinals', 'Semifinals'),
         ('Prelims', 'Prelims'),
         ('Heats', 'Heats'),
         ('Consolation', 'Consolation'),

@@ -680,7 +680,7 @@ def drop_heats_if_finals_exist(meet):
             for r in fev.results:
                 finals_keys.add((r.swimmer_name, r.time_centiseconds))
         for ev in evs:
-            if ev.round_type not in ('Heats', 'Prelims', 'Semis'):
+            if ev.round_type not in ('Heats', 'Prelims', 'Semifinals'):
                 continue
             if not ev.results:
                 drop.add(id(ev))

@@ -241,6 +241,10 @@ def parse(html_content):
             new_round = None
             if 'séries' in text_lower or 'series' in text_lower:
                 new_round = 'Heats'
+            # "1/2 finales" / "demi-finales" = semi-finals (must be checked
+            # before the plain "finale" match, which would swallow it)
+            elif re.search(r'(?:1\s*/\s*2|demi)[\s\-]*finale', text_lower):
+                new_round = 'Semifinals'
             elif re.search(r'finale?\s+[bc]', text_lower):
                 new_round = 'Consolation'
             elif 'finale' in text_lower or 'final' in text_lower:

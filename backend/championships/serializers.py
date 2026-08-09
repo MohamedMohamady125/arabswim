@@ -33,7 +33,7 @@ class ChampionshipListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Championship
-        fields = ['id', 'name', 'date', 'end_date', 'pool', 'country', 'country_detail',
+        fields = ['id', 'name', 'date', 'end_date', 'pool', 'meet_category', 'country', 'country_detail',
                   'location', 'classification_category', 'classification', 'sub_classification',
                   'classification_name', 'sub_classification_name',
                   'website', 'policy_pdf', 'live_results_url', 'meet_guide_pdf', 'meet_photo',

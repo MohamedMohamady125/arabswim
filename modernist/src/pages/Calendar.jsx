@@ -133,14 +133,20 @@ function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
     <div style={{ padding: '14px 32px 20px', background: 'var(--color-surface)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: showAny || isAdmin ? 16 : 0 }}>
         <div>
-          <div className="micro" style={{ marginBottom: 3 }}>Pool</div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>{c.pool === 'SCM' ? 'Short Course (25m)' : 'Long Course (50m)'}</div>
-        </div>
-        <div>
           <div className="micro" style={{ marginBottom: 3 }}>Country</div>
           <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
             {c.country_detail ? (<><Flag code={c.country_detail.code} name={c.country_detail.name} />{c.country_detail.name}</>) : '—'}
           </div>
+        </div>
+        <div>
+          <div className="micro" style={{ marginBottom: 3 }}>Category</div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>
+            {c.meet_category === 'OPEN' ? 'Open' : c.meet_category === 'AGE_GROUP' ? 'Age Group' : '—'}
+          </div>
+        </div>
+        <div>
+          <div className="micro" style={{ marginBottom: 3 }}>Pool</div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>{c.pool === 'SCM' ? 'Short Course (25m)' : 'Long Course (50m)'}</div>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -273,7 +279,7 @@ function BirthdaysTab() {
 
 const EMPTY_EVENT = {
   title: '', date: '', end_date: '', event_type: 'MEET', description: '',
-  country: '', location: '', pool: 'LCM',
+  country: '', location: '', pool: 'LCM', meet_category: '',
   classification_category: '', classification: '', sub_classification: '',
 }
 
@@ -427,6 +433,7 @@ export default function Calendar() {
         fd.append('date', newEvent.date)
         if (newEvent.end_date) fd.append('end_date', newEvent.end_date)
         fd.append('pool', newEvent.pool || 'LCM')
+        if (newEvent.meet_category) fd.append('meet_category', newEvent.meet_category)
         fd.append('country', newEvent.country)
         if (newEvent.location) fd.append('location', newEvent.location)
         if (newEvent.classification_category) fd.append('classification_category', newEvent.classification_category)
@@ -779,6 +786,15 @@ export default function Calendar() {
                     <option value="SCM">Short Course (25m)</option>
                   </select>
                 </div>
+              </div>
+              <div className="field">
+                <label>Open / Age Group</label>
+                <select className="select" value={newEvent.meet_category}
+                  onChange={(e) => setNewEvent({ ...newEvent, meet_category: e.target.value })}>
+                  <option value="">Not set</option>
+                  <option value="OPEN">Open</option>
+                  <option value="AGE_GROUP">Age Group</option>
+                </select>
               </div>
               <div className="field">
                 <label>Location</label>

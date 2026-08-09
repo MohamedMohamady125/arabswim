@@ -35,6 +35,9 @@ class Championship(models.Model):
     date = models.DateField()
     end_date = models.DateField(blank=True, null=True)
     pool = models.CharField(max_length=3, choices=POOL_CHOICES)
+    # Open meet vs age-group meet — shown on the calendar dropdown
+    MEET_CATEGORY_CHOICES = [('OPEN', 'Open'), ('AGE_GROUP', 'Age Group')]
+    meet_category = models.CharField(max_length=10, choices=MEET_CATEGORY_CHOICES, blank=True, default='')
     country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name='championships', null=True, blank=True)
     location = models.CharField(max_length=200, blank=True, default='')
     classification_category = models.ForeignKey(ClassificationCategory, on_delete=models.SET_NULL, blank=True, null=True)

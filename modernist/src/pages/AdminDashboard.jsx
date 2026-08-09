@@ -247,6 +247,15 @@ export default function AdminDashboard() {
     <div>
       <PageHead kicker="Admin" title="Dashboard" />
       <div className="pad rule-b">
+        <SectHead title="Website Analytics" />
+        <div className="micro" style={{ marginBottom: 12 }}>
+          Visitors, page views, traffic sources, devices and more — updated live.
+        </div>
+        <Link to="/admin/analytics" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 18px', textDecoration: 'none' }}>
+          Open Analytics →
+        </Link>
+      </div>
+      <div className="pad rule-b">
         <SectHead title="Site Sections" />
         <SiteFeatures />
       </div>

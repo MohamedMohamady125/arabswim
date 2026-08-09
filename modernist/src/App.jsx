@@ -1,10 +1,12 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import PageTracker from './components/PageTracker'
 import { useAuth } from './context/AuthContext'
 import { useFeatures } from './context/FeaturesContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import AdminDashboard from './pages/AdminDashboard'
+import AdminAnalytics from './pages/AdminAnalytics'
 import Import from './pages/Import'
 import Home from './pages/Home'
 import Championships from './pages/Championships'
@@ -47,11 +49,14 @@ function RequireFeature({ flag, children }) {
 
 export default function App() {
   return (
+    <>
+    <PageTracker />
     <Routes>
       <Route element={<Layout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+        <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
         <Route path="/import" element={<RequireAdmin><Import /></RequireAdmin>} />
         <Route path="/" element={<Home />} />
         <Route path="/championships" element={<Championships />} />
@@ -80,5 +85,6 @@ export default function App() {
         <Route path="*" element={<div className="empty">Page not found</div>} />
       </Route>
     </Routes>
+    </>
   )
 }

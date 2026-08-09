@@ -572,7 +572,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
           setSelectedCategory('ALL')
           setExpandedRow(null)
         }
-        setEditingId(null)
+        setEditingRow(null)
       })
       .catch(() => setRows([]))
       .finally(() => setLoading(false))

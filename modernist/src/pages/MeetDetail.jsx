@@ -526,7 +526,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
             {r.is_hc ? (
               <span className="tag tag-neutral" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</span>
             ) : medalOnRow ? (
-              <MedalIcon type={rank === 1 ? 'GOLD' : rank === 2 ? 'SILVER' : 'BRONZE'} size={18} />
+              /* block display kills the inline baseline gap so the medal sits
+                 on the exact vertical center of the row, level with the flag */
+              <MedalIcon type={rank === 1 ? 'GOLD' : rank === 2 ? 'SILVER' : 'BRONZE'} size={18} style={{ display: 'block' }} />
             ) : (
               rank || '—'
             )}

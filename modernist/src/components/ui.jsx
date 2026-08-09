@@ -57,12 +57,12 @@ export function Seg({ options, value, onChange, tabs = false }) {
   )
 }
 
-export function MedalIcon({ type, size = 18 }) {
+export function MedalIcon({ type, size = 18, style }) {
   const src = { GOLD: '/medal_gold.png', SILVER: '/medal_silver.png', BRONZE: '/medal_bronze.png' }[
     String(type || '').toUpperCase()
   ]
   if (!src) return null
-  return <img src={src} alt={type} width={size} height={size} style={{ display: 'inline-block' }} />
+  return <img src={src} alt={type} width={size} height={size} style={{ display: 'inline-block', verticalAlign: 'middle', ...style }} />
 }
 
 export function Pager({ page, pageSize = 25, count, onPage }) {

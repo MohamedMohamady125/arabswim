@@ -55,11 +55,18 @@ export default function Rankings() {
       : events
     const grouped = {}
     for (const e of filtered) {
-      const stroke = e.stroke || 'Other'
+      let stroke = e.stroke || 'Other'
+      // Relays (incl. mixed) group under the relay strokes, not among
+      // the individual events — a 4x50 free relay is not a 200 free.
+      const isRelay = e.is_relay || /relay/i.test(e.name || '')
+      if (isRelay && !/relay/i.test(stroke)) {
+        stroke = stroke === 'Individual Medley' || /medley/i.test(e.name || '') ? 'Medley Relay' : `${stroke} Relay`
+      }
       if (!grouped[stroke]) grouped[stroke] = []
       grouped[stroke].push(e)
     }
-    Object.values(grouped).forEach((arr) => arr.sort((a, b) => a.distance - b.distance))
+    Object.values(grouped).forEach((arr) => arr.sort((a, b) =>
+      (a.distance - b.distance) || String(a.name).localeCompare(String(b.name))))
     const strokes = Object.keys(grouped).sort((a, b) => {
       const ai = STROKE_ORDER.indexOf(a)
       const bi = STROKE_ORDER.indexOf(b)

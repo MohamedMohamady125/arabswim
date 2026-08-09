@@ -207,27 +207,43 @@ class DuplicateSwimmersView(APIView):
 
 class MergeSwimmersView(APIView):
     """
-    Merge two duplicate swimmers.
+    Merge duplicate swimmers — one keeper, one or more removals.
     POST /api/v1/import/merge/
-    Body: { keep_id: int, remove_id: int }
+    Body: { keep_id: int, remove_id: int } or { keep_id: int, remove_ids: [int, ...] }
     """
     def post(self, request):
         keep_id = request.data.get('keep_id')
-        remove_id = request.data.get('remove_id')
+        remove_ids = request.data.get('remove_ids')
+        if remove_ids is None:
+            remove_id = request.data.get('remove_id')
+            remove_ids = [remove_id] if remove_id else []
 
-        if not keep_id or not remove_id:
-            return Response({'error': 'keep_id and remove_id required'}, status=400)
+        if not keep_id or not remove_ids:
+            return Response({'error': 'keep_id and remove_id(s) required'}, status=400)
+        remove_ids = [int(r) for r in remove_ids]
+        if int(keep_id) in remove_ids:
+            return Response({'error': 'Cannot merge a swimmer into themselves'}, status=400)
 
         try:
             keep = Swimmer.objects.get(id=keep_id)
-            remove = Swimmer.objects.get(id=remove_id)
-            merged = merge_swimmers(keep, remove)
-            return Response({
-                'message': f'Merged "{remove.name}" into "{keep.name}"',
-                'swimmer_id': merged.id,
-            })
         except Swimmer.DoesNotExist:
             return Response({'error': 'Swimmer not found'}, status=404)
+
+        merged_names = []
+        for rid in remove_ids:
+            try:
+                remove = Swimmer.objects.get(id=rid)
+            except Swimmer.DoesNotExist:
+                return Response({'error': f'Swimmer {rid} not found', 'merged': merged_names}, status=404)
+            merged_names.append(remove.name)
+            merge_swimmers(keep, remove)
+
+        names = ', '.join(f'"{n}"' for n in merged_names)
+        return Response({
+            'message': f'Merged {names} into "{keep.name}"',
+            'swimmer_id': keep.id,
+            'merged_count': len(merged_names),
+        })
 
 
 class ImportHistoryView(APIView):

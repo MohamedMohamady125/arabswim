@@ -101,7 +101,9 @@ export default function RecordsTab({ swimmerId }) {
           ...r,
           record_type: (r.scope || '').toUpperCase(),
           formatted_time: r.time,
-          location: r.championship_name,
+          meet_name: r.championship_name,
+          location: r.championship_location,
+          fina_points: r.fina_points,
           result_date: r.date,
           categories: [cat],
         }))
@@ -266,8 +268,19 @@ export default function RecordsTab({ swimmerId }) {
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                     {r.event_detail?.name || r.event_name}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-accent)', marginTop: 2 }}>{r.location}</div>
-                  <div className="asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{fmtDate(r.result_date)}</div>
+                  {/* laptop: location · date · FINA — no meet name */}
+                  <div className="hide-mobile" style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+                    {r.location && <span style={{ fontSize: 12, color: 'var(--color-accent)', fontWeight: 600 }}>{r.location}</span>}
+                    <span className="asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{fmtDate(r.result_date)}</span>
+                    {r.fina_points != null && (
+                      <span className="asw-num" style={{ fontSize: 11, fontWeight: 700, color: '#b98a1e', letterSpacing: '0.04em' }}>
+                        {r.fina_points} FINA
+                      </span>
+                    )}
+                  </div>
+                  {/* mobile keeps meet name + date */}
+                  <div className="show-mobile" style={{ fontSize: 12, color: 'var(--color-accent)', marginTop: 2 }}>{r.meet_name}</div>
+                  <div className="show-mobile asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{fmtDate(r.result_date)}</div>
                   <div className="show-mobile-flex" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                     {compressCategories(r.categories).map((cat) => (
                       <span key={cat} className="tag tag-neutral">{cat}</span>

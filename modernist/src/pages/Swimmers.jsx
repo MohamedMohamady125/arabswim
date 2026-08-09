@@ -60,12 +60,12 @@ function Modal({ title, onClose, children, width = 640 }) {
   )
 }
 
-// Two-step merge wizard: pick primary (keep), pick duplicate, confirm
+// Merge wizard: pick primary (keep), then one or MORE duplicates, confirm
 function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
   const [step, setStep] = useState(1)
   const [countryFilter, setCountryFilter] = useState('')
   const [primary, setPrimary] = useState(null)
-  const [duplicate, setDuplicate] = useState(null)
+  const [duplicates, setDuplicates] = useState([])
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [confirming, setConfirming] = useState(false)
@@ -90,18 +90,19 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
       setStep(2)
     } else {
       if (primary && s.id === primary.id) return
-      setDuplicate(s)
+      if (duplicates.some((d) => d.id === s.id)) return
+      setDuplicates([...duplicates, s])
     }
     setQuery('')
     setResults([])
   }
 
   const doMerge = async () => {
-    if (!primary || !duplicate) return
+    if (!primary || duplicates.length === 0) return
     setMerging(true)
     setError('')
     try {
-      await mergeSwimmers(primary.id, duplicate.id)
+      await mergeSwimmers(primary.id, duplicates.map((d) => d.id))
       onMerged()
       onClose()
     } catch (err) {
@@ -112,57 +113,82 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
     }
   }
 
-  const slot = (label, swimmer, onClear) => (
-    <div style={{ border: '1px solid var(--color-divider)', padding: 12, flex: 1, minWidth: 220 }}>
-      <div className="micro" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{label}</div>
-      {swimmer ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Avatar photo={swimmer.photo} name={swimmer.name} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>{swimmer.name}</div>
-            <div className="text-muted" style={{ fontSize: 12 }}>
-              {swimmer.nationality_detail?.name}{swimmer.club ? ` · ${swimmer.club}` : ''}{swimmer.age ? ` · Age ${swimmer.age}` : ''}
-            </div>
-          </div>
-          <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={onClear}>Change</button>
+  const card = (swimmer, extra) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <Avatar photo={swimmer.photo} name={swimmer.name} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 13 }}>{swimmer.name}</div>
+        <div className="text-muted" style={{ fontSize: 12 }}>
+          {swimmer.nationality_detail?.name}{swimmer.club ? ` · ${swimmer.club}` : ''}{swimmer.age ? ` · Age ${swimmer.age}` : ''}
         </div>
-      ) : (
-        <div className="text-muted" style={{ fontSize: 13, fontStyle: 'italic' }}>
-          {label.startsWith('Duplicate') && step === 1 ? 'Select primary first' : 'Search and select below…'}
-        </div>
-      )}
+      </div>
+      {extra}
     </div>
   )
+
+  const dupNames = duplicates.map((d) => `“${d.name}”`).join(', ')
 
   return (
     <Modal title="Merge Swimmers" onClose={onClose}>
       <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
-        Select the swimmer to <strong>keep</strong> (primary), then the <strong>duplicate</strong> to merge into
-        them. All results, records and medals from the duplicate will be transferred, and the duplicate deleted.
+        Select the swimmer to <strong>keep</strong> (primary), then add one or more <strong>duplicates</strong> to
+        merge into them. All results, records and medals from the duplicates will be transferred, and the
+        duplicates deleted.
       </p>
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {slot(step === 1 ? 'Step 1 — Keep (primary)' : 'Keeping', primary, () => { setPrimary(null); setDuplicate(null); setStep(1) })}
-        {slot(step === 2 && !duplicate ? 'Step 2 — Duplicate (deleted)' : 'Duplicate (will be deleted)', duplicate, () => setDuplicate(null))}
+        <div style={{ border: '1px solid var(--color-divider)', padding: 12, flex: 1, minWidth: 220 }}>
+          <div className="micro" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            {step === 1 ? 'Step 1 — Keep (primary)' : 'Keeping'}
+          </div>
+          {primary ? card(primary, (
+            <button className="btn btn-secondary" style={{ fontSize: 11 }}
+              onClick={() => { setPrimary(null); setDuplicates([]); setStep(1) }}>Change</button>
+          )) : (
+            <div className="text-muted" style={{ fontSize: 13, fontStyle: 'italic' }}>Search and select below…</div>
+          )}
+        </div>
+        <div style={{ border: '1px solid var(--color-divider)', padding: 12, flex: 1, minWidth: 220 }}>
+          <div className="micro" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            Duplicates (will be deleted){duplicates.length > 0 ? ` — ${duplicates.length}` : ''}
+          </div>
+          {duplicates.length === 0 ? (
+            <div className="text-muted" style={{ fontSize: 13, fontStyle: 'italic' }}>
+              {step === 1 ? 'Select primary first' : 'Search and add below…'}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {duplicates.map((d) => (
+                <div key={d.id}>
+                  {card(d, (
+                    <button className="btn btn-secondary" style={{ fontSize: 11 }}
+                      onClick={() => setDuplicates(duplicates.filter((x) => x.id !== d.id))}>Remove</button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {(step === 1 || !duplicate) && (
-        <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input
-            className="input"
-            autoFocus
-            style={{ flex: 1, minWidth: 200 }}
-            placeholder={step === 1 ? 'Search for the swimmer to KEEP…' : 'Search for the DUPLICATE swimmer…'}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <select className="select" style={{ width: 170 }} value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)}>
-            <option value="">All countries</option>
-            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          {results.length > 0 && (
-            <div style={{ marginTop: 8, flexBasis: '100%', border: '1px solid var(--color-divider)', maxHeight: 220, overflowY: 'auto' }}>
-              {results.filter((s) => step === 1 || s.id !== primary?.id).map((s) => (
+      <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <input
+          className="input"
+          autoFocus
+          style={{ flex: 1, minWidth: 200 }}
+          placeholder={step === 1 ? 'Search for the swimmer to KEEP…' : 'Search to add another DUPLICATE…'}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <select className="select" style={{ width: 170 }} value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)}>
+          <option value="">All countries</option>
+          {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {results.length > 0 && (
+          <div style={{ marginTop: 8, flexBasis: '100%', border: '1px solid var(--color-divider)', maxHeight: 220, overflowY: 'auto' }}>
+            {results
+              .filter((s) => s.id !== primary?.id && !duplicates.some((d) => d.id === s.id))
+              .map((s) => (
                 <button
                   key={s.id}
                   onClick={() => pick(s)}
@@ -175,10 +201,9 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
                   </span>
                 </button>
               ))}
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {error && (
         <div style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
@@ -187,26 +212,26 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
       {confirming ? (
         <div style={{ marginTop: 16, border: '2px solid var(--color-text)', padding: 14 }}>
           <div style={{ fontSize: 13, marginBottom: 12 }}>
-            Merge “{duplicate?.name}” into “{primary?.name}”? All results, records and medals will be transferred,
-            and “{duplicate?.name}” will be deleted. This cannot be undone.
+            Merge {dupNames} into “{primary?.name}”? All results, records and medals will be transferred,
+            and {duplicates.length > 1 ? 'these profiles' : dupNames} will be deleted. This cannot be undone.
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button className="btn btn-secondary" onClick={() => setConfirming(false)} disabled={merging}>Back</button>
             <button className="btn btn-primary" onClick={doMerge} disabled={merging}>
-              {merging ? 'Merging…' : 'Confirm merge'}
+              {merging ? 'Merging…' : `Confirm merge (${duplicates.length})`}
             </button>
           </div>
         </div>
       ) : (
         <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-          {primary && duplicate && (
+          {primary && duplicates.length > 0 && (
             <span className="text-muted" style={{ fontSize: 12, marginRight: 'auto' }}>
-              This will delete “{duplicate.name}” and transfer all their data.
+              This will delete {duplicates.length} profile{duplicates.length > 1 ? 's' : ''} and transfer all their data.
             </span>
           )}
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={!primary || !duplicate} onClick={() => setConfirming(true)}>
-            Merge
+          <button className="btn btn-primary" disabled={!primary || duplicates.length === 0} onClick={() => setConfirming(true)}>
+            Merge{duplicates.length > 1 ? ` ${duplicates.length}` : ''}
           </button>
         </div>
       )}

@@ -75,51 +75,186 @@ function Modal({ open, title, onClose, children }) {
 
 const LINK_STYLE = { flex: '1 1 140px', textAlign: 'center' }
 
-/* Admin: add/edit live results, entry pack and registration links on a meet */
-function MeetLinksModal({ meet, onClose, onSaved }) {
-  const [liveUrl, setLiveUrl] = useState(meet.live_results_url || '')
-  const [regUrl, setRegUrl] = useState(meet.registration_url || '')
+/* Admin: edit everything on a meet — same fields as creation, plus links/files */
+function MeetEditModal({ meet, countries, onClose, onSaved }) {
+  const toISO = (d) => {
+    // API dates come as dd/mm/yyyy; date inputs need yyyy-mm-dd
+    if (!d) return ''
+    const m = String(d).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+    return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : String(d)
+  }
+  const [form, setForm] = useState({
+    name: meet.name || '',
+    date: toISO(meet.date),
+    end_date: toISO(meet.end_date),
+    pool: meet.pool || 'LCM',
+    meet_category: meet.meet_category || '',
+    country: meet.country != null ? String(meet.country) : '',
+    location: meet.location || '',
+    classification_category: meet.classification_category != null ? String(meet.classification_category) : '',
+    classification: meet.classification != null ? String(meet.classification) : '',
+    sub_classification: meet.sub_classification != null ? String(meet.sub_classification) : '',
+    website: meet.website || '',
+    live_results_url: meet.live_results_url || '',
+    registration_url: meet.registration_url || '',
+  })
   const [packFile, setPackFile] = useState(null)
+  const [photoFile, setPhotoFile] = useState(null)
+  const [classCategories, setClassCategories] = useState([])
+  const [classifications, setClassifications] = useState([])
+  const [subClassifications, setSubClassifications] = useState([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    getClassificationCategories().then((r) => setClassCategories(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {})
+    getClassifications().then((r) => setClassifications(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!form.classification) { setSubClassifications([]); return }
+    getSubClassifications(form.classification)
+      .then((r) => setSubClassifications(Array.isArray(r.data) ? r.data : r.data?.results || []))
+      .catch(() => setSubClassifications([]))
+  }, [form.classification])
+
+  const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
 
   const submit = async (e) => {
     e.preventDefault()
     setSaving(true)
     setError('')
     try {
-      const fd = new FormData()
-      fd.append('live_results_url', liveUrl.trim())
-      fd.append('registration_url', regUrl.trim())
-      if (packFile) fd.append('meet_guide_pdf', packFile)
-      const res = await updateChampionship(meet.id, fd)
+      const payload = {
+        name: form.name.trim(),
+        date: form.date,
+        end_date: form.end_date || null,
+        pool: form.pool,
+        meet_category: form.meet_category,
+        country: form.country ? Number(form.country) : null,
+        location: form.location.trim(),
+        classification_category: form.classification_category ? Number(form.classification_category) : null,
+        classification: form.classification ? Number(form.classification) : null,
+        sub_classification: form.sub_classification ? Number(form.sub_classification) : null,
+        website: form.website.trim(),
+        live_results_url: form.live_results_url.trim(),
+        registration_url: form.registration_url.trim(),
+      }
+      let res = await updateChampionship(meet.id, payload)
+      if (packFile || photoFile) {
+        const fd = new FormData()
+        if (packFile) fd.append('meet_guide_pdf', packFile)
+        if (photoFile) fd.append('meet_photo', photoFile)
+        res = await updateChampionship(meet.id, fd)
+      }
       onSaved(res.data)
     } catch (err) {
       const d = err.response?.data
-      setError(d ? (typeof d === 'string' ? d : Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' ') : v}`).join(' · ')) : 'Could not save links')
+      setError(d ? (typeof d === 'string' ? d : Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' ') : v}`).join(' · ')) : 'Could not save the meet')
       setSaving(false)
     }
   }
 
   return (
-    <Modal open title="Meet Links" onClose={onClose}>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <Modal open title="Edit Meet" onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="field">
+          <label>Meet name *</label>
+          <input className="input" type="text" required value={form.name} onChange={set('name')} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="field">
+            <label>Start date *</label>
+            <input className="input" type="date" required value={form.date} onChange={set('date')} />
+          </div>
+          <div className="field">
+            <label>End date</label>
+            <input className="input" type="date" value={form.end_date} min={form.date || undefined} onChange={set('end_date')} />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="field">
+            <label>Country</label>
+            <select className="select" value={form.country} onChange={set('country')}>
+              <option value="">Select country</option>
+              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Pool</label>
+            <select className="select" value={form.pool} onChange={set('pool')}>
+              <option value="LCM">Long Course (50m)</option>
+              <option value="SCM">Short Course (25m)</option>
+            </select>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="field">
+            <label>Open / Age Group</label>
+            <select className="select" value={form.meet_category} onChange={set('meet_category')}>
+              <option value="">Not set</option>
+              <option value="OPEN">Open</option>
+              <option value="AGE_GROUP">Age Group</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Location</label>
+            <input className="input" type="text" value={form.location} onChange={set('location')} placeholder="City / venue" />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="field">
+            <label>Category</label>
+            <select className="select" value={form.classification_category}
+              onChange={(e) => setForm({ ...form, classification_category: e.target.value, classification: '', sub_classification: '' })}>
+              <option value="">Select category</option>
+              {classCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Classification</label>
+            <select className="select" value={form.classification}
+              onChange={(e) => setForm({ ...form, classification: e.target.value, sub_classification: '' })}>
+              <option value="">Select classification</option>
+              {classifications
+                .filter((c) => !form.classification_category || String(c.category) === String(form.classification_category))
+                .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        </div>
+        {subClassifications.length > 0 && (
+          <div className="field">
+            <label>Sub-classification</label>
+            <select className="select" value={form.sub_classification} onChange={set('sub_classification')}>
+              <option value="">None</option>
+              {subClassifications.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="field">
+          <label>Website</label>
+          <input className="input" type="url" value={form.website} onChange={set('website')} placeholder="https://…" />
+        </div>
         <div className="field">
           <label>Live results URL</label>
-          <input className="input" type="url" value={liveUrl} onChange={(e) => setLiveUrl(e.target.value)} placeholder="https://…" />
+          <input className="input" type="url" value={form.live_results_url} onChange={set('live_results_url')} placeholder="https://…" />
         </div>
         <div className="field">
           <label>Registration link</label>
-          <input className="input" type="url" value={regUrl} onChange={(e) => setRegUrl(e.target.value)} placeholder="https://…" />
+          <input className="input" type="url" value={form.registration_url} onChange={set('registration_url')} placeholder="https://…" />
         </div>
         <div className="field">
-          <label>Entry pack (PDF{meet.meet_guide_pdf ? ' — already uploaded, choose a file to replace' : ''})</label>
+          <label>Entry pack (PDF{meet.meet_guide_pdf ? ' — uploaded, choose a file to replace' : ''})</label>
           <input className="input" type="file" accept=".pdf,application/pdf" onChange={(e) => setPackFile(e.target.files?.[0] || null)} />
+        </div>
+        <div className="field">
+          <label>Meet photo{meet.meet_photo ? ' (uploaded, choose a file to replace)' : ''}</label>
+          <input className="input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setPhotoFile(e.target.files?.[0] || null)} />
         </div>
         {error && <div style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save links'}</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save meet'}</button>
         </div>
       </form>
     </Modal>
@@ -169,7 +304,7 @@ function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
           <Link className="btn btn-secondary" style={LINK_STYLE} to={`/meets/${c.id}`}>Meet page</Link>
         )}
         {isAdmin && (
-          <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => onEditLinks(c)}>Edit links</button>
+          <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => onEditLinks(c)}>Edit meet</button>
         )}
         {isAdmin && c.is_calendar_only && (
           <button className="btn btn-ghost" style={{ color: 'var(--asw-slow)' }} onClick={() => onDelete(c)}>Delete meet</button>
@@ -697,16 +832,17 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* ── Edit meet links modal (admin) ── */}
+      {/* ── Edit meet modal (admin) ── */}
       {isAdmin && editLinksMeet && (
-        <MeetLinksModal
+        <MeetEditModal
           meet={editLinksMeet}
+          countries={countries}
           onClose={() => setEditLinksMeet(null)}
-          onSaved={(d) => {
-            setMeets((prev) => prev.map((m) => m.id === d.id
-              ? { ...m, live_results_url: d.live_results_url, registration_url: d.registration_url, meet_guide_pdf: d.meet_guide_pdf }
-              : m))
+          onSaved={() => {
             setEditLinksMeet(null)
+            setExpandedMeetId(null)
+            loadMeets()
+            loadFeatured()
           }}
         />
       )}

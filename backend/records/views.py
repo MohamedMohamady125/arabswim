@@ -86,7 +86,8 @@ class RecordViewSet(viewsets.ModelViewSet):
                 'event_id', 'event__name', 'event__sort_order', 'event__distance',
                 'swimmer_id', 'swimmer__nationality_id', 'swimmer__nationality__region',
                 'age_at_competition', 'time_centiseconds',
-                'championship__name', 'championship__date',
+                'championship__name', 'championship__date', 'championship__location',
+                'fina_points',
             ))
             if not rows:
                 continue
@@ -130,6 +131,8 @@ class RecordViewSet(viewsets.ModelViewSet):
                     'event_sort_order': r['event__sort_order'], 'event_distance': r['event__distance'],
                     'time': time_str, 'time_centiseconds': cs,
                     'championship_name': r['championship__name'],
+                    'championship_location': r['championship__location'],
+                    'fina_points': r['fina_points'],
                     'date': r['championship__date'].isoformat() if r['championship__date'] else '',
                     'categories': [],
                 }

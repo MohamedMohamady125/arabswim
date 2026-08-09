@@ -7,5 +7,6 @@ export const uploadFile = (formData) => api.post('/import/upload/', formData, {
 export const matchSwimmers = (importId) => api.post('/import/match/', { import_id: importId })
 export const confirmImport = (data) => api.post('/import/confirm/', data)
 export const getDuplicates = () => api.get('/import/duplicates/')
-export const mergeSwimmers = (keepId, removeId) => api.post('/import/merge/', { keep_id: keepId, remove_id: removeId })
+export const mergeSwimmers = (keepId, removeIds) =>
+  api.post('/import/merge/', { keep_id: keepId, remove_ids: Array.isArray(removeIds) ? removeIds : [removeIds] })
 export const getImportHistory = () => api.get('/import/history/')

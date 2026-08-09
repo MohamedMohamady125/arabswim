@@ -88,6 +88,27 @@ function SwimmerLink({ swimmerId, detail }) {
   )
 }
 
+// Meet-page header artwork: the meet's own logo/photo when uploaded,
+// otherwise the ArabSwim logo on a navy tile (the list page keeps flags).
+function MeetLogo({ photo, name, size = 64 }) {
+  const [failed, setFailed] = useState(false)
+  const base = { width: size, height: size, flex: 'none', border: '1px solid var(--color-divider)' }
+  if (photo && !failed) {
+    return (
+      <img src={mediaUrl(photo)} alt={name || ''} onError={() => setFailed(true)}
+        style={{ ...base, objectFit: 'cover', background: '#fff' }} />
+    )
+  }
+  return (
+    <span style={{
+      ...base, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--color-accent-800)', borderColor: 'var(--color-accent-800)',
+    }}>
+      <img src="/logo.png" alt="ArabSwim" style={{ width: size * 0.7, height: size * 0.7, objectFit: 'contain' }} />
+    </span>
+  )
+}
+
 // Fixed-size round club logo; falls back to an initials monogram so every
 // row in the club tally stays perfectly aligned.
 function ClubLogo({ logo, name, size = 26 }) {
@@ -2140,7 +2161,7 @@ export default function MeetDetail() {
       {/* header */}
       <div className="pad-lg rule-b">
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-          <Flag code={meet.country_detail?.code} name={meet.country_detail?.name} large />
+          <MeetLogo photo={meet.meet_photo} name={meet.name} />
           <div style={{ flex: 1, minWidth: 260 }}>
             <div className="kicker" style={{ marginBottom: 6 }}>
               {meet.classification_name || 'Championship'}

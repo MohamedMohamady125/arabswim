@@ -410,6 +410,35 @@ def _is_status_cell(text):
     return bool(STATUS_CELL.match(text.strip()))
 
 
+_WEEKDAYS = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+             'friday': 4, 'saturday': 5, 'sunday': 6}
+
+
+def _weekday_date(text):
+    """ISO date from "Saturday 4/4/2026"-style cells (Hy-Tek exports).
+
+    The weekday name settles the M/D vs D/M ambiguity: only the
+    interpretation whose weekday matches is returned. '' when the text
+    isn't in this shape or neither reading fits.
+    """
+    import re
+    import datetime
+    m = re.match(r'^\s*([A-Za-z]+)\s+(\d{1,2})/(\d{1,2})/(\d{4})\s*$',
+                 str(text or ''))
+    if not m or m.group(1).lower() not in _WEEKDAYS:
+        return ''
+    wd = _WEEKDAYS[m.group(1).lower()]
+    a, b, y = int(m.group(2)), int(m.group(3)), int(m.group(4))
+    for mo, dy in ((a, b), (b, a)):  # try M/D first (Hy-Tek default), then D/M
+        try:
+            d = datetime.date(y, mo, dy)
+        except ValueError:
+            continue
+        if d.weekday() == wd:
+            return d.isoformat()
+    return ''
+
+
 def _cell_time_str(val):
     """Read a time cell exactly as the user meant it.
 
@@ -446,6 +475,9 @@ def _cell_time_str(val):
     text = str(val).strip()
     if not text or text.lower() == 'nan' or _is_status_cell(text):
         return ''
+    # Hy-Tek exhibition marker ("X1:05.83") — a real swim, just non-scoring
+    if text[:1] in ('X', 'x') and text[1:2].isdigit():
+        text = text[1:]
     # Time-formatted cells sometimes round-trip as "HH:MM:SS" strings —
     # reinterpret exactly like the datetime.time branch above.
     import re
@@ -638,7 +670,10 @@ def _parse_excel(file_path, filename=''):
             meet.pool = detect_pool(str(df.to_string()), filename)
         if date_col:
             date_str = _safe_str(first_row[date_col])
-            start_date, end_date, _ = extract_date_and_location(date_str)
+            start_date = _weekday_date(date_str)
+            end_date = ''
+            if not start_date:
+                start_date, end_date, _ = extract_date_and_location(date_str)
             meet.date_text = start_date
             if end_date:
                 meet.date_end = end_date
@@ -647,7 +682,7 @@ def _parse_excel(file_path, filename=''):
                 all_dates = set()
                 for _, r in df.iterrows():
                     d = _safe_str(r[date_col])
-                    sd, _, _ = extract_date_and_location(d)
+                    sd = _weekday_date(d) or extract_date_and_location(d)[0]
                     if sd:
                         all_dates.add(sd)
                 if all_dates:
@@ -850,6 +885,8 @@ def _parse_individual_sheet(df, meet, events_dict):
     points_col = _find_column(cols, ['points', 'pts', 'fina', 'len'])
     round_col = _find_column(cols, ['round', 'tour', 'phase'])
     category_col = _find_column(cols, ['category', 'catégorie', 'cat', 'age group'])
+    distance_col = _find_column(cols, ['distance'])
+    stroke_col = _find_column(cols, ['stroke', 'nage'])
     if not name_col or not time_col:
         return
 
@@ -888,10 +925,16 @@ def _parse_individual_sheet(df, meet, events_dict):
         event_key = f'{event_name}|{gender}|{round_type}|{category}'
 
         if event_key not in events_dict:
+            # Dedicated Distance/Stroke columns (Hy-Tek exports) beat
+            # whatever we can guess from the event title
+            distance = _cell_int(row[distance_col]) if distance_col else 0
+            stroke = _safe_str(row[stroke_col]) if stroke_col else ''
+            if stroke.lower() == 'nan':
+                stroke = ''
             parsed_event = ParsedEvent(
                 event_name=event_name,
-                distance=extract_distance(event_name),
-                stroke=normalize_stroke(event_name),
+                distance=distance or extract_distance(event_name),
+                stroke=normalize_stroke(stroke) if stroke else normalize_stroke(event_name),
                 gender=gender,
                 round_type=round_type,
                 age_group=category,
@@ -908,6 +951,9 @@ def _parse_individual_sheet(df, meet, events_dict):
             continue
 
         raw_name = _safe_str(row[name_col])
+        if relay and (not raw_name or raw_name.lower() == 'nan') and club_col:
+            # Hy-Tek relay exports leave Name empty — the squad is the Team
+            raw_name = _safe_str(row[club_col])
         if not raw_name or raw_name.lower() == 'nan':
             continue
         # Relay rows in individual sheets carry the team name — keep as-is
@@ -1090,7 +1136,16 @@ def _safe_str(val):
 
 
 def _find_column(cols_map, candidates):
-    """Find a column by trying multiple name candidates."""
+    """Find a column by trying multiple name candidates.
+
+    Exact header matches win over substring hits: Hy-Tek exports have
+    both "Event #" and "Event" (want "Event"), and both "Seed Time" and
+    "Finals Time" (want "Finals Time", not whichever contains "time"
+    first).
+    """
+    for candidate in candidates:
+        if candidate in cols_map:
+            return cols_map[candidate]
     for candidate in candidates:
         for col_lower, col_original in cols_map.items():
             if candidate in col_lower:

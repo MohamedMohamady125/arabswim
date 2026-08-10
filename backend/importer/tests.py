@@ -3013,3 +3013,35 @@ class EgyptVariantMatcherTests(TestCase):
         m, _, _ = find_matching_swimmer(
             self._pr('Omar Mohamed Hassan', birth_year=2008, club='AHLY'))
         self.assertIsNone(m)
+
+
+class HytekEgyptExcelTests(SimpleTestCase):
+    """Column mapping quirks of Egyptian Hy-Tek Excel exports."""
+
+    def test_exact_header_beats_substring(self):
+        from importer.parsers.detector import _find_column
+        cols = {'event #': 'Event #', 'event': 'Event',
+                'seed time': 'Seed Time', 'finals time': 'Finals Time'}
+        self.assertEqual(_find_column(cols, ['event']), 'Event')
+        self.assertEqual(
+            _find_column(cols, ['time', 'temps', 'tps', 'finals time', 'result']),
+            'Finals Time')
+        # Substring fallback still works when no exact header exists
+        self.assertEqual(_find_column(cols, ['seed']), 'Seed Time')
+
+    def test_exhibition_time_marker_stripped(self):
+        from importer.parsers.detector import _cell_time_str
+        self.assertEqual(_cell_time_str('X1:05.83'), '1:05.83')
+        self.assertEqual(_cell_time_str('x27.10'), '27.10')
+        # Status cells stay empty; names starting with X untouched
+        self.assertEqual(_cell_time_str('NS'), '')
+        self.assertEqual(_cell_time_str('Xavier'), 'Xavier')
+
+    def test_weekday_disambiguates_date(self):
+        from importer.parsers.detector import _weekday_date
+        # 4/10/2026: April 10 is a Friday, October 4 a Sunday
+        self.assertEqual(_weekday_date('Friday 4/10/2026'), '2026-04-10')
+        self.assertEqual(_weekday_date('Sunday 4/10/2026'), '2026-10-04')
+        self.assertEqual(_weekday_date('Saturday 4/4/2026'), '2026-04-04')
+        self.assertEqual(_weekday_date('4/10/2026'), '')
+        self.assertEqual(_weekday_date('Blursday 4/10/2026'), '')

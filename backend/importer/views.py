@@ -397,3 +397,102 @@ def _check_meet_duplicates(preview):
         warnings.append(warning)
 
     return warnings
+
+
+def _run_scrape_job(job_id):
+    """Background worker: scrape the site and store clean rows on the job."""
+    from django.db import close_old_connections
+    from .models import ScrapeJob
+    from .scraper import scrape_meet
+    close_old_connections()
+    job = ScrapeJob.objects.get(id=job_id)
+    job.status = 'running'
+    job.save(update_fields=['status'])
+    try:
+        def progress(done, total):
+            if done == 1 or done == total or done % 10 == 0:
+                ScrapeJob.objects.filter(id=job_id).update(
+                    progress=f'{done} / {total} event pages')
+
+        meet_name, date_text, rows = scrape_meet(job.url, progress_cb=progress)
+        job.meet_name = meet_name[:255]
+        job.date_text = date_text[:100]
+        job.rows = rows
+        job.total_results = len(rows)
+        job.total_events = len({r['Event #'] for r in rows})
+        job.status = 'done' if rows else 'failed'
+        if not rows:
+            job.error = 'No results found on that page'
+        job.progress = ''
+        job.save()
+    except Exception as e:
+        ScrapeJob.objects.filter(id=job_id).update(
+            status='failed', error=str(e)[:2000], progress='')
+    finally:
+        close_old_connections()
+
+
+class ScrapeView(APIView):
+    """
+    Scrape a federation Hy-Tek HTML results site into a clean Excel file.
+    GET  /api/v1/import/scrape/          — list scrape jobs
+    POST /api/v1/import/scrape/ {url}    — start a new scrape (async)
+    """
+
+    def get(self, request):
+        from .models import ScrapeJob
+        jobs = ScrapeJob.objects.all()[:30]
+        return Response([{
+            'id': j.id,
+            'url': j.url,
+            'meet_name': j.meet_name,
+            'date_text': j.date_text,
+            'status': j.status,
+            'progress': j.progress,
+            'error': j.error,
+            'total_events': j.total_events,
+            'total_results': j.total_results,
+            'created_at': j.created_at,
+        } for j in jobs])
+
+    def post(self, request):
+        import threading
+        from .models import ScrapeJob
+        url = (request.data.get('url') or '').strip()
+        if not url.lower().startswith(('http://', 'https://')):
+            return Response({'error': 'Please paste a valid http(s) link'},
+                            status=400)
+        job = ScrapeJob.objects.create(url=url)
+        threading.Thread(target=_run_scrape_job, args=(job.id,),
+                         daemon=True).start()
+        return Response({'id': job.id, 'status': 'pending'}, status=201)
+
+
+class ScrapeDownloadView(APIView):
+    """GET /api/v1/import/scrape/{id}/download/ — the scraped data as .xlsx"""
+
+    def get(self, request, job_id):
+        import io
+        import re as _re
+        import pandas as pd
+        from django.http import HttpResponse
+        from .models import ScrapeJob
+        from .scraper import EXCEL_COLUMNS
+        try:
+            job = ScrapeJob.objects.get(id=job_id)
+        except ScrapeJob.DoesNotExist:
+            return Response({'error': 'Scrape not found'}, status=404)
+        if job.status != 'done' or not job.rows:
+            return Response({'error': 'Scrape has no data yet'}, status=400)
+        df = pd.DataFrame(job.rows, columns=EXCEL_COLUMNS)
+        buf = io.BytesIO()
+        df.to_excel(buf, index=False, sheet_name='Results')
+        buf.seek(0)
+        slug = _re.sub(r'[^A-Za-z0-9]+', '_',
+                       job.meet_name or 'meet').strip('_').lower() or 'meet'
+        resp = HttpResponse(
+            buf.read(),
+            content_type='application/vnd.openxmlformats-officedocument.'
+                         'spreadsheetml.sheet')
+        resp['Content-Disposition'] = f'attachment; filename="{slug}_results.xlsx"'
+        return resp

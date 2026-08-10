@@ -24,3 +24,23 @@ class ImportLog(models.Model):
 
     def __str__(self):
         return f'{self.file_name} - {self.status}'
+
+
+class ScrapeJob(models.Model):
+    """One scrape of a federation Hy-Tek HTML results site → clean Excel."""
+    url = models.URLField(max_length=500)
+    meet_name = models.CharField(max_length=255, blank=True, default='')
+    date_text = models.CharField(max_length=100, blank=True, default='')
+    status = models.CharField(max_length=20, default='pending')  # pending, running, done, failed
+    progress = models.CharField(max_length=100, blank=True, default='')
+    error = models.TextField(blank=True, default='')
+    total_events = models.IntegerField(default=0)
+    total_results = models.IntegerField(default=0)
+    rows = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.meet_name or self.url} - {self.status}'

@@ -3106,3 +3106,92 @@ class RepairParsedNamesTests(TestCase):
         from importer.services import _build_preview
         preview = _build_preview(self._meet())
         self.assertIsNone(preview['name_repair'])
+
+
+class EsfScraperTests(SimpleTestCase):
+    """Parsing of Hy-Tek HTML results sites (ESF federation)."""
+
+    INDEX = '''
+    <h2 align="center"><font>Egypt Swimming Cup 2022-2023  </h2></font>
+    <p align="center">3/14/2023 - 3/20/2023<br>
+    <a href="230314lastevt.htm" target=main>Latest Completed Event </a><br>
+    <h3>Session 1 - 9:00 AM<br>Tuesday 3/14/2023</h3>
+    <a href="230314F001.htm" target=main>#1 Girls 15&O 200 Breast </a><br>
+    <a href="230314F001O.htm" target=main>#1O Women 15&O 200 Breast </a><br>
+    <h3>Session 2 - 4:00 PM<br>Wednesday 3/15/2023</h3>
+    <a href="230314F011.htm" target=main>#11 Girls 15 400 Free Relay </a><br>
+    <a href="230314F011.htm" target=main>#11 duplicate </a><br>
+    '''
+
+    EVENT_PAGE = '''
+    <pre>
+ <b> Event 1  Girls 15 Year Olds 200 LC Meter Breaststroke</b>
+====================================================
+    Name            Age Team          Seed     Finals   LEN
+====================================================
+  1 <span></span>Janat Kareem Mo  15 SHROK      <span></span> 2:43.25    2:42.81   639
+  2 <span></span>Lara Amr Mahmou  15 6 OCT      <span></span>      NT    2:53.47   528
+ -- <span></span>Farida Nasser M  15 SHOOT      <span></span> 3:02.72   X3:03.96
+ -- <span></span>Renad Mohamed R  15 Bank Ahly Alex <span></span> 3:17.54         DQ
+ -- <span></span>Youmna Hesham M  15 AHLY       <span></span> 3:13.44         NS
+    </pre>
+    '''
+
+    RELAY_PAGE = '''
+    <pre>
+<b> Event 11  Girls 15 Year Olds 400 LC Meter Freestyle Relay</b>
+=====================================================
+    Team                    Seed     Finals   LEN
+=====================================================
+  1 <span></span>SMOHA  'A'        <span></span>      NT    4:12.95   602
+    </pre>
+    '''
+
+    def test_parse_event_index(self):
+        from importer.scraper import parse_event_index
+        name, dates, links = parse_event_index(self.INDEX)
+        self.assertEqual(name, 'Egypt Swimming Cup 2022-2023')
+        self.assertEqual(dates, '3/14/2023 - 3/20/2023')
+        # lastevt skipped, duplicate href deduped
+        self.assertEqual([l[0] for l in links],
+                         ['230314F001.htm', '230314F001O.htm', '230314F011.htm'])
+        self.assertEqual(links[0][1:], ('Session 1', 'Tuesday 3/14/2023'))
+        self.assertEqual(links[2][1:], ('Session 2', 'Wednesday 3/15/2023'))
+
+    def test_parse_individual_event_page(self):
+        from importer.scraper import parse_event_page
+        rows = parse_event_page(self.EVENT_PAGE, session='Session 1',
+                                date='Tuesday 3/14/2023')
+        self.assertEqual(len(rows), 5)
+        r = rows[0]
+        self.assertEqual(r['Name'], 'Janat Kareem Mo')
+        self.assertEqual(r['Team'], 'SHROK')
+        self.assertEqual((r['Age'], r['Rank']), ('15', '1'))
+        self.assertEqual((r['Seed Time'], r['Finals Time']), ('2:43.25', '2:42.81'))
+        self.assertEqual((r['Gender'], r['Age Group'], r['Distance'], r['Stroke']),
+                         ('Female', '15 Year Olds', 200, 'Breaststroke'))
+        self.assertEqual((r['Session'], r['Date']), ('Session 1', 'Tuesday 3/14/2023'))
+        # NT seed blanked; multi-word team with digits kept
+        self.assertEqual(rows[1]['Seed Time'], '')
+        self.assertEqual(rows[1]['Team'], '6 OCT')
+        # Exhibition X-time kept (importer strips it), no rank
+        self.assertEqual(rows[2]['Finals Time'], 'X3:03.96')
+        self.assertEqual(rows[2]['Rank'], '')
+        # Status rows: DQ / NS with no time
+        self.assertEqual((rows[3]['Status'], rows[3]['Finals Time']), ('DQ', ''))
+        self.assertEqual(rows[3]['Team'], 'Bank Ahly Alex')
+        self.assertEqual(rows[4]['Status'], 'NS')
+
+    def test_parse_relay_event_page(self):
+        from importer.scraper import parse_event_page
+        rows = parse_event_page(self.RELAY_PAGE)
+        self.assertEqual(len(rows), 1)
+        r = rows[0]
+        # Converted to the Excel-export relay convention: 4x100 name,
+        # leg distance, team in Team column, empty Name
+        self.assertIn('4x100 LC Meter Freestyle Relay', r['Event'])
+        self.assertEqual(r['Distance'], 100)
+        self.assertEqual(r['Stroke'], 'Freestyle Relay')
+        self.assertEqual(r['Name'], '')
+        self.assertEqual(r['Team'], "SMOHA 'A'")
+        self.assertEqual(r['Finals Time'], '4:12.95')

@@ -10,3 +10,7 @@ export const getDuplicates = () => api.get('/import/duplicates/')
 export const mergeSwimmers = (keepId, removeIds) =>
   api.post('/import/merge/', { keep_id: keepId, remove_ids: Array.isArray(removeIds) ? removeIds : [removeIds] })
 export const getImportHistory = () => api.get('/import/history/')
+export const getScrapeJobs = () => api.get('/import/scrape/')
+export const startScrape = (url) => api.post('/import/scrape/', { url })
+export const downloadScrape = (jobId) =>
+  api.get(`/import/scrape/${jobId}/download/`, { responseType: 'blob', timeout: 120000 })

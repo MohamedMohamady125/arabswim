@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   uploadFile, matchSwimmers, confirmImport,
   getDuplicates, mergeSwimmers, getImportHistory,
+  getScrapeJobs, startScrape, downloadScrape,
 } from '../api/importer'
 import { getCountries } from '../api/core'
 import {
@@ -394,6 +395,7 @@ export default function Import() {
         <Seg
           options={[
             { value: 'file', label: 'Import File' },
+            { value: 'scrape', label: 'Scrape ESF' },
             { value: 'manual', label: 'Manual Entry' },
             { value: 'duplicates', label: 'Duplicates' },
             { value: 'history', label: 'History' },
@@ -428,6 +430,7 @@ export default function Import() {
         {tab === 'manual' && <ManualEntryForm onComplete={() => switchTab('manual')} />}
         {tab === 'duplicates' && <DuplicatesTab />}
         {tab === 'history' && <HistoryTab />}
+        {tab === 'scrape' && <ScrapeTab />}
 
         {tab === 'file' && (
           <>
@@ -1171,6 +1174,152 @@ function DuplicatesTab() {
                         {merging === i ? 'Merging…' : 'Keep B →'}
                       </button>
                     </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ScrapeTab() {
+  const [jobs, setJobs] = useState([])
+  const [url, setUrl] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [starting, setStarting] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = () =>
+    getScrapeJobs().then((res) => setJobs(res.data || [])).catch(() => {})
+
+  useEffect(() => {
+    load().finally(() => setLoading(false))
+  }, [])
+
+  // Poll while a scrape is running
+  useEffect(() => {
+    if (!jobs.some((j) => j.status === 'pending' || j.status === 'running')) return
+    const t = setInterval(load, 4000)
+    return () => clearInterval(t)
+  }, [jobs])
+
+  const handleStart = async () => {
+    const u = url.trim()
+    if (!u) return
+    setStarting(true)
+    setError('')
+    try {
+      await startScrape(u)
+      setUrl('')
+      await load()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to start scrape')
+    }
+    setStarting(false)
+  }
+
+  const handleDownload = async (job) => {
+    setError('')
+    try {
+      const res = await downloadScrape(job.id)
+      const blobUrl = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      const slug = (job.meet_name || 'meet').replace(/[^A-Za-z0-9]+/g, '_').toLowerCase()
+      a.download = `${slug}_results.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(blobUrl)
+    } catch {
+      setError('Failed to download the file')
+    }
+  }
+
+  if (loading) return <Loading label="Loading scrapes" />
+
+  return (
+    <div>
+      <div className="sect-head">
+        <h4>Scrape Federation Results</h4>
+        <span className="micro">ESF Hy-Tek results pages → clean Excel</span>
+      </div>
+      {error && <div style={errorBox}>{error}</div>}
+
+      <div style={{ border: '1px solid var(--color-divider)', padding: 20, marginBottom: 24 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 12 }}>
+          Paste the federation results link (e.g.
+          <span className="asw-num" style={{ margin: '0 4px' }}>esf-eg.org/images/results/swimming/…/results/</span>)
+          and every event will be scraped into one clean Excel file, ready to import
+          via <strong>Import File → Upload Excel</strong> (attach the meet PDFs there
+          to restore full names).
+        </p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <input
+            type="url"
+            className="input"
+            placeholder="https://www.esf-eg.org/images/results/swimming/…/results/"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+            style={{ flex: '1 1 320px', minWidth: 0 }}
+            disabled={starting}
+          />
+          <button type="button" className="btn btn-primary" onClick={handleStart}
+            disabled={starting || !url.trim()}>
+            {starting ? 'Starting…' : 'Scrape'}
+          </button>
+        </div>
+      </div>
+
+      {jobs.length === 0 ? (
+        <Empty label="No scrapes yet" />
+      ) : (
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Meet</th>
+                <th className="hide-mobile">Meet dates</th>
+                <th className="num hide-mobile">Events</th>
+                <th className="num">Results</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.map((job) => (
+                <tr key={job.id}>
+                  <td className="asw-num" style={{ whiteSpace: 'nowrap' }}>
+                    {formatDate(job.created_at)}
+                  </td>
+                  <td style={{ fontWeight: 600, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={job.meet_name || job.url}>
+                    {job.meet_name || job.url}
+                  </td>
+                  <td className="hide-mobile asw-num">{job.date_text || '—'}</td>
+                  <td className="num hide-mobile asw-num">{job.total_events || '—'}</td>
+                  <td className="num asw-num">{job.total_results || '—'}</td>
+                  <td>
+                    {job.status === 'done' && <span className="tag" style={{ background: 'var(--asw-fast)', color: '#fff' }}>Done</span>}
+                    {job.status === 'failed' && (
+                      <span className="tag" style={{ background: 'var(--color-accent)', color: '#fff' }} title={job.error}>Failed</span>
+                    )}
+                    {(job.status === 'pending' || job.status === 'running') && (
+                      <span className="tag tag-neutral">{job.progress || 'Scraping…'}</span>
+                    )}
+                  </td>
+                  <td className="num">
+                    {job.status === 'done' && (
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5 }}
+                        onClick={() => handleDownload(job)}>
+                        Download Excel
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

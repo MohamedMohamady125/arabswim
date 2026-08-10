@@ -8,4 +8,6 @@ urlpatterns = [
     path('import/duplicates/', views.DuplicateSwimmersView.as_view(), name='import-duplicates'),
     path('import/merge/', views.MergeSwimmersView.as_view(), name='import-merge'),
     path('import/history/', views.ImportHistoryView.as_view(), name='import-history'),
+    path('import/scrape/', views.ScrapeView.as_view(), name='import-scrape'),
+    path('import/scrape/<int:job_id>/download/', views.ScrapeDownloadView.as_view(), name='import-scrape-download'),
 ]

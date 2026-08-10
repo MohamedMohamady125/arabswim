@@ -2819,3 +2819,197 @@ class Nat2iSemifinalRoundTests(SimpleTestCase):
         from importer.parsers import nat2i_parser
         meet = nat2i_parser.parse(self.HTML.replace('1/2 finales', 'Demi-finales'))
         self.assertIn('Semifinals', [ev.round_type for ev in meet.events])
+
+
+class EgyptNameHelpersTests(SimpleTestCase):
+    """Pure helpers for Egyptian truncated / variant names."""
+
+    def test_15_char_cut_extends_mid_word(self):
+        from importer.egypt_names import is_name_extension
+        self.assertTrue(is_name_extension('Hager Ahmed Nas', 'Hager Ahmed Nasser'))
+        self.assertTrue(is_name_extension(
+            'Abdelrhman Marwan Moham', 'Abdelrhman Marwan Mohamed Salem'))
+
+    def test_14_char_cut_needs_new_word(self):
+        from importer.egypt_names import is_name_extension
+        # 14 stripped chars: the cut landed on a space → next must be a word
+        self.assertTrue(is_name_extension('Yassin Hussein', 'Yassin Hussein Mohamed'))
+        # Never extend the last word of a 14-char name
+        self.assertFalse(is_name_extension('Yassin Hussein', 'Yassin Husseinov'))
+
+    def test_short_names_extend_only_on_word_boundary(self):
+        from importer.egypt_names import is_name_extension
+        # Whole-word extension mirrors the subset rule…
+        self.assertTrue(is_name_extension('Ali Hassan', 'Ali Hassan Mohamed'))
+        # …but a short name must never grow mid-word
+        self.assertFalse(is_name_extension('Ali Hassan', 'Ali Hassanein'))
+
+    def test_subset_name(self):
+        from importer.egypt_names import is_subset_name
+        self.assertTrue(is_subset_name(
+            'Mohamed Hany Mohamady', 'Mohamed Hany Elsayed Ahmed Mohamady'))
+        # Tokens must stay in order
+        self.assertFalse(is_subset_name(
+            'Mohamed Hany Mohamady Elsayed', 'Mohamed Hany Elsayed Ahmed Mohamady'))
+        # First two parts (given + father) must be identical
+        self.assertFalse(is_subset_name(
+            'Mohamed Ahmed Mohamady', 'Mohamed Hany Elsayed Ahmed Mohamady'))
+
+    def test_names_equivalent(self):
+        from importer.egypt_names import names_equivalent
+        self.assertTrue(names_equivalent('mohamed hany  mohamady',
+                                         'Mohamed Hany Mohamady'))
+        self.assertTrue(names_equivalent('Mohamed Hany Els',
+                                         'Mohamed Hany Elsayed Ahmed Mohamady'))
+        self.assertFalse(names_equivalent('Mohamed Hany', 'Mohamed Hesham'))
+
+    def test_parse_result_line(self):
+        from importer.egypt_names import parse_result_line
+        self.assertEqual(
+            parse_result_line('5 Hager Ahmed Nasser 15 Wadi Degla 2:40.11 _____'),
+            ('Hager Ahmed Nasser', 15, 'Wadi Degla'))
+        # Garbled cross-field interleave is rejected
+        self.assertIsNone(
+            parse_result_line('6 Abdelrhman Marwan Moham 1e6d SalBeamnk Ahly Alex 32.87'))
+        self.assertIsNone(parse_result_line('Boys 50 Free Finals'))
+
+    def test_parse_flow_column(self):
+        from importer.egypt_names import _parse_flow_column
+        toks = ('Bank Ahly Alex 32.87 16 Abdelrhman Marwan '
+                'Mohamed Salem 6 _____').split()
+        self.assertEqual(_parse_flow_column(toks),
+                         ('Abdelrhman Marwan Mohamed Salem', 16, 'Bank Ahly Alex'))
+        self.assertIsNone(_parse_flow_column('Wadi Degla 32.90 Eyad'.split()))
+
+    def test_repair_index(self):
+        from importer.egypt_names import NameRepairIndex
+        idx = NameRepairIndex({
+            ('Hager Ahmed Nasser', 15, 'Wadi Degla'),
+            # chain: PDF columns truncate too — one person, two spellings
+            ('Yehia Khaled Ahmed', 17, 'AHLY'),
+            ('Yehia Khaled Ahmed Abozead', 17, 'AHLY'),
+            # two different people sharing a prefix
+            ('Omar Mohamed Hassan', 18, 'AHLY'),
+            ('Omar Mohamed Hamed', 16, 'SHOOT'),
+        })
+        self.assertEqual(idx.repair('Hager Ahmed Nas'),
+                         ('Hager Ahmed Nasser', 'repaired'))
+        self.assertEqual(idx.repair('Yehia Khaled Ah'),
+                         ('Yehia Khaled Ahmed Abozead', 'repaired'))
+        # Ambiguous prefix resolved by age, unresolved without it
+        self.assertEqual(idx.repair('Omar Mohamed Ha')[1], 'ambiguous')
+        self.assertEqual(idx.repair('Omar Mohamed Ha', age=16),
+                         ('Omar Mohamed Hamed', 'repaired'))
+        self.assertEqual(idx.repair('Omar Mohamed Ha', age=18, team='Ahly'),
+                         ('Omar Mohamed Hassan', 'repaired'))
+        self.assertEqual(idx.repair('Ziad Tarek Alaa'), (None, 'no_match'))
+
+
+class EgyptVariantMatcherTests(TestCase):
+    """find_matching_swimmer resolves Egyptian name variants via the
+    EGY-guarded extension/subset rules and the nickname alias table."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Country
+        cls.egy = Country.objects.create(name='Egypt', code='EGY')
+        cls.tun = Country.objects.create(name='Tunisia', code='TUN')
+
+    def setUp(self):
+        import importer.matcher as matcher
+        matcher._country_cache = None
+        matcher.invalidate_norm_cache()
+
+    def _pr(self, name, birth_year=0, club='', code='EGY'):
+        from importer.parsers.base import ParsedResult
+        return ParsedResult(swimmer_name=name, time_text='',
+                            birth_year=birth_year, nationality_code=code,
+                            club=club)
+
+    def test_subset_variant_matches_with_club(self):
+        from importer.matcher import find_matching_swimmer
+        s = Swimmer.objects.create(
+            name='Mohamed Hany Elsayed Ahmed Mohamady',
+            nationality=self.egy, club='Wadi Degla', sex='M')
+        m, conf, mtype = find_matching_swimmer(
+            self._pr('Mohamed Hany Mohamady', club='Wadi Degla'))
+        self.assertEqual(m, s)
+        self.assertEqual(mtype, 'variant')
+        s.refresh_from_db()
+        # Fullest spelling kept, variant remembered as alias
+        self.assertEqual(s.name, 'Mohamed Hany Elsayed Ahmed Mohamady')
+        self.assertIn('Mohamed Hany Mohamady',
+                      list(s.nicknames.values_list('nickname', flat=True)))
+
+    def test_truncated_variant_matches_with_birth_year(self):
+        from importer.matcher import find_matching_swimmer
+        s = Swimmer.objects.create(
+            name='Abdelrhman Marwan Mohamed Salem', nationality=self.egy,
+            club='Bank Ahly Alex', birth_year=2009, sex='M')
+        m, _, mtype = find_matching_swimmer(
+            self._pr('Abdelrhman Marwan Moham', birth_year=2009))
+        self.assertEqual(m, s)
+        self.assertEqual(mtype, 'variant')
+
+    def test_longer_import_name_upgrades_profile(self):
+        from importer.matcher import find_matching_swimmer
+        s = Swimmer.objects.create(
+            name='Mohamed Hany Mohamady', nationality=self.egy,
+            club='Wadi Degla', birth_year=2008, sex='M')
+        m, _, _ = find_matching_swimmer(self._pr(
+            'Mohamed Hany Elsayed Ahmed Mohamady', birth_year=2008))
+        self.assertEqual(m, s)
+        s.refresh_from_db()
+        self.assertEqual(s.name, 'Mohamed Hany Elsayed Ahmed Mohamady')
+        self.assertIn('Mohamed Hany Mohamady',
+                      list(s.nicknames.values_list('nickname', flat=True)))
+
+    def test_alias_resolves_instantly_next_time(self):
+        from importer.matcher import find_matching_swimmer
+        s = Swimmer.objects.create(
+            name='Mohamed Hany Elsayed Ahmed Mohamady',
+            nationality=self.egy, club='Wadi Degla', birth_year=2008, sex='M')
+        find_matching_swimmer(self._pr('Mohamed Hany Mohamady', birth_year=2008))
+        # Second time: alias table, no corroborating club/year needed
+        m, conf, mtype = find_matching_swimmer(self._pr('Mohamed Hany Mohamady'))
+        self.assertEqual(m, s)
+        self.assertEqual(mtype, 'exact')
+
+    def test_no_corroboration_creates_new(self):
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(
+            name='Mohamed Hany Elsayed Ahmed Mohamady',
+            nationality=self.egy, club='Wadi Degla', sex='M')
+        m, _, mtype = find_matching_swimmer(self._pr('Mohamed Hany Mohamady'))
+        self.assertIsNone(m)
+        self.assertEqual(mtype, 'new')
+
+    def test_conflicting_birth_year_never_merges(self):
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(
+            name='Mohamed Hany Elsayed Ahmed Mohamady', nationality=self.egy,
+            club='Wadi Degla', birth_year=2001, sex='M')
+        m, _, _ = find_matching_swimmer(
+            self._pr('Mohamed Hany Mohamady', birth_year=2010, club='Wadi Degla'))
+        self.assertIsNone(m)
+
+    def test_non_egyptian_swimmers_excluded(self):
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(
+            name='Mohamed Hany Elsayed Ahmed Mohamady', nationality=self.tun,
+            club='Wadi Degla', birth_year=2008, sex='M')
+        m, _, _ = find_matching_swimmer(
+            self._pr('Mohamed Hany Mohamady', birth_year=2008, club='Wadi Degla'))
+        self.assertIsNone(m)
+
+    def test_ambiguous_variant_creates_new(self):
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(name='Omar Mohamed Hassan Aly',
+                               nationality=self.egy, club='AHLY',
+                               birth_year=2008, sex='M')
+        Swimmer.objects.create(name='Omar Mohamed Hassan Zaki',
+                               nationality=self.egy, club='AHLY',
+                               birth_year=2008, sex='M')
+        m, _, _ = find_matching_swimmer(
+            self._pr('Omar Mohamed Hassan', birth_year=2008, club='AHLY'))
+        self.assertIsNone(m)

@@ -15,6 +15,8 @@ from difflib import SequenceMatcher
 from swimmers.models import Swimmer
 from core.models import Country
 
+from .egypt_names import names_equivalent, pick_fullest_name
+
 
 def _club_key(text):
     """Reduce a club name to its alphanumerics for comparison."""
@@ -315,9 +317,100 @@ def _get_norm_cache():
 
 def invalidate_norm_cache():
     """Call after creating/updating swimmers to force cache rebuild."""
-    global _norm_cache, _norm_cache_version
+    global _norm_cache, _norm_cache_version, _egy_cache, _egy_cache_key
     _norm_cache = None
     _norm_cache_version = None
+    _egy_cache = None
+    _egy_cache_key = None
+
+
+# ── Egyptian name-variant matching ──────────────────────────────────────
+#
+# Egyptian sources spell one athlete several ways: Hy-Tek Excel truncates
+# at 15 chars ("Mohamed Hany El"), PDFs carry 3–6 name parts, and club
+# managers register different subsets of the same name between meets
+# ("Mohamed Hany Mohamady" vs "Mohamed Hany Elsayed Ahmed Mohamady").
+# When exact matching fails we look for an EGY-nationality swimmer whose
+# stored name is a truncation-extension or first-two-parts subset of the
+# imported name (see egypt_names.names_equivalent), guarded by birth-year
+# consistency or a club match so same-prefix strangers never merge.
+
+_egy_cache = None      # {first_norm_token: [(swimmer_id, name), ...]}
+_egy_cache_key = None
+
+
+def _get_egy_cache():
+    global _egy_cache, _egy_cache_key
+    qs = Swimmer.objects.filter(is_relay_team=False, nationality__code='EGY')
+    current = qs.count()
+    if _egy_cache is not None and _egy_cache_key == current:
+        return _egy_cache
+    index = {}
+    for sid, sname in qs.values_list('id', 'name'):
+        toks = normalize_for_matching(sname).split()
+        if toks:
+            index.setdefault(toks[0], []).append((sid, sname))
+    _egy_cache = index
+    _egy_cache_key = current
+    return _egy_cache
+
+
+def _record_name_variant(swimmer, other_name):
+    """Keep the fullest spelling on the profile, others as nicknames."""
+    from swimmers.models import SwimmerNickname
+    fullest = pick_fullest_name([swimmer.name, other_name])
+    variants = {swimmer.name, other_name}
+    if fullest != swimmer.name:
+        swimmer.name = fullest
+        swimmer.save(update_fields=['name'])
+        invalidate_norm_cache()
+    existing = set(swimmer.nicknames.values_list('nickname', flat=True))
+    for v in variants:
+        if v and v != swimmer.name and v not in existing:
+            SwimmerNickname.objects.create(swimmer=swimmer, nickname=v)
+
+
+def _egy_variant_match(parsed_result, category='', meet_date=None):
+    """Match an Egyptian name variant to an existing EGY swimmer.
+
+    Returns the swimmer or None. On success the stored name is upgraded
+    to the fullest variant and the other spelling kept as a nickname so
+    the pair resolves instantly next time.
+    """
+    name = parsed_result.swimmer_name
+    toks = normalize_for_matching(name).split()
+    if len(toks) < 2:
+        return None
+    hits = [sid for sid, sname in _get_egy_cache().get(toks[0], [])
+            if names_equivalent(name, sname)]
+    if not hits:
+        return None
+    birth_year = parsed_result.birth_year
+    club = (getattr(parsed_result, 'club', '') or '').strip()
+    band = category_band(category)
+    ok = []
+    for s in Swimmer.objects.filter(id__in=hits):
+        dby = _get_swimmer_birth_year(s)
+        if birth_year and dby and abs(dby - birth_year) > 1:
+            continue  # same prefix, different person
+        year_ok = bool(birth_year and dby and abs(dby - birth_year) <= 1)
+        club_ok = bool(club and clubs_equivalent(s.club, club))
+        if not (year_ok or club_ok):
+            continue  # variant names need a corroborating signal
+        if not birth_year and _candidate_conflicts_by_category(s, band, meet_date):
+            continue
+        ok.append((s, year_ok, club_ok))
+    if not ok:
+        return None
+    if len(ok) > 1:
+        # Prefer the strongest corroboration; still ambiguous → no merge.
+        best = [t for t in ok if t[1] and t[2]] or [t for t in ok if t[1]]
+        if len(best) != 1:
+            return None
+        ok = best
+    swimmer = ok[0][0]
+    _record_name_variant(swimmer, name)
+    return swimmer
 
 
 def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=None):
@@ -354,6 +447,19 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
             candidates = list(Swimmer.objects.filter(id__in=matched_ids))
 
     if not candidates:
+        # Known alias (previously resolved name variant)?
+        from swimmers.models import SwimmerNickname
+        alias_ids = list(SwimmerNickname.objects.filter(
+            nickname__iexact=name).values_list('swimmer_id', flat=True))
+        if alias_ids:
+            candidates = list(Swimmer.objects.filter(
+                id__in=alias_ids, is_relay_team=False))
+
+    if not candidates:
+        # Egyptian variant spelling of an existing swimmer?
+        swimmer = _egy_variant_match(parsed_result, category, meet_date)
+        if swimmer:
+            return swimmer, 93, 'variant'
         return None, 0, 'new'
 
     # We have exact name matches — now check birth year

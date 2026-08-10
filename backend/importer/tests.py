@@ -3045,3 +3045,64 @@ class HytekEgyptExcelTests(SimpleTestCase):
         self.assertEqual(_weekday_date('Saturday 4/4/2026'), '2026-04-04')
         self.assertEqual(_weekday_date('4/10/2026'), '')
         self.assertEqual(_weekday_date('Blursday 4/10/2026'), '')
+
+
+class RepairParsedNamesTests(TestCase):
+    """PDF-based name repair applied to a ParsedMeet before preview."""
+
+    def _meet(self):
+        from importer.parsers.base import ParsedMeet, ParsedEvent, ParsedResult
+        ind = ParsedEvent(event_name='100m Freestyle', results=[
+            ParsedResult(swimmer_name='Hager Ahmed Nas', time_text='1:05.00',
+                         time_centiseconds=6500, age=14, club='Smart Club'),
+            ParsedResult(swimmer_name='Omar Ali', time_text='1:06.00',
+                         time_centiseconds=6600, age=13, club='Heliopolis'),
+        ])
+        rel = ParsedEvent(event_name='4x100 M Freestyle Relay', results=[
+            ParsedResult(swimmer_name='Smart Club Tea', time_text='4:00.00',
+                         time_centiseconds=24000),
+        ])
+        return ParsedMeet(meet_name='Test Meet', events=[ind, rel])
+
+    def test_truncated_name_repaired_and_stats_recorded(self):
+        from importer.egypt_names import NameRepairIndex
+        from importer.services import repair_parsed_names
+        idx = NameRepairIndex({('Hager Ahmed Nasser Fathy', 14, 'Smart Club')})
+        meet = self._meet()
+        stats = repair_parsed_names(meet, idx)
+        self.assertEqual(meet.events[0].results[0].swimmer_name,
+                         'Hager Ahmed Nasser Fathy')
+        # Short complete name untouched, relay event skipped entirely
+        self.assertEqual(meet.events[0].results[1].swimmer_name, 'Omar Ali')
+        self.assertEqual(meet.events[1].results[0].swimmer_name,
+                         'Smart Club Tea')
+        self.assertEqual(stats, {'checked': 1, 'repaired': 1,
+                                 'ambiguous': 0, 'no_match': 0})
+        self.assertIs(meet._name_repair, stats)
+
+    def test_no_match_left_untouched(self):
+        from importer.egypt_names import NameRepairIndex
+        from importer.services import repair_parsed_names
+        idx = NameRepairIndex({('Totally Different Person', 14, 'Smart Club')})
+        meet = self._meet()
+        stats = repair_parsed_names(meet, idx)
+        self.assertEqual(meet.events[0].results[0].swimmer_name,
+                         'Hager Ahmed Nas')
+        self.assertEqual(stats['no_match'], 1)
+        self.assertEqual(stats['repaired'], 0)
+
+    def test_preview_includes_repair_stats(self):
+        from importer.egypt_names import NameRepairIndex
+        from importer.services import repair_parsed_names, _build_preview
+        idx = NameRepairIndex({('Hager Ahmed Nasser Fathy', 14, 'Smart Club')})
+        meet = self._meet()
+        repair_parsed_names(meet, idx)
+        preview = _build_preview(meet)
+        self.assertEqual(preview['name_repair']['repaired'], 1)
+        names = [s['name'] for s in preview['swimmers']]
+        self.assertIn('Hager Ahmed Nasser Fathy', names)
+
+    def test_preview_without_repair_has_null_stats(self):
+        from importer.services import _build_preview
+        preview = _build_preview(self._meet())
+        self.assertIsNone(preview['name_repair'])

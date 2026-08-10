@@ -158,11 +158,15 @@ def _detect_country_from_meet(meet_name, location=''):
     return None
 
 
-def parse_file(file_path=None, uploaded_file=None):
+def parse_file(file_path=None, uploaded_file=None, repair_index=None):
     """
     Step 1: Parse a file and return structured preview data.
     Returns a single preview dict, or a list of preview dicts for
     multi-meet Excel files.
+
+    `repair_index` (egypt_names.NameRepairIndex, optional): full names
+    extracted from the meet's companion PDFs, used to expand Hy-Tek
+    15-char truncated Excel names before the preview is built.
     """
     if uploaded_file:
         parsed = detect_and_parse_upload(uploaded_file)
@@ -171,9 +175,48 @@ def parse_file(file_path=None, uploaded_file=None):
     else:
         raise ValueError('Must provide file_path or uploaded_file')
 
+    meets = parsed if isinstance(parsed, list) else [parsed]
+    if repair_index is not None and len(repair_index):
+        for m in meets:
+            repair_parsed_names(m, repair_index)
+
     if isinstance(parsed, list):
         return [_build_preview(m) for m in parsed]
     return _build_preview(parsed)
+
+
+def repair_parsed_names(parsed_meet, repair_index):
+    """Expand truncated swimmer names in a ParsedMeet in place.
+
+    Uses a NameRepairIndex built from the meet's companion PDFs.  Only
+    individual results whose name could be a Hy-Tek 15-char truncation
+    are touched; ambiguous or unknown names are left as-is (never
+    guessed).  Stats are stored on the meet as `_name_repair` so
+    _build_preview can surface them in the upload response.
+    """
+    from .egypt_names import is_truncated_length
+    stats = {'checked': 0, 'repaired': 0, 'ambiguous': 0, 'no_match': 0}
+    memo = {}
+    for ev in parsed_meet.events:
+        low = ev.event_name.lower()
+        if 'relay' in low or '4x' in low or '4×' in low:
+            continue
+        for r in ev.results:
+            name = (r.swimmer_name or '').strip()
+            if not name or not is_truncated_length(name):
+                continue
+            stats['checked'] += 1
+            key = (name, r.age, r.club)
+            if key not in memo:
+                memo[key] = repair_index.repair(name, age=r.age, team=r.club)
+            full, reason = memo[key]
+            if full:
+                r.swimmer_name = full
+                stats['repaired'] += 1
+            else:
+                stats[reason] += 1
+    parsed_meet._name_repair = stats
+    return stats
 
 
 def _letters_key(name):
@@ -471,6 +514,7 @@ def _build_preview(parsed_meet):
         'events': events,
         'swimmers': list(all_swimmers.values()),
         'program': program,
+        'name_repair': getattr(parsed_meet, '_name_repair', None),
     }
 
 

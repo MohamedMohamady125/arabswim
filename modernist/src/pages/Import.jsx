@@ -93,6 +93,7 @@ export default function Import() {
   // Pre-selected target meet (e.g. arriving from a meet's "Import File" button)
   const presetChampId = searchParams.get('championship') || ''
   const [tab, setTab] = useState('file') // 'file' | 'manual' | 'duplicates' | 'history'
+  const [namePdfs, setNamePdfs] = useState([]) // companion PDFs for Egyptian name repair
   const [importMethod, setImportMethod] = useState(null) // null, 'pdf', 'excel', 'html'
   const [step, setStep] = useState(0) // 0=method, 1=upload, 2=details+edit, 3=match, 4=done
   const [loading, setLoading] = useState(false)
@@ -138,6 +139,7 @@ export default function Import() {
 
   const selectMethod = (method) => {
     setImportMethod(method)
+    setNamePdfs([])
     setStep(1)
   }
 
@@ -182,10 +184,12 @@ export default function Import() {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
-      setLoadingMsg(files.length > 1 ? `Parsing ${i + 1} / ${files.length}: ${file.name}` : 'Parsing…')
+      const repairing = namePdfs.length ? ' + repairing names from PDFs' : ''
+      setLoadingMsg(files.length > 1 ? `Parsing ${i + 1} / ${files.length}${repairing}: ${file.name}` : `Parsing${repairing}…`)
       try {
         const formData = new FormData()
         formData.append('file', file)
+        for (const pdf of namePdfs) formData.append('name_pdfs', pdf)
         const res = await uploadFile(formData)
 
         if (res.data.meets) {
@@ -470,6 +474,32 @@ export default function Import() {
                     ? "Supports Nat'2i HTML format (Tunisia)"
                     : `Supports .xlsx, .xls, and .csv files — select up to ${MAX_FILES} files, one meet per file`}
                 </p>
+                {importMethod === 'excel' && (
+                  <div style={{
+                    margin: '0 auto 24px', maxWidth: 520, padding: 16, textAlign: 'left',
+                    border: '1px dashed var(--color-divider)', background: 'var(--color-neutral-50, #fafafa)',
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
+                      Fix cut names (Egyptian meets) — optional
+                    </div>
+                    <p style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', marginBottom: 10 }}>
+                      Egyptian federation Excel exports cut swimmer names at 15 letters.
+                      Attach the meet&apos;s results / meet-program PDFs and the full names
+                      will be restored automatically before the preview.
+                    </p>
+                    <label className="btn btn-ghost" style={{ fontSize: 13, opacity: loading ? 0.5 : 1, pointerEvents: loading ? 'none' : 'auto' }}>
+                      {namePdfs.length ? `${namePdfs.length} PDF${namePdfs.length > 1 ? 's' : ''} attached` : 'Attach meet PDFs'}
+                      <input type="file" accept=".pdf" multiple style={{ display: 'none' }} disabled={loading}
+                        onChange={(e) => setNamePdfs(Array.from(e.target.files || []))} />
+                    </label>
+                    {namePdfs.length > 0 && (
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: 13, marginLeft: 8 }}
+                        onClick={() => setNamePdfs([])}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
                 <label className="btn btn-primary" style={{ opacity: loading ? 0.5 : 1, pointerEvents: loading ? 'none' : 'auto' }}>
                   {loading ? (loadingMsg || 'Parsing…') : `Choose file${allowMultiple ? 's' : ''}`}
                   <input type="file" accept={acceptTypes} multiple={allowMultiple} onChange={handleUpload}
@@ -487,6 +517,20 @@ export default function Import() {
             {step === 2 && meet && meet.editedPreview && (
               <div>
                 {meetTabs}
+
+                {/* Name repair summary (Egyptian truncated names fixed from PDFs) */}
+                {meet.preview?.name_repair && (
+                  <div style={{
+                    marginBottom: 20, padding: '12px 16px', fontSize: 13,
+                    border: '1px solid var(--color-divider)', background: 'var(--color-neutral-50, #fafafa)',
+                  }}>
+                    <strong>Name repair:</strong>{' '}
+                    {meet.preview.name_repair.repaired} of {meet.preview.name_repair.checked} cut
+                    names restored from the attached PDFs
+                    {meet.preview.name_repair.ambiguous > 0 && <> · {meet.preview.name_repair.ambiguous} ambiguous (left as-is)</>}
+                    {meet.preview.name_repair.no_match > 0 && <> · {meet.preview.name_repair.no_match} not found in PDFs (likely already complete)</>}
+                  </div>
+                )}
 
                 {/* Arab-only toggle */}
                 <div

@@ -20,6 +20,41 @@ class FileUploadView(APIView):
     """
     parser_classes = [MultiPartParser, FormParser]
 
+    MAX_PDF_SIZE = 60 * 1024 * 1024  # per companion PDF
+
+    def _build_repair_index(self, pdf_files):
+        """NameRepairIndex from the meet's companion PDFs (full names).
+
+        Extraction is slow on big PDFs, and the same PDFs are typically
+        re-sent with every Excel file of the meet — cache each PDF's
+        entries by content hash.
+        """
+        import hashlib
+        import tempfile
+        from .egypt_names import extract_pdf_entries, NameRepairIndex
+        entries = set()
+        for pf in pdf_files:
+            if not pf.name.lower().endswith('.pdf'):
+                raise ValueError(f'"{pf.name}" is not a PDF file')
+            if pf.size > self.MAX_PDF_SIZE:
+                raise ValueError(f'"{pf.name}" is too large (max 60 MB)')
+            h = hashlib.md5()
+            data = b''.join(pf.chunks())
+            h.update(data)
+            cache_key = f'pdfnames_{h.hexdigest()}'
+            cached = cache.get(cache_key)
+            if cached is not None:
+                entries |= {tuple(e) for e in json.loads(cached)}
+                continue
+            with tempfile.NamedTemporaryFile(suffix='.pdf') as tmp:
+                tmp.write(data)
+                tmp.flush()
+                pdf_entries = extract_pdf_entries(tmp.name)
+            cache.set(cache_key, json.dumps([list(e) for e in pdf_entries]),
+                      timeout=21600)
+            entries |= pdf_entries
+        return NameRepairIndex(entries)
+
     def post(self, request):
         file = request.FILES.get('file')
         from core.uploads import validate_import_file
@@ -29,7 +64,11 @@ class FileUploadView(APIView):
 
         try:
             import uuid
-            result = parse_file(uploaded_file=file)
+            repair_index = None
+            pdfs = request.FILES.getlist('name_pdfs')
+            if pdfs:
+                repair_index = self._build_repair_index(pdfs)
+            result = parse_file(uploaded_file=file, repair_index=repair_index)
 
             # Multi-meet Excel: return a list of previews
             if isinstance(result, list):

@@ -71,15 +71,18 @@ function withFinishSplit(splits, totalCs) {
 // Long names ellipsize instead of stretching the column
 const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
 
-function SwimmerLink({ swimmerId, detail }) {
+function SwimmerLink({ swimmerId, detail, isNational = true }) {
+  // Relay teams are clubs at national meets but COUNTRIES at international
+  // ones (GCC, Arab, …) — never label a national team as a club there.
+  const isCountryTeam = detail?.is_relay_team && !isNational
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 auto' }}>
       <Flag code={detail?.nationality_detail?.code} name={detail?.nationality_detail?.name} placeholder />
       {detail?.is_relay_team ? (
-        // Relay-team placeholders are clubs, not swimmers — no profile to open
+        // Relay-team placeholders aren't swimmers — no profile to open
         <>
           <span style={NAME_ELLIPSIS}>{detail?.name}</span>
-          <span className="tag tag-neutral" style={{ flex: 'none' }}>Club</span>
+          <span className="tag tag-neutral" style={{ flex: 'none' }}>{isCountryTeam ? 'Country' : 'Club'}</span>
         </>
       ) : (
         <Link to={`/swimmers/${swimmerId}`} style={{ color: 'inherit', textDecoration: 'none', ...NAME_ELLIPSIS }}>{detail?.name}</Link>
@@ -749,7 +752,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
           </td>
           <td className="swimmer-cell">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <SwimmerLink swimmerId={r.swimmer_detail?.id || r.swimmer} detail={r.swimmer_detail} />
+              <SwimmerLink swimmerId={r.swimmer_detail?.id || r.swimmer} detail={r.swimmer_detail} isNational={isNational} />
               {!isRelay && (r.team || '').toUpperCase() === 'LP' && (
                 <span className="tag tag-outline" title="No club — transferring (libre passage)">LP</span>
               )}
@@ -1206,7 +1209,7 @@ function MedalsTab({ meetId, isNational }) {
                           <Flag code={m.swimmer_detail?.nationality_detail?.code} name={m.swimmer_detail?.nationality_detail?.name} />
                           {m.swimmer_detail?.name}
                           {m.swimmer_detail?.is_relay_team && (
-                            <span className="tag tag-neutral" style={{ flex: 'none' }}>Club</span>
+                            <span className="tag tag-neutral" style={{ flex: 'none' }}>{isNational ? 'Club' : 'Country'}</span>
                           )}
                         </div>
                       </td>

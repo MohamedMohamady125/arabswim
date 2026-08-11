@@ -119,9 +119,8 @@ export function mediaUrl(path) {
   return `${API_ORIGIN}${path}`
 }
 
-export function flagSrc(code, size = 'w40') {
-  const alpha2 = CODE_TO_ALPHA2[code?.toUpperCase()]
-  return alpha2 ? `https://flagcdn.com/${size}/${alpha2}.png` : ''
+export function flagAlpha2(code) {
+  return CODE_TO_ALPHA2[code?.toUpperCase()] || ''
 }
 
 // Display name convention: "Given SURNAME" — surnames already stored uppercase.

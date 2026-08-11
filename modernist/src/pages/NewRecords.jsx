@@ -266,22 +266,55 @@ export default function NewRecords() {
               </h4>
               <span className="micro asw-num">{rows.length} record{rows.length !== 1 ? 's' : ''}</span>
             </div>
-            {/* auto-fill keeps cards ~240-300px wide regardless of how many
-                records a scope has; phone override lives in theme.css */}
-            <div className="record-cards">
-              {rows.map((r) => (
+            {/* National records are per-country books: sub-group them so each
+                country's new records sit under their own flag heading */}
+            {type === 'NATIONAL' ? (
+              subGroupByCountry(rows).map(([country, sub]) => (
+                <div key={country} style={{ marginBottom: 18 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 10px' }}>
+                    <Flag code={sub[0].swimmer_detail?.nationality_detail?.code} name={country} />
+                    <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{country}</strong>
+                    <span className="micro asw-num">{sub.length}</span>
+                  </div>
+                  <RecordCards rows={sub} />
+                </div>
+              ))
+            ) : (
+              <RecordCards rows={rows} />
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+function subGroupByCountry(rows) {
+  const map = new Map()
+  rows.forEach((r) => {
+    const key = r.swimmer_detail?.nationality_detail?.name || 'Other'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key).push(r)
+  })
+  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b))
+}
+
+function RecordCards({ rows }) {
+  return (
+    <div className="record-cards">
+      {rows.map((r) => (
                 <div key={r.id}>
                   {r.swimmer_detail?.photo ? (
                     <img
                       src={mediaUrl(r.swimmer_detail.photo)}
                       alt={r.swimmer_detail?.name}
                       className="grayscale"
-                      style={{ width: '100%', aspectRatio: '3 / 2', objectFit: 'cover', objectPosition: 'top', display: 'block', marginBottom: 10 }}
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', objectPosition: 'center top', display: 'block', marginBottom: 10 }}
                     />
                   ) : (
                     <div
                       style={{
-                        width: '100%', aspectRatio: '3 / 2', marginBottom: 10,
+                        width: '100%', aspectRatio: '1 / 1', marginBottom: 10,
                         background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30, color: 'var(--color-accent)',
                       }}
@@ -312,12 +345,8 @@ export default function NewRecords() {
                     {[r.meet_name, r.location].filter(Boolean).join(' · ')}
                     {r.result_date ? ` · ${formatDate(r.result_date)}` : ''}
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))
-      )}
+        </div>
+      ))}
     </div>
   )
 }

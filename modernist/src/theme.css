@@ -199,8 +199,14 @@ figure { margin: 0; }
    names ellipsize instead of squeezing the time/points columns */
 .results-table .rank-col { width: 44px; }
 .results-table td.swimmer-cell { width: 100%; max-width: 0; }
+/* rankings: swimmer column absorbs the leftover width; names ellipsize on one line */
+.rankings-table td.swimmer-cell { width: 100%; max-width: 0; }
 /* grid children default to min-width auto, which lets wide tables blow out the track */
 .grid-2 > *, .grid-3 > *, .two-col > * { min-width: 0; }
+
+/* meet page title: fluid size, never more than 2 lines beside the logo */
+.meet-title { line-height: 1.12; overflow-wrap: anywhere; font-size: clamp(24px, 3.2vw + 8px, 42px); }
+.meet-title-long { font-size: clamp(20px, 2.4vw + 8px, 32px); }
 
 /* ═══ ArabSwiM specifics (from theme) ═══ */
 /* 4:3 boxes matching the flag-icons SVG set exactly — no cropping, no blur */
@@ -257,6 +263,20 @@ figure { margin: 0; }
 /* — record cell grid — */
 .cellgrid { display: grid; gap: 1px; background: var(--color-divider); }
 .cellgrid > * { background: var(--color-surface); padding: 14px 16px; }
+
+/* — clubs grid: logo + name only, 3-up desktop / 2-up phone — */
+.club-grid { display: grid; gap: 12px; grid-template-columns: repeat(3, 1fr); }
+.club-card {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  border: 1px solid var(--color-divider); background: var(--color-surface);
+  padding: 22px 14px 18px; text-align: center;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.club-card:hover { border-color: var(--color-accent); transform: translateY(-2px); }
+.club-card-name {
+  font-family: var(--font-heading); font-weight: 800; font-size: 14.5px;
+  line-height: 1.25; overflow-wrap: anywhere;
+}
 
 /* — new-records card grid — bordered cards, no filler tracks */
 .record-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
@@ -318,11 +338,6 @@ figure { margin: 0; }
      card width ~170px keeps photos small while text stays legible */
   .record-cards { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
   .record-cards > * { padding: 10px !important; }
-  /* odd count: last card spans both columns instead of sitting next to an
-     empty half-row; wider photo crop keeps it from getting huge */
-  .record-cards > *:last-child:nth-child(odd) { grid-column: 1 / -1; }
-  .record-cards > *:last-child:nth-child(odd) img,
-  .record-cards > *:last-child:nth-child(odd) > div:first-child { aspect-ratio: 5 / 2 !important; }
   .record-cards .card-kicker { font-size: 8.5px; letter-spacing: 0.06em; }
   .record-cards .rec-time { font-size: 18px !important; }
   .record-cards .rec-event { font-size: 11px !important; }
@@ -336,6 +351,10 @@ figure { margin: 0; }
   /* — headers & titles: branded, easy-to-scan phone treatment —
      page titles get a short gold underline, kickers a gold dash and
      section heads a navy bar, so every heading is instantly locatable */
+  /* meet header: title sits beside the logo — smaller, max 2 lines, no underline */
+  h1.meet-title { font-size: 20px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  h1.meet-title-long { font-size: 16.5px; }
+  h1.meet-title::after { display: none; }
   h1 { font-size: 26px; }
   h1::after {
     content: ''; display: block; width: 46px; height: 4px;
@@ -382,6 +401,9 @@ figure { margin: 0; }
   .results-table .rank-col { width: 30px; }
   .results-table th:first-child, .results-table td:first-child { padding-right: 2px; }
   .results-table td.swimmer-cell, .results-table th:nth-child(2) { padding-left: 4px; }
+  /* rankings on phone: pull flag + name left and shrink the rank column */
+  .rankings-table th:first-child { width: 24px !important; }
+  .rankings-table td.swimmer-cell, .rankings-table th:nth-child(2) { padding-left: 4px; }
 
   /* keep swimmer details beside the photo on phones */
   .swimmer-photo { width: 104px; align-self: stretch; min-height: 104px; max-height: 176px; font-size: 30px; }
@@ -391,6 +413,9 @@ figure { margin: 0; }
   .swimmer-head-info h1 { font-size: 23px; line-height: 1.15; }
 
   .cellgrid > * { padding: 12px; }
+  .club-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .club-card { padding: 16px 10px 14px; gap: 9px; }
+  .club-card-name { font-size: 13px; }
   .loading, .empty { padding: 32px 16px; }
   .pager { flex-wrap: wrap; }
   .sect-head { flex-wrap: wrap; }

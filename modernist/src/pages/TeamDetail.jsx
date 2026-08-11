@@ -89,25 +89,33 @@ function CountrySelect({ value, onChange, countries }) {
 
 // ── Admin modals ─────────────────────────────────────────────
 
-function EditClubModal({ team, onClose, onSaved }) {
+function EditClubModal({ team, countries, onClose, onSaved }) {
   const [form, setForm] = useState({
+    name: team.name || '',
+    country: team.country || '',
     founded_year: team.founded_year || '',
     description: team.description || '',
     website: team.website || '',
     email: team.email || '',
     phone: team.phone || '',
     address: team.address || '',
+    is_national_team: !!team.is_national_team,
   })
+  const [logo, setLogo] = useState(null)
+  const [banner, setBanner] = useState(null)
   const [trophies, setTrophies] = useState((team.trophies || []).map((t) => ({ name: t.name, year: t.year })))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const save = async () => {
+    if (!form.name.trim()) { setErr('Name is required'); return }
     setBusy(true); setErr('')
     try {
       const fd = new FormData()
       Object.entries(form).forEach(([k, v]) => fd.append(k, v))
+      if (logo) fd.append('logo', logo)
+      if (banner) fd.append('banner', banner)
       fd.append('trophies_data', JSON.stringify(trophies.filter((t) => t.name && t.year)))
       await updateTeam(team.id, fd)
       onSaved()
@@ -119,6 +127,22 @@ function EditClubModal({ team, onClose, onSaved }) {
 
   return (
     <Modal title="Edit Club" onClose={onClose}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field label="Club name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Field>
+        <Field label="Country">
+          <select className="select" style={{ width: '100%' }} value={form.country} onChange={set('country')}>
+            <option value="">Select country…</option>
+            {(countries || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Logo"><input className="input" type="file" accept="image/jpeg,image/png,image/webp" style={{ width: '100%' }} onChange={(e) => setLogo(e.target.files?.[0] || null)} /></Field>
+        <Field label="Banner"><input className="input" type="file" accept="image/jpeg,image/png,image/webp" style={{ width: '100%' }} onChange={(e) => setBanner(e.target.files?.[0] || null)} /></Field>
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0 10px' }}>
+        <input type="checkbox" checked={form.is_national_team}
+          onChange={(e) => setForm((f) => ({ ...f, is_national_team: e.target.checked }))} />
+        National team
+      </label>
       <Field label="Founded year"><input className="input" style={{ width: '100%' }} type="number" value={form.founded_year} onChange={set('founded_year')} /></Field>
       <Field label="Description"><textarea className="input" rows={5} style={{ width: '100%', resize: 'vertical' }} value={form.description} onChange={set('description')} /></Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -1018,7 +1042,7 @@ export default function TeamDetail() {
       </div>
 
       {/* admin modals */}
-      {modal?.type === 'club' && <EditClubModal team={team} onClose={() => setModal(null)} onSaved={refresh} />}
+      {modal?.type === 'club' && <EditClubModal team={team} countries={countries} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'coach' && <CoachModal coach={modal.payload} team={team} countries={countries} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'board' && <BoardModal member={modal.payload} team={team} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'swimmer' && <SwimmerModal swimmer={modal.payload} team={team} countries={countries} onClose={() => setModal(null)} onSaved={refresh} />}

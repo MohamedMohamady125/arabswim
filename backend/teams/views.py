@@ -31,6 +31,15 @@ class TeamViewSet(viewsets.ModelViewSet):
             return [CanManageTeamPortal()]
         return super().get_permissions()
 
+    def perform_update(self, serializer):
+        # Renaming a club must carry its roster along: swimmers/results are
+        # linked to clubs by name string, not FK.
+        old_name = serializer.instance.name
+        team = serializer.save()
+        if team.name != old_name:
+            Result.objects.filter(team__iexact=old_name).update(team=team.name)
+            Swimmer.objects.filter(club__iexact=old_name).update(club=team.name)
+
     def get_serializer_class(self):
         if self.action == 'list':
             return TeamListSerializer

@@ -298,6 +298,30 @@ function initials(name) {
     .map((w) => w[0]).join('').toUpperCase()
 }
 
+// Header photo with graceful fallback: a broken/missing upload never shows
+// as raw alt text — it falls back to the navy initials block.
+function HeaderPhoto({ swimmer }) {
+  const [failed, setFailed] = useState(false)
+  const frame = { flex: 'none', borderTop: '4px solid var(--asw-gold)' }
+  if (swimmer.photo && !failed) {
+    return (
+      <div className="grayscale swimmer-photo" style={{ ...frame, overflow: 'hidden' }}>
+        <img
+          src={mediaUrl(swimmer.photo)}
+          alt={swimmer.name}
+          onError={() => setFailed(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      </div>
+    )
+  }
+  return (
+    <div className="swimmer-photo" style={{ ...frame, background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800 }}>
+      {initials(swimmer.name)}
+    </div>
+  )
+}
+
 const finaColor = (points) =>
   points >= 1000 ? 'var(--asw-gold)'
   : points >= 900 ? 'var(--asw-fast)'
@@ -854,15 +878,7 @@ export default function SwimmerProfile() {
     <div>
       {/* ── Header ── */}
       <div className="pad-lg rule-b" style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap', position: 'relative' }}>
-        {swimmer.photo ? (
-          <div className="grayscale swimmer-photo" style={{ flex: 'none', overflow: 'hidden' }}>
-            <img src={mediaUrl(swimmer.photo)} alt={swimmer.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </div>
-        ) : (
-          <div className="swimmer-photo" style={{ flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800 }}>
-            {initials(swimmer.name)}
-          </div>
-        )}
+        <HeaderPhoto swimmer={swimmer} />
         <div className="swimmer-head-info" style={{ flex: 1 }}>
           <div className="kicker" style={{ marginBottom: 6 }}>Swimmer profile</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -877,6 +893,9 @@ export default function SwimmerProfile() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} flagUrl={swimmer.nationality_detail?.flag_url} />
             <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
+            {swimmer.club && !swimmer.is_relay_team && (
+              <span style={{ color: 'var(--color-neutral-700)' }}>· {swimmer.club}</span>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {swimmer.date_of_birth

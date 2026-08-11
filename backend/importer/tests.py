@@ -2776,6 +2776,32 @@ class HytekRelayCumulativeSplitTests(SimpleTestCase):
         self.assertEqual(r.split_times[0], 'Abdallah TARAWNEH 1:03.63')
         self.assertEqual(r.split_times[3], 'Joud AL TAWIL 1:10.31')
 
+    def test_4x200_cumulative_marks_every_50m(self):
+        # Jordan Clubs Summer AG 2026: 4x200 relays print 16 cumulative
+        # 50m marks over two wrapped lines; each swimmer touches at every
+        # 4th mark.
+        from importer.parsers.hytek_parser import _attach_relay_splits
+        r = self._result(self.NAMES, '8:59.99', 53999)
+        _attach_relay_splits(
+            r, '31.00 1:04.50 1:39.20 2:13.70 2:47.40 3:23.10 4:00.60 4:35.92')
+        _attach_relay_splits(
+            r, '5:08.30 5:44.10 6:20.90 6:51.35 7:22.10 7:55.40 8:28.70 8:59.99')
+        self.assertEqual(r.split_times, [
+            'Abdallah TARAWNEH 2:13.70',
+            'Haya AL MASSARWEH 2:22.22',
+            'Fuad BULBAISI 2:15.43',
+            'Joud AL TAWIL 2:08.64',
+        ])
+
+    def test_dq_relay_partial_marks_keep_names_only(self):
+        # DQ teams have no final time; a first wrapped line of 8 marks must
+        # not be misread as a complete cumulative set (yielding wrong legs).
+        from importer.parsers.hytek_parser import _attach_relay_splits
+        r = self._result(self.NAMES, 'DQ', 0)
+        _attach_relay_splits(
+            r, '34.90 1:11.90 1:51.11 2:28.63 3:02.41 3:40.19 4:20.34 4:59.29')
+        self.assertEqual(r.split_times, self.NAMES)
+
 
 class Nat2iSemifinalRoundTests(SimpleTestCase):
     """2017-era Nat'2i files publish "1/2 finales" (semi-finals) between the

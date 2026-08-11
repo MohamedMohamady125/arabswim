@@ -557,9 +557,14 @@ def _attach_relay_splits(result, line):
         elif sums_to_final:
             # One duration per leg (they add up to the final time).
             leg_times = raw
-    elif increasing and ends_at_final and len(raw) == 2 * n:
-        # Cumulative every 50m: each swimmer touches at every 2nd mark.
-        touches = cs[1::2]
+    elif (increasing and ends_at_final and n and len(raw) % n == 0
+          and result.time_centiseconds):
+        # Cumulative marks every 50m: k marks per swimmer (k=2 for 4x100,
+        # k=4 for 4x200); each swimmer touches at every k-th mark. Requires
+        # a real final time — for DQ teams a partially-accumulated line can
+        # masquerade as a complete set and yield wrong legs.
+        k = len(raw) // n
+        touches = cs[k - 1::k]
         leg_times = [_fmt_cs(b - a) for a, b in zip([0] + touches[:-1], touches)]
 
     if leg_times:

@@ -3,12 +3,13 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   getChampionship, getChampionshipStats, getChampionshipResults,
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
-  getMeetProgram, updateChampionship, getClassifications, getSubClassifications,
-  getRecordsBroken, addChampionshipResult,
+  getMeetProgram, updateChampionship, deleteChampionship, getClassifications, getSubClassifications,
+  getRecordsBroken, addChampionshipResult, getQuickStats, getChampionships, getHeadToHead,
 } from '../api/championships'
 import { getCountries, getEvents, getFinaPointsPreview } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
 import MeetProgramEditor from '../components/MeetProgramEditor'
+import QuickStatsView from '../components/QuickStatsView'
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
@@ -516,7 +517,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
 
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
-function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onDataChanged }) {
+function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, onDataChanged }) {
   const navigate = useNavigate()
   const [initParams] = useSearchParams()
   // deep link from Records: ?event=&gender=&result= opens that exact swim
@@ -713,12 +714,30 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
 
   const colCount = 6 + (isNational ? 1 : 0) + (editMode ? 1 : 0)
 
+  // Double podium (Tunisian-style meets with foreign guests): guests medal
+  // from their source placements, host-country swimmers from a host-only
+  // ranking — a guest gold AND a host gold can coexist in the same event
+  // (mirrors medals/utils.recompute_medals on the backend).
+  const medalRank = (r, ranked, overall) => {
+    if (!hasDoublePodium || !hostCode) return overall
+    const isHost = (x) => x.swimmer_detail?.nationality_detail?.code === hostCode
+    const hosts = ranked.filter(isHost)
+    const guests = ranked.filter((x) => !isHost(x))
+    if (hosts.length === 0 || guests.length === 0) return overall
+    if (!isHost(r)) {
+      if (guests.some((x) => x.original_rank)) return r.original_rank || 0
+      return guests.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
+    }
+    return hosts.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
+  }
+
   const renderRow = (r, arr) => {
     // competition ranking: tied times share a rank (1,2,2,4); HC unranked
     const ranked = arr.filter((x) => !x.is_hc)
     const rank = r.is_hc ? 0 : ranked.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
+    const mRank = r.is_hc ? 0 : medalRank(r, ranked, rank)
     const heatsOnlyCat = !isOpenView && !!r.category && !finalsCats.has(r.category)
-    const medalOnRow = (showMedals || heatsOnlyCat) && !r.is_manual && !r.is_hc && rank >= 1 && rank <= 3
+    const medalOnRow = (showMedals || heatsOnlyCat) && !r.is_manual && !r.is_hc && mRank >= 1 && mRank <= 3
     const swimmers = r.relay_swimmers || []
     const splits = withFinishSplit(r.splits || [], r.time_centiseconds)
     const hasSub = (isRelay && swimmers.length > 0) || (!isRelay && splits.length > 0)
@@ -745,7 +764,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, onData
             ) : medalOnRow ? (
               /* block display kills the inline baseline gap so the medal sits
                  on the exact vertical center of the row, level with the flag */
-              <MedalIcon type={rank === 1 ? 'GOLD' : rank === 2 ? 'SILVER' : 'BRONZE'} size={18} style={{ display: 'block' }} />
+              <MedalIcon type={mRank === 1 ? 'GOLD' : mRank === 2 ? 'SILVER' : 'BRONZE'} size={18} style={{ display: 'block' }} />
             ) : (
               rank || '—'
             )}
@@ -1375,225 +1394,36 @@ function TopPerformancesTab({ stats }) {
   )
 }
 
-function StatisticsTab({ meetId, stats }) {
+function OverviewTab({ meetId, stats }) {
   const navigate = useNavigate()
   const [comparison, setComparison] = useState([])
+  const [qs, setQs] = useState(null)
+  const [qsLoading, setQsLoading] = useState(true)
 
   useEffect(() => {
     let alive = true
+    setQsLoading(true)
+    getQuickStats(meetId)
+      .then((res) => { if (alive) setQs(res.data) })
+      .catch(() => { if (alive) setQs(null) })
+      .finally(() => { if (alive) setQsLoading(false) })
     getChampionshipComparison(meetId)
       .then((res) => { if (alive) setComparison(list(res.data)) })
       .catch(() => {})
     return () => { alive = false }
   }, [meetId])
 
-  if (!stats) return <Empty label="No statistics available" />
-
-  const total = (stats.male_count || 0) + (stats.female_count || 0)
-  const malePct = total ? Math.round(((stats.male_count || 0) / total) * 100) : 0
+  if (qsLoading) return <Loading label="Loading overview" />
+  if (!qs?.championship) return <Empty label="No overview available yet" />
 
   return (
-    <div className="pad">
-      {/* overview counts */}
-      <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginBottom: 28 }}>
-        {[
-          ['Swimmers', stats.total_swimmers],
-          ['Results', stats.total_results],
-          ['Events', stats.total_events ?? stats.events?.length],
-          ['Male', stats.male_count],
-          ['Female', stats.female_count],
-          ...(stats.clubs?.length ? [['Clubs', stats.clubs.length]] : []),
-        ].map(([l, n]) => (
-          <div key={l}>
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1 }}>{formatNumber(n ?? 0)}</div>
-            <div className="micro" style={{ marginTop: 6 }}>{l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* gender breakdown bar */}
-      {total > 0 && (
-        <div style={{ maxWidth: 520, marginBottom: 28 }}>
-          <div className="kicker" style={{ marginBottom: 8 }}>Gender split</div>
-          <div className="bar" style={{ height: 10 }}>
-            <div style={{ width: `${malePct}%` }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 6 }}>
-            <span><span className="asw-num" style={{ color: 'var(--color-text)', fontWeight: 700 }}>{formatNumber(stats.male_count ?? 0)}</span> men · {malePct}%</span>
-            <span><span className="asw-num" style={{ color: 'var(--color-text)', fontWeight: 700 }}>{formatNumber(stats.female_count ?? 0)}</span> women · {100 - malePct}%</span>
-          </div>
-        </div>
-      )}
-
-      {/* countries breakdown */}
-      {(stats.countries || []).length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="kicker" style={{ marginBottom: 10 }}>Countries ({stats.countries.length})</div>
-          <div className="table-scroll" style={{ maxHeight: 420, overflowY: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr><th>Country</th><th className="num">Swimmers</th></tr>
-              </thead>
-              <tbody>
-                {stats.countries.map((c, i) => (
-                  <tr key={c.swimmer__nationality__id ?? i}>
-                    <td style={{ fontSize: 15, fontWeight: 600 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Flag code={c.swimmer__nationality__code} name={c.swimmer__nationality__name} />
-                        {c.swimmer__nationality__name}
-                      </div>
-                    </td>
-                    <td className="num asw-num">{c.swimmers_count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* clubs breakdown (national meets) */}
-      {(stats.clubs || []).length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="kicker" style={{ marginBottom: 10 }}>Clubs ({stats.clubs.length})</div>
-          <div className="table-scroll" style={{ maxHeight: 420, overflowY: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr><th>Club</th><th className="num">Swimmers</th></tr>
-              </thead>
-              <tbody>
-                {stats.clubs.map((c, i) => (
-                  <tr key={i}>
-                    <td style={{ fontSize: 15, fontWeight: 600 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                        <ClubLogo logo={c.team_logo} name={c.team || c.result__team} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {c.team || c.result__team || '—'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="num asw-num">{c.swimmers_count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* age profile */}
-      {stats.age_profile && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="kicker" style={{ marginBottom: 4 }}>Age profile</div>
-          <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
-            Average age <span className="asw-num" style={{ color: 'var(--color-text)', fontWeight: 700 }}>{stats.age_profile.average}</span>
-            {' · '}{formatNumber(stats.age_profile.known_count)} swimmers with a known age
-          </div>
-          {/* distribution bars */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, maxWidth: 560, height: 90, marginBottom: 6 }}>
-            {stats.age_profile.distribution.map((d) => {
-              const maxCount = Math.max(...stats.age_profile.distribution.map((x) => x.count))
-              return (
-                <div key={d.age} title={`${d.age} years — ${d.count} swimmers`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                  <div style={{ width: '100%', height: Math.max(Math.round((d.count / maxCount) * 72), 3), background: 'var(--color-accent)' }} />
-                  <span className="asw-num" style={{ fontSize: 9, color: 'var(--color-neutral-600)' }}>{d.age}</span>
-                </div>
-              )
-            })}
-          </div>
-          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', marginTop: 12 }}>
-            {[['Youngest', stats.age_profile.youngest], ['Oldest', stats.age_profile.oldest]].map(([label, rows]) => (
-              <div key={label}>
-                <div className="micro" style={{ marginBottom: 6 }}>{label}</div>
-                {rows.map((s) => (
-                  <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, padding: '3px 0', cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
-                    <Flag code={s.nationality_code} name={s.nationality} />
-                    <span style={{ fontWeight: 600 }}>{s.swimmer_name}</span>
-                    <span className="asw-num text-muted">{s.age}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* busiest swimmers */}
-      {(stats.busiest_swimmers || []).length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="kicker" style={{ marginBottom: 4 }}>Busiest swimmers</div>
-          <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Most races swum at this meet</div>
-          <div className="table-scroll" style={{ maxWidth: 700 }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 30 }}>#</th>
-                  <th>Swimmer</th>
-                  <th className="num">Races</th>
-                  <th className="num">Events</th>
-                  <th className="num">Best FINA</th>
-                  <th className="num">Avg FINA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.busiest_swimmers.map((s, i) => (
-                  <tr key={s.swimmer_id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>
-                    <td className="asw-num">{i + 1}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Flag code={s.nationality_code} name={s.nationality} />
-                        {s.swimmer_name}
-                      </div>
-                    </td>
-                    <td className="num asw-num" style={{ fontWeight: 700 }}>{s.swims}</td>
-                    <td className="num asw-num">{s.events_count}</td>
-                    <td className="num asw-num">{s.best_fina ?? '—'}</td>
-                    <td className="num asw-num">{s.avg_fina ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* records broken */}
-      {(stats.records_broken || []).length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="kicker" style={{ marginBottom: 10 }}>Records broken</div>
-          <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 70 }}>Record</th>
-                  <th>Swimmer</th>
-                  <th>Event</th>
-                  <th className="time">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.records_broken.map((r, i) => (
-                  <tr key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${r.swimmer_id}`)}>
-                    <td><span className="tag tag-dark">{r.record_type}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Flag code={r.nationality_code} name={r.swimmer_name} />
-                        {r.swimmer_name}
-                      </div>
-                    </td>
-                    <td>{r.event_name}</td>
-                    <td className="time asw-time" style={{ color: 'var(--asw-gold)' }}>{r.time}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+    <div>
+      {/* home-page style quick statistics + busiest swimmers widget */}
+      <QuickStatsView data={qs} busiest={stats?.busiest_swimmers} />
 
       {/* comparison with previous editions */}
       {comparison.length > 1 && (
-        <div>
+        <div className="pad">
           <div className="kicker" style={{ marginBottom: 4 }}>Compare with previous editions</div>
           <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Same classification, same pool type</div>
           <div className="table-scroll">
@@ -1962,6 +1792,24 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
 /* ────────────────────────── Admin: edit meet ─────────────────────── */
 
 function MeetEditPanel({ meet, onSaved, onClose }) {
+  const navigate = useNavigate()
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    const results = meet.results_count ?? ''
+    const msg = results
+      ? `Delete "${meet.name}" and its ${results} results? This cannot be undone.`
+      : `Delete "${meet.name}"? This cannot be undone.`
+    if (!window.confirm(msg)) return
+    setDeleting(true)
+    try {
+      await deleteChampionship(meet.id)
+      navigate('/meets')
+    } catch {
+      window.alert('Failed to delete the championship')
+      setDeleting(false)
+    }
+  }
   const [form, setForm] = useState({
     name: meet.name || '',
     date: meet.date || '',
@@ -2107,11 +1955,197 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
           </label>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-primary" onClick={save} disabled={saving || deleting}>
           {saving ? 'Saving…' : 'Save changes'}
         </button>
-        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving || deleting}>Cancel</button>
+        <button type="button" className="btn btn-secondary" style={{ color: 'var(--asw-slow)', marginLeft: 'auto' }}
+          onClick={handleDelete} disabled={saving || deleting}>
+          {deleting ? 'Deleting…' : 'Delete meet'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ───────────────────────── Compare meets modal ─────────────────────── */
+
+function CompareMeetsModal({ meet, onClose }) {
+  const [candidates, setCandidates] = useState([])
+  const [otherId, setOtherId] = useState('')
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Only meets in the same pool are comparable — LCM and SCM times
+  // measure different things, so cross-pool comparison is meaningless.
+  useEffect(() => {
+    getChampionships({ page_size: 500 })
+      .then((res) => {
+        const all = list(res.data)
+        setCandidates(all.filter((c) => c.pool === meet.pool && String(c.id) !== String(meet.id)))
+      })
+      .catch(() => setCandidates([]))
+  }, [meet.id, meet.pool])
+
+  useEffect(() => {
+    if (!otherId) { setData(null); return }
+    let alive = true
+    setLoading(true)
+    setError('')
+    getHeadToHead(meet.id, otherId)
+      .then((res) => { if (alive) setData(res.data) })
+      .catch((err) => {
+        if (!alive) return
+        setData(null)
+        setError(err?.response?.data?.detail || 'Could not compare these meets')
+      })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [meet.id, otherId])
+
+  const a = data?.a
+  const b = data?.b
+  const metricRows = a && b ? [
+    ['Swimmers', a.swimmers, b.swimmers],
+    ['Male / Female', `${a.male} / ${a.female}`, `${b.male} / ${b.female}`, true],
+    ['Countries', a.countries, b.countries],
+    ['Clubs / Teams', a.clubs, b.clubs],
+    ['Events swum', a.events, b.events],
+    ['Results', a.results, b.results],
+    ['Medals awarded', a.medals, b.medals],
+    ['Records broken', a.records_broken, b.records_broken],
+    ['Average age', a.avg_age ?? '—', b.avg_age ?? '—', true],
+    ['Best FINA points', a.best_fina ?? '—', b.best_fina ?? '—'],
+  ] : []
+
+  const genders = [['M', 'Men'], ['F', 'Women'], ['X', 'Mixed']]
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(8,24,44,0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4vh 16px', overflowY: 'auto' }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{ width: 860, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-accent)' }}>
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
+          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Compare meets</strong>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
+        </div>
+
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div>
+            <div className="micro" style={{ marginBottom: 6 }}>
+              Comparing <strong>{meet.name}</strong> with · same pool only ({meet.pool})
+            </div>
+            <select className="select" style={{ width: '100%', maxWidth: 460 }} value={otherId} onChange={(e) => setOtherId(e.target.value)}>
+              <option value="">Choose a meet…</option>
+              {candidates.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} · {(c.date || '').slice(0, 4)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {error && <div style={{ fontSize: 13, color: '#b3261e' }}>{error}</div>}
+          {loading && <Loading label="Comparing meets" />}
+
+          {a && b && !loading && (
+            <>
+              {/* summary head-to-head */}
+              <div className="table-scroll">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th />
+                      <th>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Flag code={a.country_code} name={a.country} />
+                          <span>{a.name} <span className="asw-num text-muted">({a.year})</span></span>
+                        </div>
+                      </th>
+                      <th>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Flag code={b.country_code} name={b.country} />
+                          <span>{b.name} <span className="asw-num text-muted">({b.year})</span></span>
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metricRows.map(([label, va, vb, neutral]) => {
+                      const na = Number(va); const nb = Number(vb)
+                      const comparable = !neutral && Number.isFinite(na) && Number.isFinite(nb) && na !== nb
+                      return (
+                        <tr key={label}>
+                          <td style={{ fontWeight: 600 }}>{label}</td>
+                          <td className="asw-num" style={comparable && na > nb ? { fontWeight: 800, color: 'var(--color-accent-800)' } : {}}>{va}</td>
+                          <td className="asw-num" style={comparable && nb > na ? { fontWeight: 800, color: 'var(--color-accent-800)' } : {}}>{vb}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* fastest swims, event by event */}
+              {(data.events || []).length > 0 && (
+                <div>
+                  <div className="kicker" style={{ marginBottom: 4 }}>Fastest swim per event</div>
+                  <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
+                    Only events swum at both meets · Δ = first meet minus second (negative = faster at {a.name})
+                  </div>
+                  {genders.map(([g, glabel]) => {
+                    const rows = data.events.filter((e) => e.gender === g)
+                    if (!rows.length) return null
+                    return (
+                      <div key={g} style={{ marginBottom: 16 }}>
+                        <div className="micro" style={{ marginBottom: 6 }}>{glabel}</div>
+                        <div className="table-scroll">
+                          <table className="table">
+                            <thead>
+                              <tr>
+                                <th>Event</th>
+                                <th className="time">{a.year}</th>
+                                <th className="hide-mobile">Swimmer</th>
+                                <th className="time">{b.year}</th>
+                                <th className="hide-mobile">Swimmer</th>
+                                <th className="num">Δ (s)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rows.map((e) => (
+                                <tr key={`${e.event_id}-${e.gender}`}>
+                                  <td style={{ fontWeight: 600 }}>{e.event}</td>
+                                  <td className="time asw-time" style={e.diff_seconds < 0 ? { color: 'var(--asw-gold)', fontWeight: 700 } : {}}>{e.a_time}</td>
+                                  <td className="hide-mobile" style={{ fontSize: 13 }}>
+                                    {e.a_swimmer_id && !e.a_is_relay
+                                      ? <Link to={`/swimmers/${e.a_swimmer_id}`} style={{ color: 'inherit' }}>{e.a_swimmer}</Link>
+                                      : e.a_swimmer}
+                                  </td>
+                                  <td className="time asw-time" style={e.diff_seconds > 0 ? { color: 'var(--asw-gold)', fontWeight: 700 } : {}}>{e.b_time}</td>
+                                  <td className="hide-mobile" style={{ fontSize: 13 }}>
+                                    {e.b_swimmer_id && !e.b_is_relay
+                                      ? <Link to={`/swimmers/${e.b_swimmer_id}`} style={{ color: 'inherit' }}>{e.b_swimmer}</Link>
+                                      : e.b_swimmer}
+                                  </td>
+                                  <td className="num asw-num" style={{ fontWeight: 700, color: e.diff_seconds === 0 ? 'inherit' : (e.diff_seconds < 0 ? 'var(--asw-fast, #1e7d3c)' : 'var(--asw-slow, #b3261e)') }}>
+                                    {e.diff_seconds > 0 ? '+' : ''}{e.diff_seconds.toFixed(2)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -2128,6 +2162,7 @@ export default function MeetDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [comparing, setComparing] = useState(false)
 
   const rawTab = searchParams.get('tab') || 'results'
   const tab = ['results', 'program', 'medals', 'records', 'pbs', 'top', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'results'
@@ -2163,14 +2198,17 @@ export default function MeetDetail() {
     <div>
       {/* header */}
       <div className="pad-lg rule-b">
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <MeetLogo photo={meet.meet_photo} name={meet.name} />
-          <div style={{ flex: 1, minWidth: 260 }}>
+          {/* minWidth 0 keeps the title beside the logo on phones; long names
+              scale down instead of wrapping to three lines */}
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div className="kicker" style={{ marginBottom: 6 }}>
               {meet.classification_name || 'Championship'}
               {meet.sub_classification_name ? ` · ${meet.sub_classification_name}` : ''}
             </div>
-            <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>{meet.name}</h1>
+            <h1 className={`meet-title${(meet.name || '').length > 38 ? ' meet-title-long' : ''}`}
+              style={{ margin: 0, letterSpacing: '-0.03em' }}>{meet.name}</h1>
             <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8 }}>
               {meet.location}
               {meet.country_detail ? `${meet.location ? ', ' : ''}${meet.country_detail.name}` : ''}
@@ -2178,16 +2216,21 @@ export default function MeetDetail() {
               {' · '}<span className="tag tag-dark" style={{ verticalAlign: 'middle' }}>{meet.pool}</span>
             </div>
           </div>
-          {isAdmin && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>
-                {editing ? 'Close editor' : 'Edit meet'}
-              </button>
-              <Link className="btn btn-secondary" to={`/import?championship=${id}`}>Import results</Link>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setComparing(true)}>Compare</button>
+            {isAdmin && (
+              <>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>
+                  {editing ? 'Close editor' : 'Edit meet'}
+                </button>
+                <Link className="btn btn-secondary" to={`/import?championship=${id}`}>Import results</Link>
+              </>
+            )}
+          </div>
         </div>
       </div>
+
+      {comparing && <CompareMeetsModal meet={meet} onClose={() => setComparing(false)} />}
 
       {isAdmin && editing && (
         <MeetEditPanel
@@ -2208,7 +2251,7 @@ export default function MeetDetail() {
             { value: 'records', label: 'Broken Records' },
             { value: 'pbs', label: 'Personal Bests' },
             { value: 'top', label: 'Top Performances' },
-            { value: 'statistics', label: 'Statistics' },
+            { value: 'statistics', label: 'Overview' },
             { value: 'improved', label: 'Most Improved' },
             { value: 'gallery', label: 'Gallery' },
           ]}
@@ -2218,14 +2261,15 @@ export default function MeetDetail() {
       </div>
 
       {tab === 'results' && (
-        <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium} onDataChanged={refreshStats} />
+        <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium}
+          hasDoublePodium={!!meet.has_double_podium} hostCode={meet.country_detail?.code} onDataChanged={refreshStats} />
       )}
       {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
       {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}
       {tab === 'records' && <RecordsBrokenTab meetId={id} />}
       {tab === 'pbs' && <PersonalBestsTab stats={stats} />}
       {tab === 'top' && <TopPerformancesTab stats={stats} />}
-      {tab === 'statistics' && <StatisticsTab meetId={id} stats={stats} />}
+      {tab === 'statistics' && <OverviewTab meetId={id} stats={stats} />}
       {tab === 'improved' && <MostImprovedTab meetId={id} />}
       {tab === 'gallery' && <MeetGallery meetId={id} isAdmin={isAdmin} />}
     </div>

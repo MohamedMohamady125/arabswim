@@ -122,6 +122,46 @@ def clean_relay_team_name(name):
     return cleaned or name.strip()
 
 
+# Federation-style suffixes on national relay teams: "Kuwait Swimming",
+# "Uae Aquatics Federation", "Qatar Swimming Association"…
+_FEDERATION_SUFFIX_RE = re.compile(
+    r'\s+(swimming|aquatics?)?\s*(federation|association|team)?$'
+    r'|\s+(swimming|aquatics)$',
+    re.IGNORECASE)
+
+
+def country_for_relay_team(name):
+    """Resolve a national relay-team placeholder name to its Country.
+
+    Handles the source-file artifacts that produce ugly names:
+      'EGY EGY'                → Egypt   (code doubled by the parser)
+      'Kuwait Swimming'        → Kuwait  (federation suffix)
+      'Uae Aquatics Federation'→ United Arab Emirates
+
+    Deliberately does NOT resolve bare 3-letter codes ('EST' is a
+    Tunisian club, not Estonia) or anything else that could be a club,
+    so national-meet relay squads keep their club names.
+    """
+    if not name:
+        return None
+    from importer.matcher import resolve_country
+    cleaned = name.strip()
+    tokens = cleaned.split()
+    # Doubled identical tokens: "EGY EGY" -> "EGY"
+    if len(tokens) >= 2 and len({t.upper() for t in tokens}) == 1:
+        return resolve_country(tokens[0])
+    # Exact country NAME match ("Egypt", "United Arab Emirates") — codes
+    # excluded on purpose (club abbreviations collide with IOC codes).
+    hit = Country.objects.filter(name__iexact=cleaned).first()
+    if hit:
+        return hit
+    # Federation suffix: "Kuwait Swimming" -> "Kuwait"
+    stripped = _FEDERATION_SUFFIX_RE.sub('', cleaned).strip()
+    if stripped and stripped != cleaned:
+        return resolve_country(stripped)
+    return None
+
+
 # A whole name that is just a swim time, e.g. "3:37.01", "07:58.87", "58.31"
 _TIME_NAME_RE = re.compile(r'^\d{0,2}:?\d{1,2}[:.,]\d{2}([.,]\d{1,2})?$')
 # A swim time embedded anywhere in the name, e.g. "CLUB X 3:40.68"

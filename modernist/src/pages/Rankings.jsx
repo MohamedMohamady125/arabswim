@@ -182,7 +182,7 @@ export default function Rankings() {
             </div>
           )}
           <div className="table-scroll">
-            <table className="table">
+            <table className="table rankings-table">
               <thead>
                 <tr>
                   <th style={{ width: 34 }}>#</th>
@@ -210,13 +210,14 @@ export default function Rankings() {
                       title={swimLink ? 'View this swim' : undefined}
                     >
                       <td className="asw-num" style={{ fontWeight: 800 }}>{isTied ? '=' : r.rank}</td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <td className="swimmer-cell">
+                        {/* one line always — long names ellipsize instead of wrapping */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           <Flag code={r.nationality_code} name={r.nationality} />
                           {/* whole row goes to the swim; profile stays a click away via the meet page */}
                           {swimLink
-                            ? <span>{r.swimmer_name}</span>
-                            : <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>}
+                            ? <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.swimmer_name}</span>
+                            : <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.swimmer_name}</Link>}
                         </div>
                       </td>
                       <td className="num asw-num">{r.age_at_competition ?? '—'}</td>

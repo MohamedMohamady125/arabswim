@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getChampionships, updateChampionship, deleteChampionship } from '../api/championships'
+import { getChampionships } from '../api/championships'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
@@ -24,42 +24,6 @@ export default function Championships() {
   const [year, setYear] = useState('')
   const [pool, setPool] = useState('ALL')
   const [country, setCountry] = useState('')
-  const [expandedId, setExpandedId] = useState(null)
-  const [uploadingId, setUploadingId] = useState(null)
-  const [deletingId, setDeletingId] = useState(null)
-
-  const handleDelete = async (m) => {
-    const results = m.results_count ?? 0
-    const msg = results > 0
-      ? `Delete "${m.name}" and its ${formatNumber(results)} results? This cannot be undone.`
-      : `Delete "${m.name}"? This cannot be undone.`
-    if (!window.confirm(msg)) return
-    setDeletingId(m.id)
-    try {
-      await deleteChampionship(m.id)
-      setMeets((prev) => prev.filter((x) => x.id !== m.id))
-      setExpandedId(null)
-    } catch {
-      window.alert('Failed to delete the championship')
-    } finally {
-      setDeletingId(null)
-    }
-  }
-
-  const handlePhotoUpload = async (meetId, file) => {
-    if (!file) return
-    const fd = new FormData()
-    fd.append('meet_photo', file)
-    setUploadingId(meetId)
-    try {
-      const res = await updateChampionship(meetId, fd)
-      setMeets((prev) => prev.map((x) => (x.id === meetId ? { ...x, meet_photo: res.data.meet_photo } : x)))
-    } catch {
-      window.alert('Failed to upload the photo — use a JPG/PNG under the size limit')
-    } finally {
-      setUploadingId(null)
-    }
-  }
 
   useEffect(() => {
     let alive = true
@@ -203,25 +167,23 @@ export default function Championships() {
             <div className="kicker">{g.key}</div>
           </div>
           {g.items.map((m, i) => {
-            const isExpanded = expandedId === m.id
             const hasResults = (m.results_count ?? 0) > 0
             return (
-              <div key={m.id} className={i < g.items.length - 1 || isExpanded ? 'hair-b' : ''}>
-                <div
-                  onClick={() => setExpandedId(isExpanded ? null : m.id)}
+              <div key={m.id} className={i < g.items.length - 1 ? 'hair-b' : ''}>
+                {/* the whole row IS the link — no expander, no extra chrome */}
+                <Link
+                  to={`/meets/${m.id}`}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 14, padding: '14px 32px',
                     flexWrap: 'wrap', cursor: 'pointer',
-                    background: isExpanded ? 'var(--color-surface)' : undefined,
+                    color: 'inherit', textDecoration: 'none',
                   }}
                 >
                   {/* List rows show the host flag only — the meet's own
                       logo/photo lives inside the meet page header. */}
                   <Flag code={m.country_detail?.code} name={m.country_detail?.name} large placeholder />
                   <div style={{ flex: 1, minWidth: 160 }}>
-                    <Link to={`/meets/${m.id}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>
-                      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{m.name}</div>
-                    </Link>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{m.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 3 }}>
                       {m.location}
                       {m.country_detail ? `${m.location ? ', ' : ''}${m.country_detail.name}` : ''}
@@ -242,58 +204,7 @@ export default function Championships() {
                       )}
                     </div>
                   )}
-                  <span
-                    aria-hidden
-                    style={{
-                      width: 28, height: 28, flex: 'none',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      border: '1px solid var(--color-divider)', borderRadius: '50%',
-                      fontSize: 14, lineHeight: 1, color: 'var(--color-accent)',
-                      background: isExpanded ? 'var(--color-accent)' : 'transparent',
-                    }}
-                  >
-                    <span style={{ color: isExpanded ? '#fff' : 'inherit', transform: 'translateY(-1px)' }}>{isExpanded ? '▴' : '▾'}</span>
-                  </span>
-                </div>
-
-                {/* expanded actions */}
-                {isExpanded && (
-                  <div className="meet-actions" style={{ padding: '12px 32px 18px', background: 'var(--color-surface)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    {hasResults && (
-                      <>
-                        <Link className="btn btn-primary" to={`/meets/${m.id}?tab=results`}>View results</Link>
-                        <Link className="btn btn-secondary" to={`/meets/${m.id}?tab=medals`}>Medals</Link>
-                        <Link className="btn btn-secondary" to={`/meets/${m.id}?tab=statistics`}>Statistics</Link>
-                      </>
-                    )}
-                    <Link className="btn btn-secondary" to={`/meets/${m.id}?tab=gallery`}>Gallery</Link>
-                    {isAdmin && !hasResults && (
-                      <Link className="btn btn-primary" to={`/import?championship=${m.id}`}>Import results</Link>
-                    )}
-                    {isAdmin && (
-                      <label className="btn btn-secondary" style={{ cursor: uploadingId === m.id ? 'wait' : 'pointer' }}>
-                        {uploadingId === m.id ? 'Uploading…' : m.meet_photo ? 'Replace photo' : 'Upload photo'}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          style={{ display: 'none' }}
-                          disabled={uploadingId === m.id}
-                          onChange={(e) => { handlePhotoUpload(m.id, e.target.files?.[0]); e.target.value = '' }}
-                        />
-                      </label>
-                    )}
-                    {isAdmin && (
-                      <button
-                        className="btn btn-secondary"
-                        style={{ color: 'var(--asw-slow)', marginLeft: 'auto' }}
-                        disabled={deletingId === m.id}
-                        onClick={() => handleDelete(m)}
-                      >
-                        {deletingId === m.id ? 'Deleting…' : 'Delete'}
-                      </button>
-                    )}
-                  </div>
-                )}
+                </Link>
               </div>
             )
           })}

@@ -1235,6 +1235,91 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
         return Response(all_champs)
 
+    @action(detail=True, methods=['get'], url_path='head-to-head')
+    def head_to_head(self, request, pk=None):
+        """Side-by-side comparison of two meets. Only meets sharing the same
+        pool type are comparable (times mean different things in LCM vs SCM)."""
+        from django.db.models import Min, Avg
+        from medals.models import Medal
+        from records.models import Record
+
+        championship = self.get_object()
+        other_id = request.query_params.get('other')
+        other = (Championship.objects.select_related('country', 'classification')
+                 .filter(pk=other_id).first()) if other_id else None
+        if not other:
+            return Response({'detail': 'Pick a meet to compare with.'}, status=400)
+        if other.pool != championship.pool:
+            return Response(
+                {'detail': 'Both meets must use the same pool type (LCM with LCM, SCM with SCM).'},
+                status=400)
+
+        def summary(champ):
+            results = Result.objects.filter(championship=champ, time_centiseconds__gt=0)
+            athletes = results.filter(swimmer__is_relay_team=False)
+            male = athletes.filter(swimmer__sex='M').values('swimmer').distinct().count()
+            female = athletes.filter(swimmer__sex='F').values('swimmer').distinct().count()
+            best = (athletes.filter(fina_points__gt=0)
+                    .select_related('swimmer', 'event').order_by('-fina_points').first())
+            avg_age = athletes.exclude(age_at_competition__isnull=True).aggregate(
+                a=Avg('age_at_competition'))['a']
+            return {
+                'id': champ.id, 'name': champ.name,
+                'date': str(champ.date),
+                'end_date': str(champ.end_date) if champ.end_date else None,
+                'year': champ.date.year, 'pool': champ.pool,
+                'classification': champ.classification.name if champ.classification else '',
+                'country': champ.country.name if champ.country else '',
+                'country_code': champ.country.code if champ.country else '',
+                'flag_url': champ.country.flag_url if champ.country else '',
+                'swimmers': male + female, 'male': male, 'female': female,
+                'countries': athletes.exclude(swimmer__nationality__isnull=True)
+                                     .values('swimmer__nationality').distinct().count(),
+                'clubs': athletes.exclude(team='').values('team').distinct().count(),
+                'events': results.values('event').distinct().count(),
+                'results': results.count(),
+                'medals': Medal.objects.filter(championship=champ).count(),
+                'records_broken': Record.objects.filter(result__championship=champ).count(),
+                'avg_age': round(avg_age, 1) if avg_age else None,
+                'best_fina': best.fina_points if best else None,
+                'best_fina_swimmer': best.swimmer.name if best else None,
+                'best_fina_event': best.event.name if best else None,
+            }
+
+        def winners(champ):
+            rows = (Result.objects
+                    .filter(championship=champ, time_centiseconds__gt=0, is_hc=False)
+                    .values('event_id', 'event__name', 'event__sort_order', 'swimmer__sex')
+                    .annotate(best=Min('time_centiseconds')))
+            return {(r['event_id'], r['swimmer__sex']): r for r in rows}
+
+        wa, wb = winners(championship), winners(other)
+        events = []
+        for key in wa.keys() & wb.keys():
+            ra, rb = wa[key], wb[key]
+            na = (Result.objects.filter(championship=championship, event_id=key[0],
+                                        swimmer__sex=key[1], time_centiseconds=ra['best'])
+                  .select_related('swimmer').first())
+            nb = (Result.objects.filter(championship=other, event_id=key[0],
+                                        swimmer__sex=key[1], time_centiseconds=rb['best'])
+                  .select_related('swimmer').first())
+            events.append({
+                'event_id': key[0], 'event': ra['event__name'], 'gender': key[1],
+                'sort': ra.get('event__sort_order') or 0,
+                'a_time': self._format_time(ra['best']), 'a_cs': ra['best'],
+                'a_swimmer': na.swimmer.name if na else '',
+                'a_swimmer_id': na.swimmer_id if na else None,
+                'a_is_relay': bool(na and na.swimmer.is_relay_team),
+                'b_time': self._format_time(rb['best']), 'b_cs': rb['best'],
+                'b_swimmer': nb.swimmer.name if nb else '',
+                'b_swimmer_id': nb.swimmer_id if nb else None,
+                'b_is_relay': bool(nb and nb.swimmer.is_relay_team),
+                'diff_seconds': round((ra['best'] - rb['best']) / 100, 2),
+            })
+        events.sort(key=lambda e: (e['gender'], e['sort'], e['event']))
+
+        return Response({'a': summary(championship), 'b': summary(other), 'events': events})
+
     @staticmethod
     def _format_time(cs):
         if not cs:

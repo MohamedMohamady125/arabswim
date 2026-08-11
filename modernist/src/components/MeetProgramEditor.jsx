@@ -57,8 +57,10 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
     patchDay(day.day, items)
   }
 
-  // Events already scheduled on ANY day (per gender) drop out of the picker,
-  // so the same event can't be added twice across days by mistake.
+  // Events stay in the picker even when scheduled elsewhere (heats one
+  // day, finals another; men one day, women another). Already-scheduled
+  // combos for the CURRENT gender pick just get a marker so double-adds
+  // are visible, and exact duplicates are still blocked in addItem.
   const usedByGender = useMemo(() => {
     const used = new Set()
     days.forEach((d) => d.items.forEach((i) => used.add(`${i.event}-${i.gender}`)))
@@ -68,14 +70,12 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
   const eventOptions = useMemo(() => {
     const wanted = gender === 'BOTH' ? ['M', 'F'] : [gender]
     return [...events]
-      .filter((e) => wanted.some((g) => !usedByGender.has(`${e.id}-${g}`)))
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map((e) => ({
+        ...e,
+        scheduled: wanted.every((g) => usedByGender.has(`${e.id}-${g}`)),
+      }))
   }, [events, usedByGender, gender])
-
-  // Keep the selection valid when the picked event drops out of the list
-  useEffect(() => {
-    if (eventId && !eventOptions.some((e) => String(e.id) === String(eventId))) setEventId('')
-  }, [eventOptions, eventId])
 
   const inputStyle = { padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
 
@@ -119,7 +119,9 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
         <select style={inputStyle} value={eventId} onChange={(e) => setEventId(e.target.value)}>
           <option value="">Event…</option>
-          {eventOptions.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          {eventOptions.map((e) => (
+            <option key={e.id} value={e.id}>{e.name}{e.scheduled ? ' ✓ scheduled' : ''}</option>
+          ))}
         </select>
         <select style={inputStyle} value={gender} onChange={(e) => setGender(e.target.value)}>
           <option value="M">Men</option>

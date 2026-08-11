@@ -23,6 +23,7 @@ export const getAllResults = (id) => api.get(`/championships/${id}/all-results/`
 export const getMostImproved = (id) => api.get(`/championships/${id}/most-improved/`)
 export const getRecordsBroken = (id) => api.get(`/championships/${id}/records-broken/`)
 export const getChampionshipComparison = (id) => api.get(`/championships/${id}/compare/`)
+export const getHeadToHead = (id, other) => api.get(`/championships/${id}/head-to-head/`, { params: { other } })
 export const getMeetProgram = (id) => api.get(`/championships/${id}/program/`)
 export const setMeetProgram = (id, items) => api.put(`/championships/${id}/program/`, { items })
 export const getClassificationCategories = () => api.get('/classification-categories/')

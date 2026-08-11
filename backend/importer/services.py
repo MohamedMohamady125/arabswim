@@ -832,8 +832,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 # Clean relay team names: strip squad numbers/letters,
                 # "National Team" suffix, and region codes like "-AD"
                 # so placeholder swimmers match existing teams consistently.
-                from teams.utils import clean_relay_team_name
+                from teams.utils import clean_relay_team_name, country_for_relay_team
                 parsed_name = clean_relay_team_name(parsed_name)
+                # National relay teams keep their country's proper name —
+                # never source artifacts like "EGY EGY" or "Kuwait Swimming".
+                team_country = country_for_relay_team(parsed_name)
+                if team_country:
+                    parsed_name = team_country.name
             squad_name = parsed_name.strip()
             name_upper = parsed_name.upper()
 
@@ -867,20 +872,21 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         swimmer_map[relay_key] = existing_placeholder
                     else:
                         # Resolve nationality for the team
-                        nationality = None
+                        nationality = team_country
                         nat_code = result_data.get('nationality_code', '')
-                        if nat_code:
+                        if not nationality and nat_code:
                             nationality = resolve_country(nat_code)
                         if not nationality:
                             nationality = swimmer_fallback
 
                         swimmer_map[relay_key] = Swimmer.objects.create(
-                            name=normalize_club_name(parsed_name),
+                            name=parsed_name if team_country else normalize_club_name(parsed_name),
                             date_of_birth=None,
                             birth_year=None,
                             nationality=nationality,
                             sex=relay_gender,
-                            club=normalize_club_name(parsed_name),
+                            # Country teams are not clubs — leave club empty
+                            club='' if team_country else normalize_club_name(parsed_name),
                             is_relay_team=True,
                         )
                         created_swimmers += 1

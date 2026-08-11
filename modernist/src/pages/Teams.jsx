@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { GitMerge, Sparkles, Trash2, X, ArrowLeftRight } from 'lucide-react'
 import { getTeams, deleteTeam, bulkDeleteTeams, mergeTeams, findDuplicateTeams, autoDedupeTeams } from '../api/teams'
 import { getCountries } from '../api/core'
-import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Pager } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
@@ -517,61 +516,34 @@ export default function Teams() {
         <Empty label="No clubs found" />
       ) : (
         <div className="pad">
-          <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  {isAdmin && (
-                    <th style={{ width: 32 }}>
-                      <input type="checkbox" checked={allOnPage} onChange={toggleAll} aria-label="Select all teams" style={{ cursor: 'pointer' }} />
-                    </th>
-                  )}
-                  <th>Club</th>
-                  <th className="hide-mobile">Country</th>
-                  <th className="num hide-mobile">Founded</th>
-                  <th className="num">Swimmers</th>
-                  {isAdmin && <th />}
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((t) => (
-                  <tr key={t.id}>
-                    {isAdmin && (
-                      <td>
-                        <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleOne(t.id)} aria-label={`Select ${t.name}`} style={{ cursor: 'pointer' }} />
-                      </td>
-                    )}
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <TeamLogo logo={t.logo} name={t.name} />
-                        <Link to={`/teams/${t.id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
-                          {t.name}
-                        </Link>
-                        {t.is_national_team && <span className="tag tag-accent">National team</span>}
-                      </div>
-                      <div className="show-mobile micro" style={{ margin: '3px 0 0 52px', textTransform: 'none', letterSpacing: 0 }}>
-                        {[t.country_detail?.name, t.founded_year ? `Est. ${t.founded_year}` : null].filter(Boolean).join(' · ')}
-                      </div>
-                    </td>
-                    <td className="hide-mobile">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Flag code={t.country_detail?.code} name={t.country_detail?.name} />
-                        <span className="text-muted">{t.country_detail?.name || '—'}</span>
-                      </div>
-                    </td>
-                    <td className="num asw-num hide-mobile">{t.founded_year ?? '—'}</td>
-                    <td className="num asw-num">{t.swimmers_count ?? '—'}</td>
-                    {isAdmin && (
-                      <td className="num">
-                        <button className="btn btn-secondary btn-icon" title="Delete team" aria-label="Delete team" onClick={() => handleDelete(t)}>
-                          <Trash2 size={13} />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {isAdmin && (
+            <label className="micro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 12, cursor: 'pointer' }}>
+              <input type="checkbox" checked={allOnPage} onChange={toggleAll} aria-label="Select all teams" style={{ cursor: 'pointer' }} />
+              Select page
+            </label>
+          )}
+          {/* logo + name only — clean card grid */}
+          <div className="club-grid">
+            {pageRows.map((t) => (
+              <Link
+                key={t.id}
+                to={`/teams/${t.id}`}
+                className="club-card"
+                style={{ position: 'relative', color: 'inherit', textDecoration: 'none' }}
+              >
+                {isAdmin && (
+                  <span style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 6, alignItems: 'center' }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation() }}>
+                    <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleOne(t.id)} aria-label={`Select ${t.name}`} style={{ cursor: 'pointer' }} />
+                    <button className="btn btn-secondary btn-icon" title="Delete team" aria-label="Delete team" onClick={() => handleDelete(t)}>
+                      <Trash2 size={12} />
+                    </button>
+                  </span>
+                )}
+                <TeamLogo logo={t.logo} name={t.name} size={72} />
+                <div className="club-card-name">{t.name}</div>
+              </Link>
+            ))}
           </div>
           <Pager page={page} pageSize={PAGE_SIZE} count={filtered.length} onPage={setPage} />
         </div>

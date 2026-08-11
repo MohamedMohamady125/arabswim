@@ -37,14 +37,24 @@ export default function MeetsTab({ stats }) {
           <h4>Participation</h4>
           <span className="micro asw-num">{championships.length} meets</span>
         </div>
-        <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
+        {/* self-sized cards — no grid filler tracks behind them */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {CLASSIFICATIONS.filter((cls) => (counts[cls] || 0) > 0).map((cls) => (
-            <div key={cls}>
+            <div
+              key={cls}
+              style={{
+                border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
+                borderTop: '3px solid var(--asw-gold)', padding: '10px 18px 12px',
+                minWidth: 108, flex: '0 1 auto',
+              }}
+            >
               <div className="card-kicker">{cls}</div>
-              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 4 }}>
-                {counts[cls]}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 3 }}>
+                <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1.1 }}>
+                  {counts[cls]}
+                </span>
+                <span className="micro">meet{counts[cls] !== 1 ? 's' : ''}</span>
               </div>
-              <div className="micro">meet{counts[cls] !== 1 ? 's' : ''}</div>
             </div>
           ))}
         </div>

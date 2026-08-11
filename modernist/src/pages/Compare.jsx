@@ -172,8 +172,9 @@ export default function Compare() {
     return () => { alive = false }
   }, [selected])
 
+  // only events every selected swimmer has actually swum
   const sharedRows = useMemo(
-    () => (data?.rows || []).filter((r) => Object.keys(r.times).length > 0),
+    () => (data?.rows || []).filter((r) => Object.keys(r.times).length === (data?.swimmers?.length || 0)),
     [data]
   )
 
@@ -334,7 +335,7 @@ export default function Compare() {
                   )
                 })}
                 {sharedRows.length === 0 && (
-                  <div className="vs-row"><div /><div className="vs-mid">No personal bests to compare</div><div /></div>
+                  <div className="vs-row"><div /><div className="vs-mid">No shared events — these swimmers have not swum the same events</div><div /></div>
                 )}
               </div>
             )
@@ -400,7 +401,7 @@ export default function Compare() {
                   )
                 })}
                 {sharedRows.length === 0 && (
-                  <tr><td colSpan={1 + data.swimmers.length} className="text-muted" style={{ textAlign: 'center', padding: 24 }}>No personal bests to compare</td></tr>
+                  <tr><td colSpan={1 + data.swimmers.length} className="text-muted" style={{ textAlign: 'center', padding: 24 }}>No shared events — these swimmers have not swum the same events</td></tr>
                 )}
               </tbody>
             </table>

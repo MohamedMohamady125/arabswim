@@ -37,6 +37,7 @@ class ScrapeJob(models.Model):
     total_events = models.IntegerField(default=0)
     total_results = models.IntegerField(default=0)
     rows = models.JSONField(default=list, blank=True)
+    name_stats = models.JSONField(default=dict, blank=True)  # heats-PDF name repair
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

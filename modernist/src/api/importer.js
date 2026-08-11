@@ -11,6 +11,14 @@ export const mergeSwimmers = (keepId, removeIds) =>
   api.post('/import/merge/', { keep_id: keepId, remove_ids: Array.isArray(removeIds) ? removeIds : [removeIds] })
 export const getImportHistory = () => api.get('/import/history/')
 export const getScrapeJobs = () => api.get('/import/scrape/')
-export const startScrape = (url) => api.post('/import/scrape/', { url })
+export const startScrape = (url, pdfs = []) => {
+  const fd = new FormData()
+  fd.append('url', url)
+  pdfs.forEach((f) => fd.append('name_pdfs', f))
+  return api.post('/import/scrape/', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+  })
+}
 export const downloadScrape = (jobId) =>
   api.get(`/import/scrape/${jobId}/download/`, { responseType: 'blob', timeout: 120000 })

@@ -3,7 +3,7 @@ import json
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.core.cache import cache
 
 from .services import parse_file, match_swimmers_preview, confirm_import
@@ -13,6 +13,29 @@ from swimmers.models import Swimmer
 from championships.models import Championship, Result
 
 
+MAX_PDF_SIZE = 60 * 1024 * 1024  # per companion PDF
+
+
+def _pdf_entries_cached(data):
+    """(full_name, age, team) entries from one PDF's bytes, md5-cached."""
+    import hashlib
+    import tempfile
+    from .egypt_names import extract_pdf_entries
+    h = hashlib.md5()
+    h.update(data)
+    cache_key = f'pdfnames_{h.hexdigest()}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return {tuple(e) for e in json.loads(cached)}
+    with tempfile.NamedTemporaryFile(suffix='.pdf') as tmp:
+        tmp.write(data)
+        tmp.flush()
+        pdf_entries = extract_pdf_entries(tmp.name)
+    cache.set(cache_key, json.dumps([list(e) for e in pdf_entries]),
+              timeout=21600)
+    return pdf_entries
+
+
 class FileUploadView(APIView):
     """
     Step 1: Upload a results file, parse it, and return a preview.
@@ -20,7 +43,7 @@ class FileUploadView(APIView):
     """
     parser_classes = [MultiPartParser, FormParser]
 
-    MAX_PDF_SIZE = 60 * 1024 * 1024  # per companion PDF
+    MAX_PDF_SIZE = MAX_PDF_SIZE
 
     def _build_repair_index(self, pdf_files):
         """NameRepairIndex from the meet's companion PDFs (full names).
@@ -29,30 +52,14 @@ class FileUploadView(APIView):
         re-sent with every Excel file of the meet — cache each PDF's
         entries by content hash.
         """
-        import hashlib
-        import tempfile
-        from .egypt_names import extract_pdf_entries, NameRepairIndex
+        from .egypt_names import NameRepairIndex
         entries = set()
         for pf in pdf_files:
             if not pf.name.lower().endswith('.pdf'):
                 raise ValueError(f'"{pf.name}" is not a PDF file')
             if pf.size > self.MAX_PDF_SIZE:
                 raise ValueError(f'"{pf.name}" is too large (max 60 MB)')
-            h = hashlib.md5()
-            data = b''.join(pf.chunks())
-            h.update(data)
-            cache_key = f'pdfnames_{h.hexdigest()}'
-            cached = cache.get(cache_key)
-            if cached is not None:
-                entries |= {tuple(e) for e in json.loads(cached)}
-                continue
-            with tempfile.NamedTemporaryFile(suffix='.pdf') as tmp:
-                tmp.write(data)
-                tmp.flush()
-                pdf_entries = extract_pdf_entries(tmp.name)
-            cache.set(cache_key, json.dumps([list(e) for e in pdf_entries]),
-                      timeout=21600)
-            entries |= pdf_entries
+            entries |= _pdf_entries_cached(b''.join(pf.chunks()))
         return NameRepairIndex(entries)
 
     def post(self, request):
@@ -399,7 +406,35 @@ def _check_meet_duplicates(preview):
     return warnings
 
 
-def _run_scrape_job(job_id):
+def repair_scraped_rows(rows, repair_index):
+    """Replace truncated names in scraped rows with full heats-PDF names."""
+    from .egypt_names import is_truncated_length
+    stats = {'checked': 0, 'repaired': 0, 'ambiguous': 0, 'no_match': 0}
+    memo = {}
+    for row in rows:
+        if 'relay' in str(row.get('Stroke', '')).lower():
+            continue
+        name = row.get('Name') or ''
+        if not is_truncated_length(name):
+            continue
+        stats['checked'] += 1
+        try:
+            age = int(row.get('Age') or 0) or None
+        except (TypeError, ValueError):
+            age = None
+        key = (name, age, row.get('Team') or '')
+        if key not in memo:
+            memo[key] = repair_index.repair(name, age=age, team=key[2])
+        full, why = memo[key]
+        if full:
+            row['Name'] = full
+            stats['repaired'] += 1
+        else:
+            stats[why] += 1
+    return stats
+
+
+def _run_scrape_job(job_id, pdf_paths=None):
     """Background worker: scrape the site and store clean rows on the job."""
     from django.db import close_old_connections
     from .models import ScrapeJob
@@ -415,9 +450,22 @@ def _run_scrape_job(job_id):
                     progress=f'{done} / {total} event pages')
 
         meet_name, date_text, rows = scrape_meet(job.url, progress_cb=progress)
+        name_stats = {}
+        if rows and pdf_paths:
+            from .egypt_names import NameRepairIndex
+            ScrapeJob.objects.filter(id=job_id).update(
+                progress='Reading heats PDFs for full names…')
+            entries = set()
+            for p in pdf_paths:
+                with open(p, 'rb') as f:
+                    entries |= _pdf_entries_cached(f.read())
+            index = NameRepairIndex(entries)
+            if len(index):
+                name_stats = repair_scraped_rows(rows, index)
         job.meet_name = meet_name[:255]
         job.date_text = date_text[:100]
         job.rows = rows
+        job.name_stats = name_stats
         job.total_results = len(rows)
         job.total_events = len({r['Event #'] for r in rows})
         job.status = 'done' if rows else 'failed'
@@ -429,6 +477,12 @@ def _run_scrape_job(job_id):
         ScrapeJob.objects.filter(id=job_id).update(
             status='failed', error=str(e)[:2000], progress='')
     finally:
+        if pdf_paths:
+            for p in pdf_paths:
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
         close_old_connections()
 
 
@@ -436,8 +490,10 @@ class ScrapeView(APIView):
     """
     Scrape a federation Hy-Tek HTML results site into a clean Excel file.
     GET  /api/v1/import/scrape/          — list scrape jobs
-    POST /api/v1/import/scrape/ {url}    — start a new scrape (async)
+    POST /api/v1/import/scrape/ {url}    — start a new scrape (async);
+         optional ``name_pdfs`` files (heats PDFs) restore full names
     """
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         from .models import ScrapeJob
@@ -452,18 +508,39 @@ class ScrapeView(APIView):
             'error': j.error,
             'total_events': j.total_events,
             'total_results': j.total_results,
+            'name_stats': j.name_stats,
             'created_at': j.created_at,
         } for j in jobs])
 
     def post(self, request):
+        import tempfile
         import threading
         from .models import ScrapeJob
         url = (request.data.get('url') or '').strip()
         if not url.lower().startswith(('http://', 'https://')):
             return Response({'error': 'Please paste a valid http(s) link'},
                             status=400)
+        # Optional heats PDFs → persist to temp files for the worker thread
+        pdf_paths = []
+        for pf in request.FILES.getlist('name_pdfs'):
+            if not pf.name.lower().endswith('.pdf'):
+                for p in pdf_paths:
+                    os.remove(p)
+                return Response(
+                    {'error': f'"{pf.name}" is not a PDF file'}, status=400)
+            if pf.size > MAX_PDF_SIZE:
+                for p in pdf_paths:
+                    os.remove(p)
+                return Response(
+                    {'error': f'"{pf.name}" is too large (max 60 MB)'},
+                    status=400)
+            tmp = tempfile.NamedTemporaryFile(suffix='.pdf', delete=False)
+            for chunk in pf.chunks():
+                tmp.write(chunk)
+            tmp.close()
+            pdf_paths.append(tmp.name)
         job = ScrapeJob.objects.create(url=url)
-        threading.Thread(target=_run_scrape_job, args=(job.id,),
+        threading.Thread(target=_run_scrape_job, args=(job.id, pdf_paths),
                          daemon=True).start()
         return Response({'id': job.id, 'status': 'pending'}, status=201)
 

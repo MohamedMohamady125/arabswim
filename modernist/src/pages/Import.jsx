@@ -1188,6 +1188,7 @@ function DuplicatesTab() {
 function ScrapeTab() {
   const [jobs, setJobs] = useState([])
   const [url, setUrl] = useState('')
+  const [heatsPdfs, setHeatsPdfs] = useState([])
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
@@ -1212,8 +1213,9 @@ function ScrapeTab() {
     setStarting(true)
     setError('')
     try {
-      await startScrape(u)
+      await startScrape(u, heatsPdfs)
       setUrl('')
+      setHeatsPdfs([])
       await load()
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to start scrape')
@@ -1254,8 +1256,7 @@ function ScrapeTab() {
           Paste the federation results link (e.g.
           <span className="asw-num" style={{ margin: '0 4px' }}>esf-eg.org/images/results/swimming/…/results/</span>)
           and every event will be scraped into one clean Excel file, ready to import
-          via <strong>Import File → Upload Excel</strong> (attach the meet PDFs there
-          to restore full names).
+          via <strong>Import File → Upload Excel</strong>.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <input
@@ -1272,6 +1273,30 @@ function ScrapeTab() {
             disabled={starting || !url.trim()}>
             {starting ? 'Starting…' : 'Scrape'}
           </button>
+        </div>
+        <div style={{
+          marginTop: 14, padding: 14,
+          border: '1px dashed var(--color-divider)', background: 'var(--color-neutral-50, #fafafa)',
+        }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
+            Full names from heats PDFs — optional
+          </div>
+          <p style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', marginBottom: 10 }}>
+            The federation site cuts swimmer names at 15 letters. Attach the meet&apos;s
+            heats / meet-program PDFs and the full names will be merged into the
+            scraped results, so the downloaded Excel already has complete names.
+          </p>
+          <label className="btn btn-ghost" style={{ fontSize: 13, opacity: starting ? 0.5 : 1, pointerEvents: starting ? 'none' : 'auto' }}>
+            {heatsPdfs.length ? `${heatsPdfs.length} PDF${heatsPdfs.length > 1 ? 's' : ''} attached` : 'Attach heats PDFs'}
+            <input type="file" accept=".pdf" multiple style={{ display: 'none' }} disabled={starting}
+              onChange={(e) => setHeatsPdfs(Array.from(e.target.files || []))} />
+          </label>
+          {heatsPdfs.length > 0 && (
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 13, marginLeft: 8 }}
+              onClick={() => setHeatsPdfs([])}>
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
@@ -1305,7 +1330,17 @@ function ScrapeTab() {
                   <td className="num hide-mobile asw-num">{job.total_events || '—'}</td>
                   <td className="num asw-num">{job.total_results || '—'}</td>
                   <td>
-                    {job.status === 'done' && <span className="tag" style={{ background: 'var(--asw-fast)', color: '#fff' }}>Done</span>}
+                    {job.status === 'done' && (
+                      <>
+                        <span className="tag" style={{ background: 'var(--asw-fast)', color: '#fff' }}>Done</span>
+                        {job.name_stats?.checked > 0 && (
+                          <div className="micro" style={{ marginTop: 4 }}
+                            title={`${job.name_stats.repaired} repaired · ${job.name_stats.ambiguous} ambiguous · ${job.name_stats.no_match} not in PDFs`}>
+                            {job.name_stats.repaired} / {job.name_stats.checked} names fixed
+                          </div>
+                        )}
+                      </>
+                    )}
                     {job.status === 'failed' && (
                       <span className="tag" style={{ background: 'var(--color-accent)', color: '#fff' }} title={job.error}>Failed</span>
                     )}

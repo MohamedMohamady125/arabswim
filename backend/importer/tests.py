@@ -3195,3 +3195,39 @@ class EsfScraperTests(SimpleTestCase):
         self.assertEqual(r['Name'], '')
         self.assertEqual(r['Team'], "SMOHA 'A'")
         self.assertEqual(r['Finals Time'], '4:12.95')
+
+
+class RepairScrapedRowsTests(SimpleTestCase):
+    """Heats-PDF name merge applied to scraped Excel-format rows."""
+
+    def _rows(self):
+        return [
+            {'Event #': '1', 'Stroke': 'Freestyle', 'Rank': '1',
+             'Name': 'Hager Ahmed Nas', 'Age': '14', 'Team': 'Smart Club'},
+            {'Event #': '1', 'Stroke': 'Freestyle', 'Rank': '2',
+             'Name': 'Omar Ali', 'Age': '13', 'Team': 'Heliopolis'},
+            {'Event #': '2', 'Stroke': 'Freestyle Relay', 'Rank': '1',
+             'Name': '', 'Age': '', 'Team': "SMOHA 'A'"},
+        ]
+
+    def test_truncated_scraped_name_repaired(self):
+        from importer.egypt_names import NameRepairIndex
+        from importer.views import repair_scraped_rows
+        idx = NameRepairIndex({('Hager Ahmed Nasser Fathy', 14, 'Smart Club')})
+        rows = self._rows()
+        stats = repair_scraped_rows(rows, idx)
+        self.assertEqual(rows[0]['Name'], 'Hager Ahmed Nasser Fathy')
+        self.assertEqual(rows[1]['Name'], 'Omar Ali')   # complete, untouched
+        self.assertEqual(rows[2]['Name'], '')           # relay skipped
+        self.assertEqual(stats, {'checked': 1, 'repaired': 1,
+                                 'ambiguous': 0, 'no_match': 0})
+
+    def test_no_match_keeps_scraped_name(self):
+        from importer.egypt_names import NameRepairIndex
+        from importer.views import repair_scraped_rows
+        idx = NameRepairIndex({('Totally Different Person', 14, 'Smart Club')})
+        rows = self._rows()
+        stats = repair_scraped_rows(rows, idx)
+        self.assertEqual(rows[0]['Name'], 'Hager Ahmed Nas')
+        self.assertEqual(stats['no_match'], 1)
+        self.assertEqual(stats['repaired'], 0)

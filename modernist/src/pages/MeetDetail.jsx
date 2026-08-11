@@ -2042,7 +2042,7 @@ function CompareMeetsModal({ meet, onClose }) {
               <option value="">Choose a meet…</option>
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name} · {(c.date || '').slice(0, 4)}
+                  {c.name} · {(c.date || '').slice(-4)}
                 </option>
               ))}
             </select>
@@ -2059,13 +2059,13 @@ function CompareMeetsModal({ meet, onClose }) {
                   <thead>
                     <tr>
                       <th />
-                      <th>
+                      <th style={{ whiteSpace: 'normal', minWidth: 120 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <Flag code={a.country_code} name={a.country} />
                           <span>{a.name} <span className="asw-num text-muted">({a.year})</span></span>
                         </div>
                       </th>
-                      <th>
+                      <th style={{ whiteSpace: 'normal', minWidth: 120 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <Flag code={b.country_code} name={b.country} />
                           <span>{b.name} <span className="asw-num text-muted">({b.year})</span></span>

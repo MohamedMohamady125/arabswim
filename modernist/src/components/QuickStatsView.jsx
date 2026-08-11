@@ -237,9 +237,16 @@ export default function QuickStatsView({ data, busiest }) {
       {/* ── 1 · Participation ── */}
       <SectionBar n={1} title="Participation" />
       <div className="qs-cols-3">
-        <Panel title="Swimmers by Country (Top 8)">
-          <VBars data={participation.by_country.map((c) => ({ label: c.code, value: c.count }))} />
-        </Panel>
+        {(participation.by_club || []).length > 0 ? (
+          /* National/Other meets: one shared flag — entries by CLUB instead */
+          <Panel title="Swimmers by Club">
+            <HBars rows={participation.by_club.map((c) => ({ label: c.name, value: c.count }))} />
+          </Panel>
+        ) : (
+          <Panel title="Swimmers by Country (Top 8)">
+            <VBars data={participation.by_country.map((c) => ({ label: c.code, value: c.count }))} />
+          </Panel>
+        )}
         <Panel title="Male vs Female">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div style={{ textAlign: 'right' }}>

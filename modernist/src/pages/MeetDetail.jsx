@@ -2217,7 +2217,7 @@ export default function MeetDetail() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => setComparing(true)}>Compare</button>
+            <button type="button" className="btn btn-secondary" onClick={() => setTab('gallery')}>Gallery</button>
             {isAdmin && (
               <>
                 <button type="button" className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>
@@ -2253,10 +2253,10 @@ export default function MeetDetail() {
             { value: 'top', label: 'Top Performances' },
             { value: 'statistics', label: 'Overview' },
             { value: 'improved', label: 'Most Improved' },
-            { value: 'gallery', label: 'Gallery' },
+            { value: 'compare', label: 'Compare' },
           ]}
           value={tab}
-          onChange={setTab}
+          onChange={(v) => { if (v === 'compare') setComparing(true); else setTab(v) }}
         />
       </div>
 

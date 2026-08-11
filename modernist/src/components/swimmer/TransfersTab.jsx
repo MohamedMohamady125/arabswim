@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import { getSwimmerTransferHistory, changeSwimmerNationality } from '../../api/swimmers'
+import { getSwimmerTransferHistory, changeSwimmerNationality, deleteNationalityChange } from '../../api/swimmers'
 import { getCountries } from '../../api/core'
 import { useAuth } from '../../context/AuthContext'
 import Flag from '../Flag'
@@ -199,7 +199,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
           <div className="sect-head"><h4>Nationality Changes</h4></div>
           <div className="rule-t">
             {changes.map((ch, i) => (
-              <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', flexWrap: 'wrap', fontSize: 13 }}>
+              <div key={ch.id ?? i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', flexWrap: 'wrap', fontSize: 13 }}>
                 {ch.from_country && (
                   <>
                     <Flag code={ch.from_country_code} name={ch.from_country} flagUrl={ch.from_country_flag} />
@@ -211,6 +211,25 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
                 <span>{ch.to_country}</span>
                 <span className="asw-num" style={{ color: 'var(--color-neutral-700)' }}>{formatDate(ch.effective_date)}</span>
                 {ch.notes && <span className="text-muted">({ch.notes})</span>}
+                {isAdmin && ch.id != null && (
+                  <button
+                    className="btn btn-secondary btn-icon"
+                    title="Delete this history entry"
+                    aria-label="Delete nationality change"
+                    style={{ marginLeft: 'auto' }}
+                    onClick={async () => {
+                      if (!window.confirm('Delete this nationality-change entry?')) return
+                      try {
+                        await deleteNationalityChange(swimmerId, ch.id)
+                        setReloadKey((k) => k + 1)
+                      } catch {
+                        window.alert('Failed to delete entry')
+                      }
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
             ))}
           </div>

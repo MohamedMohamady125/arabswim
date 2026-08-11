@@ -576,6 +576,34 @@ def merge_swimmers(keep_swimmer, remove_swimmer):
     Record.objects.filter(swimmer=remove_swimmer).update(swimmer=keep_swimmer)
     Medal.objects.filter(swimmer=remove_swimmer).update(swimmer=keep_swimmer)
 
+    # Relay legs reference swimmers by NAME inside relay_swimmers JSON, and
+    # profile pages match those legs by exact name — rewrite the duplicate's
+    # spelling to the kept profile's name so relay teams stay consistent.
+    old_name = (remove_swimmer.name or '').strip()
+    new_name = (keep_swimmer.name or '').strip()
+    if old_name and new_name and old_name.upper() != new_name.upper():
+        from django.db.models import TextField
+        from django.db.models.functions import Cast
+        relay_results = Result.objects.filter(
+            relay_swimmers__isnull=False,
+        ).annotate(
+            relay_swimmers_text=Cast('relay_swimmers', TextField()),
+        ).filter(relay_swimmers_text__icontains=old_name)
+        for r in relay_results:
+            legs = r.relay_swimmers or []
+            changed = False
+            for i, leg in enumerate(legs):
+                if isinstance(leg, dict):
+                    if (leg.get('name') or '').strip().upper() == old_name.upper():
+                        leg['name'] = new_name
+                        changed = True
+                elif isinstance(leg, str) and leg.strip().upper() == old_name.upper():
+                    legs[i] = new_name
+                    changed = True
+            if changed:
+                r.relay_swimmers = legs
+                r.save(update_fields=['relay_swimmers'])
+
     existing_nicks = set(keep_swimmer.nicknames.values_list('nickname', flat=True))
     for nick in remove_swimmer.nicknames.all():
         if nick.nickname not in existing_nicks:

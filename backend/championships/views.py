@@ -881,6 +881,16 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         } for r in athletes.exclude(swimmer__nationality__isnull=True).values(
             'swimmer__nationality__name', 'swimmer__nationality__code', 'swimmer__nationality__flag_url',
         ).annotate(count=Count('swimmer', distinct=True)).order_by('-count')[:8]]
+        # National/Other meets: everyone shares one flag, so the useful
+        # breakdown is swimmers per CLUB (Result.team), not per country.
+        by_club = None
+        cls_name = champ.classification.name if champ.classification else ''
+        if cls_name in ('National', 'Other'):
+            by_club = [{
+                'name': r['team'], 'count': r['count'],
+            } for r in athletes.exclude(team__isnull=True).exclude(team='')
+                .values('team').annotate(count=Count('swimmer', distinct=True))
+                .order_by('-count')[:10]]
         male = athletes.filter(swimmer__sex='M').values('swimmer').distinct().count()
         female = athletes.filter(swimmer__sex='F').values('swimmer').distinct().count()
         age_rows = list(athletes.exclude(age_at_competition__isnull=True)
@@ -1036,7 +1046,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'personal_bests': pb_total,
             },
             'participation': {
-                'by_country': by_country, 'male': male, 'female': female, 'age_groups': age_groups,
+                'by_country': by_country, 'by_club': by_club,
+                'male': male, 'female': female, 'age_groups': age_groups,
             },
             'medals': {'table': medal_table, 'total': medals_total},
             'performance': {

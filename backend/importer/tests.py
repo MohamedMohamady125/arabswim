@@ -1024,6 +1024,76 @@ class RelayNameTests(SimpleTestCase):
         self.assertEqual(normalize_stroke('4 Nages'), 'Individual Medley')
 
 
+class MergeSwimmersRelayLegRenameTests(_MeetFixtureMixin, TestCase):
+    """merge_swimmers must rewrite the duplicate's name inside relay_swimmers
+    JSON — relay legs are matched to profiles by exact name, so leaving the
+    old spelling behind orphans the legs and shows stale names in the UI."""
+
+    def _relay_fixture(self):
+        import datetime
+        from core.models import Event
+        relay_event = Event.objects.create(
+            name='4x100 M Freestyle Relay', distance=400,
+            stroke='Freestyle', is_relay=True)
+        champ = Championship.objects.create(
+            name='Meet', date=datetime.date(2026, 6, 1),
+            pool='LCM', country=self.country)
+        team = Swimmer.objects.create(
+            name='Tunisia', nationality=self.country, sex='M', is_relay_team=True)
+        return relay_event, champ, team
+
+    def test_dict_legs_renamed_to_kept_profile(self):
+        from importer.matcher import merge_swimmers
+        relay_event, champ, team = self._relay_fixture()
+        keep = Swimmer.objects.create(
+            name='Ahmed BEN SALEM', nationality=self.country, sex='M')
+        remove = Swimmer.objects.create(
+            name='BEN SALEM Ahmed', nationality=self.country, sex='M')
+        r = Result.objects.create(
+            swimmer=team, championship=champ, event=relay_event,
+            time_centiseconds=20000,
+            relay_swimmers=[
+                {'name': 'BEN SALEM Ahmed', 'split_time': '52.10'},
+                {'name': 'Youssef TRABELSI', 'split_time': '53.00'},
+            ])
+        merge_swimmers(keep, remove)
+        r.refresh_from_db()
+        self.assertEqual(r.relay_swimmers[0]['name'], 'Ahmed BEN SALEM')
+        # split preserved, other legs untouched
+        self.assertEqual(r.relay_swimmers[0]['split_time'], '52.10')
+        self.assertEqual(r.relay_swimmers[1]['name'], 'Youssef TRABELSI')
+
+    def test_string_legs_renamed(self):
+        from importer.matcher import merge_swimmers
+        relay_event, champ, team = self._relay_fixture()
+        keep = Swimmer.objects.create(
+            name='Ahmed BEN SALEM', nationality=self.country, sex='M')
+        remove = Swimmer.objects.create(
+            name='BEN SALEM Ahmed', nationality=self.country, sex='M')
+        r = Result.objects.create(
+            swimmer=team, championship=champ, event=relay_event,
+            time_centiseconds=20000,
+            relay_swimmers=['BEN SALEM Ahmed', 'Youssef TRABELSI'])
+        merge_swimmers(keep, remove)
+        r.refresh_from_db()
+        self.assertEqual(r.relay_swimmers, ['Ahmed BEN SALEM', 'Youssef TRABELSI'])
+
+    def test_same_name_merge_leaves_json_untouched(self):
+        from importer.matcher import merge_swimmers
+        relay_event, champ, team = self._relay_fixture()
+        keep = Swimmer.objects.create(
+            name='Ahmed BEN SALEM', nationality=self.country, sex='M')
+        remove = Swimmer.objects.create(
+            name='ahmed ben salem', nationality=self.country, sex='M')
+        r = Result.objects.create(
+            swimmer=team, championship=champ, event=relay_event,
+            time_centiseconds=20000,
+            relay_swimmers=[{'name': 'Ahmed BEN SALEM', 'split_time': '52.10'}])
+        merge_swimmers(keep, remove)
+        r.refresh_from_db()
+        self.assertEqual(r.relay_swimmers[0]['name'], 'Ahmed BEN SALEM')
+
+
 class FixRelayEventNamesCommandTests(_MeetFixtureMixin, TestCase):
     def test_merge_gendered_duplicate(self):
         import datetime

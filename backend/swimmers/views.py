@@ -813,13 +813,18 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         else:
             effective_date = datetime.date.today()
 
-        NationalityChange.objects.create(
-            swimmer=swimmer,
-            from_country=from_country,
-            to_country=country,
+        # Never record the exact same change twice (double submits)
+        if not NationalityChange.objects.filter(
+            swimmer=swimmer, from_country=from_country, to_country=country,
             effective_date=effective_date,
-            notes=request.data.get('notes', '') or '',
-        )
+        ).exists():
+            NationalityChange.objects.create(
+                swimmer=swimmer,
+                from_country=from_country,
+                to_country=country,
+                effective_date=effective_date,
+                notes=request.data.get('notes', '') or '',
+            )
         if not record_only:
             swimmer.nationality = country
             swimmer.save(update_fields=['nationality'])
@@ -926,13 +931,20 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 c['is_current'] = c['last_meet_date'] == latest_club_date
             del c['last_meet_date']
 
-        # Nationality changes
+        # Nationality changes — stable order, exact duplicates collapsed
+        # (double submissions used to create identical rows)
         changes = NationalityChange.objects.filter(swimmer=swimmer).select_related(
-            'from_country', 'to_country')
+            'from_country', 'to_country').order_by('effective_date', 'id')
         nationality_history = []
+        seen_changes = set()
         for ch in changes:
-            # Count meets under each nationality by date range
+            dedupe_key = (ch.from_country_id, ch.to_country_id,
+                          ch.effective_date, (ch.notes or '').strip())
+            if dedupe_key in seen_changes:
+                continue
+            seen_changes.add(dedupe_key)
             nationality_history.append({
+                'id': ch.id,
                 'from_country': ch.from_country.name if ch.from_country else None,
                 'from_country_code': ch.from_country.code if ch.from_country else None,
                 'from_country_flag': ch.from_country.flag_url if ch.from_country else None,
@@ -959,6 +971,21 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'nationality_changes': nationality_history,
             'nationality_meet_counts': nationality_meet_counts,
         })
+
+    @action(detail=True, methods=['delete'],
+            url_path='nationality-changes/(?P<change_id>[0-9]+)')
+    def delete_nationality_change(self, request, pk=None, change_id=None):
+        """Admin: remove a wrong/duplicate nationality-change history entry."""
+        from core.permissions import is_admin
+        from .models import NationalityChange
+        if not is_admin(request.user):
+            return Response({'error': 'Admin only'}, status=403)
+        try:
+            ch = NationalityChange.objects.get(pk=change_id, swimmer_id=pk)
+        except NationalityChange.DoesNotExist:
+            return Response({'error': 'Not found'}, status=404)
+        ch.delete()
+        return Response(status=204)
 
     @action(detail=True, methods=['get'])
     def rankings(self, request, pk=None):

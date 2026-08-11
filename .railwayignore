@@ -1,0 +1,16 @@
+*.png
+*.PNG
+*.jpg
+*.JPG
+*.jpeg
+*.html
+.playwright-mcp/
+modernist/node_modules/
+modernist/dist/
+frontend/node_modules/
+frontend/dist/
+backend/venv/
+backend/media/
+backend/staticfiles/
+*.pdf
+*.xlsx

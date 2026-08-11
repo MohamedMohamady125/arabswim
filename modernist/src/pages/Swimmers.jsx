@@ -364,56 +364,47 @@ export default function Swimmers() {
         <Empty label="No swimmers found" />
       ) : (
         <div className="pad">
-          <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Swimmer</th>
-                  <th className="num">Born</th>
-                  <th className="num">Age</th>
-                  <th className="hide-mobile">Club</th>
-                  {isAdmin && <th />}
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((s) => (
-                  <tr key={s.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Avatar photo={s.photo} name={s.name} />
-                        <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
-                        <Link to={`/swimmers/${s.id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
-                          {s.name}
-                        </Link>
-                        {s.is_retired && <span className="tag tag-neutral">Retired</span>}
-                      </div>
-                      {s.sex && (
-                        <div className="show-mobile" style={{ margin: '5px 0 0 38px' }}>
-                          <span style={{
-                            display: 'inline-block', fontSize: 10, fontWeight: 700,
-                            letterSpacing: '0.07em', textTransform: 'uppercase',
-                            padding: '2px 8px', border: '1px solid #22a7c4',
-                            color: '#0e7490', background: 'rgba(34, 167, 196, 0.08)',
-                          }}>
-                            {s.sex === 'M' ? 'Male' : 'Female'}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="num asw-num">{s.birth_year ?? '—'}</td>
-                    <td className="num asw-num">{s.age ?? '—'}</td>
-                    <td className="text-muted hide-mobile">{s.club || '—'}</td>
-                    {isAdmin && (
-                      <td className="num">
-                        <button className="btn btn-secondary btn-icon" title="Delete swimmer" aria-label="Delete swimmer" onClick={() => handleDelete(s)}>
-                          <Trash2 size={13} />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="swimmer-grid">
+            {visible.map((s) => (
+              <Link key={s.id} to={`/swimmers/${s.id}`} className="swimmer-card">
+                <div className="swimmer-card-photo">
+                  {s.photo ? (
+                    <img className="grayscale" src={mediaUrl(s.photo)} alt={s.name} loading="lazy" />
+                  ) : (
+                    <span className="swimmer-card-initials">{initials(s.name)}</span>
+                  )}
+                  {s.is_retired && (
+                    <span className="tag tag-neutral" style={{ position: 'absolute', left: 8, bottom: 8, background: 'var(--color-surface)' }}>Retired</span>
+                  )}
+                  {isAdmin && (
+                    <button
+                      className="btn btn-secondary btn-icon"
+                      title="Delete swimmer"
+                      aria-label="Delete swimmer"
+                      style={{ position: 'absolute', top: 6, right: 6, background: 'var(--color-surface)' }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(s) }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+                <div className="swimmer-card-body">
+                  <div className="swimmer-card-name">{s.name}</div>
+                  <div className="swimmer-card-meta">
+                    <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
+                    <span>{s.nationality_detail?.name || '—'}</span>
+                  </div>
+                  {s.club && <div className="swimmer-card-meta"><span>{s.club}</span></div>}
+                  <div className="swimmer-card-sub asw-num">
+                    {s.birth_year ? `Born ${s.birth_year}` : ''}
+                    {s.birth_year && s.age != null ? ' · ' : ''}
+                    {s.age != null ? `Age ${s.age}` : ''}
+                    {(s.birth_year || s.age != null) && s.sex ? ' · ' : ''}
+                    {s.sex ? (s.sex === 'M' ? 'Male' : 'Female') : ''}
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
           <Pager page={page} pageSize={PAGE_SIZE} count={count} onPage={setPage} />
         </div>

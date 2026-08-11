@@ -173,6 +173,7 @@ export default function Championships() {
                 {/* the whole row IS the link — no expander, no extra chrome */}
                 <Link
                   to={`/meets/${m.id}`}
+                  className="meet-row"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 14, padding: '14px 32px',
                     flexWrap: 'wrap', cursor: 'pointer',

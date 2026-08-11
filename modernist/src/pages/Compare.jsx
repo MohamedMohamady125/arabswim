@@ -253,7 +253,7 @@ export default function Compare() {
                 const full = selected.find((x) => x.id === sw.id)
                 const photo = full?.photo
                 return (
-                  <div key={sw.id} style={{ order: i === 0 ? 0 : 2, display: 'flex', flexDirection: i === 0 ? 'row' : 'row-reverse', alignItems: 'stretch', minWidth: 0 }}>
+                  <div key={sw.id} style={{ order: i === 0 ? 0 : 2, display: 'flex', flexDirection: 'row', alignItems: 'stretch', minWidth: 0 }}>
                     <div className="grayscale" style={{ width: 120, minHeight: 130, flex: 'none', background: 'var(--color-accent-800)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {photo ? (
                         <img src={mediaUrl(photo)} alt={sw.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -263,8 +263,8 @@ export default function Compare() {
                         </span>
                       )}
                     </div>
-                    <div style={{ padding: '16px 18px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: i === 0 ? 'flex-start' : 'flex-end', textAlign: i === 0 ? 'left' : 'right' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: i === 0 ? 'row' : 'row-reverse' }}>
+                    <div style={{ padding: '16px 18px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', textAlign: 'left' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Flag code={sw.nationality_code} name={sw.nationality} />
                         <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1.2 }}>{sw.name}</Link>
                       </div>
@@ -281,6 +281,64 @@ export default function Compare() {
               </div>
             </div>
           )}
+          {data.swimmers.length === 2 ? (() => {
+            const [a, b] = data.swimmers
+            const timeCell = (pb, won, side) => (
+              <div className={`vs-${side} asw-time ${won ? 'vs-win' : ''}`} style={{ fontSize: 15, fontWeight: won ? 800 : 500 }}>
+                {pb?.best_time || <span className="text-muted">—</span>}
+              </div>
+            )
+            return (
+              <div className="vs-board">
+                {/* header: names anchored to their side, matching the face-off above */}
+                <div className="vs-row vs-head">
+                  <div className="vs-left" style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                    <Flag code={a.nationality_code} name={a.nationality} />
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, lineHeight: 1.2 }}>{a.name}</span>
+                  </div>
+                  <div className="vs-mid" style={{ color: 'var(--asw-gold)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 10 }}>Head to head</div>
+                  <div className="vs-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 7, minWidth: 0 }}>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, lineHeight: 1.2, textAlign: 'right' }}>{b.name}</span>
+                    <Flag code={b.nationality_code} name={b.nationality} />
+                  </div>
+                </div>
+                {(a.best_fina != null || b.best_fina != null) && (
+                  <div className="vs-row">
+                    <div className={`vs-left asw-num ${a.best_fina != null && a.best_fina >= (b.best_fina ?? -1) ? 'vs-win' : ''}`}>{a.best_fina ?? '—'}</div>
+                    <div className="vs-mid">Best FINA</div>
+                    <div className={`vs-right asw-num ${b.best_fina != null && b.best_fina >= (a.best_fina ?? -1) ? 'vs-win' : ''}`}>{b.best_fina ?? '—'}</div>
+                  </div>
+                )}
+                {(a.medals || b.medals) && (
+                  <div className="vs-row">
+                    <div className="vs-left asw-num">{a.medals ? `${a.medals.gold}·${a.medals.silver}·${a.medals.bronze}` : '—'}</div>
+                    <div className="vs-mid">Medals G·S·B</div>
+                    <div className="vs-right asw-num">{b.medals ? `${b.medals.gold}·${b.medals.silver}·${b.medals.bronze}` : '—'}</div>
+                  </div>
+                )}
+                {sharedRows.map((row) => {
+                  const pa = row.times[a.id]
+                  const pbb = row.times[b.id]
+                  const both = pa?.best_cs != null && pbb?.best_cs != null
+                  const aWin = both && pa.best_cs < pbb.best_cs
+                  const bWin = both && pbb.best_cs < pa.best_cs
+                  return (
+                    <div className="vs-row" key={row.key}>
+                      {timeCell(pa, aWin, 'left')}
+                      <div className="vs-mid">
+                        <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 12 }}>{row.event_name}</div>
+                        <div className="micro">{row.pool}</div>
+                      </div>
+                      {timeCell(pbb, bWin, 'right')}
+                    </div>
+                  )
+                })}
+                {sharedRows.length === 0 && (
+                  <div className="vs-row"><div /><div className="vs-mid">No personal bests to compare</div><div /></div>
+                )}
+              </div>
+            )
+          })() : (
           <div className="table-scroll">
             <table className="table">
               <thead>
@@ -347,6 +405,7 @@ export default function Compare() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       )}
     </div>

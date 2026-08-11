@@ -282,6 +282,48 @@ figure { margin: 0; }
 .record-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
 .record-cards > * { background: var(--color-surface); padding: 14px 16px; border: 1px solid var(--color-divider); }
 
+/* — swimmers card grid — portrait photo cards, flat borders */
+.swimmer-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
+.swimmer-card {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--color-divider); background: var(--color-surface);
+  color: inherit; text-decoration: none; overflow: hidden;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.swimmer-card:hover { border-color: var(--color-accent); transform: translateY(-2px); }
+.swimmer-card-photo {
+  position: relative; aspect-ratio: 4 / 5; background: var(--color-neutral-200);
+  display: flex; align-items: center; justify-content: center;
+  border-bottom: 1px solid var(--color-divider);
+}
+.swimmer-card-photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.swimmer-card-initials {
+  font-family: var(--font-heading); font-weight: 800; font-size: 36px;
+  color: var(--color-neutral-800); letter-spacing: 0.05em;
+}
+.swimmer-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.swimmer-card-name {
+  font-family: var(--font-heading); font-weight: 800; font-size: 14.5px;
+  line-height: 1.25; overflow-wrap: anywhere;
+}
+.swimmer-card-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-neutral-700); min-width: 0; }
+.swimmer-card-meta span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.swimmer-card-sub { font-size: 11px; color: var(--color-neutral-700); margin-top: auto; }
+
+/* — compare page: two-swimmer head-to-head board (never scrolls sideways) — */
+.vs-board { border: 2px solid var(--color-text); background: var(--color-surface); }
+.vs-row {
+  display: grid; grid-template-columns: 1fr minmax(96px, auto) 1fr;
+  align-items: center; gap: 10px; padding: 10px 14px;
+  border-bottom: 1px solid var(--color-divider);
+}
+.vs-row:last-child { border-bottom: 0; }
+.vs-left { text-align: left; min-width: 0; overflow-wrap: anywhere; }
+.vs-right { text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.vs-mid { text-align: center; font-size: 11px; color: var(--color-neutral-700); line-height: 1.3; max-width: 150px; margin: 0 auto; }
+.vs-head { background: var(--color-accent-800); color: #fff; border-bottom: 2px solid var(--color-text); }
+.vs-win { color: var(--asw-fast); font-weight: 800; }
+
 /* — pagination — */
 .pager { display: flex; align-items: center; gap: 8px; padding: 16px 0; font-size: 13px; }
 .pager .info { color: var(--color-neutral-700); margin-right: auto; }
@@ -308,8 +350,16 @@ figure { margin: 0; }
   /* compare page: stack the face-off header, VS bar between the two */
   .faceoff { grid-template-columns: 1fr !important; }
   .faceoff > div:last-child { justify-content: center; padding: 6px 0 !important; }
+  /* compare page: tighter head-to-head rows on phone */
+  .vs-row { padding: 8px 10px; gap: 6px; grid-template-columns: 1fr minmax(84px, auto) 1fr; }
+  .vs-mid { font-size: 10px; max-width: 110px; }
+  .vs-left.asw-time, .vs-right.asw-time { font-size: 13px !important; }
   /* medals page: force the 4 totals cards into a tight 2×2 grid */
   .medal-totals { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; padding: 14px 16px !important; }
+  /* championships page: host flag scaled to the two-line meet title */
+  .meet-row { padding: 14px 16px !important; }
+  .meet-row .asw-flag-lg,
+  .meet-row .fi.asw-flag-lg { width: 48px; height: 36px; line-height: 36px; }
   /* championships page: compact filter bar on phone */
   .meets-filters { padding: 8px 16px !important; gap: 6px !important; }
   .meets-filters .input { width: 100% !important; height: 32px; min-height: 32px; font-size: 13px; }
@@ -416,6 +466,11 @@ figure { margin: 0; }
   .club-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .club-card { padding: 16px 10px 14px; gap: 9px; }
   .club-card-name { font-size: 13px; }
+  .swimmer-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .swimmer-card-body { padding: 8px 10px 10px; gap: 4px; }
+  .swimmer-card-name { font-size: 12.5px; }
+  .swimmer-card-meta { font-size: 11px; }
+  .swimmer-card-sub { font-size: 10px; }
   .loading, .empty { padding: 32px 16px; }
   .pager { flex-wrap: wrap; }
   .sect-head { flex-wrap: wrap; }

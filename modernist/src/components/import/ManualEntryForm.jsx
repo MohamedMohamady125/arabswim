@@ -61,7 +61,7 @@ export default function ManualEntryForm({ onComplete }) {
 
   // Result state
   const [events, setEvents] = useState([])
-  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', medal: '' })
+  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '' })
   const [splitTimes, setSplitTimes] = useState({}) // distance → cumulative time text
 
   // Reference data
@@ -220,6 +220,8 @@ export default function ManualEntryForm({ onComplete }) {
         event: resultForm.event,
         time_centiseconds: timeCentiseconds,
         team: resultForm.team || '',
+        round_type: resultForm.round_type || '',
+        category: resultForm.category || '',
         fina_points: resultForm.fina_points ? parseInt(resultForm.fina_points) : null,
         medal: resultForm.medal || '',
         ...(splits.length > 0 ? { splits } : {}),
@@ -238,7 +240,7 @@ export default function ManualEntryForm({ onComplete }) {
   }
 
   const handleAddAnother = () => {
-    setResultForm({ event: '', time: '', team: '', fina_points: '', medal: '' })
+    setResultForm({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '' })
     setSplitTimes({})
     setSuccess(null)
   }
@@ -496,6 +498,23 @@ export default function ManualEntryForm({ onComplete }) {
             <input className="input asw-num" type="number" value={resultForm.fina_points}
               style={{ background: 'var(--color-accent-100)', fontWeight: 600 }}
               onChange={(e) => setResultForm({ ...resultForm, fina_points: e.target.value })} />
+          </div>
+          <div className="field">
+            <label>Round</label>
+            <select className="select" value={resultForm.round_type}
+              onChange={(e) => setResultForm({ ...resultForm, round_type: e.target.value })}>
+              <option value="Finals">Final</option>
+              <option value="Semifinals">Semi-Final</option>
+              <option value="Heats">Heats</option>
+              <option value="Prelims">Prelims</option>
+              <option value="Consolation">Consolation (Final B)</option>
+              <option value="">Unknown</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Category (optional)</label>
+            <input className="input" type="text" placeholder="e.g. Cadets, 13-14 ans" value={resultForm.category}
+              onChange={(e) => setResultForm({ ...resultForm, category: e.target.value })} />
           </div>
           <div className="field">
             <label>Medal (optional)</label>

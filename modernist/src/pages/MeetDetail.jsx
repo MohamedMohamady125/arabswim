@@ -147,7 +147,7 @@ function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
   const [allEvents, setAllEvents] = useState([])
   const [form, setForm] = useState({
     event: defaultEventId ? String(defaultEventId) : '',
-    time: '', fina: '', team: '', category: '', medal: '', open_medal: '',
+    time: '', fina: '', team: '', category: '', round_type: 'Finals', medal: '', open_medal: '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -194,6 +194,7 @@ function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
         time_centiseconds: cs,
         team: form.team || '',
         category: form.category || '',
+        round_type: form.round_type || '',
         fina_points: form.fina ? parseInt(form.fina) : null,
         medal: form.medal || '',
         open_medal: form.open_medal || '',
@@ -282,6 +283,17 @@ function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
             <div className="field">
               <label>Team / club</label>
               <input className="input" type="text" value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Round</label>
+              <select className="select" value={form.round_type} onChange={(e) => setForm({ ...form, round_type: e.target.value })}>
+                <option value="Finals">Final</option>
+                <option value="Semifinals">Semi-Final</option>
+                <option value="Heats">Heats</option>
+                <option value="Prelims">Prelims</option>
+                <option value="Consolation">Consolation (Final B)</option>
+                <option value="">Unknown</option>
+              </select>
             </div>
             <div className="field">
               <label>Category (optional)</label>

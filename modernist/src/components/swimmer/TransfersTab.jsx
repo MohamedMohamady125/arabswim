@@ -78,10 +78,19 @@ function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved 
             <label>Effective date</label>
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-            <input type="checkbox" checked={recordOnly} onChange={(e) => setRecordOnly(e.target.checked)} />
-            Past change — record in history only, don't update current nationality
-          </label>
+          <div className="field">
+            <label>Is this the swimmer's current nationality?</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" name="isCurrent" checked={!recordOnly} onChange={() => setRecordOnly(false)} />
+                <span><strong>Yes</strong> — set it as the current nationality (swims from the effective date onward count for it)</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" name="isCurrent" checked={recordOnly} onChange={() => setRecordOnly(true)} />
+                <span><strong>No</strong> — past change, record it in history only (current nationality stays as is)</span>
+              </label>
+            </div>
+          </div>
           <div className="field">
             <label>Notes (optional)</label>
             <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. sports citizenship change" />

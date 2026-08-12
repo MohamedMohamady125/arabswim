@@ -8,7 +8,7 @@ from django.core.cache import cache
 
 from .services import parse_file, match_swimmers_preview, confirm_import
 from .matcher import find_potential_duplicates, merge_swimmers
-from .models import ImportLog
+from .models import ImportLog, ImportJob
 from swimmers.models import Swimmer
 from championships.models import Championship, Result
 
@@ -163,6 +163,72 @@ class MatchSwimmersView(APIView):
         })
 
 
+def _finish_import_log(preview, result):
+    """Mark the pending ImportLog row completed with the run's counters."""
+    ImportLog.objects.filter(
+        file_name__icontains=preview['meet'].get('name', '')[:50],
+        status='pending',
+    ).update(
+        status='completed',
+        championship_id=result['championship_id'],
+        created_swimmers=result['created_swimmers'],
+        matched_swimmers=result['matched_swimmers'],
+        created_results=result['created_results'],
+    )
+
+
+def _run_confirm_job(job_id, preview, swimmer_decisions, championship_id,
+                     championship_details, import_id):
+    """Background worker: run confirm_import and store the outcome.
+
+    confirm_import is one big transaction, so progress written through the
+    worker's own connection would stay invisible until commit — the
+    progress callback only updates a shared dict, and a small monitor
+    thread (with its own DB connection) persists it every 2 seconds.
+    """
+    import threading
+    from django.db import close_old_connections
+    close_old_connections()
+    ImportJob.objects.filter(id=job_id).update(status='running')
+
+    shared = {'text': 'Starting…'}
+    stop = threading.Event()
+
+    def monitor():
+        from django.db import close_old_connections as _coc
+        last = ''
+        while not stop.wait(2):
+            text = shared['text']
+            if text != last:
+                try:
+                    ImportJob.objects.filter(id=job_id).update(progress=text)
+                    last = text
+                except Exception:
+                    # e.g. SQLite lock in dev — progress is best-effort
+                    pass
+        _coc()
+
+    mon = threading.Thread(target=monitor, daemon=True)
+    mon.start()
+    try:
+        def cb(text):
+            shared['text'] = text
+
+        result = confirm_import(preview, swimmer_decisions, championship_id,
+                                championship_details, progress_cb=cb)
+        _finish_import_log(preview, result)
+        cache.delete(f'import_{import_id}')
+        ImportJob.objects.filter(id=job_id).update(
+            status='done', progress='', result=result)
+    except Exception as e:
+        ImportJob.objects.filter(id=job_id).update(
+            status='failed', progress='', error=str(e)[:2000])
+    finally:
+        stop.set()
+        mon.join()
+        close_old_connections()
+
+
 class ConfirmImportView(APIView):
     """
     Step 3: Confirm the import with swimmer decisions.
@@ -170,6 +236,10 @@ class ConfirmImportView(APIView):
     Body: {
         import_id: "...",
         championship_id: int (optional),
+        background: true (optional) — run as a background job and return
+            { job_id } immediately; poll GET /import/confirm/<job_id>/.
+            Big meets (Egypt: 30k-80k results) exceed the request timeout
+            when run synchronously.
         swimmer_decisions: {
             "SWIMMER NAME": { action: "match"|"create"|"skip", swimmer_id: int }
         }
@@ -202,20 +272,27 @@ class ConfirmImportView(APIView):
                         result['time_centiseconds'] = parse_time_to_centiseconds(time_text)
             preview = modified_preview
 
+        # Background mode: return a job id immediately, work in a thread
+        # (same pattern as scrape jobs) so huge meets can't hit the
+        # gunicorn/proxy request timeout.
+        if request.data.get('background'):
+            import threading
+            job = ImportJob.objects.create(
+                meet_name=(championship_details or {}).get('name')
+                          or preview['meet'].get('name', '')[:255],
+                status='pending',
+            )
+            threading.Thread(
+                target=_run_confirm_job,
+                args=(job.id, preview, swimmer_decisions, championship_id,
+                      championship_details, import_id),
+                daemon=True,
+            ).start()
+            return Response({'job_id': job.id, 'status': 'pending'})
+
         try:
             result = confirm_import(preview, swimmer_decisions, championship_id, championship_details)
-
-            # Update import log
-            ImportLog.objects.filter(
-                file_name__icontains=preview['meet'].get('name', '')[:50],
-                status='pending',
-            ).update(
-                status='completed',
-                championship_id=result['championship_id'],
-                created_swimmers=result['created_swimmers'],
-                matched_swimmers=result['matched_swimmers'],
-                created_results=result['created_results'],
-            )
+            _finish_import_log(preview, result)
 
             # Clean up cache
             cache.delete(f'import_{import_id}')
@@ -224,6 +301,25 @@ class ConfirmImportView(APIView):
 
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+
+
+class ImportJobStatusView(APIView):
+    """Poll a background confirm-import job.
+    GET /api/v1/import/confirm/<job_id>/
+    """
+    def get(self, request, job_id):
+        try:
+            job = ImportJob.objects.get(id=job_id)
+        except ImportJob.DoesNotExist:
+            return Response({'error': 'Job not found'}, status=404)
+        return Response({
+            'job_id': job.id,
+            'meet_name': job.meet_name,
+            'status': job.status,
+            'progress': job.progress,
+            'error': job.error,
+            'result': job.result or None,
+        })
 
 
 class DuplicateSwimmersView(APIView):

@@ -634,7 +634,8 @@ def _extend_meet_dates(championship, new_date, new_end_date=None):
 
 
 @transaction.atomic
-def confirm_import(preview_data, swimmer_decisions, championship_id=None, championship_details=None):
+def confirm_import(preview_data, swimmer_decisions, championship_id=None, championship_details=None,
+                   progress_cb=None):
     """
     Step 3: Confirm and save the imported data.
 
@@ -648,11 +649,23 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         championship_details: Dict from the user-editable form with:
             name, country, pool, date, end_date, location,
             classification_category, classification, sub_classification
+        progress_cb: Optional callable(text) invoked with human-readable
+            progress ("12000 / 66869 results…"). Called from inside the
+            import transaction — it must not write through this thread's
+            DB connection (background jobs copy the text to a shared dict
+            that a separate thread persists).
 
     Returns: Summary of what was saved.
     """
     from .matcher import invalidate_norm_cache
     invalidate_norm_cache()
+
+    def _progress(text):
+        if progress_cb:
+            try:
+                progress_cb(text)
+            except Exception:
+                pass
 
     meet_info = preview_data['meet']
 
@@ -806,7 +819,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     program_entries = []  # (date_iso, db_event, gender, session, age_cat)
     program_seen = set()
 
+    total_planned = sum(len(ev.get('results', [])) for ev in preview_data['events'])
+    processed = 0
+
     for event_data in preview_data['events']:
+        processed += len(event_data.get('results', []))
+        _progress(f'Saving results — {processed:,} / {total_planned:,}')
         # Find or create the event
         db_event = _find_event(event_data, event_cache)
         if not db_event:
@@ -1237,6 +1255,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 created_results += 1
 
     # Auto-create teams from club names found in this import
+    _progress('Creating teams…')
     from teams.utils import auto_create_teams, apply_subclassification_country
     teams_created = auto_create_teams()
 
@@ -1251,6 +1270,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     categories_inferred = infer_blank_categories(championship)
 
     # Re-award medals with Olympic tie rules
+    _progress('Awarding medals…')
     from medals.utils import recompute_medals
     recompute_medals(championship)
 

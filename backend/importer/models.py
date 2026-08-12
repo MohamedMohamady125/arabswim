@@ -45,3 +45,19 @@ class ScrapeJob(models.Model):
 
     def __str__(self):
         return f'{self.meet_name or self.url} - {self.status}'
+
+
+class ImportJob(models.Model):
+    """One background confirm-import run (big meets exceed request timeouts)."""
+    meet_name = models.CharField(max_length=255, blank=True, default='')
+    status = models.CharField(max_length=20, default='pending')  # pending, running, done, failed
+    progress = models.CharField(max_length=200, blank=True, default='')
+    error = models.TextField(blank=True, default='')
+    result = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.meet_name} - {self.status}'

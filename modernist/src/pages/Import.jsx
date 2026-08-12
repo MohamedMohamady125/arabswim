@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-  uploadFile, matchSwimmers, confirmImport,
+  uploadFile, matchSwimmers, confirmImport, getConfirmJob,
   getDuplicates, mergeSwimmers, getImportHistory,
   getScrapeJobs, startScrape, downloadScrape,
 } from '../api/importer'
@@ -303,11 +303,28 @@ export default function Import() {
         if (m.editedPreview && m.editedPreview !== m.preview) {
           payload.modified_preview = m.editedPreview
         }
+        // Run as a background job on the server — big meets (Egypt:
+        // 30k-80k results) take longer than any request timeout allows.
+        payload.background = true
         const res = await confirmImport(payload)
-        updated[i] = { ...m, result: res.data, confirmError: '' }
+        const jobId = res.data.job_id
+        let jobData = null
+        for (;;) {
+          await new Promise((r) => setTimeout(r, 2500))
+          const jr = await getConfirmJob(jobId)
+          jobData = jr.data
+          if (jobData.status === 'done' || jobData.status === 'failed') break
+          const prefix = updated.length > 1 ? `Importing ${i + 1} / ${updated.length}: ` : 'Importing — '
+          setLoadingMsg(prefix + (jobData.progress || 'working…'))
+        }
+        if (jobData.status === 'failed') {
+          updated[i] = { ...m, confirmError: jobData.error || 'Failed to import' }
+          continue
+        }
+        updated[i] = { ...m, result: jobData.result, confirmError: '' }
         anyOk = true
         // save the program planned in the review step (non-fatal on failure)
-        const champId = res.data?.championship_id
+        const champId = jobData.result?.championship_id
         if (champId && !m.existingChampId && (m.programItems || []).length > 0) {
           try {
             const byDay = {}

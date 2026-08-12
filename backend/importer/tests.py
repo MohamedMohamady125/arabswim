@@ -2649,6 +2649,66 @@ class SameMeetMergeTests(TestCase):
         self.assertEqual(rows.count(), 1)
         self.assertEqual(rows.first().category, 'Seniors/Juniors')
 
+    def _heats_preview(self, event_name, distance, names_times, date_str='2026-07-27',
+                       round_type='Prelims'):
+        """One event's heats file — Egypt releases heats as several PDFs."""
+        return {
+            'meet': {'name': "CHAMPIONNAT D'ETE M/C ET J/S TC",
+                     'date': date_str, 'pool': 'LCM', 'location': 'Rades'},
+            'events': [{
+                'event_name': event_name, 'distance': distance,
+                'stroke': 'Freestyle', 'gender': 'M', 'round_type': round_type,
+                'age_group': '', 'is_relay': False,
+                'results': [{
+                    'swimmer_name': name, 'time_text': '',
+                    'time_centiseconds': cs, 'rank': i + 1, 'birth_year': 2002,
+                    'age': 24, 'nationality_code': 'TUN', 'club': 'OLYMPICA',
+                    'fina_points': 0, 'gender': 'M', 'is_relay': False,
+                    'category': '', 'status': 'OK',
+                } for i, (name, cs) in enumerate(names_times)],
+            }],
+            'swimmers': [],
+            'stats': {'total_events': 1, 'total_results': len(names_times),
+                      'total_swimmers': len(names_times)},
+        }
+
+    def test_multi_pdf_heats_merge_and_finals_decide_medals(self):
+        """Heats split over several PDFs (Egypt) all attach to one meet,
+        award no medals on their own, and the finals file decides the podium."""
+        from championships.models import Result, Championship
+        from medals.models import Medal
+        from .services import confirm_import
+
+        # Two heats PDFs of the same meet, different events/sessions
+        confirm_import(self._heats_preview(
+            '50 M Freestyle', 50,
+            [('Firas BRIGUI', 2330), ('Hamza CHEBBI', 2410)]), {})
+        confirm_import(self._heats_preview(
+            '100 M Freestyle', 100,
+            [('Firas BRIGUI', 5100), ('Hamza CHEBBI', 5200)],
+            date_str='2026-07-28'), {})
+
+        self.assertEqual(Championship.objects.count(), 1)
+        self.assertEqual(
+            Result.objects.filter(championship=self.champ).count(), 4)
+        # Heats alone never award medals
+        self.assertEqual(
+            Medal.objects.filter(championship=self.champ).count(), 0)
+
+        # Finals PDF for the 50 Free: podium comes from the final only
+        confirm_import(self._heats_preview(
+            '50 M Freestyle', 50,
+            [('Hamza CHEBBI', 2350), ('Firas BRIGUI', 2360)],
+            date_str='2026-07-29', round_type='Finals'), {})
+        self.assertEqual(Championship.objects.count(), 1)
+        medals = {(m.swimmer.name, m.medal_type)
+                  for m in Medal.objects.filter(championship=self.champ)}
+        self.assertEqual(medals, {('Hamza CHEBBI', 'GOLD'), ('Firas BRIGUI', 'SILVER')})
+        # Heats rows are kept alongside the finals rows
+        self.assertEqual(
+            Result.objects.filter(championship=self.champ,
+                                  round_type='Prelims').count(), 4)
+
     def test_two_squads_same_relay_stay_separate(self):
         """Blank-category matching must not merge two different squads of
         the same club (different times)."""

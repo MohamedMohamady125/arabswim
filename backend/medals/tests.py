@@ -101,6 +101,18 @@ class RecomputeMedalsTests(TestCase):
         recompute_medals(self.champ)
         self.assertEqual(self._medals(), {('B', 'GOLD'), ('A', 'SILVER')})
 
+    def test_heats_only_awards_no_medals(self):
+        """Egypt releases heats as several PDFs — importing them before the
+        finals file must not hand out phantom medals from heat times."""
+        # separate categories ⇒ each round is its own single-round group
+        for round_type in ('Prelims', 'Heats', 'Semifinals'):
+            self._result(self._swimmer(f'A-{round_type}'), 5000,
+                         round_type=round_type, category=round_type)
+            self._result(self._swimmer(f'B-{round_type}'), 5100,
+                         round_type=round_type, category=round_type)
+        recompute_medals(self.champ)
+        self.assertEqual(self._medals(), set())
+
     def test_single_round_meet_awards_medals(self):
         self._result(self._swimmer('A'), 5000, round_type='')
         self._result(self._swimmer('B'), 5100, round_type='')

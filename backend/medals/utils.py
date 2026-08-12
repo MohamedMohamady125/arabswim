@@ -15,6 +15,11 @@ from .models import Medal
 
 _MEDAL_BY_RANK = {1: 'GOLD', 2: 'SILVER', 3: 'BRONZE'}
 
+# Explicitly preliminary rounds never decide a podium — the final may live
+# in a separate source file not yet imported (Egypt releases heats as
+# several PDFs). Timed-final events carry 'Finals' or a blank round.
+_PRELIM_ROUNDS = {'Prelims', 'Heats', 'Semifinals'}
+
 
 def _match_relay_swimmer(name, nationality_id):
     """Find the real Swimmer record for a relay leg name, preferring the
@@ -131,7 +136,15 @@ def recompute_medals(championship):
                 break  # rows are time-sorted; no more medals in this group
             award(r, medal_type, scope=scope)
 
-    for group_rows in groups.values():
+    # Events (per gender) that ran a final somewhere in this meet. A
+    # heats-only *category* of such an event is a real podium (small
+    # Tunisian categories swim Séries only); a heats-only *event* means
+    # the finals file simply hasn't been imported yet (Egypt releases
+    # heats as several PDFs) — award nothing until it arrives.
+    finals_events = {(r.event_id, r.swimmer.sex) for r in results
+                     if r.round_type == 'Finals'}
+
+    for (event_id, sex, _category), group_rows in groups.items():
         rounds = {r.round_type for r in group_rows}
         award_sets = []
         if 'Finals' in rounds:
@@ -142,6 +155,9 @@ def recompute_medals(championship):
                     award_sets.append(cons)
         elif len(rounds) > 1:
             # Prelims/heats only from a multi-round meet: no final ranking.
+            continue
+        elif rounds <= _PRELIM_ROUNDS and (event_id, sex) not in finals_events:
+            # Heats/semis of an event with no final yet: phantom medals.
             continue
         else:
             award_sets.append(group_rows)
@@ -163,7 +179,7 @@ def recompute_medals(championship):
             if 'Finals' in rounds:
                 rows = [r for r in group_rows
                         if r.round_type in ('Finals', 'Consolation')]
-            elif len(rounds) > 1:
+            elif len(rounds) > 1 or rounds <= _PRELIM_ROUNDS:
                 continue
             else:
                 rows = group_rows

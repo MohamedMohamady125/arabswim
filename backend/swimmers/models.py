@@ -76,3 +76,38 @@ class NationalityChange(models.Model):
         if self.from_country:
             return f'{self.swimmer.name}: {self.from_country.name} → {self.to_country.name} ({self.effective_date})'
         return f'{self.swimmer.name}: {self.to_country.name} (initial, {self.effective_date})'
+
+
+def restamp_result_nationalities(swimmer):
+    """Rebuild per-result (and per-medal) nationality from the swimmer's
+    NationalityChange timeline: each swim carries the country the swimmer
+    represented at the meet's date. No recorded changes → current nationality."""
+    from championships.models import Result
+    from medals.models import Medal
+
+    changes = list(swimmer.nationality_changes.order_by('effective_date', 'id'))
+
+    def country_at(meet_date):
+        if not changes or meet_date is None:
+            return swimmer.nationality_id
+        country_id = swimmer.nationality_id  # after the last change
+        for ch in changes:
+            if meet_date < ch.effective_date:
+                return ch.from_country_id or swimmer.nationality_id
+            country_id = ch.to_country_id
+        return country_id
+
+    for r in Result.objects.filter(swimmer=swimmer).select_related('championship'):
+        country_id = country_at(r.championship.date)
+        if r.nationality_id != country_id:
+            r.nationality_id = country_id
+            r.save(update_fields=['nationality'])
+
+    for m in Medal.objects.filter(swimmer=swimmer).select_related('championship', 'result'):
+        # Relay medals keep the relay result's (team's) country
+        if m.result_id and m.result.swimmer_id != swimmer.id:
+            continue
+        country_id = country_at(m.championship.date)
+        if m.nationality_id != country_id:
+            m.nationality_id = country_id
+            m.save(update_fields=['nationality'])

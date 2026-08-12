@@ -280,12 +280,20 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         data = []
         pool = request.query_params.get('pool')
 
+        def represented(r):
+            # Country the swimmer represented at that meet, only when it
+            # differs from the current nationality (old-flag indicator).
+            nat = r.nationality
+            if nat and nat.id != swimmer.nationality_id:
+                return {'code': nat.code, 'name': nat.name, 'flag_url': nat.flag_url}
+            return None
+
         if event.is_relay:
             # Search relay results for this swimmer's name
             relay_results = Result.objects.filter(
                 event_id=event_id,
                 relay_swimmers__isnull=False,
-            ).select_related('championship', 'championship__country', 'event').order_by('championship__date')
+            ).select_related('championship', 'championship__country', 'event', 'nationality').order_by('championship__date')
             if pool:
                 relay_results = relay_results.filter(championship__pool=pool)
 
@@ -326,12 +334,13 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'pool': r.championship.pool,
                     'age_at_competition': r.age_at_competition,
                     'is_hc': r.is_hc,
+                    'represented': represented(r),
                 })
         else:
             # Individual event
             results = Result.objects.filter(
                 swimmer=swimmer, event_id=event_id
-            ).select_related('championship', 'championship__country', 'event').order_by('championship__date')
+            ).select_related('championship', 'championship__country', 'event', 'nationality').order_by('championship__date')
             if pool:
                 results = results.filter(championship__pool=pool)
 
@@ -354,6 +363,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'is_hc': r.is_hc,
                     'hc_type': r.hc_type,
                     'splits': r.splits or [],
+                    'represented': represented(r),
                 })
         return Response(data)
 
@@ -372,6 +382,18 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'championship_id', flat=True).distinct()
         championships = Championship.objects.filter(id__in=champ_ids).select_related(
             'country', 'classification_category', 'classification').order_by('-date')
+        # Meets swum under a previous nationality (old-flag indicator)
+        old_nat_by_champ = {}
+        for row in (Result.objects.filter(swimmer=swimmer, nationality__isnull=False)
+                    .exclude(nationality_id=swimmer.nationality_id)
+                    .values('championship_id', 'nationality__code',
+                            'nationality__name', 'nationality__flag_url')
+                    .distinct()):
+            old_nat_by_champ[row['championship_id']] = {
+                'code': row['nationality__code'],
+                'name': row['nationality__name'],
+                'flag_url': row['nationality__flag_url'],
+            }
         champs_data = [{
             'id': c.id, 'name': c.name, 'date': c.date,
             'pool': c.pool,
@@ -380,6 +402,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'flag_url': c.country.flag_url if c.country else '',
             'category': c.classification_category.name if c.classification_category else '',
             'classification': c.classification.name if c.classification else '',
+            'represented': old_nat_by_champ.get(c.id),
         } for c in championships]
 
         # Medal summary
@@ -828,6 +851,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         if not record_only:
             swimmer.nationality = country
             swimmer.save(update_fields=['nationality'])
+
+        # Re-stamp per-result nationality from the full change timeline: swims
+        # at meets before the change keep the old country, later swims carry
+        # the new one. Country attribution everywhere reads Result.nationality.
+        from .models import restamp_result_nationalities
+        restamp_result_nationalities(swimmer)
         return Response(SwimmerDetailSerializer(swimmer).data)
 
     @action(detail=True, methods=['get'], url_path='transfer-history')
@@ -985,6 +1014,9 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         except NationalityChange.DoesNotExist:
             return Response({'error': 'Not found'}, status=404)
         ch.delete()
+        # Attribution may depend on the deleted entry — rebuild it.
+        from .models import restamp_result_nationalities
+        restamp_result_nationalities(ch.swimmer)
         return Response(status=204)
 
     @action(detail=True, methods=['get'])

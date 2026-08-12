@@ -81,10 +81,10 @@ class RecordViewSet(viewsets.ModelViewSet):
                 time_centiseconds__gt=0,
                 is_hc=False,
                 swimmer__sex=swimmer.sex,
-                swimmer__nationality__region__in=['ARAB', 'GCC'],
+                nationality__region__in=['ARAB', 'GCC'],
             ).values(
                 'event_id', 'event__name', 'event__sort_order', 'event__distance',
-                'swimmer_id', 'swimmer__nationality_id', 'swimmer__nationality__region',
+                'swimmer_id', 'nationality_id', 'nationality__region',
                 'age_at_competition', 'time_centiseconds',
                 'championship__name', 'championship__date', 'championship__location',
                 'fina_points',
@@ -94,9 +94,9 @@ class RecordViewSet(viewsets.ModelViewSet):
 
             scopes = [('arab', [r for r in rows])]
             if region == 'GCC':
-                scopes.append(('gcc', [r for r in rows if r['swimmer__nationality__region'] == 'GCC']))
+                scopes.append(('gcc', [r for r in rows if r['nationality__region'] == 'GCC']))
             if swimmer.nationality_id:
-                scopes.append(('national', [r for r in rows if r['swimmer__nationality_id'] == swimmer.nationality_id]))
+                scopes.append(('national', [r for r in rows if r['nationality_id'] == swimmer.nationality_id]))
 
             for scope, subset in scopes:
                 for ag in age_groups:
@@ -197,19 +197,19 @@ class RecordViewSet(viewsets.ModelViewSet):
                 time_centiseconds__gt=0,
                 is_hc=False,
                 swimmer__sex=swimmer.sex,
-                swimmer__nationality__region__in=['ARAB', 'GCC'],
+                nationality__region__in=['ARAB', 'GCC'],
                 event_id__in=best_by_event.keys(),
             ).values(
                 'event_id', 'swimmer_id', 'swimmer__name',
-                'swimmer__nationality_id', 'swimmer__nationality__region',
+                'nationality_id', 'nationality__region',
                 'time_centiseconds',
             ))
 
             scopes = [('arab', rows)]
             if region == 'GCC':
-                scopes.append(('gcc', [r for r in rows if r['swimmer__nationality__region'] == 'GCC']))
+                scopes.append(('gcc', [r for r in rows if r['nationality__region'] == 'GCC']))
             if swimmer.nationality_id:
-                scopes.append(('national', [r for r in rows if r['swimmer__nationality_id'] == swimmer.nationality_id]))
+                scopes.append(('national', [r for r in rows if r['nationality_id'] == swimmer.nationality_id]))
 
             for scope, subset in scopes:
                 best_rec = {}
@@ -310,28 +310,28 @@ class RecordViewSet(viewsets.ModelViewSet):
             time_centiseconds__gt=0,
             is_hc=False,
         ).exclude(
-            swimmer__nationality__region='OTHER',
+            nationality__region='OTHER',
         ).select_related(
-            'swimmer', 'swimmer__nationality', 'event', 'championship',
+            'swimmer', 'swimmer__nationality', 'nationality', 'event', 'championship',
             'championship__country',
         )
 
         # Scope filter
         if scope == 'national':
             if country:
-                qs = qs.filter(swimmer__nationality_id=country)
+                qs = qs.filter(nationality_id=country)
             else:
                 return Response([])
         elif scope == 'gcc':
             if country:
-                qs = qs.filter(swimmer__nationality_id=country)
+                qs = qs.filter(nationality_id=country)
             else:
-                qs = qs.filter(swimmer__nationality__region='GCC')
+                qs = qs.filter(nationality__region='GCC')
         else:  # arab (default)
             if country:
-                qs = qs.filter(swimmer__nationality_id=country)
+                qs = qs.filter(nationality_id=country)
             else:
-                qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
+                qs = qs.filter(nationality__region__in=['ARAB', 'GCC'])
 
         if classification:
             qs = qs.filter(championship__classification_id=classification)
@@ -388,9 +388,9 @@ class RecordViewSet(viewsets.ModelViewSet):
                     'swimmer_name': result.swimmer.name,
                     'swimmer_id': result.swimmer_id,
                     'is_relay_team': result.swimmer.is_relay_team,
-                    'nationality': result.swimmer.nationality.name if result.swimmer.nationality else '',
-                    'nationality_code': result.swimmer.nationality.code if result.swimmer.nationality else '',
-                    'nationality_flag': result.swimmer.nationality.flag_url if result.swimmer.nationality else '',
+                    'nationality': (result.nationality or result.swimmer.nationality).name if (result.nationality or result.swimmer.nationality) else '',
+                    'nationality_code': (result.nationality or result.swimmer.nationality).code if (result.nationality or result.swimmer.nationality) else '',
+                    'nationality_flag': (result.nationality or result.swimmer.nationality).flag_url if (result.nationality or result.swimmer.nationality) else '',
                     'time': time_str,
                     'time_centiseconds': result.time_centiseconds,
                     'fina_points': result.fina_points,

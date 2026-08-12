@@ -432,6 +432,13 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                             {h.hc_type || 'HC'}
                           </span>
                         )}
+                        {h.represented && (
+                          <span title={`Swum representing ${h.represented.name}`}
+                            style={{ display: 'inline-flex', alignItems: 'center' }}>
+                            <Flag code={h.represented.code} name={`Swum representing ${h.represented.name}`}
+                              flagUrl={h.represented.flag_url} />
+                          </span>
+                        )}
                         {splits.length > 0 && (
                           <button type="button"
                             onClick={(e) => { e.stopPropagation(); setExpandedSplits(showSplits ? null : h.id) }}

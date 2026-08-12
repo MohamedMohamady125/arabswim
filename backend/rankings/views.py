@@ -29,16 +29,16 @@ class RankingView(APIView):
             })
 
         qs = Result.objects.select_related(
-            'swimmer', 'swimmer__nationality', 'championship', 'championship__country', 'event'
-        ).filter(event_id=event).exclude(swimmer__nationality__region='OTHER')
+            'swimmer', 'swimmer__nationality', 'nationality', 'championship', 'championship__country', 'event'
+        ).filter(event_id=event).exclude(nationality__region='OTHER')
 
         # Filter by scope
         if scope == 'national' and country:
-            qs = qs.filter(swimmer__nationality_id=country)
+            qs = qs.filter(nationality_id=country)
         elif scope == 'arab':
-            qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
+            qs = qs.filter(nationality__region__in=['ARAB', 'GCC'])
         elif scope == 'gcc':
-            qs = qs.filter(swimmer__nationality__region='GCC')
+            qs = qs.filter(nationality__region='GCC')
 
         if gender:
             qs = qs.filter(swimmer__sex=gender)
@@ -95,9 +95,9 @@ class RankingView(APIView):
                 'championship_id': result.championship_id,
                 'swimmer_id': result.swimmer.id,
                 'swimmer_name': result.swimmer.name,
-                'nationality': result.swimmer.nationality.name if result.swimmer.nationality else '',
-                'nationality_code': result.swimmer.nationality.code if result.swimmer.nationality else '',
-                'nationality_flag': result.swimmer.nationality.flag_url if result.swimmer.nationality else '',
+                'nationality': (result.nationality or result.swimmer.nationality).name if (result.nationality or result.swimmer.nationality) else '',
+                'nationality_code': (result.nationality or result.swimmer.nationality).code if (result.nationality or result.swimmer.nationality) else '',
+                'nationality_flag': (result.nationality or result.swimmer.nationality).flag_url if (result.nationality or result.swimmer.nationality) else '',
                 'age_at_competition': result.age_at_competition,
                 'time': result.formatted_time,
                 'time_centiseconds': result.time_centiseconds,

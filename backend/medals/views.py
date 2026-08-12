@@ -15,7 +15,7 @@ class MedalPagination(PageNumberPagination):
 
 class MedalViewSet(viewsets.ModelViewSet):
     queryset = Medal.objects.select_related(
-        'swimmer', 'swimmer__nationality', 'championship', 'championship__country', 'event'
+        'swimmer', 'nationality', 'championship', 'championship__country', 'event'
     )
     pagination_class = MedalPagination
 
@@ -43,7 +43,7 @@ class MedalViewSet(viewsets.ModelViewSet):
         country = self.request.query_params.get('country')
         host_country = self.request.query_params.get('host_country')
         if country:
-            qs = qs.filter(swimmer__nationality_id=country)
+            qs = qs.filter(nationality_id=country)
         if host_country:
             qs = qs.filter(championship__country_id=host_country)
         return qs
@@ -70,7 +70,7 @@ class MedalViewSet(viewsets.ModelViewSet):
             qs = self._relay_counts_once(qs)
         # Only restrict to Arab countries on the global medals page, not per-championship
         if not self.request.query_params.get('championship') and not swimmer and not country:
-            qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
+            qs = qs.filter(nationality__region__in=['ARAB', 'GCC'])
         return qs
 
     @action(detail=False, methods=['get'])
@@ -79,19 +79,26 @@ class MedalViewSet(viewsets.ModelViewSet):
         qs = self._relay_counts_once(qs)
         # Only restrict to Arab countries on the global medals page, not per-championship
         if not request.query_params.get('championship'):
-            qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
+            qs = qs.filter(nationality__region__in=['ARAB', 'GCC'])
         # Swimmers with no known nationality can't be attributed to a country
-        qs = qs.filter(swimmer__nationality__isnull=False)
+        qs = qs.filter(nationality__isnull=False)
         summary = qs.values(
-            'swimmer__nationality__name', 'swimmer__nationality__code',
-            'swimmer__nationality__flag_url', 'swimmer__nationality__region',
+            'nationality__name', 'nationality__code',
+            'nationality__flag_url', 'nationality__region',
         ).annotate(
             gold=Count('id', filter=Q(medal_type='GOLD')),
             silver=Count('id', filter=Q(medal_type='SILVER')),
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
         ).order_by('-gold', '-silver', '-bronze')
-        return Response(list(summary))
+        # Attribution is per-medal (nationality at the time of the swim), but
+        # keep the historical response keys every frontend already reads.
+        data = list(summary)
+        for row in data:
+            for k in list(row):
+                if k.startswith('nationality__'):
+                    row['swimmer__' + k] = row.pop(k)
+        return Response(data)
 
     @action(detail=False, methods=['get'], url_path='swimmer-summary')
     def swimmer_summary(self, request):
@@ -101,11 +108,11 @@ class MedalViewSet(viewsets.ModelViewSet):
         qs = qs.filter(swimmer__is_relay_team=False)
         # Only restrict to Arab countries on the global medals page, not per-championship
         if not request.query_params.get('championship'):
-            qs = qs.filter(swimmer__nationality__region__in=['ARAB', 'GCC'])
+            qs = qs.filter(nationality__region__in=['ARAB', 'GCC'])
         summary = qs.values(
             'swimmer__id', 'swimmer__name', 'swimmer__sex', 'swimmer__photo',
-            'swimmer__nationality__name', 'swimmer__nationality__code',
-            'swimmer__nationality__flag_url',
+            'nationality__name', 'nationality__code',
+            'nationality__flag_url',
         ).annotate(
             gold=Count('id', filter=Q(medal_type='GOLD')),
             silver=Count('id', filter=Q(medal_type='SILVER')),
@@ -123,6 +130,9 @@ class MedalViewSet(viewsets.ModelViewSet):
         for row in data:
             p = row.get('swimmer__photo')
             row['swimmer__photo'] = (settings.MEDIA_URL + p) if p else None
+            for k in list(row):
+                if k.startswith('nationality__'):
+                    row['swimmer__' + k] = row.pop(k)
         return Response(data)
 
     @action(detail=False, methods=['get'], url_path='club-summary')

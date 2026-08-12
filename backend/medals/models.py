@@ -1,7 +1,7 @@
 from django.db import models
 from swimmers.models import Swimmer
 from championships.models import Championship, Result
-from core.models import Event
+from core.models import Country, Event
 
 
 class Medal(models.Model):
@@ -11,6 +11,11 @@ class Medal(models.Model):
     event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name='medals')
     medal_type = models.CharField(max_length=10, choices=MEDAL_CHOICES)
     result = models.ForeignKey(Result, on_delete=models.SET_NULL, blank=True, null=True)
+    # Country this medal counts for — the nationality the swimmer represented
+    # AT the meet (mirrors Result.nationality). Medal tables read this, never
+    # swimmer.nationality, so later nationality changes don't move old medals.
+    nationality = models.ForeignKey(Country, on_delete=models.SET_NULL, blank=True, null=True,
+                                    related_name='medals')
     # CATEGORY: age-category podium (default). OPEN: the extra open/TC
     # ("toutes catégories") podium some national meets award per event
     # across all age groups — the same swim can earn both.
@@ -25,6 +30,14 @@ class Medal(models.Model):
             models.Index(fields=['medal_type']),
             models.Index(fields=['championship', 'medal_type']),
         ]
+
+    def save(self, *args, **kwargs):
+        if self.nationality_id is None:
+            if self.result_id and self.result.nationality_id:
+                self.nationality_id = self.result.nationality_id
+            elif self.swimmer_id:
+                self.nationality_id = self.swimmer.nationality_id
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.swimmer.name} - {self.get_medal_type_display()} - {self.event.name}'

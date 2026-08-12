@@ -135,6 +135,12 @@ class Result(models.Model):
     is_hc = models.BooleanField(default=False, help_text='Hors concours – valid time that does not count in rankings')
     is_manual = models.BooleanField(default=False, help_text='Manually entered result – excluded from automatic medal awards')
     hc_type = models.CharField(max_length=8, blank=True, default='', help_text="Source marking for unranked swims: 'HC' or 'TLD' (time limit exceeded)")
+    # Nationality the swimmer represented AT THIS MEET. Stamped at import /
+    # creation and re-stamped by nationality changes (results before the
+    # effective date keep the old country) — country attribution on medal
+    # tables, records and rankings must use this, never swimmer.nationality.
+    nationality = models.ForeignKey(Country, on_delete=models.SET_NULL, blank=True, null=True,
+                                    related_name='results')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -153,6 +159,13 @@ class Result(models.Model):
             models.Index(fields=['time_centiseconds']),
             models.Index(fields=['championship', 'event']),
         ]
+
+    def save(self, *args, **kwargs):
+        # Default the represented nationality to the swimmer's current one so
+        # every creation path (importer, admin add, scripts) stamps it.
+        if self.nationality_id is None and self.swimmer_id:
+            self.nationality_id = self.swimmer.nationality_id
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.swimmer.name} - {self.event.name} - {self.formatted_time}'

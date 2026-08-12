@@ -67,6 +67,7 @@ def recompute_medals(championship):
         medals.append(Medal(
             swimmer=r.swimmer, championship=championship,
             event_id=r.event_id, medal_type=medal_type, result=r, scope=scope,
+            nationality_id=r.nationality_id or r.swimmer.nationality_id,
         ))
         # Relays: each athlete on the squad also gets an individual
         # medal, so a relay counts once per swimmer in personal and
@@ -84,6 +85,7 @@ def recompute_medals(championship):
                     swimmer=s, championship=championship,
                     event_id=r.event_id, medal_type=medal_type, result=r,
                     scope=scope,
+                    nationality_id=r.nationality_id or s.nationality_id,
                 ))
 
     # Double podium (meets with foreign guest swimmers): guests medal from

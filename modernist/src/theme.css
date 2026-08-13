@@ -223,6 +223,13 @@ figure { margin: 0; }
 /* photos display in full color (grayscale treatment retired 2026-08) */
 .grayscale { filter: none; }
 
+/* — gallery grids: roomy tiles on desktop, small Instagram-style
+     3-across tiles on phones — */
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+@media (max-width: 640px) {
+  .gallery-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
 /* — kickers / section labels — */
 .kicker {
   font-family: var(--font-heading); font-weight: 800; font-size: 11px;

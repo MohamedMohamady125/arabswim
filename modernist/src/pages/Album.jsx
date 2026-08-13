@@ -157,7 +157,7 @@ export default function Album() {
         <Empty label="No photos or videos in this album" />
       ) : (
         <div className="pad-lg">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
+          <div className="gallery-grid" style={{ gap: 8 }}>
             {items.map((it) => (
               <figure key={it.id} style={{ margin: 0 }}>
                 <div

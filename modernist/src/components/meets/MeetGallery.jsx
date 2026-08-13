@@ -94,7 +94,7 @@ export default function MeetGallery({ meetId, isAdmin }) {
       {items.length === 0 ? (
         <Empty label={isAdmin ? 'No media yet — add photos or video links' : 'Media from this meet will appear here'} />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)' }}>
+        <div className="gallery-grid" style={{ gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)' }}>
           {items.map((item) => (
             <div key={item.id} style={{ background: 'var(--color-bg)', position: 'relative' }}>
               <div

@@ -90,6 +90,7 @@ class MediaItemViewSet(viewsets.ModelViewSet):
         if not files:
             return Response({'error': 'No image files provided'}, status=400)
         from core.uploads import validate_image
+        from core.image_enhance import enhance_uploaded_image
         for f in files:
             err = validate_image(f)
             if err:
@@ -98,6 +99,7 @@ class MediaItemViewSet(viewsets.ModelViewSet):
         created = []
         for i, f in enumerate(files):
             item = MediaItem.objects.create(
-                album=album, media_type='PHOTO', image=f, sort_order=start + i)
+                album=album, media_type='PHOTO',
+                image=enhance_uploaded_image(f), sort_order=start + i)
             created.append(MediaItemSerializer(item).data)
         return Response({'items': created}, status=201)

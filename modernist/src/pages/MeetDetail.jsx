@@ -744,9 +744,14 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   }
 
   const renderRow = (r, arr) => {
-    // competition ranking: tied times share a rank (1,2,2,4); HC unranked
+    // competition ranking: prefer the source placement (original_rank) so a
+    // partially-imported meet (e.g. only one Arab swimmer present) shows his
+    // real place, not "1st of the rows we have"; tied times share a rank
+    // (1,2,2,4); HC unranked. Open/TC pooled view re-ranks by time, so the
+    // per-category source rank doesn't apply there.
     const ranked = arr.filter((x) => !x.is_hc)
-    const rank = r.is_hc ? 0 : ranked.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
+    const computedRank = r.is_hc ? 0 : ranked.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
+    const rank = !r.is_hc && !isOpenView && r.original_rank ? r.original_rank : computedRank
     const mRank = r.is_hc ? 0 : medalRank(r, ranked, rank)
     const heatsOnlyCat = !isOpenView && !!r.category && !finalsCats.has(r.category)
     const medalOnRow = (showMedals || heatsOnlyCat) && !r.is_manual && !r.is_hc && mRank >= 1 && mRank <= 3

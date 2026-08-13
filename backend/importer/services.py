@@ -387,6 +387,7 @@ def _build_preview(parsed_meet):
             # with country codes (Estonia) and produce wrong nationalities.
             nat_code = r.nationality_code
             club_is_country = False
+            nat_inferred = False
             if not nat_code and r.club and is_international and len(r.club) > 3:
                 club_country = resolve_country(r.club)
                 if club_country:
@@ -394,6 +395,10 @@ def _build_preview(parsed_meet):
                     club_is_country = True
             if not nat_code and file_has_nationality and inferred_country_code != 'UAE':
                 nat_code = inferred_country_code
+                # Meet-country fallback, not an explicit code from the file —
+                # must never trigger a nationality change on matched swimmers
+                # (a Jordanian guest at the Hungarian nationals is not Hungarian).
+                nat_inferred = True
 
             # Compute birth_year and age from each other when one is missing
             birth_year = r.birth_year
@@ -428,6 +433,7 @@ def _build_preview(parsed_meet):
                 'birth_year': birth_year,
                 'age': age,
                 'nationality_code': nat_code,
+                'nationality_inferred': nat_inferred,
                 'club': '' if club_is_country else r.club,
                 'fina_points': fina_points,
                 'gender': gender_for_event,
@@ -1334,6 +1340,8 @@ def _maybe_record_nationality_change(swimmer, result_data, championship):
     old historical meet must not revert a nationality.
     """
     if swimmer is None or swimmer.is_relay_team or not championship.date:
+        return False
+    if result_data.get('nationality_inferred'):
         return False
     nat_code = (result_data.get('nationality_code') or '').strip()
     if not nat_code:

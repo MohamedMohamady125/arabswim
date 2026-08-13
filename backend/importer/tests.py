@@ -3490,3 +3490,18 @@ class HytekFinaPointsNormalizationTests(SimpleTestCase):
             30000, 'Event 1 Boys 11 Year Olds 400 LC Meter Freestyle',
             'M', 'LCM')
         self.assertGreater(pts, 0)
+
+
+class InferredNationalityChangeTests(SimpleTestCase):
+    """The meet-country fallback ('nationality_inferred') must never switch
+    a matched swimmer's nationality — a Jordanian guest at the Hungarian
+    nationals stays Jordanian."""
+
+    def test_inferred_code_never_changes_nationality(self):
+        from unittest import mock
+        from importer.services import _maybe_record_nationality_change
+        swimmer = mock.Mock(is_relay_team=False, nationality_id=1)
+        champ = mock.Mock(date=mock.Mock())
+        result_data = {'nationality_code': 'HUN', 'nationality_inferred': True}
+        self.assertFalse(
+            _maybe_record_nationality_change(swimmer, result_data, champ))

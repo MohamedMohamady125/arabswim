@@ -3,11 +3,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
-from .models import ClassificationCategory, Classification, SubClassification, Championship, ProgramItem, Result
+from .models import ClassificationCategory, Classification, SubClassification, Championship, ProgramItem, Result, LiveSession
 from .serializers import (
     ClassificationCategorySerializer, ClassificationSerializer, SubClassificationSerializer,
     ChampionshipListSerializer, ChampionshipDetailSerializer,
-    ProgramItemSerializer, ResultSerializer, ResultCreateSerializer
+    ProgramItemSerializer, ResultSerializer, ResultCreateSerializer, LiveSessionSerializer
 )
 
 
@@ -99,6 +99,57 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'items': ProgramItemSerializer(by_day.get(d, []), many=True).data,
         } for d in range(1, n_days + 1)]
         return Response({'days': days})
+
+    @action(detail=True, methods=['get'], url_path='live')
+    def live(self, request, pk=None):
+        """Live panel data: one tile per meet day with its uploaded sessions."""
+        from datetime import date as _date, timedelta
+        champ = self.get_object()
+        n_days = 1
+        if champ.end_date and champ.end_date >= champ.date:
+            n_days = min((champ.end_date - champ.date).days + 1, 30)
+        sessions = LiveSession.objects.filter(championship=champ)
+        by_day = {}
+        for s in sessions:
+            by_day.setdefault(s.day, []).append(s)
+        n_days = max(n_days, max(by_day, default=1))
+        today = _date.today()
+        days = [{
+            'day': d,
+            'date': str(champ.date + timedelta(days=d - 1)),
+            'is_today': champ.date + timedelta(days=d - 1) == today,
+            'sessions': LiveSessionSerializer(by_day.get(d, []), many=True).data,
+        } for d in range(1, n_days + 1)]
+        return Response({
+            'is_live': champ.is_live,
+            'days': days,
+            'total_results': champ.results.count(),
+        })
+
+    @action(detail=True, methods=['post'], url_path='finish-live')
+    def finish_live(self, request, pk=None):
+        """Admin button: the meet is over — finalize it as a normal
+        championship (medals recomputed, LIVE badge dropped)."""
+        champ = self.get_object()
+        champ.is_live = False
+        if champ.is_calendar_only:
+            champ.is_calendar_only = False
+        champ.save(update_fields=['is_live', 'is_calendar_only'])
+        from medals.utils import recompute_medals
+        recompute_medals(champ)
+        return Response({'status': 'finished', 'results': champ.results.count()})
+
+    @action(detail=False, methods=['get'], url_path='live-now')
+    def live_now(self, request):
+        """Public: meets currently in live-results mode."""
+        from django.db.models import Count, Q
+        qs = (self.get_queryset().filter(is_live=True).annotate(
+            results_count_annotated=Count('results'),
+            swimmers_count_annotated=Count(
+                'results__swimmer',
+                filter=Q(results__swimmer__is_relay_team=False),
+                distinct=True)))
+        return Response(ChampionshipListSerializer(qs, many=True).data)
 
     def perform_update(self, serializer):
         old_flags = None

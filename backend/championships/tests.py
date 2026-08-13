@@ -235,3 +235,91 @@ class OpenPodiumTests(TCMeetTestCase):
         self.assertEqual(open_medals, {
             ('ASCNS', 'GOLD'), ('SR One', 'GOLD'),
             ('EST', 'SILVER'), ('CD One', 'SILVER')})
+
+
+class LiveResultsTests(TestCase):
+    """Live-results mode: day tiles, session log, finish button, public list."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth import get_user_model
+        cls.country = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        cls.event = Event.objects.create(name='100 M Freestyle', distance=100,
+                                         stroke='Freestyle', is_relay=False)
+        cls.champ = Championship.objects.create(
+            name='Live Meet', date='2026-08-12', end_date='2026-08-14',
+            pool='LCM', country=cls.country, is_calendar_only=True, is_live=True)
+        cls.admin = get_user_model().objects.create_user(
+            username='admin', password='x', role='ADMIN')
+        cls.swimmer = Swimmer.objects.create(name='Ali TAMER', sex='M',
+                                             nationality=cls.country)
+        cls.result = Result.objects.create(
+            swimmer=cls.swimmer, championship=cls.champ, event=cls.event,
+            round_type='Finals', time_centiseconds=5000, original_rank=1)
+
+    def test_live_endpoint_builds_day_tiles_with_sessions(self):
+        from championships.models import LiveSession
+        LiveSession.objects.create(championship=self.champ, day=2,
+                                   round_summary='Heats', results_added=40)
+        res = self.client.get(f'/api/v1/championships/{self.champ.id}/live/')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data['is_live'])
+        self.assertEqual(len(data['days']), 3)  # 12–14 Aug
+        self.assertEqual(data['days'][0]['date'], '2026-08-12')
+        self.assertEqual(data['days'][1]['sessions'][0]['round_summary'], 'Heats')
+        self.assertEqual(data['total_results'], 1)
+
+    def test_finish_live_finalizes_meet_and_awards_medals(self):
+        self.client.force_login(self.admin)
+        res = self.client.post(
+            f'/api/v1/championships/{self.champ.id}/finish-live/')
+        self.assertEqual(res.status_code, 200)
+        self.champ.refresh_from_db()
+        self.assertFalse(self.champ.is_live)
+        self.assertFalse(self.champ.is_calendar_only)  # promoted to real meet
+        self.assertTrue(Medal.objects.filter(championship=self.champ,
+                                             swimmer=self.swimmer,
+                                             medal_type='GOLD').exists())
+
+    def test_finish_live_requires_admin(self):
+        res = self.client.post(
+            f'/api/v1/championships/{self.champ.id}/finish-live/')
+        self.assertIn(res.status_code, (401, 403))
+        self.champ.refresh_from_db()
+        self.assertTrue(self.champ.is_live)
+
+    def test_live_now_lists_only_live_meets(self):
+        Championship.objects.create(name='Old Meet', date='2026-01-01',
+                                    pool='LCM', country=self.country)
+        res = self.client.get('/api/v1/championships/live-now/')
+        self.assertEqual(res.status_code, 200)
+        names = [m['name'] for m in res.json()]
+        self.assertEqual(names, ['Live Meet'])
+        self.assertEqual(res.json()[0]['results_count'], 1)
+
+    def test_record_live_session_logs_upload_and_flips_live(self):
+        from importer.views import _record_live_session
+        from championships.models import LiveSession
+        quiet = Championship.objects.create(
+            name='Quiet Meet', date='2026-08-12', pool='LCM',
+            country=self.country, is_calendar_only=True)
+        _record_live_session(
+            result={'championship_id': quiet.id, 'created_results': 25},
+            preview={'events': [{'round_type': 'Heats'},
+                                {'round_type': 'Finals'},
+                                {'round_type': 'Heats'}]},
+            live_day='1', live_source='PDF', live_label='day1_heats.pdf')
+        quiet.refresh_from_db()
+        self.assertTrue(quiet.is_live)
+        s = LiveSession.objects.get(championship=quiet)
+        self.assertEqual((s.day, s.round_summary, s.results_added, s.label),
+                         (1, 'Heats, Finals', 25, 'day1_heats.pdf'))
+
+    def test_record_live_session_ignores_bad_day(self):
+        from importer.views import _record_live_session
+        from championships.models import LiveSession
+        _record_live_session(result={'championship_id': self.champ.id},
+                             preview={}, live_day='not-a-day',
+                             live_source='PDF', live_label='')
+        self.assertFalse(LiveSession.objects.exists())

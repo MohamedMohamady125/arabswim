@@ -5,6 +5,7 @@ import {
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
   getMeetProgram, updateChampionship, deleteChampionship, getClassifications, getSubClassifications,
   getRecordsBroken, addChampionshipResult, getQuickStats, getChampionships, getHeadToHead,
+  getMeetLive, finishLiveMeet,
 } from '../api/championships'
 import { getCountries, getEvents, getFinaPointsPreview } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
@@ -2191,6 +2192,109 @@ function CompareMeetsModal({ meet, onClose }) {
 
 /* ─────────────────────────────── Page ─────────────────────────────── */
 
+/* ────────────────────────── Live results panel ──────────────────────────
+   Admin cockpit during a live meet: one tile per meet day; upload a PDF or
+   scraped link per session through the normal import pipeline (aimed at
+   this meet), watch sessions land, then press "Finish meet". */
+// Admin sees the live panel from the day before the meet until 3 days after
+// the last day (detail serializer dates are ISO YYYY-MM-DD).
+function isWithinLiveWindow(meet) {
+  const start = new Date(meet.date)
+  const end = new Date(meet.end_date || meet.date)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false
+  const now = Date.now()
+  return now >= start.getTime() - 86400000 && now <= end.getTime() + 3 * 86400000
+}
+
+function LivePanel({ meet, onFinished }) {
+  const [data, setData] = useState(null)
+  const [finishing, setFinishing] = useState(false)
+
+  const load = () => {
+    getMeetLive(meet.id).then((res) => setData(res.data)).catch(() => setData(null))
+  }
+  useEffect(load, [meet.id])
+
+  const finish = async () => {
+    if (!window.confirm('Finish this meet? It becomes a normal championship (medals recomputed, LIVE badge removed).')) return
+    setFinishing(true)
+    try {
+      await finishLiveMeet(meet.id)
+      onFinished()
+    } catch {
+      window.alert('Failed to finish the meet')
+    } finally {
+      setFinishing(false)
+    }
+  }
+
+  if (!data) return null
+  return (
+    <div className="rule-b" style={{ padding: '16px 32px', background: 'var(--color-neutral-50, #fafafa)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <span className="kicker">Live results</span>
+        <span className="micro">
+          {formatNumber(data.total_results)} results so far — upload each session below; re-uploading a corrected file never duplicates.
+        </span>
+        <span style={{ flex: 1 }} />
+        {meet.is_live && (
+          <button className="btn btn-primary" onClick={finish} disabled={finishing}>
+            {finishing ? 'Finishing…' : 'Finish meet'}
+          </button>
+        )}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+        {data.days.map((d) => (
+          <div key={d.day} style={{
+            border: d.is_today ? '2px solid var(--color-accent-800)' : '1px solid var(--color-neutral-200)',
+            borderRadius: 8, padding: '12px 14px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontWeight: 800, fontFamily: 'var(--font-heading)' }}>Day {d.day}</span>
+              <span className="micro">{formatDate(d.date)}</span>
+              {d.is_today && <span className="tag tag-dark" style={{ fontSize: 10 }}>TODAY</span>}
+            </div>
+            {d.sessions.length === 0 ? (
+              <div className="micro" style={{ marginBottom: 10 }}>No sessions uploaded yet</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                {d.sessions.map((s) => (
+                  <div key={s.id} style={{ fontSize: 12, lineHeight: 1.4 }}>
+                    <span style={{ fontWeight: 700 }}>{s.round_summary || (s.source === 'LINK' ? 'Scraped' : 'PDF')}</span>
+                    {' — '}+{formatNumber(s.results_added)} results
+                    {s.label && (
+                      <div className="micro" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.label}>
+                        {s.label}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link className="btn btn-secondary" style={{ height: 30, fontSize: 12, display: 'inline-flex', alignItems: 'center' }}
+              to={`/import?championship=${meet.id}&live_day=${d.day}`}>
+              Upload session
+            </Link>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const LIVE_BADGE = (
+  <span className="tag" style={{
+    verticalAlign: 'middle', background: '#c0392b', color: '#fff',
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+  }}>
+    <span style={{
+      width: 7, height: 7, borderRadius: '50%', background: '#fff',
+      animation: 'pulse 1.4s ease-in-out infinite',
+    }} />
+    LIVE
+  </span>
+)
+
 export default function MeetDetail() {
   const { id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -2252,6 +2356,7 @@ export default function MeetDetail() {
               {meet.country_detail ? `${meet.location ? ', ' : ''}${meet.country_detail.name}` : ''}
               {' · '}{formatDateRange(meet.date, meet.end_date)}
               {' · '}<span className="tag tag-dark" style={{ verticalAlign: 'middle' }}>{meet.pool}</span>
+              {meet.is_live && <>{' '}{LIVE_BADGE}</>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -2269,6 +2374,13 @@ export default function MeetDetail() {
       </div>
 
       {comparing && <CompareMeetsModal meet={meet} onClose={() => setComparing(false)} />}
+
+      {isAdmin && (meet.is_live || isWithinLiveWindow(meet)) && (
+        <LivePanel meet={meet} onFinished={() => {
+          setMeet({ ...meet, is_live: false })
+          refreshStats()
+        }} />
+      )}
 
       {isAdmin && editing && (
         <MeetEditPanel

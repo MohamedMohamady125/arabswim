@@ -177,8 +177,37 @@ def _finish_import_log(preview, result):
     )
 
 
+def _record_live_session(result, preview, live_day, live_source, live_label):
+    """Live-results mode: log this upload on its meet day and flip the meet
+    live. Called after a successful confirm when the frontend sent live_day."""
+    from championships.models import Championship, LiveSession
+    try:
+        day = int(live_day)
+    except (TypeError, ValueError):
+        return
+    champ = Championship.objects.filter(id=result.get('championship_id')).first()
+    if not champ:
+        return
+    rounds = []
+    for ev in preview.get('events', []):
+        rt = ev.get('round_type') or ''
+        if rt and rt not in rounds:
+            rounds.append(rt)
+    LiveSession.objects.create(
+        championship=champ,
+        day=max(1, min(day, 30)),
+        round_summary=', '.join(rounds)[:120],
+        source='LINK' if live_source == 'LINK' else 'PDF',
+        label=str(live_label or '')[:255],
+        results_added=result.get('created_results', 0),
+    )
+    if not champ.is_live:
+        champ.is_live = True
+        champ.save(update_fields=['is_live'])
+
+
 def _run_confirm_job(job_id, preview, swimmer_decisions, championship_id,
-                     championship_details, import_id):
+                     championship_details, import_id, live=None):
     """Background worker: run confirm_import and store the outcome.
 
     confirm_import is one big transaction, so progress written through the
@@ -217,6 +246,9 @@ def _run_confirm_job(job_id, preview, swimmer_decisions, championship_id,
         result = confirm_import(preview, swimmer_decisions, championship_id,
                                 championship_details, progress_cb=cb)
         _finish_import_log(preview, result)
+        if live and live.get('day') is not None:
+            _record_live_session(result, preview, live['day'],
+                                 live.get('source'), live.get('label'))
         cache.delete(f'import_{import_id}')
         ImportJob.objects.filter(id=job_id).update(
             status='done', progress='', result=result)
@@ -286,6 +318,11 @@ class ConfirmImportView(APIView):
                 target=_run_confirm_job,
                 args=(job.id, preview, swimmer_decisions, championship_id,
                       championship_details, import_id),
+                kwargs={'live': {
+                    'day': request.data.get('live_day'),
+                    'source': request.data.get('live_source'),
+                    'label': request.data.get('live_label'),
+                } if request.data.get('live_day') is not None else None},
                 daemon=True,
             ).start()
             return Response({'job_id': job.id, 'status': 'pending'})
@@ -293,6 +330,10 @@ class ConfirmImportView(APIView):
         try:
             result = confirm_import(preview, swimmer_decisions, championship_id, championship_details)
             _finish_import_log(preview, result)
+            if request.data.get('live_day') is not None:
+                _record_live_session(result, preview, request.data.get('live_day'),
+                                     request.data.get('live_source'),
+                                     request.data.get('live_label'))
 
             # Clean up cache
             cache.delete(f'import_{import_id}')

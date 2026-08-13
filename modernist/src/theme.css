@@ -530,3 +530,8 @@ figure { margin: 0; }
   to { opacity: 1; transform: none; }
 }
 .asw-fade-up { animation: asw-fade-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.7); }
+}

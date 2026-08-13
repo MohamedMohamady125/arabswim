@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Calendar, MapPin, Droplets } from 'lucide-react'
-import { getQuickStats } from '../api/championships'
+import { getQuickStats, getLiveMeets } from '../api/championships'
 import QuickStatsView from '../components/QuickStatsView'
 import { Loading, Empty } from '../components/ui'
 import { formatDateRange } from '../utils'
@@ -11,12 +11,14 @@ const GOLD = 'var(--asw-gold)'
 export default function Home() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [liveMeets, setLiveMeets] = useState([])
 
   useEffect(() => {
     getQuickStats()
       .then((res) => setData(res.data))
       .catch(() => setData(null))
       .finally(() => setLoading(false))
+    getLiveMeets().then((res) => setLiveMeets(res.data || [])).catch(() => {})
   }, [])
 
   if (loading) return <Loading label="Loading statistics" />
@@ -26,6 +28,21 @@ export default function Home() {
 
   return (
     <div className="asw-fade-up">
+      {/* ── LIVE strip ── */}
+      {liveMeets.length > 0 && (
+        <Link to={liveMeets.length === 1 ? `/meets/${liveMeets[0].id}` : '/live'} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          background: '#c0392b', color: '#fff', textDecoration: 'none',
+          padding: '10px 16px', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em',
+        }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite', flex: 'none' }} />
+          LIVE NOW: {liveMeets.length === 1
+            ? liveMeets[0].name
+            : `${liveMeets.length} meets in progress`}
+          <span style={{ opacity: 0.85, fontWeight: 600 }}>— follow the results →</span>
+        </Link>
+      )}
+
       {/* ── Header band ── */}
       <header style={{ background: 'linear-gradient(135deg, var(--color-accent-800), var(--color-accent-900))', color: '#fff', padding: '34px 0 26px', textAlign: 'center' }}>
         <div className="container" style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>

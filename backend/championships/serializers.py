@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ClassificationCategory, Classification, SubClassification, Championship, ProgramItem, Result
+from .models import ClassificationCategory, Classification, SubClassification, Championship, ProgramItem, Result, LiveSession
 from core.serializers import CountrySerializer, EventSerializer
 from swimmers.serializers import SwimmerListSerializer
 
@@ -38,7 +38,7 @@ class ChampionshipListSerializer(serializers.ModelSerializer):
                   'classification_name', 'sub_classification_name',
                   'website', 'policy_pdf', 'live_results_url', 'meet_guide_pdf', 'meet_photo',
                   'registration_url', 'results_count', 'swimmers_count', 'is_calendar_only', 'is_published',
-                  'has_open_podium', 'has_double_podium', 'b_final_no_medals', 'created_at']
+                  'has_open_podium', 'has_double_podium', 'b_final_no_medals', 'is_live', 'created_at']
 
     def get_results_count(self, obj):
         # Annotated by the list view (single query); fall back for other callers
@@ -63,6 +63,13 @@ class ChampionshipDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Championship
         fields = '__all__'
+
+
+class LiveSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LiveSession
+        fields = ['id', 'day', 'round_summary', 'source', 'label',
+                  'results_added', 'created_at']
 
 
 class ProgramItemSerializer(serializers.ModelSerializer):

@@ -71,6 +71,10 @@ class Championship(models.Model):
     # but Finale B athletes get NO medals (only Finale A and the open/TC
     # podium award). Toggled per meet in the edit form.
     b_final_no_medals = models.BooleanField(default=False)
+    # Live results mode: turned on by the first session upload during the
+    # meet, turned off by the admin's "Finish meet" button. While live, the
+    # meet shows a LIVE badge and results grow session by session.
+    is_live = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -113,6 +117,35 @@ class ProgramItem(models.Model):
 
     def __str__(self):
         return f'Day {self.day}: {self.event.name} ({self.gender}) @ {self.championship.name}'
+
+
+class LiveSession(models.Model):
+    """One results upload (PDF or scraped link) for one day of a live meet.
+
+    Pure log/progress tracking for the Live panel — the actual results go
+    through the normal import pipeline, so accuracy and dedup rules are
+    identical to a regular import."""
+    SOURCE_CHOICES = [('PDF', 'PDF upload'), ('LINK', 'Scraped link')]
+
+    championship = models.ForeignKey(Championship, on_delete=models.CASCADE,
+                                     related_name='live_sessions')
+    day = models.PositiveSmallIntegerField(
+        help_text='1-based day of the meet (Day 1 = start date)')
+    round_summary = models.CharField(
+        max_length=120, blank=True, default='',
+        help_text='Rounds detected in the file, e.g. "Heats, Finals"')
+    source = models.CharField(max_length=4, choices=SOURCE_CHOICES, default='PDF')
+    label = models.CharField(max_length=255, blank=True, default='',
+                             help_text='Filename or URL of the upload')
+    results_added = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['day', 'created_at']
+        indexes = [models.Index(fields=['championship', 'day'])]
+
+    def __str__(self):
+        return f'Day {self.day} session @ {self.championship.name}'
 
 
 class Result(models.Model):

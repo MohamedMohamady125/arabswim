@@ -12,6 +12,7 @@ import Home from './pages/Home'
 import Championships from './pages/Championships'
 import MeetDetail from './pages/MeetDetail'
 import Calendar from './pages/Calendar'
+import Live from './pages/Live'
 import Records from './pages/Records'
 import NewRecords from './pages/NewRecords'
 import Medals from './pages/Medals'
@@ -63,6 +64,7 @@ export default function App() {
         <Route path="/championships" element={<Championships />} />
         <Route path="/meets/:id" element={<MeetDetail />} />
         <Route path="/calendar" element={<Calendar />} />
+        <Route path="/live" element={<Live />} />
         <Route path="/records" element={<Records />} />
         <Route path="/new-records" element={<NewRecords />} />
         <Route path="/medals" element={<Medals />} />

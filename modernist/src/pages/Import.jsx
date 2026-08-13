@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   uploadFile, matchSwimmers, confirmImport, getConfirmJob,
   getDuplicates, mergeSwimmers, getImportHistory,
@@ -93,6 +93,8 @@ export default function Import() {
   const [searchParams] = useSearchParams()
   // Pre-selected target meet (e.g. arriving from a meet's "Import File" button)
   const presetChampId = searchParams.get('championship') || ''
+  // Live-results mode: arriving from a meet's live panel ("Upload session")
+  const presetLiveDay = searchParams.get('live_day') || ''
   const [tab, setTab] = useState('file') // 'file' | 'manual' | 'duplicates' | 'history'
   const [namePdfs, setNamePdfs] = useState([]) // companion PDFs for Egyptian name repair
   const [importMethod, setImportMethod] = useState(null) // null, 'pdf', 'excel', 'html'
@@ -303,6 +305,11 @@ export default function Import() {
         if (m.editedPreview && m.editedPreview !== m.preview) {
           payload.modified_preview = m.editedPreview
         }
+        if (presetLiveDay) {
+          payload.live_day = Number(presetLiveDay)
+          payload.live_source = importMethod === 'html' ? 'LINK' : 'PDF'
+          payload.live_label = m.fileName || ''
+        }
         // Run as a background job on the server — big meets (Egypt:
         // 30k-80k results) take longer than any request timeout allows.
         payload.background = true
@@ -406,6 +413,15 @@ export default function Import() {
   return (
     <div>
       <PageHead kicker="Admin" title="Import Results" sub="Upload meet files, review parsed data, match swimmers and import" />
+
+      {presetLiveDay && (
+        <div style={{
+          margin: '16px 32px 0', padding: '10px 14px', fontSize: 13, fontWeight: 600,
+          border: '1px solid #c0392b', color: '#c0392b',
+        }}>
+          Live session upload — Day {presetLiveDay}. Import into the pre-selected meet; the session will be logged on the live panel.
+        </div>
+      )}
 
       {/* Top-level tool switcher */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -877,7 +893,8 @@ export default function Import() {
 
             {/* Step 4: Done */}
             {step === 4 && (
-              <DoneStep meets={meets} active={active} meetTabs={meetTabs} resetAll={resetAll} />
+              <DoneStep meets={meets} active={active} meetTabs={meetTabs} resetAll={resetAll}
+                backToMeetId={presetLiveDay && presetChampId ? presetChampId : null} />
             )}
           </>
         )}
@@ -886,7 +903,7 @@ export default function Import() {
   )
 }
 
-function DoneStep({ meets, active, meetTabs, resetAll }) {
+function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
   const [cleanupChampId, setCleanupChampId] = useState(null)
   const [swimmers, setSwimmers] = useState([])
   const [selected, setSelected] = useState(new Set())
@@ -1092,8 +1109,13 @@ function DoneStep({ meets, active, meetTabs, resetAll }) {
           )}
         </div>
       ))}
-      <div style={{ textAlign: 'center' }}>
-        <button type="button" className="btn btn-primary" onClick={resetAll}>
+      <div style={{ textAlign: 'center', display: 'flex', gap: 12, justifyContent: 'center' }}>
+        {backToMeetId && (
+          <Link className="btn btn-primary" to={`/meets/${backToMeetId}`}>
+            Back to live meet
+          </Link>
+        )}
+        <button type="button" className={backToMeetId ? 'btn btn-secondary' : 'btn btn-primary'} onClick={resetAll}>
           Import another file
         </button>
       </div>

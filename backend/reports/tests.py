@@ -188,6 +188,20 @@ class AskHeuristicTests(TestCase):
         self.assertEqual(plan['tab'], 'medals')
         self.assertEqual(plan.get('group'), 'club')
 
+    def test_validate_plan_championship(self):
+        from .views import _validate_plan
+        meet = Championship.objects.create(
+            name='Arab Champs 2025', date='2025-05-01', pool='LCM',
+            country=self.tun)
+        plan = _validate_plan({'tab': 'medals',
+                               'filters': {'championship': meet.id}})
+        self.assertEqual(plan['filters']['championship'], meet.id)
+        self.assertEqual(plan['championship_name'], 'Arab Champs 2025')
+        # unknown id is dropped
+        plan = _validate_plan({'tab': 'medals',
+                               'filters': {'championship': 999999}})
+        self.assertNotIn('championship', plan['filters'])
+
     def test_women_under_18(self):
         from .views import _heuristic_plan
         plan = _heuristic_plan('top 20 women under 18 in 50 free long course')

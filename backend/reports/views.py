@@ -363,7 +363,8 @@ VALID_GROUPS = {
 RECORD_TYPES = {'ARAB', 'NATIONAL', 'GCC', 'AFRICAN', 'ASIAN',
                 'MEDITERRANEAN', 'ISLAMIC', 'WORLD'}
 FILTER_KEYS = {'date_from', 'date_to', 'country', 'host_country', 'team',
-               'event', 'pool', 'gender', 'age_min', 'age_max', 'record_type'}
+               'event', 'pool', 'gender', 'age_min', 'age_max', 'record_type',
+               'championship'}
 
 
 def _validate_plan(raw):
@@ -391,6 +392,14 @@ def _validate_plan(raw):
             try:
                 if Event.objects.filter(id=int(v)).exists():
                     plan['filters'][k] = int(v)
+            except (TypeError, ValueError):
+                pass
+        elif k == 'championship':
+            try:
+                meet = Championship.objects.filter(id=int(v)).first()
+                if meet:
+                    plan['filters'][k] = meet.id
+                    plan['championship_name'] = meet.name
             except (TypeError, ValueError):
                 pass
         elif k == 'pool':
@@ -426,12 +435,15 @@ def _ai_plan(question):
     events = ', '.join(f"{e['id']}={e['name']}"
                        for e in Event.objects.values('id', 'name'))
     codes = ', '.join(Country.objects.values_list('code', flat=True))
+    meets = '; '.join(f"{c['id']}={c['name']} ({c['date']})"
+                      for c in Championship.objects.order_by('-date')
+                      .values('id', 'name', 'date'))
     system = f"""You translate swimming-analytics questions into a JSON query plan for the Arab Swim reports API. Today is {date.today().isoformat()}.
 
 Respond with ONLY a JSON object, no prose, using this schema:
 {{"tab": "overview|medals|times|participation|records",
  "group": "medals: country|club|swimmer; participation: meet|club|country|event|swimmer; records: country|swimmer|event|type; omit otherwise",
- "filters": {{"date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD", "country": "ISO-3 nationality code", "host_country": "ISO-3 code of where the meet was held", "team": "club name substring", "event": <event id integer>, "pool": "LCM|SCM", "gender": "M|F", "age_min": <int>, "age_max": <int>, "record_type": "ARAB|NATIONAL|GCC|AFRICAN|ASIAN|MEDITERRANEAN|ISLAMIC|WORLD"}},
+ "filters": {{"date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD", "country": "ISO-3 nationality code", "host_country": "ISO-3 code of where the meet was held", "team": "club name substring", "event": <event id integer>, "championship": <meet id integer, when the user names a specific meet>, "pool": "LCM|SCM", "gender": "M|F", "age_min": <int>, "age_max": <int>, "record_type": "ARAB|NATIONAL|GCC|AFRICAN|ASIAN|MEDITERRANEAN|ISLAMIC|WORLD"}},
  "limit": <int 1-500>,
  "best_per_swimmer": <true if each swimmer should appear once in top times, false to list every swim>,
  "per_event": <true ONLY when the user wants times broken down per event ("in each event", "for every event") — limit then means top N per event>,
@@ -442,6 +454,7 @@ Rules:
 - Tabs: "times" = fastest swims, "medals" = medal tallies, "participation" = who swam most (meets/swims counts), "records" = record counts, "overview" = headline totals / "how many" counting questions.
 - limit: use the number the user said; if they gave no number use 50 for times/participation and 20 for medals/records. Never invent a big limit.
 - "medal table for clubs/by club" → tab medals, group club. "which swimmer won most medals" → tab medals, group swimmer.
+- When the user names a specific meet (e.g. "the arab championships 2025"), set filters.championship to the matching meet id from the list below (match loosely on name and year). Don't also set dates or host_country in that case.
 
 Examples:
 Q: 10 fastest egyptians in each event
@@ -454,7 +467,8 @@ Q: fastest 5 in 50 free long course under 18
 A: {{"tab":"times","filters":{{"event":<id of 50 M Freestyle>,"pool":"LCM","age_max":17}},"limit":5,"best_per_swimmer":true,"summary":"Top 5 U18 50m free LCM times"}}
 
 Event ids: {events}
-Country codes in the database: {codes}"""
+Country codes in the database: {codes}
+Meet ids: {meets}"""
     body = json.dumps({
         'model': os.environ.get('OPENAI_MODEL', 'gpt-4o-mini'),
         'max_tokens': 400,

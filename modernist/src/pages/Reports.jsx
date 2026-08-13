@@ -186,7 +186,9 @@ export default function Reports() {
     setTeam(f.team || ''); setTeamInput(f.team || '')
     setEvent(f.event ? String(f.event) : ''); setPool(f.pool || ''); setGender(f.gender || '')
     setAgeMin(f.age_min ? String(f.age_min) : ''); setAgeMax(f.age_max ? String(f.age_max) : '')
-    setChampionship(null)
+    setChampionship(f.championship
+      ? { id: f.championship, name: plan.championship_name || `Meet #${f.championship}` }
+      : null)
     setLimit(plan.limit || 50)
     setTab(plan.tab || 'times')
     setBestPerSwimmer(plan.best_per_swimmer !== false)

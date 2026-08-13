@@ -18,10 +18,17 @@ IG pages can slice the whole database any way they need:
 
 All read-only aggregations over indexed FKs — no new models.
 """
+import json
+import os
+import re
+import urllib.request
+from datetime import date, timedelta
+
 from django.db.models import Avg, Count, F, Max, Q
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from core.models import Country, Event
 from championships.models import Result, Championship
 from medals.models import Medal
 from records.models import Record
@@ -315,3 +322,229 @@ def records_report(request):
             row['swimmer_id'] = r['swimmer_id']
         out.append(row)
     return Response(out)
+
+
+# ---------------------------------------------------------------------------
+# Ask: natural language → query plan. The AI (or the regex fallback) ONLY
+# picks filters — the numbers always come from the deterministic report
+# queries above, so results stay 100% accurate.
+# ---------------------------------------------------------------------------
+
+VALID_TABS = {'overview', 'medals', 'times', 'participation', 'records'}
+VALID_GROUPS = {
+    'medals': {'country', 'club', 'swimmer'},
+    'participation': {'meet', 'club', 'country', 'event', 'swimmer'},
+    'records': {'country', 'swimmer', 'event', 'type'},
+}
+RECORD_TYPES = {'ARAB', 'NATIONAL', 'GCC', 'AFRICAN', 'ASIAN',
+                'MEDITERRANEAN', 'ISLAMIC', 'WORLD'}
+FILTER_KEYS = {'date_from', 'date_to', 'country', 'host_country', 'team',
+               'event', 'pool', 'gender', 'age_min', 'age_max', 'record_type'}
+
+
+def _validate_plan(raw):
+    """Clamp an AI/heuristic plan to the exact filter vocabulary."""
+    if not isinstance(raw, dict):
+        return None
+    plan = {'tab': raw.get('tab') if raw.get('tab') in VALID_TABS else 'times',
+            'filters': {}}
+    group = raw.get('group')
+    if group and group in VALID_GROUPS.get(plan['tab'], set()):
+        plan['group'] = group
+    f = raw.get('filters') or {}
+    for k in FILTER_KEYS & set(f):
+        v = f[k]
+        if v in (None, ''):
+            continue
+        if k in ('date_from', 'date_to'):
+            if re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(v)):
+                plan['filters'][k] = str(v)
+        elif k in ('country', 'host_country'):
+            code = str(v).upper()
+            if Country.objects.filter(code=code).exists():
+                plan['filters'][k] = code
+        elif k == 'event':
+            try:
+                if Event.objects.filter(id=int(v)).exists():
+                    plan['filters'][k] = int(v)
+            except (TypeError, ValueError):
+                pass
+        elif k == 'pool':
+            if str(v).upper() in ('LCM', 'SCM'):
+                plan['filters'][k] = str(v).upper()
+        elif k == 'gender':
+            if str(v).upper() in ('M', 'F'):
+                plan['filters'][k] = str(v).upper()
+        elif k in ('age_min', 'age_max'):
+            try:
+                plan['filters'][k] = max(1, min(int(v), 99))
+            except (TypeError, ValueError):
+                pass
+        elif k == 'record_type':
+            if str(v).upper() in RECORD_TYPES:
+                plan['filters'][k] = str(v).upper()
+        elif k == 'team':
+            plan['filters'][k] = str(v)[:80]
+    try:
+        plan['limit'] = max(1, min(int(raw.get('limit', 50)), 500))
+    except (TypeError, ValueError):
+        plan['limit'] = 50
+    plan['best_per_swimmer'] = bool(raw.get('best_per_swimmer', True))
+    plan['summary'] = str(raw.get('summary', ''))[:300]
+    return plan
+
+
+def _ai_plan(question):
+    key = os.environ.get('ANTHROPIC_API_KEY')
+    if not key:
+        return None
+    events = ', '.join(f"{e['id']}={e['name']}"
+                       for e in Event.objects.values('id', 'name'))
+    codes = ', '.join(Country.objects.values_list('code', flat=True))
+    system = f"""You translate swimming-analytics questions into a JSON query plan for the Arab Swim reports API. Today is {date.today().isoformat()}.
+
+Respond with ONLY a JSON object, no prose, using this schema:
+{{"tab": "overview|medals|times|participation|records",
+ "group": "medals: country|club|swimmer; participation: meet|club|country|event|swimmer; records: country|swimmer|event|type; omit otherwise",
+ "filters": {{"date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD", "country": "ISO-3 nationality code", "host_country": "ISO-3 code of where the meet was held", "team": "club name substring", "event": <event id integer>, "pool": "LCM|SCM", "gender": "M|F", "age_min": <int>, "age_max": <int>, "record_type": "ARAB|NATIONAL|GCC|AFRICAN|ASIAN|MEDITERRANEAN|ISLAMIC|WORLD"}},
+ "limit": <int 1-500, how many rows the user asked for>,
+ "best_per_swimmer": <true if each swimmer should appear once in top times, false to list every swim>,
+ "summary": "one short sentence restating the query in plain English"}}
+
+Only include filters the user actually asked for. Tabs: "times" = fastest swims, "medals" = medal tallies, "participation" = who swam most (meets/swims counts), "records" = record counts, "overview" = headline totals.
+Event ids: {events}
+Country codes in the database: {codes}"""
+    body = json.dumps({
+        'model': 'claude-haiku-4-5-20251001',
+        'max_tokens': 400,
+        'system': system,
+        'messages': [{'role': 'user', 'content': question}],
+    }).encode()
+    req = urllib.request.Request(
+        'https://api.anthropic.com/v1/messages', data=body,
+        headers={'x-api-key': key, 'anthropic-version': '2023-06-01',
+                 'content-type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            text = json.load(resp)['content'][0]['text'].strip()
+        text = re.sub(r'^```(?:json)?|```$', '', text, flags=re.M).strip()
+        return _validate_plan(json.loads(text))
+    except Exception:
+        return None
+
+
+# nationality adjectives → country name stems the regex fallback can match
+def _match_country(q):
+    for c in Country.objects.exclude(code='').values('code', 'name'):
+        n = c['name'].lower()
+        variants = {n, n + 'n', n + 'an', n + 'ian', n + 'i'}
+        if n.endswith('o') or n.endswith('a'):
+            variants.add(n[:-1] + 'an')  # morocco→moroccan, libya→libyan
+        if ' ' in n:
+            variants.add(n.split()[0])  # saudi arabia → saudi
+        for v in variants:
+            if re.search(r'\b' + re.escape(v) + r'\b', q):
+                return c['code']
+    return None
+
+
+def _heuristic_plan(question):
+    """No-API-key fallback: regex parse of the most common question shapes."""
+    q = question.lower()
+    f = {}
+    # top N
+    m = re.search(r'(?:top|fastest|best|first)\s+(\d+)', q) or \
+        re.search(r'\b(\d+)\s+(?:fastest|best|times|swimmers|swims)', q)
+    limit = int(m.group(1)) if m else 50
+    # relative dates
+    m = re.search(r'last\s+(\d+)\s+(day|week|month|year)', q)
+    if m:
+        n, unit = int(m.group(1)), m.group(2)
+        days = n * {'day': 1, 'week': 7, 'month': 30, 'year': 365}[unit]
+        f['date_from'] = (date.today() - timedelta(days=days)).isoformat()
+    elif 'this year' in q:
+        f['date_from'] = f'{date.today().year}-01-01'
+    elif 'last year' in q:
+        y = date.today().year - 1
+        f['date_from'], f['date_to'] = f'{y}-01-01', f'{y}-12-31'
+    else:
+        m = re.search(r'\bin\s+(20\d{2})\b', q)
+        if m:
+            f['date_from'], f['date_to'] = f'{m.group(1)}-01-01', f'{m.group(1)}-12-31'
+    # country / gender / pool
+    code = _match_country(q)
+    if code:
+        f['country'] = code
+    if re.search(r'\b(women|female|girls|ladies)\b', q):
+        f['gender'] = 'F'
+    elif re.search(r'\b(men|male|boys)\b', q):
+        f['gender'] = 'M'
+    if 'scm' in q or 'short course' in q:
+        f['pool'] = 'SCM'
+    elif 'lcm' in q or 'long course' in q:
+        f['pool'] = 'LCM'
+    # ages
+    m = re.search(r'(?:under|u)\s*(\d{1,2})\b', q)
+    if m:
+        f['age_max'] = int(m.group(1)) - 1
+    m = re.search(r'(?:over|above)\s*(\d{1,2})\b', q)
+    if m:
+        f['age_min'] = int(m.group(1))
+    # event: distance + stroke
+    dist = re.search(r'\b(50|100|200|400|800|1500)\s*m?\b', q)
+    stroke = None
+    for pat, s in [(r'free', 'Freestyle'), (r'back', 'Backstroke'),
+                   (r'breast', 'Breaststroke'), (r'butterfly|\bfly\b', 'Butterfly'),
+                   (r'medley|\bim\b', 'Individual Medley')]:
+        if re.search(pat, q):
+            stroke = s
+            break
+    if dist and stroke:
+        ev = Event.objects.filter(distance=int(dist.group(1)), stroke=stroke,
+                                  is_relay='relay' in q).first()
+        if ev:
+            f['event'] = ev.id
+    # record type
+    for rt in RECORD_TYPES:
+        if rt.lower() + ' record' in q:
+            f['record_type'] = rt
+    # tab + group
+    if 'medal' in q:
+        tab = 'medals'
+    elif 'record' in q:
+        tab = 'records'
+    elif re.search(r'particip|busiest|most active|most meets|most swims', q):
+        tab = 'participation'
+    elif re.search(r'overview|summary|totals?\b|how many', q):
+        tab = 'overview'
+    else:
+        tab = 'times'
+    plan = {'tab': tab, 'filters': f, 'limit': limit, 'best_per_swimmer': True}
+    m = re.search(r'by\s+(club|swimmer|country|event|meet|type)s?\b', q)
+    if m:
+        plan['group'] = m.group(1)
+    elif tab == 'medals' and 'club' in q:
+        plan['group'] = 'club'
+    parts = []
+    if tab == 'times':
+        parts.append(f'top {limit} times')
+    else:
+        parts.append(tab)
+    if f.get('country'):
+        parts.append(f"for {f['country']}")
+    if f.get('event'):
+        parts.append(Event.objects.get(id=f['event']).name)
+    if f.get('date_from'):
+        parts.append(f"from {f['date_from']}")
+    plan['summary'] = ' · '.join(parts)
+    return _validate_plan(plan)
+
+
+@api_view(['POST'])
+def ask(request):
+    question = str(request.data.get('question') or '').strip()[:500]
+    if not question:
+        return Response({'error': 'Ask a question first.'}, status=400)
+    plan = _ai_plan(question) or _heuristic_plan(question)
+    plan['ai'] = bool(os.environ.get('ANTHROPIC_API_KEY'))
+    return Response(plan)

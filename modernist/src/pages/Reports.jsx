@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  getReportOverview, getReportMedalTable, getReportTopTimes, getReportParticipation, getReportRecords,
+  getReportOverview, getReportMedalTable, getReportTopTimes, getReportParticipation, getReportRecords, askReport,
 } from '../api/reports'
 import { getCountries, getEvents } from '../api/core'
+import { useAuth } from '../context/AuthContext'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
 import { formatDate, formatTime } from '../utils'
@@ -60,8 +61,15 @@ function downloadCsv(filename, headers, rows) {
 const statCard = { border: '1px solid var(--color-neutral-200)', borderRadius: 8, padding: '14px 16px' }
 
 export default function Reports() {
+  const { isAdmin } = useAuth()
   const [countries, setCountries] = useState([])
   const [events, setEvents] = useState([])
+
+  // natural-language ask bar
+  const [question, setQuestion] = useState('')
+  const [asking, setAsking] = useState(false)
+  const [askSummary, setAskSummary] = useState('')
+  const [askError, setAskError] = useState('')
 
   // shared filters
   const [dateFrom, setDateFrom] = useState('')
@@ -165,6 +173,40 @@ export default function Reports() {
   const clearFilters = () => {
     setDateFrom(''); setDateTo(''); setCountry(''); setHostCountry(''); setTeam(''); setTeamInput('')
     setEvent(''); setPool(''); setGender(''); setAgeMin(''); setAgeMax(''); setChampionship(null)
+    setAskSummary('')
+  }
+
+  // Ask bar: the backend translates the question into filters; the data
+  // itself always comes from the normal report queries.
+  const applyPlan = (plan) => {
+    const f = plan.filters || {}
+    setDateFrom(f.date_from || ''); setDateTo(f.date_to || '')
+    setCountry(f.country || ''); setHostCountry(f.host_country || '')
+    setTeam(f.team || ''); setTeamInput(f.team || '')
+    setEvent(f.event ? String(f.event) : ''); setPool(f.pool || ''); setGender(f.gender || '')
+    setAgeMin(f.age_min ? String(f.age_min) : ''); setAgeMax(f.age_max ? String(f.age_max) : '')
+    setChampionship(null)
+    setLimit(plan.limit || 50)
+    setTab(plan.tab || 'times')
+    setBestPerSwimmer(plan.best_per_swimmer !== false)
+    setRecordType(f.record_type || '')
+    if (plan.group) {
+      if (plan.tab === 'medals') setMedalGroup(plan.group)
+      else if (plan.tab === 'participation') setPartGroup(plan.group)
+      else if (plan.tab === 'records') setRecordGroup(plan.group)
+    }
+    setAskSummary(plan.summary || '')
+  }
+
+  const submitAsk = (e) => {
+    e.preventDefault()
+    if (!question.trim() || asking) return
+    setAsking(true); setAskError('')
+    askReport(question.trim())
+      .then((res) => applyPlan(res.data))
+      .catch((err) => setAskError(err?.response?.status === 403 || err?.response?.status === 401
+        ? 'Admin login required.' : 'Could not understand that — try rephrasing.'))
+      .finally(() => setAsking(false))
   }
 
   const exportCsv = () => {
@@ -206,6 +248,30 @@ export default function Reports() {
         kicker="Analytics"
         sub="Cross-meet analytics over the whole database — filter by date, country, club, event and more, then export as CSV."
       />
+
+      {/* ask bar: type a question, get the filters set for you */}
+      {isAdmin && (
+        <div className="rule-b" style={{ padding: '12px 32px' }}>
+          <form onSubmit={submitAsk} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              className="input"
+              style={{ flex: '1 1 320px', minWidth: 0 }}
+              placeholder='Ask anything — e.g. "fastest 10 times for Tunisian swimmers in 50 free in the last 6 months"'
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+            />
+            <button className="btn btn-primary" type="submit" disabled={asking || !question.trim()}>
+              {asking ? 'Working…' : 'Ask'}
+            </button>
+          </form>
+          {askError && <div style={{ marginTop: 6, fontSize: 13, color: 'var(--color-danger, #c0392b)' }}>{askError}</div>}
+          {askSummary && !askError && (
+            <div style={{ marginTop: 6, fontSize: 13, color: 'var(--color-neutral-700)' }}>
+              Showing: <strong>{askSummary}</strong> — filters below were set automatically, adjust them freely.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* filter bar */}
       <div className="rule-b records-filters" style={{ padding: '12px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -257,7 +323,7 @@ export default function Reports() {
             placeholder="Age max" value={ageMax} onChange={(e) => setAgeMax(e.target.value)} />
           <select className="select" style={{ flex: '0 1 110px', width: 'auto', minWidth: 0 }} value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}>
-            {LIMITS.map((n) => <option key={n} value={n}>Top {n}</option>)}
+            {[...new Set([...LIMITS, limit])].sort((a, b) => a - b).map((n) => <option key={n} value={n}>Top {n}</option>)}
           </select>
         </div>
         {championship && (

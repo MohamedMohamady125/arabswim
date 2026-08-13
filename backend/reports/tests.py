@@ -123,3 +123,44 @@ class ReportsEndpointTests(TestCase):
     def test_date_filter_excludes(self):
         res = self.client.get('/api/v1/reports/overview/?date_from=2026-06-01')
         self.assertEqual(res.json()['results'], 0)
+
+    def test_ask_requires_auth(self):
+        res = self.client.post('/api/v1/reports/ask/', {'question': 'hi'})
+        self.assertIn(res.status_code, (401, 403))
+
+
+class AskHeuristicTests(TestCase):
+    """The no-API-key fallback parser must nail the common question shapes."""
+    @classmethod
+    def setUpTestData(cls):
+        cls.tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        cls.free50 = Event.objects.create(name='50 M Freestyle', distance=50,
+                                          stroke='Freestyle', is_relay=False)
+
+    def test_fastest_times_question(self):
+        from .views import _heuristic_plan
+        plan = _heuristic_plan('give me the fastest 10 times for all tunisian '
+                               'swimmers in all meets for the 50 freestyle '
+                               'in the last 6 months')
+        self.assertEqual(plan['tab'], 'times')
+        self.assertEqual(plan['limit'], 10)
+        self.assertEqual(plan['filters']['country'], 'TUN')
+        self.assertEqual(plan['filters']['event'], self.free50.id)
+        self.assertIn('date_from', plan['filters'])
+
+    def test_medals_by_club(self):
+        from .views import _heuristic_plan
+        plan = _heuristic_plan('medal table by club for egyptian swimmers in 2025')
+        self.assertEqual(plan['tab'], 'medals')
+        self.assertEqual(plan.get('group'), 'club')
+        self.assertEqual(plan['filters']['country'], 'EGY')
+        self.assertEqual(plan['filters']['date_from'], '2025-01-01')
+
+    def test_women_under_18(self):
+        from .views import _heuristic_plan
+        plan = _heuristic_plan('top 20 women under 18 in 50 free long course')
+        self.assertEqual(plan['filters']['gender'], 'F')
+        self.assertEqual(plan['filters']['age_max'], 17)
+        self.assertEqual(plan['filters']['pool'], 'LCM')
+        self.assertEqual(plan['limit'], 20)

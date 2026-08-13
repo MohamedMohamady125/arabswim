@@ -413,8 +413,8 @@ figure { margin: 0; }
      page titles get a short gold underline, kickers a gold dash and
      section heads a navy bar, so every heading is instantly locatable */
   /* meet header: title sits beside the logo — smaller, max 2 lines, no underline */
-  h1.meet-title { font-size: 20px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  h1.meet-title-long { font-size: 16.5px; }
+  h1.meet-title { font-size: 25px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  h1.meet-title-long { font-size: 20px; }
   h1.meet-title::after { display: none; }
   h1 { font-size: 26px; }
   h1::after {

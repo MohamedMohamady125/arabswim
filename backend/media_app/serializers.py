@@ -20,7 +20,7 @@ class MediaItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = MediaItem
         fields = ['id', 'album', 'media_type', 'image', 'video_url', 'caption',
-                  'swimmer', 'sort_order', 'embed_thumbnail', 'created_at']
+                  'swimmer', 'sort_order', 'display_size', 'embed_thumbnail', 'created_at']
 
     def get_embed_thumbnail(self, obj):
         if obj.media_type == 'VIDEO':

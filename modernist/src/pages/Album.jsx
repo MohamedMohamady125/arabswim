@@ -9,6 +9,15 @@ import { Loading, Empty } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
+// Instagram-style display crops, stored per item on the backend
+export const SIZE_OPTIONS = [
+  { value: 'SQUARE', label: 'Square 1:1' },
+  { value: 'PORTRAIT', label: 'Portrait 4:5' },
+  { value: 'LANDSCAPE', label: 'Landscape 16:9' },
+  { value: 'ORIGINAL', label: 'Original' },
+]
+export const SIZE_RATIOS = { SQUARE: '1 / 1', PORTRAIT: '4 / 5', LANDSCAPE: '16 / 9' }
+
 export default function Album() {
   const { id } = useParams()
   const { isAdmin } = useAuth()
@@ -92,6 +101,15 @@ export default function Album() {
     }
   }
 
+  const saveSize = async (item, display_size) => {
+    try {
+      await updateMediaItem(item.id, { display_size })
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, display_size } : i)))
+    } catch {
+      window.alert('Failed to save size')
+    }
+  }
+
   if (loading) return <Loading label="Loading album" />
   if (!album) return <Empty label="Album not found" />
 
@@ -100,7 +118,6 @@ export default function Album() {
 
   return (
     <div>
-      <style>{`.album-photo { filter: grayscale(1) contrast(1.08); transition: filter 0.2s; } .album-photo:hover { filter: none; }`}</style>
       <div className="pad-lg rule-b">
         <Link to="/media" style={{ fontSize: 12, textDecoration: 'none' }}>← All albums</Link>
         <div className="kicker" style={{ margin: '16px 0 6px' }}>Album</div>
@@ -145,7 +162,11 @@ export default function Album() {
               <figure key={it.id} style={{ margin: 0 }}>
                 <div
                   className="album-photo"
-                  style={{ aspectRatio: '4/3', overflow: 'hidden', background: isVideo(it) ? 'var(--color-neutral-800)' : 'var(--color-surface)', position: 'relative', cursor: 'pointer' }}
+                  style={{
+                    aspectRatio: isVideo(it) ? '16 / 9'
+                      : (SIZE_RATIOS[it.display_size] || (it.display_size === 'ORIGINAL' ? undefined : '1 / 1')),
+                    overflow: 'hidden', background: isVideo(it) ? 'var(--color-neutral-800)' : 'var(--color-surface)', position: 'relative', cursor: 'pointer',
+                  }}
                   onClick={() =>
                     isVideo(it) && it.video_url
                       ? window.open(it.video_url, '_blank', 'noreferrer')
@@ -153,7 +174,10 @@ export default function Album() {
                   }
                 >
                   {!isVideo(it) && it.image ? (
-                    <img src={photoSrc(it)} alt={it.caption || ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={photoSrc(it)} alt={it.caption || ''} loading="lazy"
+                      style={it.display_size === 'ORIGINAL'
+                        ? { width: '100%', height: 'auto', display: 'block' }
+                        : { width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : it.embed_thumbnail ? (
                     <>
                       <img src={mediaUrl(it.embed_thumbnail)} alt={it.caption || ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
@@ -182,6 +206,17 @@ export default function Album() {
                       style={{ flex: 1, fontSize: 12 }}
                       onBlur={(e) => saveCaption(it, e.target.value)}
                     />
+                    {!isVideo(it) && (
+                      <select
+                        className="select"
+                        value={it.display_size || 'SQUARE'}
+                        onChange={(e) => saveSize(it, e.target.value)}
+                        style={{ fontSize: 12, width: 'auto' }}
+                        title="Display size"
+                      >
+                        {SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    )}
                     <button
                       type="button"
                       className="btn btn-ghost"

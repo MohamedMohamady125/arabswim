@@ -22,8 +22,15 @@ class Album(models.Model):
 class MediaItem(models.Model):
     MEDIA_TYPE_CHOICES = [('PHOTO', 'Photo'), ('VIDEO', 'Video')]
 
+    DISPLAY_SIZE_CHOICES = [
+        ('SQUARE', '1:1'), ('PORTRAIT', '4:5'),
+        ('LANDSCAPE', '16:9'), ('ORIGINAL', 'Original'),
+    ]
+
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name='items')
     media_type = models.CharField(max_length=10, choices=MEDIA_TYPE_CHOICES, default='PHOTO')
+    display_size = models.CharField(max_length=10, choices=DISPLAY_SIZE_CHOICES, default='SQUARE',
+                                    help_text='Instagram-style display crop for gallery grids')
     image = models.ImageField(upload_to='media_items/', blank=True, null=True)
     video_url = models.URLField(blank=True, default='')
     caption = models.CharField(max_length=255, blank=True, default='')

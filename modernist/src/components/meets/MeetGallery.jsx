@@ -4,6 +4,7 @@ import {
   deleteMediaItem, updateMediaItem,
 } from '../../api/media'
 import { Loading, Empty } from '../ui'
+import { SIZE_OPTIONS, SIZE_RATIOS } from '../../pages/Album'
 
 // Gallery tab for a meet: public display always; admin can upload photos,
 // add video links, edit captions and delete items.
@@ -97,13 +98,20 @@ export default function MeetGallery({ meetId, isAdmin }) {
           {items.map((item) => (
             <div key={item.id} style={{ background: 'var(--color-bg)', position: 'relative' }}>
               <div
-                style={{ height: 160, background: 'var(--color-neutral-900)', cursor: 'pointer', overflow: 'hidden' }}
+                style={{
+                  aspectRatio: item.media_type !== 'PHOTO' ? '16 / 9'
+                    : (SIZE_RATIOS[item.display_size] || (item.display_size === 'ORIGINAL' ? undefined : '1 / 1')),
+                  background: 'var(--color-neutral-900)', cursor: 'pointer', overflow: 'hidden',
+                }}
                 onClick={() => (item.media_type === 'VIDEO' && item.video_url
                   ? window.open(item.video_url, '_blank')
                   : setLightbox(item))}
               >
                 {item.media_type === 'PHOTO' && item.image ? (
-                  <img src={item.image} alt={item.caption || ''} className="grayscale" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={item.image} alt={item.caption || ''}
+                    style={item.display_size === 'ORIGINAL'
+                      ? { width: '100%', height: 'auto', display: 'block' }
+                      : { width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : item.embed_thumbnail ? (
                   <img src={item.embed_thumbnail} alt={item.caption || ''} className="grayscale" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
                 ) : (
@@ -123,6 +131,25 @@ export default function MeetGallery({ meetId, isAdmin }) {
                   </button>
                 )}
               </div>
+              {isAdmin && item.media_type === 'PHOTO' && (
+                <select
+                  className="select"
+                  value={item.display_size || 'SQUARE'}
+                  title="Display size"
+                  onChange={(e) => {
+                    const display_size = e.target.value
+                    updateMediaItem(item.id, { display_size })
+                      .then(() => setAlbum((a) => ({
+                        ...a,
+                        items: (a.items || []).map((i) => (i.id === item.id ? { ...i, display_size } : i)),
+                      })))
+                      .catch(() => {})
+                  }}
+                  style={{ width: '100%', fontSize: 11, border: 0, borderTop: '1px solid var(--color-divider)' }}
+                >
+                  {SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              )}
               {isAdmin ? (
                 <input
                   type="text"

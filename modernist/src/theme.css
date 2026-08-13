@@ -220,7 +220,8 @@ figure { margin: 0; }
 .asw-slow { color: var(--asw-slow); }
 .asw-navcol a { display: block; color: inherit; text-decoration: none; font-size: 12px; line-height: 1.9; }
 .asw-navcol a:hover { color: var(--color-accent); }
-.grayscale { filter: grayscale(1) contrast(1.08); }
+/* photos display in full color (grayscale treatment retired 2026-08) */
+.grayscale { filter: none; }
 
 /* — kickers / section labels — */
 .kicker {

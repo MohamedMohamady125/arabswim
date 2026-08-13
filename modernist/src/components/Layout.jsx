@@ -62,6 +62,7 @@ const NAV = [
     label: 'Data',
     links: [
       ['Federations', '/countries'],
+      ['Reports', '/reports'],
     ],
   },
 ]

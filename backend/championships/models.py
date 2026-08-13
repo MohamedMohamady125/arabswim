@@ -67,6 +67,10 @@ class Championship(models.Model):
     # get their own parallel podium (e.g. a guest wins gold AND the best
     # host swimmer is national champion with a gold of their own).
     has_double_podium = models.BooleanField(default=False)
+    # Tunisian TC long-course nationals: Finale B swims count for times
+    # but Finale B athletes get NO medals (only Finale A and the open/TC
+    # podium award). Toggled per meet in the edit form.
+    b_final_no_medals = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

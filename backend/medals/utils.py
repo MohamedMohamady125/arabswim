@@ -149,7 +149,10 @@ def recompute_medals(championship):
         award_sets = []
         if 'Finals' in rounds:
             award_sets.append([r for r in group_rows if r.round_type == 'Finals'])
-            if is_national:
+            # Finale B has its own podium at national meets — except meets
+            # flagged b_final_no_medals (Tunisian TC LCM nationals, where
+            # only Finale A and the open podium award medals).
+            if is_national and not championship.b_final_no_medals:
                 cons = [r for r in group_rows if r.round_type == 'Consolation']
                 if cons:
                     award_sets.append(cons)
@@ -177,8 +180,12 @@ def recompute_medals(championship):
         for group_rows in open_groups.values():
             rounds = {r.round_type for r in group_rows}
             if 'Finals' in rounds:
+                # b_final_no_medals meets: Finale B athletes are excluded
+                # from every podium, including the open/TC one
+                pool_rounds = (('Finals',) if championship.b_final_no_medals
+                               else ('Finals', 'Consolation'))
                 rows = [r for r in group_rows
-                        if r.round_type in ('Finals', 'Consolation')]
+                        if r.round_type in pool_rounds]
             elif len(rounds) > 1 or rounds <= _PRELIM_ROUNDS:
                 continue
             else:

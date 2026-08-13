@@ -228,3 +228,60 @@ class RelayMedalTests(TestCase):
         self.assertEqual(rows.get('Ali TAMER'), 1)
         self.assertEqual(rows.get('Omar SAYED'), 1)
         self.assertNotIn('Egypt Relay', rows)  # placeholder never a person
+
+
+class BFinalNoMedalsTests(TestCase):
+    """Tunisian TC LCM nationals: Finale B (Consolation) awards no medals
+    when championship.b_final_no_medals is set — neither its own podium
+    nor a spot in the open/TC pool."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from championships.models import Classification
+        cls.country = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        cls.event = Event.objects.create(name='100 M Freestyle', distance=100,
+                                         stroke='Freestyle', is_relay=False)
+        cls.national = Classification.objects.create(name='National')
+
+    def _champ(self, **kw):
+        return Championship.objects.create(
+            name='TC LCM Nationals', date='2026-06-01', pool='LCM',
+            country=self.country, classification=self.national, **kw)
+
+    def _result(self, champ, name, time_cs, round_type, category='TC'):
+        s = Swimmer.objects.create(name=name, sex='M', nationality=self.country)
+        return Result.objects.create(
+            swimmer=s, championship=champ, event=self.event,
+            round_type=round_type, category=category, time_centiseconds=time_cs)
+
+    def _medals(self, champ):
+        return {(m.swimmer.name, m.medal_type, m.scope)
+                for m in Medal.objects.filter(championship=champ)}
+
+    def test_finale_b_awards_own_podium_by_default(self):
+        champ = self._champ()
+        self._result(champ, 'A1', 5000, 'Finals')
+        self._result(champ, 'B1', 5300, 'Consolation')
+        recompute_medals(champ)
+        self.assertIn(('B1', 'GOLD', 'CATEGORY'), self._medals(champ))
+
+    def test_flag_removes_finale_b_podium(self):
+        champ = self._champ(b_final_no_medals=True)
+        self._result(champ, 'A1', 5000, 'Finals')
+        self._result(champ, 'A2', 5100, 'Finals')
+        self._result(champ, 'B1', 5050, 'Consolation')  # faster than A2!
+        recompute_medals(champ)
+        medals = self._medals(champ)
+        self.assertEqual(medals, {('A1', 'GOLD', 'CATEGORY'),
+                                  ('A2', 'SILVER', 'CATEGORY')})
+
+    def test_flag_excludes_finale_b_from_open_podium(self):
+        champ = self._champ(b_final_no_medals=True, has_open_podium=True)
+        self._result(champ, 'A1', 5000, 'Finals', category='15 ans')
+        self._result(champ, 'A2', 5100, 'Finals', category='16 ans')
+        self._result(champ, 'B1', 5050, 'Consolation', category='15 ans')
+        recompute_medals(champ)
+        medals = self._medals(champ)
+        self.assertIn(('A1', 'GOLD', 'OPEN'), medals)
+        self.assertIn(('A2', 'SILVER', 'OPEN'), medals)
+        self.assertFalse(any(name == 'B1' for name, _, _ in medals))

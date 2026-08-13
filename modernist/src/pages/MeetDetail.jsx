@@ -529,7 +529,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
 
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
-function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, onDataChanged }) {
+function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, onDataChanged }) {
   const navigate = useNavigate()
   const [initParams] = useSearchParams()
   // deep link from Records: ?event=&gender=&result= opens that exact swim
@@ -653,7 +653,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   const showMedals = isOpenView
     ? (roundsPresent.has('Finals') || roundsPresent.size <= 1)
     : (selectedRound === 'Finals'
-      || (isNational && selectedRound === 'Consolation')
+      || (isNational && selectedRound === 'Consolation' && !bFinalNoMedals)
       || roundsPresent.size <= 1)
   // Small categories (e.g. Benjamins) often swim heats only — that heats
   // classement IS their podium, so their rows medal even in the Heats view.
@@ -666,8 +666,10 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       // Open classification: pool Finale A/B across all categories (mirrors
       // the backend's OPEN medal pass), rank purely by time.
       const hasFinals = rows.some((r) => r.round_type === 'Finals')
+      // b_final_no_medals meets: the open/TC podium pools Finale A only
       sel = hasFinals
-        ? rows.filter((r) => r.round_type === 'Finals' || r.round_type === 'Consolation')
+        ? rows.filter((r) => r.round_type === 'Finals'
+            || (r.round_type === 'Consolation' && !bFinalNoMedals))
         : rows
     } else {
       sel = rows.filter((r) => (r.round_type || '') === (selectedRound ?? ''))
@@ -688,7 +690,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     })
     order.sort((a, b) => catRank(a) - catRank(b))
     return order.map((cat) => [cat, byCat.get(cat)])
-  }, [rows, selectedRound, selectedCategory, isOpenView])
+  }, [rows, selectedRound, selectedCategory, isOpenView, bFinalNoMedals])
 
   useEffect(() => { setExpandedRow(null) }, [eventKey, selectedRound, selectedCategory])
   // full list — every swimmer in the selection, no pagination
@@ -755,6 +757,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     const mRank = r.is_hc ? 0 : medalRank(r, ranked, rank)
     const heatsOnlyCat = !isOpenView && !!r.category && !finalsCats.has(r.category)
     const medalOnRow = (showMedals || heatsOnlyCat) && !r.is_manual && !r.is_hc && mRank >= 1 && mRank <= 3
+      // b_final_no_medals meets: Finale B rows never medal, even in the
+      // pooled open/TC view (matches backend recompute_medals)
+      && !(bFinalNoMedals && r.round_type === 'Consolation')
     const swimmers = r.relay_swimmers || []
     const splits = withFinishSplit(r.splits || [], r.time_centiseconds)
     const hasSub = (isRelay && swimmers.length > 0) || (!isRelay && splits.length > 0)
@@ -1840,6 +1845,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
     live_results_url: meet.live_results_url || '',
     registration_url: meet.registration_url || '',
     has_double_podium: !!meet.has_double_podium,
+    b_final_no_medals: !!meet.b_final_no_medals,
   })
   const [photo, setPhoto] = useState(null)
   const [countries, setCountries] = useState([])
@@ -1881,6 +1887,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
       fd.append('live_results_url', form.live_results_url.trim())
       fd.append('registration_url', form.registration_url.trim())
       fd.append('has_double_podium', form.has_double_podium ? 'true' : 'false')
+      fd.append('b_final_no_medals', form.b_final_no_medals ? 'true' : 'false')
       if (photo) fd.append('meet_photo', photo)
       const res = await updateChampionship(meet.id, fd)
       onSaved(res.data)
@@ -1971,6 +1978,18 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
             Double podium — foreign guest swimmers keep their medals AND host-country swimmers get their own parallel podium (medals recompute on save)
           </label>
         </div>
+        {(countries.find((c) => String(c.id) === String(form.country))?.code === 'TUN' || form.b_final_no_medals) && (
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.b_final_no_medals}
+                onChange={(e) => setForm((f) => ({ ...f, b_final_no_medals: e.target.checked }))}
+              />
+              Finale B gets no medals — Tunisian TC LCM nationals rule: only Finale A and the open/TC podium award medals (medals recompute on save)
+            </label>
+          </div>
+        )}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving || deleting}>
@@ -2279,7 +2298,8 @@ export default function MeetDetail() {
 
       {tab === 'results' && (
         <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium}
-          hasDoublePodium={!!meet.has_double_podium} hostCode={meet.country_detail?.code} onDataChanged={refreshStats} />
+          hasDoublePodium={!!meet.has_double_podium} hostCode={meet.country_detail?.code}
+          bFinalNoMedals={!!meet.b_final_no_medals} onDataChanged={refreshStats} />
       )}
       {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
       {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}

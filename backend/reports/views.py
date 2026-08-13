@@ -395,7 +395,7 @@ def _validate_plan(raw):
 
 
 def _ai_plan(question):
-    key = os.environ.get('ANTHROPIC_API_KEY')
+    key = os.environ.get('OPENAI_API_KEY')
     if not key:
         return None
     events = ', '.join(f"{e['id']}={e['name']}"
@@ -415,18 +415,19 @@ Only include filters the user actually asked for. Tabs: "times" = fastest swims,
 Event ids: {events}
 Country codes in the database: {codes}"""
     body = json.dumps({
-        'model': 'claude-haiku-4-5-20251001',
+        'model': os.environ.get('OPENAI_MODEL', 'gpt-4o-mini'),
         'max_tokens': 400,
-        'system': system,
-        'messages': [{'role': 'user', 'content': question}],
+        'response_format': {'type': 'json_object'},
+        'messages': [{'role': 'system', 'content': system},
+                     {'role': 'user', 'content': question}],
     }).encode()
     req = urllib.request.Request(
-        'https://api.anthropic.com/v1/messages', data=body,
-        headers={'x-api-key': key, 'anthropic-version': '2023-06-01',
+        'https://api.openai.com/v1/chat/completions', data=body,
+        headers={'Authorization': f'Bearer {key}',
                  'content-type': 'application/json'})
     try:
         with urllib.request.urlopen(req, timeout=25) as resp:
-            text = json.load(resp)['content'][0]['text'].strip()
+            text = json.load(resp)['choices'][0]['message']['content'].strip()
         text = re.sub(r'^```(?:json)?|```$', '', text, flags=re.M).strip()
         return _validate_plan(json.loads(text))
     except Exception:
@@ -546,5 +547,5 @@ def ask(request):
     if not question:
         return Response({'error': 'Ask a question first.'}, status=400)
     plan = _ai_plan(question) or _heuristic_plan(question)
-    plan['ai'] = bool(os.environ.get('ANTHROPIC_API_KEY'))
+    plan['ai'] = bool(os.environ.get('OPENAI_API_KEY'))
     return Response(plan)

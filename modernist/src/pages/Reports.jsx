@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  getReportOverview, getReportMedalTable, getReportTopTimes, getReportParticipation,
+  getReportOverview, getReportMedalTable, getReportTopTimes, getReportParticipation, getReportRecords,
 } from '../api/reports'
 import { getCountries, getEvents } from '../api/core'
 import Flag from '../components/Flag'
@@ -15,7 +15,17 @@ const TABS = [
   { value: 'medals', label: 'Medal Table' },
   { value: 'times', label: 'Top Times' },
   { value: 'participation', label: 'Participation' },
+  { value: 'records', label: 'Records' },
 ]
+
+const RECORD_GROUPS = [
+  { value: 'country', label: 'By Country' },
+  { value: 'swimmer', label: 'By Swimmer' },
+  { value: 'event', label: 'By Event' },
+  { value: 'type', label: 'By Type' },
+]
+
+const RECORD_TYPES = ['ARAB', 'NATIONAL', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
 
 const MEDAL_GROUPS = [
   { value: 'country', label: 'By Country' },
@@ -28,6 +38,7 @@ const PART_GROUPS = [
   { value: 'club', label: 'By Club' },
   { value: 'country', label: 'By Country' },
   { value: 'event', label: 'By Event' },
+  { value: 'swimmer', label: 'By Swimmer' },
 ]
 
 const LIMITS = [25, 50, 100, 200, 500]
@@ -71,6 +82,8 @@ export default function Reports() {
   const [tab, setTab] = useState('overview')
   const [medalGroup, setMedalGroup] = useState('country')
   const [partGroup, setPartGroup] = useState('meet')
+  const [recordGroup, setRecordGroup] = useState('country')
+  const [recordType, setRecordType] = useState('')
   const [bestPerSwimmer, setBestPerSwimmer] = useState(true)
 
   const [data, setData] = useState(null)
@@ -139,13 +152,14 @@ export default function Reports() {
     const call = tab === 'overview' ? getReportOverview(params)
       : tab === 'medals' ? getReportMedalTable({ ...params, group: medalGroup })
       : tab === 'times' ? getReportTopTimes({ ...params, best_per_swimmer: bestPerSwimmer ? 1 : 0 })
+      : tab === 'records' ? getReportRecords({ ...params, group: recordGroup, record_type: recordType || undefined })
       : getReportParticipation({ ...params, group: partGroup })
     call
       .then((res) => { if (alive) setData(res.data) })
       .catch(() => { if (alive) setData(null) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [tab, medalGroup, partGroup, bestPerSwimmer, params])
+  }, [tab, medalGroup, partGroup, recordGroup, recordType, bestPerSwimmer, params])
 
   const hasFilters = dateFrom || dateTo || country || hostCountry || team || teamInput || event || pool || gender || ageMin || ageMax || championship
   const clearFilters = () => {
@@ -167,6 +181,14 @@ export default function Reports() {
         data.map((r, i) => [i + 1, r.swimmer_name, r.country_code || '', r.event_name,
           formatTime(r.time_centiseconds), r.fina_points ?? '', r.age ?? '', r.team,
           r.round, r.championship_name, r.date, r.pool]))
+    } else if (tab === 'records') {
+      downloadCsv(`records-${recordGroup}.csv`,
+        ['Rank', 'Name', 'Records', 'Standing', 'Latest'],
+        data.map((r, i) => [i + 1, r.name, r.records, r.standing, r.latest || '']))
+    } else if (partGroup === 'swimmer') {
+      downloadCsv('participation-swimmer.csv',
+        ['Rank', 'Swimmer', 'Country', 'Swims', 'Meets', 'Events', 'Best FINA'],
+        data.map((r, i) => [i + 1, r.name, r.country_code || '', r.results, r.meets, r.events, r.best_fina ?? '']))
     } else {
       downloadCsv(`participation-${partGroup}.csv`,
         ['Rank', 'Name', 'Swimmers', 'Results', 'Clubs', 'Best FINA'],
@@ -253,6 +275,16 @@ export default function Reports() {
         <Seg options={TABS} value={tab} onChange={setTab} tabs />
         {tab === 'medals' && <Seg options={MEDAL_GROUPS} value={medalGroup} onChange={setMedalGroup} />}
         {tab === 'participation' && <Seg options={PART_GROUPS} value={partGroup} onChange={setPartGroup} />}
+        {tab === 'records' && (
+          <>
+            <Seg options={RECORD_GROUPS} value={recordGroup} onChange={setRecordGroup} />
+            <select className="select" style={{ width: 'auto', minWidth: 0 }} value={recordType}
+              onChange={(e) => setRecordType(e.target.value)}>
+              <option value="">All record types</option>
+              {RECORD_TYPES.map((t) => <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>)}
+            </select>
+          </>
+        )}
         {tab === 'times' && (
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
             <input type="checkbox" checked={bestPerSwimmer} onChange={(e) => setBestPerSwimmer(e.target.checked)} />
@@ -266,7 +298,9 @@ export default function Reports() {
         )}
       </div>
 
-      {loading ? (
+      {/* while switching tabs, `data` can briefly hold the previous tab's
+          shape (object vs list) — treat a shape mismatch as still loading */}
+      {loading || (data && (tab === 'overview') === Array.isArray(data)) ? (
         <Loading label="Building report" />
       ) : !data || (Array.isArray(data) && data.length === 0) ? (
         <Empty label="No data for this selection" />
@@ -276,6 +310,8 @@ export default function Reports() {
         <MedalTableReport rows={data} group={medalGroup} />
       ) : tab === 'times' ? (
         <TopTimesReport rows={data} onPickMeet={(m) => setChampionship(m)} />
+      ) : tab === 'records' ? (
+        <RecordsReport rows={data} group={recordGroup} />
       ) : (
         <ParticipationReport rows={data} group={partGroup} onPickMeet={(m) => setChampionship(m)} />
       )}
@@ -285,9 +321,9 @@ export default function Reports() {
 
 function OverviewCards({ d }) {
   const items = [
-    ['Results', d.results], ['Swimmers', d.swimmers], ['Meets', d.meets],
-    ['Clubs', d.clubs], ['Countries', d.countries], ['Events', d.events],
-    ['Medals', d.medals], ['Best FINA', d.best_fina], ['Avg FINA', d.avg_fina],
+    ['Results', d.results], ['Swimmers', d.swimmers], ['Men', d.men], ['Women', d.women],
+    ['Meets', d.meets], ['Clubs', d.clubs], ['Countries', d.countries], ['Events', d.events],
+    ['Medals', d.medals], ['Best FINA', d.best_fina], ['Avg FINA', d.avg_fina], ['Avg Age', d.avg_age],
   ]
   return (
     <div className="pad">
@@ -400,6 +436,45 @@ function TopTimesReport({ rows, onPickMeet }) {
 }
 
 function ParticipationReport({ rows, group, onPickMeet }) {
+  if (group === 'swimmer') {
+    return (
+      <div className="pad">
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: 34 }}>#</th>
+                <th>Swimmer</th>
+                <th className="num">Swims</th>
+                <th className="num">Meets</th>
+                <th className="num">Events</th>
+                <th className="num hide-mobile">Best FINA</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={`${r.swimmer_id}-${i}`}>
+                  <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+                  <td className="swimmer-cell">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <Flag code={r.country_code} name={r.name} />
+                      <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.name}
+                      </Link>
+                    </div>
+                  </td>
+                  <td className="num asw-num">{r.results?.toLocaleString('en-US')}</td>
+                  <td className="num asw-num">{r.meets}</td>
+                  <td className="num asw-num">{r.events}</td>
+                  <td className="num asw-num hide-mobile">{r.best_fina ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
   const label = { meet: 'Meet', club: 'Club', country: 'Country', event: 'Event' }[group]
   return (
     <div className="pad">
@@ -436,6 +511,47 @@ function ParticipationReport({ rows, group, onPickMeet }) {
                 <td className="num asw-num">{r.results?.toLocaleString('en-US')}</td>
                 {group !== 'club' && <td className="num asw-num hide-mobile">{r.clubs}</td>}
                 <td className="num asw-num hide-mobile">{r.best_fina ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function RecordsReport({ rows, group }) {
+  const label = { country: 'Country', swimmer: 'Swimmer', event: 'Event', type: 'Record Type' }[group]
+  return (
+    <div className="pad">
+      <div className="table-scroll">
+        <table className="table">
+          <thead>
+            <tr>
+              <th style={{ width: 34 }}>#</th>
+              <th>{label}</th>
+              <th className="num">Records</th>
+              <th className="num" title="Records still standing today">Standing</th>
+              <th className="hide-mobile">Latest</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={`${r.name}-${i}`}>
+                <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    {r.country_code && <Flag code={r.country_code} name={r.name} />}
+                    {group === 'swimmer' && r.swimmer_id
+                      ? <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit' }}>{r.name}</Link>
+                      : group === 'type'
+                        ? r.name.charAt(0) + r.name.slice(1).toLowerCase()
+                        : r.name}
+                  </div>
+                </td>
+                <td className="num asw-num" style={{ fontWeight: 800 }}>{r.records}</td>
+                <td className="num asw-num">{r.standing}</td>
+                <td className="hide-mobile" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.latest)}</td>
               </tr>
             ))}
           </tbody>

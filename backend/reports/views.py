@@ -24,6 +24,7 @@ from rest_framework.response import Response
 
 from championships.models import Result, Championship
 from medals.models import Medal
+from records.models import Record
 
 
 def _limit(request, default=50, cap=500):
@@ -108,9 +109,13 @@ def overview(request):
         events=Count('event_id', distinct=True),
         best_fina=Max('fina_points'),
         avg_fina=Avg('fina_points'),
+        men=Count('swimmer_id', distinct=True, filter=Q(swimmer__sex='M')),
+        women=Count('swimmer_id', distinct=True, filter=Q(swimmer__sex='F')),
+        avg_age=Avg('age_at_competition'),
     )
     agg['medals'] = _filtered_medals(request).count()
     agg['avg_fina'] = round(agg['avg_fina']) if agg['avg_fina'] else None
+    agg['avg_age'] = round(agg['avg_age'], 1) if agg['avg_age'] else None
     return Response(agg)
 
 
@@ -202,9 +207,24 @@ def top_times(request):
 
 @api_view(['GET'])
 def participation(request):
-    """Result / swimmer counts grouped by meet, club, country or event."""
+    """Result / swimmer counts grouped by meet, club, country, event or swimmer."""
     group = request.query_params.get('group', 'meet')
     qs = _filtered_results(request).filter(swimmer__is_relay_team=False)
+    if group == 'swimmer':
+        # Busiest swimmers: swims, meets and events attended.
+        rows = (qs.values('swimmer_id',
+                          **{'name': F('swimmer__name'),
+                             'country_code': F('swimmer__nationality__code')})
+                .annotate(results=Count('id'),
+                          meets=Count('championship_id', distinct=True),
+                          events=Count('event_id', distinct=True),
+                          best_fina=Max('fina_points'))
+                .order_by('-results'))[:_limit(request)]
+        return Response([{'name': r['name'], 'swimmer_id': r['swimmer_id'],
+                          'country_code': r['country_code'],
+                          'results': r['results'], 'meets': r['meets'],
+                          'events': r['events'], 'best_fina': r['best_fina']}
+                         for r in rows])
     key_map = {
         'meet': ('championship_id', {'name': F('championship__name'),
                                      'date': F('championship__date'),
@@ -235,5 +255,63 @@ def participation(request):
                        date=r['date'], pool=r['pool'])
         if 'country_code' in r:
             row['country_code'] = r['country_code']
+        out.append(row)
+    return Response(out)
+
+
+@api_view(['GET'])
+def records_report(request):
+    """Record counts grouped by country, swimmer, event or record type.
+
+    Extra filter: ?record_type=ARAB|NATIONAL|GCC|... — dates apply to the
+    record's result_date; country matches the record's country (falling
+    back to the swimmer's nationality for supra-national records).
+    """
+    p = request.query_params
+    qs = Record.objects.all()
+    if p.get('date_from'):
+        qs = qs.filter(result_date__gte=p['date_from'])
+    if p.get('date_to'):
+        qs = qs.filter(result_date__lte=p['date_to'])
+    if p.get('country'):
+        c = p['country'].upper()
+        qs = qs.filter(Q(country__code=c) |
+                       Q(country__isnull=True, swimmer__nationality__code=c))
+    if p.get('event'):
+        qs = qs.filter(event_id=p['event'])
+    if p.get('pool'):
+        qs = qs.filter(pool=p['pool'])
+    if p.get('gender'):
+        qs = qs.filter(swimmer__sex=p['gender'])
+    if p.get('record_type'):
+        qs = qs.filter(record_type=p['record_type'].upper())
+
+    group = p.get('group', 'swimmer')
+    key_map = {
+        'country': ('swimmer__nationality_id',
+                    {'name': F('swimmer__nationality__name'),
+                     'country_code': F('swimmer__nationality__code')}),
+        'swimmer': ('swimmer_id',
+                    {'name': F('swimmer__name'),
+                     'country_code': F('swimmer__nationality__code')}),
+        'event': ('event_id', {'name': F('event__name')}),
+        'type': ('record_type', {'name': F('record_type')}),
+    }
+    key, extra = key_map.get(group, key_map['swimmer'])
+    if group == 'country':
+        qs = qs.filter(swimmer__nationality__isnull=False)
+    rows = (qs.values(key, **extra)
+            .annotate(records=Count('id'),
+                      standing=Count('id', filter=Q(is_new=True)),
+                      latest=Max('result_date'))
+            .order_by('-records'))[:_limit(request)]
+    out = []
+    for r in rows:
+        row = {'name': r['name'], 'records': r['records'],
+               'standing': r['standing'], 'latest': r['latest']}
+        if 'country_code' in r:
+            row['country_code'] = r['country_code']
+        if group == 'swimmer':
+            row['swimmer_id'] = r['swimmer_id']
         out.append(row)
     return Response(out)

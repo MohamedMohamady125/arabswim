@@ -5,6 +5,7 @@ from core.models import Country, Event
 from swimmers.models import Swimmer
 from championships.models import Championship, Result
 from medals.models import Medal
+from records.models import Record
 
 
 class ReportsEndpointTests(TestCase):
@@ -32,6 +33,14 @@ class ReportsEndpointTests(TestCase):
         Medal.objects.create(swimmer=cls.s2, championship=cls.meet,
                              event=cls.event, medal_type='SILVER',
                              result=cls.r2, nationality=cls.tun)
+        Record.objects.create(swimmer=cls.s1, event=cls.event,
+                              record_type='NATIONAL', pool='LCM',
+                              time_centiseconds=5000, country=cls.egy,
+                              result_date='2026-05-01', result=cls.r1)
+        Record.objects.create(swimmer=cls.s1, event=cls.event,
+                              record_type='ARAB', pool='LCM',
+                              time_centiseconds=5000,
+                              result_date='2026-05-01', result=cls.r1)
 
     def test_overview(self):
         res = self.client.get('/api/v1/reports/overview/')
@@ -82,6 +91,34 @@ class ReportsEndpointTests(TestCase):
     def test_participation_by_meet(self):
         res = self.client.get('/api/v1/reports/participation/?group=meet')
         self.assertEqual(res.json()[0]['swimmers'], 2)
+
+    def test_participation_by_swimmer(self):
+        res = self.client.get('/api/v1/reports/participation/?group=swimmer')
+        rows = res.json()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]['results'], 1)
+        self.assertEqual(rows[0]['meets'], 1)
+
+    def test_records_by_swimmer(self):
+        res = self.client.get('/api/v1/reports/records/?group=swimmer')
+        rows = res.json()
+        self.assertEqual(rows[0]['name'], 'Ali TAMER')
+        self.assertEqual(rows[0]['records'], 2)
+
+    def test_records_type_filter(self):
+        res = self.client.get('/api/v1/reports/records/?group=type&record_type=ARAB')
+        rows = res.json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['name'], 'ARAB')
+
+    def test_records_country_filter(self):
+        res = self.client.get('/api/v1/reports/records/?group=swimmer&country=EGY')
+        self.assertEqual(res.json()[0]['records'], 2)
+
+    def test_overview_gender_split(self):
+        d = self.client.get('/api/v1/reports/overview/').json()
+        self.assertEqual(d['men'], 2)
+        self.assertEqual(d['women'], 0)
 
     def test_date_filter_excludes(self):
         res = self.client.get('/api/v1/reports/overview/?date_from=2026-06-01')

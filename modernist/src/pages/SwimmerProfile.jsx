@@ -424,21 +424,9 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                   <tr>
                     <td className="asw-num text-muted">{i + 1}</td>
                     <td className="time" style={{ whiteSpace: 'nowrap' }}>
+                      {/* badges sit LEFT of the time so the time digits stay
+                          column-aligned on the right edge for every row */}
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                        <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : 'inherit' }}>{h.time}</span>
-                        {!h.is_relay && isBest && <span className="tag tag-dark">PB</span>}
-                        {h.is_hc && (
-                          <span className="tag tag-neutral" title={h.hc_type === 'TLD' ? 'Time limit exceeded – does not count in rankings' : 'Hors concours – does not count in rankings'}>
-                            {h.hc_type || 'HC'}
-                          </span>
-                        )}
-                        {h.represented && (
-                          <span title={`Swum representing ${h.represented.name}`}
-                            style={{ display: 'inline-flex', alignItems: 'center' }}>
-                            <Flag code={h.represented.code} name={`Swum representing ${h.represented.name}`}
-                              flagUrl={h.represented.flag_url} />
-                          </span>
-                        )}
                         {splits.length > 0 && (
                           <button type="button"
                             onClick={(e) => { e.stopPropagation(); setExpandedSplits(showSplits ? null : h.id) }}
@@ -448,6 +436,20 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                             Splits {showSplits ? '−' : '+'}
                           </button>
                         )}
+                        {h.represented && (
+                          <span title={`Swum representing ${h.represented.name}`}
+                            style={{ display: 'inline-flex', alignItems: 'center' }}>
+                            <Flag code={h.represented.code} name={`Swum representing ${h.represented.name}`}
+                              flagUrl={h.represented.flag_url} />
+                          </span>
+                        )}
+                        {h.is_hc && (
+                          <span className="tag tag-neutral" title={h.hc_type === 'TLD' ? 'Time limit exceeded – does not count in rankings' : 'Hors concours – does not count in rankings'}>
+                            {h.hc_type || 'HC'}
+                          </span>
+                        )}
+                        {!h.is_relay && isBest && <span className="tag tag-dark">PB</span>}
+                        <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : 'inherit' }}>{h.time}</span>
                       </span>
                     </td>
                     <td className="num asw-num">{h.age_at_competition || '—'}</td>

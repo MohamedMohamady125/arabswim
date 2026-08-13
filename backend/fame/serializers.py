@@ -11,5 +11,5 @@ class InducteeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Inductee
         fields = ['id', 'swimmer', 'swimmer_detail', 'name', 'photo', 'country',
-                  'country_detail', 'era', 'inducted_year', 'achievements',
-                  'display_order', 'created_at']
+                  'country_detail', 'category', 'era', 'inducted_year',
+                  'achievements', 'display_order', 'created_at']

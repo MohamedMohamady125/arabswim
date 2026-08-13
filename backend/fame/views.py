@@ -21,6 +21,9 @@ class InducteeViewSet(viewsets.ModelViewSet):
         country = self.request.query_params.get('country')
         if country:
             qs = qs.filter(country_id=country)
+        category = self.request.query_params.get('category')
+        if category:
+            qs = qs.filter(category=category.upper())
         return qs
 
     @action(detail=True, methods=['post'], url_path='upload-photo')

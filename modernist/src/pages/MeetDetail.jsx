@@ -1231,7 +1231,7 @@ function MedalsTab({ meetId, isNational }) {
               <table className="table">
                 <thead>
                   <tr>
-                    <th style={{ width: 50 }}>Medal</th>
+                    <th style={{ width: 40 }}>Medal</th>
                     <th>Swimmer</th>
                     <th>Event</th>
                   </tr>
@@ -1245,10 +1245,12 @@ function MedalsTab({ meetId, isNational }) {
                       onClick={m.swimmer_detail?.is_relay_team ? undefined : () => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}
                     >
                       <td><MedalIcon type={m.medal_type} size={18} style={{ display: 'block' }} /></td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <td style={{ paddingLeft: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           <Flag code={m.swimmer_detail?.nationality_detail?.code} name={m.swimmer_detail?.nationality_detail?.name} />
-                          {m.swimmer_detail?.name}
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 'min(48vw, 340px)' }}>
+                            {m.swimmer_detail?.name}
+                          </span>
                           {m.swimmer_detail?.is_relay_team && (
                             <span className="tag tag-neutral" style={{ flex: 'none' }}>{isNational ? 'Club' : 'Country'}</span>
                           )}

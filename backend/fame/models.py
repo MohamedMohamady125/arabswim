@@ -4,8 +4,15 @@ from swimmers.models import Swimmer
 
 
 class Inductee(models.Model):
+    CATEGORY_CHOICES = [
+        ('LEGEND', 'Legends'),
+        ('OLYMPIAN', 'Olympians'),
+        ('ARAB_WINNER', 'Arab Swim Winners'),
+    ]
+
     swimmer = models.ForeignKey(Swimmer, on_delete=models.SET_NULL, blank=True, null=True,
                                 related_name='hall_of_fame_entries')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='LEGEND')
     name = models.CharField(max_length=200)
     photo = models.ImageField(upload_to='fame/photos/', blank=True, null=True)
     country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name='inductees')

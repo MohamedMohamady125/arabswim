@@ -55,10 +55,21 @@ class Command(BaseCommand):
                     continue
                 open_rows = [r for r in dup_rows if OPEN_CATEGORY_RE.search(r[1])]
                 aged_rows = [r for r in dup_rows if not OPEN_CATEGORY_RE.search(r[1])]
-                if not open_rows or not aged_rows:
-                    continue  # not the open/age-group pattern — leave alone
-                open_seen = True
-                to_delete.extend(rid for rid, _ in open_rows)
+                if open_rows and aged_rows:
+                    # age-group + open copies: keep age-group, drop open
+                    open_seen = True
+                    to_delete.extend(rid for rid, _ in open_rows)
+                elif len(open_rows) > 1 and not aged_rows:
+                    # same swim in two open-ish brackets (e.g. '15 & Over' +
+                    # '20 & Over'): keep the narrowest bracket (highest lower
+                    # bound — the swimmer's real age group), drop the wider
+                    # umbrella listing(s)
+                    def min_age(row):
+                        m = re.search(r'\d+', row[1])
+                        return int(m.group()) if m else 0
+                    open_seen = True
+                    keep = max(open_rows, key=min_age)
+                    to_delete.extend(rid for rid, _ in open_rows if rid != keep[0])
 
             if not to_delete:
                 continue

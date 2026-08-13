@@ -368,6 +368,9 @@ def extract_distance(text):
     For relay events like '4x200m Freestyle', returns the total distance
     (legs × leg_distance, e.g. 800), not just the leg distance.
     """
+    # Hy-Tek course markers sit between distance and meter word
+    # ('50 LC Meter Freestyle') — drop them before matching
+    text = re.sub(r'\b(?:LC|SC)\b\s*', '', text)
     # Check for relay pattern first: "4x200", "4×100", "4 x 50"
     relay_m = re.search(r'(\d)\s*[x×X]\s*(\d+)', text)
     if relay_m:
@@ -376,7 +379,7 @@ def extract_distance(text):
     if m:
         return int(m.group(1))
     # Try just a number before stroke words
-    m = re.search(r'(\d+)\s*(?:libre|free|back|breast|fly|butter|dos|brasse|pap|nage)', text, re.IGNORECASE)
+    m = re.search(r'(\d+)\s*(?:libre|free|back|breast|fly|butter|dos|brasse|pap|nage|im\b|medley)', text, re.IGNORECASE)
     if m:
         return int(m.group(1))
     return 0
@@ -620,6 +623,78 @@ def drop_general_duplicate_results(meet):
                 if not ev.results:
                     emptied.add(id(ev))
     meet.events = [ev for ev in meet.events if id(ev) not in emptied]
+    return meet
+
+
+# Open-classification event markers: Hy-Tek event numbers suffixed with 'O'
+# ('Event 1O'), an explicit 'Open' word, or '& Over' age wording ('Men 13 &
+# Over', '13&O'). '& Over' can also be a real oldest-age category, but the
+# dedup below only ever drops swims that also exist in an age-group event,
+# so marking those events open is safe.
+_OPEN_EVENT_RE = re.compile(
+    r'(?:\bEvent\s+|#)\d+\s*O\b|\bOpen\b|&\s*O(?:ver)?\b', re.IGNORECASE)
+_OPEN_AGE_RE = re.compile(r'&\s*O(?:ver)?\b|^Open$', re.IGNORECASE)
+
+
+def drop_open_classification_duplicates(meet):
+    """Drop open-classification rows that duplicate age-group rows.
+
+    Egyptian Hy-Tek exports publish each swim twice: once in its age-group
+    event ('Event 1 Girls 15 Year Olds 200 LC Meter Breaststroke') and once
+    in an open classification of the same race ('Event 1O Women 15 & Over
+    200 LC Meter Breaststroke') — same swimmer, same time. Importing both
+    duplicates every swim in the swimmer profile and awards phantom medals.
+
+    Within each (distance, stroke, gender, round), remove a result from an
+    open-marked event when the exact same swim (name + time) also appears
+    in a non-open event. Swims unique to the open list (e.g. seniors with
+    no age-group race) are kept. Sets ``meet._has_open_results`` when open
+    duplicates were dropped so the importer can flag the championship for
+    open-podium medals.
+    """
+    def _is_open(ev):
+        return bool(_OPEN_EVENT_RE.search(ev.event_name)
+                    or _OPEN_AGE_RE.search(ev.age_group or ''))
+
+    groups = {}
+    for ev in meet.events:
+        key = (ev.distance or ev.event_name, ev.stroke or '',
+               ev.gender or '', ev.round_type or '')
+        groups.setdefault(key, []).append(ev)
+
+    dropped = 0
+    emptied = set()
+    for evs in groups.values():
+        aged_keys = set()
+        for ev in evs:
+            if not _is_open(ev):
+                for r in ev.results:
+                    if r.time_centiseconds > 0:  # untimed (DQ/NT) rows are not identity
+                        aged_keys.add((r.swimmer_name.upper(), r.time_centiseconds))
+        # Some meets publish two open listings of the same race (e.g.
+        # 'Women 13 & Over 200 LC Meter IM' and '#161A Girls 13&O 200 IM')
+        # — dedupe across open events too, keeping the first copy.
+        open_seen = set()
+        for ev in evs:
+            if _is_open(ev) and ev.results:
+                kept = []
+                for r in ev.results:
+                    if r.time_centiseconds <= 0:
+                        kept.append(r)
+                        continue
+                    rkey = (r.swimmer_name.upper(), r.time_centiseconds)
+                    if rkey in aged_keys or rkey in open_seen:
+                        continue
+                    open_seen.add(rkey)
+                    kept.append(r)
+                dropped += len(ev.results) - len(kept)
+                ev.results = kept
+                if not ev.results:
+                    emptied.add(id(ev))
+    if emptied:
+        meet.events = [ev for ev in meet.events if id(ev) not in emptied]
+    if dropped:
+        meet._has_open_results = True
     return meet
 
 

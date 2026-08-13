@@ -12,8 +12,10 @@ from .base import ParsedMeet, detect_pool
 
 def _post_process_meet(meet):
     """Apply standard post-processing to a parsed meet."""
-    from .base import drop_general_duplicate_results, promote_lone_heats_to_finals, drop_heats_if_finals_exist
+    from .base import (drop_general_duplicate_results, drop_open_classification_duplicates,
+                       promote_lone_heats_to_finals, drop_heats_if_finals_exist)
     meet = drop_general_duplicate_results(meet)
+    meet = drop_open_classification_duplicates(meet)
     meet = promote_lone_heats_to_finals(meet)
     return drop_heats_if_finals_exist(meet)
 
@@ -920,6 +922,8 @@ def _parse_individual_sheet(df, meet, events_dict):
             gender = _cell_gender(row[gender_col]) if gender_col else ''
             if not gender and category:
                 gender = detect_gender(category)
+            if not gender:
+                gender = detect_gender(event_name)
 
         # Event grouping key: event + gender + round + category
         event_key = f'{event_name}|{gender}|{round_type}|{category}'
@@ -1073,6 +1077,8 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
                 gender = detect_gender(category)
             if not gender and relay_kind_col:
                 gender = detect_gender(relay_kind)
+            if not gender:
+                gender = detect_gender(event_name)
 
         # Event key for relay: event + gender + round + CATEGORY so each
         # age category keeps its own relay classement

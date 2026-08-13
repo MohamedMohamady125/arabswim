@@ -505,6 +505,7 @@ def _build_preview(parsed_meet):
             'inferred_country': inferred_country_code,
             'classification': excel_classification,
             'sub_classification': excel_sub_classification,
+            'has_open_results': getattr(parsed_meet, '_has_open_results', False),
         },
         'stats': {
             'total_events': len(events),
@@ -751,6 +752,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             country=meet_country,
             location=normalize_name(meet_info.get('location', '')),
         )
+
+    # The source published an open classification alongside age groups
+    # (Egyptian Hy-Tek 'Event 1O' duplicates, dropped at parse time):
+    # award open-podium medals on top of the per-category podiums.
+    if meet_info.get('has_open_results') and not championship.has_open_podium:
+        championship.has_open_podium = True
+        championship.save(update_fields=['has_open_podium'])
 
     # Build event cache
     event_cache = {}

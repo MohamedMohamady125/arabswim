@@ -3387,3 +3387,106 @@ class RepairScrapedRowsTests(SimpleTestCase):
         self.assertEqual(rows[0]['Name'], 'Hager Ahmed Nas')
         self.assertEqual(stats['no_match'], 1)
         self.assertEqual(stats['repaired'], 0)
+
+
+class OpenClassificationDedupTests(SimpleTestCase):
+    """Egyptian Hy-Tek files publish each swim twice: age-group event +
+    open classification of the same race. The open copies must be dropped
+    at parse time, unique open swims kept, DQ (time 0) rows untouched."""
+
+    def _meet(self):
+        from importer.parsers.base import ParsedMeet, ParsedEvent, ParsedResult
+        aged = ParsedEvent(
+            event_name='Event 1 Girls 15 Year Olds 200 LC Meter Breaststroke',
+            distance=200, stroke='Breaststroke', gender='F',
+            round_type='Finals', age_group='15 Year Olds',
+            results=[
+                ParsedResult('Janat Kareem Mo', '2:42.81', 16281),
+                ParsedResult('Malak Mostafa M', '2:51.45', 17145),
+                ParsedResult('DQ Girl', 'DQ', 0, status='DQ'),
+            ])
+        open_ev = ParsedEvent(
+            event_name='Event 1O Women 15 & Over 200 LC Meter Breaststroke',
+            distance=200, stroke='Breaststroke', gender='F',
+            round_type='Finals', age_group='15 & Over',
+            results=[
+                ParsedResult('Janat Kareem Mo', '2:42.81', 16281),
+                ParsedResult('Malak Mostafa M', '2:51.45', 17145),
+                ParsedResult('Senior Only Swi', '2:55.00', 17500),
+                ParsedResult('DQ Girl', 'DQ', 0, status='DQ'),
+            ])
+        return ParsedMeet(meet_name='ESF Test', events=[aged, open_ev])
+
+    def test_open_duplicates_dropped(self):
+        from importer.parsers.base import drop_open_classification_duplicates
+        m = drop_open_classification_duplicates(self._meet())
+        self.assertTrue(getattr(m, '_has_open_results', False))
+        self.assertEqual(len(m.events), 2)
+        open_names = [r.swimmer_name for r in m.events[1].results]
+        # duplicates gone, unique senior + DQ row kept
+        self.assertEqual(open_names, ['Senior Only Swi', 'DQ Girl'])
+        # age-group event untouched
+        self.assertEqual(len(m.events[0].results), 3)
+
+    def test_double_open_listing_deduped(self):
+        from importer.parsers.base import (ParsedEvent, ParsedResult,
+                                           drop_open_classification_duplicates)
+        m = self._meet()
+        m.events.append(ParsedEvent(
+            event_name='#161A Girls 13&O 200 Breast',
+            distance=200, stroke='Breaststroke', gender='F',
+            round_type='Finals', age_group='',
+            results=[ParsedResult('Senior Only Swi', '2:55.00', 17500)]))
+        m = drop_open_classification_duplicates(m)
+        # the senior appears once across both open listings
+        total = sum(1 for ev in m.events for r in ev.results
+                    if r.swimmer_name == 'Senior Only Swi')
+        self.assertEqual(total, 1)
+
+    def test_no_open_events_untouched(self):
+        from importer.parsers.base import drop_open_classification_duplicates
+        m = self._meet()
+        m.events = m.events[:1]
+        m = drop_open_classification_duplicates(m)
+        self.assertFalse(getattr(m, '_has_open_results', False))
+        self.assertEqual(len(m.events[0].results), 3)
+
+
+class HytekFinaPointsNormalizationTests(SimpleTestCase):
+    """Egyptian Hy-Tek event headers must normalize to base-time keys so
+    FINA points are computed (previously 0 for all Egyptian meets)."""
+
+    CASES = {
+        'Event 1 Boys 11 Year Olds 400 LC Meter Freestyle': '400 M Freestyle',
+        'Event 8 Girls 11 Year Olds 200 LC Meter IM': '200 M Individual Medley',
+        'Event 149O Women 14 & Over 100 LC Meter Freestyle': '100 M Freestyle',
+        'Event 40 Women 15 & Over 50 SC Meter Free': '50 M Freestyle',
+        '#184A Boys 13&O 50 Free': '50 M Freestyle',
+        'Boys 11 100 Meter Free': '100 M Freestyle',
+        'Event 9  Boys 11 Year Olds 4x100 LC Meter Freestyle Relay':
+            '4x100 M Freestyle Relay',
+        'Event 28  Boys 15 Year Olds 400 LC Meter Freestyle Relay':
+            '4x100 M Freestyle Relay',
+        'Girls 14 800 Meter Free Relay': '4x200 M Freestyle Relay',
+        'Event 1  Girls 15 Year Olds 200 LC Meter Breaststroke Age Groups':
+            '200 M Breaststroke',
+        'Event 7  Boys 13 Year Olds 4x100 LC Meter Freestyle Relay Juniors':
+            '4x100 M Freestyle Relay',
+        # legacy formats must keep working
+        '50 M Freestyle': '50 M Freestyle',
+        '4×100 M Medley Relay Mixed': '4x100 M Medley Relay',
+        '100m Freestyle': '100 M Freestyle',
+    }
+
+    def test_lookup_names(self):
+        from importer.points import _normalize_event_for_lookup
+        for raw, expected in self.CASES.items():
+            self.assertEqual(_normalize_event_for_lookup(raw)[0], expected,
+                             f'failed for {raw!r}')
+
+    def test_points_computed_for_hytek_header(self):
+        from importer.points import calculate_points
+        pts = calculate_points(
+            30000, 'Event 1 Boys 11 Year Olds 400 LC Meter Freestyle',
+            'M', 'LCM')
+        self.assertGreater(pts, 0)

@@ -79,19 +79,44 @@ def _normalize_event_for_lookup(event_name):
     import re
     name = event_name.strip()
 
+    # Hy-Tek meet-program headers ('Event 12 Boys 11 Year Olds 400 LC
+    # Meter Freestyle', 'Event 40 Women 15 & Over 50 SC Meter Free'):
+    # strip the event number, age-group phrases and pool-course marker
+    # so only '<distance> Meter <stroke>' remains.
+    name = re.sub(r'^(?:Event\s+|#)\d+[A-Za-z]?\s*', '', name,
+                  flags=re.IGNORECASE)
+    name = re.sub(r'\b(?:LC|SC)\s+(?=M\b|[Mm]eter)', '', name)
+    name = re.sub(r'\b\d+\s*(?:Year\s*Olds?|Yrs?\.?)'
+                  r'(?:\s*(?:&|and)\s*(?:Over|Under))?\b', '', name,
+                  flags=re.IGNORECASE)
+    name = re.sub(r'\b\d+\s*(?:&|and)\s*(?:Over|Under|O|U)\b', '', name,
+                  flags=re.IGNORECASE)
+    name = re.sub(r'\b\d+\s*-\s*\d+\b(?!\s*(?:m|M|[Mm]eter))', '', name)
+
     # Unify multiplication sign and spacing: '4×100' / '4 x 100' → '4x100'
     name = re.sub(r'(\d)\s*[x×X]\s*(\d)', r'\1x\2', name)
 
     # Unify meter marker: '100m', '100 m', '100 Meter(s)' → '100 M'
     name = re.sub(r'(\d)\s*(?:m|M|[Mm]eters?|[Mm]etres?)\b\.?', r'\1 M', name)
 
-    # Detect and remove gender suffixes
+    # Detect and remove gender markers (suffix or Hy-Tek mid-name)
     is_mixed = bool(re.search(r'\bMixed\b', name, flags=re.IGNORECASE))
-    name = re.sub(r'\s+(Men|Women|Mixed|Male|Female|Boys|Girls)$', '', name,
+    name = re.sub(r'\b(Men|Women|Mixed|Male|Female|Boys|Girls)\b', '', name,
                   flags=re.IGNORECASE)
+
+    # Category labels appended to Hy-Tek event names ('... Age Groups',
+    # '... Juniors', '... Seniors')
+    name = re.sub(r'\b(Juniors?|Seniors?|Age\s*Groups?|Youth|Masters?|Open)\b',
+                  '', name, flags=re.IGNORECASE)
 
     # Normalize IM → Individual Medley
     name = re.sub(r'\bIM\b', 'Individual Medley', name)
+
+    # Hy-Tek stroke abbreviations
+    name = re.sub(r'\bFree\b', 'Freestyle', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bFly\b', 'Butterfly', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bBack\b', 'Backstroke', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bBreast\b', 'Breaststroke', name, flags=re.IGNORECASE)
 
     # Individual (non-relay) 'Medley' → 'Individual Medley'
     if 'Relay' not in name:
@@ -100,6 +125,21 @@ def _normalize_event_for_lookup(event_name):
 
     # Collapse duplicate whitespace
     name = re.sub(r'\s{2,}', ' ', name).strip()
+
+    # Bare leading age group left over from 'Boys 11 100 Meter Free'
+    # (ages are 1-2 digits; distances start at 50)
+    name = re.sub(r'^\d{1,2}\s+(?=\d)', '', name)
+
+    # Missing meter marker entirely ('50 Free' → '50 M Freestyle')
+    name = re.sub(r'^(\d+(?:x\d+)?)\s+(?=Freestyle|Backstroke|Breaststroke|'
+                  r'Butterfly|Individual|Medley)', r'\1 M ', name)
+
+    # Relays labelled by total distance: '400 M Freestyle Relay' = 4x100,
+    # '800 M Free Relay' = 4x200, '200 M Medley Relay' = 4x50
+    total_legs = {'200': '4x50', '400': '4x100', '800': '4x200'}
+    m = re.match(r'^(200|400|800) M (Freestyle|Medley) Relay$', name)
+    if m:
+        name = f'{total_legs[m.group(1)]} M {m.group(2)} Relay'
 
     return name, is_mixed
 

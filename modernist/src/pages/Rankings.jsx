@@ -223,7 +223,10 @@ export default function Rankings() {
                       <td className="num asw-num">{r.age_at_competition ?? '—'}</td>
                       <td className="time asw-time">{r.time}</td>
                       <td className="num asw-num">{r.fina_points ?? '—'}</td>
-                      <td className="text-muted hide-mobile">
+                      {/* one line — long meet names ellipsize so rows stay short */}
+                      <td className="text-muted hide-mobile"
+                        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 300 }}
+                        title={`${r.championship_name}${r.championship_location ? ` · ${r.championship_location}` : ''}`}>
                         {r.championship_name}
                         {r.championship_location ? ` · ${r.championship_location}` : ''}
                       </td>

@@ -290,38 +290,69 @@ def _get_swimmer_birth_year(swimmer):
 
 
 _norm_cache = None  # {normalized_name: [swimmer_id, ...], sorted_name: [swimmer_id, ...]}
-_norm_cache_version = None
+_norm_cache_count = None
+_norm_cache_max_id = None
 
 
 def _get_norm_cache():
     """Build or return a cached index of normalized swimmer names.
 
-    The cache is rebuilt when the swimmer count changes (cheap staleness check).
+    Staleness is checked via the swimmer count. During imports thousands
+    of swimmers are created one by one — rebuilding the whole index each
+    time is O(N²) over the meet (it dominated big Egyptian imports), so
+    when the only change is NEW swimmers (count grew, all new ids above
+    the last seen max id) the index is extended incrementally. Any other
+    change (deletes, renames via invalidate_norm_cache) → full rebuild.
     """
-    global _norm_cache, _norm_cache_version
-    current_count = Swimmer.objects.filter(is_relay_team=False).count()
-    if _norm_cache is not None and _norm_cache_version == current_count:
+    global _norm_cache, _norm_cache_count, _norm_cache_max_id
+    qs = Swimmer.objects.filter(is_relay_team=False)
+    current_count = qs.count()
+    if _norm_cache is not None and _norm_cache_count == current_count:
         return _norm_cache
+    if (_norm_cache is not None and _norm_cache_max_id is not None
+            and current_count > _norm_cache_count):
+        new_rows = list(qs.filter(id__gt=_norm_cache_max_id)
+                        .values_list('id', 'name'))
+        if len(new_rows) == current_count - _norm_cache_count:
+            norm_index, sorted_index = _norm_cache
+            for sid, sname in new_rows:
+                norm = normalize_for_matching(sname)
+                norm_index.setdefault(norm, []).append(sid)
+                sorted_key = ' '.join(sorted(norm.split()))
+                sorted_index.setdefault(sorted_key, []).append(sid)
+                if sid > _norm_cache_max_id:
+                    _norm_cache_max_id = sid
+            _norm_cache_count = current_count
+            return _norm_cache
     norm_index = {}   # normalized_name -> [id, ...]
     sorted_index = {}  # sorted_words -> [id, ...]
-    for sid, sname in Swimmer.objects.filter(
-            is_relay_team=False).values_list('id', 'name'):
+    max_id = 0
+    for sid, sname in qs.values_list('id', 'name'):
         norm = normalize_for_matching(sname)
         norm_index.setdefault(norm, []).append(sid)
         sorted_key = ' '.join(sorted(norm.split()))
         sorted_index.setdefault(sorted_key, []).append(sid)
+        if sid > max_id:
+            max_id = sid
     _norm_cache = (norm_index, sorted_index)
-    _norm_cache_version = current_count
+    _norm_cache_count = current_count
+    _norm_cache_max_id = max_id
     return _norm_cache
 
 
 def invalidate_norm_cache():
-    """Call after creating/updating swimmers to force cache rebuild."""
-    global _norm_cache, _norm_cache_version, _egy_cache, _egy_cache_key
+    """Call after renaming/deleting swimmers to force a full cache rebuild.
+
+    Plain swimmer creation does NOT need this — _get_norm_cache and
+    _get_egy_cache pick up new rows incrementally."""
+    global _norm_cache, _norm_cache_count, _norm_cache_max_id
+    global _egy_cache, _egy_cache_count, _egy_cache_max_id
     _norm_cache = None
-    _norm_cache_version = None
+    _norm_cache_count = None
+    _norm_cache_max_id = None
     _egy_cache = None
-    _egy_cache_key = None
+    _egy_cache_count = None
+    _egy_cache_max_id = None
 
 
 # ── Egyptian name-variant matching ──────────────────────────────────────
@@ -336,22 +367,42 @@ def invalidate_norm_cache():
 # consistency or a club match so same-prefix strangers never merge.
 
 _egy_cache = None      # {first_norm_token: [(swimmer_id, name), ...]}
-_egy_cache_key = None
+_egy_cache_count = None
+_egy_cache_max_id = None
 
 
 def _get_egy_cache():
-    global _egy_cache, _egy_cache_key
+    """EGY-swimmer first-token index; extended incrementally like
+    _get_norm_cache (full rebuilds were O(N²) during big imports)."""
+    global _egy_cache, _egy_cache_count, _egy_cache_max_id
     qs = Swimmer.objects.filter(is_relay_team=False, nationality__code='EGY')
     current = qs.count()
-    if _egy_cache is not None and _egy_cache_key == current:
+    if _egy_cache is not None and _egy_cache_count == current:
         return _egy_cache
+    if (_egy_cache is not None and _egy_cache_max_id is not None
+            and current > _egy_cache_count):
+        new_rows = list(qs.filter(id__gt=_egy_cache_max_id)
+                        .values_list('id', 'name'))
+        if len(new_rows) == current - _egy_cache_count:
+            for sid, sname in new_rows:
+                toks = normalize_for_matching(sname).split()
+                if toks:
+                    _egy_cache.setdefault(toks[0], []).append((sid, sname))
+                if sid > _egy_cache_max_id:
+                    _egy_cache_max_id = sid
+            _egy_cache_count = current
+            return _egy_cache
     index = {}
+    max_id = 0
     for sid, sname in qs.values_list('id', 'name'):
         toks = normalize_for_matching(sname).split()
         if toks:
             index.setdefault(toks[0], []).append((sid, sname))
+        if sid > max_id:
+            max_id = sid
     _egy_cache = index
-    _egy_cache_key = current
+    _egy_cache_count = current
+    _egy_cache_max_id = max_id
     return _egy_cache
 
 

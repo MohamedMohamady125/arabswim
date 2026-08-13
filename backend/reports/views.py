@@ -166,22 +166,63 @@ def medal_table(request):
     return Response(out)
 
 
+def _time_row(r):
+    nat = r.nationality or r.swimmer.nationality
+    return {
+        'swimmer_id': r.swimmer_id,
+        'swimmer_name': r.swimmer.name,
+        'country_code': nat.code if nat else None,
+        'country_name': nat.name if nat else None,
+        'event_id': r.event_id,
+        'event_name': r.event.name,
+        'time_centiseconds': r.time_centiseconds,
+        'fina_points': r.fina_points,
+        'age': r.age_at_competition,
+        'team': r.team,
+        'round': r.round_type,
+        'championship_id': r.championship_id,
+        'championship_name': r.championship.name,
+        'date': r.championship.date,
+        'pool': r.championship.pool,
+    }
+
+
 @api_view(['GET'])
 def top_times(request):
     """Fastest swims. With ?event= the list is ordered by time; without an
     event, swims aren't comparable so it orders by FINA points instead.
-    ?best_per_swimmer=1 keeps only each swimmer's best swim."""
+    ?best_per_swimmer=1 keeps only each swimmer's best swim.
+    ?per_event=1 returns the top N *of every event* (grouped breakdown)."""
     qs = (_filtered_results(request)
           .filter(swimmer__is_relay_team=False)
           .select_related('swimmer', 'swimmer__nationality', 'event',
                           'championship', 'nationality'))
+    limit = _limit(request)
+    dedup = request.query_params.get('best_per_swimmer') in ('1', 'true')
+    if request.query_params.get('per_event') in ('1', 'true'):
+        # Top N per event: a section of rows for every event with data.
+        rows = []
+        event_ids = list(qs.order_by().values_list('event_id', flat=True)
+                         .distinct())
+        for ev in Event.objects.filter(id__in=event_ids).order_by(
+                'is_relay', 'stroke', 'distance'):
+            sub = qs.filter(event_id=ev.id).order_by('time_centiseconds')
+            seen, n = set(), 0
+            for r in sub.iterator(chunk_size=500):
+                if dedup:
+                    if r.swimmer_id in seen:
+                        continue
+                    seen.add(r.swimmer_id)
+                rows.append(_time_row(r))
+                n += 1
+                if n >= limit:
+                    break
+        return Response(rows)
     has_event = bool(request.query_params.get('event'))
     if has_event:
         qs = qs.order_by('time_centiseconds')
     else:
         qs = qs.exclude(fina_points__isnull=True).order_by('-fina_points')
-    limit = _limit(request)
-    dedup = request.query_params.get('best_per_swimmer') in ('1', 'true')
     rows, seen = [], set()
     for r in qs.iterator(chunk_size=2000):
         if dedup:
@@ -189,24 +230,7 @@ def top_times(request):
             if k in seen:
                 continue
             seen.add(k)
-        nat = r.nationality or r.swimmer.nationality
-        rows.append({
-            'swimmer_id': r.swimmer_id,
-            'swimmer_name': r.swimmer.name,
-            'country_code': nat.code if nat else None,
-            'country_name': nat.name if nat else None,
-            'event_id': r.event_id,
-            'event_name': r.event.name,
-            'time_centiseconds': r.time_centiseconds,
-            'fina_points': r.fina_points,
-            'age': r.age_at_competition,
-            'team': r.team,
-            'round': r.round_type,
-            'championship_id': r.championship_id,
-            'championship_name': r.championship.name,
-            'date': r.championship.date,
-            'pool': r.championship.pool,
-        })
+        rows.append(_time_row(r))
         if len(rows) >= limit:
             break
     return Response(rows)
@@ -390,6 +414,7 @@ def _validate_plan(raw):
     except (TypeError, ValueError):
         plan['limit'] = 50
     plan['best_per_swimmer'] = bool(raw.get('best_per_swimmer', True))
+    plan['per_event'] = bool(raw.get('per_event')) and plan['tab'] == 'times'
     plan['summary'] = str(raw.get('summary', ''))[:300]
     return plan
 
@@ -407,11 +432,27 @@ Respond with ONLY a JSON object, no prose, using this schema:
 {{"tab": "overview|medals|times|participation|records",
  "group": "medals: country|club|swimmer; participation: meet|club|country|event|swimmer; records: country|swimmer|event|type; omit otherwise",
  "filters": {{"date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD", "country": "ISO-3 nationality code", "host_country": "ISO-3 code of where the meet was held", "team": "club name substring", "event": <event id integer>, "pool": "LCM|SCM", "gender": "M|F", "age_min": <int>, "age_max": <int>, "record_type": "ARAB|NATIONAL|GCC|AFRICAN|ASIAN|MEDITERRANEAN|ISLAMIC|WORLD"}},
- "limit": <int 1-500, how many rows the user asked for>,
+ "limit": <int 1-500>,
  "best_per_swimmer": <true if each swimmer should appear once in top times, false to list every swim>,
+ "per_event": <true ONLY when the user wants times broken down per event ("in each event", "for every event") — limit then means top N per event>,
  "summary": "one short sentence restating the query in plain English"}}
 
-Only include filters the user actually asked for. Tabs: "times" = fastest swims, "medals" = medal tallies, "participation" = who swam most (meets/swims counts), "records" = record counts, "overview" = headline totals.
+Rules:
+- Only include filters the user actually asked for.
+- Tabs: "times" = fastest swims, "medals" = medal tallies, "participation" = who swam most (meets/swims counts), "records" = record counts, "overview" = headline totals / "how many" counting questions.
+- limit: use the number the user said; if they gave no number use 50 for times/participation and 20 for medals/records. Never invent a big limit.
+- "medal table for clubs/by club" → tab medals, group club. "which swimmer won most medals" → tab medals, group swimmer.
+
+Examples:
+Q: 10 fastest egyptians in each event
+A: {{"tab":"times","filters":{{"country":"EGY"}},"limit":10,"per_event":true,"best_per_swimmer":true,"summary":"Top 10 Egyptian times in every event"}}
+Q: medal table for clubs in tunisia meets this year
+A: {{"tab":"medals","group":"club","filters":{{"host_country":"TUN","date_from":"{date.today().year}-01-01"}},"limit":20,"summary":"Medal table by club at meets in Tunisia this year"}}
+Q: how many women swam in 2025
+A: {{"tab":"overview","filters":{{"gender":"F","date_from":"2025-01-01","date_to":"2025-12-31"}},"summary":"Totals for women in 2025"}}
+Q: fastest 5 in 50 free long course under 18
+A: {{"tab":"times","filters":{{"event":<id of 50 M Freestyle>,"pool":"LCM","age_max":17}},"limit":5,"best_per_swimmer":true,"summary":"Top 5 U18 50m free LCM times"}}
+
 Event ids: {events}
 Country codes in the database: {codes}"""
     body = json.dumps({
@@ -444,7 +485,7 @@ def _match_country(q):
         if ' ' in n:
             variants.add(n.split()[0])  # saudi arabia → saudi
         for v in variants:
-            if re.search(r'\b' + re.escape(v) + r'\b', q):
+            if re.search(r'\b' + re.escape(v) + r's?\b', q):
                 return c['code']
     return None
 
@@ -520,15 +561,19 @@ def _heuristic_plan(question):
         tab = 'overview'
     else:
         tab = 'times'
-    plan = {'tab': tab, 'filters': f, 'limit': limit, 'best_per_swimmer': True}
-    m = re.search(r'by\s+(club|swimmer|country|event|meet|type)s?\b', q)
+    per_event = bool(re.search(r'\b(?:in\s+)?(?:each|every|per|all)\s+events?\b', q))
+    if per_event and tab == 'times':
+        f.pop('event', None)
+    plan = {'tab': tab, 'filters': f, 'limit': limit, 'best_per_swimmer': True,
+            'per_event': per_event}
+    m = re.search(r'(?:by|for)\s+(club|swimmer|country|event|meet|type)s?\b', q)
     if m:
         plan['group'] = m.group(1)
     elif tab == 'medals' and 'club' in q:
         plan['group'] = 'club'
     parts = []
     if tab == 'times':
-        parts.append(f'top {limit} times')
+        parts.append(f'top {limit} times' + (' per event' if per_event else ''))
     else:
         parts.append(tab)
     if f.get('country'):

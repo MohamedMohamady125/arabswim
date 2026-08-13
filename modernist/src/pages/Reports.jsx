@@ -93,6 +93,7 @@ export default function Reports() {
   const [recordGroup, setRecordGroup] = useState('country')
   const [recordType, setRecordType] = useState('')
   const [bestPerSwimmer, setBestPerSwimmer] = useState(true)
+  const [perEvent, setPerEvent] = useState(false)
 
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -159,7 +160,7 @@ export default function Reports() {
     setLoading(true)
     const call = tab === 'overview' ? getReportOverview(params)
       : tab === 'medals' ? getReportMedalTable({ ...params, group: medalGroup })
-      : tab === 'times' ? getReportTopTimes({ ...params, best_per_swimmer: bestPerSwimmer ? 1 : 0 })
+      : tab === 'times' ? getReportTopTimes({ ...params, best_per_swimmer: bestPerSwimmer ? 1 : 0, per_event: perEvent ? 1 : 0 })
       : tab === 'records' ? getReportRecords({ ...params, group: recordGroup, record_type: recordType || undefined })
       : getReportParticipation({ ...params, group: partGroup })
     call
@@ -167,7 +168,7 @@ export default function Reports() {
       .catch(() => { if (alive) setData(null) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [tab, medalGroup, partGroup, recordGroup, recordType, bestPerSwimmer, params])
+  }, [tab, medalGroup, partGroup, recordGroup, recordType, bestPerSwimmer, perEvent, params])
 
   const hasFilters = dateFrom || dateTo || country || hostCountry || team || teamInput || event || pool || gender || ageMin || ageMax || championship
   const clearFilters = () => {
@@ -189,6 +190,7 @@ export default function Reports() {
     setLimit(plan.limit || 50)
     setTab(plan.tab || 'times')
     setBestPerSwimmer(plan.best_per_swimmer !== false)
+    setPerEvent(!!plan.per_event)
     setRecordType(f.record_type || '')
     if (plan.group) {
       if (plan.tab === 'medals') setMedalGroup(plan.group)
@@ -352,10 +354,17 @@ export default function Reports() {
           </>
         )}
         {tab === 'times' && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-            <input type="checkbox" checked={bestPerSwimmer} onChange={(e) => setBestPerSwimmer(e.target.checked)} />
-            Best per swimmer
-          </label>
+          <>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={bestPerSwimmer} onChange={(e) => setBestPerSwimmer(e.target.checked)} />
+              Best per swimmer
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}
+              title="Top N of every event instead of one combined list">
+              <input type="checkbox" checked={perEvent} onChange={(e) => setPerEvent(e.target.checked)} />
+              Per event
+            </label>
+          </>
         )}
         {tab !== 'overview' && data && data.length > 0 && (
           <button className="btn btn-secondary" style={{ height: 32, marginLeft: 'auto' }} onClick={exportCsv}>
@@ -375,7 +384,7 @@ export default function Reports() {
       ) : tab === 'medals' ? (
         <MedalTableReport rows={data} group={medalGroup} />
       ) : tab === 'times' ? (
-        <TopTimesReport rows={data} onPickMeet={(m) => setChampionship(m)} />
+        <TopTimesReport rows={data} perEvent={perEvent} onPickMeet={(m) => setChampionship(m)} />
       ) : tab === 'records' ? (
         <RecordsReport rows={data} group={recordGroup} />
       ) : (
@@ -447,7 +456,11 @@ function MedalTableReport({ rows, group }) {
   )
 }
 
-function TopTimesReport({ rows, onPickMeet }) {
+function TopTimesReport({ rows, perEvent, onPickMeet }) {
+  // In per-event mode the backend returns rows grouped by event; render a
+  // heading row per event and restart the rank counter in each section.
+  let lastEvent = null
+  let rank = 0
   return (
     <div className="pad">
       <div className="table-scroll">
@@ -466,9 +479,20 @@ function TopTimesReport({ rows, onPickMeet }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
-              <tr key={`${r.swimmer_id}-${r.event_id}-${i}`}>
-                <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+            {rows.map((r, i) => {
+              const newSection = perEvent && r.event_id !== lastEvent
+              if (newSection) { lastEvent = r.event_id; rank = 0 }
+              rank += 1
+              return [
+                newSection && (
+                  <tr key={`h-${r.event_id}`}>
+                    <td colSpan={9} style={{ fontWeight: 800, background: 'var(--color-neutral-50, #fafafa)', fontFamily: 'var(--font-heading)' }}>
+                      {r.event_name}
+                    </td>
+                  </tr>
+                ),
+                <tr key={`${r.swimmer_id}-${r.event_id}-${i}`}>
+                <td className="asw-num" style={{ fontWeight: 800 }}>{perEvent ? rank : i + 1}</td>
                 <td className="swimmer-cell">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     <Flag code={r.country_code} name={r.country_name} />
@@ -492,8 +516,9 @@ function TopTimesReport({ rows, onPickMeet }) {
                   </span>
                 </td>
                 <td className="hide-mobile" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
-              </tr>
-            ))}
+                </tr>,
+              ]
+            })}
           </tbody>
         </table>
       </div>

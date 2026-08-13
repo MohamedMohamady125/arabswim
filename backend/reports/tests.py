@@ -124,6 +124,22 @@ class ReportsEndpointTests(TestCase):
         res = self.client.get('/api/v1/reports/overview/?date_from=2026-06-01')
         self.assertEqual(res.json()['results'], 0)
 
+    def test_top_times_per_event(self):
+        back = Event.objects.create(name='100 M Backstroke', distance=100,
+                                    stroke='Backstroke', is_relay=False)
+        Result.objects.create(
+            swimmer=self.s1, championship=self.meet, event=back,
+            round_type='Finals', time_centiseconds=6000, fina_points=700,
+            team='GEZIRA', age_at_competition=19)
+        res = self.client.get('/api/v1/reports/top-times/?per_event=1&limit=1')
+        rows = res.json()
+        # one row (the fastest) per event
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({r['event_name'] for r in rows},
+                         {'100 M Freestyle', '100 M Backstroke'})
+        free = next(r for r in rows if r['event_name'] == '100 M Freestyle')
+        self.assertEqual(free['time_centiseconds'], 5000)
+
     def test_ask_requires_auth(self):
         res = self.client.post('/api/v1/reports/ask/', {'question': 'hi'})
         self.assertIn(res.status_code, (401, 403))
@@ -156,6 +172,21 @@ class AskHeuristicTests(TestCase):
         self.assertEqual(plan.get('group'), 'club')
         self.assertEqual(plan['filters']['country'], 'EGY')
         self.assertEqual(plan['filters']['date_from'], '2025-01-01')
+
+    def test_per_event_breakdown(self):
+        from .views import _heuristic_plan
+        plan = _heuristic_plan('10 fastest egyptians in each event')
+        self.assertEqual(plan['tab'], 'times')
+        self.assertTrue(plan['per_event'])
+        self.assertEqual(plan['limit'], 10)
+        self.assertEqual(plan['filters']['country'], 'EGY')
+        self.assertNotIn('event', plan['filters'])
+
+    def test_medal_table_for_clubs(self):
+        from .views import _heuristic_plan
+        plan = _heuristic_plan('medal table for clubs in tunisia meets this year')
+        self.assertEqual(plan['tab'], 'medals')
+        self.assertEqual(plan.get('group'), 'club')
 
     def test_women_under_18(self):
         from .views import _heuristic_plan

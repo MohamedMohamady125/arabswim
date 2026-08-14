@@ -924,7 +924,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
       getChampionship(cid).then((res) => {
         const c = res.data
         const isTunNational = c.classification_name === 'National' && c.country_detail?.code === 'TUN'
-        setTcMeets((prev) => ({ ...prev, [cid]: { eligible: isTunNational && !c.b_final_no_medals, applied: !!c.b_final_no_medals } }))
+        setTcMeets((prev) => ({ ...prev, [cid]: { show: isTunNational, applied: !!c.b_final_no_medals } }))
       }).catch(() => {})
     })
   }, [meets])
@@ -1050,7 +1050,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
                 )}
 
                 {/* TC button for Tunisian National meets */}
-                {m.result.championship_id && tcMeets[m.result.championship_id]?.eligible && (
+                {m.result.championship_id && tcMeets[m.result.championship_id]?.show && !tcMeets[m.result.championship_id]?.applied && (
                   <button
                     type="button" className="btn btn-primary"
                     disabled={tcBusy === m.result.championship_id}
@@ -1059,7 +1059,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
                       setTcBusy(m.result.championship_id)
                       try {
                         const res = await applyTC(m.result.championship_id)
-                        setTcMeets((prev) => ({ ...prev, [m.result.championship_id]: { eligible: false, applied: true, result: res.data } }))
+                        setTcMeets((prev) => ({ ...prev, [m.result.championship_id]: { show: true, applied: true, result: res.data } }))
                       } catch { window.alert('Failed to apply TC rules') }
                       setTcBusy(null)
                     }}

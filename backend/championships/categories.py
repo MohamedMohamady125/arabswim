@@ -58,16 +58,7 @@ def infer_blank_categories(championship):
     # of the per-category podiums (see medals.utils.recompute_medals).
     if not championship.has_open_podium:
         championship.has_open_podium = True
-        # Tunisian TC LCM meets: only Finale A awards medals (no B-final
-        # podium, and B-final swimmers are excluded from the open podium).
-        if (championship.pool == 'LCM'
-                and championship.country_id
-                and championship.country.code == 'TUN'
-                and not championship.b_final_no_medals):
-            championship.b_final_no_medals = True
-            championship.save(update_fields=['has_open_podium', 'b_final_no_medals'])
-        else:
-            championship.save(update_fields=['has_open_podium'])
+        championship.save(update_fields=['has_open_podium'])
 
     swimmer_cats = defaultdict(set)
     age_cats = defaultdict(Counter)

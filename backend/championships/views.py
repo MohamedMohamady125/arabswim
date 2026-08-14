@@ -139,6 +139,31 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         recompute_medals(champ)
         return Response({'status': 'finished', 'results': champ.results.count()})
 
+    @action(detail=True, methods=['post'], url_path='apply-tc')
+    def apply_tc(self, request, pk=None):
+        """Admin button for Tunisian National meets: enable TC (toutes
+        catégories) rules — no B-final medals, open podium across all
+        age categories (fastest 3 overall per event). Relays unaffected."""
+        champ = self.get_object()
+        changed = []
+        if not champ.has_open_podium:
+            champ.has_open_podium = True
+            changed.append('has_open_podium')
+        if not champ.b_final_no_medals:
+            champ.b_final_no_medals = True
+            changed.append('b_final_no_medals')
+        if changed:
+            champ.save(update_fields=changed)
+        from championships.categories import infer_blank_categories
+        inferred = infer_blank_categories(champ)
+        from medals.utils import recompute_medals
+        medal_count = recompute_medals(champ)
+        return Response({
+            'status': 'applied',
+            'categories_inferred': inferred,
+            'medals_awarded': medal_count,
+        })
+
     @action(detail=False, methods=['get'], url_path='live-now')
     def live_now(self, request):
         """Public: meets currently in live-results mode."""

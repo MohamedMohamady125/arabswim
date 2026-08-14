@@ -5,7 +5,7 @@ import {
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
   getMeetProgram, updateChampionship, deleteChampionship, getClassifications, getSubClassifications,
   getRecordsBroken, addChampionshipResult, getQuickStats, getChampionships, getHeadToHead,
-  getMeetLive, finishLiveMeet,
+  getMeetLive, finishLiveMeet, applyTC,
 } from '../api/championships'
 import { getCountries, getEvents, getFinaPointsPreview } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
@@ -2367,6 +2367,19 @@ export default function MeetDetail() {
                   {editing ? 'Close editor' : 'Edit meet'}
                 </button>
                 <Link className="btn btn-secondary" to={`/import?championship=${id}`}>Import results</Link>
+                {meet.classification_name === 'National' && meet.country_detail?.code === 'TUN' && !meet.b_final_no_medals && (
+                  <button type="button" className="btn btn-secondary" onClick={async () => {
+                    if (!window.confirm('Apply TC rules?\n\n• No medals for Final B (only Final A)\n• Open podium across all categories (fastest 3 overall)\n• Relays unaffected\n\nMedals will be recomputed.')) return
+                    try {
+                      const res = await applyTC(id)
+                      setMeet({ ...meet, has_open_podium: true, b_final_no_medals: true })
+                      refreshStats()
+                      window.alert(`TC applied: ${res.data.medals_awarded} medals awarded, ${res.data.categories_inferred} categories inferred`)
+                    } catch { window.alert('Failed to apply TC rules') }
+                  }}>
+                    Apply TC rules
+                  </button>
+                )}
               </>
             )}
           </div>

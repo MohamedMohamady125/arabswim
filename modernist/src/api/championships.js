@@ -28,6 +28,7 @@ export const setMeetProgram = (id, items) => api.put(`/championships/${id}/progr
 export const getMeetLive = (id) => api.get(`/championships/${id}/live/`)
 export const finishLiveMeet = (id) => api.post(`/championships/${id}/finish-live/`)
 export const getLiveMeets = () => api.get('/championships/live-now/')
+export const applyTC = (id) => api.post(`/championships/${id}/apply-tc/`)
 export const getClassificationCategories = () => api.get('/classification-categories/')
 export const getClassifications = (category) => api.get('/classifications/', { params: category ? { category } : {} })
 export const getSubClassifications = (classification) => api.get('/sub-classifications/', { params: { classification } })

@@ -899,7 +899,8 @@ export default function Import() {
             {/* Step 4: Done */}
             {step === 4 && (
               <DoneStep meets={meets} active={active} meetTabs={meetTabs} resetAll={resetAll}
-                backToMeetId={presetLiveDay && presetChampId ? presetChampId : null} />
+                backToMeetId={presetLiveDay && presetChampId ? presetChampId : null}
+                existingMeets={existingMeets} countries={countries} classifications={classifications} />
             )}
           </>
         )}
@@ -908,26 +909,30 @@ export default function Import() {
   )
 }
 
-function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
+function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMeets, countries, classifications }) {
   const [cleanupChampId, setCleanupChampId] = useState(null)
   const [swimmers, setSwimmers] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [cleanupLoading, setCleanupLoading] = useState(false)
   const [cleanupDone, setCleanupDone] = useState(null)
-  const [tcMeets, setTcMeets] = useState({}) // { champId: { eligible, applied, result } }
+  const [tcApplied, setTcApplied] = useState({}) // { champId: resultData }
   const [tcBusy, setTcBusy] = useState(null)
 
-  // Check each imported meet for TC eligibility (Tunisian + National)
-  useEffect(() => {
-    const ids = meets.filter((m) => m.result?.championship_id).map((m) => m.result.championship_id)
-    ids.forEach((cid) => {
-      getChampionship(cid).then((res) => {
-        const c = res.data
-        const isTunNational = c.classification_name === 'National' && c.country_detail?.code === 'TUN'
-        setTcMeets((prev) => ({ ...prev, [cid]: { show: isTunNational, applied: !!c.b_final_no_medals } }))
-      }).catch(() => {})
-    })
-  }, [meets])
+  // Determine TC eligibility synchronously from form data / existing meet info
+  const isTunNational = (m) => {
+    if (!m.result?.championship_id) return false
+    // Imported into an existing meet — check existing meet's classification + country
+    if (m.existingChampId) {
+      const existing = existingMeets.find((e) => String(e.id) === String(m.existingChampId))
+      if (existing) {
+        return existing.classification_name === 'National' && existing.country_detail?.code === 'TUN'
+      }
+    }
+    // New meet created from form — check form fields
+    const classObj = classifications.find((c) => String(c.id) === String(m.champForm?.classification))
+    const countryObj = countries.find((c) => String(c.id) === String(m.champForm?.country))
+    return classObj?.name === 'National' && countryObj?.code === 'TUN'
+  }
 
   const openCleanup = async (champId) => {
     setCleanupChampId(champId)
@@ -1050,7 +1055,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
                 )}
 
                 {/* TC button for Tunisian National meets */}
-                {m.result.championship_id && tcMeets[m.result.championship_id]?.show && !tcMeets[m.result.championship_id]?.applied && (
+                {m.result.championship_id && isTunNational(m) && !tcApplied[m.result.championship_id] && (
                   <button
                     type="button" className="btn btn-primary"
                     disabled={tcBusy === m.result.championship_id}
@@ -1059,7 +1064,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
                       setTcBusy(m.result.championship_id)
                       try {
                         const res = await applyTC(m.result.championship_id)
-                        setTcMeets((prev) => ({ ...prev, [m.result.championship_id]: { show: true, applied: true, result: res.data } }))
+                        setTcApplied((prev) => ({ ...prev, [m.result.championship_id]: res.data }))
                       } catch { window.alert('Failed to apply TC rules') }
                       setTcBusy(null)
                     }}
@@ -1067,9 +1072,9 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
                     {tcBusy === m.result.championship_id ? 'Applying…' : 'Apply TC rules'}
                   </button>
                 )}
-                {m.result.championship_id && tcMeets[m.result.championship_id]?.applied && (
+                {tcApplied[m.result.championship_id] && (
                   <span className="tag tag-accent" style={{ alignSelf: 'center' }}>
-                    TC applied{tcMeets[m.result.championship_id]?.result ? ` — ${tcMeets[m.result.championship_id].result.medals_awarded} medals` : ''}
+                    TC applied — {tcApplied[m.result.championship_id].medals_awarded} medals
                   </span>
                 )}
               </div>

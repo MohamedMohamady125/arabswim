@@ -261,11 +261,14 @@ def auto_create_teams():
         if club_key not in club_data:
             club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}}
         club_data[club_key]['count'] += row['n']
-        # Vote the meet's host country — clubs swim mostly in their own
-        # national championships, and apply_subclassification_country
-        # corrects national meets afterwards anyway.
+        # Vote the meet's host country, but ONLY for National/Other meets
+        # where every club genuinely belongs to that country.  At
+        # international meets a club is a guest — voting the host country
+        # would give EST (Tunisia) a Qatar flag just because the swimmer
+        # once competed at a Qatari meet.
+        classification = row['championship__classification__name'] or ''
         code = row['championship__country__code']
-        if code:
+        if code and classification in ('National', 'Other'):
             club_data[club_key]['nationalities'][code] = \
                 club_data[club_key]['nationalities'].get(code, 0) + row['n']
 

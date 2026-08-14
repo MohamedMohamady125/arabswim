@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from django.core.mail import send_mail
+from django.conf import settings as django_settings
 from .models import Country, Event, ProfileClaim, SiteFeature
 from .permissions import IsAdmin, is_admin
 from .serializers import (
@@ -126,6 +128,9 @@ class ProfileClaimViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Your account is already linked to a swimmer profile'}, status=400)
         if user.claims.filter(status='PENDING').exists():
             return Response({'error': 'You already have a claim pending review'}, status=400)
+        # Resubmit: a declined claim on the same swimmer can be retried
+        if user.claims.filter(status='APPROVED').exists():
+            return Response({'error': 'You already have an approved claim'}, status=400)
 
         from swimmers.models import Swimmer
         swimmer = Swimmer.objects.filter(pk=request.data.get('swimmer')).first()
@@ -167,6 +172,7 @@ class ProfileClaimViewSet(viewsets.ModelViewSet):
             status='DECLINED', note='Profile was claimed by another verified account',
             reviewed_at=timezone.now(), reviewed_by=request.user,
         )
+        _send_claim_email(claim, approved=True)
         return Response(ProfileClaimSerializer(claim, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])
@@ -179,7 +185,42 @@ class ProfileClaimViewSet(viewsets.ModelViewSet):
         claim.reviewed_at = timezone.now()
         claim.reviewed_by = request.user
         claim.save(update_fields=['status', 'note', 'reviewed_at', 'reviewed_by'])
+        _send_claim_email(claim, approved=False)
         return Response(ProfileClaimSerializer(claim, context={'request': request}).data)
+
+
+def _send_claim_email(claim, approved):
+    """Send an email notification when a profile claim is approved or declined."""
+    email = claim.user.email
+    if not email:
+        return
+    swimmer_name = claim.swimmer.name
+    if approved:
+        subject = f'Your profile claim for {swimmer_name} has been approved'
+        body = (
+            f'Hi {claim.user.first_name or claim.user.username},\n\n'
+            f'Your claim on the swimmer profile "{swimmer_name}" has been approved. '
+            f'Your account is now verified as an athlete on Arab Swim.\n\n'
+            f'You can view and edit your profile at:\n'
+            f'https://arabswim-modernist.vercel.app/swimmers/{claim.swimmer_id}\n\n'
+            f'— Arab Swim'
+        )
+    else:
+        subject = f'Your profile claim for {swimmer_name} was declined'
+        reason = claim.note or 'No specific reason provided.'
+        body = (
+            f'Hi {claim.user.first_name or claim.user.username},\n\n'
+            f'Your claim on the swimmer profile "{swimmer_name}" was declined.\n\n'
+            f'Reason: {reason}\n\n'
+            f'You can submit a new claim with a clearer ID document at:\n'
+            f'https://arabswim-modernist.vercel.app/swimmers/{claim.swimmer_id}\n\n'
+            f'— Arab Swim'
+        )
+    try:
+        send_mail(subject, body, django_settings.DEFAULT_FROM_EMAIL, [email],
+                  fail_silently=True)
+    except Exception:
+        pass
 
 
 @api_view(['GET'])

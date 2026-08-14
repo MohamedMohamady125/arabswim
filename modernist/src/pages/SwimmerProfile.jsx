@@ -936,11 +936,12 @@ export default function SwimmerProfile() {
         {(() => {
           const isMine = mySwimmerId != null && Number(id) === mySwimmerId
           const pendingHere = myClaims.some((c) => c.swimmer === Number(id) && c.status === 'PENDING')
+          const declinedHere = myClaims.find((c) => c.swimmer === Number(id) && c.status === 'DECLINED')
           const canClaim = isAuthed && !isAdmin && !isMine && mySwimmerId == null &&
             !swimmer.is_verified && !swimmer.is_relay_team
-          if (!isAdmin && !isMine && !canClaim && !pendingHere) return null
+          if (!isAdmin && !isMine && !canClaim && !pendingHere && !declinedHere) return null
           return (
-            <div style={{ position: 'absolute', top: 16, right: 24, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div style={{ position: 'absolute', top: 16, right: 24, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
               {isAdmin && (
                 <>
                   <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setAdminEditOpen(true)}>
@@ -962,7 +963,17 @@ export default function SwimmerProfile() {
                 </button>
               )}
               {pendingHere && <span className="tag tag-neutral">Claim pending review</span>}
-              {canClaim && !pendingHere && (
+              {declinedHere && !pendingHere && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                  <span className="tag" style={{ background: 'var(--asw-slow)', color: '#fff' }}>
+                    Claim declined{declinedHere.note ? `: ${declinedHere.note}` : ''}
+                  </span>
+                  <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setClaimOpen(true)}>
+                    Resubmit claim
+                  </button>
+                </div>
+              )}
+              {canClaim && !pendingHere && !declinedHere && (
                 <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setClaimOpen(true)}>
                   This is me — claim profile
                 </button>

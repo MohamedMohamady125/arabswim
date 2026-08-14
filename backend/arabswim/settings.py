@@ -184,6 +184,20 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     CSRF_TRUSTED_ORIGINS = ['https://*.railway.app']
 
+# Email — use SMTP env vars when available (e.g. Gmail app password),
+# otherwise fall back to console (for local dev / when no SMTP is set).
+EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
+    if os.environ.get('EMAIL_HOST')
+    else 'django.core.mail.backends.console.EmailBackend'
+)
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') != 'False'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Arab Swim <noreply@arabswim.com>')
+
 # JWT
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),

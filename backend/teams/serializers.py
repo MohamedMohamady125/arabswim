@@ -20,6 +20,10 @@ class TeamListSerializer(serializers.ModelSerializer):
                   'is_national_team', 'founded_year', 'swimmers_count']
 
     def get_swimmers_count(self, obj):
+        # Prefer annotation (single query) set by the viewset list action
+        annotated = getattr(obj, 'swimmers_count_annotated', None)
+        if annotated is not None:
+            return annotated
         from swimmers.models import Swimmer
         return Swimmer.objects.filter(club__iexact=obj.name).count()
 

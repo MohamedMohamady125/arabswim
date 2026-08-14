@@ -107,7 +107,7 @@ class RankingView(APIView):
                 'championship_country_code': result.championship.country.code if result.championship.country else '',
                 'championship_country_flag': result.championship.country.flag_url if result.championship.country else '',
                 'fina_points': result.fina_points,
-                'date': result.championship.date.strftime('%d/%m/%Y'),
+                'date': str(result.championship.date),
             })
 
         if page is not None:

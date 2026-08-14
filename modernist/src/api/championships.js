@@ -15,7 +15,6 @@ export const addChampionshipResults = (id, data) => api.post(`/championships/${i
 export const updateResult = (resultId, data) => api.patch(`/results/${resultId}/`, data)
 export const deleteResult = (resultId) => api.delete(`/results/${resultId}/`)
 export const uploadPdf = (id, formData) => api.post(`/championships/${id}/upload-pdf/`, formData)
-export const importExcel = (id, formData) => api.post(`/championships/${id}/import-excel/`, formData)
 export const getResultsBySwimmer = (id) => api.get(`/championships/${id}/results-by-swimmer/`)
 export const bulkDeleteResults = (id, swimmerIds) => api.post(`/championships/${id}/bulk-delete-results/`, { swimmer_ids: swimmerIds })
 export const bulkDeleteResultIds = (id, resultIds) => api.post(`/championships/${id}/bulk-delete-result-ids/`, { result_ids: resultIds })

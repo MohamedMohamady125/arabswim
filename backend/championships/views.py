@@ -252,15 +252,6 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         championship.save()
         return Response({'message': 'PDF uploaded successfully'})
 
-    @action(detail=True, methods=['post'], url_path='import-excel')
-    def import_excel(self, request, pk=None):
-        championship = self.get_object()
-        excel_file = request.FILES.get('excel_file')
-        if not excel_file:
-            return Response({'error': 'No Excel file provided'}, status=400)
-        # TODO: Parse excel and create results
-        return Response({'message': 'Excel import started'})
-
     @action(detail=True, methods=['get', 'post'])
     def results(self, request, pk=None):
         championship = self.get_object()

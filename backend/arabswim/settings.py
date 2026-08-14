@@ -145,7 +145,7 @@ STORAGES = {
 # from a browser. Extra origins can be added via CORS_ALLOWED_ORIGINS env
 # (comma-separated), e.g. a future custom domain.
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r'^https://.*\.vercel\.app$',
+    r'^https://arabswim.*\.vercel\.app$',
 ]
 CORS_ALLOWED_ORIGINS = [
     o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()
@@ -168,6 +168,14 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 25,
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '200/minute',
+        'user': '500/minute',
+    },
 }
 
 # Uploads: cap request sizes (imports are the largest legitimate payloads)
@@ -197,6 +205,7 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') != 'False'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Arab Swim <noreply@arabswim.com>')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://arabswim-modernist.vercel.app')
 
 # JWT
 SIMPLE_JWT = {

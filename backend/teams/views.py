@@ -18,6 +18,22 @@ from medals.models import Medal
 class TeamViewSet(viewsets.ModelViewSet):
     queryset = Team.objects.select_related('country').prefetch_related('trophies')
     pagination_class = None
+
+    def list(self, request, *args, **kwargs):
+        qs = self.filter_queryset(self.get_queryset())
+        # Batch swimmer counts in 1 query instead of N+1 (club is a text
+        # field, not FK, so Django annotation doesn't work here).
+        from django.db.models.functions import Lower
+        counts = dict(
+            Swimmer.objects.values(club_lower=Lower('club'))
+            .annotate(n=Count('id')).values_list('club_lower', 'n')
+        )
+        teams = list(qs)
+        for t in teams:
+            t.swimmers_count_annotated = counts.get(t.name.lower(), 0)
+        serializer = self.get_serializer(teams, many=True)
+        return Response(serializer.data)
+
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['name', 'founded_year']

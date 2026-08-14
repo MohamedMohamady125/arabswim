@@ -96,7 +96,7 @@ function ProgressionChart({ lines }) {
       {/* legend */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px', marginBottom: 10 }}>
         {processed.map((l, i) => (
-          <span key={l.event_id ?? l.event_name} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+          <span key={l.event_id ?? l.event_name ?? i} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
             <span style={{ width: 12, height: 12, background: LINE_HEX[i % LINE_HEX.length], display: 'inline-block' }} />
             {l.event_name}
           </span>

@@ -29,7 +29,7 @@ export default function Live() {
       <PageHead
         kicker="Live"
         title="Live results"
-        subtitle="Meets happening right now — results are added session by session as they come in."
+        sub="Meets happening right now — results are added session by session as they come in."
       />
       {meets.length === 0 ? (
         <Empty label="No meets are live right now. Check the calendar for upcoming meets." />

@@ -191,10 +191,14 @@ class ProfileClaimViewSet(viewsets.ModelViewSet):
 
 def _send_claim_email(claim, approved):
     """Send an email notification when a profile claim is approved or declined."""
+    import logging
+    logger = logging.getLogger(__name__)
     email = claim.user.email
     if not email:
         return
     swimmer_name = claim.swimmer.name
+    base = django_settings.FRONTEND_URL
+    profile_url = f'{base}/swimmers/{claim.swimmer_id}'
     if approved:
         subject = f'Your profile claim for {swimmer_name} has been approved'
         body = (
@@ -202,7 +206,7 @@ def _send_claim_email(claim, approved):
             f'Your claim on the swimmer profile "{swimmer_name}" has been approved. '
             f'Your account is now verified as an athlete on Arab Swim.\n\n'
             f'You can view and edit your profile at:\n'
-            f'https://arabswim-modernist.vercel.app/swimmers/{claim.swimmer_id}\n\n'
+            f'{profile_url}\n\n'
             f'— Arab Swim'
         )
     else:
@@ -213,14 +217,14 @@ def _send_claim_email(claim, approved):
             f'Your claim on the swimmer profile "{swimmer_name}" was declined.\n\n'
             f'Reason: {reason}\n\n'
             f'You can submit a new claim with a clearer ID document at:\n'
-            f'https://arabswim-modernist.vercel.app/swimmers/{claim.swimmer_id}\n\n'
+            f'{profile_url}\n\n'
             f'— Arab Swim'
         )
     try:
-        send_mail(subject, body, django_settings.DEFAULT_FROM_EMAIL, [email],
-                  fail_silently=True)
+        send_mail(subject, body, django_settings.DEFAULT_FROM_EMAIL, [email])
+        logger.info('Claim %s email sent to %s (claim #%s)', 'approval' if approved else 'decline', email, claim.pk)
     except Exception:
-        pass
+        logger.warning('Failed to send claim email to %s (claim #%s)', email, claim.pk, exc_info=True)
 
 
 @api_view(['GET'])

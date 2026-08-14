@@ -316,13 +316,18 @@ export default function Import() {
         const res = await confirmImport(payload)
         const jobId = res.data.job_id
         let jobData = null
-        for (;;) {
+        const MAX_POLLS = 240 // ~10 minutes at 2.5s intervals
+        for (let poll = 0; poll < MAX_POLLS; poll++) {
           await new Promise((r) => setTimeout(r, 2500))
           const jr = await getConfirmJob(jobId)
           jobData = jr.data
           if (jobData.status === 'done' || jobData.status === 'failed') break
           const prefix = updated.length > 1 ? `Importing ${i + 1} / ${updated.length}: ` : 'Importing — '
           setLoadingMsg(prefix + (jobData.progress || 'working…'))
+        }
+        if (jobData && jobData.status !== 'done' && jobData.status !== 'failed') {
+          updated[i] = { ...m, confirmError: 'Import timed out — the job may still be running on the server. Refresh the page later.' }
+          continue
         }
         if (jobData.status === 'failed') {
           updated[i] = { ...m, confirmError: jobData.error || 'Failed to import' }

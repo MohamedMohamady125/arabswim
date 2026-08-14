@@ -703,6 +703,28 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
 
   const startEditRow = (r) => setEditingRow(r)
 
+  // Duplicate rank: give this swimmer the same rank as the one above,
+  // shift everyone below down by 1 (competition ranking: 1,2,2,4)
+  const duplicateRank = async (r, arr) => {
+    const ranked = arr.filter((x) => !x.is_hc)
+    const idx = ranked.findIndex((x) => x.id === r.id)
+    if (idx <= 0) return // can't dup the first row
+    const aboveRank = ranked[idx - 1].original_rank || idx // rank of row above
+    try {
+      // Set this result's rank to match the one above
+      await updateResult(r.id, { original_rank: aboveRank })
+      // Shift all results below this one down by 1
+      for (let j = idx + 1; j < ranked.length; j++) {
+        const cur = ranked[j].original_rank || (j + 1)
+        await updateResult(ranked[j].id, { original_rank: cur + 1 })
+      }
+      loadResults()
+      onDataChanged?.()
+    } catch {
+      window.alert('Failed to duplicate rank')
+    }
+  }
+
   const removeRow = async (r) => {
     if (!window.confirm(`Delete ${r.swimmer_detail?.name}'s result (${r.formatted_time})? This cannot be undone.`)) return
     try {
@@ -834,6 +856,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           {editMode && (
             <td className="num" style={{ whiteSpace: 'nowrap' }}>
               <span style={{ display: 'inline-flex', gap: 6 }}>
+                <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12 }} title="Give same rank as swimmer above (shift below)" onClick={(e) => { e.stopPropagation(); duplicateRank(r, arr) }}>Dup ↑</button>
                 <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12 }} onClick={(e) => { e.stopPropagation(); startEditRow(r) }}>Edit</button>
                 <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12, color: 'var(--asw-slow)' }} onClick={(e) => { e.stopPropagation(); removeRow(r) }}>Delete</button>
               </span>

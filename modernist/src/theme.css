@@ -105,6 +105,7 @@ figure { margin: 0; }
   background: transparent; border: 1px solid transparent;
   padding: var(--space-2) calc(var(--space-3) * 1.2);
   border-radius: var(--radius-md);
+  min-height: 36px;
 }
 .btn svg { display: block; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -534,4 +535,22 @@ figure { margin: 0; }
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.35; transform: scale(0.7); }
+}
+
+/* ── Sticky tab bar (desktop + mobile) ───────────────────────────────── */
+.tabbar-sticky { position: sticky; top: 0; z-index: 20; background: var(--color-bg); }
+
+/* ── Filter bar — consistent 14px vertical padding across all pages ── */
+.filterbar { padding: 14px 32px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* ── Error/success banners ────────────────────────────────────────────── */
+.error-box { border: 1px solid var(--asw-slow); color: var(--asw-slow); padding: 10px 12px; font-size: 13px; }
+.success-box { border: 1px solid var(--asw-fast); color: var(--asw-fast); padding: 10px 12px; font-size: 13px; }
+
+/* ── Inline links (swimmer/meet names) ────────────────────────────────── */
+.link { color: inherit; text-decoration: none; font-weight: 600; }
+.link:hover { color: var(--color-accent); }
+
+@media (max-width: 900px) {
+  .filterbar { padding: 10px 16px; gap: 6px; }
 }

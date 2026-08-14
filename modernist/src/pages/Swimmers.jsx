@@ -5,7 +5,7 @@ import { getSwimmers, deleteSwimmer, searchSwimmers } from '../api/swimmers'
 import { getCountries } from '../api/core'
 import { mergeSwimmers } from '../api/importer'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Pager, Seg } from '../components/ui'
+import { PageHead, Loading, Empty, Pager, Seg, Modal } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
@@ -40,25 +40,7 @@ function Avatar({ photo, name, size = 34 }) {
 }
 
 // Flat Modernist modal — fixed overlay, white panel, 2px border, no radius
-function Modal({ title, onClose, children, width = 640 }) {
-  return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(20,24,31,0.55)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
-      onClick={onClose}
-    >
-      <div
-        style={{ background: 'var(--color-bg, #fff)', border: '2px solid var(--color-text)', width: '100%', maxWidth: width }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
-          <div className="kicker">{title}</div>
-          <button className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close"><X size={14} /></button>
-        </div>
-        <div style={{ padding: 20 }}>{children}</div>
-      </div>
-    </div>
-  )
-}
+// Modal imported from ui.jsx
 
 // Merge wizard: pick primary (keep), then one or MORE duplicates, confirm
 function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {

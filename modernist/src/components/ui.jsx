@@ -57,6 +57,44 @@ export function Seg({ options, value, onChange, tabs = false }) {
   )
 }
 
+// Shared modal: Escape key, click-outside close, ARIA, consistent styling.
+// Replaces per-page Modal functions that drifted in padding/border/width.
+export function Modal({ title, onClose, children, width = 580 }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    // trap focus: prevent background scroll
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handler)
+      document.body.style.overflow = prev
+    }
+  }, [onClose])
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(20,24,31,0.55)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
+      onClick={onClose}
+    >
+      <div
+        ref={ref}
+        style={{ background: 'var(--color-bg)', border: '2px solid var(--color-text)', width: '100%', maxWidth: width }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+          <div className="kicker">{title}</div>
+          <button type="button" className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close" style={{ width: 30, height: 30, fontSize: 16 }}>×</button>
+        </div>
+        <div style={{ padding: 20 }}>{children}</div>
+      </div>
+    </div>
+  )
+}
+
 export function MedalIcon({ type, size = 18, style }) {
   const src = { GOLD: '/medal_gold.png', SILVER: '/medal_silver.png', BRONZE: '/medal_bronze.png' }[
     String(type || '').toUpperCase()

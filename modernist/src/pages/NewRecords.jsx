@@ -179,7 +179,7 @@ function AddRecordModal({ onClose, onCreated }) {
           {form.time.trim() && !(cs > 0) && (
             <div className="micro" style={{ color: 'var(--color-accent)' }}>Time must look like 27.45 or 1:56.30</div>
           )}
-          {error && <div style={{ fontSize: 13, color: '#b3261e' }}>{error}</div>}
+          {error && <div style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
         </div>
 
         <div className="rule-t" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>

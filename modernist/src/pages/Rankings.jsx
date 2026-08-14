@@ -118,7 +118,7 @@ export default function Rankings() {
       <PageHead title="Rankings" />
 
       {/* filter bar: two fixed lines — segments on top, dropdowns below */}
-      <div className="rule-b records-filters" style={{ padding: '12px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Seg
             options={[{ value: 'national', label: 'National' }, { value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }]}

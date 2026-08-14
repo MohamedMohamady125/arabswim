@@ -2087,7 +2087,7 @@ function CompareMeetsModal({ meet, onClose }) {
             </select>
           </div>
 
-          {error && <div style={{ fontSize: 13, color: '#b3261e' }}>{error}</div>}
+          {error && <div style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
           {loading && <Loading label="Comparing meets" />}
 
           {a && b && !loading && (
@@ -2391,7 +2391,7 @@ export default function MeetDetail() {
       )}
 
       {/* tabs */}
-      <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>
+      <div className="rule-b tabbar tabbar-sticky" style={{ padding: '14px 32px', overflowX: 'auto' }}>
         <Seg
           tabs
           options={[

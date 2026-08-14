@@ -17,7 +17,7 @@ import { getCountries } from '../api/core'
 import { getHeldRecords } from '../api/records'
 import { useAuth } from '../context/AuthContext'
 import Flag from '../components/Flag'
-import { Loading, Empty, Seg } from '../components/ui'
+import { Loading, Empty, Seg, Modal } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import SplitsBreakdown from '../components/swimmer/SplitsBreakdown'
 import CompareTab from '../components/swimmer/CompareTab'
@@ -32,25 +32,7 @@ import GalleryTab from '../components/swimmer/GalleryTab'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
-function Modal({ title, onClose, children, width = 520 }) {
-  return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(20,24,31,0.55)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
-      onClick={onClose}
-    >
-      <div
-        style={{ background: 'var(--color-bg, #fff)', border: '2px solid var(--color-text)', width: '100%', maxWidth: width }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
-          <div className="kicker">{title}</div>
-          <button className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close"><X size={14} /></button>
-        </div>
-        <div style={{ padding: 20 }}>{children}</div>
-      </div>
-    </div>
-  )
-}
+// Modal imported from ui.jsx — shared component with Escape key + ARIA
 
 function ClaimModal({ swimmer, onClose, onSubmitted }) {
   const [file, setFile] = useState(null)
@@ -1018,7 +1000,7 @@ export default function SwimmerProfile() {
       )}
 
       {/* ── Tabs ── */}
-      <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>
+      <div className="rule-b tabbar tabbar-sticky" style={{ padding: '14px 32px', overflowX: 'auto' }}>
         <Seg
           tabs
           options={visibleTabs}

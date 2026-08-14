@@ -2297,6 +2297,7 @@ const LIVE_BADGE = (
 
 export default function MeetDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAdmin } = useAuth()
   const [meet, setMeet] = useState(null)
@@ -2380,6 +2381,15 @@ export default function MeetDetail() {
                     Apply TC rules
                   </button>
                 )}
+                <button type="button" className="btn" style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)' }} onClick={async () => {
+                  if (!window.confirm(`Delete "${meet.name}" and all its results, medals, and records? This cannot be undone.`)) return
+                  try {
+                    await deleteChampionship(id)
+                    navigate('/championships')
+                  } catch { window.alert('Failed to delete meet') }
+                }}>
+                  Delete meet
+                </button>
               </>
             )}
           </div>

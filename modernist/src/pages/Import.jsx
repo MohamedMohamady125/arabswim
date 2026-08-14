@@ -7,8 +7,8 @@ import {
 } from '../api/importer'
 import { getCountries } from '../api/core'
 import {
-  getChampionships, getClassifications, getSubClassifications,
-  getResultsBySwimmer, bulkDeleteResults, setMeetProgram,
+  getChampionships, getChampionship, getClassifications, getSubClassifications,
+  getResultsBySwimmer, bulkDeleteResults, setMeetProgram, applyTC,
 } from '../api/championships'
 import { POOL_TYPES, ARAB_COUNTRY_CODES, formatDate } from '../utils'
 import EditableResultsTable from '../components/import/EditableResultsTable'
@@ -914,6 +914,20 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
   const [selected, setSelected] = useState(new Set())
   const [cleanupLoading, setCleanupLoading] = useState(false)
   const [cleanupDone, setCleanupDone] = useState(null)
+  const [tcMeets, setTcMeets] = useState({}) // { champId: { eligible, applied, result } }
+  const [tcBusy, setTcBusy] = useState(null)
+
+  // Check each imported meet for TC eligibility (Tunisian + National)
+  useEffect(() => {
+    const ids = meets.filter((m) => m.result?.championship_id).map((m) => m.result.championship_id)
+    ids.forEach((cid) => {
+      getChampionship(cid).then((res) => {
+        const c = res.data
+        const isTunNational = c.classification_name === 'National' && c.country_detail?.code === 'TUN'
+        setTcMeets((prev) => ({ ...prev, [cid]: { eligible: isTunNational && !c.b_final_no_medals, applied: !!c.b_final_no_medals } }))
+      }).catch(() => {})
+    })
+  }, [meets])
 
   const openCleanup = async (champId) => {
     setCleanupChampId(champId)
@@ -1024,15 +1038,41 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId }) {
                 </div>
               )}
 
-              {/* Cleanup button */}
-              {m.result.championship_id && cleanupChampId !== m.result.championship_id && (
-                <button
-                  type="button" className="btn btn-secondary" style={{ marginTop: 8 }}
-                  onClick={() => openCleanup(m.result.championship_id)}
-                >
-                  Clean up results (remove non-Arab swimmers)
-                </button>
-              )}
+              {/* Action buttons row */}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                {m.result.championship_id && cleanupChampId !== m.result.championship_id && (
+                  <button
+                    type="button" className="btn btn-secondary"
+                    onClick={() => openCleanup(m.result.championship_id)}
+                  >
+                    Clean up results (remove non-Arab swimmers)
+                  </button>
+                )}
+
+                {/* TC button for Tunisian National meets */}
+                {m.result.championship_id && tcMeets[m.result.championship_id]?.eligible && (
+                  <button
+                    type="button" className="btn btn-primary"
+                    disabled={tcBusy === m.result.championship_id}
+                    onClick={async () => {
+                      if (!window.confirm('Apply TC rules?\n\n• No medals for Final B (only Final A)\n• Open podium across all categories (fastest 3 overall)\n• Relays unaffected\n\nMedals will be recomputed.')) return
+                      setTcBusy(m.result.championship_id)
+                      try {
+                        const res = await applyTC(m.result.championship_id)
+                        setTcMeets((prev) => ({ ...prev, [m.result.championship_id]: { eligible: false, applied: true, result: res.data } }))
+                      } catch { window.alert('Failed to apply TC rules') }
+                      setTcBusy(null)
+                    }}
+                  >
+                    {tcBusy === m.result.championship_id ? 'Applying…' : 'Apply TC rules'}
+                  </button>
+                )}
+                {m.result.championship_id && tcMeets[m.result.championship_id]?.applied && (
+                  <span className="tag tag-accent" style={{ alignSelf: 'center' }}>
+                    TC applied{tcMeets[m.result.championship_id]?.result ? ` — ${tcMeets[m.result.championship_id].result.medals_awarded} medals` : ''}
+                  </span>
+                )}
+              </div>
 
               {/* Cleanup panel */}
               {cleanupChampId === m.result.championship_id && (

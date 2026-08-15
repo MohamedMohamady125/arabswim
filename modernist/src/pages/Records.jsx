@@ -89,14 +89,15 @@ function RecordTable({ rows }) {
               style={r.link ? { cursor: 'pointer' } : undefined}
               title={r.link ? 'View this swim' : undefined}
             >
-              <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  <span className="show-mobile-flex" style={{ flex: 'none' }}>
-                    <Flag code={r.natCode} name={r.natName} />
-                  </span>
-                  <span>{r.eventName}</span>
-                  <span className="show-mobile" style={{ fontWeight: 400, fontSize: 12, color: 'var(--color-neutral-700)', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-                    {r.swimmerName}
+              <td style={{ fontWeight: 600 }}>
+                {r.eventName}
+                {/* phone: swimmer below the event, one compact line */}
+                <div className="show-mobile" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontWeight: 400, fontSize: 13 }}>
+                  <Flag code={r.natCode} name={r.natName} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                    {r.swimmerId ? (
+                      <Link to={`/swimmers/${r.swimmerId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>{r.swimmerName}</Link>
+                    ) : r.swimmerName}
                   </span>
                 </div>
               </td>

@@ -163,8 +163,8 @@ export default function Championships() {
 
       {groups.map((g) => (
         <div key={g.key} className="rule-b">
-          <div className="pad" style={{ paddingBottom: 12 }}>
-            <div className="kicker">{g.key}</div>
+          <div className="pad" style={{ paddingBottom: 10 }}>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, letterSpacing: '0.02em', color: 'var(--color-accent-800)' }}>{g.key}</div>
           </div>
           {g.items.map((m, i) => {
             const hasResults = (m.results_count ?? 0) > 0
@@ -186,10 +186,10 @@ export default function Championships() {
                   <div style={{ flex: 1, minWidth: 160 }}>
                     <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{m.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 3 }}>
-                      {m.location}
-                      {m.country_detail ? `${m.location ? ', ' : ''}${m.country_detail.name}` : ''}
+                      {isAdmin && m.location ? `${m.location}, ` : ''}
+                      {m.country_detail?.name || ''}
                       {' · '}{formatDateRange(m.date, m.end_date)}
-                      {m.classification_name ? ` · ${m.classification_name}` : ''}
+                      {isAdmin && m.classification_name ? ` · ${m.classification_name}` : ''}
                     </div>
                   </div>
                   {isAdmin && (

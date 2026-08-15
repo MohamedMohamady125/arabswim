@@ -54,9 +54,13 @@ def infer_blank_categories(championship):
         return 0
 
     # Categorized meet + a TC (open) file in the same import is the
-    # signature of meets that award an extra open podium per event on top
-    # of the per-category podiums (see medals.utils.recompute_medals).
-    if not championship.has_open_podium:
+    # signature of Tunisian meets that award an extra open podium per
+    # event on top of the per-category podiums (see medals.utils).
+    # Only auto-set for Tunisian meets; other countries (e.g. UAE age-
+    # group meets) can have blank categories from parsing without
+    # implying a TC dual-podium structure.
+    country_code = getattr(championship.country, 'code', '') if championship.country_id else ''
+    if not championship.has_open_podium and country_code == 'TUN':
         championship.has_open_podium = True
         championship.save(update_fields=['has_open_podium'])
 

@@ -146,6 +146,32 @@ class InferBlankCategoriesTests(TCMeetTestCase):
         self.champ.refresh_from_db()
         self.assertTrue(self.champ.has_open_podium)
 
+    def test_non_tunisian_meet_does_not_auto_set_open_podium(self):
+        """Non-Tunisian meets with mixed blank/categorized results should
+        still infer categories but NOT auto-set has_open_podium."""
+        uae = Country.objects.create(name='UAE', code='UAE', region='ARAB')
+        other_cls = Classification.objects.create(name='Other')
+        champ = Championship.objects.create(
+            name='Hamilton Aquatics SC', date='2026-01-15', pool='SCM',
+            country=uae, classification=other_cls)
+        sw = Swimmer.objects.create(name='Test Swimmer', sex='F', nationality=uae)
+        # Categorized result
+        Result.objects.create(
+            swimmer=sw, championship=champ, event=self.free,
+            round_type='Finals', category='15-16', time_centiseconds=3000,
+            original_rank=1, age_at_competition=15)
+        # Blank-category result (same swimmer, different event)
+        Result.objects.create(
+            swimmer=sw, championship=champ, event=self.fly,
+            round_type='Finals', category='', time_centiseconds=3200,
+            original_rank=1, age_at_competition=15)
+        infer_blank_categories(champ)
+        champ.refresh_from_db()
+        self.assertFalse(champ.has_open_podium)
+        # But category should still be inferred
+        blank_result = Result.objects.get(championship=champ, event=self.fly)
+        self.assertEqual(blank_result.category, '15-16')
+
 
 class OpenPodiumTests(TCMeetTestCase):
     """TC meets award an open podium per event on top of category podiums,

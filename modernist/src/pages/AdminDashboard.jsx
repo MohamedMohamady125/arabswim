@@ -187,10 +187,21 @@ function OrgAccountForm() {
 }
 
 const FEATURE_LABELS = [
-  ['news', 'News'],
-  ['media', 'Media'],
+  ['records', 'Records'],
+  ['new_records', 'New Records'],
+  ['medals', 'Medals'],
+  ['rankings', 'Rankings'],
+  ['qualifying_times', 'Qualifying Times'],
+  ['predictions', 'Predictions'],
+  ['calendar', 'Calendar'],
+  ['live', 'Live Results'],
+  ['swimmers', 'Swimmers'],
+  ['teams', 'Clubs'],
+  ['compare', 'Compare'],
   ['coaches', 'Coaches'],
   ['hall_of_fame', 'Hall of Fame'],
+  ['news', 'News'],
+  ['media', 'Media'],
   ['marketplace', 'Marketplace'],
 ]
 

@@ -11,6 +11,17 @@ const FEATURE_PATHS = {
   '/news': 'news',
   '/media': 'media',
   '/market': 'marketplace',
+  '/records': 'records',
+  '/new-records': 'new_records',
+  '/medals': 'medals',
+  '/rankings': 'rankings',
+  '/qualifying-times': 'qualifying_times',
+  '/predictions': 'predictions',
+  '/calendar': 'calendar',
+  '/live': 'live',
+  '/compare': 'compare',
+  '/teams': 'teams',
+  '/swimmers': 'swimmers',
 }
 
 // Admins always see every section (so they can preview before launch)

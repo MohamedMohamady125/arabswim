@@ -63,19 +63,19 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/championships" element={<Championships />} />
         <Route path="/meets/:id" element={<MeetDetail />} />
-        <Route path="/calendar" element={<Calendar />} />
-        <Route path="/live" element={<Live />} />
-        <Route path="/records" element={<Records />} />
-        <Route path="/new-records" element={<NewRecords />} />
-        <Route path="/medals" element={<Medals />} />
-        <Route path="/rankings" element={<Rankings />} />
-        <Route path="/qualifying-times" element={<QualifyingTimes />} />
-        <Route path="/predictions" element={<Predictions />} />
-        <Route path="/swimmers" element={<Swimmers />} />
-        <Route path="/swimmers/:id" element={<SwimmerProfile />} />
-        <Route path="/compare" element={<Compare />} />
-        <Route path="/teams" element={<Teams />} />
-        <Route path="/teams/:id" element={<TeamDetail />} />
+        <Route path="/calendar" element={<RequireFeature flag="calendar"><Calendar /></RequireFeature>} />
+        <Route path="/live" element={<RequireFeature flag="live"><Live /></RequireFeature>} />
+        <Route path="/records" element={<RequireFeature flag="records"><Records /></RequireFeature>} />
+        <Route path="/new-records" element={<RequireFeature flag="new_records"><NewRecords /></RequireFeature>} />
+        <Route path="/medals" element={<RequireFeature flag="medals"><Medals /></RequireFeature>} />
+        <Route path="/rankings" element={<RequireFeature flag="rankings"><Rankings /></RequireFeature>} />
+        <Route path="/qualifying-times" element={<RequireFeature flag="qualifying_times"><QualifyingTimes /></RequireFeature>} />
+        <Route path="/predictions" element={<RequireFeature flag="predictions"><Predictions /></RequireFeature>} />
+        <Route path="/swimmers" element={<RequireFeature flag="swimmers"><Swimmers /></RequireFeature>} />
+        <Route path="/swimmers/:id" element={<RequireFeature flag="swimmers"><SwimmerProfile /></RequireFeature>} />
+        <Route path="/compare" element={<RequireFeature flag="compare"><Compare /></RequireFeature>} />
+        <Route path="/teams" element={<RequireFeature flag="teams"><Teams /></RequireFeature>} />
+        <Route path="/teams/:id" element={<RequireFeature flag="teams"><TeamDetail /></RequireFeature>} />
         <Route path="/coaches" element={<RequireFeature flag="coaches"><Coaches /></RequireFeature>} />
         <Route path="/hall-of-fame" element={<RequireFeature flag="hall_of_fame"><HallOfFame /></RequireFeature>} />
         <Route path="/news" element={<RequireFeature flag="news"><News /></RequireFeature>} />

@@ -85,7 +85,11 @@ def create_org_account(request):
 
 
 # Site sections the admin can hide until they're ready to launch
-FEATURE_KEYS = ['hall_of_fame', 'coaches', 'news', 'marketplace', 'media']
+FEATURE_KEYS = [
+    'hall_of_fame', 'coaches', 'news', 'marketplace', 'media',
+    'records', 'new_records', 'medals', 'rankings', 'qualifying_times',
+    'predictions', 'calendar', 'live', 'compare', 'teams', 'swimmers',
+]
 
 
 @api_view(['GET', 'PATCH'])

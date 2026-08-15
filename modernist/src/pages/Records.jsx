@@ -71,42 +71,67 @@ function normalizeManual(r) {
 function RecordTable({ rows }) {
   const navigate = useNavigate()
   return (
-    <div className="table-scroll">
-      <table className="table records-tbl">
-        <thead>
-          <tr>
-            <th>Event</th>
-            <th>Swimmer</th>
-            <th className="time">Time</th>
-            <th className="hide-mobile">Meet</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr
-              key={r.key}
-              onClick={() => { if (r.link) navigate(r.link) }}
-              style={r.link ? { cursor: 'pointer' } : undefined}
-              title={r.link ? 'View this swim' : undefined}
-            >
-              <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{r.eventName}</td>
-              <td className="swimmer-cell">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                  <Flag code={r.natCode} name={r.natName} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+    <>
+      {/* Desktop table */}
+      <div className="table-scroll hide-mobile">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Swimmer</th>
+              <th className="time">Time</th>
+              <th>Meet</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr
+                key={r.key}
+                onClick={() => { if (r.link) navigate(r.link) }}
+                style={r.link ? { cursor: 'pointer' } : undefined}
+              >
+                <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{r.eventName}</td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Flag code={r.natCode} name={r.natName} />
                     {r.swimmerId ? (
                       <Link to={`/swimmers/${r.swimmerId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
                     ) : r.swimmerName}
-                  </span>
-                </div>
-              </td>
-              <td className="time asw-time">{r.time}</td>
-              <td className="text-muted hide-mobile" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>{r.meet || '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                  </div>
+                </td>
+                <td className="time asw-time">{r.time}</td>
+                <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>{r.meet || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Phone: compact 2-line cards */}
+      <div className="show-mobile" style={{ display: 'flex', flexDirection: 'column' }}>
+        {rows.map((r) => (
+          <div
+            key={r.key}
+            className="hair-b"
+            onClick={() => { if (r.link) navigate(r.link) }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', cursor: r.link ? 'pointer' : 'default' }}
+          >
+            <Flag code={r.natCode} name={r.natName} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {r.swimmerName}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 1 }}>
+                {r.eventName}
+              </div>
+            </div>
+            <div style={{ flex: 'none', textAlign: 'right' }}>
+              <div className="asw-time" style={{ fontSize: 15 }}>{r.time}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 

@@ -200,9 +200,8 @@ figure { margin: 0; }
    names ellipsize instead of squeezing the time/points columns */
 .results-table .rank-col { width: 44px; }
 .results-table td.swimmer-cell { width: 100%; max-width: 0; }
-/* rankings + records: swimmer column absorbs the leftover width; names ellipsize on one line */
-.rankings-table td.swimmer-cell,
-.records-tbl td.swimmer-cell { width: 100%; max-width: 0; }
+/* rankings: swimmer column absorbs the leftover width; names ellipsize on one line */
+.rankings-table td.swimmer-cell { width: 100%; max-width: 0; }
 /* grid children default to min-width auto, which lets wide tables blow out the track */
 .grid-2 > *, .grid-3 > *, .two-col > * { min-width: 0; }
 
@@ -470,10 +469,6 @@ figure { margin: 0; }
   .rankings-table td, .rankings-table th { white-space: nowrap; }
   .rankings-table td.swimmer-cell { max-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .rankings-table .num, .rankings-table .time { font-size: 12px; }
-  /* records on phone: cap event name width so swimmer column gets breathing room */
-  .records-tbl td:first-child { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
-  .records-tbl td.swimmer-cell { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .records-tbl td, .records-tbl th { white-space: nowrap; }
 
   /* keep swimmer details beside the photo on phones */
   .swimmer-photo { width: 104px; align-self: stretch; min-height: 104px; max-height: 176px; font-size: 30px; }

@@ -135,41 +135,24 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-      {/* Club history timeline */}
+      {/* Clubs */}
       <div>
         <div className="sect-head">
-          <h4>Club History</h4>
-          <span className="micro">Based on competition results</span>
+          <h4>Clubs</h4>
         </div>
         {(data.clubs || []).length === 0 ? (
           <Empty label="No club history available" />
         ) : (
-          <div className="rule-t">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {data.clubs.map((club, i) => (
-              <div key={i} className="hair-b" style={{ display: 'flex', gap: 16, padding: '14px 0', alignItems: 'flex-start' }}>
-                <div style={{ width: 30, height: 30, flex: 'none', background: club.is_current ? 'var(--color-accent)' : 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }} className="asw-num">
-                  {i + 1}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16 }}>{club.club}</span>
-                    {club.country_code && <Flag code={club.country_code} name={club.country} flagUrl={club.country_flag} />}
-                    {club.is_national && <span className="tag tag-accent">National Team</span>}
-                    {club.is_current && <span className="tag tag-dark">Current</span>}
-                  </div>
-                  <div className="asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>
-                    From <strong style={{ color: 'var(--color-text)' }}>{fmtMonthYear(club.first_meet)}</strong>{' '}
-                    to{' '}
-                    {club.is_current
-                      ? <strong style={{ color: 'var(--asw-fast)' }}>now</strong>
-                      : <strong style={{ color: 'var(--color-text)' }}>{fmtMonthYear(club.last_meet)}</strong>}
-                  </div>
-                </div>
-                <div className="asw-num" style={{ textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-text)' }}>{club.meets}</div>
-                  <div>meet{club.meets !== 1 ? 's' : ''}</div>
-                  <div>{club.results} result{club.results !== 1 ? 's' : ''}</div>
-                </div>
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 14px', border: '1px solid var(--color-divider)',
+                background: club.is_current ? 'var(--color-accent-100)' : 'var(--color-surface)',
+              }}>
+                {club.country_code && <Flag code={club.country_code} name={club.country} flagUrl={club.country_flag} />}
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>{club.club}</span>
+                {club.is_current && <span className="tag tag-dark" style={{ fontSize: 10 }}>Current</span>}
               </div>
             ))}
           </div>

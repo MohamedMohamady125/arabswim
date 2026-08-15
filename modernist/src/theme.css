@@ -463,9 +463,12 @@ figure { margin: 0; }
   .results-table .rank-col { width: 30px; }
   .results-table th:first-child, .results-table td:first-child { padding-right: 2px; }
   .results-table td.swimmer-cell, .results-table th:nth-child(2) { padding-left: 4px; }
-  /* rankings on phone: pull flag + name left and shrink the rank column */
+  /* rankings on phone: one compact line per row — name truncates, no wrapping */
   .rankings-table th:first-child { width: 24px !important; }
   .rankings-table td.swimmer-cell, .rankings-table th:nth-child(2) { padding-left: 4px; }
+  .rankings-table td, .rankings-table th { white-space: nowrap; }
+  .rankings-table td.swimmer-cell { max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .rankings-table .num, .rankings-table .time { font-size: 12px; }
 
   /* keep swimmer details beside the photo on phones */
   .swimmer-photo { width: 104px; align-self: stretch; min-height: 104px; max-height: 176px; font-size: 30px; }

@@ -776,7 +776,7 @@ const TABS = [
   { value: 'qualifying', label: 'Qualifying' },
   { value: 'progression', label: 'Progression' },
   { value: 'compare', label: 'Compare' },
-  { value: 'transfers', label: 'Transfers' },
+  { value: 'transfers', label: 'Representations' },
   { value: 'gallery', label: 'Gallery' },
 ]
 

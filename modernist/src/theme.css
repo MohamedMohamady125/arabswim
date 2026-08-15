@@ -419,15 +419,17 @@ figure { margin: 0; }
   h1.meet-title::after { display: none; }
   h1 { font-size: 26px; }
   h1::after {
-    content: ''; display: block; width: 46px; height: 4px;
-    background: var(--asw-gold); margin-top: 9px;
+    content: ''; display: block; width: 64px; height: 3px;
+    background: var(--asw-gold); margin-top: 10px;
+    border-radius: 2px;
   }
   h2 { font-size: 24px; }
   h3 { font-size: 19px; }
   .kicker::before {
-    content: ''; display: inline-block; width: 16px; height: 3px;
+    content: ''; display: inline-block; width: 20px; height: 3px;
     background: var(--asw-gold); margin-right: 7px;
     vertical-align: middle; transform: translateY(-1px);
+    border-radius: 2px;
   }
   .sect-head h4 { display: flex; align-items: center; gap: 8px; }
   .sect-head h4::before {

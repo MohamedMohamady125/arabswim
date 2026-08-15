@@ -85,13 +85,35 @@ class ResultSerializer(serializers.ModelSerializer):
     swimmer_detail = SwimmerListSerializer(source='swimmer', read_only=True)
     event_detail = EventSerializer(source='event', read_only=True)
     formatted_time = serializers.CharField(read_only=True)
+    relay_swimmers_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = Result
         fields = ['id', 'swimmer', 'swimmer_detail', 'championship', 'event', 'event_detail',
                   'round_type', 'category', 'team', 'time_centiseconds', 'formatted_time', 'fina_points',
-                  'age_at_competition', 'relay_swimmers', 'splits', 'is_hc', 'hc_type', 'is_manual',
-                  'original_rank', 'created_at']
+                  'age_at_competition', 'relay_swimmers', 'relay_swimmers_detail', 'splits',
+                  'is_hc', 'hc_type', 'is_manual', 'original_rank', 'created_at']
+
+    def get_relay_swimmers_detail(self, obj):
+        legs = obj.relay_swimmers
+        if not legs:
+            return None
+        from swimmers.models import Swimmer
+        nat_id = obj.swimmer.nationality_id if obj.swimmer_id else None
+        result = []
+        for leg in legs:
+            name = (leg.get('name') or '').strip() if isinstance(leg, dict) else str(leg).strip()
+            split_time = leg.get('split_time', '') if isinstance(leg, dict) else ''
+            swimmer_id = None
+            if name:
+                qs = Swimmer.objects.filter(is_relay_team=False, name__iexact=name)
+                match = qs.filter(nationality_id=nat_id).first() if nat_id else None
+                if not match:
+                    match = qs.first()
+                if match:
+                    swimmer_id = match.id
+            result.append({'name': name, 'split_time': split_time, 'swimmer_id': swimmer_id})
+        return result
 
 
 class ResultCreateSerializer(serializers.ModelSerializer):

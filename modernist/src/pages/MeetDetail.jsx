@@ -882,16 +882,27 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             </td>
           </tr>
         )}
-        {isExpanded && isRelay && swimmers.map((s, j) => (
-          <tr key={`${r.id}-${j}`} style={{ background: 'var(--color-surface)' }}>
-            <td className="asw-num text-muted num" style={{ fontSize: 12 }}>{j + 1}</td>
-            <td style={{ paddingLeft: 36, fontSize: 13 }}>{typeof s === 'string' ? s : s?.name}</td>
-            <td className="hide-mobile" />
-            {isNational && <td className="hide-mobile" />}
-            <td className="time asw-num text-muted">{typeof s === 'object' ? (s?.split_time || '—') : '—'}</td>
-            <td colSpan={editMode ? 2 : 1} />
-          </tr>
-        ))}
+        {isExpanded && isRelay && (r.relay_swimmers_detail || swimmers).map((s, j) => {
+          const name = typeof s === 'string' ? s : s?.name
+          const swId = s?.swimmer_id
+          const splitTime = typeof s === 'object' ? (s?.split_time || '—') : '—'
+          return (
+            <tr key={`${r.id}-${j}`} style={{ background: 'var(--color-surface)', cursor: swId ? 'pointer' : 'default' }}
+              onClick={() => { if (swId) navigate(`/swimmers/${swId}`) }}>
+              <td className="asw-num text-muted num" style={{ fontSize: 12 }}>{j + 1}</td>
+              <td style={{ paddingLeft: 36, fontSize: 13 }}>
+                {swId ? (
+                  <Link to={`/swimmers/${swId}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}
+                    onClick={(e) => e.stopPropagation()}>{name}</Link>
+                ) : name}
+              </td>
+              <td className="hide-mobile" />
+              {isNational && <td className="hide-mobile" />}
+              <td className="time asw-num text-muted">{splitTime}</td>
+              <td colSpan={editMode ? 2 : 1} />
+            </tr>
+          )
+        })}
       </React.Fragment>
     )
   }

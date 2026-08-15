@@ -2416,6 +2416,16 @@ export default function MeetDetail() {
                     Apply TC rules
                   </button>
                 )}
+                <button type="button" className={`btn ${meet.is_published ? 'btn-secondary' : 'btn-primary'}`}
+                  style={{ fontSize: 12 }}
+                  onClick={async () => {
+                    try {
+                      await updateChampionship(id, { is_published: !meet.is_published })
+                      setMeet({ ...meet, is_published: !meet.is_published })
+                    } catch { window.alert('Failed to update') }
+                  }}>
+                  {meet.is_published ? 'Unpublish' : 'Publish'}
+                </button>
                 <button type="button" className="btn" style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)' }} onClick={async () => {
                   if (!window.confirm(`Delete "${meet.name}" and all its results, medals, and records? This cannot be undone.`)) return
                   try {

@@ -70,6 +70,13 @@ def _filtered_results(request):
         qs = qs.filter(age_at_competition__lte=p['age_max'])
     if p.get('round'):
         qs = qs.filter(round_type=p['round'])
+    if p.get('meet_category'):
+        qs = qs.filter(championship__meet_category=p['meet_category'])
+    if p.get('fina_min'):
+        try:
+            qs = qs.filter(fina_points__gte=int(p['fina_min']))
+        except (TypeError, ValueError):
+            pass
     return qs
 
 
@@ -98,6 +105,8 @@ def _filtered_medals(request):
         qs = qs.filter(swimmer__sex=p['gender'])
     if p.get('scope'):
         qs = qs.filter(scope=p['scope'].upper())
+    if p.get('meet_category'):
+        qs = qs.filter(championship__meet_category=p['meet_category'])
     return qs
 
 
@@ -364,7 +373,8 @@ RECORD_TYPES = {'ARAB', 'NATIONAL', 'GCC', 'AFRICAN', 'ASIAN',
                 'MEDITERRANEAN', 'ISLAMIC', 'WORLD'}
 FILTER_KEYS = {'date_from', 'date_to', 'country', 'host_country', 'team',
                'event', 'pool', 'gender', 'age_min', 'age_max', 'record_type',
-               'championship'}
+               'championship', 'round', 'classification', 'meet_category',
+               'fina_min'}
 
 
 def _validate_plan(raw):
@@ -418,6 +428,25 @@ def _validate_plan(raw):
                 plan['filters'][k] = str(v).upper()
         elif k == 'team':
             plan['filters'][k] = str(v)[:80]
+        elif k == 'round':
+            valid_rounds = {'Finals', 'Prelims', 'Heats', 'Semifinals', 'Consolation'}
+            if str(v) in valid_rounds:
+                plan['filters'][k] = str(v)
+        elif k == 'classification':
+            try:
+                from championships.models import Classification
+                if Classification.objects.filter(id=int(v)).exists():
+                    plan['filters'][k] = int(v)
+            except (TypeError, ValueError):
+                pass
+        elif k == 'meet_category':
+            if str(v).upper() in ('OPEN', 'AGE_GROUP'):
+                plan['filters'][k] = str(v).upper()
+        elif k == 'fina_min':
+            try:
+                plan['filters'][k] = max(1, min(int(v), 1200))
+            except (TypeError, ValueError):
+                pass
     try:
         plan['limit'] = max(1, min(int(raw.get('limit', 50)), 500))
     except (TypeError, ValueError):

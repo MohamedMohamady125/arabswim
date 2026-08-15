@@ -4,6 +4,7 @@ import {
   getReportOverview, getReportMedalTable, getReportTopTimes, getReportParticipation, getReportRecords, askReport,
 } from '../api/reports'
 import { getCountries, getEvents } from '../api/core'
+import { getClassifications } from '../api/championships'
 import { useAuth } from '../context/AuthContext'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
@@ -64,6 +65,7 @@ export default function Reports() {
   const { isAdmin } = useAuth()
   const [countries, setCountries] = useState([])
   const [events, setEvents] = useState([])
+  const [classifications, setClassifications] = useState([])
 
   // natural-language ask bar
   const [question, setQuestion] = useState('')
@@ -84,6 +86,10 @@ export default function Reports() {
   const [ageMin, setAgeMin] = useState('')
   const [ageMax, setAgeMax] = useState('')
   const [championship, setChampionship] = useState(null) // { id, name } set by clicking a meet row
+  const [round, setRound] = useState('')
+  const [classification, setClassification] = useState('')
+  const [meetCategory, setMeetCategory] = useState('')
+  const [finaMin, setFinaMin] = useState('')
   const [limit, setLimit] = useState(50)
 
   // report selection
@@ -100,12 +106,13 @@ export default function Reports() {
 
   useEffect(() => {
     let alive = true
-    Promise.allSettled([getCountries(), getEvents({ has_results: true })]).then(([cRes, eRes]) => {
+    Promise.allSettled([getCountries(), getEvents({ has_results: true }), getClassifications()]).then(([cRes, eRes, clRes]) => {
       if (!alive) return
       const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
       const list = (d) => (Array.isArray(d) ? d : d?.results || [])
       setCountries(list(val(cRes)))
       setEvents(list(val(eRes)))
+      setClassifications(list(val(clRes)))
     })
     return () => { alive = false }
   }, [])
@@ -151,9 +158,13 @@ export default function Reports() {
     if (ageMin) p.age_min = ageMin
     if (ageMax) p.age_max = ageMax
     if (championship) p.championship = championship.id
+    if (round) p.round = round
+    if (classification) p.classification = classification
+    if (meetCategory) p.meet_category = meetCategory
+    if (finaMin) p.fina_min = finaMin
     p.limit = limit
     return p
-  }, [dateFrom, dateTo, country, hostCountry, team, event, pool, gender, ageMin, ageMax, championship, limit])
+  }, [dateFrom, dateTo, country, hostCountry, team, event, pool, gender, ageMin, ageMax, championship, round, classification, meetCategory, finaMin, limit])
 
   useEffect(() => {
     let alive = true
@@ -170,10 +181,11 @@ export default function Reports() {
     return () => { alive = false }
   }, [tab, medalGroup, partGroup, recordGroup, recordType, bestPerSwimmer, perEvent, params])
 
-  const hasFilters = dateFrom || dateTo || country || hostCountry || team || teamInput || event || pool || gender || ageMin || ageMax || championship
+  const hasFilters = dateFrom || dateTo || country || hostCountry || team || teamInput || event || pool || gender || ageMin || ageMax || championship || round || classification || meetCategory || finaMin
   const clearFilters = () => {
     setDateFrom(''); setDateTo(''); setCountry(''); setHostCountry(''); setTeam(''); setTeamInput('')
     setEvent(''); setPool(''); setGender(''); setAgeMin(''); setAgeMax(''); setChampionship(null)
+    setRound(''); setClassification(''); setMeetCategory(''); setFinaMin('')
     setAskSummary('')
   }
 
@@ -329,6 +341,27 @@ export default function Reports() {
             onChange={(e) => setLimit(Number(e.target.value))}>
             {[...new Set([...LIMITS, limit])].sort((a, b) => a - b).map((n) => <option key={n} value={n}>Top {n}</option>)}
           </select>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select className="select" style={selStyle} value={round} onChange={(e) => setRound(e.target.value)}>
+            <option value="">All rounds</option>
+            <option value="Finals">Finals</option>
+            <option value="Consolation">B Final</option>
+            <option value="Semifinals">Semifinals</option>
+            <option value="Prelims">Prelims</option>
+            <option value="Heats">Heats</option>
+          </select>
+          <select className="select" style={selStyle} value={classification} onChange={(e) => setClassification(e.target.value)}>
+            <option value="">All classifications</option>
+            {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <Seg
+            options={[{ value: '', label: 'All meets' }, { value: 'OPEN', label: 'Open' }, { value: 'AGE_GROUP', label: 'Age Group' }]}
+            value={meetCategory}
+            onChange={setMeetCategory}
+          />
+          <input className="input" type="number" min="0" max="1200" style={{ ...inputStyle, flex: '0 1 120px' }}
+            placeholder="Min FINA pts" value={finaMin} onChange={(e) => setFinaMin(e.target.value)} />
         </div>
         {championship && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>

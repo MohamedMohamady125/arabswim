@@ -109,6 +109,8 @@ def normalize_swimmer_name(text):
     """
     if not text or not isinstance(text, str):
         return text or ''
+    # Strip rank/DQ/DNS prefixes that slipped through parsing
+    text = re.sub(r'^-{2,}\s*', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
     if not text:
         return ''

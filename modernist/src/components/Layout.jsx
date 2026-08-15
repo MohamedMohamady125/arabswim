@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { Menu, Search, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
@@ -223,7 +223,11 @@ function Footer() {
 
 export default function Layout() {
   const location = useLocation()
-  useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
+  const navigationType = useNavigationType()
+  // Only scroll to top on forward navigation (PUSH), not back/forward (POP)
+  useEffect(() => {
+    if (navigationType !== 'POP') window.scrollTo(0, 0)
+  }, [location.pathname, navigationType])
   return (
     <div className="shell">
       <Header />

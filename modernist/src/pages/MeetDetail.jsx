@@ -2342,9 +2342,9 @@ export default function MeetDetail() {
   const [editing, setEditing] = useState(false)
   const [comparing, setComparing] = useState(false)
 
-  const rawTab = searchParams.get('tab') || 'results'
-  const tab = ['results', 'program', 'medals', 'records', 'pbs', 'top', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'results'
-  const setTab = (t) => setSearchParams({ tab: t }, { replace: false })
+  const rawTab = searchParams.get('tab') || 'statistics'
+  const tab = ['results', 'program', 'medals', 'records', 'pbs', 'top', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'statistics'
+  const setTab = (t) => setSearchParams({ tab: t }, { replace: true })
 
   const refreshStats = () => {
     getChampionshipStats(id).then((res) => setStats(res.data)).catch(() => {})
@@ -2381,22 +2381,16 @@ export default function MeetDetail() {
           {/* minWidth 0 keeps the title beside the logo on phones; long names
               scale down instead of wrapping to three lines */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="kicker" style={{ marginBottom: 6 }}>
-              {meet.classification_name || 'Championship'}
-              {meet.sub_classification_name ? ` · ${meet.sub_classification_name}` : ''}
-            </div>
             <h1 className={`meet-title${(meet.name || '').length > 38 ? ' meet-title-long' : ''}`}
               style={{ margin: 0, letterSpacing: '-0.03em' }}>{meet.name}</h1>
             <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8 }}>
-              {meet.location}
-              {meet.country_detail ? `${meet.location ? ', ' : ''}${meet.country_detail.name}` : ''}
+              {meet.country_detail?.name || ''}
               {' · '}{formatDateRange(meet.date, meet.end_date)}
               {' · '}<span className="tag tag-dark" style={{ verticalAlign: 'middle' }}>{meet.pool}</span>
               {meet.is_live && <>{' '}{LIVE_BADGE}</>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => setTab('gallery')}>Gallery</button>
             {isAdmin && (
               <>
                 <button type="button" className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>
@@ -2463,14 +2457,14 @@ export default function MeetDetail() {
         <Seg
           tabs
           options={[
+            { value: 'statistics', label: 'Overview' },
             { value: 'results', label: 'Results' },
-            { value: 'program', label: 'Program' },
             { value: 'medals', label: 'Medals' },
             { value: 'records', label: 'Broken Records' },
             { value: 'pbs', label: 'Personal Bests' },
             { value: 'top', label: 'Top Performances' },
-            { value: 'statistics', label: 'Overview' },
             { value: 'improved', label: 'Most Improved' },
+            { value: 'program', label: 'Program' },
             { value: 'compare', label: 'Compare' },
           ]}
           value={tab}

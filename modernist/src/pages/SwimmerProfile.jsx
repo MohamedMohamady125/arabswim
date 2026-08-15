@@ -788,7 +788,7 @@ export default function SwimmerProfile() {
   const { isAdmin, isAuthed, mySwimmerId, refreshUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') || 'overall'
-  const setActiveTab = (tab) => setSearchParams({ tab })
+  const setActiveTab = (tab) => setSearchParams({ tab }, { replace: true })
 
   const [swimmer, setSwimmer] = useState(null)
   const [claimOpen, setClaimOpen] = useState(false)

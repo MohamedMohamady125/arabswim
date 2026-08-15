@@ -84,7 +84,7 @@ export default function App() {
         <Route path="/media/albums/:id" element={<RequireFeature flag="media"><Album /></RequireFeature>} />
         <Route path="/market" element={<RequireFeature flag="marketplace"><Market /></RequireFeature>} />
         <Route path="/countries" element={<Countries />} />
-        <Route path="/reports" element={<Reports />} />
+        <Route path="/reports" element={<RequireAdmin><Reports /></RequireAdmin>} />
         <Route path="/countries/:id" element={<CountryProfile />} />
         <Route path="*" element={<div className="empty">Page not found</div>} />
       </Route>

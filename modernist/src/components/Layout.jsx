@@ -18,10 +18,11 @@ function useNav() {
   const { isAdmin } = useAuth()
   const { features } = useFeatures()
   if (isAdmin) return NAV
+  const ADMIN_ONLY = new Set(['/reports'])
   return NAV
     .map((group) => ({
       ...group,
-      links: group.links.filter(([, to]) => features[FEATURE_PATHS[to]] !== false),
+      links: group.links.filter(([, to]) => !ADMIN_ONLY.has(to) && features[FEATURE_PATHS[to]] !== false),
     }))
     .filter((group) => group.links.length > 0)
 }

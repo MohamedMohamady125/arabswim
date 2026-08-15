@@ -149,9 +149,9 @@ export default function QualifyingTimes() {
         <Empty label="No qualifying standards published" />
       ) : (
         <>
-          {/* filter bar: standard tabs on top, gender/pool segments below */}
-          <div className="rule-b records-filters" style={{ padding: '10px 32px', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Competition selector — big and prominent */}
+          <div className="rule-b" style={{ padding: '20px 32px' }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
               {standards.map((s) => {
                 const active = s.id === selectedId
                 return (
@@ -160,13 +160,15 @@ export default function QualifyingTimes() {
                     type="button"
                     onClick={() => setSelectedId(s.id)}
                     style={{
-                      cursor: 'pointer', whiteSpace: 'nowrap',
-                      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14,
-                      padding: '9px 16px', lineHeight: 1.2,
-                      background: active ? 'var(--color-accent-800)' : 'var(--color-bg)',
-                      color: active ? '#fff' : 'var(--color-accent-800)',
-                      border: `1px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
-                      borderBottom: active ? '3px solid var(--asw-gold)' : '1px solid var(--color-neutral-300)',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-heading)', fontWeight: 800,
+                      fontSize: active ? 22 : 15,
+                      padding: 0, lineHeight: 1.2,
+                      background: 'none', border: 'none',
+                      color: active ? 'var(--color-accent-800)' : 'var(--color-neutral-500)',
+                      borderBottom: active ? '3px solid var(--asw-gold)' : '3px solid transparent',
+                      paddingBottom: 4,
+                      transition: 'font-size 0.15s ease, color 0.15s ease',
                     }}
                   >
                     {s.name}

@@ -173,7 +173,7 @@ export default function Medals() {
                 <th className="num"><MedalIcon type="GOLD" size={16} /></th>
                 <th className="num"><MedalIcon type="SILVER" size={16} /></th>
                 <th className="num"><MedalIcon type="BRONZE" size={16} /></th>
-                <th className="num">Σ</th>
+                <th className="num">Total</th>
               </tr>
             </thead>
             <tbody>

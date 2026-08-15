@@ -286,7 +286,7 @@ export default function CountryProfile() {
                 ['G', medals.gold, 'var(--asw-gold)'],
                 ['S', medals.silver, 'var(--asw-silver)'],
                 ['B', medals.bronze, 'var(--asw-bronze)'],
-                ['Σ', medals.total, 'var(--color-text)'],
+                ['T', medals.total, 'var(--color-text)'],
               ].map(([l, n, color]) => (
                 <span key={l} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
                   <span className="micro">{l}</span>
@@ -386,7 +386,7 @@ export default function CountryProfile() {
                     <th className="num">G</th>
                     <th className="num">S</th>
                     <th className="num">B</th>
-                    <th className="num">Σ</th>
+                    <th className="num">Total</th>
                   </tr>
                 </thead>
                 <tbody>

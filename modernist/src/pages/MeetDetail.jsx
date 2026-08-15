@@ -1201,7 +1201,7 @@ function MedalsTab({ meetId, isNational }) {
                       <th className="num">G</th>
                       <th className="num">S</th>
                       <th className="num">B</th>
-                      <th className="num">Σ</th>
+                      <th className="num">Total</th>
                     </tr>
                   </thead>
                   <tbody>

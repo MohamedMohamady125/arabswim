@@ -2383,11 +2383,11 @@ export default function MeetDetail() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 className={`meet-title${(meet.name || '').length > 38 ? ' meet-title-long' : ''}`}
               style={{ margin: 0, letterSpacing: '-0.03em' }}>{meet.name}</h1>
-            <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8 }}>
-              {meet.country_detail?.name || ''}
-              {' · '}{formatDateRange(meet.date, meet.end_date)}
-              {' · '}<span className="tag tag-dark" style={{ verticalAlign: 'middle' }}>{meet.pool}</span>
-              {meet.is_live && <>{' '}{LIVE_BADGE}</>}
+            <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span>{formatDateRange(meet.date, meet.end_date)}</span>
+              <span className="tag tag-dark" style={{ fontSize: 10 }}>{meet.pool}</span>
+              {meet.country_detail && <><span style={{ color: 'var(--color-neutral-400)' }}>·</span><span>{meet.country_detail.name}</span></>}
+              {meet.is_live && LIVE_BADGE}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

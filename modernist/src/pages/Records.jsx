@@ -121,7 +121,7 @@ function RecordTable({ rows }) {
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {r.swimmerName}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-neutral-700)', marginTop: 1 }}>
                 {r.eventName}
               </div>
             </div>

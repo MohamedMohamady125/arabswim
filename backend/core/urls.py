@@ -6,6 +6,7 @@ router = DefaultRouter()
 router.register(r'countries', views.CountryViewSet)
 router.register(r'events', views.EventViewSet)
 router.register(r'claims', views.ProfileClaimViewSet, basename='claims')
+router.register(r'photo-requests', views.PhotoRequestViewSet, basename='photo-requests')
 
 urlpatterns = [
     path('auth/me/', views.me, name='auth-me'),

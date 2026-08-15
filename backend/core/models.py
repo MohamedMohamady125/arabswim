@@ -48,6 +48,29 @@ class ProfileClaim(models.Model):
         return f'{self.user} → {self.swimmer} ({self.status})'
 
 
+def photo_request_path(instance, filename):
+    import uuid
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'jpg'
+    return f'photo_requests/{uuid.uuid4().hex}.{ext}'
+
+
+class PhotoRequest(models.Model):
+    """Athlete submits a new profile photo; admin approves or rejects."""
+    STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('DECLINED', 'Declined')]
+    swimmer = models.ForeignKey('swimmers.Swimmer', on_delete=models.CASCADE, related_name='photo_requests')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='photo_requests')
+    photo = models.ImageField(upload_to=photo_request_path)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.swimmer.name} photo ({self.status})'
+
+
 class SiteFeature(models.Model):
     """Launch toggles: admin can hide whole site sections until they're ready."""
     key = models.CharField(max_length=40, unique=True)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getClaims, approveClaim, declineClaim } from '../api/claims'
+import { getClaims, approveClaim, declineClaim, getPhotoRequests, approvePhotoRequest, rejectPhotoRequest, bulkApprovePhotos, bulkRejectPhotos } from '../api/claims'
 import { createOrgAccount, getCountries, updateFeatures } from '../api/core'
 import { useFeatures } from '../context/FeaturesContext'
 import { getTeams } from '../api/teams'
@@ -253,6 +253,91 @@ function SiteFeatures() {
   )
 }
 
+function PhotoQueue() {
+  const [requests, setRequests] = useState(null)
+  const [selected, setSelected] = useState(new Set())
+
+  const load = () => {
+    getPhotoRequests({ status: 'PENDING' })
+      .then((res) => setRequests(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setRequests([]))
+  }
+  useEffect(load, [])
+
+  const toggle = (id) => setSelected((prev) => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  const approveOne = async (id) => {
+    await approvePhotoRequest(id)
+    setRequests((prev) => prev.filter((r) => r.id !== id))
+    setSelected((prev) => { const n = new Set(prev); n.delete(id); return n })
+  }
+
+  const rejectOne = async (id) => {
+    await rejectPhotoRequest(id)
+    setRequests((prev) => prev.filter((r) => r.id !== id))
+    setSelected((prev) => { const n = new Set(prev); n.delete(id); return n })
+  }
+
+  const bulkApprove = async () => {
+    if (!selected.size) return
+    await bulkApprovePhotos([...selected])
+    setSelected(new Set())
+    load()
+  }
+
+  const bulkReject = async () => {
+    if (!selected.size) return
+    await bulkRejectPhotos([...selected])
+    setSelected(new Set())
+    load()
+  }
+
+  if (!requests) return <Loading label="Loading photo requests" />
+  if (requests.length === 0) return <Empty label="No pending photo requests" />
+
+  return (
+    <div>
+      {selected.size > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>{selected.size} selected</span>
+          <button className="btn btn-primary" style={{ height: 30, fontSize: 12 }} onClick={bulkApprove}>Approve all</button>
+          <button className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} onClick={bulkReject}>Reject all</button>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set())}>Clear</button>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set(requests.map((r) => r.id)))}>Select all</button>
+        </div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+        {requests.map((r) => (
+          <div key={r.id} style={{
+            border: selected.has(r.id) ? '2px solid var(--color-accent)' : '1px solid var(--color-divider)',
+            background: 'var(--color-surface)', overflow: 'hidden', cursor: 'pointer',
+          }}>
+            <div onClick={() => toggle(r.id)} style={{ position: 'relative' }}>
+              <img src={mediaUrl(r.photo)} alt="" style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover', display: 'block' }} />
+              {selected.has(r.id) && (
+                <div style={{ position: 'absolute', top: 6, left: 6, width: 20, height: 20, background: 'var(--color-accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>✓</div>
+              )}
+            </div>
+            <div style={{ padding: '6px 8px' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>
+              </div>
+              <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                <button className="btn btn-primary" style={{ flex: 1, height: 24, fontSize: 10, padding: 0 }} onClick={() => approveOne(r.id)}>✓</button>
+                <button className="btn btn-secondary" style={{ flex: 1, height: 24, fontSize: 10, padding: 0 }} onClick={() => rejectOne(r.id)}>✕</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   return (
     <div>
@@ -273,6 +358,10 @@ export default function AdminDashboard() {
       <div className="pad rule-b">
         <SectHead title="Pending Profile Claims" />
         <ClaimsQueue />
+      </div>
+      <div className="pad rule-b">
+        <SectHead title="Photo Change Requests" />
+        <PhotoQueue />
       </div>
       <div className="pad">
         <SectHead title="Create Club / Federation Account" />

@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
 from django.conf import settings as django_settings
-from .models import Country, Event, ProfileClaim, SiteFeature
+from .models import Country, Event, ProfileClaim, PhotoRequest, SiteFeature
 from .permissions import IsAdmin, is_admin
 from .serializers import (
     UserSerializer, CountrySerializer, EventSerializer,
@@ -229,6 +229,128 @@ def _send_claim_email(claim, approved):
         logger.info('Claim %s email sent to %s (claim #%s)', 'approval' if approved else 'decline', email, claim.pk)
     except Exception:
         logger.warning('Failed to send claim email to %s (claim #%s)', email, claim.pk, exc_info=True)
+
+
+class PhotoRequestViewSet(viewsets.ModelViewSet):
+    """Athletes submit profile photo changes; admin approves/rejects in bulk."""
+    queryset = PhotoRequest.objects.select_related('swimmer', 'user')
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def get_permissions(self):
+        if self.action in ('create',):
+            return [permissions.IsAuthenticated()]
+        return [IsAdmin()]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param.upper())
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        if not user.swimmer_id:
+            return Response({'error': 'You must claim a profile first'}, status=400)
+        photo = request.FILES.get('photo')
+        if not photo:
+            return Response({'error': 'No photo provided'}, status=400)
+        from core.uploads import validate_image
+        err = validate_image(photo)
+        if err:
+            return Response({'error': err}, status=400)
+        # Cancel any existing pending request
+        PhotoRequest.objects.filter(swimmer_id=user.swimmer_id, status='PENDING').update(status='DECLINED')
+        pr = PhotoRequest.objects.create(swimmer_id=user.swimmer_id, user=user, photo=photo)
+        return Response({
+            'id': pr.id, 'status': 'PENDING',
+            'message': 'Photo submitted for review — you will be notified when it is approved.',
+        }, status=201)
+
+    def list(self, request):
+        qs = self.filter_queryset(self.get_queryset())
+        data = []
+        for pr in qs:
+            data.append({
+                'id': pr.id,
+                'swimmer_id': pr.swimmer_id,
+                'swimmer_name': pr.swimmer.name,
+                'user_email': pr.user.email,
+                'photo': pr.photo.url if pr.photo else '',
+                'status': pr.status,
+                'created_at': pr.created_at.isoformat(),
+            })
+        return Response(data)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        pr = self.get_object()
+        if pr.status != 'PENDING':
+            return Response({'error': 'Already reviewed'}, status=400)
+        pr.status = 'APPROVED'
+        pr.reviewed_at = timezone.now()
+        pr.save(update_fields=['status', 'reviewed_at'])
+        # Apply the photo to the swimmer profile
+        from swimmers.models import Swimmer
+        swimmer = pr.swimmer
+        swimmer.photo = pr.photo
+        swimmer.save(update_fields=['photo'])
+        return Response({'status': 'approved', 'swimmer_name': swimmer.name})
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        pr = self.get_object()
+        if pr.status != 'PENDING':
+            return Response({'error': 'Already reviewed'}, status=400)
+        pr.status = 'DECLINED'
+        pr.reviewed_at = timezone.now()
+        pr.save(update_fields=['status', 'reviewed_at'])
+        # Email the athlete
+        email = pr.user.email
+        if email:
+            base = django_settings.FRONTEND_URL
+            try:
+                send_mail(
+                    f'Photo update declined for {pr.swimmer.name}',
+                    f'Hi {pr.user.first_name or pr.user.username},\n\n'
+                    f'Your photo update for "{pr.swimmer.name}" was declined. '
+                    f'Please upload a clear, appropriate photo.\n\n'
+                    f'You can try again at: {base}/swimmers/{pr.swimmer_id}\n\n'
+                    f'— Arab Swim',
+                    django_settings.DEFAULT_FROM_EMAIL, [email])
+            except Exception:
+                pass
+        return Response({'status': 'declined'})
+
+    @action(detail=False, methods=['post'], url_path='bulk-approve')
+    def bulk_approve(self, request):
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'error': 'No ids provided'}, status=400)
+        from swimmers.models import Swimmer
+        approved = 0
+        for pr in PhotoRequest.objects.filter(id__in=ids, status='PENDING').select_related('swimmer'):
+            pr.status = 'APPROVED'
+            pr.reviewed_at = timezone.now()
+            pr.save(update_fields=['status', 'reviewed_at'])
+            pr.swimmer.photo = pr.photo
+            pr.swimmer.save(update_fields=['photo'])
+            approved += 1
+        return Response({'approved': approved})
+
+    @action(detail=False, methods=['post'], url_path='bulk-reject')
+    def bulk_reject(self, request):
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'error': 'No ids provided'}, status=400)
+        rejected = 0
+        for pr in PhotoRequest.objects.filter(id__in=ids, status='PENDING').select_related('swimmer', 'user'):
+            pr.status = 'DECLINED'
+            pr.reviewed_at = timezone.now()
+            pr.save(update_fields=['status', 'reviewed_at'])
+            rejected += 1
+        return Response({'rejected': rejected})
 
 
 @api_view(['GET'])

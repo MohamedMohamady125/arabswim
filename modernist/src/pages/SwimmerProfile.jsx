@@ -12,7 +12,7 @@ import {
   getSwimmerRankings,
   getSwimmerTransferHistory,
 } from '../api/swimmers'
-import { createClaim, getMyClaims } from '../api/claims'
+import { createClaim, getMyClaims, submitPhotoRequest } from '../api/claims'
 import { getCountries } from '../api/core'
 import { getHeldRecords } from '../api/records'
 import { useAuth } from '../context/AuthContext'
@@ -96,6 +96,8 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const [photoSubmitted, setPhotoSubmitted] = useState(false)
+
   const submit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -105,7 +107,8 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
       if (photo) {
         const fd = new FormData()
         fd.append('photo', photo)
-        await uploadSwimmerPhoto(swimmer.id, fd)
+        await submitPhotoRequest(fd)
+        setPhotoSubmitted(true)
       }
       onSaved()
     } catch (err) {
@@ -129,11 +132,19 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
         {error && (
           <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
         )}
+        {photoSubmitted && (
+          <div style={{ border: '1px solid var(--asw-fast)', color: 'var(--asw-fast)', padding: '10px 12px', fontSize: 13 }}>
+            Photo submitted for review — it will appear once approved by an admin.
+          </div>
+        )}
         <label style={{ display: 'block' }}>
           <div className="card-kicker" style={{ marginBottom: 4 }}>Profile photo</div>
+          <div className="micro" style={{ marginBottom: 4, color: 'var(--color-neutral-700)', textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
+            Photo changes require admin approval
+          </div>
           <input className="input" type="file" accept="image/jpeg,image/png,image/webp"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
-          {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready</div>}
+          {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready — will be sent for review</div>}
         </label>
         {cropFile && (
           <ImageCropper file={cropFile} aspect={4 / 5}

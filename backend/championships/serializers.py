@@ -106,10 +106,36 @@ class ResultSerializer(serializers.ModelSerializer):
             split_time = leg.get('split_time', '') if isinstance(leg, dict) else ''
             swimmer_id = None
             if name:
+                # Try exact match first
                 qs = Swimmer.objects.filter(is_relay_team=False, name__iexact=name)
                 match = qs.filter(nationality_id=nat_id).first() if nat_id else None
                 if not match:
                     match = qs.first()
+                # Duplicated surname: "Billel Benyahia Benyahia" → "Billel Benyahia"
+                if not match:
+                    words = name.split()
+                    if len(words) >= 3 and words[-1].lower() == words[-2].lower():
+                        deduped = ' '.join(words[:-1])
+                        qs2 = Swimmer.objects.filter(is_relay_team=False, name__iexact=deduped)
+                        match = qs2.filter(nationality_id=nat_id).first() if nat_id else None
+                        if not match:
+                            match = qs2.first()
+                # Hyphen vs space: "Al-Sulaiti" ↔ "AL SULAITI"
+                if not match and ('-' in name or ' ' in name):
+                    alt = name.replace('-', ' ')
+                    qs3 = Swimmer.objects.filter(is_relay_team=False, name__iexact=alt)
+                    match = qs3.filter(nationality_id=nat_id).first() if nat_id else None
+                    if not match:
+                        match = qs3.first()
+                if not match and '-' not in name and ' ' in name:
+                    # Try adding hyphens: "Al Sulaiti" → "Al-Sulaiti"
+                    import re
+                    alt2 = re.sub(r'\b(Al|El)\s+', r'\1-', name, flags=re.IGNORECASE)
+                    if alt2 != name:
+                        qs4 = Swimmer.objects.filter(is_relay_team=False, name__iexact=alt2)
+                        match = qs4.filter(nationality_id=nat_id).first() if nat_id else None
+                        if not match:
+                            match = qs4.first()
                 if match:
                     swimmer_id = match.id
             result.append({'name': name, 'split_time': split_time, 'swimmer_id': swimmer_id})

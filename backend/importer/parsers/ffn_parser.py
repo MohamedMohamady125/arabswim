@@ -135,7 +135,8 @@ def _reorder_ffn_name(name):
 
     FFN result lines put the surname first in all caps followed by the
     given name in mixed case. Reorder to the site-wide 'Given SURNAME'
-    convention. Names without a mixed-case part are left untouched.
+    convention. For all-caps names (e.g. Arab names like 'MOHAMED ALI'),
+    move the first word to the end since FFN always puts surname first.
     """
     # Some lines glue surname and given name ('MOLUMary-Ambre'): insert a
     # space where an all-caps run meets a TitleCase word
@@ -147,6 +148,10 @@ def _reorder_ffn_name(name):
         i += 1
     if 0 < i < len(tokens):
         return ' '.join(tokens[i:] + tokens[:i])
+    # All tokens uppercase (e.g. "MELI AMEL"): FFN always puts surname
+    # first, so move the first token to the end
+    if i == len(tokens) and len(tokens) >= 2:
+        return ' '.join(tokens[1:] + tokens[:1])
     return name
 
 

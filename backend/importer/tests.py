@@ -2276,10 +2276,11 @@ class FFNNameReorderTests(TestCase):
         self.assertEqual(_reorder_ffn_name('GASTALDELLO Béryl'),
                          'Béryl GASTALDELLO')
 
-    def test_all_caps_name_unchanged(self):
+    def test_all_caps_name_flipped(self):
         from importer.parsers.ffn_parser import _reorder_ffn_name
-        # No TitleCase given name to move — leave as-is
-        self.assertEqual(_reorder_ffn_name('MOHAMED ALI'), 'MOHAMED ALI')
+        # FFN is always surname-first; all-caps → move first word to end
+        self.assertEqual(_reorder_ffn_name('MELI AMEL'), 'AMEL MELI')
+        self.assertEqual(_reorder_ffn_name('MOHAMED ALI'), 'ALI MOHAMED')
 
 
 class SurnameCapsTests(SimpleTestCase):
@@ -3127,7 +3128,7 @@ class EgyptVariantMatcherTests(TestCase):
         self.assertEqual(mtype, 'variant')
         s.refresh_from_db()
         # Fullest spelling kept, variant remembered as alias
-        self.assertEqual(s.name, 'Mohamed Hany Elsayed Ahmed Mohamady')
+        self.assertEqual(s.name, 'Mohamed HANY ELSAYED AHMED MOHAMADY')
         self.assertIn('Mohamed Hany Mohamady',
                       list(s.nicknames.values_list('nickname', flat=True)))
 
@@ -3150,7 +3151,7 @@ class EgyptVariantMatcherTests(TestCase):
             'Mohamed Hany Elsayed Ahmed Mohamady', birth_year=2008))
         self.assertEqual(m, s)
         s.refresh_from_db()
-        self.assertEqual(s.name, 'Mohamed Hany Elsayed Ahmed Mohamady')
+        self.assertEqual(s.name, 'Mohamed HANY ELSAYED AHMED MOHAMADY')
         self.assertIn('Mohamed Hany Mohamady',
                       list(s.nicknames.values_list('nickname', flat=True)))
 

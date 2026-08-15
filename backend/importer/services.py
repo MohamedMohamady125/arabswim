@@ -123,6 +123,59 @@ def normalize_swimmer_name(text):
     return uppercase_surname(normalize_name(text))
 
 
+def detect_and_fix_name_order(preview_data):
+    """Smart name-order detection: when the parser can't tell if names are
+    surname-first or given-first (e.g. all-caps Arab names), compare them
+    against existing swimmers in the DB.
+
+    If more existing swimmers match the flipped version than the original,
+    flip all names in the preview. This runs once after parsing, before
+    the user sees the preview.
+    """
+    from swimmers.models import Swimmer
+    results = []
+    for ev in preview_data.get('events', []):
+        results.extend(ev.get('results', []))
+    if not results:
+        return preview_data
+
+    # Collect names that are all-caps (ambiguous order)
+    ambiguous = []
+    for r in results:
+        name = r.get('swimmer_name', '')
+        if not name:
+            continue
+        words = name.split()
+        if len(words) >= 2 and all(w == w.upper() for w in words if any(c.isalpha() for c in w)):
+            ambiguous.append(name)
+
+    if not ambiguous:
+        return preview_data
+
+    # Sample up to 30 ambiguous names — check if original or flipped matches more DB swimmers
+    sample = list(set(ambiguous))[:30]
+    original_hits = 0
+    flipped_hits = 0
+    for name in sample:
+        words = name.split()
+        flipped = ' '.join(words[1:] + words[:1])  # move first word to end
+        if Swimmer.objects.filter(name__iexact=name, is_relay_team=False).exists():
+            original_hits += 1
+        if Swimmer.objects.filter(name__iexact=flipped, is_relay_team=False).exists():
+            flipped_hits += 1
+
+    if flipped_hits > original_hits and flipped_hits >= 2:
+        # Flip all ambiguous names (all-caps multi-word)
+        for ev in preview_data.get('events', []):
+            for r in ev.get('results', []):
+                name = r.get('swimmer_name', '')
+                words = name.split()
+                if len(words) >= 2 and all(w == w.upper() for w in words if any(c.isalpha() for c in w)):
+                    r['swimmer_name'] = ' '.join(words[1:] + words[:1])
+
+    return preview_data
+
+
 def normalize_club_name(text):
     """Normalize a club/team name: clean whitespace, keep original casing.
 
@@ -514,7 +567,7 @@ def _build_preview(parsed_meet):
         })
     program.sort(key=lambda p: p['date'])
 
-    return {
+    preview = {
         'meet': {
             'name': parsed_meet.meet_name,
             'location': parsed_meet.location,
@@ -537,6 +590,9 @@ def _build_preview(parsed_meet):
         'program': program,
         'name_repair': getattr(parsed_meet, '_name_repair', None),
     }
+    # Smart name-order detection: if the parser left all-caps names
+    # ambiguous, compare against the DB to decide whether to flip.
+    return detect_and_fix_name_order(preview)
 
 
 # Parsed round_type -> ProgramItem.session value

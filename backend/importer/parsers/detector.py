@@ -121,6 +121,9 @@ def _parse_pdf(file_path, filename=''):
         # Stream order keeps each result line intact.
         full_text = _extract_text_flow(file_path)
         meet = ffn_parser.parse(full_text)
+    elif nat2i_parser.detect_format(detect_text):
+        full_text = _extract_simple(file_path)
+        meet = nat2i_parser.parse_text(full_text)
     else:
         simple_text = _extract_simple(file_path)
         # Try each parser and pick the one that extracts the most results

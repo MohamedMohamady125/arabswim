@@ -109,9 +109,165 @@ def _nat2i_normalize_name(name):
 
 
 def detect_format(text):
-    """Check if this is Nat'2i HTML format."""
+    """Check if this is Nat'2i format (HTML or PDF-extracted text)."""
     t = text.lower()
-    return "nat'2i" in t or ('place' in t and 'nom' in t and 'naissance' in t and '<table' in t)
+    if "nat'2i" in t or 'nat2i' in t:
+        return True
+    return 'place' in t and 'nom' in t and 'naissance' in t and '<table' in t
+
+
+# Result line in PDF text: "1. BENKHELIL Farah TUN 1998 TUNISIE 57.68 842 27.84 (50 m)"
+_PDF_RESULT = re.compile(
+    r'^(\d+)\.\s+'                          # rank (1.)
+    r'(.+?)\s+'                             # name
+    r'([A-Z]{3})\s+'                        # nationality code
+    r'(\d{4})\s+'                           # birth year
+    r'(\S+(?:\s+\S+)*?)\s+'                 # club (country name like TUNISIE, ALGERIE)
+    r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})'  # time
+    r'(?:\s+(\d+))?'                        # optional points
+)
+
+# Round header in PDF text: "Finale A" or "Séries"
+_PDF_ROUND = re.compile(r'^(Finale\s*[A-Z]?|Séries|Demi-Finales?)', re.IGNORECASE)
+
+
+def parse_text(text):
+    """Parse Nat'2i PDF-extracted plain text into a ParsedMeet."""
+    from .base import extract_date_and_location
+
+    meet = ParsedMeet(source_format='nat2i')
+    lines = text.split('\n')
+
+    # Extract meet name from first line (skip date-only lines)
+    for line in lines[:5]:
+        line = line.strip()
+        if not line:
+            continue
+        if re.match(r'^\d{2}/\d{2}/\d{4}', line):
+            continue
+        if 'programme' in line.lower() or "nat'" in line.lower() or 'nat2i' in line.lower():
+            continue
+        meet.meet_name = line
+        break
+
+    # Extract date
+    for line in lines[:10]:
+        dm = re.search(r'(\d{2})/(\d{2})/(\d{4})', line)
+        if dm:
+            meet.date_text = f'{dm.group(3)}-{dm.group(2)}-{dm.group(1)}'
+            # Look for end date
+            dates = re.findall(r'(\d{2})/(\d{2})/(\d{4})', line)
+            if len(dates) >= 2:
+                meet.date_end = f'{dates[-1][2]}-{dates[-1][1]}-{dates[-1][0]}'
+            break
+
+    # Extract location
+    for line in lines[:5]:
+        loc = re.search(r'PISCINE\s+(.+)', line, re.IGNORECASE)
+        if loc:
+            meet.location = loc.group(1).strip().rstrip(' -')
+            break
+
+    current_event = None
+    current_round = 'Finals'
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        # Event header: "100 m NAGE LIBRE Dames Classement"
+        em = EVENT_TITLE.search(line)
+        if not em:
+            em = RELAY_TITLE.search(line)
+        if em:
+            groups = em.groups()
+            if len(groups) == 3:
+                distance = int(groups[0])
+                stroke_text = groups[1]
+                gender_text = groups[2]
+                is_relay = False
+            else:
+                distance = int(groups[0]) * int(groups[1])
+                stroke_text = groups[2]
+                gender_text = groups[3]
+                is_relay = True
+            stroke = normalize_stroke(stroke_text)
+            gender = detect_gender(gender_text)
+            event_name = normalize_event_name(distance, stroke, is_relay)
+            current_round = 'Finals'  # reset for new event
+            current_event = ParsedEvent(
+                event_name=event_name,
+                distance=distance,
+                stroke=stroke,
+                gender=gender,
+                round_type=current_round,
+            )
+            meet.events.append(current_event)
+            continue
+
+        # Round header
+        rm = _PDF_ROUND.match(line)
+        if rm:
+            rt = rm.group(1).lower()
+            if 'série' in rt or 'serie' in rt:
+                current_round = 'Prelims'
+            elif 'demi' in rt:
+                current_round = 'Semifinals'
+            else:
+                r_letter = re.search(r'finale\s*([a-z])', rt)
+                if r_letter and r_letter.group(1) != 'a':
+                    current_round = 'Consolation'
+                else:
+                    current_round = 'Finals'
+            # Update current event or create sibling
+            if current_event and current_event.round_type != current_round:
+                if current_event.results:
+                    current_event = ParsedEvent(
+                        event_name=current_event.event_name,
+                        distance=current_event.distance,
+                        stroke=current_event.stroke,
+                        gender=current_event.gender,
+                        round_type=current_round,
+                    )
+                    meet.events.append(current_event)
+                else:
+                    current_event.round_type = current_round
+            continue
+
+        # Result line
+        rl = _PDF_RESULT.match(line)
+        if rl and current_event:
+            rank = int(rl.group(1))
+            name = _nat2i_normalize_name(rl.group(2).strip())
+            nat_code = rl.group(3)
+            birth_year = int(rl.group(4))
+            club = rl.group(5).strip()
+            time_text = rl.group(6)
+            points = int(rl.group(7)) if rl.group(7) else 0
+            time_cs = parse_time_to_centiseconds(time_text)
+
+            # Extract split times from the rest of the line
+            split_times = []
+            splits_part = line[rl.end():]
+            for sm in re.finditer(r'(\d+(?::\d{2})?\.\d{2})\s*\((\d+)\s*m\)', splits_part):
+                split_times.append(f'{sm.group(2)}m: {sm.group(1)}')
+
+            current_event.results.append(ParsedResult(
+                rank=rank,
+                swimmer_name=name,
+                nationality_code=nat_code,
+                time_text=time_text,
+                time_centiseconds=time_cs,
+                birth_year=birth_year,
+                club=club,
+                fina_points=points,
+                split_times=split_times,
+            ))
+
+    # Remove empty events
+    meet.events = [e for e in meet.events if e.results]
+    return meet
 
 
 def parse(html_content):

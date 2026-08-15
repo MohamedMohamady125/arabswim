@@ -177,17 +177,44 @@ def _finish_import_log(preview, result):
     )
 
 
+def _infer_live_day(preview, champ):
+    """Auto-detect which meet day a file belongs to by comparing event
+    session_date values against the championship's date range."""
+    from datetime import date as _date
+    dates = []
+    for ev in preview.get('events', []):
+        sd = ev.get('session_date', '')
+        if sd and len(sd) >= 10:
+            try:
+                dates.append(_date.fromisoformat(sd[:10]))
+            except ValueError:
+                pass
+    if not dates or not champ.date:
+        return None
+    # Use the most common date in the file
+    from collections import Counter
+    most_common = Counter(dates).most_common(1)[0][0]
+    day = (most_common - champ.date).days + 1
+    return max(1, min(day, 30))
+
+
 def _record_live_session(result, preview, live_day, live_source, live_label):
     """Live-results mode: log this upload on its meet day and flip the meet
-    live. Called after a successful confirm when the frontend sent live_day."""
+    live. Called after a successful confirm when the frontend sent live_day.
+    If live_day is 'auto', infers the day from event dates in the preview."""
     from championships.models import Championship, LiveSession
-    try:
-        day = int(live_day)
-    except (TypeError, ValueError):
-        return
     champ = Championship.objects.filter(id=result.get('championship_id')).first()
     if not champ:
         return
+    if live_day == 'auto':
+        day = _infer_live_day(preview, champ)
+        if day is None:
+            day = 1  # fallback to day 1 if can't detect
+    else:
+        try:
+            day = int(live_day)
+        except (TypeError, ValueError):
+            return
     rounds = []
     for ev in preview.get('events', []):
         rt = ev.get('round_type') or ''

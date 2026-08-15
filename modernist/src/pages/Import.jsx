@@ -309,6 +309,11 @@ export default function Import() {
           payload.live_day = Number(presetLiveDay)
           payload.live_source = importMethod === 'html' ? 'LINK' : 'PDF'
           payload.live_label = m.fileName || ''
+        } else if (m.existingChampId) {
+          // Auto-detect day from file dates for any existing meet import
+          payload.live_day = 'auto'
+          payload.live_source = importMethod === 'html' ? 'LINK' : 'PDF'
+          payload.live_label = m.fileName || ''
         }
         // Run as a background job on the server — big meets (Egypt:
         // 30k-80k results) take longer than any request timeout allows.

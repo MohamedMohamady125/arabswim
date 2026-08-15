@@ -95,9 +95,9 @@ function SwimmerLink({ swimmerId, detail, isNational = true }) {
 
 // Meet-page header artwork: the meet's own logo/photo when uploaded,
 // otherwise the ArabSwim logo on a navy tile (the list page keeps flags).
-function MeetLogo({ photo, name, size = 64 }) {
+function MeetLogo({ photo, name }) {
   const [failed, setFailed] = useState(false)
-  const base = { width: size, height: size, flex: 'none', border: '1px solid var(--color-divider)' }
+  const base = { width: 72, alignSelf: 'stretch', minHeight: 72, flex: 'none', border: '1px solid var(--color-divider)' }
   if (photo && !failed) {
     return (
       <img src={mediaUrl(photo)} alt={name || ''} onError={() => setFailed(true)}
@@ -106,10 +106,10 @@ function MeetLogo({ photo, name, size = 64 }) {
   }
   return (
     <span style={{
-      ...base, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      ...base, display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'var(--color-accent-800)', borderColor: 'var(--color-accent-800)',
     }}>
-      <img src="/logo.png" alt="ArabSwim" style={{ width: size * 0.7, height: size * 0.7, objectFit: 'contain' }} />
+      <img src="/logo.png" alt="ArabSwim" style={{ width: 48, height: 48, objectFit: 'contain' }} />
     </span>
   )
 }

@@ -83,6 +83,20 @@ def uppercase_surname(name):
     return ' '.join(words[:start] + [w.upper() for w in words[start:]])
 
 
+def egyptian_name_format(name):
+    """Format an Egyptian swimmer name: first name stays as-is, ALL
+    subsequent words are uppercased.
+
+    Egyptian swimmers typically have multi-part names (father, grandfather,
+    family) and the site convention for Egypt is "Given REST ALL CAPS":
+    "Ahmed MOHAMED HASSAN EL SAYED" not "Ahmed Mohamed Hassan EL SAYED".
+    """
+    words = name.split()
+    if len(words) < 2:
+        return name
+    return words[0] + ' ' + ' '.join(w.upper() for w in words[1:])
+
+
 def normalize_swimmer_name(text):
     """Normalize a swimmer name while preserving parser-formatted surnames.
 
@@ -1407,8 +1421,13 @@ def _create_swimmer(result_data, fallback_country=None):
     if club and (club.upper() == 'LP' or not is_valid_team_name(club)):
         club = ''
 
+    name = normalize_swimmer_name(result_data['swimmer_name'])
+    # Egyptian names: first name as-is, all subsequent words UPPERCASE
+    if nationality and getattr(nationality, 'code', '') == 'EGY':
+        name = egyptian_name_format(name)
+
     swimmer = Swimmer.objects.create(
-        name=normalize_swimmer_name(result_data['swimmer_name']),
+        name=name,
         date_of_birth=None,
         birth_year=birth_year,
         nationality=nationality,

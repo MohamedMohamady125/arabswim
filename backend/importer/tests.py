@@ -2321,6 +2321,40 @@ class SurnameCapsTests(SimpleTestCase):
                          'Mohamed-Yassine BEN ABBES')
 
 
+class EgyptianNameFormatTests(SimpleTestCase):
+    """Egyptian swimmers: first name as-is, ALL subsequent words UPPERCASE."""
+
+    def test_simple_egyptian_name(self):
+        from importer.services import egyptian_name_format
+        self.assertEqual(egyptian_name_format('Ahmed Mohamed Hassan'),
+                         'Ahmed MOHAMED HASSAN')
+
+    def test_already_correct(self):
+        from importer.services import egyptian_name_format
+        self.assertEqual(egyptian_name_format('Ahmed MOHAMED HASSAN'),
+                         'Ahmed MOHAMED HASSAN')
+
+    def test_multi_part_name(self):
+        from importer.services import egyptian_name_format
+        self.assertEqual(
+            egyptian_name_format('Mohamed Hany Elsayed Ahmed Mohamady'),
+            'Mohamed HANY ELSAYED AHMED MOHAMADY')
+
+    def test_with_el_particle(self):
+        from importer.services import egyptian_name_format
+        self.assertEqual(egyptian_name_format('Aalia Mohamed El Sharkawy'),
+                         'Aalia MOHAMED EL SHARKAWY')
+
+    def test_single_word_unchanged(self):
+        from importer.services import egyptian_name_format
+        self.assertEqual(egyptian_name_format('Mohamed'), 'Mohamed')
+
+    def test_two_words(self):
+        from importer.services import egyptian_name_format
+        self.assertEqual(egyptian_name_format('Ahmed Hassan'),
+                         'Ahmed HASSAN')
+
+
 class ClubEquivalenceTests(SimpleTestCase):
     """Fuzzy club comparison so a stray extraction character doesn't split
     one athlete into two ('GRENOBLE ALP'38' vs 'GRENOBsLE ALP'38')."""

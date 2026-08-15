@@ -409,7 +409,11 @@ def _get_egy_cache():
 def _record_name_variant(swimmer, other_name):
     """Keep the fullest spelling on the profile, others as nicknames."""
     from swimmers.models import SwimmerNickname
+    from importer.services import egyptian_name_format
     fullest = pick_fullest_name([swimmer.name, other_name])
+    # Egyptian swimmers: apply "Given REST ALL CAPS" format
+    if getattr(swimmer.nationality, 'code', '') == 'EGY':
+        fullest = egyptian_name_format(fullest)
     variants = {swimmer.name, other_name}
     if fullest != swimmer.name:
         swimmer.name = fullest

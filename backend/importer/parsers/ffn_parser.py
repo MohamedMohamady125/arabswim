@@ -26,6 +26,7 @@ EVENT_HEADER = re.compile(
     r'(Dames|Messieurs|Mixte)\s*'          # gender
     r'-\s*'
     r'(Finale\s*[A-Z]?|Séries|Demi-Finales?|Barrage\s+Finales?)'  # round
+    r'(?:\s+(\d[\d\-]+\s*ans))?'           # optional age group (e.g. "10-16 ans")
     r'(?:\s*\(suite\))?'                   # optional "(suite)" continuation
     r'(?:\s*\(.*?\))?',                    # optional date in parens
     re.IGNORECASE
@@ -96,6 +97,10 @@ def _parse_round(text):
     """Convert FFN round label to standard."""
     t = text.strip().lower()
     if 'finale' in t:
+        # "Finale A" = the real final; "Finale B/C/D..." = consolation finals
+        m = re.search(r'finale\s*([a-z])', t)
+        if m and m.group(1) != 'a':
+            return 'Consolation'
         return 'Finals'
     if 'demi' in t:
         return 'Semifinals'
@@ -217,10 +222,9 @@ def parse(text):
             stroke_text = em.group(2)
             gender_text = em.group(3)
             round_text = em.group(4)
+            age_group_text = em.group(5) or ''  # e.g. "10-16 ans"
 
             is_relay = 'x' in distance_text.lower()
-            # For "200 4 Nages", distance_text is "200" and stroke_text is "4 Nages"
-            # extract_distance would wrongly pick up "4" — use distance_text directly
             try:
                 distance = int(re.sub(r'[^\d]', '', distance_text))
             except ValueError:
@@ -232,12 +236,25 @@ def parse(text):
             round_type = _parse_round(round_text)
             event_name = normalize_event_name(distance, stroke, is_relay)
 
+            # Extract session date from parentheses at end of header
+            date_match = re.search(
+                r'\((?:\w+\s+)?(\d{1,2})(?:er)?\s+'
+                r'(\w+)\s+(\d{4})\)', cleaned_line)
+            event_date = ''
+            if date_match:
+                d, mn, y = int(date_match.group(1)), date_match.group(2).lower(), int(date_match.group(3))
+                mo = FRENCH_MONTHS.get(mn, 0)
+                if mo:
+                    event_date = f'{y}-{mo:02d}-{d:02d}'
+
             current_event = ParsedEvent(
                 event_name=event_name,
                 distance=distance,
                 stroke=stroke,
                 gender=gender,
                 round_type=round_type,
+                age_group=age_group_text,
+                date_text=event_date,
             )
             meet.events.append(current_event)
             last_result = None

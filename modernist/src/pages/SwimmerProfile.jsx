@@ -18,6 +18,7 @@ import { getHeldRecords } from '../api/records'
 import { useAuth } from '../context/AuthContext'
 import Flag from '../components/Flag'
 import { Loading, Empty, Seg, Modal } from '../components/ui'
+import ImageCropper from '../components/ImageCropper'
 import { formatDate, mediaUrl } from '../utils'
 import SplitsBreakdown from '../components/swimmer/SplitsBreakdown'
 import CompareTab from '../components/swimmer/CompareTab'
@@ -91,6 +92,7 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
     facebook_url: swimmer.facebook_url || '',
   })
   const [photo, setPhoto] = useState(null)
+  const [cropFile, setCropFile] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -130,8 +132,14 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
         <label style={{ display: 'block' }}>
           <div className="card-kicker" style={{ marginBottom: 4 }}>Profile photo</div>
           <input className="input" type="file" accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
+          {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready</div>}
         </label>
+        {cropFile && (
+          <ImageCropper file={cropFile} aspect={4 / 5}
+            onDone={(f) => { setPhoto(f); setCropFile(null) }}
+            onCancel={() => setCropFile(null)} />
+        )}
         {field('Email', 'email', 'email')}
         {field('Phone', 'phone')}
         {field('Instagram URL', 'instagram_url', 'url')}
@@ -161,6 +169,7 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
   })
   const [countries, setCountries] = useState([])
   const [photo, setPhoto] = useState(null)
+  const [cropFile, setCropFile] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -259,8 +268,14 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
         <label style={{ display: 'block' }}>
           <div className="card-kicker" style={{ marginBottom: 4 }}>Profile photo</div>
           <input className="input" type="file" accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
+          {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready</div>}
         </label>
+        {cropFile && (
+          <ImageCropper file={cropFile} aspect={4 / 5}
+            onDone={(f) => { setPhoto(f); setCropFile(null) }}
+            onCancel={() => setCropFile(null)} />
+        )}
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
           <input type="checkbox" checked={form.is_retired}
             onChange={(e) => setForm({ ...form, is_retired: e.target.checked })} />

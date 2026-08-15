@@ -274,12 +274,6 @@ function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
           </div>
         </div>
         <div>
-          <div className="micro" style={{ marginBottom: 3 }}>Category</div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>
-            {c.meet_category === 'OPEN' ? 'Open' : c.meet_category === 'AGE_GROUP' ? 'Age Group' : '—'}
-          </div>
-        </div>
-        <div>
           <div className="micro" style={{ marginBottom: 3 }}>Pool</div>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{c.pool === 'SCM' ? 'Short Course (25m)' : 'Long Course (50m)'}</div>
         </div>

@@ -161,12 +161,12 @@ export default function QualifyingTimes() {
                     onClick={() => setSelectedId(s.id)}
                     style={{
                       cursor: 'pointer', whiteSpace: 'nowrap',
-                      fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5,
-                      padding: '7px 13px', lineHeight: 1,
-                      background: active ? 'var(--color-accent)' : 'var(--color-bg)',
+                      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14,
+                      padding: '9px 16px', lineHeight: 1.2,
+                      background: active ? 'var(--color-accent-800)' : 'var(--color-bg)',
                       color: active ? '#fff' : 'var(--color-accent-800)',
-                      border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-neutral-300)'}`,
-                      borderBottom: active ? '2px solid var(--asw-gold)' : '1px solid var(--color-neutral-300)',
+                      border: `1px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
+                      borderBottom: active ? '3px solid var(--asw-gold)' : '1px solid var(--color-neutral-300)',
                     }}
                   >
                     {s.name}

@@ -30,7 +30,7 @@ export default function Championships() {
     async function load() {
       try {
         const [meetsRes, countriesRes] = await Promise.allSettled([
-          getChampionships({ page_size: 500, ordering: '-date' }),
+          getChampionships({ page_size: 500, ordering: '-date', ...(isAdmin ? { include_unpublished: 1 } : {}) }),
           getCountries(),
         ])
         if (!alive) return
@@ -184,7 +184,10 @@ export default function Championships() {
                       logo/photo lives inside the meet page header. */}
                   <Flag code={m.country_detail?.code} name={m.country_detail?.name} large placeholder />
                   <div style={{ flex: 1, minWidth: 160 }}>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{m.name}</div>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>
+                      {m.name}
+                      {isAdmin && m.is_published === false && <span className="tag tag-neutral" style={{ marginLeft: 8, fontSize: 10, verticalAlign: 'middle' }}>Unpublished</span>}
+                    </div>
                     <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 3 }}>
                       {isAdmin && m.location ? `${m.location}, ` : ''}
                       {m.country_detail?.name || ''}

@@ -157,10 +157,7 @@ function StatChip({ icon: Icon, value, label }) {
       background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))',
       color: '#fff', padding: '14px 8px', textAlign: 'center',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-      position: 'relative', overflow: 'hidden',
     }}>
-      {/* subtle glare */}
-      <div style={{ position: 'absolute', top: -20, right: -20, width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
       <Icon size={18} style={{ color: 'rgba(255,255,255,0.7)' }} />
       <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{value}</span>
       <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{label}</span>

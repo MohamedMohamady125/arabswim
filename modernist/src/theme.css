@@ -200,8 +200,9 @@ figure { margin: 0; }
    names ellipsize instead of squeezing the time/points columns */
 .results-table .rank-col { width: 44px; }
 .results-table td.swimmer-cell { width: 100%; max-width: 0; }
-/* rankings: swimmer column absorbs the leftover width; names ellipsize on one line */
-.rankings-table td.swimmer-cell { width: 100%; max-width: 0; }
+/* rankings + records: swimmer column absorbs the leftover width; names ellipsize on one line */
+.rankings-table td.swimmer-cell,
+.records-tbl td.swimmer-cell { width: 100%; max-width: 0; }
 /* grid children default to min-width auto, which lets wide tables blow out the track */
 .grid-2 > *, .grid-3 > *, .two-col > * { min-width: 0; }
 

@@ -72,11 +72,11 @@ function RecordTable({ rows }) {
   const navigate = useNavigate()
   return (
     <div className="table-scroll">
-      <table className="table">
+      <table className="table records-tbl">
         <thead>
           <tr>
             <th>Event</th>
-            <th className="hide-mobile">Swimmer</th>
+            <th>Swimmer</th>
             <th className="time">Time</th>
             <th className="hide-mobile">Meet</th>
           </tr>
@@ -89,30 +89,19 @@ function RecordTable({ rows }) {
               style={r.link ? { cursor: 'pointer' } : undefined}
               title={r.link ? 'View this swim' : undefined}
             >
-              <td style={{ fontWeight: 600 }}>
-                {r.eventName}
-                {/* phone: swimmer below the event, one compact line */}
-                <div className="show-mobile" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontWeight: 400, fontSize: 13 }}>
+              <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{r.eventName}</td>
+              <td className="swimmer-cell">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <Flag code={r.natCode} name={r.natName} />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                     {r.swimmerId ? (
-                      <Link to={`/swimmers/${r.swimmerId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>{r.swimmerName}</Link>
+                      <Link to={`/swimmers/${r.swimmerId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
                     ) : r.swimmerName}
                   </span>
                 </div>
               </td>
-              <td className="hide-mobile">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Flag code={r.natCode} name={r.natName} />
-                  {r.swimmerId ? (
-                    <Link to={`/swimmers/${r.swimmerId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
-                  ) : (
-                    r.swimmerName
-                  )}
-                </div>
-              </td>
               <td className="time asw-time">{r.time}</td>
-              <td className="text-muted hide-mobile">{r.meet || '—'}</td>
+              <td className="text-muted hide-mobile" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>{r.meet || '—'}</td>
             </tr>
           ))}
         </tbody>

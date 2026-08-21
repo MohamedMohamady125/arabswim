@@ -316,6 +316,16 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 if not found:
                     continue
 
+                # Exact swim date from program if available
+                from championships.models import ProgramItem
+                from datetime import timedelta
+                swim_date = r.championship.date
+                pi = ProgramItem.objects.filter(
+                    championship=r.championship, event_id=event_id
+                ).first()
+                if pi and pi.day and r.championship.date:
+                    swim_date = r.championship.date + timedelta(days=pi.day - 1)
+
                 data.append({
                     'id': r.id,
                     'time': format_centiseconds(r.time_centiseconds),
@@ -328,7 +338,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'relay_swimmers': r.relay_swimmers,
                     'championship_id': r.championship.id,
                     'championship_name': r.championship.name,
-                    'championship_date': r.championship.date,
+                    'championship_date': swim_date,
                     'championship_location': r.championship.location,
                     'championship_country': r.championship.country.name if r.championship.country else '',
                     'pool': r.championship.pool,
@@ -344,7 +354,26 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             if pool:
                 results = results.filter(championship__pool=pool)
 
+            # Build program day map: event_id+gender → day number → actual date
+            from championships.models import ProgramItem
+            from datetime import timedelta
+            champ_ids = {r.championship_id for r in results}
+            program_map = {}  # (champ_id, event_id, gender) → date
+            for pi in ProgramItem.objects.filter(championship_id__in=champ_ids, event_id=event_id):
+                champ = None
+                for r in results:
+                    if r.championship_id == pi.championship_id:
+                        champ = r.championship
+                        break
+                if champ and champ.date and pi.day:
+                    swim_date = champ.date + timedelta(days=pi.day - 1)
+                    key = (pi.championship_id, pi.event_id, pi.gender)
+                    program_map[key] = swim_date
+
             for r in results:
+                # Try to get the exact swim date from the program
+                swim_date = (program_map.get((r.championship_id, r.event_id, swimmer.sex))
+                             or r.championship.date)
                 data.append({
                     'id': r.id,
                     'time': format_centiseconds(r.time_centiseconds),
@@ -355,7 +384,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'is_relay': False,
                     'championship_id': r.championship.id,
                     'championship_name': r.championship.name,
-                    'championship_date': r.championship.date,
+                    'championship_date': swim_date,
                     'championship_location': r.championship.location,
                     'championship_country': r.championship.country.name if r.championship.country else '',
                     'pool': r.championship.pool,
@@ -600,12 +629,20 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 swimmer=swimmer, event_id=te['event_id'], fina_points=te['best_fina']
             ).select_related('event', 'championship').first())
             if r:
+                from championships.models import ProgramItem
+                from datetime import timedelta
+                swim_date = r.championship.date
+                pi = ProgramItem.objects.filter(
+                    championship=r.championship, event=r.event, gender=swimmer.sex
+                ).first()
+                if pi and pi.day and r.championship.date:
+                    swim_date = r.championship.date + timedelta(days=pi.day - 1)
                 top_pbs.append({
                     'event_name': r.event.name,
                     'time': format_centiseconds(r.time_centiseconds),
                     'fina_points': r.fina_points,
                     'meet_name': r.championship.name,
-                    'meet_date': r.championship.date,
+                    'meet_date': swim_date,
                 })
 
         return Response({

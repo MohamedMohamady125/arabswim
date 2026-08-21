@@ -111,7 +111,20 @@ export default function Medals() {
     return () => { alive = false }
   }, [classificationId, championship, gender, country, isNational])
 
-  const rows = scope === 'country' ? summary : scope === 'club' ? clubRows : swimmerRows
+  // For country scope: merge API results with full Arab country list so every country shows
+  const rows = useMemo(() => {
+    if (scope !== 'country') return scope === 'club' ? clubRows : swimmerRows
+    const byCode = {}
+    for (const r of summary) byCode[r.swimmer__nationality__code] = r
+    const merged = countries.map((c) => byCode[c.code] || {
+      swimmer__nationality__name: c.name,
+      swimmer__nationality__code: c.code,
+      swimmer__nationality__flag_url: c.flag_url,
+      gold: 0, silver: 0, bronze: 0, total: 0,
+    })
+    merged.sort((a, b) => (b.gold - a.gold) || (b.silver - a.silver) || (b.bronze - a.bronze))
+    return merged
+  }, [scope, summary, clubRows, swimmerRows, countries])
 
   // National + country filter → only show that federation's meets in the picker
   const visibleMeets = useMemo(

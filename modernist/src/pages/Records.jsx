@@ -154,6 +154,7 @@ export default function Records() {
   const [gender, setGender] = useState('M')
   const [ageGroup, setAgeGroup] = useState('OPEN')
   const [country, setCountry] = useState('')
+  const [eventType, setEventType] = useState('') // '' = all, 'individual', 'relay'
   const [countries, setCountries] = useState([])
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -198,12 +199,15 @@ export default function Records() {
   }, [scope, pool, gender, ageGroup, country, isComputed, needsCountry])
 
   const bySection = useMemo(() => {
-    const sorted = [...rows].sort(sortByEvent)
+    let filtered = rows
+    if (eventType === 'individual') filtered = rows.filter((r) => !r.isRelay)
+    else if (eventType === 'relay') filtered = rows.filter((r) => r.isRelay)
+    const sorted = [...filtered].sort(sortByEvent)
     return {
       men: sorted.filter((r) => r.gender === 'M'),
       women: sorted.filter((r) => r.gender === 'F'),
     }
-  }, [rows])
+  }, [rows, eventType])
 
   const showMen = !gender || gender === 'M'
   const showWomen = !gender || gender === 'F'
@@ -236,6 +240,11 @@ export default function Records() {
           options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
           value={gender}
           onChange={setGender}
+        />
+        <Seg
+          options={[{ value: '', label: 'All' }, { value: 'individual', label: 'Individual' }, { value: 'relay', label: 'Relay' }]}
+          value={eventType}
+          onChange={setEventType}
         />
         {isComputed && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>

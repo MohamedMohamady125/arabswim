@@ -43,6 +43,7 @@ function SelectedBox({ title, sub, onChange }) {
 
 export default function ManualEntryForm({ onComplete }) {
   // Swimmer state
+  const [swimmerCountry, setSwimmerCountry] = useState('')
   const [swimmerQuery, setSwimmerQuery] = useState('')
   const [swimmerResults, setSwimmerResults] = useState([])
   const [selectedSwimmer, setSelectedSwimmer] = useState(null)
@@ -61,7 +62,7 @@ export default function ManualEntryForm({ onComplete }) {
 
   // Result state
   const [events, setEvents] = useState([])
-  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '' })
+  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '', rank: '' })
   const [splitTimes, setSplitTimes] = useState({}) // distance → cumulative time text
 
   // Reference data
@@ -126,13 +127,15 @@ export default function ManualEntryForm({ onComplete }) {
     }
   }, [newChamp.classification])
 
-  // Swimmer search
+  // Swimmer search (with optional country filter)
   const handleSwimmerSearch = (q) => {
     setSwimmerQuery(q)
     if (swimmerDebounce.current) clearTimeout(swimmerDebounce.current)
     if (q.length < 2) { setSwimmerResults([]); return }
     swimmerDebounce.current = setTimeout(() => {
-      searchSwimmers(q)
+      const params = { search: q, page_size: 15 }
+      if (swimmerCountry) params.nationality = swimmerCountry
+      searchSwimmers(q, params)
         .then((res) => setSwimmerResults(res.data))
         .catch(() => setSwimmerResults([]))
     }, 300)
@@ -222,6 +225,7 @@ export default function ManualEntryForm({ onComplete }) {
         team: resultForm.team || '',
         round_type: resultForm.round_type || '',
         category: resultForm.category || '',
+        original_rank: resultForm.rank ? parseInt(resultForm.rank) : null,
         fina_points: resultForm.fina_points ? parseInt(resultForm.fina_points) : null,
         medal: resultForm.medal || '',
         ...(splits.length > 0 ? { splits } : {}),
@@ -240,7 +244,7 @@ export default function ManualEntryForm({ onComplete }) {
   }
 
   const handleAddAnother = () => {
-    setResultForm({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '' })
+    setResultForm({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '', rank: '' })
     setSplitTimes({})
     setSuccess(null)
   }
@@ -328,6 +332,16 @@ export default function ManualEntryForm({ onComplete }) {
           </div>
         ) : (
           <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <select className="select" style={{ flex: '0 1 180px' }} value={swimmerCountry}
+                onChange={(e) => { setSwimmerCountry(e.target.value); setSwimmerResults([]) }}>
+                <option value="">All countries</option>
+                {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <span className="micro" style={{ alignSelf: 'center', textTransform: 'none', letterSpacing: 0 }}>
+                Filter by country first to find swimmers faster
+              </span>
+            </div>
             <div style={{ position: 'relative' }} ref={swimmerDropdownRef}>
               <input className="input" type="text" placeholder="Search swimmers by name…" value={swimmerQuery}
                 onChange={(e) => handleSwimmerSearch(e.target.value)} />
@@ -503,13 +517,21 @@ export default function ManualEntryForm({ onComplete }) {
             <label>Round</label>
             <select className="select" value={resultForm.round_type}
               onChange={(e) => setResultForm({ ...resultForm, round_type: e.target.value })}>
-              <option value="Finals">Final</option>
+              <option value="Finals">Final A</option>
+              <option value="Consolation">Final B</option>
+              <option value="Final C">Final C</option>
+              <option value="Final D">Final D</option>
               <option value="Semifinals">Semi-Final</option>
+              <option value="Swim-off">Swim-off</option>
               <option value="Heats">Heats</option>
               <option value="Prelims">Prelims</option>
-              <option value="Consolation">Consolation (Final B)</option>
               <option value="">Unknown</option>
             </select>
+          </div>
+          <div className="field">
+            <label>Rank (optional)</label>
+            <input className="input" type="number" min="1" max="999" placeholder="e.g. 1" value={resultForm.rank}
+              onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
           </div>
           <div className="field">
             <label>Category (optional)</label>

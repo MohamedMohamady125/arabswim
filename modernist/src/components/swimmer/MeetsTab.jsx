@@ -79,13 +79,6 @@ export default function MeetsTab({ stats }) {
                     {c.country ? `${c.country} · ` : ''}{formatDate(c.date)}
                   </div>
                 </div>
-                {c.represented && (
-                  <span className="tag tag-neutral" title={`Swum representing ${c.represented.name}`}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <Flag code={c.represented.code} name={c.represented.name} flagUrl={c.represented.flag_url} />
-                    as {c.represented.code}
-                  </span>
-                )}
                 <span className={`tag ${c.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{c.pool}</span>
                 <span style={{ color: 'var(--color-neutral-500)' }}>→</span>
               </Link>

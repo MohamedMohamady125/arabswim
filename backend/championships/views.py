@@ -345,6 +345,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                         scope=scope,
                         defaults={'medal_type': medal_type},
                     )
+            # Recompute medals so this result reflects in all tallies
+            from medals.utils import recompute_medals
+            recompute_medals(championship)
             return Response(ResultCreateSerializer(result).data, status=201)
 
     @action(detail=True, methods=['post'], url_path='add-results')
@@ -459,6 +462,11 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                                    'reason': f'{name}: already has an equal or better time in this event/round'})
                 continue
 
+            rank = None
+            try:
+                rank = int(row.get('rank') or 0) or None
+            except (TypeError, ValueError):
+                pass
             Result.objects.create(
                 swimmer=swimmer, championship=championship, event=event,
                 round_type=round_type, category=category,
@@ -466,16 +474,18 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 time_centiseconds=time_cs,
                 fina_points=fina or None,
                 age_at_competition=age,
+                original_rank=rank,
                 is_manual=True,
             )
             created += 1
 
-        # Manual entries NEVER receive automatic medals — medals are only
-        # auto-awarded during meet imports, or assigned explicitly by hand.
         if created or updated:
             if championship.is_calendar_only:
                 championship.is_calendar_only = False
                 championship.save(update_fields=['is_calendar_only'])
+            # Recompute medals so manual entries reflect in medal tallies
+            from medals.utils import recompute_medals
+            recompute_medals(championship)
 
         return Response({
             'created': created,

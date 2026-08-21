@@ -48,7 +48,7 @@ export default function ManualEntryForm({ onComplete }) {
   const [swimmerResults, setSwimmerResults] = useState([])
   const [selectedSwimmer, setSelectedSwimmer] = useState(null)
   const [showNewSwimmer, setShowNewSwimmer] = useState(false)
-  const [newSwimmer, setNewSwimmer] = useState({ name: '', date_of_birth: '', nationality: '', sex: 'M', club: '' })
+  const [newSwimmer, setNewSwimmer] = useState({ name: '', date_of_birth: '', birth_year: '', nationality: '', sex: 'M', club: '' })
 
   // Championship state
   const [champQuery, setChampQuery] = useState('')
@@ -166,7 +166,11 @@ export default function ManualEntryForm({ onComplete }) {
   const handleCreateSwimmer = async () => {
     setError('')
     try {
-      const res = await createSwimmer(newSwimmer)
+      const payload = { ...newSwimmer }
+      if (payload.birth_year) payload.birth_year = Number(payload.birth_year)
+      if (!payload.date_of_birth) delete payload.date_of_birth
+      if (!payload.birth_year) delete payload.birth_year
+      const res = await createSwimmer(payload)
       setSelectedSwimmer(res.data)
       setShowNewSwimmer(false)
       setSwimmerQuery('')
@@ -296,9 +300,15 @@ export default function ManualEntryForm({ onComplete }) {
                   onChange={(e) => setNewSwimmer({ ...newSwimmer, name: e.target.value })} />
               </div>
               <div className="field">
-                <label>Date of birth *</label>
+                <label>Date of birth</label>
                 <input className="input" type="date" value={newSwimmer.date_of_birth}
                   onChange={(e) => setNewSwimmer({ ...newSwimmer, date_of_birth: e.target.value })} />
+              </div>
+              <div className="field">
+                <label>Or birth year</label>
+                <input className="input" type="number" min="1950" max="2025" placeholder="e.g. 2005"
+                  value={newSwimmer.birth_year}
+                  onChange={(e) => setNewSwimmer({ ...newSwimmer, birth_year: e.target.value })} />
               </div>
               <div className="field">
                 <label>Nationality *</label>
@@ -324,7 +334,7 @@ export default function ManualEntryForm({ onComplete }) {
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button type="button" className="btn btn-primary" onClick={handleCreateSwimmer}
-                disabled={!newSwimmer.name || !newSwimmer.date_of_birth || !newSwimmer.nationality}>
+                disabled={!newSwimmer.name || (!newSwimmer.date_of_birth && !newSwimmer.birth_year) || !newSwimmer.nationality}>
                 Create swimmer
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => setShowNewSwimmer(false)}>Cancel</button>

@@ -154,7 +154,7 @@ export default function Records() {
   const [gender, setGender] = useState('M')
   const [ageGroup, setAgeGroup] = useState('OPEN')
   const [country, setCountry] = useState('')
-  const [eventType, setEventType] = useState('') // '' = all, 'individual', 'relay'
+  const [eventType, setEventType] = useState('individual')
   const [countries, setCountries] = useState([])
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -242,7 +242,7 @@ export default function Records() {
           onChange={setGender}
         />
         <Seg
-          options={[{ value: '', label: 'All' }, { value: 'individual', label: 'Individual' }, { value: 'relay', label: 'Relay' }]}
+          options={[{ value: 'individual', label: 'Individual' }, { value: 'relay', label: 'Relay' }]}
           value={eventType}
           onChange={setEventType}
         />

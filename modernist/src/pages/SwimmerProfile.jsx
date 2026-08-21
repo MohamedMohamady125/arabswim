@@ -914,9 +914,9 @@ export default function SwimmerProfile() {
               <span style={{ color: 'var(--color-neutral-700)' }}>· {swimmer.club}</span>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'nowrap', overflowX: 'auto' }}>
             {swimmer.date_of_birth
-              ? chip('DOB', formatDate(swimmer.date_of_birth))
+              ? chip('Born', swimmer.date_of_birth.split('-')[0])
               : swimmer.birth_year ? chip('Born', swimmer.birth_year) : null}
             {swimmer.age != null && chip('Age', swimmer.age)}
             {swimmer.sex && chip('', swimmer.sex === 'M' ? 'Male' : 'Female')}

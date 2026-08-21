@@ -64,6 +64,10 @@ export default function ManualEntryForm({ onComplete }) {
   const [events, setEvents] = useState([])
   const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '', rank: '' })
   const [splitTimes, setSplitTimes] = useState({}) // distance → cumulative time text
+  const [relayLegs, setRelayLegs] = useState([
+    { name: '', split_time: '' }, { name: '', split_time: '' },
+    { name: '', split_time: '' }, { name: '', split_time: '' },
+  ])
 
   // Reference data
   const [countries, setCountries] = useState([])
@@ -222,7 +226,7 @@ export default function ManualEntryForm({ onComplete }) {
     setError('')
     try {
       const timeCentiseconds = parseTime(resultForm.time)
-      await addChampionshipResult(selectedChamp.id, {
+      const payload = {
         swimmer: selectedSwimmer.id,
         event: resultForm.event,
         time_centiseconds: timeCentiseconds,
@@ -233,7 +237,13 @@ export default function ManualEntryForm({ onComplete }) {
         fina_points: resultForm.fina_points ? parseInt(resultForm.fina_points) : null,
         medal: resultForm.medal || '',
         ...(splits.length > 0 ? { splits } : {}),
-      })
+      }
+      // Relay: attach swimmer legs
+      if (selectedEvent?.is_relay) {
+        const legs = relayLegs.filter((l) => l.name.trim())
+        if (legs.length > 0) payload.relay_swimmers = legs.map((l) => ({ name: l.name.trim(), split_time: l.split_time.trim() }))
+      }
+      await addChampionshipResult(selectedChamp.id, payload)
       setSuccess({
         swimmer_name: selectedSwimmer.name,
         championship_name: selectedChamp.name,
@@ -249,6 +259,7 @@ export default function ManualEntryForm({ onComplete }) {
 
   const handleAddAnother = () => {
     setResultForm({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '', rank: '' })
+    setRelayLegs([{ name: '', split_time: '' }, { name: '', split_time: '' }, { name: '', split_time: '' }, { name: '', split_time: '' }])
     setSplitTimes({})
     setSuccess(null)
   }
@@ -576,6 +587,35 @@ export default function ManualEntryForm({ onComplete }) {
                       style={{ padding: '7px 8px', fontSize: 13 }}
                       onChange={(e) => setSplitTimes((s) => ({ ...s, [dist]: e.target.value }))}
                     />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {selectedEvent?.is_relay && (
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label>Relay swimmers</label>
+              <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, marginBottom: 8 }}>
+                Enter each swimmer's name and their split time (optional).
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {relayLegs.map((leg, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span className="asw-num" style={{ width: 20, textAlign: 'center', fontWeight: 700, fontSize: 13, color: 'var(--color-neutral-600)' }}>{i + 1}</span>
+                    <input className="input" type="text" placeholder="Swimmer name"
+                      value={leg.name} style={{ flex: 2, padding: '7px 8px', fontSize: 13 }}
+                      onChange={(e) => {
+                        const next = [...relayLegs]
+                        next[i] = { ...next[i], name: e.target.value }
+                        setRelayLegs(next)
+                      }} />
+                    <input className="input asw-num" type="text" placeholder="Split time"
+                      value={leg.split_time} style={{ flex: 1, padding: '7px 8px', fontSize: 13, maxWidth: 110 }}
+                      onChange={(e) => {
+                        const next = [...relayLegs]
+                        next[i] = { ...next[i], split_time: e.target.value }
+                        setRelayLegs(next)
+                      }} />
                   </div>
                 ))}
               </div>

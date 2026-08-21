@@ -221,35 +221,31 @@ export default function Records() {
       <PageHead title="Records" />
 
       {/* filter bar */}
-      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select className="select" style={{ width: 150 }} value={scope} onChange={(e) => setScope(e.target.value)}>
-            {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <select className="select" style={{ width: 150 }} value={scope} onChange={(e) => setScope(e.target.value)}>
+          {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        {needsCountry && (
+          <select className="select" style={{ width: 190 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+            <option value="">Select country…</option>
+            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          {needsCountry && (
-            <select className="select" style={{ width: 190 }} value={country} onChange={(e) => setCountry(e.target.value)}>
-              <option value="">Select country…</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Seg
-            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
-            value={pool}
-            onChange={setPool}
-          />
-          <Seg
-            options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
-            value={gender}
-            onChange={setGender}
-          />
-          <Seg
-            options={[{ value: 'individual', label: 'Individual' }, { value: 'relay', label: 'Relay' }]}
-            value={eventType}
-            onChange={setEventType}
-          />
-        </div>
+        )}
+        <Seg
+          options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
+          value={pool}
+          onChange={setPool}
+        />
+        <Seg
+          options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+          value={gender}
+          onChange={setGender}
+        />
+        <Seg
+          options={[{ value: 'individual', label: 'Individual' }, { value: 'relay', label: 'Relay' }]}
+          value={eventType}
+          onChange={setEventType}
+        />
         {isComputed && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>

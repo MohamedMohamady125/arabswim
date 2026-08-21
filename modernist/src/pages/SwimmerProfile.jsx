@@ -560,9 +560,9 @@ function RankingsPreview({ swimmerId, onViewAll }) {
       <div className="rule-t">
         {top.map((r, i) => (
           <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
-            <div style={{ background: 'var(--color-accent)', color: '#fff', width: 48, height: 48, flex: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 8 }}>
-              <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, lineHeight: 1 }}>{r.rank}</span>
-              <span style={{ fontSize: 10, fontWeight: 800, marginTop: 1 }}>{ordSuffix(r.rank)}</span>
+            <div style={{ background: 'var(--color-accent)', color: '#fff', minWidth: 48, height: 48, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px' }}>
+              <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: r.rank >= 1000 ? 14 : r.rank >= 100 ? 16 : 22, lineHeight: 1 }}>{r.rank}</span>
+              <span style={{ fontSize: r.rank >= 100 ? 8 : 10, fontWeight: 800, marginTop: 1 }}>{ordSuffix(r.rank)}</span>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

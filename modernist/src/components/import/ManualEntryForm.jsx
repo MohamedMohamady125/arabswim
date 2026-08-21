@@ -62,7 +62,7 @@ export default function ManualEntryForm({ onComplete }) {
 
   // Result state
   const [events, setEvents] = useState([])
-  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '', rank: '' })
+  const [resultForm, setResultForm] = useState({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '', rank: '', date: '' })
   const [splitTimes, setSplitTimes] = useState({}) // distance → cumulative time text
   const [relayLegs, setRelayLegs] = useState([
     { name: '', split_time: '' }, { name: '', split_time: '' },
@@ -258,7 +258,7 @@ export default function ManualEntryForm({ onComplete }) {
   }
 
   const handleAddAnother = () => {
-    setResultForm({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '', rank: '' })
+    setResultForm({ event: '', time: '', team: '', fina_points: '', medal: '', round_type: 'Finals', category: '', rank: '', date: '' })
     setRelayLegs([{ name: '', split_time: '' }, { name: '', split_time: '' }, { name: '', split_time: '' }, { name: '', split_time: '' }])
     setSplitTimes({})
     setSuccess(null)
@@ -553,6 +553,11 @@ export default function ManualEntryForm({ onComplete }) {
             <label>Rank (optional)</label>
             <input className="input" type="number" min="1" max="999" placeholder="e.g. 1" value={resultForm.rank}
               onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
+          </div>
+          <div className="field">
+            <label>Date (optional)</label>
+            <input className="input" type="date" value={resultForm.date}
+              onChange={(e) => setResultForm({ ...resultForm, date: e.target.value })} />
           </div>
           <div className="field">
             <label>Category (optional)</label>

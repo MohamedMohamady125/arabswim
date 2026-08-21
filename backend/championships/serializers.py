@@ -136,6 +136,19 @@ class ResultSerializer(serializers.ModelSerializer):
                         match = qs4.filter(nationality_id=nat_id).first() if nat_id else None
                         if not match:
                             match = qs4.first()
+                # Fallback: match first + last word (skip middle initials/names)
+                if not match and nat_id:
+                    words = name.split()
+                    if len(words) >= 2:
+                        first = words[0]
+                        last = words[-1]
+                        candidates = Swimmer.objects.filter(
+                            is_relay_team=False, nationality_id=nat_id,
+                            name__istartswith=first,
+                            name__iendswith=last,
+                        )
+                        if candidates.count() == 1:
+                            match = candidates.first()
                 if match:
                     swimmer_id = match.id
             result.append({'name': name, 'split_time': split_time, 'swimmer_id': swimmer_id})

@@ -376,12 +376,9 @@ export default function Swimmers() {
                     <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
                     <span>{s.nationality_detail?.name || '—'}</span>
                   </div>
-                  {s.club && <div className="swimmer-card-meta"><span>{s.club}</span></div>}
                   <div className="swimmer-card-sub asw-num">
-                    {s.birth_year ? `Born ${s.birth_year}` : ''}
-                    {s.birth_year && s.age != null ? ' · ' : ''}
                     {s.age != null ? `Age ${s.age}` : ''}
-                    {(s.birth_year || s.age != null) && s.sex ? ' · ' : ''}
+                    {s.age != null && s.sex ? ' · ' : ''}
                     {s.sex ? (s.sex === 'M' ? 'Male' : 'Female') : ''}
                   </div>
                 </div>

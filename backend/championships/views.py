@@ -345,6 +345,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                         scope=scope,
                         defaults={'medal_type': medal_type},
                     )
+            # Restamp nationality if the swimmer has nationality changes
+            if result.swimmer.nationality_changes.exists():
+                from swimmers.models import restamp_result_nationalities
+                restamp_result_nationalities(result.swimmer)
             # Recompute medals so this result reflects in all tallies
             from medals.utils import recompute_medals
             recompute_medals(championship)

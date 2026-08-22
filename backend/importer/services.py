@@ -1386,6 +1386,16 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 next_order[day] = next_order.get(day, 0) + 1
                 program_items_created += 1
 
+    # Restamp per-result nationality for swimmers with nationality changes —
+    # results just imported get the swimmer's current nationality, but swims
+    # at meets before a nationality change should carry the old country.
+    from swimmers.models import restamp_result_nationalities
+    changed_swimmers = set()
+    for r in championship.results.select_related('swimmer'):
+        if r.swimmer_id not in changed_swimmers and r.swimmer.nationality_changes.exists():
+            restamp_result_nationalities(r.swimmer)
+            changed_swimmers.add(r.swimmer_id)
+
     return {
         'championship_id': championship.id,
         'championship_name': championship.name,

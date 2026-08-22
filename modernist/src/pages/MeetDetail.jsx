@@ -74,13 +74,16 @@ function withFinishSplit(splits, totalCs) {
 // Long names ellipsize instead of stretching the column
 const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
 
-function SwimmerLink({ swimmerId, detail, isNational = true }) {
+function SwimmerLink({ swimmerId, detail, resultNationality, isNational = true }) {
   // Relay teams are clubs at national meets but COUNTRIES at international
   // ones (GCC, Arab, …) — never label a national team as a club there.
   const isCountryTeam = detail?.is_relay_team && !isNational
+  // Per-result nationality (from the time of the swim) takes precedence
+  // over the swimmer's current nationality
+  const nat = resultNationality || detail?.nationality_detail
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 auto' }}>
-      <Flag code={detail?.nationality_detail?.code} name={detail?.nationality_detail?.name} placeholder />
+      <Flag code={nat?.code} name={nat?.name} placeholder />
       {detail?.is_relay_team ? (
         // Relay-team placeholders aren't swimmers — no profile to open
         <>
@@ -818,7 +821,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           </td>
           <td className="swimmer-cell">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <SwimmerLink swimmerId={r.swimmer_detail?.id || r.swimmer} detail={r.swimmer_detail} isNational={isNational} />
+              <SwimmerLink swimmerId={r.swimmer_detail?.id || r.swimmer} detail={r.swimmer_detail} resultNationality={r.nationality_detail} isNational={isNational} />
               {!isRelay && (r.team || '').toUpperCase() === 'LP' && (
                 <span className="tag tag-outline" title="No club — transferring (libre passage)">LP</span>
               )}

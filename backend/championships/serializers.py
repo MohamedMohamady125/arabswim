@@ -84,12 +84,14 @@ class ProgramItemSerializer(serializers.ModelSerializer):
 class ResultSerializer(serializers.ModelSerializer):
     swimmer_detail = SwimmerListSerializer(source='swimmer', read_only=True)
     event_detail = EventSerializer(source='event', read_only=True)
+    nationality_detail = CountrySerializer(source='nationality', read_only=True)
     formatted_time = serializers.CharField(read_only=True)
     relay_swimmers_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = Result
         fields = ['id', 'swimmer', 'swimmer_detail', 'championship', 'event', 'event_detail',
+                  'nationality', 'nationality_detail',
                   'round_type', 'category', 'team', 'time_centiseconds', 'formatted_time', 'fina_points',
                   'age_at_competition', 'relay_swimmers', 'relay_swimmers_detail', 'splits',
                   'is_hc', 'hc_type', 'is_manual', 'original_rank', 'created_at']

@@ -348,6 +348,10 @@ class RecordViewSet(viewsets.ModelViewSet):
             except (ValueError, AttributeError):
                 pass
 
+        # Exclude non-standard relays (4x50) — only 4x100 and 4x200 are
+        # recognised for record purposes
+        qs = qs.exclude(event__is_relay=True, event__distance__lt=400)
+
         # For each (event, gender): find the minimum time
         best_per_event = (
             qs.values('event_id', 'swimmer__sex')

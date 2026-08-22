@@ -1396,6 +1396,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             restamp_result_nationalities(r.swimmer)
             changed_swimmers.add(r.swimmer_id)
 
+    # Auto-detect records from newly created results
+    _progress('Checking records…')
+    from records.auto import check_and_update_records
+    for r in championship.results.filter(id__in=claimed_results).select_related(
+            'swimmer', 'swimmer__nationality', 'nationality', 'event', 'championship'):
+        check_and_update_records(r)
+
     return {
         'championship_id': championship.id,
         'championship_name': championship.name,

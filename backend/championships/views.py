@@ -352,6 +352,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             # Recompute medals so this result reflects in all tallies
             from medals.utils import recompute_medals
             recompute_medals(championship)
+            # Auto-detect records
+            from records.auto import check_and_update_records
+            check_and_update_records(result)
             return Response(ResultCreateSerializer(result).data, status=201)
 
     @action(detail=True, methods=['post'], url_path='add-results')
@@ -471,7 +474,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 rank = int(row.get('rank') or 0) or None
             except (TypeError, ValueError):
                 pass
-            Result.objects.create(
+            new_result = Result.objects.create(
                 swimmer=swimmer, championship=championship, event=event,
                 round_type=round_type, category=category,
                 team=name if event.is_relay else team,
@@ -482,6 +485,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 is_manual=True,
             )
             created += 1
+            # Auto-detect records
+            from records.auto import check_and_update_records
+            check_and_update_records(new_result)
 
         if created or updated:
             if championship.is_calendar_only:

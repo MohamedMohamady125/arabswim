@@ -154,7 +154,6 @@ export default function Records() {
   const [gender, setGender] = useState('M')
   const [ageGroup, setAgeGroup] = useState('OPEN')
   const [country, setCountry] = useState('')
-  const [eventType, setEventType] = useState('individual')
   const [countries, setCountries] = useState([])
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -199,22 +198,23 @@ export default function Records() {
   }, [scope, pool, gender, ageGroup, country, isComputed, needsCountry])
 
   const bySection = useMemo(() => {
-    let filtered = rows
-    if (eventType === 'individual') filtered = rows.filter((r) => !r.isRelay)
-    else if (eventType === 'relay') filtered = rows.filter((r) => r.isRelay)
-    const sorted = [...filtered].sort(sortByEvent)
+    const sorted = [...rows].sort(sortByEvent)
     return {
-      men: sorted.filter((r) => r.gender === 'M'),
-      women: sorted.filter((r) => r.gender === 'F'),
+      menInd: sorted.filter((r) => r.gender === 'M' && !r.isRelay),
+      menRelay: sorted.filter((r) => r.gender === 'M' && r.isRelay),
+      womenInd: sorted.filter((r) => r.gender === 'F' && !r.isRelay),
+      womenRelay: sorted.filter((r) => r.gender === 'F' && r.isRelay),
     }
-  }, [rows, eventType])
+  }, [rows])
 
   const showMen = !gender || gender === 'M'
   const showWomen = !gender || gender === 'F'
 
   const sections = []
-  if (showMen) sections.push({ label: 'Men', rows: bySection.men })
-  if (showWomen) sections.push({ label: 'Women', rows: bySection.women })
+  if (showMen && bySection.menInd.length > 0) sections.push({ label: 'Men · Individual Records', rows: bySection.menInd })
+  if (showMen && bySection.menRelay.length > 0) sections.push({ label: 'Men · Relay Records', rows: bySection.menRelay })
+  if (showWomen && bySection.womenInd.length > 0) sections.push({ label: 'Women · Individual Records', rows: bySection.womenInd })
+  if (showWomen && bySection.womenRelay.length > 0) sections.push({ label: 'Women · Relay Records', rows: bySection.womenRelay })
 
   return (
     <div className="records-page">
@@ -240,11 +240,6 @@ export default function Records() {
           options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
           value={gender}
           onChange={setGender}
-        />
-        <Seg
-          options={[{ value: 'individual', label: 'Individual' }, { value: 'relay', label: 'Relay' }]}
-          value={eventType}
-          onChange={setEventType}
         />
         {isComputed && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>

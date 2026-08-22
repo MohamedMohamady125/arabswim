@@ -899,7 +899,7 @@ export default function SwimmerProfile() {
         <div className="swimmer-head-info" style={{ flex: 1 }}>
           <div className="kicker" style={{ marginBottom: 6 }}>Swimmer profile</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>{swimmer.name}</h1>
+            <h1 style={{ margin: 0, letterSpacing: '-0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', fontSize: (swimmer.name || '').length > 25 ? 'clamp(20px, 4vw, 32px)' : undefined }}>{swimmer.name}</h1>
             {swimmer.is_verified && (
               <span className="tag tag-accent-2" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <BadgeCheck size={14} /> Verified athlete
@@ -910,11 +910,8 @@ export default function SwimmerProfile() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} flagUrl={swimmer.nationality_detail?.flag_url} />
             <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
-            {swimmer.club && !swimmer.is_relay_team && (
-              <span style={{ color: 'var(--color-neutral-700)' }}>· {swimmer.club}</span>
-            )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'nowrap' }}>
             {swimmer.date_of_birth
               ? chip('Born', swimmer.date_of_birth.split('-')[0])
               : swimmer.birth_year ? chip('Born', swimmer.birth_year) : null}

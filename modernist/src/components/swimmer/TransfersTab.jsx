@@ -148,11 +148,10 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '8px 14px', border: '1px solid var(--color-divider)',
-                background: club.is_current ? 'var(--color-accent-100)' : 'var(--color-surface)',
+                background: 'var(--color-surface)',
               }}>
                 {club.country_code && <Flag code={club.country_code} name={club.country} flagUrl={club.country_flag} />}
                 <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>{club.club}</span>
-                {club.is_current && <span className="tag tag-dark" style={{ fontSize: 10 }}>Current</span>}
               </div>
             ))}
           </div>

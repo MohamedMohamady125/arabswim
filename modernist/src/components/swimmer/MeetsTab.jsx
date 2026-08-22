@@ -75,11 +75,13 @@ export default function MeetsTab({ stats }) {
                 <Flag code={c.country_code} name={c.country} flagUrl={c.flag_url} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
-                  <div className="asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>
-                    {c.country ? `${c.country} · ` : ''}{formatDate(c.date)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <span className="asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                      {c.country ? `${c.country} · ` : ''}{formatDate(c.date)}
+                    </span>
+                    <span className={`tag ${c.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`} style={{ fontSize: 10 }}>{c.pool}</span>
                   </div>
                 </div>
-                <span className={`tag ${c.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{c.pool}</span>
                 <span style={{ color: 'var(--color-neutral-500)' }}>→</span>
               </Link>
             ))}

@@ -43,6 +43,7 @@ const NAV = [
     label: 'Competition',
     links: [
       ['Championships', '/championships'],
+      ['Live Results', '/live'],
       ['Records', '/records'],
       ['Calendar', '/calendar'],
       ['New Records', '/new-records'],

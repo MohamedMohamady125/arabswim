@@ -538,6 +538,7 @@ export default function ManualEntryForm({ onComplete }) {
             <label>Round</label>
             <select className="select" value={resultForm.round_type}
               onChange={(e) => setResultForm({ ...resultForm, round_type: e.target.value })}>
+              <option value="Finals">Final</option>
               <option value="Finals">Final A</option>
               <option value="Consolation">Final B</option>
               <option value="Final C">Final C</option>

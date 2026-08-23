@@ -418,7 +418,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
               <th className="hide-mobile">Round</th>
               <th className="hide-mobile">Team</th>
               <th>Meet</th>
-              <th className="hide-mobile">Date</th>
+              <th>Date</th>
               <th className="num">FINA</th>
             </tr>
           </thead>
@@ -476,7 +476,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                         {h.championship_name}
                       </Link>
                     </td>
-                    <td className="hide-mobile asw-num" style={{ whiteSpace: 'nowrap' }}>{formatDate(h.championship_date)}</td>
+                    <td className="asw-num" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{formatDate(h.championship_date)}</td>
                     <td className="num asw-num" style={{ fontWeight: 700, color: h.fina_points ? finaColor(h.fina_points) : 'var(--color-neutral-500)' }}>
                       {h.fina_points || '—'}
                     </td>

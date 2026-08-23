@@ -556,9 +556,36 @@ export default function ManualEntryForm({ onComplete }) {
               onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
           </div>
           <div className="field">
-            <label>Date (optional)</label>
-            <input className="input" type="date" value={resultForm.date}
-              onChange={(e) => setResultForm({ ...resultForm, date: e.target.value })} />
+            <label>Day</label>
+            {(() => {
+              // Compute meet days from selectedChamp dates
+              const start = selectedChamp?.date ? new Date(selectedChamp.date) : null
+              const end = selectedChamp?.end_date ? new Date(selectedChamp.end_date) : start
+              if (!start || isNaN(start)) return (
+                <input className="input" type="date" value={resultForm.date}
+                  onChange={(e) => setResultForm({ ...resultForm, date: e.target.value })} />
+              )
+              const days = []
+              const d = new Date(start)
+              while (d <= (end || start)) {
+                days.push(new Date(d))
+                d.setDate(d.getDate() + 1)
+              }
+              if (days.length <= 1) return (
+                <input className="input" type="date" value={resultForm.date || start.toISOString().slice(0, 10)}
+                  onChange={(e) => setResultForm({ ...resultForm, date: e.target.value })} />
+              )
+              return (
+                <select className="select" value={resultForm.date}
+                  onChange={(e) => setResultForm({ ...resultForm, date: e.target.value })}>
+                  <option value="">Select day…</option>
+                  {days.map((day, i) => {
+                    const iso = day.toISOString().slice(0, 10)
+                    return <option key={iso} value={iso}>Day {i + 1} — {formatDate(iso)}</option>
+                  })}
+                </select>
+              )
+            })()}
           </div>
           <div className="field">
             <label>Category (optional)</label>

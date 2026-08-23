@@ -619,51 +619,52 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
   const md = medals || { gold: 0, silver: 0, bronze: 0, total: 0 }
   const bestEventPb = (top_personal_bests || []).find((pb) => pb.event_name === best_event)
 
-  const bandCell = { padding: '16px 20px', flex: '1 1 0', minWidth: 140, borderLeft: '1px solid rgba(255,255,255,0.15)' }
-  const bandNum = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30, lineHeight: 1.1, marginTop: 4, color: '#fff' }
-  const bandKicker = { fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)' }
-  const bandSub = { fontSize: 11, marginTop: 4, color: 'rgba(255,255,255,0.65)' }
+  const cardStyle = {
+    background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))',
+    color: '#fff', padding: '14px 12px', textAlign: 'center',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+  }
+  const cardNum = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color: '#fff', lineHeight: 1.1 }
+  const cardLabel = { fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }
+  const cardSub = { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 2 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-      {/* Season stat band */}
-      <div style={{ background: 'var(--color-accent-800)', display: 'flex', flexWrap: 'wrap', margin: '0 -1px' }}>
-        <div style={{ ...bandCell, borderLeft: 'none' }}>
-          <div style={bandKicker}>Meets</div>
-          <div className="asw-num" style={bandNum}>{total_championships ?? 0}</div>
+      {/* Stat cards — same gradient style as home page */}
+      <div className="qs-cards-8" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+        <div style={cardStyle}>
+          <span className="asw-num" style={cardNum}>{total_championships ?? 0}</span>
+          <span style={cardLabel}>Meets</span>
         </div>
-        <div style={bandCell}>
-          <div style={bandKicker}>Medals</div>
-          <div className="asw-num" style={{ ...bandNum, color: 'var(--asw-gold)' }}>{md.total}</div>
-          <div className="asw-num" style={{ fontSize: 12, marginTop: 4, display: 'flex', gap: 8 }}>
+        <div style={cardStyle}>
+          <span className="asw-num" style={{ ...cardNum, color: 'var(--asw-gold)' }}>{md.total}</span>
+          <span style={cardLabel}>Medals</span>
+          <span className="asw-num" style={{ fontSize: 11, display: 'flex', gap: 6 }}>
             <span style={{ color: 'var(--asw-gold)', fontWeight: 700 }}>{md.gold}G</span>
             <span style={{ color: 'var(--asw-silver)', fontWeight: 700 }}>{md.silver}S</span>
             <span style={{ color: 'var(--asw-bronze)', fontWeight: 700 }}>{md.bronze}B</span>
-          </div>
+          </span>
         </div>
-        <div style={bandCell}>
-          <div style={bandKicker}>Records</div>
-          <div className="asw-num" style={bandNum}>{recordsTotal}</div>
-          {intlRecords.length > 0 && <div className="asw-num" style={bandSub}>{intlRecords.length} international</div>}
+        <div style={cardStyle}>
+          <span className="asw-num" style={cardNum}>{recordsTotal}</span>
+          <span style={cardLabel}>Records</span>
         </div>
-        <div style={bandCell}>
-          <div style={bandKicker}>Best FINA</div>
-          <div className="asw-num" style={bandNum}>{best_fina?.points || '—'}</div>
-          {best_fina?.event_name && <div style={bandSub}>{best_fina.event_name}</div>}
+        <div style={cardStyle}>
+          <span className="asw-num" style={cardNum}>{best_fina?.points || '—'}</span>
+          <span style={cardLabel}>Best FINA</span>
+          {best_fina?.event_name && <span style={cardSub}>{best_fina.event_name}</span>}
         </div>
-        <div style={bandCell}>
-          <div style={bandKicker}>Season best FINA</div>
-          <div className="asw-num" style={bandNum}>{season_best_fina?.points || '—'}</div>
-          {season_best_fina?.event_name && (
-            <div style={bandSub}>{season_best_fina.event_name}{season_best_fina.year ? ` · ${season_best_fina.year}` : ''}</div>
-          )}
+        <div style={cardStyle}>
+          <span className="asw-num" style={cardNum}>{season_best_fina?.points || '—'}</span>
+          <span style={cardLabel}>Season FINA</span>
+          {season_best_fina?.event_name && <span style={cardSub}>{season_best_fina.event_name}</span>}
         </div>
-        <div style={bandCell}>
-          <div style={bandKicker}>Fastest event</div>
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1.2, marginTop: 6, color: '#fff', textTransform: 'uppercase' }}>
+        <div style={cardStyle}>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#fff', lineHeight: 1.2, textTransform: 'uppercase' }}>
             {best_event || '—'}
-          </div>
-          {bestEventPb && <div className="asw-time" style={{ ...bandSub, fontSize: 13, color: '#fff' }}>{bestEventPb.time}</div>}
+          </span>
+          <span style={cardLabel}>Fastest Event</span>
+          {bestEventPb && <span className="asw-time" style={{ fontSize: 13, color: '#fff' }}>{bestEventPb.time}</span>}
         </div>
       </div>
 

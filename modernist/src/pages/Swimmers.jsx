@@ -377,8 +377,8 @@ export default function Swimmers() {
                     <span>{s.nationality_detail?.name || '—'}</span>
                   </div>
                   <div className="swimmer-card-sub asw-num">
-                    {s.age != null ? `Age ${s.age}` : ''}
-                    {s.age != null && s.sex ? ' · ' : ''}
+                    {s.birth_year ? `(${s.birth_year})` : ''}
+                    {s.birth_year && s.sex ? ' · ' : ''}
                     {s.sex ? (s.sex === 'M' ? 'Male' : 'Female') : ''}
                   </div>
                 </div>

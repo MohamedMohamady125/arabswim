@@ -338,7 +338,8 @@ class RecordViewSet(viewsets.ModelViewSet):
         if sub_classification:
             qs = qs.filter(championship__sub_classification_id=sub_classification)
         if gender:
-            qs = qs.filter(swimmer__sex=gender)
+            from django.db.models import Q
+            qs = qs.filter(Q(swimmer__sex=gender) | Q(swimmer__sex='X'))
 
         # Age group filter
         if age_group and age_group != 'OPEN':

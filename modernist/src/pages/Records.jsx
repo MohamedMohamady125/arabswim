@@ -204,6 +204,7 @@ export default function Records() {
       menRelay: sorted.filter((r) => r.gender === 'M' && r.isRelay),
       womenInd: sorted.filter((r) => r.gender === 'F' && !r.isRelay),
       womenRelay: sorted.filter((r) => r.gender === 'F' && r.isRelay),
+      mixedRelay: sorted.filter((r) => r.isRelay && r.gender !== 'M' && r.gender !== 'F'),
     }
   }, [rows])
 
@@ -215,6 +216,7 @@ export default function Records() {
   if (showMen && bySection.menRelay.length > 0) sections.push({ label: 'Men · Relay Records', rows: bySection.menRelay })
   if (showWomen && bySection.womenInd.length > 0) sections.push({ label: 'Women · Individual Records', rows: bySection.womenInd })
   if (showWomen && bySection.womenRelay.length > 0) sections.push({ label: 'Women · Relay Records', rows: bySection.womenRelay })
+  if (bySection.mixedRelay.length > 0) sections.push({ label: 'Mixed Relay Records', rows: bySection.mixedRelay })
 
   return (
     <div className="records-page">

@@ -120,6 +120,7 @@ def _sibling_event(event, category):
         stroke=event.stroke,
         gender=event.gender,
         age_group=category,
+        date_text=event.date_text,
     )
 
 
@@ -174,6 +175,15 @@ def parse(text):
             break
 
     current_event = None
+    current_date = meet.date_text or ''  # per-page/session date tracker
+
+    # Pattern for the title line that repeats on each page and may embed a
+    # date (e.g. "COUPE DU TRONE DE NATATION - 10/05/2026 - MARRAKECH - Petit bassin"
+    # or "TANGIER INTERNATIONAL SWIMMING MEETING - 28/06/2026 - TANGER - Grand bassin").
+    _TITLE_DATE = re.compile(
+        r'(?:coupe|championnat|natation|meeting|swimming)',
+        re.IGNORECASE,
+    )
 
     for line in lines:
         stripped = line.strip()
@@ -184,10 +194,27 @@ def parse(text):
         if stripped.startswith('Rg') and 'Nom' in stripped:
             continue
 
-        # Check for timestamp lines
-        if re.match(r'^\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}', stripped):
+        # Check for timestamp lines — also update per-event date tracker
+        ts_match = re.match(r'^(\d{2}/\d{2}/\d{4})\s+\d{2}:\d{2}', stripped)
+        if ts_match:
+            current_date = to_iso_date(ts_match.group(1)) or current_date
             if not meet.date_text:
-                meet.date_text = to_iso_date(stripped.split()[0])
+                meet.date_text = current_date
+            continue
+
+        # Repeated title line on subsequent pages may carry a (different) date
+        # for multi-day meets.  Extract only the date, don't re-parse the name.
+        if _TITLE_DATE.search(stripped) or (
+            re.search(r'\d{1,2}/\d{1,2}/\d{4}', stripped)
+            and not EVENT_HEADER.match(stripped)
+            and not RELAY_HEADER.match(stripped)
+            and not RESULT_LINE.match(stripped)
+        ):
+            dm = re.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', stripped)
+            if dm:
+                d, mo, y = int(dm.group(1)), int(dm.group(2)), int(dm.group(3))
+                if 1 <= d <= 31 and 1 <= mo <= 12 and 2000 <= y <= 2099:
+                    current_date = f'{y:04d}-{mo:02d}-{d:02d}'
             continue
 
         # Check for relay event header FIRST (before individual)
@@ -224,6 +251,7 @@ def parse(text):
                 stroke=stroke,
                 gender=gender,
                 age_group='',
+                date_text=current_date,
             )
             meet.events.append(current_event)
             continue
@@ -250,6 +278,7 @@ def parse(text):
                 stroke=stroke,
                 gender=gender,
                 age_group='',
+                date_text=current_date,
             )
             meet.events.append(current_event)
             continue

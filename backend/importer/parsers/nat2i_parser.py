@@ -23,6 +23,9 @@ EVENT_TITLE = re.compile(
     re.IGNORECASE
 )
 
+# Per-event date: a standalone DD/MM/YYYY (or DD-MM-YYYY) in a <p> between events
+_EVENT_DATE = re.compile(r'(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})')
+
 # Relay event: "4x100 m NAGE LIBRE Dames" or "4x50 m NAGE LIBRE Mixte"
 RELAY_TITLE = re.compile(
     r'(\d+)\s*x\s*(\d+)\s*m\s+(.+?)\s+(Dames|Messieurs|Mixte|Filles|Garçons|Garcons)',
@@ -63,6 +66,7 @@ def _sibling_event(event, category):
         stroke=event.stroke,
         gender=event.gender,
         age_group=category,
+        date_text=event.date_text,
     )
 
 
@@ -328,6 +332,7 @@ def parse(html_content):
     # Find all event sections by looking for anchor-named elements
     # Events are separated by <a name="XX"> tags followed by event title
     current_event = None
+    current_date = ''  # per-event date (YYYY-MM-DD) from session headers
 
     # Process all text to find event headers and result tables
     for element in soup.find_all(['p', 'table']):
@@ -339,6 +344,26 @@ def parse(html_content):
                 continue
             # Skip very long <p> tags that are likely concatenated data, not headers
             if len(text) > 200:
+                continue
+
+            # Check for a per-event/session date header.  Some Tunisian
+            # multi-day meet files include a date line (e.g. "31/07/2026"
+            # or "Jeudi 31/07/2026") in a <p> between event sections.
+            # We extract it and apply it to all subsequent events until a
+            # new date header appears.  We skip <p> tags that also match
+            # an event title, and ignore the overall meet-title paragraph
+            # (which contains the full date range, not a single session
+            # date).
+            text_lower = text.lower()
+            dm = _EVENT_DATE.search(text)
+            if (dm
+                    and not EVENT_TITLE.search(text)
+                    and not RELAY_TITLE.search(text)
+                    and not any(kw in text_lower for kw in (
+                        'championnat', 'compétition', 'competition',
+                        'coupe', 'programme'))):
+                day, month, year = dm.group(1), dm.group(2), dm.group(3)
+                current_date = f'{year}-{month.zfill(2)}-{day.zfill(2)}'
                 continue
 
             # Check for event title
@@ -361,6 +386,7 @@ def parse(html_content):
                 current_event = ParsedEvent(
                     event_name=event_name, distance=distance,
                     stroke=stroke, gender=gender,
+                    date_text=current_date,
                 )
                 meet.events.append(current_event)
                 continue
@@ -374,6 +400,7 @@ def parse(html_content):
                 current_event = ParsedEvent(
                     event_name=event_name, distance=distance,
                     stroke=stroke, gender=gender,
+                    date_text=current_date,
                 )
                 meet.events.append(current_event)
                 continue

@@ -285,6 +285,7 @@ def parse(text):
                           'JUN': 6, 'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10,
                           'NOV': 11, 'DEC': 12}
                 d = f'{int(dm.group(3)):04d}-{months.get(dm.group(2).upper(), 1):02d}-{int(dm.group(1)):02d}'
+                current_event.date_text = d
                 if not meet.date_text or d < meet.date_text:
                     meet.date_text = d
                 if not getattr(meet, 'date_end', '') or d > meet.date_end:

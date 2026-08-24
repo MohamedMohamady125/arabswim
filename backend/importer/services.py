@@ -600,9 +600,14 @@ def _build_preview(parsed_meet):
 # Parsed round_type -> ProgramItem.session value
 ROUND_TO_SESSION = {
     'Heats': 'HEATS',
+    'Prelims': 'HEATS',
     'Finals': 'FINALS',
+    'Consolation': 'FINALS',
+    'Final C': 'FINALS',
+    'Final D': 'FINALS',
     'Semifinals': 'SEMIS',
     'Semis': 'SEMIS',
+    'Swim-off': 'FINALS',
 }
 
 

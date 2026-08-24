@@ -24,7 +24,7 @@ from .base import (
     ParsedResult, ParsedEvent, ParsedMeet,
     parse_time_to_centiseconds, normalize_stroke,
     normalize_name, is_relay_event, normalize_event_name,
-    merge_duplicate_events,
+    merge_duplicate_events, _MONTH_NAMES,
 )
 
 
@@ -136,6 +136,53 @@ HC_PREFIX = re.compile(r'^\s*(?:H\.?C\.?|EXH)\s+', re.IGNORECASE)
 
 STATUS_MAP = {'DQ': 'DQ', 'DSQ': 'DQ', 'NS': 'DNS', 'DFS': 'DNS', 'DNF': 'DNF', 'SCR': 'DNS'}
 
+# ---- SESSION / PAGE DATE PATTERNS ----
+# "Results - Sunday 27 July 2026", "Session 3 - Friday 25 July 2026"
+# Also standalone: "Saturday 27 July 2026", "27 July 2026"
+_MONTH_NAMES_PAT = '|'.join(sorted(_MONTH_NAMES, key=len, reverse=True))
+SESSION_DATE_NAMED = re.compile(
+    r'(?:Results|Session\s+\d+)\s*[-–—]\s*'
+    r'(?:(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\w*\s+)?'
+    r'(\d{1,2})\s+(' + _MONTH_NAMES_PAT + r')\.?\s+(\d{4})',
+    re.IGNORECASE,
+)
+# Standalone date line: "Sunday 27 July 2026" or "27 July 2026" alone on a line
+STANDALONE_DATE = re.compile(
+    r'^\s*(?:(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\w*\s+)?'
+    r'(\d{1,2})\s+(' + _MONTH_NAMES_PAT + r')\.?\s+(\d{4})\s*$',
+    re.IGNORECASE,
+)
+# Numeric page-header date: "21/10/2023" or "21-10-2023" alone or after "Results"
+PAGE_DATE_NUMERIC = re.compile(
+    r'(?:^|\bResults\b\s*[-–—]?\s*)(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})',
+    re.IGNORECASE,
+)
+
+
+def _extract_session_date(line):
+    """Try to extract a session date (YYYY-MM-DD) from a header/page line.
+    Returns the ISO date string or '' if nothing found."""
+    m = SESSION_DATE_NAMED.search(line)
+    if m:
+        day = int(m.group(1))
+        month = _MONTH_NAMES.get(m.group(2).lower().rstrip('.'), 0)
+        year = int(m.group(3))
+        if 1 <= day <= 31 and month:
+            return f'{year:04d}-{month:02d}-{day:02d}'
+    m = STANDALONE_DATE.match(line)
+    if m:
+        day = int(m.group(1))
+        month = _MONTH_NAMES.get(m.group(2).lower().rstrip('.'), 0)
+        year = int(m.group(3))
+        if 1 <= day <= 31 and month:
+            return f'{year:04d}-{month:02d}-{day:02d}'
+    m = PAGE_DATE_NUMERIC.search(line)
+    if m:
+        day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if 1 <= day <= 31 and 1 <= month <= 12:
+            return f'{year:04d}-{month:02d}-{day:02d}'
+    return ''
+
 
 def detect_format(text):
     """Check if this text is from HY-TEK Meet Manager."""
@@ -214,6 +261,7 @@ def parse(text):
     # ---- PARSE EVENTS AND RESULTS ----
     current_event = None
     current_key = None  # (event_name, gender, age_group)
+    current_session_date = ''  # per-session date from page/session headers
     # True when the column header has two time columns (e.g. "Seed Time
     # Prelim Time" or "Prelim Time Finals Time") — the actual swim time
     # for the current round is the LAST time on each result line.
@@ -237,6 +285,7 @@ def parse(text):
             gender=current_event.gender,
             round_type=round_type,
             age_group=current_event.age_group,
+            date_text=current_event.date_text or current_session_date,
         )
         meet.events.append(sibling)
         current_event = sibling
@@ -251,6 +300,17 @@ def parse(text):
         stripped = re.sub(r'^[a-z]\s+(?=\S)', '', stripped)
         if len(stripped) <= 1:
             continue
+
+        # ---- Session / page date headers ----
+        # "Results - Sunday 27 July 2026", "Session 3 - Friday 25 July 2026",
+        # standalone "27 July 2026", or numeric "21/10/2023"
+        session_date = _extract_session_date(stripped)
+        if session_date:
+            current_session_date = session_date
+            # Also apply retroactively to the current event if it has no date yet
+            if current_event and not current_event.date_text:
+                current_event.date_text = session_date
+            # Don't consume the line — it might also contain a round keyword
 
         # Round in this line, if any (used by headers and markers below)
         line_round = ''
@@ -306,6 +366,7 @@ def parse(text):
                 gender=gender,
                 round_type=line_round,
                 age_group=age_group,
+                date_text=current_session_date,
             )
             meet.events.append(current_event)
             current_key = key

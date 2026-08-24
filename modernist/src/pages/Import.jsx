@@ -696,7 +696,12 @@ export default function Import() {
                           <label>Start date *</label>
                           <input
                             className="input" type="date" value={meet.champForm.date}
-                            onChange={(e) => setChampForm({ date: e.target.value })} required
+                            onChange={(e) => {
+                              const v = e.target.value
+                              const patch = { date: v }
+                              if (!meet.champForm.end_date && v) patch.end_date = v
+                              setChampForm(patch)
+                            }} required
                             style={{ borderColor: meet.champForm.date ? 'var(--asw-fast)' : 'var(--asw-slow)' }}
                           />
                         </div>
@@ -705,6 +710,7 @@ export default function Import() {
                           <label>End date</label>
                           <input
                             className="input" type="date" value={meet.champForm.end_date}
+                            min={meet.champForm.date || undefined}
                             onChange={(e) => setChampForm({ end_date: e.target.value })}
                           />
                         </div>

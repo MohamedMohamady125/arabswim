@@ -84,7 +84,6 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
     is_national_team: !!team.is_national_team,
   })
   const [logo, setLogo] = useState(null)
-  const [banner, setBanner] = useState(null)
   const [trophies, setTrophies] = useState((team.trophies || []).map((t) => ({ name: t.name, year: t.year })))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -97,7 +96,6 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
       const fd = new FormData()
       Object.entries(form).forEach(([k, v]) => fd.append(k, v))
       if (logo) fd.append('logo', logo)
-      if (banner) fd.append('banner', banner)
       fd.append('trophies_data', JSON.stringify(trophies.filter((t) => t.name && t.year)))
       await updateTeam(team.id, fd)
       onSaved()
@@ -118,7 +116,6 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
           </select>
         </Field>
         <Field label="Logo"><input className="input" type="file" accept="image/jpeg,image/png,image/webp" style={{ width: '100%' }} onChange={(e) => setLogo(e.target.files?.[0] || null)} /></Field>
-        <Field label="Banner"><input className="input" type="file" accept="image/jpeg,image/png,image/webp" style={{ width: '100%' }} onChange={(e) => setBanner(e.target.files?.[0] || null)} /></Field>
       </div>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0 10px' }}>
         <input type="checkbox" checked={form.is_national_team}

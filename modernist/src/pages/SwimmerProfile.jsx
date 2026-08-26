@@ -900,7 +900,7 @@ export default function SwimmerProfile() {
         <div className="swimmer-head-info" style={{ flex: 1 }}>
           <div className="kicker" style={{ marginBottom: 6 }}>Swimmer profile</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h1 style={{ margin: 0, letterSpacing: '-0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', fontSize: (swimmer.name || '').length > 25 ? 'clamp(20px, 4vw, 32px)' : undefined }}>{swimmer.name}</h1>
+            <h1 style={{ margin: 0, letterSpacing: '-0.03em', overflowWrap: 'anywhere', fontSize: (swimmer.name || '').length > 25 ? 'clamp(20px, 4vw, 32px)' : undefined }}>{swimmer.name}</h1>
             {swimmer.is_verified && (
               <span className="tag tag-accent-2" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <BadgeCheck size={14} /> Verified athlete

@@ -894,6 +894,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         # the new one. Country attribution everywhere reads Result.nationality.
         from .models import restamp_result_nationalities
         restamp_result_nationalities(swimmer)
+        # Recompute medals for all championships this swimmer participated in
+        from championships.models import Result as _Result, Championship as _Champ
+        from medals.utils import recompute_medals
+        champ_ids = set(_Result.objects.filter(swimmer=swimmer).values_list('championship_id', flat=True))
+        for cid in champ_ids:
+            recompute_medals(_Champ.objects.get(id=cid))
         return Response(SwimmerDetailSerializer(swimmer).data)
 
     @action(detail=True, methods=['get'], url_path='transfer-history')

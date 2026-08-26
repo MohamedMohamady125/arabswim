@@ -1747,12 +1747,12 @@ class ResultViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         result = serializer.save()
         self._auto_fina(result)
-        self._recompute(result.championship)
+        self._post_save(result)
 
     def perform_update(self, serializer):
         result = serializer.save()
         self._auto_fina(result)
-        self._recompute(result.championship)
+        self._post_save(result)
 
     @staticmethod
     def _auto_fina(result):
@@ -1775,6 +1775,19 @@ class ResultViewSet(viewsets.ModelViewSet):
         championship = instance.championship
         instance.delete()
         self._recompute(championship)
+
+    @staticmethod
+    def _post_save(result):
+        """After creating or updating a result: recompute medals, check
+        records, restamp nationality — so every manual edit reflects
+        everywhere on the website."""
+        from medals.utils import recompute_medals
+        recompute_medals(result.championship)
+        from records.auto import check_and_update_records
+        check_and_update_records(result)
+        if result.swimmer.nationality_changes.exists():
+            from swimmers.models import restamp_result_nationalities
+            restamp_result_nationalities(result.swimmer)
 
     @staticmethod
     def _recompute(championship):

@@ -143,15 +143,15 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
         {(data.clubs || []).length === 0 ? (
           <Empty label="No club history available" />
         ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          <div className="cellgrid" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(2, data.clubs.length))}, 1fr)` }}>
             {data.clubs.map((club, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 14px', border: '1px solid var(--color-divider)',
-                background: 'var(--color-surface)',
-              }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {club.country_code && <Flag code={club.country_code} name={club.country} flagUrl={club.country_flag} />}
-                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>{club.club}</span>
+                <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{club.club}</span>
+                <span className="asw-num" style={{ textAlign: 'right' }}>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>{club.meets}</span>
+                  <span className="micro" style={{ marginLeft: 6 }}>meet{club.meets !== 1 ? 's' : ''}</span>
+                </span>
               </div>
             ))}
           </div>

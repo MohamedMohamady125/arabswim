@@ -13,11 +13,12 @@ import { formatDate, formatTime } from '../utils'
 const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley', 'Freestyle Relay', 'Medley Relay']
 
 const TABS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'medals', label: 'Medal Table' },
-  { value: 'times', label: 'Top Times' },
-  { value: 'participation', label: 'Participation' },
+  { value: 'overview', label: 'Swimmers' },
+  { value: 'medals', label: 'Medals' },
+  { value: 'times', label: 'Rankings' },
   { value: 'records', label: 'Records' },
+  { value: 'participation', label: 'Participation' },
+  { value: 'performance', label: 'High Performance' },
 ]
 
 const RECORD_GROUPS = [
@@ -33,6 +34,7 @@ const MEDAL_GROUPS = [
   { value: 'country', label: 'By Country' },
   { value: 'club', label: 'By Club' },
   { value: 'swimmer', label: 'By Swimmer' },
+  { value: 'meet', label: 'By Championship' },
 ]
 
 const PART_GROUPS = [
@@ -43,7 +45,7 @@ const PART_GROUPS = [
   { value: 'swimmer', label: 'By Swimmer' },
 ]
 
-const LIMITS = [25, 50, 100, 200, 500]
+const LIMITS = [10, 20, 50, 100, 200, 500]
 
 function downloadCsv(filename, headers, rows) {
   const esc = (v) => {
@@ -173,6 +175,7 @@ export default function Reports() {
       : tab === 'medals' ? getReportMedalTable({ ...params, group: medalGroup })
       : tab === 'times' ? getReportTopTimes({ ...params, best_per_swimmer: bestPerSwimmer ? 1 : 0, per_event: perEvent ? 1 : 0 })
       : tab === 'records' ? getReportRecords({ ...params, group: recordGroup, record_type: recordType || undefined })
+      : tab === 'performance' ? getReportTopTimes({ ...params, best_per_swimmer: 1, per_event: 0, fina_min: finaMin || 600 })
       : getReportParticipation({ ...params, group: partGroup })
     call
       .then((res) => { if (alive) setData(res.data) })
@@ -289,8 +292,9 @@ export default function Reports() {
         </div>
       )}
 
-      {/* filter bar */}
-      <div className="rule-b records-filters" style={{ padding: '12px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* filter bar — tab-specific */}
+      <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Row 1: always visible — gender, pool, limit, clear */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Seg
             options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
@@ -302,22 +306,29 @@ export default function Reports() {
             value={pool}
             onChange={setPool}
           />
+          <select className="select" style={{ flex: '0 1 110px', width: 'auto', minWidth: 0 }} value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}>
+            {[...new Set([...LIMITS, limit])].sort((a, b) => a - b).map((n) => <option key={n} value={n}>Top {n}</option>)}
+          </select>
           {hasFilters && (
             <button className="btn btn-secondary" style={{ height: 32 }} onClick={clearFilters}>
               Clear filters
             </button>
           )}
         </div>
+        {/* Row 2: country, event, classification */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <select className="select" style={selStyle} value={country} onChange={(e) => setCountry(e.target.value)}>
             <option value="">All nationalities</option>
             {countries.map((c) => <option key={c.id} value={c.code}>{c.name}</option>)}
           </select>
-          <select className="select" style={selStyle} value={hostCountry} onChange={(e) => setHostCountry(e.target.value)}>
-            <option value="">Any host country</option>
-            {countries.map((c) => <option key={c.id} value={c.code}>{c.name}</option>)}
-          </select>
-          <select className="select" style={{ ...selStyle, flex: '2 1 170px' }} value={event} onChange={(e) => setEvent(e.target.value)}>
+          {(tab === 'medals' || tab === 'participation') && (
+            <select className="select" style={selStyle} value={hostCountry} onChange={(e) => setHostCountry(e.target.value)}>
+              <option value="">Any host country</option>
+              {countries.map((c) => <option key={c.id} value={c.code}>{c.name}</option>)}
+            </select>
+          )}
+          <select className="select" style={selStyle} value={event} onChange={(e) => setEvent(e.target.value)}>
             <option value="">All events</option>
             {eventGroups.map((g) => (
               <optgroup key={g.stroke} label={g.stroke}>
@@ -325,43 +336,39 @@ export default function Reports() {
               </optgroup>
             ))}
           </select>
-          <input className="input" style={{ ...inputStyle, flex: '2 1 150px' }} placeholder="Club contains…"
-            value={teamInput} onChange={(e) => setTeamInput(e.target.value)} />
-        </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input className="input" type="date" style={inputStyle} title="From date"
-            value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <input className="input" type="date" style={inputStyle} title="To date"
-            value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          <input className="input" type="number" min="5" max="99" style={{ ...inputStyle, flex: '0 1 90px' }}
-            placeholder="Age min" value={ageMin} onChange={(e) => setAgeMin(e.target.value)} />
-          <input className="input" type="number" min="5" max="99" style={{ ...inputStyle, flex: '0 1 90px' }}
-            placeholder="Age max" value={ageMax} onChange={(e) => setAgeMax(e.target.value)} />
-          <select className="select" style={{ flex: '0 1 110px', width: 'auto', minWidth: 0 }} value={limit}
-            onChange={(e) => setLimit(Number(e.target.value))}>
-            {[...new Set([...LIMITS, limit])].sort((a, b) => a - b).map((n) => <option key={n} value={n}>Top {n}</option>)}
-          </select>
-        </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select className="select" style={selStyle} value={round} onChange={(e) => setRound(e.target.value)}>
-            <option value="">All rounds</option>
-            <option value="Finals">Finals</option>
-            <option value="Consolation">B Final</option>
-            <option value="Semifinals">Semifinals</option>
-            <option value="Prelims">Prelims</option>
-            <option value="Heats">Heats</option>
-          </select>
           <select className="select" style={selStyle} value={classification} onChange={(e) => setClassification(e.target.value)}>
             <option value="">All classifications</option>
             {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <Seg
-            options={[{ value: '', label: 'All meets' }, { value: 'OPEN', label: 'Open' }, { value: 'AGE_GROUP', label: 'Age Group' }]}
-            value={meetCategory}
-            onChange={setMeetCategory}
-          />
-          <input className="input" type="number" min="0" max="1200" style={{ ...inputStyle, flex: '0 1 120px' }}
-            placeholder="Min FINA pts" value={finaMin} onChange={(e) => setFinaMin(e.target.value)} />
+        </div>
+        {/* Row 3: dates, age, club, round, FINA — context-dependent */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input className="input" type="date" style={inputStyle} title="From date" placeholder="From"
+            value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <input className="input" type="date" style={inputStyle} title="To date" placeholder="To"
+            value={dateTo} onChange={(e) => {
+              setDateTo(e.target.value)
+              if (!dateFrom && e.target.value) setDateFrom(e.target.value)
+            }} />
+          <input className="input" type="number" min="5" max="99" style={{ ...inputStyle, flex: '0 1 80px' }}
+            placeholder="Age min" value={ageMin} onChange={(e) => setAgeMin(e.target.value)} />
+          <input className="input" type="number" min="5" max="99" style={{ ...inputStyle, flex: '0 1 80px' }}
+            placeholder="Age max" value={ageMax} onChange={(e) => setAgeMax(e.target.value)} />
+          <input className="input" style={{ ...inputStyle, flex: '1 1 130px' }} placeholder="Club…"
+            value={teamInput} onChange={(e) => setTeamInput(e.target.value)} />
+          {(tab === 'times' || tab === 'overview') && (
+            <select className="select" style={{ ...selStyle, flex: '0 1 120px' }} value={round} onChange={(e) => setRound(e.target.value)}>
+              <option value="">All rounds</option>
+              <option value="Finals">Finals</option>
+              <option value="Consolation">B Final</option>
+              <option value="Semifinals">Semis</option>
+              <option value="Prelims">Prelims</option>
+            </select>
+          )}
+          {(tab === 'times' || tab === 'performance') && (
+            <input className="input" type="number" min="0" max="1200" style={{ ...inputStyle, flex: '0 1 110px' }}
+              placeholder="Min FINA" value={finaMin} onChange={(e) => setFinaMin(e.target.value)} />
+          )}
         </div>
         {championship && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
@@ -400,6 +407,13 @@ export default function Reports() {
               Per event
             </label>
           </>
+        )}
+        {tab === 'performance' && (
+          <Seg
+            options={[{ value: 'swimmer', label: 'By Swimmer' }, { value: 'country', label: 'By Country' }, { value: 'club', label: 'By Club' }]}
+            value={partGroup}
+            onChange={setPartGroup}
+          />
         )}
         {tab !== 'overview' && data && data.length > 0 && (
           <button className="btn btn-secondary" style={{ height: 32, marginLeft: 'auto' }} onClick={exportCsv}>

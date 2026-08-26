@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trash2 } from 'lucide-react'
-import { getArticles, deleteArticle } from '../api/news'
+import { Trash2, Edit3 } from 'lucide-react'
+import { getArticles, createArticle, updateArticle, deleteArticle } from '../api/news'
+import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Pager, Seg } from '../components/ui'
+import { PageHead, Loading, Empty, Pager, Seg, Modal } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
@@ -20,6 +21,87 @@ function excerpt(body, n = 100) {
   return s.length > n ? `${s.slice(0, n)}…` : s
 }
 
+function ArticleModal({ article, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    title: article?.title || '',
+    body: article?.body || '',
+    status: article?.status || 'DRAFT',
+    country: article?.country || '',
+  })
+  const [cover, setCover] = useState(null)
+  const [countries, setCountries] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getCountries().then((res) => setCountries(Array.isArray(res.data) ? res.data : res.data?.results || [])).catch(() => {})
+  }, [])
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!form.title.trim()) { setError('Title is required'); return }
+    setSaving(true); setError('')
+    try {
+      const fd = new FormData()
+      fd.append('title', form.title)
+      fd.append('body', form.body)
+      fd.append('status', form.status)
+      if (form.country) fd.append('country', form.country)
+      if (cover) fd.append('cover_image', cover)
+      if (article) {
+        await updateArticle(article.id, fd)
+      } else {
+        await createArticle(fd)
+      }
+      onSaved()
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.title?.[0] || 'Failed to save')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal title={article ? 'Edit Article' : 'Create Article'} onClose={onClose} width={640}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {error && <div className="error-box">{error}</div>}
+        <div className="field">
+          <label>Title *</label>
+          <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+        </div>
+        <div className="field">
+          <label>Body</label>
+          <textarea className="input" rows={10} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
+            style={{ resize: 'vertical', minHeight: 160 }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="field">
+            <label>Status</label>
+            <select className="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+              <option value="DRAFT">Draft</option>
+              <option value="PUBLISHED">Published</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Country (optional)</label>
+            <select className="select" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>
+              <option value="">None</option>
+              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="field">
+          <label>Cover image</label>
+          <input className="input" type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} />
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : article ? 'Save changes' : 'Create article'}</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 export default function News() {
   const { isAdmin } = useAuth()
   const [articles, setArticles] = useState([])
@@ -28,6 +110,8 @@ export default function News() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(true)
+  const [editArticle, setEditArticle] = useState(null) // null=closed, {}=create, article=edit
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -45,7 +129,7 @@ export default function News() {
       .catch(() => alive && setArticles([]))
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [page, search, statusFilter, isAdmin])
+  }, [page, search, statusFilter, isAdmin, reloadKey])
 
   const handleDelete = async (a) => {
     if (!window.confirm(`Delete article "${a.title}"? This cannot be undone.`)) return
@@ -65,16 +149,18 @@ export default function News() {
       </span>
     ) : null
 
-  const deleteBtn = (a) =>
+  const adminBtns = (a) =>
     isAdmin ? (
-      <button
-        type="button"
-        className="btn btn-ghost"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(a) }}
-      >
-        <Trash2 size={13} /> Delete
-      </button>
+      <span style={{ display: 'inline-flex', gap: 6 }}>
+        <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditArticle(a) }}>
+          <Edit3 size={13} /> Edit
+        </button>
+        <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(a) }}>
+          <Trash2 size={13} /> Delete
+        </button>
+      </span>
     ) : null
 
   const lead = articles[0]
@@ -93,7 +179,10 @@ export default function News() {
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           />
           {isAdmin && (
-            <Seg options={STATUS_TABS} value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1) }} />
+            <>
+              <Seg options={STATUS_TABS} value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1) }} />
+              <button className="btn btn-primary" onClick={() => setEditArticle({})}>Create article</button>
+            </>
           )}
         </div>
       </PageHead>
@@ -128,7 +217,7 @@ export default function News() {
                   {lead.country_detail && <span>{lead.country_detail.name}</span>}
                   <span>{formatDate(lead.published_at || lead.created_at)}</span>
                   <span style={{ flex: 1 }} />
-                  {deleteBtn(lead)}
+                  {adminBtns(lead)}
                 </div>
               </div>
             </div>
@@ -163,7 +252,7 @@ export default function News() {
                       {a.country_detail && <span>{a.country_detail.name}</span>}
                       <span>{formatDate(a.published_at || a.created_at)}</span>
                       <span style={{ flex: 1 }} />
-                      {deleteBtn(a)}
+                      {adminBtns(a)}
                     </div>
                   </Link>
                 ))}
@@ -173,6 +262,14 @@ export default function News() {
 
           <Pager page={page} pageSize={PAGE_SIZE} count={count} onPage={setPage} />
         </div>
+      )}
+
+      {editArticle !== null && (
+        <ArticleModal
+          article={editArticle.id ? editArticle : null}
+          onClose={() => setEditArticle(null)}
+          onSaved={() => { setEditArticle(null); setReloadKey((k) => k + 1) }}
+        />
       )}
     </div>
   )

@@ -371,7 +371,11 @@ export default function Swimmers() {
                   )}
                 </div>
                 <div className="swimmer-card-body">
-                  <div className="swimmer-card-name">{s.name}</div>
+                  <div className="swimmer-card-name">{(() => {
+                    const words = (s.name || '').split(' ')
+                    if (words.length < 2) return s.name
+                    return <>{words[0]}<br />{words.slice(1).join(' ')}</>
+                  })()}</div>
                   <div className="swimmer-card-meta">
                     <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
                     <span>{s.nationality_detail?.name || '—'}</span>

@@ -1083,10 +1083,16 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             ch = NationalityChange.objects.get(pk=change_id, swimmer_id=pk)
         except NationalityChange.DoesNotExist:
             return Response({'error': 'Not found'}, status=404)
+        swimmer = ch.swimmer
         ch.delete()
         # Attribution may depend on the deleted entry — rebuild it.
         from .models import restamp_result_nationalities
-        restamp_result_nationalities(ch.swimmer)
+        restamp_result_nationalities(swimmer)
+        # Recompute medals for affected championships
+        from championships.models import Result as _R, Championship as _C
+        from medals.utils import recompute_medals
+        for cid in set(_R.objects.filter(swimmer=swimmer).values_list('championship_id', flat=True)):
+            recompute_medals(_C.objects.get(id=cid))
         return Response(status=204)
 
     @action(detail=True, methods=['get'])

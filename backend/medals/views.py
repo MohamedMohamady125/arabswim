@@ -24,6 +24,19 @@ class MedalViewSet(viewsets.ModelViewSet):
             return MedalCreateSerializer
         return MedalSerializer
 
+    def perform_create(self, serializer):
+        medal = serializer.save()
+        # Ensure nationality is set from swimmer if not provided
+        if not medal.nationality_id and medal.swimmer and medal.swimmer.nationality_id:
+            medal.nationality_id = medal.swimmer.nationality_id
+            medal.save(update_fields=['nationality'])
+
+    def perform_update(self, serializer):
+        medal = serializer.save()
+        if not medal.nationality_id and medal.swimmer and medal.swimmer.nationality_id:
+            medal.nationality_id = medal.swimmer.nationality_id
+            medal.save(update_fields=['nationality'])
+
     def _apply_filters(self, qs):
         championship = self.request.query_params.get('championship')
         classification = self.request.query_params.get('classification')

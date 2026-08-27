@@ -136,8 +136,12 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             champ.is_calendar_only = False
         champ.save(update_fields=['is_live', 'is_calendar_only'])
         from medals.utils import recompute_medals
-        recompute_medals(champ)
-        return Response({'status': 'finished', 'results': champ.results.count()})
+        medal_count = recompute_medals(champ)
+        # Check records for all results in this meet
+        from records.auto import check_and_update_records
+        for r in champ.results.select_related('swimmer', 'swimmer__nationality', 'nationality', 'event', 'championship'):
+            check_and_update_records(r)
+        return Response({'status': 'finished', 'results': champ.results.count(), 'medals': medal_count})
 
     @action(detail=True, methods=['post'], url_path='apply-tc')
     def apply_tc(self, request, pk=None):
@@ -1774,7 +1778,8 @@ class ResultViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         championship = instance.championship
         instance.delete()
-        self._recompute(championship)
+        from medals.utils import recompute_medals
+        recompute_medals(championship)
 
     @staticmethod
     def _post_save(result):
@@ -1788,8 +1793,3 @@ class ResultViewSet(viewsets.ModelViewSet):
         if result.swimmer.nationality_changes.exists():
             from swimmers.models import restamp_result_nationalities
             restamp_result_nationalities(result.swimmer)
-
-    @staticmethod
-    def _recompute(championship):
-        from medals.utils import recompute_medals
-        recompute_medals(championship)

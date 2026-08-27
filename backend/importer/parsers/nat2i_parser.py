@@ -174,26 +174,46 @@ def parse_text(text):
 
     current_event = None
     current_round = 'Finals'
+    is_relay_event = False
+    relay_rank = 0
+    relay_legs = []  # accumulate swimmer names for relay
+
+    # Relay swimmer line: "NAME NAT YEAR" (no time) or with time+club on last leg
+    _RELAY_LEG = re.compile(
+        r'^(?:(\d+)\.\s+)?'                      # optional rank (1.)
+        r'(?:N\.C\.\s+)?'                         # optional N.C. (disqualified)
+        r'(.+?)\s+'                                # name
+        r'([A-Z]{3})\s+'                           # nationality
+        r'(\d{4})'                                 # birth year
+        r'(?:\s+(\S+(?:\s+\S+)*?)\s+'             # optional club
+        r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2}|Disqual\.)' # time or Disqual
+        r'(?:\s+(\d+))?)?'                         # optional points
+    )
 
     for raw_line in lines:
         line = raw_line.strip()
         if not line:
             continue
 
-        # Event header: "100 m NAGE LIBRE Dames Classement"
-        em = EVENT_TITLE.search(line)
+        # Event header: check relay FIRST (4x100 also matches the individual
+        # regex at the "100 m" part, so relay must take priority)
+        em = RELAY_TITLE.search(line)
         if not em:
-            em = RELAY_TITLE.search(line)
+            em = EVENT_TITLE.search(line)
         if em:
+            relay_legs = []
+            relay_rank = 0
             groups = em.groups()
             if len(groups) == 3:
                 distance = int(groups[0])
                 stroke_text = groups[1]
                 gender_text = groups[2]
                 is_relay = False
+                is_relay_event = False
             else:
                 distance = int(groups[0]) * int(groups[1])
                 stroke_text = groups[2]
+                is_relay_event = True
                 gender_text = groups[3]
                 is_relay = True
             stroke = normalize_stroke(stroke_text)
@@ -239,9 +259,44 @@ def parse_text(text):
                     current_event.round_type = current_round
             continue
 
-        # Result line
+        # Result line (individual) or relay leg
+        if current_event and is_relay_event:
+            # Relay: accumulate legs; the line with a time is the last leg
+            rl = _RELAY_LEG.match(line)
+            if rl:
+                if rl.group(1):  # has rank → first leg of a new team
+                    relay_rank = int(rl.group(1))
+                    relay_legs = []
+                leg_name = _nat2i_normalize_name(rl.group(2).strip())
+                nat_code = rl.group(3)
+                relay_legs.append({'name': leg_name, 'split_time': ''})
+                time_text = rl.group(6) if rl.group(6) else None
+                if time_text and time_text != 'Disqual.':
+                    # Last leg — create the relay result
+                    club = (rl.group(5) or '').strip()
+                    points = int(rl.group(7)) if rl.group(7) else 0
+                    time_cs = parse_time_to_centiseconds(time_text)
+                    split_times = []
+                    for sm in re.finditer(r'(\d+(?::\d{2})?\.\d{2})\s*\((\d+)\s*m\)', line):
+                        split_times.append(f'{sm.group(2)}m: {sm.group(1)}')
+                    current_event.results.append(ParsedResult(
+                        rank=relay_rank,
+                        swimmer_name=club or nat_code,
+                        nationality_code=nat_code,
+                        time_text=time_text,
+                        time_centiseconds=time_cs,
+                        club=club,
+                        fina_points=points,
+                        split_times=split_times,
+                        relay_swimmers=list(relay_legs),
+                    ))
+                    relay_legs = []
+                elif time_text == 'Disqual.':
+                    relay_legs = []
+                continue
+
         rl = _PDF_RESULT.match(line)
-        if rl and current_event:
+        if rl and current_event and not is_relay_event:
             rank = int(rl.group(1))
             name = _nat2i_normalize_name(rl.group(2).strip())
             nat_code = rl.group(3)

@@ -892,6 +892,7 @@ def _parse_individual_sheet(df, meet, events_dict):
     category_col = _find_column(cols, ['category', 'catégorie', 'cat', 'age group'])
     distance_col = _find_column(cols, ['distance'])
     stroke_col = _find_column(cols, ['stroke', 'nage'])
+    session_date_col = _find_column(cols, ['date', 'session date'])
     if not name_col or not time_col:
         return
 
@@ -938,6 +939,17 @@ def _parse_individual_sheet(df, meet, events_dict):
             stroke = _safe_str(row[stroke_col]) if stroke_col else ''
             if stroke.lower() == 'nan':
                 stroke = ''
+            # Per-event date from the Date/Session column (scrape exports include it)
+            row_date = ''
+            if session_date_col:
+                raw_date = _safe_str(row[session_date_col])
+                if raw_date and raw_date.lower() != 'nan':
+                    import re as _re
+                    dm = _re.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', raw_date)
+                    if dm:
+                        row_date = f'{dm.group(3)}-{dm.group(1).zfill(2)}-{dm.group(2).zfill(2)}'
+                    elif _re.match(r'\d{4}-\d{2}-\d{2}', raw_date):
+                        row_date = raw_date[:10]
             parsed_event = ParsedEvent(
                 event_name=event_name,
                 distance=distance or extract_distance(event_name),
@@ -945,9 +957,19 @@ def _parse_individual_sheet(df, meet, events_dict):
                 gender=gender,
                 round_type=round_type,
                 age_group=category,
+                date_text=row_date,
             )
             events_dict[event_key] = parsed_event
             meet.events.append(parsed_event)
+        else:
+            # Update date_text on existing event if this row has a date
+            if session_date_col and not events_dict[event_key].date_text:
+                raw_date = _safe_str(row[session_date_col])
+                if raw_date and raw_date.lower() != 'nan':
+                    import re as _re
+                    dm = _re.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', raw_date)
+                    if dm:
+                        events_dict[event_key].date_text = f'{dm.group(3)}-{dm.group(1).zfill(2)}-{dm.group(2).zfill(2)}'
 
         # ---- Parse result cells ----
         time_val = _cell_time_str(row[time_col])

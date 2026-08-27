@@ -37,7 +37,34 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     {'error': f'You may only edit: {", ".join(sorted(self.ATHLETE_EDITABLE))}'},
                     status=400,
                 )
-        return super().partial_update(request, *args, **kwargs)
+        # Track old nationality before saving
+        swimmer = self.get_object()
+        old_nationality_id = swimmer.nationality_id
+        response = super().partial_update(request, *args, **kwargs)
+        # If nationality changed, restamp all results + recompute medals
+        swimmer.refresh_from_db()
+        if swimmer.nationality_id != old_nationality_id:
+            from championships.models import Result
+            from championships.models import Championship
+            from medals.utils import recompute_medals
+            # Update all results that still have the old nationality
+            Result.objects.filter(
+                swimmer=swimmer, nationality_id=old_nationality_id
+            ).update(nationality_id=swimmer.nationality_id)
+            # Also restamp if there are nationality change records
+            if swimmer.nationality_changes.exists():
+                from .models import restamp_result_nationalities
+                restamp_result_nationalities(swimmer)
+            # Update all medals
+            from medals.models import Medal
+            Medal.objects.filter(
+                swimmer=swimmer, nationality_id=old_nationality_id
+            ).update(nationality_id=swimmer.nationality_id)
+            # Recompute medals for affected championships
+            champ_ids = set(Result.objects.filter(swimmer=swimmer).values_list('championship_id', flat=True))
+            for cid in champ_ids:
+                recompute_medals(Championship.objects.get(id=cid))
+        return response
 
     def get_serializer_class(self):
         if self.action == 'list':

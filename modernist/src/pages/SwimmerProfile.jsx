@@ -631,7 +631,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       {/* Stat cards — same gradient style as home page */}
-      <div className="qs-cards-8" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+      <div className="swimmer-stat-cards">
         <div style={cardStyle}>
           <span className="asw-num" style={cardNum}>{total_championships ?? 0}</span>
           <span style={cardLabel}>Meets</span>

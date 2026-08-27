@@ -539,6 +539,12 @@ figure { margin: 0; }
 }
 .asw-fade-up { animation: asw-fade-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
+/* swimmer profile stat cards: 6 on desktop, 3×2 on phone */
+.swimmer-stat-cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+@media (max-width: 900px) {
+  .swimmer-stat-cards { grid-template-columns: repeat(3, 1fr); }
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.35; transform: scale(0.7); }

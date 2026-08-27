@@ -19,7 +19,17 @@ const TABS = [
   { value: 'records', label: 'Records' },
   { value: 'participation', label: 'Participation' },
   { value: 'performance', label: 'High Performance' },
+  { value: 'improvement', label: 'Best Improvement' },
 ]
+
+const AGE_GROUPS = ['OPEN', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18']
+
+const YEARS = (() => {
+  const now = new Date().getFullYear()
+  const yrs = [{ value: '', label: 'All time' }]
+  for (let y = now; y >= 2018; y--) yrs.push({ value: String(y), label: String(y) })
+  return yrs
+})()
 
 const RECORD_GROUPS = [
   { value: 'country', label: 'By Country' },
@@ -92,6 +102,9 @@ export default function Reports() {
   const [classification, setClassification] = useState('')
   const [meetCategory, setMeetCategory] = useState('')
   const [finaMin, setFinaMin] = useState('')
+  const [ageGroup, setAgeGroup] = useState('OPEN')
+  const [year, setYear] = useState('')
+  const [scope, setScope] = useState('')
   const [limit, setLimit] = useState(50)
 
   // report selection
@@ -164,9 +177,10 @@ export default function Reports() {
     if (classification) p.classification = classification
     if (meetCategory) p.meet_category = meetCategory
     if (finaMin) p.fina_min = finaMin
+    if (year) { p.date_from = `${year}-01-01`; p.date_to = `${year}-12-31` }
     p.limit = limit
     return p
-  }, [dateFrom, dateTo, country, hostCountry, team, event, pool, gender, ageMin, ageMax, championship, round, classification, meetCategory, finaMin, limit])
+  }, [dateFrom, dateTo, country, hostCountry, team, event, pool, gender, ageMin, ageMax, championship, round, classification, meetCategory, finaMin, year, limit])
 
   useEffect(() => {
     let alive = true
@@ -176,6 +190,7 @@ export default function Reports() {
       : tab === 'times' ? getReportTopTimes({ ...params, best_per_swimmer: bestPerSwimmer ? 1 : 0, per_event: perEvent ? 1 : 0 })
       : tab === 'records' ? getReportRecords({ ...params, group: recordGroup, record_type: recordType || undefined })
       : tab === 'performance' ? getReportTopTimes({ ...params, best_per_swimmer: 1, per_event: 0, fina_min: finaMin || 600 })
+      : tab === 'improvement' ? getReportTopTimes({ ...params, best_per_swimmer: 1, per_event: 1 })
       : getReportParticipation({ ...params, group: partGroup })
     call
       .then((res) => { if (alive) setData(res.data) })
@@ -184,11 +199,12 @@ export default function Reports() {
     return () => { alive = false }
   }, [tab, medalGroup, partGroup, recordGroup, recordType, bestPerSwimmer, perEvent, params])
 
-  const hasFilters = dateFrom || dateTo || country || hostCountry || team || teamInput || event || pool || gender || ageMin || ageMax || championship || round || classification || meetCategory || finaMin
+  const hasFilters = dateFrom || dateTo || country || hostCountry || team || teamInput || event || pool || gender || ageMin || ageMax || championship || round || classification || meetCategory || finaMin || year || ageGroup !== 'OPEN'
   const clearFilters = () => {
     setDateFrom(''); setDateTo(''); setCountry(''); setHostCountry(''); setTeam(''); setTeamInput('')
     setEvent(''); setPool(''); setGender(''); setAgeMin(''); setAgeMax(''); setChampionship(null)
     setRound(''); setClassification(''); setMeetCategory(''); setFinaMin('')
+    setAgeGroup('OPEN'); setYear(''); setScope('')
     setAskSummary('')
   }
 
@@ -294,7 +310,7 @@ export default function Reports() {
 
       {/* filter bar — tab-specific */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* Row 1: always visible — gender, pool, limit, clear */}
+        {/* Row 1: core filters — gender, pool, scope, age group, year, limit */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Seg
             options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
@@ -306,7 +322,17 @@ export default function Reports() {
             value={pool}
             onChange={setPool}
           />
-          <select className="select" style={{ flex: '0 1 110px', width: 'auto', minWidth: 0 }} value={limit}
+          {(tab === 'times' || tab === 'records' || tab === 'performance') && (
+            <select className="select" style={{ flex: '0 1 100px', width: 'auto', minWidth: 0 }} value={ageGroup}
+              onChange={(e) => setAgeGroup(e.target.value)}>
+              {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
+            </select>
+          )}
+          <select className="select" style={{ flex: '0 1 110px', width: 'auto', minWidth: 0 }} value={year}
+            onChange={(e) => setYear(e.target.value)}>
+            {YEARS.map((y) => <option key={y.value} value={y.value}>{y.label}</option>)}
+          </select>
+          <select className="select" style={{ flex: '0 1 100px', width: 'auto', minWidth: 0 }} value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}>
             {[...new Set([...LIMITS, limit])].sort((a, b) => a - b).map((n) => <option key={n} value={n}>Top {n}</option>)}
           </select>

@@ -60,6 +60,11 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             Medal.objects.filter(
                 swimmer=swimmer, nationality_id=old_nationality_id
             ).update(nationality_id=swimmer.nationality_id)
+            # Update all records
+            from records.models import Record
+            Record.objects.filter(
+                swimmer=swimmer, country_id=old_nationality_id
+            ).update(country_id=swimmer.nationality_id)
             # Recompute medals for affected championships
             champ_ids = set(Result.objects.filter(swimmer=swimmer).values_list('championship_id', flat=True))
             for cid in champ_ids:

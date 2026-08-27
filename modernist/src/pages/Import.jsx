@@ -337,7 +337,7 @@ export default function Import() {
         anyOk = true
         // save the program planned in the review step (non-fatal on failure)
         const champId = jobData.result?.championship_id
-        if (champId && !m.existingChampId && (m.programItems || []).length > 0) {
+        if (champId && (m.programItems || []).length > 0) {
           try {
             const byDay = {}
             m.programItems.forEach((it) => { (byDay[it.day] = byDay[it.day] || []).push(it) })

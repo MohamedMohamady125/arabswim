@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getQualifyingStandards, getQualifyingStandard } from '../api/qualifyingTimes'
-import { PageHead, Loading, Empty, Seg } from '../components/ui'
-import { formatDate } from '../utils'
+import {
+  getQualifyingStandards, getQualifyingStandard,
+  createQualifyingStandard, updateQualifyingStandard, deleteQualifyingStandard,
+  uploadQualifyingPdf, addQualifyingTime, deleteQualifyingTime,
+} from '../api/qualifyingTimes'
+import { getEvents } from '../api/core'
+import { PageHead, Loading, Empty, Seg, Modal } from '../components/ui'
+import { formatDate, parseTime } from '../utils'
+import { useAuth } from '../context/AuthContext'
 
 const COMP_LABEL = {
   olympics: 'Olympic Games',
@@ -18,7 +24,7 @@ const STROKE_ORDER = { Freestyle: 0, Backstroke: 1, Breaststroke: 2, Butterfly: 
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
-function StandardTables({ times, gender, pool }) {
+function StandardTables({ times, gender, pool, isAdmin, onDeleteTime }) {
   // event rows for the selection, cut categories (A/B/C…) as separate columns
   const { byStroke, cutKeys } = useMemo(() => {
     const map = new Map()
@@ -90,6 +96,98 @@ function StandardTables({ times, gender, pool }) {
   )
 }
 
+function StandardModal({ standard, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    name: standard?.name || '',
+    competition_type: standard?.competition_type || '',
+    year: standard?.year || new Date().getFullYear(),
+    qualifying_period_start: standard?.qualifying_period_start || '',
+    qualifying_period_end: standard?.qualifying_period_end || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!form.name) { setError('Name required'); return }
+    setSaving(true)
+    try {
+      if (standard?.id) await updateQualifyingStandard(standard.id, form)
+      else await createQualifyingStandard(form)
+      onSaved()
+    } catch (err) { setError(err.response?.data?.detail || 'Failed'); setSaving(false) }
+  }
+  return (
+    <Modal title={standard?.id ? 'Edit Standard' : 'Create Standard'} onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {error && <div className="error-box">{error}</div>}
+        <div className="field"><label>Name *</label><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="field"><label>Competition type</label><input className="input" value={form.competition_type} onChange={(e) => setForm({ ...form, competition_type: e.target.value })} placeholder="e.g. world_championships" /></div>
+          <div className="field"><label>Year</label><input className="input" type="number" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} /></div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="field"><label>Qualifying start</label><input className="input" type="date" value={form.qualifying_period_start} onChange={(e) => setForm({ ...form, qualifying_period_start: e.target.value })} /></div>
+          <div className="field"><label>Qualifying end</label><input className="input" type="date" value={form.qualifying_period_end} onChange={(e) => setForm({ ...form, qualifying_period_end: e.target.value })} /></div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function AddTimeModal({ standardId, onClose, onSaved }) {
+  const [events, setEvents] = useState([])
+  const [form, setForm] = useState({ event: '', gender: 'M', pool: 'LCM', cut: 'A', time: '' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => { getEvents().then((r) => setEvents(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {}) }, [])
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!form.event || !form.time) { setError('Event and time required'); return }
+    const cs = parseTime(form.time)
+    if (!cs) { setError('Invalid time format'); return }
+    setSaving(true)
+    try {
+      await addQualifyingTime(standardId, { event: form.event, gender: form.gender, pool: form.pool, cut: form.cut, time_centiseconds: cs })
+      onSaved()
+    } catch (err) { setError(err.response?.data?.detail || err.response?.data?.error || 'Failed'); setSaving(false) }
+  }
+  return (
+    <Modal title="Add Qualifying Time" onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {error && <div className="error-box">{error}</div>}
+        <div className="field"><label>Event *</label>
+          <select className="select" value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })}>
+            <option value="">Select event…</option>
+            {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+          </select>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+          <div className="field"><label>Gender</label>
+            <select className="select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
+              <option value="M">Men</option><option value="F">Women</option>
+            </select>
+          </div>
+          <div className="field"><label>Pool</label>
+            <select className="select" value={form.pool} onChange={(e) => setForm({ ...form, pool: e.target.value })}>
+              <option value="LCM">LCM</option><option value="SCM">SCM</option>
+            </select>
+          </div>
+          <div className="field"><label>Cut</label><input className="input" value={form.cut} onChange={(e) => setForm({ ...form, cut: e.target.value })} placeholder="A" /></div>
+          <div className="field"><label>Time *</label><input className="input asw-num" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} placeholder="27.45" /></div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Add time'}</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 export default function QualifyingTimes() {
   const [standards, setStandards] = useState([])
   const [selectedId, setSelectedId] = useState(null)
@@ -97,7 +195,13 @@ export default function QualifyingTimes() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [gender, setGender] = useState('M')
   const [pool, setPool] = useState('LCM')
+  const { isAdmin } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [editModal, setEditModal] = useState(null) // null=closed, {}=create, standard=edit
+  const [addTimeModal, setAddTimeModal] = useState(false)
+  const [uploadFile, setUploadFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   // Load the complete standards list (follow pagination if present)
   useEffect(() => {
@@ -125,7 +229,7 @@ export default function QualifyingTimes() {
     }
     load()
     return () => { alive = false }
-  }, [])
+  }, [reloadKey])
 
   // Fetch the selected standard's times
   useEffect(() => {
@@ -137,13 +241,19 @@ export default function QualifyingTimes() {
       .catch(() => alive && setDetail(null))
       .finally(() => alive && setDetailLoading(false))
     return () => { alive = false }
-  }, [selectedId])
+  }, [selectedId, reloadKey])
 
   if (loading) return <Loading label="Loading qualifying standards" />
 
   return (
     <div>
-      <PageHead title="Qualifying Times" />
+      <PageHead title="Qualifying Times">
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn btn-primary" onClick={() => setEditModal({})}>Create standard</button>
+          </div>
+        )}
+      </PageHead>
 
       {standards.length === 0 ? (
         <Empty label="No qualifying standards published" />
@@ -206,10 +316,52 @@ export default function QualifyingTimes() {
                   </span>
                 )}
               </div>
-              <StandardTables times={detail.times || []} gender={gender} pool={pool} />
+              {isAdmin && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <button className="btn btn-secondary" onClick={() => setEditModal(detail)}>Edit standard</button>
+                  <button className="btn btn-secondary" onClick={() => setAddTimeModal(true)}>Add time</button>
+                  <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+                    Upload PDF
+                    <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={async (e) => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      setUploading(true)
+                      try {
+                        const fd = new FormData(); fd.append('file', f)
+                        await uploadQualifyingPdf(selectedId, fd)
+                        setReloadKey((k) => k + 1)
+                      } catch { window.alert('Upload failed') }
+                      setUploading(false)
+                      e.target.value = ''
+                    }} />
+                  </label>
+                  {uploading && <span className="micro" style={{ alignSelf: 'center' }}>Uploading…</span>}
+                  <button className="btn" style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)', marginLeft: 'auto' }}
+                    onClick={async () => {
+                      if (!window.confirm(`Delete "${detail.name}"? All qualifying times in it will be removed.`)) return
+                      await deleteQualifyingStandard(selectedId)
+                      setSelectedId(null)
+                      setReloadKey((k) => k + 1)
+                    }}>Delete standard</button>
+                </div>
+              )}
+              <StandardTables times={detail.times || []} gender={gender} pool={pool} isAdmin={isAdmin}
+                onDeleteTime={async (timeId) => {
+                  await deleteQualifyingTime(selectedId, timeId)
+                  setReloadKey((k) => k + 1)
+                }} />
             </div>
           )}
         </>
+      )}
+
+      {editModal !== null && (
+        <StandardModal standard={editModal.id ? editModal : null} onClose={() => setEditModal(null)}
+          onSaved={() => { setEditModal(null); setReloadKey((k) => k + 1) }} />
+      )}
+      {addTimeModal && selectedId && (
+        <AddTimeModal standardId={selectedId} onClose={() => setAddTimeModal(false)}
+          onSaved={() => { setAddTimeModal(false); setReloadKey((k) => k + 1) }} />
       )}
     </div>
   )

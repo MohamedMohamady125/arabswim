@@ -1380,6 +1380,11 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             if not d:
                 continue
             day = (d - championship.date).days + 1
+            # If day is before the meet start, adjust the meet start date
+            if day < 1 and championship.date:
+                championship.date = d
+                championship.save(update_fields=['date'])
+                day = 1
             if day < 1 or day > 30:
                 continue
             _, created = ProgramItem.objects.get_or_create(

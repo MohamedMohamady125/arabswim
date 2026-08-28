@@ -343,7 +343,13 @@ const finaColor = (points) =>
 function EventList({ events, selected, onSelect, detail }) {
   const lcm = events.filter((e) => e.pool === 'LCM' && !e.is_relay)
   const scm = events.filter((e) => e.pool === 'SCM' && !e.is_relay)
-  const relays = events.filter((e) => e.is_relay)
+  // Deduplicate relays: same event_id across pools → keep one entry
+  const relayMap = new Map()
+  events.filter((e) => e.is_relay).forEach((e) => {
+    const key = e.event_id
+    if (!relayMap.has(key) || e.times_count > relayMap.get(key).times_count) relayMap.set(key, e)
+  })
+  const relays = [...relayMap.values()]
 
   const section = (label, rows) => {
     if (!rows.length) return null
@@ -458,12 +464,12 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                           </span>
                         )}
                         {!h.is_relay && isBest && <span className="tag tag-dark">PB</span>}
-                        {h.is_relay && h.split_time && (
-                          <span className="asw-time" style={{ fontSize: 11, color: 'var(--color-neutral-600)', marginRight: 4 }}>{h.split_time}</span>
-                        )}
-                        <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : h.is_relay ? 'var(--color-neutral-500)' : 'inherit', fontSize: h.is_relay && h.split_time ? 11 : undefined }}>
-                          {h.is_relay && h.split_time ? `(${h.time})` : h.time}
+                        <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : 'inherit' }}>
+                          {h.is_relay && h.split_time ? h.split_time : h.time}
                         </span>
+                        {h.is_relay && h.split_time && (
+                          <span style={{ fontSize: 10, color: 'var(--color-neutral-500)', marginLeft: 4 }}>({h.time})</span>
+                        )}
                       </span>
                     </td>
                     <td className="num asw-num">{h.age_at_competition || '—'}</td>

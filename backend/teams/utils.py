@@ -13,6 +13,9 @@ from core.models import Country
 _SQUAD_NUMBER_RE = re.compile(r'\s+\d{1,2}$')
 # Trailing single squad letter: " A", " B", " C" etc.
 _SQUAD_LETTER_RE = re.compile(r'\s+[A-Z]$')
+# Compound squad designator: "4B", "2A", "3C" — digit + letter (or letter
+# + digit) used by some federations to label additional relay squads.
+_SQUAD_COMPOUND_RE = re.compile(r'\s+\d[A-Z]$')
 # HyTek region suffix: "-AD", "-DU", etc.
 _REGION_SUFFIX_RE = re.compile(r'-[A-Z]{1,4}$')
 
@@ -44,6 +47,8 @@ def normalize_team_key(name):
         key = re.sub(r'\s+national team$', '', key).strip()
         key = re.sub(r'\s+team\s+[a-d]$', '', key).strip()
         key = re.sub(r'\s+team$', '', key).strip()
+        # Trailing compound squad designator ("naj 4b", "mty 2a")
+        key = re.sub(r'\s+\d[a-d]$', '', key).strip()
         # Trailing squad letter/number ("mc alger b", "bahia nautique 2")
         key = re.sub(r'\s+[a-d]$', '', key).strip()
         key = re.sub(r'\s+\d{1,2}$', '', key).strip()
@@ -106,11 +111,14 @@ def rename_team(team, new_name):
 def clean_relay_team_name(name):
     """Clean relay team placeholder name for consistent matching.
 
-    Strips trailing squad letters (A/B), 'National Team', region codes (-AD).
+    Strips trailing squad letters (A/B), compound squad designators (4B),
+    'National Team', region codes (-AD).
     """
     if not name:
         return name
     cleaned = name.strip()
+    # Strip trailing compound squad designator first ("4B", "2A")
+    cleaned = _SQUAD_COMPOUND_RE.sub('', cleaned).strip()
     # Strip trailing squad letter first (before other cleaning)
     cleaned = _SQUAD_LETTER_RE.sub('', cleaned).strip()
     # Strip trailing squad number

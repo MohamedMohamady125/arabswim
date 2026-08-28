@@ -113,10 +113,11 @@ STATUS_TAIL = re.compile(r'\b(DQ|NS|DFS|DNF|SCR|DSQ)\s*$', re.IGNORECASE)
 _TIME_PAT = r'(?:\d{1,2}:\d{2}\.\d{2}|\d{2,3}\.\d{2})'
 
 # Relay team DQ: "--- MTY A NS"  or  "--- Iran DQ"  or  "--- Malaysia 3:33.08 DQ"
+# Also handles compound squad designators: "--- MTY 4B NS"
 RELAY_DQ_LINE = re.compile(
     r'^\s*---\s+'
     r'([A-Z][A-Za-z0-9\'\.\- ]+?)\s+'          # team name
-    r'(?:([A-Z])\s+)?'                          # optional relay letter
+    r'(?:(\d?[A-Z])\s+)?'                       # optional relay letter/designator
     r'(?:(?:NT|' + _TIME_PAT + r')\s+)?'        # optional seed/prelim time or NT
     r'(DQ|NS|DFS|DNF|SCR|DSQ)',
     re.IGNORECASE
@@ -513,9 +514,10 @@ def _parse_relay_line(line, event, comma_order, take_last_time=False):
             before = re.sub(r'\bNT\b', '', before).strip()
             tokens = before.split()
             if tokens:
-                # Check for relay letter (single uppercase letter at end)
+                # Check for relay letter/designator at end:
+                # single letter ("A"), or compound like "4B", "2A"
                 letter = ''
-                if len(tokens) >= 2 and len(tokens[-1]) == 1 and tokens[-1].isupper():
+                if len(tokens) >= 2 and re.match(r'^[A-Z]$|^\d[A-Z]$', tokens[-1]):
                     letter = tokens[-1]
                     team = ' '.join(tokens[:-1])
                 else:

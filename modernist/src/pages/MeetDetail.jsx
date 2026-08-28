@@ -2245,6 +2245,12 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   const [selectedDay, setSelectedDay] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState('')
   const [showProgram, setShowProgram] = useState(false)
+  const [program, setProgram] = useState(null)
+
+  // Fetch the meet program
+  useEffect(() => {
+    getMeetProgram(meetId).then((res) => setProgram(res.data)).catch(() => setProgram(null))
+  }, [meetId])
 
   // Force local timezone by appending T00:00:00 (bare ISO dates are UTC)
   const start = new Date(meet.date + 'T00:00:00')
@@ -2269,12 +2275,21 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
     }
   }, [])
 
-  // Events for the selected day (from program items or all events)
+  // Events for the selected day from the program
+  const dayProgram = useMemo(() => {
+    if (!program?.days || !selectedDay) return null
+    const dayData = program.days.find((d) => d.day === selectedDay)
+    return dayData?.items || null
+  }, [program, selectedDay])
+
+  // Build event list: program events for the day (even without results) + any results events
   const dayEvents = useMemo(() => {
     if (!selectedDay) return events
-    // Filter events that have results — show all if no program exists
-    return events
-  }, [selectedDay, events])
+    if (!dayProgram || dayProgram.length === 0) return events // no program → show all
+    // Get event IDs from the program for this day
+    const programEventIds = new Set(dayProgram.map((p) => p.event))
+    return events.filter((e) => programEventIds.has(e.id))
+  }, [selectedDay, events, dayProgram])
 
   const fmtDay = (d) => d.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 
@@ -2337,6 +2352,20 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
           ))}
         </div>
       </div>
+
+      {/* Program events for the day — shows even without results */}
+      {dayProgram && dayProgram.length > 0 && (
+        <div className="pad rule-b" style={{ background: 'var(--color-surface)' }}>
+          <div className="kicker" style={{ marginBottom: 8 }}>Day {selectedDay} Program</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {dayProgram.map((p, i) => (
+              <span key={i} className="tag tag-accent" style={{ fontSize: 11 }}>
+                {p.event_name}{p.session ? ` · ${p.session}` : ''}{p.gender ? ` · ${p.gender === 'M' ? 'Men' : p.gender === 'F' ? 'Women' : 'Mixed'}` : ''}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Results for the selected day */}
       <ResultsTab

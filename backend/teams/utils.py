@@ -255,16 +255,16 @@ def auto_create_teams():
                            'championship__classification__name')
                    .annotate(n=_Count('id')))
     for row in result_rows:
+        # Only read clubs from National/Other meets — international meets
+        # have country names in the team column, not actual clubs
+        classification = row['championship__classification__name'] or ''
+        if classification not in ('National', 'Other'):
+            continue
         club = strip_squad_number((row['team'] or '')).strip()
         if not club or club == 'LP' or not is_valid_team_name(club):
             continue
         if club in skip_names or normalize_team_key(club) in skip_names:
-            # Country names/codes label national-team placeholders at
-            # international meets — but inside a NATIONAL championship every
-            # team is a club, so a colliding acronym is legitimate
-            # (e.g. EST = Espérance Sportive de Tunis vs Estonia's code).
-            if (row['championship__classification__name'] or '') not in ('National', 'Other'):
-                continue
+            continue
         club_key = normalize_team_key(club)
         if club_key not in club_data:
             club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}}

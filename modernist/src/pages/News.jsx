@@ -16,6 +16,8 @@ const STATUS_TABS = [
   { value: 'DRAFT', label: 'Drafts' },
 ]
 
+const isRTLText = (text) => /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(text || '')
+
 function excerpt(body, n = 100) {
   const s = String(body || '')
   return s.length > n ? `${s.slice(0, n)}…` : s
@@ -206,7 +208,7 @@ export default function News() {
                   <div className="card-kicker">Lead story</div>
                   {statusTag(lead)}
                 </div>
-                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, lineHeight: 1.06, letterSpacing: '-0.025em', margin: '8px 0 12px' }}>
+                <div dir={isRTLText(lead.title) ? 'rtl' : 'ltr'} style={{ fontFamily: isRTLText(lead.title) ? "'Noto Naskh Arabic', serif" : 'var(--font-heading)', fontWeight: 800, fontSize: isRTLText(lead.title) ? 30 : 34, lineHeight: isRTLText(lead.title) ? 1.5 : 1.06, letterSpacing: isRTLText(lead.title) ? 0 : '-0.025em', margin: '8px 0 12px' }}>
                   {lead.title}
                 </div>
                 <p style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--color-neutral-800)', margin: '0 0 14px' }}>

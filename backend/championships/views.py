@@ -306,7 +306,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 elif 'Prelims' in rounds and '' in rounds and len(rounds) > 1:
                     # Has both prelims and unlabeled — keep unlabeled (likely timed finals)
                     results = results.exclude(round_type='Prelims')
-            serializer = ResultSerializer(results, many=True)
+            # Order by id so the frontend receives rows in import/file order;
+            # category tab ordering derives from first-seen id per category.
+            serializer = ResultSerializer(results.order_by('id'), many=True)
             return Response(serializer.data)
         else:
             data = request.data.copy()

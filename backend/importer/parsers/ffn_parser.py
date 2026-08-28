@@ -25,7 +25,7 @@ EVENT_HEADER = re.compile(
     r'(.+?)\s+'                            # stroke (Nage Libre, Dos, Papillon, etc.)
     r'(Dames|Messieurs|Mixte)\s*'          # gender
     r'-\s*'
-    r'(Finale\s*[A-Z]?|Séries|Demi-Finales?|Barrage\s+Finales?)'  # round
+    r'(Finale\s+directe|Finale\s*[A-Z]?|Séries|Demi-Finales?|Barrage(?:\s+Finales?)?|Classement)'  # round
     r'(?:\s+(\d[\d\-]+\s*ans))?'           # optional age group (e.g. "10-16 ans")
     r'(?:\s*\(suite\))?'                   # optional "(suite)" continuation
     r'(?:\s*\(.*?\))?',                    # optional date in parens
@@ -42,7 +42,7 @@ RESULT_LINE = re.compile(
     r'\((\d[\d\w]{3})\)\s+'                # birth year (may have OCR letter e.g. 200N5)
     r'([A-Z]{2,3}(?:\s+[A-Z])?)\s+'       # nationality code (may have space: "FR A")
     r'(.+?)\s+'                            # club
-    r'(\d{2}:\d{2}\.\d{2}|DNS\s*\w*|DQ\s*\w*|DNF\s*\w*|DSQ\s*\w*|Forfait)'  # time or status
+    r'(\d{1,2}:\d{2}\.\d{2}|\d{2}\.\d{2}|DNS\s*\w*|DQ\s*\w*|DNF\s*\w*|DSQ\s*\w*|Forfait)'  # time or status
     r'(?:\s*(\d+)\s*pts)?',                # optional FINA points
     re.IGNORECASE
 )
@@ -97,6 +97,9 @@ def _parse_round(text):
     """Convert FFN round label to standard."""
     t = text.strip().lower()
     if 'finale' in t:
+        # "Finale directe" = direct final (no heats), treat as Finals
+        if 'directe' in t:
+            return 'Finals'
         # "Finale A" = the real final; "Finale B/C/D..." = consolation finals
         m = re.search(r'finale\s*([a-z])', t)
         if m and m.group(1) != 'a':
@@ -106,6 +109,10 @@ def _parse_round(text):
         return 'Semifinals'
     if 'série' in t or 'serie' in t:
         return 'Prelims'
+    if 'barrage' in t:
+        return 'Swim-off'
+    if 'classement' in t:
+        return 'Finals'
     return ''
 
 
@@ -116,7 +123,11 @@ def _clean_ocr_time(time_str):
     # First, fix times where a letter is inserted inside the time
     cleaned = re.sub(r'(?<=\d)[a-z](?=\d)', '', time_str, flags=re.IGNORECASE)
     # Fix "00:25.02s1305" → extract just the time part
-    m = re.match(r'(\d{2}:\d{2}\.\d{2})', cleaned)
+    m = re.match(r'(\d{1,2}:\d{2}\.\d{2})', cleaned)
+    if m:
+        return m.group(1)
+    # Handle bare seconds "24.68" (no minutes prefix)
+    m = re.match(r'(\d{2}\.\d{2})', cleaned)
     if m:
         return m.group(1)
     return cleaned

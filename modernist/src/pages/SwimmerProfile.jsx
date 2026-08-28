@@ -1029,10 +1029,20 @@ export default function SwimmerProfile() {
             )}
           </div>
           {swimmer.nicknames?.length > 0 && (
-            <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
               {swimmer.nicknames.map((n, i) => (
                 <span key={i} className="tag tag-accent-2">{n.nickname}</span>
               ))}
+              {isAdmin && (
+                <button className="btn btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}
+                  onClick={async () => {
+                    if (!window.confirm('Remove all name variants? They will be cleared from this profile.')) return
+                    await updateSwimmer(id, { nicknames: [] })
+                    setSwimmer({ ...swimmer, nicknames: [] })
+                  }}>
+                  Clear all
+                </button>
+              )}
             </div>
           )}
         </div>

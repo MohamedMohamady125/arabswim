@@ -2246,8 +2246,9 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   const [selectedEvent, setSelectedEvent] = useState('')
   const [showProgram, setShowProgram] = useState(false)
 
-  const start = new Date(meet.date)
-  const end = new Date(meet.end_date || meet.date)
+  // Force local timezone by appending T00:00:00 (bare ISO dates are UTC)
+  const start = new Date(meet.date + 'T00:00:00')
+  const end = new Date((meet.end_date || meet.date) + 'T00:00:00')
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const nDays = Math.max(1, Math.round((end - start) / 86400000) + 1)
@@ -2351,8 +2352,8 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
 // Admin sees the live panel from the day before the meet until 3 days after
 // the last day (detail serializer dates are ISO YYYY-MM-DD).
 function isWithinLiveWindow(meet) {
-  const start = new Date(meet.date)
-  const end = new Date(meet.end_date || meet.date)
+  const start = new Date(meet.date + 'T00:00:00')
+  const end = new Date((meet.end_date || meet.date) + 'T00:00:00')
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false
   const now = Date.now()
   return now >= start.getTime() - 86400000 && now <= end.getTime() + 3 * 86400000
@@ -2490,8 +2491,8 @@ export default function MeetDetail() {
   const events = stats?.events || []
 
   // Live mode: meet is currently happening (today is within date range)
-  const meetStart = meet.date ? new Date(meet.date) : null
-  const meetEnd = meet.end_date ? new Date(meet.end_date) : meetStart
+  const meetStart = meet.date ? new Date(meet.date + 'T00:00:00') : null
+  const meetEnd = meet.end_date ? new Date(meet.end_date + 'T00:00:00') : meetStart
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const isLiveMode = meet.is_live || (meetStart && meetEnd && today >= meetStart && today <= new Date(meetEnd.getTime() + 86400000))

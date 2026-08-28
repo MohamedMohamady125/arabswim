@@ -2376,7 +2376,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet }) {
   const loadResults = () => {
     if (results) { setOpen((v) => !v); return }
     setOpen(true)
-    getChampionshipResults(meetId, { event: p.event, gender: p.gender, all_rounds: 1 })
+    getChampionshipResults(meetId, { event: p.event, gender: p.gender })
       .then((res) => setResults(Array.isArray(res.data) ? res.data : res.data?.results || []))
       .catch(() => setResults([]))
   }

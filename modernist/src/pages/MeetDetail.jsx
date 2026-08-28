@@ -2240,6 +2240,82 @@ function CompareMeetsModal({ meet, onClose }) {
    Admin cockpit during a live meet: one tile per meet day; upload a PDF or
    scraped link per session through the normal import pipeline (aimed at
    this meet), watch sessions land, then press "Finish meet". */
+// ── Live results day-by-day view ──────────────────────────────────────
+function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
+  const [selectedDay, setSelectedDay] = useState(null)
+  const [selectedEvent, setSelectedEvent] = useState('')
+
+  const start = new Date(meet.date)
+  const end = new Date(meet.end_date || meet.date)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const nDays = Math.max(1, Math.round((end - start) / 86400000) + 1)
+  const days = Array.from({ length: nDays }, (_, i) => {
+    const d = new Date(start)
+    d.setDate(d.getDate() + i)
+    return { num: i + 1, date: d, isToday: d.toDateString() === today.toDateString(), isPast: d < today }
+  })
+
+  // Auto-select today or last past day
+  useEffect(() => {
+    const todayDay = days.find((d) => d.isToday)
+    if (todayDay) setSelectedDay(todayDay.num)
+    else {
+      const past = days.filter((d) => d.isPast)
+      if (past.length) setSelectedDay(past[past.length - 1].num)
+      else setSelectedDay(1)
+    }
+  }, [])
+
+  // Events for the selected day (from program items or all events)
+  const dayEvents = useMemo(() => {
+    if (!selectedDay) return events
+    // Filter events that have results — show all if no program exists
+    return events
+  }, [selectedDay, events])
+
+  const fmtDay = (d) => d.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+
+  return (
+    <div>
+      {/* Day selector */}
+      <div className="rule-b" style={{ padding: '16px 32px', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {days.map((d) => (
+            <button
+              key={d.num}
+              type="button"
+              onClick={() => { setSelectedDay(d.num); setSelectedEvent('') }}
+              style={{
+                cursor: 'pointer', border: 'none', padding: '12px 18px', textAlign: 'center',
+                background: selectedDay === d.num
+                  ? 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))'
+                  : d.isToday ? 'var(--color-accent-100)' : 'var(--color-surface)',
+                color: selectedDay === d.num ? '#fff' : 'var(--color-text)',
+                fontFamily: 'var(--font-heading)', fontWeight: 800,
+                minWidth: 90, flex: 'none',
+                borderBottom: d.isToday && selectedDay !== d.num ? '3px solid var(--asw-gold)' : '3px solid transparent',
+              }}
+            >
+              <div style={{ fontSize: 18, lineHeight: 1 }}>Day {d.num}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, opacity: 0.8 }}>{fmtDay(d)}</div>
+              {d.isToday && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', marginTop: 3, color: selectedDay === d.num ? 'var(--asw-gold)' : 'var(--asw-fast)' }}>TODAY</div>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Results for the selected day */}
+      <ResultsTab
+        meetId={meetId} events={dayEvents} isNational={isNational} isAdmin={isAdmin}
+        hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
+        hostCode={meet.country_detail?.code} bFinalNoMedals={!!meet.b_final_no_medals}
+        onDataChanged={() => {}}
+      />
+    </div>
+  )
+}
+
 // Admin sees the live panel from the day before the meet until 3 days after
 // the last day (detail serializer dates are ISO YYYY-MM-DD).
 function isWithinLiveWindow(meet) {
@@ -2381,6 +2457,15 @@ export default function MeetDetail() {
   const isNational = ['National', 'Other'].includes(meet.classification_name)
   const events = stats?.events || []
 
+  // Live mode: meet is currently happening (today is within date range)
+  const meetStart = meet.date ? new Date(meet.date) : null
+  const meetEnd = meet.end_date ? new Date(meet.end_date) : meetStart
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const isLiveMode = meet.is_live || (meetStart && meetEnd && today >= meetStart && today <= new Date(meetEnd.getTime() + 86400000))
+  // Meet is finished: last day has passed
+  const isFinished = meetEnd && today > new Date(meetEnd.getTime() + 86400000)
+
   return (
     <div>
       {/* header */}
@@ -2461,39 +2546,46 @@ export default function MeetDetail() {
         />
       )}
 
-      {/* tabs */}
-      <div className="rule-b tabbar tabbar-sticky" style={{ padding: '14px 32px', overflowX: 'auto' }}>
-        <Seg
-          tabs
-          options={[
-            { value: 'statistics', label: 'Overview' },
-            { value: 'results', label: 'Results' },
-            { value: 'medals', label: 'Medals' },
-            { value: 'records', label: 'Broken Records' },
-            { value: 'pbs', label: 'Personal Bests' },
-            { value: 'top', label: 'Top Performances' },
-            { value: 'improved', label: 'Most Improved' },
-            { value: 'program', label: 'Program' },
-            { value: 'compare', label: 'Compare' },
-          ]}
-          value={tab}
-          onChange={(v) => { if (v === 'compare') setComparing(true); else setTab(v) }}
-        />
-      </div>
+      {/* Live mode: day-by-day results only */}
+      {isLiveMode && !isFinished ? (
+        <LiveDayView meetId={id} meet={meet} events={events} isNational={isNational} isAdmin={isAdmin} />
+      ) : (
+        <>
+          {/* Normal mode: full tabs */}
+          <div className="rule-b tabbar tabbar-sticky" style={{ padding: '14px 32px', overflowX: 'auto' }}>
+            <Seg
+              tabs
+              options={[
+                { value: 'statistics', label: 'Overview' },
+                { value: 'results', label: 'Results' },
+                { value: 'medals', label: 'Medals' },
+                { value: 'records', label: 'Broken Records' },
+                { value: 'pbs', label: 'Personal Bests' },
+                { value: 'top', label: 'Top Performances' },
+                { value: 'improved', label: 'Most Improved' },
+                { value: 'program', label: 'Program' },
+                { value: 'compare', label: 'Compare' },
+              ]}
+              value={tab}
+              onChange={(v) => { if (v === 'compare') setComparing(true); else setTab(v) }}
+            />
+          </div>
 
-      {tab === 'results' && (
-        <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium}
-          hasDoublePodium={!!meet.has_double_podium} hostCode={meet.country_detail?.code}
-          bFinalNoMedals={!!meet.b_final_no_medals} onDataChanged={refreshStats} />
+          {tab === 'results' && (
+            <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium}
+              hasDoublePodium={!!meet.has_double_podium} hostCode={meet.country_detail?.code}
+              bFinalNoMedals={!!meet.b_final_no_medals} onDataChanged={refreshStats} />
+          )}
+          {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
+          {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}
+          {tab === 'records' && <RecordsBrokenTab meetId={id} />}
+          {tab === 'pbs' && <PersonalBestsTab stats={stats} />}
+          {tab === 'top' && <TopPerformancesTab stats={stats} />}
+          {tab === 'statistics' && <OverviewTab meetId={id} stats={stats} />}
+          {tab === 'improved' && <MostImprovedTab meetId={id} />}
+          {tab === 'gallery' && <MeetGallery meetId={id} isAdmin={isAdmin} />}
+        </>
       )}
-      {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
-      {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}
-      {tab === 'records' && <RecordsBrokenTab meetId={id} />}
-      {tab === 'pbs' && <PersonalBestsTab stats={stats} />}
-      {tab === 'top' && <TopPerformancesTab stats={stats} />}
-      {tab === 'statistics' && <OverviewTab meetId={id} stats={stats} />}
-      {tab === 'improved' && <MostImprovedTab meetId={id} />}
-      {tab === 'gallery' && <MeetGallery meetId={id} isAdmin={isAdmin} />}
     </div>
   )
 }

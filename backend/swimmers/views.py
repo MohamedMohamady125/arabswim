@@ -195,6 +195,17 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 continue
             ev = info['event']
             best_cs = min(r.time_centiseconds for r in info['results'])
+            # Find the swimmer's best split time across all relay appearances
+            best_split = None
+            for r in info['results']:
+                for s in (r.relay_swimmers or []):
+                    if isinstance(s, dict) and s.get('name', '').upper() == swimmer.name.upper():
+                        st = s.get('split_time', '')
+                        if st:
+                            from importer.parsers.base import parse_time_to_centiseconds
+                            st_cs = parse_time_to_centiseconds(st)
+                            if st_cs and (best_split is None or st_cs < best_split):
+                                best_split = st_cs
             data.append({
                 'event_id': ev.id,
                 'event_name': ev.name,
@@ -202,8 +213,9 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'stroke': ev.stroke,
                 'pool': pool,
                 'times_count': len(info['results']),
-                'best_time': format_centiseconds(best_cs),
-                'best_time_centiseconds': best_cs,
+                'best_time': format_centiseconds(best_split) if best_split else format_centiseconds(best_cs),
+                'best_time_centiseconds': best_split or best_cs,
+                'relay_team_time': format_centiseconds(best_cs),
                 'is_relay': True,
             })
 

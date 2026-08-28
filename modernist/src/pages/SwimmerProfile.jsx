@@ -373,6 +373,9 @@ function EventList({ events, selected, onSelect, detail }) {
                 {e.event_name}
               </span>
               <span className="asw-time" style={{ flex: 'none', fontSize: 13 }}>{e.best_time}</span>
+              {e.is_relay && e.relay_team_time && e.relay_team_time !== e.best_time && (
+                <span style={{ flex: 'none', fontSize: 10, color: 'var(--color-neutral-500)' }}>({e.relay_team_time})</span>
+              )}
               <span className="micro asw-num" style={{ flex: 'none', width: 34, textAlign: 'right' }}>{e.times_count}x</span>
             </button>
               {/* phone: the time history opens right under the tapped event */}

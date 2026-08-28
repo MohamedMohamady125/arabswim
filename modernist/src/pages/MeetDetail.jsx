@@ -520,7 +520,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
 
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
-function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, onDataChanged, presetEvent, presetEventKey }) {
+function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, onDataChanged }) {
   const navigate = useNavigate()
   const [initParams] = useSearchParams()
   // deep link from Records: ?event=&gender=&result= opens that exact swim
@@ -531,16 +531,6 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     const g = initParams.get('gender')
     return e && g ? `${e}|${g}` : ''
   })
-  // When a program event is clicked from the live day view
-  useEffect(() => {
-    if (presetEvent && events.length) {
-      // Try exact match first, then any gender
-      const match = events.find((e) => String(e.event_id) === String(presetEvent))
-      if (match) {
-        setEventKey(`${match.event_id}|${match.gender}`)
-      }
-    }
-  }, [presetEvent, presetEventKey])
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('ALL')
@@ -2253,17 +2243,13 @@ function CompareMeetsModal({ meet, onClose }) {
 // ── Live results day-by-day view ──────────────────────────────────────
 function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   const [selectedDay, setSelectedDay] = useState(null)
-  const [selectedEvent, setSelectedEvent] = useState('')
-  const [eventClickCount, setEventClickCount] = useState(0)
   const [showProgram, setShowProgram] = useState(false)
   const [program, setProgram] = useState(null)
 
-  // Fetch the meet program
   useEffect(() => {
     getMeetProgram(meetId).then((res) => setProgram(res.data)).catch(() => setProgram(null))
   }, [meetId])
 
-  // Force local timezone by appending T00:00:00 (bare ISO dates are UTC)
   const start = new Date(meet.date + 'T00:00:00')
   const end = new Date((meet.end_date || meet.date) + 'T00:00:00')
   const today = new Date()
@@ -2275,38 +2261,38 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
     return { num: i + 1, date: d, isToday: d.toDateString() === today.toDateString(), isPast: d < today }
   })
 
-  // Auto-select today or last past day
   useEffect(() => {
     const todayDay = days.find((d) => d.isToday)
     if (todayDay) setSelectedDay(todayDay.num)
     else {
       const past = days.filter((d) => d.isPast)
-      if (past.length) setSelectedDay(past[past.length - 1].num)
-      else setSelectedDay(1)
+      setSelectedDay(past.length ? past[past.length - 1].num : 1)
     }
   }, [])
 
-  // Events for the selected day from the program
   const dayProgram = useMemo(() => {
-    if (!program?.days || !selectedDay) return null
-    const dayData = program.days.find((d) => d.day === selectedDay)
-    return dayData?.items || null
+    if (!program?.days || !selectedDay) return []
+    return (program.days.find((d) => d.day === selectedDay) || {}).items || []
   }, [program, selectedDay])
 
-  // Build event list: program events for the day (even without results) + any results events
-  const dayEvents = useMemo(() => {
-    if (!selectedDay) return events
-    if (!dayProgram || dayProgram.length === 0) return events // no program → show all
-    // Get event IDs from the program for this day
-    const programEventIds = new Set(dayProgram.map((p) => p.event))
-    return events.filter((e) => programEventIds.has(e.id))
-  }, [selectedDay, events, dayProgram])
+  // Group program by session
+  const sessionGroups = useMemo(() => {
+    const groups = {}
+    dayProgram.forEach((p) => {
+      const s = p.session || 'OTHER'
+      if (!groups[s]) groups[s] = []
+      groups[s].push(p)
+    })
+    return groups
+  }, [dayProgram])
 
   const fmtDay = (d) => d.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+  const sessionLabel = { HEATS: 'Heats', SEMIS: 'Semi-Finals', FINALS: 'Finals', OTHER: 'Events' }
+  const sessionOrder = ['HEATS', 'SEMIS', 'FINALS', 'OTHER']
 
   return (
     <div>
-      {/* Admin: import + program buttons */}
+      {/* Admin tools */}
       {isAdmin && (
         <div className="rule-b" style={{ padding: '12px 32px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: 'var(--color-surface)' }}>
           <Link className="btn btn-primary" to={`/import?championship=${meetId}`}>Import results</Link>
@@ -2322,13 +2308,11 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                 const fd = new FormData(); fd.append('file', f)
                 const res = await uploadBulletin(meetId, fd)
                 window.alert(`Bulletin parsed: ${res.data.items_detected} events detected, ${res.data.program_items_created} program items created`)
+                getMeetProgram(meetId).then((r) => setProgram(r.data)).catch(() => {})
               } catch { window.alert('Failed to parse bulletin') }
               e.target.value = ''
             }} />
           </label>
-          <span className="micro" style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--color-neutral-700)' }}>
-            Set which events on which days, then import results
-          </span>
         </div>
       )}
       {isAdmin && showProgram && (
@@ -2341,21 +2325,17 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
       <div className="rule-b" style={{ padding: '16px 32px', overflowX: 'auto' }}>
         <div style={{ display: 'flex', gap: 10 }}>
           {days.map((d) => (
-            <button
-              key={d.num}
-              type="button"
-              onClick={() => { setSelectedDay(d.num); setSelectedEvent('') }}
+            <button key={d.num} type="button"
+              onClick={() => setSelectedDay(d.num)}
               style={{
                 cursor: 'pointer', border: 'none', padding: '12px 18px', textAlign: 'center',
                 background: selectedDay === d.num
                   ? 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))'
                   : d.isToday ? 'var(--color-accent-100)' : 'var(--color-surface)',
                 color: selectedDay === d.num ? '#fff' : 'var(--color-text)',
-                fontFamily: 'var(--font-heading)', fontWeight: 800,
-                minWidth: 90, flex: 'none',
+                fontFamily: 'var(--font-heading)', fontWeight: 800, minWidth: 90, flex: 'none',
                 borderBottom: d.isToday && selectedDay !== d.num ? '3px solid var(--asw-gold)' : '3px solid transparent',
-              }}
-            >
+              }}>
               <div style={{ fontSize: 18, lineHeight: 1 }}>Day {d.num}</div>
               <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, opacity: 0.8 }}>{fmtDay(d)}</div>
               {d.isToday && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', marginTop: 3, color: selectedDay === d.num ? 'var(--asw-gold)' : 'var(--asw-fast)' }}>TODAY</div>}
@@ -2364,52 +2344,105 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
         </div>
       </div>
 
-      {/* Program events for the day — grouped by session */}
-      {dayProgram && dayProgram.length > 0 && (() => {
-        const sessions = {}
-        dayProgram.forEach((p) => {
-          const s = p.session || 'OTHER'
-          if (!sessions[s]) sessions[s] = []
-          sessions[s].push(p)
-        })
-        const sessionOrder = ['HEATS', 'SEMIS', 'FINALS', 'OTHER']
-        const sessionLabel = { HEATS: 'Heats', SEMIS: 'Semi-Finals', FINALS: 'Finals', OTHER: 'Events' }
-        return (
-          <div className="pad rule-b" style={{ background: 'var(--color-surface)' }}>
-            <div className="kicker" style={{ marginBottom: 12 }}>Day {selectedDay} Program</div>
-            {sessionOrder.filter((s) => sessions[s]).map((s) => (
-              <div key={s} style={{ marginBottom: 14 }}>
-                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, color: s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-neutral-700)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  {sessionLabel[s]}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {sessions[s].map((p, i) => (
-                    <div key={i}
-                      onClick={() => { setSelectedEvent(String(p.event)); setEventClickCount((c) => c + 1) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', cursor: 'pointer',
-                        background: String(selectedEvent) === String(p.event) ? 'var(--color-accent-100)' : 'transparent',
-                        borderLeft: String(selectedEvent) === String(p.event) ? '3px solid var(--color-accent)' : '3px solid transparent',
-                      }}
-                      className="hair-b">
-                      <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{p.event_name}</span>
-                      <span className="tag tag-neutral" style={{ fontSize: 10 }}>{p.gender === 'M' ? 'Men' : p.gender === 'F' ? 'Women' : 'Mixed'}</span>
-                      <span style={{ color: 'var(--color-neutral-500)', fontSize: 12 }}>→</span>
-                    </div>
-                  ))}
-                </div>
+      {/* Program + Results: each session group shows its events, click to expand results inline */}
+      <div className="pad">
+        {dayProgram.length > 0 ? (
+          sessionOrder.filter((s) => sessionGroups[s]).map((s) => (
+            <div key={s} style={{ marginBottom: 24 }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-neutral-700)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--color-divider)', paddingBottom: 6 }}>
+                {sessionLabel[s]}
               </div>
-            ))}
-          </div>
-        )
-      })()}
+              {sessionGroups[s].map((p, i) => (
+                <EventRow key={`${p.event}-${p.gender}-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} />
+              ))}
+            </div>
+          ))
+        ) : (
+          /* No program — show full results tab */
+          <ResultsTab meetId={meetId} events={events} isNational={isNational} isAdmin={isAdmin}
+            hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
+            hostCode={meet.country_detail?.code} bFinalNoMedals={!!meet.b_final_no_medals}
+            onDataChanged={() => {}} />
+        )}
+      </div>
+    </div>
+  )
+}
 
-      {/* Results for the selected day */}
-      <ResultsTab
-        meetId={meetId} events={dayEvents} isNational={isNational} isAdmin={isAdmin}
-        hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
-        hostCode={meet.country_detail?.code} bFinalNoMedals={!!meet.b_final_no_medals}
-        onDataChanged={() => {}} presetEvent={selectedEvent} presetEventKey={eventClickCount}
-      />
+function EventRow({ meetId, programItem: p, isNational, isAdmin, meet }) {
+  const [open, setOpen] = useState(false)
+  const [results, setResults] = useState(null)
+
+  const loadResults = () => {
+    if (results) { setOpen((v) => !v); return }
+    setOpen(true)
+    getChampionshipResults(meetId, { event: p.event, gender: p.gender, all_rounds: 1 })
+      .then((res) => setResults(Array.isArray(res.data) ? res.data : res.data?.results || []))
+      .catch(() => setResults([]))
+  }
+
+  const genderLabel = p.gender === 'M' ? 'Men' : p.gender === 'F' ? 'Women' : 'Mixed'
+  const hasResults = results && results.length > 0
+
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <div onClick={loadResults}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer',
+          background: open ? 'var(--color-accent-100)' : 'transparent',
+          borderLeft: open ? '3px solid var(--color-accent)' : '3px solid transparent',
+        }} className="hair-b">
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, flex: 1 }}>{p.event_name}</span>
+        <span className="tag tag-neutral" style={{ fontSize: 10 }}>{genderLabel}</span>
+        <span style={{ fontWeight: 800, fontSize: 12, color: 'var(--color-accent)' }}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div style={{ borderLeft: '3px solid var(--color-accent-200)', marginLeft: 0, padding: '8px 0 8px 12px' }}>
+          {results === null ? (
+            <Loading label="Loading results" />
+          ) : results.length === 0 ? (
+            <div className="micro" style={{ padding: '8px 0', color: 'var(--color-neutral-600)' }}>No results uploaded yet for this event</div>
+          ) : (
+            <div className="table-scroll">
+              <table className="table" style={{ fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 30 }}>#</th>
+                    <th>Swimmer</th>
+                    <th className="num hide-mobile">Age</th>
+                    {isNational && <th className="hide-mobile">Team</th>}
+                    <th className="time">Time</th>
+                    <th className="num">FINA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((r, i) => (
+                    <tr key={r.id}>
+                      <td className="asw-num" style={{ fontWeight: 800 }}>
+                        {r.is_hc ? <span className="tag tag-neutral">{r.hc_type || 'HC'}</span>
+                          : i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={16} /> : (r.original_rank || i + 1)}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                          <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
+                          <Link to={`/swimmers/${r.swimmer_detail?.id || r.swimmer}`}
+                            style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {r.swimmer_detail?.name}
+                          </Link>
+                          {r.round_type && <span className={`tag ${r.round_type === 'Finals' ? 'tag-accent' : 'tag-neutral'}`} style={{ fontSize: 9, flex: 'none' }}>{r.round_type}</span>}
+                        </div>
+                      </td>
+                      <td className="num asw-num hide-mobile">{r.age_at_competition || '—'}</td>
+                      {isNational && <td className="hide-mobile text-muted">{r.team || '—'}</td>}
+                      <td className="time asw-time">{r.formatted_time}</td>
+                      <td className="num asw-num">{r.fina_points || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

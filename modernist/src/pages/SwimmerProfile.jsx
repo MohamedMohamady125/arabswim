@@ -713,7 +713,11 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase' }}>{pb.event_name}</div>
                   <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {pb.meet_name}{pb.meet_date ? ` · ${formatDate(pb.meet_date)}` : ''}
+                    {pb.meet_name}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    {pb.meet_date && <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{formatDate(pb.meet_date)}</span>}
+                    {pb.pool && <span className="tag tag-accent-2" style={{ fontSize: 9, padding: '1px 6px' }}>{pb.pool}</span>}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flex: 'none' }}>
@@ -911,9 +915,6 @@ export default function SwimmerProfile() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} flagUrl={swimmer.nationality_detail?.flag_url} />
             <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
-            {swimmer.club && !swimmer.is_relay_team && (
-              <span>· Club: {swimmer.club}</span>
-            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'nowrap' }}>
             {swimmer.date_of_birth

@@ -143,7 +143,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
         {(data.clubs || []).length === 0 ? (
           <Empty label="No club history available" />
         ) : (
-          <div className="cellgrid" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(2, data.clubs.length))}, 1fr)` }}>
+          <div className="cellgrid" style={{ gridTemplateColumns: '1fr' }}>
             {data.clubs.map((club, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {club.country_code && <Flag code={club.country_code} name={club.country} flagUrl={club.country_flag} />}

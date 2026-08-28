@@ -675,6 +675,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'fina_points': r.fina_points,
                     'meet_name': r.championship.name,
                     'meet_date': swim_date,
+                    'pool': r.championship.pool,
                 })
 
         return Response({

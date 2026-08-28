@@ -373,9 +373,6 @@ function EventList({ events, selected, onSelect, detail }) {
                 {e.event_name}
               </span>
               <span className="asw-time" style={{ flex: 'none', fontSize: 13 }}>{e.best_time}</span>
-              {e.is_relay && e.relay_team_time && e.relay_team_time !== e.best_time && (
-                <span style={{ flex: 'none', fontSize: 10, color: 'var(--color-neutral-500)' }}>({e.relay_team_time})</span>
-              )}
               <span className="micro asw-num" style={{ flex: 'none', width: 34, textAlign: 'right' }}>{e.times_count}x</span>
             </button>
               {/* phone: the time history opens right under the tapped event */}
@@ -470,9 +467,6 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                         <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : 'inherit' }}>
                           {h.is_relay && h.split_time ? h.split_time : h.time}
                         </span>
-                        {h.is_relay && h.split_time && (
-                          <span style={{ fontSize: 10, color: 'var(--color-neutral-500)', marginLeft: 4 }}>({h.time})</span>
-                        )}
                       </span>
                     </td>
                     <td className="num asw-num">{h.age_at_competition || '—'}</td>

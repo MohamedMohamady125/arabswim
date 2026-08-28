@@ -520,7 +520,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
 
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
-function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, onDataChanged, presetEvent }) {
+function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, onDataChanged, presetEvent, presetEventKey }) {
   const navigate = useNavigate()
   const [initParams] = useSearchParams()
   // deep link from Records: ?event=&gender=&result= opens that exact swim
@@ -534,10 +534,13 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   // When a program event is clicked from the live day view
   useEffect(() => {
     if (presetEvent && events.length) {
+      // Try exact match first, then any gender
       const match = events.find((e) => String(e.event_id) === String(presetEvent))
-      if (match) setEventKey(`${match.event_id}|${match.gender}`)
+      if (match) {
+        setEventKey(`${match.event_id}|${match.gender}`)
+      }
     }
-  }, [presetEvent, events])
+  }, [presetEvent, presetEventKey])
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('ALL')
@@ -2251,6 +2254,7 @@ function CompareMeetsModal({ meet, onClose }) {
 function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   const [selectedDay, setSelectedDay] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState('')
+  const [eventClickCount, setEventClickCount] = useState(0)
   const [showProgram, setShowProgram] = useState(false)
   const [program, setProgram] = useState(null)
 
@@ -2381,7 +2385,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {sessions[s].map((p, i) => (
                     <div key={i}
-                      onClick={() => setSelectedEvent(String(p.event))}
+                      onClick={() => { setSelectedEvent(String(p.event)); setEventClickCount((c) => c + 1) }}
                       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', cursor: 'pointer',
                         background: String(selectedEvent) === String(p.event) ? 'var(--color-accent-100)' : 'transparent',
                         borderLeft: String(selectedEvent) === String(p.event) ? '3px solid var(--color-accent)' : '3px solid transparent',
@@ -2404,7 +2408,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
         meetId={meetId} events={dayEvents} isNational={isNational} isAdmin={isAdmin}
         hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
         hostCode={meet.country_detail?.code} bFinalNoMedals={!!meet.b_final_no_medals}
-        onDataChanged={() => {}} presetEvent={selectedEvent}
+        onDataChanged={() => {}} presetEvent={selectedEvent} presetEventKey={eventClickCount}
       />
     </div>
   )

@@ -5,7 +5,7 @@ import {
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
   getMeetProgram, updateChampionship, deleteChampionship, getClassifications, getSubClassifications,
   getRecordsBroken, addChampionshipResult, getQuickStats, getChampionships, getHeadToHead,
-  getMeetLive, finishLiveMeet, applyTC,
+  getMeetLive, finishLiveMeet, applyTC, uploadBulletin,
 } from '../api/championships'
 import { getCountries, getEvents, getFinaPointsPreview } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
@@ -2286,6 +2286,19 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
           <button className="btn btn-secondary" onClick={() => setShowProgram((v) => !v)}>
             {showProgram ? 'Hide program' : 'Edit program'}
           </button>
+          <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+            Upload bulletin
+            <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={async (e) => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              try {
+                const fd = new FormData(); fd.append('file', f)
+                const res = await uploadBulletin(meetId, fd)
+                window.alert(`Bulletin parsed: ${res.data.items_detected} events detected, ${res.data.program_items_created} program items created`)
+              } catch { window.alert('Failed to parse bulletin') }
+              e.target.value = ''
+            }} />
+          </label>
           <span className="micro" style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--color-neutral-700)' }}>
             Set which events on which days, then import results
           </span>

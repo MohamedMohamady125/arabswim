@@ -100,6 +100,69 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         } for d in range(1, n_days + 1)]
         return Response({'days': days})
 
+    @action(detail=True, methods=['post'], url_path='upload-bulletin')
+    def upload_bulletin(self, request, pk=None):
+        """Upload a meet bulletin/program PDF — auto-extract event schedule."""
+        import tempfile, os
+        from importer.bulletin import parse_bulletin
+        from core.models import Event
+        from .models import ProgramItem
+        from importer.parsers.base import normalize_event_name, normalize_stroke, extract_distance
+
+        champ = self.get_object()
+        f = request.FILES.get('file')
+        if not f:
+            return Response({'error': 'No file provided'}, status=400)
+
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+            for chunk in f.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        try:
+            items = parse_bulletin(tmp_path, champ.date)
+        finally:
+            os.unlink(tmp_path)
+
+        created = 0
+        for item in items:
+            dist_text = item['distance'].replace(' ', '')
+            is_relay = 'x' in dist_text.lower()
+            try:
+                if is_relay:
+                    parts = dist_text.lower().split('x')
+                    distance = int(parts[0]) * int(parts[1])
+                else:
+                    distance = int(dist_text)
+            except (ValueError, IndexError):
+                continue
+
+            stroke = normalize_stroke(item['stroke'])
+            event_name = normalize_event_name(distance, stroke, is_relay)
+            event = Event.objects.filter(name__iexact=event_name).first()
+            if not event:
+                continue
+
+            gender = item['gender'] or 'M'
+            session = item['session'] or ''
+            day = item['day']
+            if day < 1 or day > 30:
+                continue
+
+            _, was_created = ProgramItem.objects.get_or_create(
+                championship=champ, day=day, event=event,
+                gender=gender, session=session, age_category='',
+                defaults={'order': 0},
+            )
+            if was_created:
+                created += 1
+
+        return Response({
+            'status': 'ok',
+            'items_detected': len(items),
+            'program_items_created': created,
+        })
+
     @action(detail=True, methods=['get'], url_path='live')
     def live(self, request, pk=None):
         """Live panel data: one tile per meet day with its uploaded sessions."""

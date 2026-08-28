@@ -96,11 +96,12 @@ def _parse_french_stroke(text):
 def _parse_round(text):
     """Convert FFN round label to standard."""
     t = text.strip().lower()
+    # Barrage checked first — "Barrage Finales" contains both words
+    if 'barrage' in t:
+        return 'Swim-off'
     if 'finale' in t:
-        # "Finale directe" = direct final (no heats), treat as Finals
         if 'directe' in t:
             return 'Finals'
-        # "Finale A" = the real final; "Finale B/C/D..." = consolation finals
         m = re.search(r'finale\s*([a-z])', t)
         if m and m.group(1) != 'a':
             return 'Consolation'
@@ -109,8 +110,6 @@ def _parse_round(text):
         return 'Semifinals'
     if 'série' in t or 'serie' in t:
         return 'Prelims'
-    if 'barrage' in t:
-        return 'Swim-off'
     if 'classement' in t:
         return 'Finals'
     return ''

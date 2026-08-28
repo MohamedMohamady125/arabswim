@@ -384,7 +384,7 @@ function EventList({ events, selected, onSelect, detail }) {
     <div>
       {section('Long course', lcm)}
       {section('Short course', scm)}
-      {section('Relay', relays)}
+      {section('Relay Splits', relays)}
       {events.length === 0 && <Empty label="No competition results yet" />}
     </div>
   )
@@ -458,7 +458,12 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                           </span>
                         )}
                         {!h.is_relay && isBest && <span className="tag tag-dark">PB</span>}
-                        <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : 'inherit' }}>{h.time}</span>
+                        {h.is_relay && h.split_time && (
+                          <span className="asw-time" style={{ fontSize: 11, color: 'var(--color-neutral-600)', marginRight: 4 }}>{h.split_time}</span>
+                        )}
+                        <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : h.is_relay ? 'var(--color-neutral-500)' : 'inherit', fontSize: h.is_relay && h.split_time ? 11 : undefined }}>
+                          {h.is_relay && h.split_time ? `(${h.time})` : h.time}
+                        </span>
                       </span>
                     </td>
                     <td className="num asw-num">{h.age_at_competition || '—'}</td>

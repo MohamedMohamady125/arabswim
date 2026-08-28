@@ -2323,33 +2323,40 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
 
       {/* Day selector */}
       <div className="rule-b" style={{ padding: '16px 32px', overflowX: 'auto' }}>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'inline-flex', gap: 8 }}>
           {days.map((d) => (
             <button key={d.num} type="button"
               onClick={() => setSelectedDay(d.num)}
               style={{
-                cursor: 'pointer', border: 'none', padding: '12px 18px', textAlign: 'center',
+                cursor: 'pointer', border: 'none', padding: '14px 20px', textAlign: 'center',
                 background: selectedDay === d.num
                   ? 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))'
                   : d.isToday ? 'var(--color-accent-100)' : 'var(--color-surface)',
                 color: selectedDay === d.num ? '#fff' : 'var(--color-text)',
-                fontFamily: 'var(--font-heading)', fontWeight: 800, minWidth: 90, flex: 'none',
+                fontFamily: 'var(--font-heading)', fontWeight: 800, minWidth: 100,
                 borderBottom: d.isToday && selectedDay !== d.num ? '3px solid var(--asw-gold)' : '3px solid transparent',
+                transition: 'background 0.15s',
               }}>
-              <div style={{ fontSize: 18, lineHeight: 1 }}>Day {d.num}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, opacity: 0.8 }}>{fmtDay(d)}</div>
-              {d.isToday && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', marginTop: 3, color: selectedDay === d.num ? 'var(--asw-gold)' : 'var(--asw-fast)' }}>TODAY</div>}
+              <div style={{ fontSize: 20, lineHeight: 1 }}>Day {d.num}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 5, opacity: 0.75 }}>{fmtDay(d)}</div>
+              {d.isToday && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', marginTop: 4, color: selectedDay === d.num ? 'var(--asw-gold)' : 'var(--asw-fast)' }}>TODAY</div>}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Program + Results: each session group shows its events, click to expand results inline */}
-      <div className="pad">
+      {/* Program + Results */}
+      <div style={{ padding: '20px 32px' }}>
         {dayProgram.length > 0 ? (
           sessionOrder.filter((s) => sessionGroups[s]).map((s) => (
-            <div key={s} style={{ marginBottom: 24 }}>
-              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-neutral-700)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--color-divider)', paddingBottom: 6 }}>
+            <div key={s} style={{ marginBottom: 28 }}>
+              <div style={{
+                fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14,
+                color: s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-neutral-600)',
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                borderBottom: `2px solid ${s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-divider)'}`,
+                paddingBottom: 8, marginBottom: 8,
+              }}>
                 {sessionLabel[s]}
               </div>
               {sessionGroups[s].map((p, i) => (
@@ -2358,7 +2365,6 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
             </div>
           ))
         ) : (
-          /* No program — show full results tab */
           <ResultsTab meetId={meetId} events={events} isNational={isNational} isAdmin={isAdmin}
             hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
             hostCode={meet.country_detail?.code} bFinalNoMedals={!!meet.b_final_no_medals}
@@ -2385,18 +2391,20 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet }) {
   const hasResults = results && results.length > 0
 
   return (
-    <div style={{ marginBottom: 2 }}>
+    <div style={{ marginBottom: 4 }}>
       <div onClick={loadResults}
-        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer',
-          background: open ? 'var(--color-accent-100)' : 'transparent',
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', cursor: 'pointer',
+          background: open ? 'var(--color-accent-100)' : 'var(--color-surface)',
           borderLeft: open ? '3px solid var(--color-accent)' : '3px solid transparent',
-        }} className="hair-b">
+          transition: 'background 0.1s',
+        }}>
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, flex: 1 }}>{p.event_name}</span>
-        <span className="tag tag-neutral" style={{ fontSize: 10 }}>{genderLabel}</span>
-        <span style={{ fontWeight: 800, fontSize: 12, color: 'var(--color-accent)' }}>{open ? '▲' : '▼'}</span>
+        <span className="tag tag-neutral" style={{ fontSize: 10, flex: 'none' }}>{genderLabel}</span>
+        <span style={{ fontWeight: 800, fontSize: 11, color: 'var(--color-accent)', flex: 'none', width: 16, textAlign: 'center' }}>{open ? '▲' : '▼'}</span>
       </div>
       {open && (
-        <div style={{ borderLeft: '3px solid var(--color-accent-200)', marginLeft: 0, padding: '8px 0 8px 12px' }}>
+        <div style={{ borderLeft: '3px solid var(--color-accent-200)', padding: '10px 0 10px 16px', background: 'var(--color-bg)' }}>
           {results === null ? (
             <Loading label="Loading results" />
           ) : results.length === 0 ? (
@@ -2425,10 +2433,9 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet }) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
                           <Link to={`/swimmers/${r.swimmer_detail?.id || r.swimmer}`}
-                            style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                             {r.swimmer_detail?.name}
                           </Link>
-                          {r.round_type && <span className={`tag ${r.round_type === 'Finals' ? 'tag-accent' : 'tag-neutral'}`} style={{ fontSize: 9, flex: 'none' }}>{r.round_type}</span>}
                         </div>
                       </td>
                       <td className="num asw-num hide-mobile">{r.age_at_competition || '—'}</td>

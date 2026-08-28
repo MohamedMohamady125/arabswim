@@ -2353,19 +2353,37 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
         </div>
       </div>
 
-      {/* Program events for the day — shows even without results */}
-      {dayProgram && dayProgram.length > 0 && (
-        <div className="pad rule-b" style={{ background: 'var(--color-surface)' }}>
-          <div className="kicker" style={{ marginBottom: 8 }}>Day {selectedDay} Program</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {dayProgram.map((p, i) => (
-              <span key={i} className="tag tag-accent" style={{ fontSize: 11 }}>
-                {p.event_name}{p.session ? ` · ${p.session}` : ''}{p.gender ? ` · ${p.gender === 'M' ? 'Men' : p.gender === 'F' ? 'Women' : 'Mixed'}` : ''}
-              </span>
+      {/* Program events for the day — grouped by session */}
+      {dayProgram && dayProgram.length > 0 && (() => {
+        const sessions = {}
+        dayProgram.forEach((p) => {
+          const s = p.session || 'OTHER'
+          if (!sessions[s]) sessions[s] = []
+          sessions[s].push(p)
+        })
+        const sessionOrder = ['HEATS', 'SEMIS', 'FINALS', 'OTHER']
+        const sessionLabel = { HEATS: 'Heats', SEMIS: 'Semi-Finals', FINALS: 'Finals', OTHER: 'Events' }
+        return (
+          <div className="pad rule-b" style={{ background: 'var(--color-surface)' }}>
+            <div className="kicker" style={{ marginBottom: 12 }}>Day {selectedDay} Program</div>
+            {sessionOrder.filter((s) => sessions[s]).map((s) => (
+              <div key={s} style={{ marginBottom: 14 }}>
+                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, color: s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-neutral-700)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {sessionLabel[s]}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {sessions[s].map((p, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }} className="hair-b">
+                      <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{p.event_name}</span>
+                      <span className="tag tag-neutral" style={{ fontSize: 10 }}>{p.gender === 'M' ? 'Men' : p.gender === 'F' ? 'Women' : 'Mixed'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Results for the selected day */}
       <ResultsTab

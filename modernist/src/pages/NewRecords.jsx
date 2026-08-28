@@ -12,7 +12,6 @@ const TYPE_LABEL = Object.fromEntries(RECORD_TYPES.map((t) => [t.value, t.label]
 const SCOPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
 
 const SCOPE_OPTIONS = [
-  { value: '', label: 'All' },
   { value: 'NATIONAL', label: 'National' },
   { value: 'ARAB', label: 'Arab' },
   { value: 'GCC', label: 'GCC' },
@@ -189,7 +188,7 @@ function AddRecordModal({ onClose, onCreated }) {
 export default function NewRecords() {
   const { isAdmin } = useAuth()
   const [records, setRecords] = useState([])
-  const [scope, setScope] = useState('')
+  const [scope, setScope] = useState('NATIONAL')
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [refresh, setRefresh] = useState(0)

@@ -45,12 +45,15 @@ def check_and_update_records(result):
     scopes = []
     region = nat.region if nat else ''
 
-    # National record — always applicable
+    # Only track records for Arab/GCC swimmers
+    if region not in ('ARAB', 'GCC'):
+        return []
+
+    # National record
     scopes.append(('NATIONAL', nat.id))
 
-    # Regional records based on swimmer's region
-    if region in ('ARAB', 'GCC'):
-        scopes.append(('ARAB', None))  # None = no country filter
+    # Regional records
+    scopes.append(('ARAB', None))
     if region == 'GCC':
         scopes.append(('GCC', None))
 

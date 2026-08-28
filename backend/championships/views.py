@@ -170,14 +170,19 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='live-now')
     def live_now(self, request):
-        """Public: meets currently in live-results mode."""
-        from django.db.models import Count, Q
-        qs = (self.get_queryset().filter(is_live=True).annotate(
+        """Public: meets currently happening (by date range or is_live flag)."""
+        from django.db.models import Count, Q, F
+        from datetime import date as _date
+        today = _date.today()
+        qs = self.get_queryset().filter(
+            Q(is_live=True) | Q(date__lte=today, end_date__gte=today) | Q(date=today, end_date__isnull=True),
+            is_published=True,
+        ).annotate(
             results_count_annotated=Count('results'),
             swimmers_count_annotated=Count(
                 'results__swimmer',
                 filter=Q(results__swimmer__is_relay_team=False),
-                distinct=True)))
+                distinct=True))
         return Response(ChampionshipListSerializer(qs, many=True).data)
 
     def perform_update(self, serializer):

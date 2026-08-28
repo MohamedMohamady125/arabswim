@@ -23,6 +23,22 @@ EVENT_TITLE = re.compile(
     re.IGNORECASE
 )
 
+# English event title: "50m Freestyle Women's Ranking" or "100m Backstroke Men's Ranking"
+EVENT_TITLE_EN = re.compile(
+    r"(\d+)\s*m\s+"
+    r"(Freestyle|Backstroke|Breaststroke|Butterfly|Individual\s+Medley)"
+    r"\s+(Women|Men)(?:'s)?\s*(?:Ranking|Results)?",
+    re.IGNORECASE
+)
+
+# English relay: "4 x 100m Freestyle" or "4 x 100m Individual Medley"
+RELAY_TITLE_EN = re.compile(
+    r"(\d+)\s*x\s*(\d+)\s*m\s+"
+    r"(Freestyle|Backstroke|Breaststroke|Butterfly|Individual\s+Medley)"
+    r"(?:\s+(Women|Men|Mixed)(?:'s)?\s*(?:Ranking|Results)?)?",
+    re.IGNORECASE
+)
+
 # Per-event date: a standalone DD/MM/YYYY (or DD-MM-YYYY) in a <p> between events
 _EVENT_DATE = re.compile(r'(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})')
 
@@ -421,18 +437,22 @@ def parse(html_content):
                 current_date = f'{year}-{month.zfill(2)}-{day.zfill(2)}'
                 continue
 
-            # Check for event title
+            # Check for event title (relay first, French then English)
             relay_match = RELAY_TITLE.search(text)
+            if not relay_match:
+                relay_match = RELAY_TITLE_EN.search(text)
             if relay_match:
                 teams = int(relay_match.group(1))
                 leg_dist = int(relay_match.group(2))
                 distance = teams * leg_dist
                 stroke = normalize_stroke(relay_match.group(3))
-                gender_word = relay_match.group(4).lower()
-                if gender_word == 'mixte':
+                gender_word = (relay_match.group(4) or '').lower() if relay_match.lastindex >= 4 else ''
+                if gender_word in ('mixte', 'mixed'):
                     gender = 'X'
-                else:
+                elif gender_word:
                     gender = detect_gender(relay_match.group(4))
+                else:
+                    gender = detect_gender(text) or 'X'
                 event_name = normalize_event_name(distance, stroke, is_relay=True)
                 # Include gender in relay event name to differentiate
                 gender_label = {'M': 'Men', 'F': 'Women', 'X': 'Mixed'}.get(gender, '')
@@ -447,6 +467,8 @@ def parse(html_content):
                 continue
 
             event_match = EVENT_TITLE.search(text)
+            if not event_match:
+                event_match = EVENT_TITLE_EN.search(text)
             if event_match:
                 distance = int(event_match.group(1))
                 stroke = normalize_stroke(event_match.group(2))

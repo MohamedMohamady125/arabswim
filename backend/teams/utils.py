@@ -421,9 +421,20 @@ def apply_subclassification_country(championship):
     updated = 0
     for team in Team.objects.filter(is_national_team=False).exclude(country=country):
         if normalize_team_key(team.name) in keys:
-            team.country = country
-            team.save(update_fields=['country'])
-            updated += 1
+            # Only reassign if the team has more results in this country's
+            # meets than in other countries — avoids overwriting a Tunisian
+            # club (EST) to French just because it appeared in a French meet.
+            from championships.models import Result
+            total = Result.objects.filter(team__iexact=team.name).count()
+            in_country = Result.objects.filter(
+                team__iexact=team.name,
+                championship__country=country,
+                championship__classification__name__in=['National', 'Other'],
+            ).count()
+            if total == 0 or in_country > total * 0.5:
+                team.country = country
+                team.save(update_fields=['country'])
+                updated += 1
 
     # Relay-team placeholder swimmers carry a nationality too (shown as the
     # flag next to relay squads). Source PDFs sometimes tag them with a wrong

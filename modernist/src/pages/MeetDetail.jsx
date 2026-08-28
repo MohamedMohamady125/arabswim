@@ -520,7 +520,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
 
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
-function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, onDataChanged }) {
+function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, onDataChanged, presetEvent }) {
   const navigate = useNavigate()
   const [initParams] = useSearchParams()
   // deep link from Records: ?event=&gender=&result= opens that exact swim
@@ -531,6 +531,13 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     const g = initParams.get('gender')
     return e && g ? `${e}|${g}` : ''
   })
+  // When a program event is clicked from the live day view
+  useEffect(() => {
+    if (presetEvent && events.length) {
+      const match = events.find((e) => String(e.event_id) === String(presetEvent))
+      if (match) setEventKey(`${match.event_id}|${match.gender}`)
+    }
+  }, [presetEvent, events])
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('ALL')
@@ -2373,9 +2380,16 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {sessions[s].map((p, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }} className="hair-b">
+                    <div key={i}
+                      onClick={() => setSelectedEvent(String(p.event))}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', cursor: 'pointer',
+                        background: String(selectedEvent) === String(p.event) ? 'var(--color-accent-100)' : 'transparent',
+                        borderLeft: String(selectedEvent) === String(p.event) ? '3px solid var(--color-accent)' : '3px solid transparent',
+                      }}
+                      className="hair-b">
                       <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{p.event_name}</span>
                       <span className="tag tag-neutral" style={{ fontSize: 10 }}>{p.gender === 'M' ? 'Men' : p.gender === 'F' ? 'Women' : 'Mixed'}</span>
+                      <span style={{ color: 'var(--color-neutral-500)', fontSize: 12 }}>→</span>
                     </div>
                   ))}
                 </div>
@@ -2390,7 +2404,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
         meetId={meetId} events={dayEvents} isNational={isNational} isAdmin={isAdmin}
         hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
         hostCode={meet.country_detail?.code} bFinalNoMedals={!!meet.b_final_no_medals}
-        onDataChanged={() => {}}
+        onDataChanged={() => {}} presetEvent={selectedEvent}
       />
     </div>
   )

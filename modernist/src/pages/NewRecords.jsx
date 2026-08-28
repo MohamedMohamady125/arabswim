@@ -16,11 +16,6 @@ const SCOPE_OPTIONS = [
   { value: 'NATIONAL', label: 'National' },
   { value: 'ARAB', label: 'Arab' },
   { value: 'GCC', label: 'GCC' },
-  { value: 'AFRICAN', label: 'African' },
-  { value: 'ASIAN', label: 'Asian' },
-  { value: 'MEDITERRANEAN', label: 'Mediterranean' },
-  { value: 'ISLAMIC', label: 'Islamic' },
-  { value: 'WORLD', label: 'World' },
 ]
 
 function AddRecordModal({ onClose, onCreated }) {
@@ -322,8 +317,10 @@ function RecordCards({ rows }) {
                       {(r.swimmer_detail?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')}
                     </div>
                   )}
-                  <div className="card-kicker">
-                    {r.record_type} record · {r.pool} <span className="tag tag-dark" style={{ marginLeft: 6 }}>New</span>
+                  <div className="card-kicker" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span>{r.record_type} record</span>
+                    {r.result_date && <span style={{ fontWeight: 600 }}>{formatDate(r.result_date)}</span>}
+                    <span className="tag tag-accent-2" style={{ fontSize: 9, padding: '1px 6px' }}>{r.pool}</span>
                   </div>
                   <div className="asw-num rec-time" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, margin: '4px 0 2px' }}>
                     {r.formatted_time}

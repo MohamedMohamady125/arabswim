@@ -88,7 +88,6 @@ function SwimmerLink({ swimmerId, detail, resultNationality, isNational = true }
         // Relay-team placeholders aren't swimmers — no profile to open
         <>
           <span style={NAME_ELLIPSIS}>{detail?.name}</span>
-          <span className="tag tag-neutral" style={{ flex: 'none' }}>{isCountryTeam ? 'Country' : 'Club'}</span>
         </>
       ) : (
         <Link to={`/swimmers/${swimmerId}`} style={{ color: 'inherit', textDecoration: 'none', ...NAME_ELLIPSIS }}>{detail?.name}</Link>
@@ -1001,7 +1000,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           <table className="table results-table">
             <thead>
               <tr>
-                <th className="rank-col">Rank</th>
+                <th className="rank-col"><span className="hide-mobile">Rank</span><span className="show-mobile">R</span></th>
                 <th>Swimmer</th>
                 <th className="num hide-mobile">Age</th>
                 {isNational && <th className="hide-mobile">Team</th>}

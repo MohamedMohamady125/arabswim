@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, Fragment } from 'react'
+import { useEffect, useMemo, useState, useRef, Fragment } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { AtSign, ExternalLink, X, BadgeCheck } from 'lucide-react'
 import {
@@ -13,6 +13,7 @@ import {
   getSwimmerTransferHistory,
 } from '../api/swimmers'
 import { createClaim, getMyClaims, submitPhotoRequest } from '../api/claims'
+import { mergeSwimmers } from '../api/importer'
 import { getCountries } from '../api/core'
 import { getHeldRecords } from '../api/records'
 import { useAuth } from '../context/AuthContext'
@@ -813,6 +814,89 @@ const TABS = [
 
 /* ── Main page ─────────────────────────────────────────────────────────── */
 
+function MergeModal({ swimmer, onClose, onMerged }) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [selected, setSelected] = useState(null)
+  const [merging, setMerging] = useState(false)
+  const debounce = useRef(null)
+
+  const search = (q) => {
+    setQuery(q)
+    if (debounce.current) clearTimeout(debounce.current)
+    if (q.length < 2) { setResults([]); return }
+    debounce.current = setTimeout(() => {
+      searchSwimmers(q, { page_size: 10 })
+        .then((res) => setResults((res.data || []).filter((s) => s.id !== swimmer.id)))
+        .catch(() => setResults([]))
+    }, 300)
+  }
+
+  const handleMerge = async () => {
+    if (!selected) return
+    if (!window.confirm(`Merge "${selected.name}" into "${swimmer.name}"?\n\nAll results, medals, and records from "${selected.name}" will be moved to this profile. "${selected.name}" will be deleted.\n\nThis cannot be undone.`)) return
+    setMerging(true)
+    try {
+      await mergeSwimmers(swimmer.id, [selected.id])
+      onMerged()
+    } catch {
+      window.alert('Merge failed')
+      setMerging(false)
+    }
+  }
+
+  return (
+    <Modal title="Merge Duplicate Swimmer" onClose={onClose} width={600}>
+      <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+        Search for the duplicate profile to merge INTO this swimmer ({swimmer.name}). The duplicate's results, medals, and records will be transferred here.
+      </div>
+      <input className="input" placeholder="Search duplicate swimmer…" value={query} onChange={(e) => search(e.target.value)} style={{ marginBottom: 8 }} />
+      {results.length > 0 && !selected && (
+        <div style={{ border: '1px solid var(--color-divider)', maxHeight: 250, overflowY: 'auto', marginBottom: 12 }}>
+          {results.map((s) => (
+            <button key={s.id} type="button" style={{ width: '100%', textAlign: 'left', padding: '10px 14px', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', font: 'inherit', fontSize: 13 }}
+              onClick={() => setSelected(s)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
+                <div>
+                  <div style={{ fontWeight: 700 }}>{s.name}</div>
+                  <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                    {s.nationality_detail?.name || ''}{s.birth_year ? ` · Born ${s.birth_year}` : ''}{s.club ? ` · ${s.club}` : ''}
+                  </div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {selected && (
+        <div style={{ border: '2px solid var(--color-accent)', padding: 16, marginBottom: 12 }}>
+          <div className="kicker" style={{ marginBottom: 10 }}>Merge preview</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'center' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>{swimmer.name}</div>
+              <div className="micro">{swimmer.nationality_detail?.name}{swimmer.birth_year ? ` · ${swimmer.birth_year}` : ''}</div>
+              <span className="tag tag-accent" style={{ marginTop: 6 }}>Keep this profile</span>
+            </div>
+            <div style={{ fontSize: 20, color: 'var(--color-neutral-500)' }}>←</div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>{selected.name}</div>
+              <div className="micro">{selected.nationality_detail?.name}{selected.birth_year ? ` · ${selected.birth_year}` : ''}</div>
+              <span className="tag" style={{ marginTop: 6, background: 'var(--asw-slow)', color: '#fff' }}>Will be deleted</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 14 }}>
+            <button className="btn btn-secondary" onClick={() => setSelected(null)}>Change</button>
+            <button className="btn btn-primary" onClick={handleMerge} disabled={merging}>
+              {merging ? 'Merging…' : 'Confirm merge'}
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 export default function SwimmerProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -825,6 +909,7 @@ export default function SwimmerProfile() {
   const [claimOpen, setClaimOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [adminEditOpen, setAdminEditOpen] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
   const [myClaims, setMyClaims] = useState([])
   const [events, setEvents] = useState([])
   const [stats, setStats] = useState(null)
@@ -965,6 +1050,9 @@ export default function SwimmerProfile() {
                     }}>
                     {swimmer.is_retired ? 'Mark active' : 'Mark retired'}
                   </button>
+                  <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setMergeOpen(true)}>
+                    Merge duplicate
+                  </button>
                 </>
               )}
               {isMine && (
@@ -1009,6 +1097,17 @@ export default function SwimmerProfile() {
           onClose={() => setAdminEditOpen(false)}
           onSaved={async () => {
             setAdminEditOpen(false)
+            const res = await getSwimmer(id).catch(() => null)
+            if (res) setSwimmer(res.data)
+          }}
+        />
+      )}
+      {mergeOpen && (
+        <MergeModal
+          swimmer={swimmer}
+          onClose={() => setMergeOpen(false)}
+          onMerged={async () => {
+            setMergeOpen(false)
             const res = await getSwimmer(id).catch(() => null)
             if (res) setSwimmer(res.data)
           }}

@@ -104,7 +104,10 @@ def _parse_round(text):
             return 'Finals'
         m = re.search(r'finale\s*([a-z])', t)
         if m and m.group(1) != 'a':
-            return 'Consolation'
+            letter = m.group(1).upper()
+            if letter == 'B':
+                return 'Consolation'
+            return f'Final {letter}'
         return 'Finals'
     if 'demi' in t:
         return 'Semifinals'

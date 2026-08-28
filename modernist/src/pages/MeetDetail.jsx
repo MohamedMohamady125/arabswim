@@ -23,19 +23,6 @@ import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakd
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
-// Display categories oldest → youngest (Seniors → Poussins). Named categories
-// have fixed ranks; numeric ones sort by their highest age, descending.
-const NAMED_RANKS = { 'Seniors/Juniors': 0, Seniors: 1, Juniors: 2, Cadets: 3, Minimes: 4, Benjamins: 5, Poussins: 6 }
-const catRank = (c) => {
-  if (!c) return 9999
-  const named = NAMED_RANKS[c]
-  if (named !== undefined) return named
-  if (/open/i.test(c)) return -1
-  const nums = c.match(/\d+/g)
-  if (nums) return -Math.max(...nums.map(Number))
-  return 9998
-}
-
 // Round display order: finals first, then consolation, prelims, heats
 const ROUND_ORDER = ['Finals', 'Consolation', 'Semifinals', 'Prelims', 'Heats', '']
 const roundLabel = (r) => {
@@ -623,11 +610,15 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
 
   useEffect(() => { loadResults() }, [meetId, eventKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // categories present in this event, ordered Seniors → Poussins
+  // categories present in this event, ordered by first appearance in the data
+  // (which mirrors the original imported file order via ascending result id)
   const categories = useMemo(() => {
-    const cats = [...new Set(rows.map((r) => r.category || ''))]
-    cats.sort((a, b) => catRank(a) - catRank(b))
-    return cats
+    const seen = new Map()
+    rows.forEach((r) => {
+      const cat = r.category || ''
+      if (!seen.has(cat)) seen.set(cat, r.id ?? Infinity)
+    })
+    return [...seen.keys()].sort((a, b) => (seen.get(a) ?? Infinity) - (seen.get(b) ?? Infinity))
   }, [rows])
   const hasCategories = categories.filter((c) => c !== '').length > 0 && categories.length > 1
 
@@ -692,7 +683,15 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       if (!byCat.has(cat)) { byCat.set(cat, []); order.push(cat) }
       byCat.get(cat).push(r)
     })
-    order.sort((a, b) => catRank(a) - catRank(b))
+    // Preserve file order: sort categories by the lowest result id seen for
+    // each category (import writes rows sequentially, so id tracks file order)
+    const minId = new Map()
+    rows.forEach((r) => {
+      const cat = r.category || ''
+      const cur = minId.get(cat)
+      if (cur === undefined || (r.id != null && r.id < cur)) minId.set(cat, r.id ?? Infinity)
+    })
+    order.sort((a, b) => (minId.get(a) ?? Infinity) - (minId.get(b) ?? Infinity))
     return order.map((cat) => [cat, byCat.get(cat)])
   }, [rows, selectedRound, selectedCategory, isOpenView, bFinalNoMedals])
 

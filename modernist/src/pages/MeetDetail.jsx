@@ -2278,6 +2278,16 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
 
   return (
     <div>
+      {/* Admin: import button locked to this meet */}
+      {isAdmin && (
+        <div className="rule-b" style={{ padding: '12px 32px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: 'var(--color-surface)' }}>
+          <Link className="btn btn-primary" to={`/import?championship=${meetId}`}>Import results for this meet</Link>
+          <span className="micro" style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--color-neutral-700)' }}>
+            Upload PDF or file — pre-locked to {meet.name}
+          </span>
+        </div>
+      )}
+
       {/* Day selector */}
       <div className="rule-b" style={{ padding: '16px 32px', overflowX: 'auto' }}>
         <div style={{ display: 'flex', gap: 10 }}>

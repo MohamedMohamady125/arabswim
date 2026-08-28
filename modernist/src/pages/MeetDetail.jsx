@@ -2244,6 +2244,7 @@ function CompareMeetsModal({ meet, onClose }) {
 function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   const [selectedDay, setSelectedDay] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState('')
+  const [showProgram, setShowProgram] = useState(false)
 
   const start = new Date(meet.date)
   const end = new Date(meet.end_date || meet.date)
@@ -2278,13 +2279,21 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
 
   return (
     <div>
-      {/* Admin: import button locked to this meet */}
+      {/* Admin: import + program buttons */}
       {isAdmin && (
         <div className="rule-b" style={{ padding: '12px 32px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: 'var(--color-surface)' }}>
-          <Link className="btn btn-primary" to={`/import?championship=${meetId}`}>Import results for this meet</Link>
+          <Link className="btn btn-primary" to={`/import?championship=${meetId}`}>Import results</Link>
+          <button className="btn btn-secondary" onClick={() => setShowProgram((v) => !v)}>
+            {showProgram ? 'Hide program' : 'Edit program'}
+          </button>
           <span className="micro" style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--color-neutral-700)' }}>
-            Upload PDF or file — pre-locked to {meet.name}
+            Set which events on which days, then import results
           </span>
+        </div>
+      )}
+      {isAdmin && showProgram && (
+        <div className="rule-b pad">
+          <MeetProgramEditor champId={meetId} />
         </div>
       )}
 

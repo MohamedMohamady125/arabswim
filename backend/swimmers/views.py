@@ -621,6 +621,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'time': r.formatted_time,
             'time_centiseconds': r.time_centiseconds,
             'location': r.location,
+            'meet_name': r.meet_name,
+            'pool': r.pool,
             'date': r.result_date,
         } for r in Record.objects.filter(swimmer=swimmer).select_related('event')]
 

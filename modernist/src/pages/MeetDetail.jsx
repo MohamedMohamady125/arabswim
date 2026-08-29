@@ -2417,7 +2417,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet }) {
               <table className="table" style={{ fontSize: 13 }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 30 }}>#</th>
+                    <th style={{ width: 36 }}>#</th>
                     <th>Swimmer</th>
                     <th className="num hide-mobile">Age</th>
                     {isNational && <th className="hide-mobile">Team</th>}
@@ -2430,7 +2430,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet }) {
                     <tr key={r.id}>
                       <td className="asw-num" style={{ fontWeight: 800 }}>
                         {r.is_hc ? <span className="tag tag-neutral">{r.hc_type || 'HC'}</span>
-                          : i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={16} /> : (r.original_rank || i + 1)}
+                          : i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={22} style={{ display: 'block' }} /> : (r.original_rank || i + 1)}
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>

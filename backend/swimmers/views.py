@@ -1224,3 +1224,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         swimmer.photo = photo
         swimmer.save()
         return Response({'photo': swimmer.photo.url})
+
+    @action(detail=True, methods=['delete'], url_path='delete-photo')
+    def delete_photo(self, request, pk=None):
+        swimmer = self.get_object()
+        if swimmer.photo:
+            swimmer.photo.delete(save=False)
+            swimmer.photo = None
+            swimmer.save(update_fields=['photo'])
+        return Response(status=status.HTTP_204_NO_CONTENT)

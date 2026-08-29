@@ -5,7 +5,7 @@ import {
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
   getMeetProgram, updateChampionship, deleteChampionship, getClassifications, getSubClassifications,
   getRecordsBroken, addChampionshipResult, getQuickStats, getChampionships, getHeadToHead,
-  getMeetLive, finishLiveMeet, applyTC, uploadBulletin,
+  getMeetLive, finishLiveMeet, applyTC, uploadBulletin, swapNames,
 } from '../api/championships'
 import { getCountries, getEvents, getFinaPointsPreview } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
@@ -2654,6 +2654,18 @@ export default function MeetDetail() {
                     } catch { window.alert('Failed to update') }
                   }}>
                   {meet.is_published ? 'Unpublish' : 'Publish'}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={async () => {
+                  if (!window.confirm('Swap first/last names for all swimmers in this meet?\n\nThis converts "Family GIVEN" → "Given FAMILY" (surname uppercase).')) return
+                  try {
+                    const res = await swapNames(id)
+                    const msg = `Swapped ${res.data.renamed} swimmer names` +
+                      (res.data.duplicates?.length ? `\n\n${res.data.duplicates.length} duplicate(s) detected — merge them manually` : '')
+                    window.alert(msg)
+                    refreshStats()
+                  } catch { window.alert('Failed to swap names') }
+                }}>
+                  Swap names
                 </button>
                 <button type="button" className="btn" style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)' }} onClick={async () => {
                   if (!window.confirm(`Delete "${meet.name}" and all its results, medals, and records? This cannot be undone.`)) return

@@ -5,6 +5,7 @@ import {
   getSwimmer,
   updateSwimmer,
   uploadSwimmerPhoto,
+  deleteSwimmerPhoto,
   getSwimmerEvents,
   getSwimmerEventHistory,
   getSwimmerProfileStats,
@@ -279,8 +280,22 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
         {field('Nicknames (comma-separated)', 'nicknames', 'text', { placeholder: 'e.g. Hamada, Mido' })}
         <label style={{ display: 'block' }}>
           <div className="card-kicker" style={{ marginBottom: 4 }}>Profile photo</div>
-          <input className="input" type="file" accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input className="input" type="file" accept="image/jpeg,image/png,image/webp" style={{ flex: 1 }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
+            {swimmer.photo && (
+              <button type="button" className="btn" style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)', fontSize: 12, whiteSpace: 'nowrap' }}
+                onClick={async () => {
+                  if (!window.confirm('Delete this swimmer\'s photo?')) return
+                  try {
+                    await deleteSwimmerPhoto(swimmer.id)
+                    onSaved()
+                  } catch { window.alert('Failed to delete photo') }
+                }}>
+                Delete photo
+              </button>
+            )}
+          </div>
           {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready</div>}
         </label>
         {cropFile && (

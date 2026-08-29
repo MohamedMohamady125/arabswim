@@ -1796,6 +1796,34 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             })
         return Response(list(groups.values()))
 
+    @action(detail=True, methods=['post'], url_path='swap-names')
+    def swap_names(self, request, pk=None):
+        """Swap first/last name order for all swimmers in this meet.
+        Uses the same logic as the swap_name_order management command."""
+        from importer.management.commands.swap_name_order import swap
+        championship = self.get_object()
+        from swimmers.models import Swimmer
+        qs = (Swimmer.objects
+              .filter(is_relay_team=False,
+                      results__championship_id=championship.id)
+              .distinct())
+        renamed = 0
+        dupes = []
+        for swimmer in qs.iterator():
+            name = (swimmer.name or '').strip()
+            new_name = swap(name)
+            if not new_name or new_name == name:
+                continue
+            twin = (Swimmer.objects
+                    .filter(name__iexact=new_name, is_relay_team=False)
+                    .exclude(id=swimmer.id).first())
+            if twin:
+                dupes.append({'id': swimmer.id, 'twin_id': twin.id, 'name': new_name})
+            swimmer.name = new_name
+            swimmer.save(update_fields=['name'])
+            renamed += 1
+        return Response({'renamed': renamed, 'duplicates': dupes})
+
 
 class ResultViewSet(viewsets.ModelViewSet):
     queryset = Result.objects.select_related('swimmer', 'swimmer__nationality', 'nationality', 'championship', 'event')

@@ -752,14 +752,20 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
           <div className="rule-t">
             {intlRecords.map((r) => (
               <div key={r.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
-                <span className={`tag ${r.record_type === 'ARAB' ? 'tag-dark' : r.record_type === 'GCC' ? 'tag-accent' : 'tag-outline'}`}>{r.record_type}</span>
+                <span className={`tag ${r.record_type === 'ARAB' ? 'tag-dark' : r.record_type === 'GCC' ? 'tag-accent' : 'tag-outline'}`} style={{ flex: 'none', minWidth: 40, textAlign: 'center' }}>{r.record_type}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase' }}>{r.event_name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>
-                    {r.location}{r.location && r.date ? ' · ' : ''}{formatDate(r.date)}
+                  <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.meet_name || r.location}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    {r.date && <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{formatDate(r.date)}</span>}
+                    {r.pool && <span className="tag tag-accent-2" style={{ fontSize: 9, padding: '1px 6px' }}>{r.pool}</span>}
                   </div>
                 </div>
-                <span className="asw-time" style={{ fontSize: 16, flex: 'none' }}>{r.time}</span>
+                <div style={{ textAlign: 'right', flex: 'none' }}>
+                  <div className="asw-time" style={{ fontSize: 16 }}>{r.time}</div>
+                </div>
               </div>
             ))}
           </div>

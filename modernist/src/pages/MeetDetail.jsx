@@ -857,7 +857,11 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
               </span>
             </td>
           )}
-          <td className="time asw-time">{r.formatted_time}</td>
+          <td className="time asw-time">
+            {isRelay && !r.swimmer_detail?.is_relay_team && swimmers.length > 0 && swimmers[0]?.split_time
+              ? <span title={`Relay time: ${r.formatted_time}`}>{swimmers[0].split_time} <span className="micro" style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 9 }}>SPLIT</span></span>
+              : r.formatted_time}
+          </td>
           <td className="num asw-num">{r.fina_points ?? '—'}</td>
           {editMode && (
             <td className="num" style={{ whiteSpace: 'nowrap' }}>

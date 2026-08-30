@@ -356,6 +356,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             event_id = request.query_params.get('event')
             gender = request.query_params.get('gender')
             show_all_rounds = request.query_params.get('all_rounds')
+            round_type_filter = request.query_params.get('round_type')
             results = championship.results.select_related('swimmer', 'swimmer__nationality', 'nationality', 'event')
             if event_id:
                 results = results.filter(event_id=event_id)
@@ -364,10 +365,16 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 # don't filter by sex when the caller requests 'X' (Mixed).
                 if gender != 'X':
                     results = results.filter(swimmer__sex=gender)
+            # Explicit round_type filter (e.g. "Prelims" for heats view)
+            if round_type_filter:
+                if round_type_filter.lower() in ('heats', 'prelims'):
+                    results = results.filter(round_type__in=['Heats', 'Prelims'])
+                else:
+                    results = results.filter(round_type=round_type_filter)
             # By default, show only the best round per swimmer per event
             # If Finals exist for this event, show only Finals
             # Otherwise show all (timed finals / single round)
-            if not show_all_rounds and event_id:
+            elif not show_all_rounds and event_id:
                 rounds = set(results.values_list('round_type', flat=True))
                 if 'Finals' in rounds and len(rounds) > 1:
                     results = results.filter(round_type='Finals')

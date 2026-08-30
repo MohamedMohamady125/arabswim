@@ -2321,6 +2321,9 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
               e.target.value = ''
             }} />
           </label>
+          <Link className="btn btn-secondary" to={`/import?championship=${meetId}&heats=1`}>
+            Upload heats
+          </Link>
         </div>
       )}
       {isAdmin && showProgram && (
@@ -2436,17 +2439,100 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
 
 function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact }) {
   const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState('results') // 'results' or 'heats'
   const [results, setResults] = useState(null)
+  const [heats, setHeats] = useState(null)
+  const [hasHeats, setHasHeats] = useState(false)
 
   const loadResults = () => {
     if (results) { setOpen((v) => !v); return }
     setOpen(true)
     getChampionshipResults(meetId, { event: p.event, gender: p.gender })
-      .then((res) => setResults(Array.isArray(res.data) ? res.data : res.data?.results || []))
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : res.data?.results || []
+        setResults(data)
+      })
       .catch(() => setResults([]))
+    // Check if heats exist
+    getChampionshipResults(meetId, { event: p.event, gender: p.gender, round_type: 'Prelims' })
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : res.data?.results || []
+        if (data.length > 0) { setHasHeats(true); setHeats(data) }
+      })
+      .catch(() => {})
+  }
+
+  const switchTab = (t) => {
+    setTab(t)
+    if (t === 'heats' && !heats) {
+      getChampionshipResults(meetId, { event: p.event, gender: p.gender, round_type: 'Prelims' })
+        .then((res) => setHeats(Array.isArray(res.data) ? res.data : res.data?.results || []))
+        .catch(() => setHeats([]))
+    }
   }
 
   const roundBadge = { HEATS: 'Heats', SEMIS: 'Semis', FINALS: 'Finals' }[p.session] || ''
+  const activeData = tab === 'heats' ? heats : results
+
+  // Group heats by heat number (from original_rank pattern or sequential)
+  const heatGroups = useMemo(() => {
+    if (!heats || heats.length === 0) return []
+    // Try to detect heat boundaries: when rank resets to 1 or a lower number
+    const groups = []
+    let currentHeat = []
+    let lastRank = 0
+    for (const r of heats) {
+      const rank = r.original_rank || 0
+      if (currentHeat.length > 0 && rank > 0 && rank <= lastRank && rank <= 3) {
+        groups.push(currentHeat)
+        currentHeat = []
+      }
+      currentHeat.push(r)
+      if (rank > 0) lastRank = rank
+    }
+    if (currentHeat.length > 0) groups.push(currentHeat)
+    return groups
+  }, [heats])
+
+  const renderTable = (data, showMedals = true) => (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="table" style={{ fontSize: 12, minWidth: 360 }}>
+        <thead>
+          <tr>
+            <th style={{ width: 32 }}>#</th>
+            <th>Swimmer</th>
+            <th className="num hide-mobile" style={{ width: 40 }}>Age</th>
+            {isNational && <th className="hide-mobile">Team</th>}
+            <th className="time" style={{ width: 64 }}>Time</th>
+            <th className="num" style={{ width: 44 }}>FINA</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((r, i) => (
+            <tr key={r.id}>
+              <td className="asw-num" style={{ fontWeight: 800, width: 36, minWidth: 36 }}>
+                {r.is_hc ? <span className="tag tag-neutral">{r.hc_type || 'HC'}</span>
+                  : showMedals && i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={18} style={{ display: 'block' }} /> : (r.original_rank || i + 1)}
+              </td>
+              <td>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
+                  <Link to={`/swimmers/${r.swimmer_detail?.id || r.swimmer}`}
+                    style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                    {r.swimmer_detail?.name}
+                  </Link>
+                </div>
+              </td>
+              <td className="num asw-num hide-mobile">{r.age_at_competition || '—'}</td>
+              {isNational && <td className="hide-mobile text-muted">{r.team || '—'}</td>}
+              <td className="time asw-time">{r.formatted_time}</td>
+              <td className="num asw-num">{r.fina_points || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 
   return (
     <div style={{ marginBottom: 4 }}>
@@ -2476,48 +2562,66 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact }
       </div>
       {open && (
         <div style={{ borderLeft: '3px solid var(--color-accent-200)', padding: '10px 0 10px 16px', background: 'var(--color-bg)' }}>
-          {results === null ? (
-            <Loading label="Loading results" />
-          ) : results.length === 0 ? (
-            <div className="micro" style={{ padding: '8px 0', color: 'var(--color-neutral-600)' }}>No results uploaded yet for this event</div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="table" style={{ fontSize: 12, minWidth: 360 }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: 32 }}>#</th>
-                    <th>Swimmer</th>
-                    <th className="num hide-mobile" style={{ width: 40 }}>Age</th>
-                    {isNational && <th className="hide-mobile">Team</th>}
-                    <th className="time" style={{ width: 64 }}>Time</th>
-                    <th className="num" style={{ width: 44 }}>FINA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((r, i) => (
-                    <tr key={r.id}>
-                      <td className="asw-num" style={{ fontWeight: 800, width: 36, minWidth: 36 }}>
-                        {r.is_hc ? <span className="tag tag-neutral">{r.hc_type || 'HC'}</span>
-                          : i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={18} style={{ display: 'block' }} /> : (r.original_rank || i + 1)}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                          <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
-                          <Link to={`/swimmers/${r.swimmer_detail?.id || r.swimmer}`}
-                            style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-                            {r.swimmer_detail?.name}
-                          </Link>
-                        </div>
-                      </td>
-                      <td className="num asw-num hide-mobile">{r.age_at_competition || '—'}</td>
-                      {isNational && <td className="hide-mobile text-muted">{r.team || '—'}</td>}
-                      <td className="time asw-time">{r.formatted_time}</td>
-                      <td className="num asw-num">{r.fina_points || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* Results/Heats toggle */}
+          {hasHeats && (
+            <div style={{ display: 'flex', gap: 0, marginBottom: 10 }}>
+              {['results', 'heats'].map((t) => (
+                <button key={t} type="button" onClick={(e) => { e.stopPropagation(); switchTab(t) }}
+                  style={{
+                    padding: '5px 16px', fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-heading)',
+                    textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer',
+                    border: '1px solid var(--color-accent)',
+                    background: tab === t ? 'var(--color-accent)' : 'transparent',
+                    color: tab === t ? '#fff' : 'var(--color-accent)',
+                    borderRadius: t === 'results' ? '4px 0 0 4px' : '0 4px 4px 0',
+                  }}>
+                  {t === 'results' ? 'Results' : 'Heats'}
+                </button>
+              ))}
             </div>
+          )}
+
+          {activeData === null ? (
+            <Loading label="Loading results" />
+          ) : activeData.length === 0 ? (
+            <div className="micro" style={{ padding: '8px 0', color: 'var(--color-neutral-600)' }}>
+              {tab === 'heats' ? 'No heats uploaded yet' : 'No results uploaded yet for this event'}
+            </div>
+          ) : tab === 'heats' && heatGroups.length > 1 ? (
+            /* Heat-by-heat display with sidebar */
+            <div style={{ display: 'flex', gap: 12 }}>
+              {/* Mini sidebar */}
+              <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 4, position: 'sticky', top: 80 }}>
+                {heatGroups.map((_, hi) => (
+                  <a key={hi} href={`#heat-${p.event}-${p.gender}-${hi}`}
+                    style={{
+                      fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 3,
+                      background: 'var(--color-accent-100)', color: 'var(--color-accent)',
+                      textDecoration: 'none', textAlign: 'center', whiteSpace: 'nowrap',
+                    }}>
+                    H{hi + 1}
+                  </a>
+                ))}
+              </div>
+              {/* Heat tables */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {heatGroups.map((heatResults, hi) => (
+                  <div key={hi} id={`heat-${p.event}-${p.gender}-${hi}`} style={{ marginBottom: 16 }}>
+                    <div style={{
+                      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11,
+                      color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.06em',
+                      paddingBottom: 4, marginBottom: 4,
+                      borderBottom: '1px solid var(--color-divider)',
+                    }}>
+                      Heat {hi + 1} <span style={{ fontWeight: 400, opacity: 0.6 }}>· {heatResults.length} swimmers</span>
+                    </div>
+                    {renderTable(heatResults, false)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            renderTable(activeData, tab === 'results')
           )}
         </div>
       )}

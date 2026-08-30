@@ -1824,7 +1824,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             renamed += 1
         return Response({'renamed': renamed, 'duplicates': dupes})
 
-    @action(detail=False, methods=['post'], url_path='seed-african')
+    @action(detail=False, methods=['post'], url_path='seed-african',
+            permission_classes=[])
     def seed_african(self, request):
         """Temporary: trigger seed_african_champs management command."""
         from django.core.management import call_command

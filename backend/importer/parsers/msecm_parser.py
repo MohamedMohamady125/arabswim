@@ -57,6 +57,19 @@ RESULT_LINE = re.compile(
     r'(.*)$'                                    # remainder: qualification + points
 )
 
+# MUSZ result line: "1. 4/4 TÖRÖK Dominik Márk 2002 BVSC-Zugló 02:03.38 788"
+# Also: "6. 5/0 MAX Halbeisen 2003 AUT Österreichischer Swhwimmverband 02:04.08 +00.70 775"
+MUSZ_RESULT_LINE = re.compile(
+    r'^(\d{1,3})\.\s+'                         # rank
+    r'\d+\s*/\s*\d+\s+'                        # lane (e.g. "4/4")
+    r'(.+?)\s+'                                 # name (SURNAME Given)
+    r'(\d{4})\s+'                               # birth year
+    r'(?:([A-Z]{2,3})\s+)?'                    # optional nationality code (for foreigners)
+    r'(.+?)\s+'                                 # club
+    r'(\d{1,2}:\d{2}\.\d{2}|\d{2}\.\d{2})\s*'  # time with dot decimal
+    r'(.*)$'                                    # remainder: gap + points
+)
+
 # DQ/DNS line (no rank, no dot): "Kainz, Leona     2008 AUT SV-Simmering     DQ"
 DQ_DNS_LINE = re.compile(
     r'^([A-ZÀ-Þa-zà-ÿ].+?)\s+'                # name
@@ -67,8 +80,8 @@ DQ_DNS_LINE = re.compile(
     re.IGNORECASE
 )
 
-# Split line: starts with "RT" or a distance marker
-SPLIT_LINE = re.compile(r'^(?:RT\s|(?:\d+m\s*:))')
+# Split line: starts with "RT" or a distance marker or "R.Idő" (MUSZ)
+SPLIT_LINE = re.compile(r'^(?:RT\s|R\.Id[őo]\s|(?:\d+m\s*:))')
 
 # Session date from page header: "Results 30.04.2026 - Session 1"
 SESSION_DATE = re.compile(r'Results?\s+(\d{2})\.(\d{2})\.(\d{4})\s*-\s*Session\s+(\d+)')
@@ -79,6 +92,17 @@ DATE_RANGE = re.compile(
     r'(?:-?(\d{2})\.(\d{2})\.)?'                # optional end DD.MM. (with or without dash)
     r'(\d{4})'                                  # year
 )
+
+# MUSZ event title: "Men's 200m Medley" or "Women's 100m Freestyle"
+MUSZ_EVENT_TITLE = re.compile(
+    r"^(Women's|Men's|Mixed)\s+"
+    r"(\d+(?:\s*x\s*\d+)?)\s*m\s+"
+    r"(.+?)$",
+    re.IGNORECASE
+)
+
+# MUSZ date: "2024. 04. 09., 9:00:00 (S1)"
+MUSZ_DATE = re.compile(r'(\d{4})\.\s*(\d{2})\.\s*(\d{2})')
 
 # Stroke mapping for MSECM format
 STROKE_MAP = {
@@ -93,10 +117,18 @@ STROKE_MAP = {
 
 
 def detect_format(text):
-    """Check if this text is MSECM format."""
+    """Check if this text is MSECM or MUSZ (Hungarian) format."""
     lower = text.lower()
-    return ('msecm' in lower or 'myresults.eu' in lower or 'www.msecm.at' in lower or
-            ('event ' in lower and 'preliminary' in lower and 'limit:' in lower))
+    if 'msecm' in lower or 'myresults.eu' in lower or 'www.msecm.at' in lower:
+        return True
+    if 'event ' in lower and 'preliminary' in lower and 'limit:' in lower:
+        return True
+    if 'live.musz.hu' in lower or 'musz.hu' in lower:
+        return True
+    # MUSZ detection: Hungarian meet format with "RESULTS SUMMARY" + "R.Idő" + "RNK Lane"
+    if 'results summary' in lower and 'r.id' in lower and 'rnk' in lower:
+        return True
+    return False
 
 
 def _parse_msecm_stroke(text):
@@ -156,6 +188,30 @@ def _reorder_name(name):
     return f'{given} {surname.upper()}'
 
 
+def _reorder_musz_name(name):
+    """Convert 'TÖRÖK Dominik Márk' to 'Dominik Márk TÖRÖK'.
+
+    MUSZ lists SURNAME (all caps) first, then given name(s) in title case.
+    """
+    tokens = name.split()
+    i = 0
+    while i < len(tokens) and tokens[i] == tokens[i].upper() and any(c.isalpha() for c in tokens[i]):
+        i += 1
+    if 0 < i < len(tokens):
+        return ' '.join(tokens[i:]) + ' ' + ' '.join(tokens[:i])
+    return name
+
+
+def _parse_musz_split_line(line):
+    """Extract split times from MUSZ split line.
+    'R.Idő 00.65 50m 25.81 100m 57.32 150m 01:32.81 200m 02:03.38'
+    """
+    splits = []
+    for m in re.finditer(r'(\d+)m\s+(\d{1,2}:\d{2}\.\d{2}|\d{2}\.\d{2})', line):
+        splits.append(f"{m.group(1)}m: {m.group(2)}")
+    return splits
+
+
 def _parse_split_line(line):
     """Extract split times from an MSECM split line."""
     splits = []
@@ -169,7 +225,28 @@ def _parse_split_line(line):
 def parse(text):
     """Parse MSECM PDF text into a ParsedMeet."""
     lines = text.split('\n')
-    meet = ParsedMeet(source_format='msecm')
+    is_musz = 'musz.hu' in text.lower() or 'r.idő' in text.lower()
+    meet = ParsedMeet(source_format='musz' if is_musz else 'msecm')
+
+    # MUSZ: extract date from "2024. 04. 09., 9:00:00"
+    if is_musz:
+        for line in lines[:10]:
+            mdm = MUSZ_DATE.search(line.strip())
+            if mdm:
+                meet.date_text = f'{mdm.group(1)}-{mdm.group(2)}-{mdm.group(3)}'
+                break
+        # Meet name from first line
+        for line in lines[:5]:
+            l = line.strip()
+            if l and len(l) > 5 and 'swimming' not in l.lower() and 'results' not in l.lower():
+                meet.meet_name = l
+                break
+        # Location from second line
+        for line in lines[1:5]:
+            l = line.strip()
+            if l and len(l) > 2 and l != meet.meet_name and not MUSZ_DATE.search(l):
+                meet.location = l
+                break
 
     # Extract meet name and date from early lines
     for line in lines[:100]:
@@ -289,9 +366,53 @@ def parse(text):
         if line.startswith('----'):
             continue
 
+        # MUSZ event title: "Men's 200m Medley" (appears in page header)
+        if is_musz:
+            mtm = MUSZ_EVENT_TITLE.match(line)
+            if mtm and 'Record' not in line and 'RESULTS' not in line:
+                gender_text = mtm.group(1)
+                distance_text = mtm.group(2)
+                stroke_text = mtm.group(3).strip()
+                # Strip age records that appear on the same line
+                stroke_text = re.sub(r'\s+\d{1,2}\s+\d{2}:\d{2}\.\d{2}\s+.*$', '', stroke_text)
+                stroke_text = re.sub(r'\s+\d{1,2}\s+\d{2}\.\d{2}\s+.*$', '', stroke_text)
+
+                gender = 'F' if 'women' in gender_text.lower() else (
+                    'X' if 'mixed' in gender_text.lower() else 'M')
+                is_relay = 'x' in distance_text.lower()
+                try:
+                    if is_relay:
+                        parts = re.split(r'[xX×]', distance_text)
+                        distance = int(parts[0].strip()) * int(parts[1].strip())
+                    else:
+                        distance = int(re.sub(r'[^\d]', '', distance_text))
+                except (ValueError, IndexError):
+                    distance = 0
+
+                stroke = _parse_msecm_stroke(stroke_text)
+                event_name = normalize_event_name(distance, stroke, is_relay)
+
+                # Only create new event if this is actually a new event
+                if not current_event or current_event.event_name != event_name or current_event.gender != gender:
+                    current_event = ParsedEvent(
+                        event_name=event_name,
+                        distance=distance,
+                        stroke=stroke,
+                        gender=gender,
+                        round_type='Finals',  # MUSZ results summaries are finals
+                        date_text=meet.date_text,
+                    )
+                    meet.events.append(current_event)
+                    current_category = ''
+                    last_result = None
+                continue
+
         # Check for split line
         if SPLIT_LINE.match(line) and last_result:
-            splits = _parse_split_line(line)
+            if is_musz:
+                splits = _parse_musz_split_line(line)
+            else:
+                splits = _parse_split_line(line)
             last_result.split_times.extend(splits)
             continue
 
@@ -343,6 +464,44 @@ def parse(text):
             current_event.results.append(result)
             last_result = result
             continue
+
+        # MUSZ result line
+        if is_musz and current_event:
+            mrm = MUSZ_RESULT_LINE.match(line)
+            if mrm:
+                rank = int(mrm.group(1))
+                name_raw = mrm.group(2).strip()
+                birth_year = int(mrm.group(3))
+                nat_code = mrm.group(4) or 'HUN'  # default to HUN for domestic swimmers
+                club = mrm.group(5).strip()
+                time_text = mrm.group(6)
+                remainder = mrm.group(7).strip()
+
+                name = _reorder_musz_name(name_raw)
+                time_cs = parse_time_to_centiseconds(time_text)
+
+                fina_points = 0
+                pts_m = re.search(r'(\d{3,4})\s*$', remainder)
+                if pts_m:
+                    fina_points = int(pts_m.group(1))
+
+                result = ParsedResult(
+                    swimmer_name=name,
+                    time_text=time_text,
+                    time_centiseconds=time_cs,
+                    rank=rank,
+                    birth_year=birth_year,
+                    nationality_code=nat_code,
+                    club=club,
+                    fina_points=fina_points,
+                    gender=current_event.gender,
+                    round_type=current_event.round_type,
+                    age_group=current_category,
+                    status='OK',
+                )
+                current_event.results.append(result)
+                last_result = result
+                continue
 
         # Check for DQ/DNS line
         dqm = DQ_DNS_LINE.match(line)

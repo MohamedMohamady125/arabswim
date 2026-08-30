@@ -65,11 +65,14 @@ EVENT_HEADER_NOROUND = re.compile(
 )
 ROUND_LINE = re.compile(
     r'^(?:[A-Z]{3}\s+\d{1,2}\s+[A-Z]{3}\s+\d{4}\s+)?'
+    r'(?:\d{1,2}:\d{2}\s+)?'  # optional time prefix "9:20 Heats"
     r'(Heats?|Finals?|Semifinals?|Swim-?offs?)\s*$',
     re.IGNORECASE,
 )
 # Date on the round line: "SUN 24 SEP 2023 Heats"
 ROUND_DATE = re.compile(r'^[A-Z]{3}\s+(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\b')
+# Standalone date line: "22 JUL 2025" (WUG/FISU format)
+STANDALONE_DATE = re.compile(r'^(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s*$')
 # Detailed per-event pages in Games books print the English header in a
 # display font whose glyphs don't extract ("omen s m utter"), but the
 # Chinese header right above the round line is always intact:
@@ -151,9 +154,19 @@ def detect_format(text):
     has_bare_event = any(
         EVENT_HEADER_NOROUND.match(ln.strip()) for ln in text.split('\n'))
     has_round_line = any(
-        ROUND_LINE.match(ln.strip()) and ROUND_DATE.match(ln.strip())
+        ROUND_LINE.match(ln.strip())
         for ln in text.split('\n'))
-    return has_results_summary and has_bare_event and has_round_line
+    if has_results_summary and has_bare_event and has_round_line:
+        return True
+    # FISU/WUG/Atos variant: result book with medallists + event names
+    lower = text.lower()
+    if 'medallists by event' in lower and 'rank' in lower:
+        # Check for event names in medallists table
+        if re.search(r"(?:men|women)'s\s+\d+m\s+\w+", lower):
+            return True
+    if ('report created by atos' in lower) and 'rank' in lower:
+        return True
+    return False
 
 
 def parse(text):
@@ -266,6 +279,23 @@ def parse(text):
             continue
 
         if current_event is None:
+            continue
+
+        # Standalone date line: "22 JUL 2025" (WUG/FISU format)
+        sdm = STANDALONE_DATE.match(stripped)
+        if sdm:
+            months = {'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5,
+                      'JUN': 6, 'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10,
+                      'NOV': 11, 'DEC': 12}
+            mo = months.get(sdm.group(2).upper(), 0)
+            if mo:
+                _pending_date = f'{int(sdm.group(3)):04d}-{mo:02d}-{int(sdm.group(1)):02d}'
+                if current_event and not current_event.results:
+                    current_event.date_text = _pending_date
+                if not meet.date_text or _pending_date < meet.date_text:
+                    meet.date_text = _pending_date
+                if not getattr(meet, 'date_end', '') or _pending_date > getattr(meet, 'date_end', ''):
+                    meet.date_end = _pending_date
             continue
 
         # Games-style date/round line right after a bare event header:

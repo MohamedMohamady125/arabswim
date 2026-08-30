@@ -2477,24 +2477,24 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact }
           ) : results.length === 0 ? (
             <div className="micro" style={{ padding: '8px 0', color: 'var(--color-neutral-600)' }}>No results uploaded yet for this event</div>
           ) : (
-            <div className="table-scroll">
-              <table className="table" style={{ fontSize: 13 }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="table" style={{ fontSize: 12, minWidth: 360 }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 36 }}>#</th>
+                    <th style={{ width: 32 }}>#</th>
                     <th>Swimmer</th>
-                    <th className="num hide-mobile">Age</th>
+                    <th className="num hide-mobile" style={{ width: 40 }}>Age</th>
                     {isNational && <th className="hide-mobile">Team</th>}
-                    <th className="time">Time</th>
-                    <th className="num">FINA</th>
+                    <th className="time" style={{ width: 64 }}>Time</th>
+                    <th className="num" style={{ width: 44 }}>FINA</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.map((r, i) => (
                     <tr key={r.id}>
-                      <td className="asw-num" style={{ fontWeight: 800 }}>
+                      <td className="asw-num" style={{ fontWeight: 800, width: 36, minWidth: 36 }}>
                         {r.is_hc ? <span className="tag tag-neutral">{r.hc_type || 'HC'}</span>
-                          : i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={22} style={{ display: 'block' }} /> : (r.original_rank || i + 1)}
+                          : i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={18} style={{ display: 'block' }} /> : (r.original_rank || i + 1)}
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>

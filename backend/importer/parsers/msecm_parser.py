@@ -228,13 +228,22 @@ def parse(text):
     is_musz = 'musz.hu' in text.lower() or 'r.idő' in text.lower()
     meet = ParsedMeet(source_format='musz' if is_musz else 'msecm')
 
-    # MUSZ: extract date from "2024. 04. 09., 9:00:00"
+    # MUSZ: extract date from "2024. 04. 09., 9:00:00 (S1)"
     if is_musz:
-        for line in lines[:10]:
-            mdm = MUSZ_DATE.search(line.strip())
-            if mdm:
-                meet.date_text = f'{mdm.group(1)}-{mdm.group(2)}-{mdm.group(3)}'
-                break
+        all_dates = set()
+        for line in lines:
+            for mdm in MUSZ_DATE.finditer(line.strip()):
+                d = f'{mdm.group(1)}-{mdm.group(2)}-{mdm.group(3)}'
+                # Only add dates within a reasonable range (not record dates from 2003 etc.)
+                year = int(mdm.group(1))
+                if year >= 2020:
+                    all_dates.add(d)
+        if all_dates:
+            sorted_dates = sorted(all_dates)
+            meet.date_text = sorted_dates[0]
+            if len(sorted_dates) > 1:
+                meet.date_end = sorted_dates[-1]
+
         # Meet name from first line
         for line in lines[:5]:
             l = line.strip()
@@ -366,6 +375,14 @@ def parse(text):
         if line.startswith('----'):
             continue
 
+        # MUSZ: track per-page date from "2024. 04. 09., 9:00:00 (S1)"
+        if is_musz:
+            mdm = MUSZ_DATE.search(line)
+            if mdm:
+                year = int(mdm.group(1))
+                if year >= 2020:
+                    current_session_date = f'{mdm.group(1)}-{mdm.group(2)}-{mdm.group(3)}'
+
         # MUSZ event title: "Men's 200m Medley" (appears in page header)
         if is_musz:
             mtm = MUSZ_EVENT_TITLE.match(line)
@@ -400,7 +417,7 @@ def parse(text):
                         stroke=stroke,
                         gender=gender,
                         round_type='Finals',  # MUSZ results summaries are finals
-                        date_text=meet.date_text,
+                        date_text=current_session_date or meet.date_text,
                     )
                     meet.events.append(current_event)
                     current_category = ''

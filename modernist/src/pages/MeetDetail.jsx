@@ -5,7 +5,7 @@ import {
   getMostImproved, getChampionshipComparison, updateResult, deleteResult,
   getMeetProgram, updateChampionship, deleteChampionship, getClassifications, getSubClassifications,
   getRecordsBroken, addChampionshipResult, getQuickStats, getChampionships, getHeadToHead,
-  getMeetLive, finishLiveMeet, applyTC, uploadBulletin, swapNames,
+  getMeetLive, finishLiveMeet, applyTC, uploadBulletin, swapNames, quickImport,
 } from '../api/championships'
 import { getCountries, getEvents, getFinaPointsPreview } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
@@ -2321,9 +2321,23 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
               e.target.value = ''
             }} />
           </label>
-          <Link className="btn btn-secondary" to={`/import?championship=${meetId}&heats=1`}>
+          <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
             Upload heats
-          </Link>
+            <input type="file" accept=".pdf,.html,.htm,.xlsx,.xls,.csv" style={{ display: 'none' }} onChange={async (e) => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              try {
+                const fd = new FormData(); fd.append('file', f)
+                const res = await quickImport(meetId, fd)
+                window.alert(res.data.message || 'Heats are being imported. Refresh in a few seconds to see results.')
+                // Refresh program after a short delay
+                setTimeout(() => getMeetProgram(meetId).then((r) => setProgram(r.data)).catch(() => {}), 5000)
+              } catch (err) {
+                window.alert(err.response?.data?.error || 'Failed to import heats')
+              }
+              e.target.value = ''
+            }} />
+          </label>
         </div>
       )}
       {isAdmin && showProgram && (

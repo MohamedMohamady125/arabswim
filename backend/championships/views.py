@@ -1831,6 +1831,68 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             renamed += 1
         return Response({'renamed': renamed, 'duplicates': dupes})
 
+    @action(detail=True, methods=['post'], url_path='quick-import',
+            parser_classes=[MultiPartParser, FormParser])
+    def quick_import(self, request, pk=None):
+        """Quick-import results from a file directly into this championship.
+        Auto-matches swimmers by name. Used for uploading heats in live mode."""
+        import tempfile, os, threading
+        from django.db import connection as db_conn
+
+        championship = self.get_object()
+        uploaded = request.FILES.get('file')
+        if not uploaded:
+            return Response({'error': 'file is required'}, status=400)
+
+        from core.uploads import validate_import_file
+        err = validate_import_file(uploaded)
+        if err:
+            return Response({'error': err}, status=400)
+
+        # Save to temp file so the background thread can read it
+        ext = os.path.splitext(uploaded.name)[1].lower()
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            for chunk in uploaded.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        champ_id = championship.id
+
+        def run_import():
+            db_conn.close()
+            try:
+                from importer.services import parse_file, match_swimmers_preview, confirm_import
+
+                # Step 1: Parse
+                preview = parse_file(file_path=tmp_path)
+                if isinstance(preview, list):
+                    preview = preview[0]
+
+                # Step 2: Match swimmers
+                preview = match_swimmers_preview(preview)
+
+                # Step 3: Auto-decide all swimmers
+                decisions = {}
+                for sw in preview.get('swimmers', []):
+                    name = sw['parsed_name']
+                    if sw.get('matched_id'):
+                        decisions[name] = {'action': 'match', 'swimmer_id': sw['matched_id']}
+                    else:
+                        decisions[name] = {'action': 'create'}
+
+                # Step 4: Import into existing championship
+                confirm_import(preview, decisions, championship_id=champ_id)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+            finally:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+
+        threading.Thread(target=run_import, daemon=True).start()
+        return Response({'status': 'importing', 'message': 'File is being imported in the background. Results will appear shortly.'})
 
 
 class ResultViewSet(viewsets.ModelViewSet):

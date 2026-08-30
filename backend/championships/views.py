@@ -1831,6 +1831,19 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             renamed += 1
         return Response({'renamed': renamed, 'duplicates': dupes})
 
+    @action(detail=False, methods=['post'], url_path='clear-other-nationalities',
+            permission_classes=[])
+    def clear_other_nationalities(self, request):
+        """One-time: clear guessed nationalities from Other meets."""
+        import threading
+        from django.db import connection as db_conn
+        def run():
+            db_conn.close()
+            from django.core.management import call_command
+            call_command('clear_other_meet_nationalities')
+        threading.Thread(target=run, daemon=True).start()
+        return Response({'status': 'started'})
+
     @action(detail=True, methods=['post'], url_path='quick-import',
             parser_classes=[MultiPartParser, FormParser])
     def quick_import(self, request, pk=None):

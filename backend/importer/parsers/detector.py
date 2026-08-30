@@ -6,7 +6,7 @@ Passes filename to parsers for pool detection.
 import os
 import pdfplumber
 
-from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser
+from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser, msecm_parser
 from .base import ParsedMeet, detect_pool
 
 
@@ -121,6 +121,9 @@ def _parse_pdf(file_path, filename=''):
         # Stream order keeps each result line intact.
         full_text = _extract_text_flow(file_path)
         meet = ffn_parser.parse(full_text)
+    elif msecm_parser.detect_format(detect_text):
+        full_text = _fix_cid_ligatures(_extract_simple(file_path))
+        meet = msecm_parser.parse(full_text)
     elif nat2i_parser.detect_format(detect_text):
         full_text = _extract_simple(file_path)
         meet = nat2i_parser.parse_text(full_text)
@@ -128,7 +131,7 @@ def _parse_pdf(file_path, filename=''):
         simple_text = _extract_simple(file_path)
         # Try each parser and pick the one that extracts the most results
         results = []
-        for parser in [splash_parser, hytek_parser, omega_parser, frmn_parser, ffn_parser]:
+        for parser in [splash_parser, hytek_parser, omega_parser, frmn_parser, ffn_parser, msecm_parser]:
             try:
                 if parser == hytek_parser:
                     text = _extract_columns(file_path)

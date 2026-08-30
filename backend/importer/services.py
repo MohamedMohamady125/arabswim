@@ -771,12 +771,31 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         meet_country = Country.objects.first()
 
     # New swimmers with no nationality in the file inherit the meet's host
-    # country ("National · Tunisia" ⇒ Tunisian) — except UAE meets, whose
-    # expat-heavy fields must stay nationality-less rather than all be
-    # stamped Emirati. Matched swimmers always keep their DB nationality
-    # unless the file carries an explicit different code.
+    # country ("National · Tunisia" ⇒ Tunisian) — except:
+    #   - UAE meets (expat-heavy fields must stay nationality-less)
+    #   - "Other" classification meets (international/invitational meets
+    #     list clubs, not countries — never guess nationality from the host)
+    # Matched swimmers always keep their DB nationality unless the file
+    # carries an explicit different code.
+    is_other_classification = False
+    if championship_id:
+        try:
+            _champ = Championship.objects.select_related('classification').get(id=championship_id)
+            is_other_classification = (_champ.classification and
+                                       _champ.classification.name == 'Other')
+        except Championship.DoesNotExist:
+            pass
+    elif championship_details and championship_details.get('classification'):
+        from championships.models import Classification
+        try:
+            _cls = Classification.objects.get(id=int(championship_details['classification']))
+            is_other_classification = _cls.name == 'Other'
+        except (Classification.DoesNotExist, ValueError):
+            pass
+
     swimmer_fallback = (
-        meet_country if country_known and meet_country.code != 'UAE' else None)
+        meet_country if country_known and meet_country.code != 'UAE'
+        and not is_other_classification else None)
 
     # Get or create championship
     if championship_id:

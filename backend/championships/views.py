@@ -1824,6 +1824,15 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             renamed += 1
         return Response({'renamed': renamed, 'duplicates': dupes})
 
+    @action(detail=False, methods=['post'], url_path='seed-african')
+    def seed_african(self, request):
+        """Temporary: trigger seed_african_champs management command."""
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command('seed_african_champs', stdout=out)
+        return Response({'output': out.getvalue()})
+
 
 class ResultViewSet(viewsets.ModelViewSet):
     queryset = Result.objects.select_related('swimmer', 'swimmer__nationality', 'nationality', 'championship', 'event')

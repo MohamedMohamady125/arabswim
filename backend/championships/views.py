@@ -1868,17 +1868,21 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 if isinstance(preview, list):
                     preview = preview[0]
 
-                # Step 2: Match swimmers
-                preview = match_swimmers_preview(preview)
+                # Step 2: Match swimmers — returns a list of match dicts
+                matched = match_swimmers_preview(preview)
 
                 # Step 3: Auto-decide all swimmers
                 decisions = {}
-                for sw in preview.get('swimmers', []):
-                    name = sw['parsed_name']
-                    if sw.get('matched_id'):
-                        decisions[name] = {'action': 'match', 'swimmer_id': sw['matched_id']}
+                for m in matched:
+                    name = m['parsed_name']
+                    if m.get('matched_swimmer') and m['confidence'] >= 92:
+                        decisions[name] = {'action': 'match', 'swimmer_id': m['matched_swimmer']['id']}
                     else:
                         decisions[name] = {'action': 'create'}
+                # Also decide non-Arab swimmers (not in matched list) — create them
+                for sw in preview.get('swimmers', []):
+                    if sw['name'] not in decisions:
+                        decisions[sw['name']] = {'action': 'create'}
 
                 # Step 4: Import into existing championship
                 confirm_import(preview, decisions, championship_id=champ_id)

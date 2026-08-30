@@ -1824,18 +1824,6 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             renamed += 1
         return Response({'renamed': renamed, 'duplicates': dupes})
 
-    @action(detail=False, methods=['post'], url_path='seed-african',
-            permission_classes=[])
-    def seed_african(self, request):
-        """Temporary: trigger seed_african_champs management command."""
-        import threading
-        from django.core.management import call_command
-        from django.db import connection
-        def run():
-            connection.close()
-            call_command('seed_african_champs')
-        threading.Thread(target=run, daemon=True).start()
-        return Response({'status': 'started'})
 
 
 class ResultViewSet(viewsets.ModelViewSet):

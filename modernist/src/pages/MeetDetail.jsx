@@ -2278,19 +2278,20 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
     return (program.days.find((d) => d.day === selectedDay) || {}).items || []
   }, [program, selectedDay])
 
-  // Group program by session
+  // Group program by session, then split by gender within each session
   const sessionGroups = useMemo(() => {
     const groups = {}
     dayProgram.forEach((p) => {
       const s = p.session || 'OTHER'
-      if (!groups[s]) groups[s] = []
-      groups[s].push(p)
+      if (!groups[s]) groups[s] = { M: [], F: [], X: [] }
+      const g = p.gender || 'X'
+      groups[s][g].push(p)
     })
     return groups
   }, [dayProgram])
 
   const fmtDay = (d) => d.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-  const sessionLabel = { HEATS: 'Heats', SEMIS: 'Semi-Finals', FINALS: 'Finals', OTHER: 'Events' }
+  const sessionLabel = { HEATS: 'Morning', SEMIS: 'Semi-Finals', FINALS: 'Evening', OTHER: 'Events' }
   const sessionOrder = ['HEATS', 'SEMIS', 'FINALS', 'OTHER']
 
   return (
@@ -2351,22 +2352,73 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
       {/* Program + Results */}
       <div style={{ padding: '20px 32px' }}>
         {dayProgram.length > 0 ? (
-          sessionOrder.filter((s) => sessionGroups[s]).map((s) => (
-            <div key={s} style={{ marginBottom: 28 }}>
-              <div style={{
-                fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14,
-                color: s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-neutral-600)',
-                textTransform: 'uppercase', letterSpacing: '0.08em',
-                borderBottom: `2px solid ${s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-divider)'}`,
-                paddingBottom: 8, marginBottom: 8,
-              }}>
-                {sessionLabel[s]}
+          sessionOrder.filter((s) => sessionGroups[s]).map((s) => {
+            const g = sessionGroups[s]
+            const hasMen = g.M.length > 0
+            const hasWomen = g.F.length > 0
+            const hasMixed = g.X.length > 0
+            const hasBothGenders = hasMen && hasWomen
+
+            return (
+              <div key={s} style={{ marginBottom: 32 }}>
+                <div style={{
+                  fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15,
+                  color: s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-neutral-600)',
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  borderBottom: `2px solid ${s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-divider)'}`,
+                  paddingBottom: 8, marginBottom: 12,
+                }}>
+                  {sessionLabel[s]}
+                </div>
+
+                {hasBothGenders ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    {/* Men column */}
+                    <div>
+                      <div style={{
+                        fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12,
+                        textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-accent)',
+                        marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
+                      }}>Men</div>
+                      {g.M.map((p, i) => (
+                        <EventRow key={`${p.event}-M-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact />
+                      ))}
+                    </div>
+                    {/* Women column */}
+                    <div>
+                      <div style={{
+                        fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12,
+                        textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-accent)',
+                        marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
+                      }}>Women</div>
+                      {g.F.map((p, i) => (
+                        <EventRow key={`${p.event}-F-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* Single gender or mixed — full width */
+                  [...g.M, ...g.F, ...g.X].map((p, i) => (
+                    <EventRow key={`${p.event}-${p.gender}-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} />
+                  ))
+                )}
+
+                {/* Mixed events below the columns */}
+                {hasBothGenders && hasMixed && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{
+                      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12,
+                      textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-accent)',
+                      marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
+                    }}>Mixed</div>
+                    {g.X.map((p, i) => (
+                      <EventRow key={`${p.event}-X-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} />
+                    ))}
+                  </div>
+                )}
               </div>
-              {sessionGroups[s].map((p, i) => (
-                <EventRow key={`${p.event}-${p.gender}-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} />
-              ))}
-            </div>
-          ))
+            )
+          })
         ) : (
           <ResultsTab meetId={meetId} events={events} isNational={isNational} isAdmin={isAdmin}
             hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
@@ -2378,7 +2430,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   )
 }
 
-function EventRow({ meetId, programItem: p, isNational, isAdmin, meet }) {
+function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact }) {
   const [open, setOpen] = useState(false)
   const [results, setResults] = useState(null)
 
@@ -2390,21 +2442,33 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet }) {
       .catch(() => setResults([]))
   }
 
-  const genderLabel = p.gender === 'M' ? 'Men' : p.gender === 'F' ? 'Women' : 'Mixed'
-  const hasResults = results && results.length > 0
+  const roundBadge = { HEATS: 'Heats', SEMIS: 'Semis', FINALS: 'Finals' }[p.session] || ''
 
   return (
     <div style={{ marginBottom: 4 }}>
       <div onClick={loadResults}
         style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 8, padding: compact ? '9px 10px' : '11px 14px', cursor: 'pointer',
           background: open ? 'var(--color-accent-100)' : 'var(--color-surface)',
           borderLeft: open ? '3px solid var(--color-accent)' : '3px solid transparent',
-          transition: 'background 0.1s',
+          transition: 'background 0.1s', flexWrap: 'wrap',
         }}>
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, flex: 1 }}>{p.event_name}</span>
-        <span className="tag tag-neutral" style={{ fontSize: 10, flex: 'none' }}>{genderLabel}</span>
-        <span style={{ fontWeight: 800, fontSize: 11, color: 'var(--color-accent)', flex: 'none', width: 16, textAlign: 'center' }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: compact ? 13 : 14, flex: 1, minWidth: 0 }}>{p.event_name}</span>
+        {roundBadge && (
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+            background: 'var(--color-accent-100)', color: 'var(--color-accent)',
+            whiteSpace: 'nowrap', flex: 'none',
+          }}>{roundBadge}</span>
+        )}
+        {p.age_category && (
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+            background: 'var(--color-accent-100)', color: 'var(--color-accent)',
+            whiteSpace: 'nowrap', flex: 'none',
+          }}>{p.age_category}</span>
+        )}
+        <span style={{ fontWeight: 800, fontSize: 11, color: 'var(--color-accent)', flex: 'none', width: 14, textAlign: 'center' }}>{open ? '▲' : '▼'}</span>
       </div>
       {open && (
         <div style={{ borderLeft: '3px solid var(--color-accent-200)', padding: '10px 0 10px 16px', background: 'var(--color-bg)' }}>

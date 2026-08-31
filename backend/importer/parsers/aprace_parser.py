@@ -102,7 +102,7 @@ def _parse_stroke_and_round(text):
         (r'\s*-\s*Super\s+Final\s*$', 'Finals'),
         (r'\s*-\s*B\s+Final\s*$', 'Consolation'),
         (r'\s*-\s*Junior\s+Final\s*$', 'Junior Final'),
-        (r'\s*-\s*Para\s+Final\s*$', 'Para Final'),
+        (r'\s*-\s*Para\s+Final\s*$', None),  # Skip para events
     ]
     round_type = ''
     stroke_text = text.strip()
@@ -110,6 +110,8 @@ def _parse_stroke_and_round(text):
     for pattern, rtype in round_patterns:
         m = re.search(pattern, stroke_text, re.IGNORECASE)
         if m:
+            if rtype is None:
+                return stroke_text, None, False  # signal to skip
             round_type = rtype
             stroke_text = stroke_text[:m.start()].strip()
             break
@@ -243,6 +245,11 @@ def parse(text):
                 'X' if 'mixed' in gender_text.lower() else 'M')
 
             stroke, round_type, is_relay = _parse_stroke_and_round(rest)
+
+            # Para events — skip entirely
+            if round_type is None:
+                current_event = None
+                continue
 
             # If no round from event title, use page-level stage
             if not round_type:

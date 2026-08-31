@@ -24,7 +24,7 @@ const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
 // Round display order: finals first, then consolation, prelims, heats
-const ROUND_ORDER = ['Finals', 'Consolation', 'Final C', 'Final D', 'Swim-off', 'Junior Final', 'Para Final', 'Semifinals', 'Semis', 'Prelims', 'Heats', '']
+const ROUND_ORDER = ['Finals', 'Consolation', 'Final C', 'Final D', 'Swim-off', 'Junior Final', 'Semifinals', 'Semis', 'Prelims', 'Heats', '']
 const roundLabel = (r, allRounds) => {
   if (!r) return 'Timed Finals'
   if (r === 'Finals') {
@@ -39,7 +39,6 @@ const roundLabel = (r, allRounds) => {
   if (r === 'Swim-off') return 'Swim-off'
   if (r === 'Semifinals' || r === 'Semis') return 'Semi-Final'
   if (r === 'Junior Final') return 'Junior Final'
-  if (r === 'Para Final') return 'Para Final'
   if (r === 'Prelims' || r === 'Heats') return 'Heats'
   return r
 }

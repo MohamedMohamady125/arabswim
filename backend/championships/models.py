@@ -171,6 +171,7 @@ class Result(models.Model):
     original_rank = models.PositiveIntegerField(blank=True, null=True, help_text='Rank/place from the source PDF. Medals are awarded from this rank so deleting other (e.g. non-Arab) results never promotes remaining swimmers onto the podium.')
     is_hc = models.BooleanField(default=False, help_text='Hors concours – valid time that does not count in rankings')
     is_manual = models.BooleanField(default=False, help_text='Manually entered result – excluded from automatic medal awards')
+    manually_edited = models.BooleanField(default=False, help_text='An admin hand-edited this result. Re-importing the same meet must NOT overwrite its time/rank/points — manual edits always win over the automatic pipeline.')
     hc_type = models.CharField(max_length=8, blank=True, default='', help_text="Source marking for unranked swims: 'HC' or 'TLD' (time limit exceeded)")
     # Nationality the swimmer represented AT THIS MEET. Stamped at import /
     # creation and re-stamped by nationality changes (results before the

@@ -705,6 +705,42 @@ class SameNameImportTests(_MeetFixtureMixin, TestCase):
             Swimmer.objects.filter(name__iexact='Youssef TRABELSI').count(), 1)
 
 
+class ManualEditSurvivesReimportTests(_MeetFixtureMixin, TestCase):
+    """A hand-edited result must never be overwritten by a re-import of the
+    same meet — manual admin edits always win over the automatic pipeline."""
+
+    def _preview(self, time_cs=5740):
+        return {
+            'meet': {'name': 'Edit Meet', 'date': '2026-06-01', 'pool': 'LCM'},
+            'events': [{
+                'event_name': '100 M Freestyle',
+                'distance': 100, 'stroke': 'Freestyle',
+                'gender': 'M', 'is_relay': False, 'round_type': 'Finals',
+                'results': [
+                    {'swimmer_name': 'Karim NADER', 'gender': 'M',
+                     'category': 'Seniors', 'time_centiseconds': time_cs,
+                     'birth_year': 0, 'nationality_code': 'TUN'},
+                ],
+            }],
+        }
+
+    def test_manual_edit_not_overwritten_by_faster_reimport(self):
+        from importer.services import confirm_import
+        confirm_import(self._preview(time_cs=5740), {})
+        champ_id = Championship.objects.get().id
+        result = Result.objects.get()
+        # Admin corrects the time and it locks the row
+        result.time_centiseconds = 5999
+        result.manually_edited = True
+        result.save(update_fields=['time_centiseconds', 'manually_edited'])
+        # Re-import brings a *faster* time — which would normally win — but
+        # the manual edit must be preserved.
+        confirm_import(self._preview(time_cs=5001), {}, championship_id=champ_id)
+        result.refresh_from_db()
+        self.assertEqual(result.time_centiseconds, 5999)
+        self.assertEqual(Result.objects.count(), 1)
+
+
 class RelaySquadImportTests(_MeetFixtureMixin, TestCase):
     """A club can enter several squads in one relay event ("MC ALGER 1",
     "MC ALGER 2"). They share one placeholder swimmer, but each squad

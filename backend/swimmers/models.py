@@ -17,6 +17,11 @@ class Swimmer(models.Model):
         default=False,
         help_text='Placeholder row that holds relay results for a team, not a real athlete')
     is_retired = models.BooleanField(default=False)
+    manually_edited = models.BooleanField(
+        default=False,
+        help_text='An admin hand-edited this swimmer. Re-imports must NOT '
+                  'overwrite edited fields (e.g. current club) — manual edits '
+                  'always win over the automatic pipeline.')
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
     instagram_url = models.URLField(blank=True, default='')

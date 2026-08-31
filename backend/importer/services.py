@@ -1154,7 +1154,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             # when this meet is the swimmer's most recent one (athletes have
             # a single current club — the one they last competed for).
             if team and team != 'LP' and not (is_relay or result_data.get('is_relay', False)) \
-                    and swimmer.id not in club_synced:
+                    and swimmer.id not in club_synced and not swimmer.manually_edited:
                 from teams.utils import is_valid_team_name
                 if is_valid_team_name(team):
                     new_club = normalize_club_name(team)
@@ -1248,6 +1248,17 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     category=category,
                     team__iexact=team,
                 ).exclude(id__in=claimed_results).first()
+                if same_team and same_team.manually_edited:
+                    # Hand-edited relay row wins — leave it untouched.
+                    claimed_results.add(same_team.id)
+                    skipped_results += 1
+                    skipped_details.append({
+                        'swimmer': squad_name,
+                        'event': event_data.get('event_name', ''),
+                        'round': round_type,
+                        'reason': 'Preserved manual edit — re-import did not overwrite',
+                    })
+                    continue
                 if same_team:
                     from .points import calculate_points
                     gender_code = result_data.get('gender', 'M') or 'M'
@@ -1292,8 +1303,18 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         existing.save(update_fields=['category'])
 
             if existing:
+                # A hand-edited result is the source of truth — never let a
+                # re-import overwrite it, even with a faster time.
+                if existing.manually_edited:
+                    skipped_results += 1
+                    skipped_details.append({
+                        'swimmer': parsed_name,
+                        'event': event_data.get('event_name', ''),
+                        'round': round_type,
+                        'reason': 'Preserved manual edit — re-import did not overwrite',
+                    })
                 # Keep the better time
-                if time_cs < existing.time_centiseconds:
+                elif time_cs < existing.time_centiseconds:
                     existing.time_centiseconds = time_cs
                     existing.original_rank = source_rank(result_data.get('rank'))
                     existing.fina_points = result_data.get('fina_points', 0) or existing.fina_points

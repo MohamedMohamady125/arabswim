@@ -41,6 +41,11 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         swimmer = self.get_object()
         old_nationality_id = swimmer.nationality_id
         response = super().partial_update(request, *args, **kwargs)
+        # Lock this swimmer so re-imports never overwrite hand-edited fields
+        # (e.g. current club) — manual admin edits always win. Only admin
+        # edits lock it; limited athlete self-edits keep club auto-syncing.
+        if is_admin(request.user):
+            Swimmer.objects.filter(pk=swimmer.pk, manually_edited=False).update(manually_edited=True)
         # If nationality changed, restamp all results + recompute medals
         swimmer.refresh_from_db()
         if swimmer.nationality_id != old_nationality_id:

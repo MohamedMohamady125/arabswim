@@ -392,7 +392,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             # Manual single-result entries never receive automatic medals —
             # only the medal explicitly assigned in the form (if any).
-            result = serializer.save(championship=championship, is_manual=True)
+            result = serializer.save(championship=championship, is_manual=True, manually_edited=True)
             if championship.is_calendar_only:
                 championship.is_calendar_only = False
                 championship.save(update_fields=['is_calendar_only'])
@@ -1955,12 +1955,15 @@ class ResultViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        result = serializer.save()
+        # Any admin-created result is a manual edit and must survive re-imports.
+        result = serializer.save(manually_edited=True)
         self._auto_fina(result)
         self._post_save(result)
 
     def perform_update(self, serializer):
-        result = serializer.save()
+        # Any admin edit locks the result against being overwritten by a
+        # later re-import of the same meet — manual edits always win.
+        result = serializer.save(manually_edited=True)
         self._auto_fina(result)
         self._post_save(result)
 

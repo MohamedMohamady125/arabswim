@@ -613,18 +613,31 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'year': season_year,
             }
 
-        # Records held
-        records = [{
-            'id': r.id,
-            'record_type': r.record_type,
-            'event_name': r.event.name,
-            'time': r.formatted_time,
-            'time_centiseconds': r.time_centiseconds,
-            'location': r.location,
-            'meet_name': r.meet_name,
-            'pool': r.pool,
-            'date': r.result_date,
-        } for r in Record.objects.filter(swimmer=swimmer).select_related('event')]
+        # Records held — for relay first-leg records, show the individual
+        # event name and split time instead of the relay event/team time
+        records = []
+        for r in Record.objects.filter(swimmer=swimmer).select_related('event'):
+            event_name = r.event.name
+            time_display = r.formatted_time
+            # If this is a relay record but swimmer is individual, show individual event
+            if r.event.is_relay and not swimmer.is_relay_team and r.result:
+                legs = r.result.relay_swimmers or []
+                if len(legs) == 1 and isinstance(legs[0], dict) and legs[0].get('split_time'):
+                    ind_dist = r.event.distance // 4 if r.event.distance else 0
+                    if ind_dist:
+                        event_name = f'{ind_dist} M {r.event.stroke}'
+                    time_display = legs[0]['split_time']
+            records.append({
+                'id': r.id,
+                'record_type': r.record_type,
+                'event_name': event_name,
+                'time': time_display,
+                'time_centiseconds': r.time_centiseconds,
+                'location': r.location,
+                'meet_name': r.meet_name,
+                'pool': r.pool,
+                'date': r.result_date,
+            })
 
         # Best event (highest FINA across events)
         best_event_agg = (

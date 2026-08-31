@@ -1806,19 +1806,53 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='swap-names')
     def swap_names(self, request, pk=None):
         """Swap first/last name order for all swimmers in this meet.
-        Uses the same logic as the swap_name_order management command."""
-        from importer.management.commands.swap_name_order import swap
+
+        Handles two patterns:
+        1. "Family GIVEN" (title-case + ALL-CAPS) → "Given FAMILY"
+        2. "SURNAME Given" (ALL-CAPS + title-case) → "Given SURNAME"
+
+        The surname stays ALL-CAPS in the output (site convention)."""
+        import re
         championship = self.get_object()
         from swimmers.models import Swimmer
         qs = (Swimmer.objects
               .filter(is_relay_team=False,
                       results__championship_id=championship.id)
               .distinct())
+
+        def try_swap(name):
+            tokens = name.strip().split()
+            if len(tokens) < 2:
+                return None
+
+            # Pattern 1: leading title-case + trailing ALL-CAPS
+            # "Khoury MARIE" → "Marie KHOURY"
+            i = 0
+            while i < len(tokens) and tokens[i] != tokens[i].upper():
+                i += 1
+            if 0 < i < len(tokens) and all(t == t.upper() for t in tokens[i:]):
+                given = ' '.join(w.capitalize() for w in tokens[i:])
+                surname = ' '.join(tokens[:i]).upper()
+                return f'{given} {surname}'
+
+            # Pattern 2: leading ALL-CAPS + trailing title-case
+            # "KHOURY Marie" → "Marie KHOURY"
+            i = 0
+            while i < len(tokens) and tokens[i] == tokens[i].upper() \
+                    and any(c.isalpha() for c in tokens[i]):
+                i += 1
+            if 0 < i < len(tokens):
+                given = ' '.join(tokens[i:])
+                surname = ' '.join(tokens[:i])
+                return f'{given} {surname}'
+
+            return None
+
         renamed = 0
         dupes = []
         for swimmer in qs.iterator():
             name = (swimmer.name or '').strip()
-            new_name = swap(name)
+            new_name = try_swap(name)
             if not new_name or new_name == name:
                 continue
             twin = (Swimmer.objects

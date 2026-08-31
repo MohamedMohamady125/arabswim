@@ -501,6 +501,12 @@ def _build_preview(parsed_meet):
                 'rank': r.rank,
                 'birth_year': birth_year,
                 'age': age,
+                # Raw source values (before age↔birth_year cross-fill), so
+                # confirm_import can recompute against the *confirmed* meet
+                # date rather than the preview's meet_year, which defaults to
+                # the current year when the file carried no date.
+                'src_birth_year': r.birth_year,
+                'src_age': r.age,
                 'nationality_code': nat_code,
                 'nationality_inferred': nat_inferred,
                 'club': '' if club_is_country else r.club,
@@ -955,6 +961,22 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         is_relay = event_data.get('is_relay', False)
 
         for result_data in event_data['results']:
+            # Re-derive birth year/age against the confirmed meet date. The
+            # preview may have used the current year (when the source had no
+            # date and the user set it afterwards), which bakes a wrong birth
+            # year from the swimmer's age. The championship date is truth: a
+            # source birth year wins outright; otherwise age → birth year.
+            if championship.date:
+                champ_year = championship.date.year
+                src_by = result_data.get('src_birth_year')
+                src_age = result_data.get('src_age')
+                if src_by:
+                    result_data['birth_year'] = src_by
+                    result_data['age'] = champ_year - src_by
+                elif src_age:
+                    result_data['birth_year'] = champ_year - src_age
+                    result_data['age'] = src_age
+
             parsed_name = result_data['swimmer_name']
             if is_relay or result_data.get('is_relay', False):
                 # Clean relay team names: strip squad numbers/letters,

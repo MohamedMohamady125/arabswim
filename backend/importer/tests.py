@@ -2162,10 +2162,14 @@ class CalculatePointsCoverageTests(SimpleTestCase):
             calculate_points(13000, '200 M IM', 'F', 'LCM'), expected)
 
     def test_all_base_table_events_score_in_both_pools(self):
-        for name in BASE_TIMES_SCM:
+        # Use a time 10% slower than each event's base so the score lands in a
+        # realistic range (~750 pts) — a fixed fast time like 30s would exceed
+        # the plausibility ceiling on short events and be rejected.
+        for name, bases in BASE_TIMES_SCM.items():
+            time_cs = int(bases['M'] * 1.1 * 100)
             for pool in ('LCM', 'SCM'):
                 self.assertGreater(
-                    calculate_points(3000, name, 'M', pool), 0,
+                    calculate_points(time_cs, name, 'M', pool), 0,
                     f'{name} scored 0 at {pool}')
 
 

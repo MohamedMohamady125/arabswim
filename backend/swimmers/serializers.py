@@ -48,7 +48,7 @@ class SwimmerCreateUpdateSerializer(serializers.ModelSerializer):
         model = Swimmer
         fields = ['id', 'name', 'date_of_birth', 'birth_year', 'nationality', 'sex',
                   'club', 'photo', 'email', 'phone', 'instagram_url', 'facebook_url',
-                  'nicknames', 'is_retired']
+                  'nicknames', 'is_retired', 'is_relay_team']
 
     def create(self, validated_data):
         nicknames = validated_data.pop('nicknames', [])

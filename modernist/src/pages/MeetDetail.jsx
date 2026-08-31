@@ -25,9 +25,14 @@ const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
 // Round display order: finals first, then consolation, prelims, heats
 const ROUND_ORDER = ['Finals', 'Consolation', 'Final C', 'Final D', 'Swim-off', 'Junior Final', 'Para Final', 'Semifinals', 'Semis', 'Prelims', 'Heats', '']
-const roundLabel = (r) => {
+const roundLabel = (r, allRounds) => {
   if (!r) return 'Timed Finals'
-  if (r === 'Finals') return 'Final A'
+  if (r === 'Finals') {
+    // Only call it "Final A" when there's also a B/C/D final
+    const hasMultipleFinals = allRounds && allRounds.some((x) =>
+      x === 'Consolation' || x === 'Final C' || x === 'Final D')
+    return hasMultipleFinals ? 'Final A' : 'Final'
+  }
   if (r === 'Consolation') return 'Final B'
   if (r === 'Final C') return 'Final C'
   if (r === 'Final D') return 'Final D'
@@ -994,7 +999,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       {rounds.length > 1 && (
         <div style={{ marginBottom: 16, overflowX: 'auto' }}>
           <Seg
-            options={rounds.map((r) => ({ value: r, label: roundLabel(r) }))}
+            options={rounds.map((r) => ({ value: r, label: roundLabel(r, rounds) }))}
             value={selectedRound}
             onChange={(r) => { setSelectedRound(r); setExpandedRow(null) }}
           />

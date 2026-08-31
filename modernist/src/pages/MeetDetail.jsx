@@ -2838,6 +2838,22 @@ export default function MeetDetail() {
                     Apply TC rules
                   </button>
                 )}
+                {meet.country_detail?.code === 'TUN' && (
+                  <button type="button" className={`btn ${meet.has_double_podium ? 'btn-primary' : 'btn-secondary'}`} onClick={async () => {
+                    const enabling = !meet.has_double_podium
+                    if (!window.confirm(enabling
+                      ? 'Enable double podium?\n\n• Foreign guests keep their medals on the overall podium\n• Tunisian swimmers get their own parallel podium, ignoring foreigners\n• Works even when the first 2-3 finishers are foreigners\n\nMedals will be recomputed.'
+                      : 'Disable double podium?\n\nMedals revert to a single overall podium and will be recomputed.')) return
+                    try {
+                      await updateChampionship(id, { has_double_podium: enabling })
+                      setMeet({ ...meet, has_double_podium: enabling })
+                      refreshStats()
+                      window.alert(enabling ? 'Double podium enabled — medals recomputed' : 'Double podium disabled — medals recomputed')
+                    } catch { window.alert('Failed to update double podium') }
+                  }}>
+                    {meet.has_double_podium ? 'Double podium: ON' : 'Double podium'}
+                  </button>
+                )}
                 <button type="button" className={`btn ${meet.is_published ? 'btn-secondary' : 'btn-primary'}`}
                   style={{ fontSize: 12 }}
                   onClick={async () => {

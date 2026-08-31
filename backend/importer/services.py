@@ -408,14 +408,6 @@ def _build_preview(parsed_meet):
         if club_resolves > len(all_results) * 0.5:
             is_international = True
 
-    # Whether the file carries any nationality signal (codes or country-like
-    # clubs). Code-less swimmers in such files get the meet country stamped
-    # for the preview — except UAE meets, whose expat-heavy fields say
-    # nothing about an athlete's nationality. (Files with no signal at all
-    # leave the preview blank; confirm_import applies the host-country
-    # fallback to newly created swimmers, again outside the UAE.)
-    file_has_nationality = is_international or has_nat_count > 0
-
     # Determine meet year for birth_year calculation from age
     meet_year = 0
     if parsed_meet.date_text:
@@ -446,14 +438,15 @@ def _build_preview(parsed_meet):
             if r.status not in ('OK', 'HC', 'TLD') or r.time_centiseconds <= 0:
                 continue
 
-            # Use club as nationality when it resolves to a country,
-            # otherwise fall back to the meet's host country.
-            # When the club IS a country (national-team meet), clear it
-            # so it doesn't show redundantly alongside nationality.
-            # Only try club→country in international meets (majority of
-            # results already carry a nationality code from the parser);
-            # in domestic meets, club abbreviations like "EST" collide
-            # with country codes (Estonia) and produce wrong nationalities.
+            # STRICT nationality rule: a swimmer's nationality is only ever
+            # taken from what the file states CLEARLY — an explicit code/name
+            # in the nationality column, or a Team/club column that IS a
+            # country (national-team meets). We never guess from the meet's
+            # host country. Code-less swimmers are left blank here; matched
+            # swimmers keep whatever nationality their DB profile already has.
+            # club→country is only tried in international meets (most results
+            # already carry a code); in domestic meets, club abbreviations
+            # like "EST" collide with country codes (Estonia).
             nat_code = r.nationality_code
             club_is_country = False
             nat_inferred = False
@@ -462,12 +455,6 @@ def _build_preview(parsed_meet):
                 if club_country:
                     nat_code = club_country.code
                     club_is_country = True
-            if not nat_code and file_has_nationality and inferred_country_code != 'UAE':
-                nat_code = inferred_country_code
-                # Meet-country fallback, not an explicit code from the file —
-                # must never trigger a nationality change on matched swimmers
-                # (a Jordanian guest at the Hungarian nationals is not Hungarian).
-                nat_inferred = True
 
             # Compute birth_year and age from each other when one is missing
             birth_year = r.birth_year
@@ -772,36 +759,15 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         )
     if not meet_country:
         meet_country = _most_common_country(preview_data)
-    country_known = meet_country is not None
     if not meet_country:
         meet_country = Country.objects.first()
 
-    # New swimmers with no nationality in the file inherit the meet's host
-    # country ("National · Tunisia" ⇒ Tunisian) — except:
-    #   - UAE meets (expat-heavy fields must stay nationality-less)
-    #   - "Other" classification meets (international/invitational meets
-    #     list clubs, not countries — never guess nationality from the host)
-    # Matched swimmers always keep their DB nationality unless the file
-    # carries an explicit different code.
-    is_other_classification = False
-    if championship_id:
-        try:
-            _champ = Championship.objects.select_related('classification').get(id=championship_id)
-            is_other_classification = (_champ.classification and
-                                       _champ.classification.name == 'Other')
-        except Championship.DoesNotExist:
-            pass
-    elif championship_details and championship_details.get('classification'):
-        from championships.models import Classification
-        try:
-            _cls = Classification.objects.get(id=int(championship_details['classification']))
-            is_other_classification = _cls.name == 'Other'
-        except (Classification.DoesNotExist, ValueError):
-            pass
-
-    swimmer_fallback = (
-        meet_country if country_known and meet_country.code != 'UAE'
-        and not is_other_classification else None)
+    # STRICT nationality rule: never guess an athlete's nationality from the
+    # meet's host country. A nationality is only set when the file states it
+    # clearly (explicit code/name or a country-like Team/club column);
+    # otherwise new swimmers are left blank and matched swimmers keep the
+    # nationality already on their DB profile.
+    swimmer_fallback = None
 
     # Get or create championship
     if championship_id:

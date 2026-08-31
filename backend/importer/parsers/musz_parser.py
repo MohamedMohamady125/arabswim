@@ -107,27 +107,48 @@ def detect_format(text):
     return 'ORSZÁGOS BAJNOKSÁG' in text and 'R.Idő' in text
 
 
-def _format_name(raw):
-    """Flip Hungarian "SURNAME Given" order to "Given SURNAME".
+# Nationalities whose federations submit entries to MÚSZ in Western
+# (given-name-first) order — the leading UPPERCASE token is the given name,
+# not the surname. Verified against the source: every Austrian entry reads
+# "BERNHARD Reitshammer" (Bernhard Reitshammer) while every other nation in
+# the field is surname-first ("MILÁK Kristóf", "TURNALI Polat Uzer").
+WESTERN_ORDER_NATS = frozenset({'AUT'})
 
-    The surname is the leading run of all-uppercase tokens; the given
-    name(s) follow in title case. "MILÁK Kristóf" -> "Kristóf MILÁK",
-    "TURNALI Polat Uzer" -> "Polat Uzer TURNALI".
-    """
+
+def _split_caps_run(raw):
+    """Split "SURNAME Given Names" into (leading all-caps tokens, rest)."""
     tokens = raw.split()
-    surname = []
+    caps = []
     i = 0
     while i < len(tokens):
         tok = tokens[i]
         if any(c.isalpha() for c in tok) and tok == tok.upper():
-            surname.append(tok)
+            caps.append(tok)
             i += 1
         else:
             break
-    given = tokens[i:]
-    if not surname or not given:
+    return caps, tokens[i:]
+
+
+def _format_name(raw, western=False):
+    """Standardize a swimmer name to "Given SURNAME".
+
+    Source rows print one part in UPPERCASE and the rest in title case.
+    Hungarian (and most nations') rows are surname-first — the caps run is
+    the surname: "MILÁK Kristóf" -> "Kristóf MILÁK". ``western`` rows are
+    given-first — the caps run is the given name: "BERNHARD Reitshammer" ->
+    "Bernhard REITSHAMMER".
+    """
+    caps, rest = _split_caps_run(raw)
+    if not caps or not rest:
         return raw.strip()
-    return ' '.join(given) + ' ' + ' '.join(surname)
+    if western:
+        given = ' '.join(t.title() for t in caps)
+        surname = ' '.join(t.upper() for t in rest)
+    else:
+        given = ' '.join(rest)
+        surname = ' '.join(caps)
+    return f'{given} {surname}'
 
 
 def _relay_team_name(mid):
@@ -176,7 +197,7 @@ def _parse_individual_row(rest, event):
         return None
 
     return ParsedResult(
-        swimmer_name=_format_name(name_raw),
+        swimmer_name=_format_name(name_raw, western=nat_code in WESTERN_ORDER_NATS),
         time_text=time_text,
         time_centiseconds=time_cs,
         birth_year=birth_year,

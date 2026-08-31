@@ -620,6 +620,12 @@ class MuszTests(SanityMixin, SimpleTestCase):
         self.assertIn('Kristóf MILÁK', names)
         self.assertIn('Polat Uzer TURNALI', names)  # multi-token given name
         self.assertNotIn('MILÁK Kristóf', names)
+        # Austrian federation submits entries given-name-first, so its rows
+        # ("BERNHARD Reitshammer") must NOT be flipped like the surname-first
+        # Hungarian/Italian/Turkish rows.
+        self.assertIn('Bernhard REITSHAMMER', names)
+        self.assertIn('Simon BUCHER', names)
+        self.assertNotIn('Reitshammer BERNHARD', names)
 
     def test_nationality_only_when_explicit_and_valid(self):
         by_name = {r.swimmer_name: r

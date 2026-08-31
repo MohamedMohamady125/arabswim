@@ -125,8 +125,9 @@ def detect_format(text):
         return True
     if 'live.musz.hu' in lower or 'musz.hu' in lower:
         return True
-    # MUSZ detection: Hungarian meet format with "RESULTS SUMMARY" + "R.Idő" + "RNK Lane"
-    if 'results summary' in lower and 'r.id' in lower and 'rnk' in lower:
+    # MUSZ detection: Hungarian meet format with "RESULTS" + "R.Idő" + "RNK Lane"
+    if ('results summary' in lower or ('results' in lower and 'rnk' in lower)) \
+            and 'r.id' in lower:
         return True
     return False
 
@@ -382,6 +383,32 @@ def parse(text):
                 year = int(mdm.group(1))
                 if year >= 2020:
                     current_session_date = f'{mdm.group(1)}-{mdm.group(2)}-{mdm.group(3)}'
+
+        # MUSZ round headers: "A Final", "B Final", "Preliminaries", "Results Summary"
+        if is_musz:
+            l_stripped = line.lower().strip()
+            if l_stripped == 'a final':
+                if current_event:
+                    current_event.round_type = 'Finals'
+                continue
+            elif l_stripped == 'b final':
+                # B Final = new event entry (different round)
+                if current_event:
+                    current_event = ParsedEvent(
+                        event_name=current_event.event_name,
+                        distance=current_event.distance,
+                        stroke=current_event.stroke,
+                        gender=current_event.gender,
+                        round_type='Consolation',
+                        date_text=current_session_date or current_event.date_text,
+                    )
+                    meet.events.append(current_event)
+                    last_result = None
+                continue
+            elif l_stripped in ('preliminaries', 'heats'):
+                if current_event:
+                    current_event.round_type = 'Prelims'
+                continue
 
         # MUSZ event title: "Men's 200m Medley" (appears in page header)
         if is_musz:

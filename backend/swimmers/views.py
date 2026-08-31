@@ -206,6 +206,11 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                             st_cs = parse_time_to_centiseconds(st)
                             if st_cs and (best_split is None or st_cs < best_split):
                                 best_split = st_cs
+            # Only surface a relay under the swimmer's times when we actually
+            # have this swimmer's split (leg) time. Without a split there's no
+            # individual performance to show, so skip it.
+            if best_split is None:
+                continue
             data.append({
                 'event_id': ev.id,
                 'event_name': ev.name,

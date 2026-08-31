@@ -9,6 +9,12 @@ Base times are updated annually based on World Records.
 - LCM: validity 01.01.2026 – 31.12.2026
 """
 
+# World-Record-based points top out at ~1000 (a swim exactly at the base time
+# scores 1000). No real single swim exceeds this by more than a few percent, so
+# anything above this ceiling indicates corrupt input (wrong event/gender for
+# the time) and is discarded rather than stored.
+MAX_PLAUSIBLE_POINTS = 1100
+
 # Base times in seconds: {event_name: {'M': seconds, 'F': seconds}}
 # Event names match the normalized format used in the app
 
@@ -190,5 +196,13 @@ def calculate_points(time_centiseconds, event_name, gender, pool):
 
     # Formula: Points = 1000 × (Base_Time / Swim_Time)³
     points = 1000.0 * (base_time / swim_time) ** 3
+
+    # A swim can't legitimately beat the World-Record base time by more than a
+    # few percent, so points top out near 1000. Anything well above that means
+    # the time was attached to the wrong event/gender (e.g. a PDF parser bleed
+    # putting a 50m time under a 1500m event) — reject it instead of surfacing
+    # a garbage value on leaderboards.
+    if points > MAX_PLAUSIBLE_POINTS:
+        return 0
 
     return int(points)  # truncate to integer

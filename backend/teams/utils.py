@@ -55,10 +55,24 @@ def normalize_team_key(name):
     return key
 
 
+# Trailing national-team marker: "Djibouti NT", "Bahrein N.T.", "Egypt N T".
+_NT_SUFFIX_RE = re.compile(r'\s+n\.?\s*t\.?$', re.IGNORECASE)
+
+
+def strip_nt_suffix(name):
+    """Remove a trailing 'NT' / 'N.T.' national-team marker from a name."""
+    return _NT_SUFFIX_RE.sub('', (name or '').strip()).strip()
+
+
 def national_team_country(name):
     """Return the Country if this team name is a national-team variant
-    ("Bahrain", "Bahrain Team A", "BRN Bahrain", "Bahrain National Team")."""
-    key = normalize_team_key(name)
+    ("Bahrain", "Bahrain Team A", "BRN Bahrain", "Bahrain National Team",
+    "Djibouti NT", "Bahrein NT" — including alias spellings)."""
+    if not name:
+        return None
+    raw = str(name).strip()
+    nt = strip_nt_suffix(raw)
+    key = normalize_team_key(nt)
     if not key:
         return None
     for c in Country.objects.all():
@@ -66,7 +80,24 @@ def national_team_country(name):
         code = c.code.casefold()
         if key in {ckey, code, f'{code} {ckey}', f'{ckey} {code}'}:
             return c
+    # Alias spellings ("Bahrein NT", "Maroc NT") only when an explicit NT
+    # marker was present — a bare club abbreviation ("EST") must never
+    # resolve to a country here.
+    if nt != raw:
+        from importer.matcher import resolve_country
+        return resolve_country(nt)
     return None
+
+
+def nt_suffix_country(name):
+    """Country for a name ending in an explicit 'NT'/'N.T.' national-team
+    marker ("Djibouti NT", "Bahrein NT", "Maroc NT"), else None.
+
+    Only the NT suffix triggers this — bare country names and relay
+    placeholders keep their existing skip behavior."""
+    if not name or not _NT_SUFFIX_RE.search(str(name).strip()):
+        return None
+    return national_team_country(name)
 
 
 def merge_team_records(keep, remove):
@@ -227,16 +258,20 @@ def auto_create_teams():
 
     for swimmer in swimmers:
         club = swimmer.club.strip()
-        if not club or club in skip_names or not is_valid_team_name(club):
-            continue
-        # National-team variants never become club teams
-        if normalize_team_key(club) in skip_names:
-            continue
+        nt_c = nt_suffix_country(club)
+        if not nt_c:
+            if not club or club in skip_names or not is_valid_team_name(club):
+                continue
+            # National-team variants never become club teams
+            if normalize_team_key(club) in skip_names:
+                continue
 
         # Dedupe club variants within this scan by normalized key
         club_key = normalize_team_key(club)
         if club_key not in club_data:
-            club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}}
+            club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}, 'nt_country': None}
+        if nt_c:
+            club_data[club_key]['nt_country'] = nt_c
         club_data[club_key]['count'] += 1
 
         nat_code = swimmer.nationality.code if swimmer.nationality else ''
@@ -261,13 +296,17 @@ def auto_create_teams():
         if classification not in ('National', 'Other'):
             continue
         club = strip_squad_number((row['team'] or '')).strip()
-        if not club or club == 'LP' or not is_valid_team_name(club):
-            continue
-        if club in skip_names or normalize_team_key(club) in skip_names:
-            continue
+        nt_c = nt_suffix_country(club)
+        if not nt_c:
+            if not club or club == 'LP' or not is_valid_team_name(club):
+                continue
+            if club in skip_names or normalize_team_key(club) in skip_names:
+                continue
         club_key = normalize_team_key(club)
         if club_key not in club_data:
-            club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}}
+            club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}, 'nt_country': None}
+        if nt_c:
+            club_data[club_key]['nt_country'] = nt_c
         club_data[club_key]['count'] += row['n']
         # Vote the meet's host country, but ONLY for National/Other meets
         # where every club genuinely belongs to that country.  At
@@ -288,6 +327,15 @@ def auto_create_teams():
     for club_key, data in club_data.items():
         club_name = data['name']
         if club_key in existing_keys:
+            continue
+
+        # National team: use its resolved country and flag it, never the
+        # host-country vote (which would misfile "Djibouti NT" under Morocco).
+        if data.get('nt_country'):
+            Team.objects.create(
+                name=club_name, country=data['nt_country'],
+                is_national_team=True)
+            created += 1
             continue
 
         # Determine country from most common nationality
@@ -359,28 +407,66 @@ def ensure_team_exists(club_name, country=None):
         return None
 
     club_name = club_name.strip()
-    skip_names = _get_skip_names()
-    if club_name in skip_names or not is_valid_team_name(club_name):
-        return None
-    if normalize_team_key(club_name) in skip_names:
-        return None
+    # A name ending in "NT" is a national team — it gets its OWN country
+    # (resolved from the name) and is flagged, never a host-country club.
+    nt_country = nt_suffix_country(club_name)
+    if not nt_country:
+        skip_names = _get_skip_names()
+        if club_name in skip_names or not is_valid_team_name(club_name):
+            return None
+        if normalize_team_key(club_name) in skip_names:
+            return None
 
     club_key = normalize_team_key(club_name)
     for t in Team.objects.all():
         if normalize_team_key(t.name) == club_key:
+            # Repair a national team that was mis-tagged (wrong country or
+            # not flagged) by an earlier import before this rule existed.
+            if nt_country and (not t.is_national_team or t.country_id != nt_country.id):
+                t.is_national_team = True
+                t.country = nt_country
+                t.save(update_fields=['is_national_team', 'country'])
             return t
 
-    if not country:
-        country = Country.objects.first()
+    country = nt_country or country or Country.objects.first()
 
     if country:
         team = Team.objects.create(
             name=club_name,
             country=country,
+            is_national_team=bool(nt_country),
         )
         return team
 
     return None
+
+
+def foreign_guest_country(team_name, host_country):
+    """If a club fields 3+ distinct swimmers who are dominantly (>=60%) of a
+    single FOREIGN nationality, return that Country — it is a genuine guest
+    club (e.g. Spanish HUELVA at an international meet held in Morocco) and
+    must never be forced onto the host country.
+
+    Single- or two-swimmer clubs are deliberately treated as ambiguous and
+    return None: a real host-country club can end up with only its one
+    foreign-tagged athlete kept, and forcing the host country on those is the
+    intended behavior of apply_subclassification_country.
+    """
+    from championships.models import Result
+    from collections import Counter
+    rows = (Result.objects.filter(team__iexact=team_name)
+            .exclude(swimmer__nationality__isnull=True)
+            .values_list('swimmer_id', 'swimmer__nationality__code',
+                         'swimmer__nationality_id'))
+    by_swimmer = {sid: (code, cid) for sid, code, cid in rows}
+    if len(by_swimmer) < 3:
+        return None
+    (top_code, top_cid), n = Counter(by_swimmer.values()).most_common(1)[0]
+    if n < len(by_swimmer) * 0.6:
+        return None
+    if host_country and top_code == host_country.code:
+        return None
+    return Country.objects.filter(id=top_cid).first()
 
 
 def apply_subclassification_country(championship):
@@ -391,7 +477,9 @@ def apply_subclassification_country(championship):
     from that country, so force the matching Team records onto it.
 
     Fixes clubs whose country was mis-inferred from swimmer nationalities
-    (e.g. a French club tagged as Belgian). Returns count of teams updated.
+    (e.g. a French club tagged as Belgian). Genuine foreign guest clubs
+    (detected by foreign_guest_country) are exempt and kept on / moved to
+    their own country. Returns count of teams updated.
     """
     from importer.matcher import resolve_country
 
@@ -418,23 +506,35 @@ def apply_subclassification_country(championship):
     if not keys:
         return 0
 
+    from championships.models import Result
     updated = 0
-    for team in Team.objects.filter(is_national_team=False).exclude(country=country):
-        if normalize_team_key(team.name) in keys:
-            # Only reassign if the team has more results in this country's
-            # meets than in other countries — avoids overwriting a Tunisian
-            # club (EST) to French just because it appeared in a French meet.
-            from championships.models import Result
-            total = Result.objects.filter(team__iexact=team.name).count()
-            in_country = Result.objects.filter(
-                team__iexact=team.name,
-                championship__country=country,
-                championship__classification__name__in=['National', 'Other'],
-            ).count()
-            if total == 0 or in_country > total * 0.5:
-                team.country = country
+    matched = [t for t in Team.objects.filter(is_national_team=False)
+               if normalize_team_key(t.name) in keys]
+    for team in matched:
+        # A genuine foreign guest club is put on / kept on its own country,
+        # never the host — this also un-does an earlier wrong host tag.
+        guest = foreign_guest_country(team.name, country)
+        if guest:
+            if team.country_id != guest.id:
+                team.country = guest
                 team.save(update_fields=['country'])
                 updated += 1
+            continue
+        if team.country_id == country.id:
+            continue
+        # Only reassign if the team has more results in this country's
+        # meets than in other countries — avoids overwriting a Tunisian
+        # club (EST) to French just because it appeared in a French meet.
+        total = Result.objects.filter(team__iexact=team.name).count()
+        in_country = Result.objects.filter(
+            team__iexact=team.name,
+            championship__country=country,
+            championship__classification__name__in=['National', 'Other'],
+        ).count()
+        if total == 0 or in_country > total * 0.5:
+            team.country = country
+            team.save(update_fields=['country'])
+            updated += 1
 
     # Relay-team placeholder swimmers carry a nationality too (shown as the
     # flag next to relay squads). Source PDFs sometimes tag them with a wrong

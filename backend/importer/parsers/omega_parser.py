@@ -169,10 +169,53 @@ def detect_format(text):
     return False
 
 
+_MONTHS = {'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'JUN': 6,
+           'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10, 'NOV': 11, 'DEC': 12}
+
+# Entry list line: "PARKER Maxine Charlize USA 14 JUN 2002 7 JUN 2025 24.41"
+_ENTRY_LINE = re.compile(
+    r'^([A-ZÀ-Þ][A-ZÀ-Þa-zà-ÿ\s\'-]+?)\s+'   # name
+    r'([A-Z]{2,3})\s+'                            # country code
+    r'(\d{1,2})\s+([A-Z]{3})\s+(\d{4})'          # DOB: DD MON YYYY
+)
+
+
+def _extract_dob_map(text):
+    """Pre-scan entry list pages for date-of-birth data.
+
+    Returns dict: uppercase_name -> (birth_year, dob_iso_string)
+    """
+    dob_map = {}
+    in_entry = False
+    for line in text.split('\n'):
+        stripped = line.strip()
+        if 'Entry list' in stripped:
+            in_entry = True
+            continue
+        if 'Results' in stripped and 'Entry' not in stripped:
+            in_entry = False
+            continue
+        if not in_entry:
+            continue
+        m = _ENTRY_LINE.match(stripped)
+        if m:
+            name = m.group(1).strip()
+            day = int(m.group(3))
+            mon = _MONTHS.get(m.group(4).upper(), 0)
+            year = int(m.group(5))
+            if mon and 1900 < year < 2020:
+                key = name.upper().strip()
+                dob_map[key] = (year, f'{year}-{mon:02d}-{day:02d}')
+    return dob_map
+
+
 def parse(text):
     """Parse Omega/Swiss Timing format text into ParsedMeet."""
     lines = text.split('\n')
     meet = ParsedMeet(source_format='omega')
+
+    # Pre-extract DOBs from entry list pages
+    dob_map = _extract_dob_map(text)
 
     # Extract meet name from first non-empty lines
     for line in lines[:5]:
@@ -464,4 +507,15 @@ def parse(text):
                 continue
 
     meet = merge_duplicate_events(meet)
+
+    # Enrich results with DOBs from entry list pages
+    if dob_map:
+        for event in meet.events:
+            for r in event.results:
+                if not r.birth_year and r.swimmer_name:
+                    key = r.swimmer_name.upper().strip()
+                    dob = dob_map.get(key)
+                    if dob:
+                        r.birth_year = dob[0]
+
     return meet

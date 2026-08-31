@@ -40,6 +40,7 @@ SAMPLES = {
     'algeria2026': '../Algeria.AG.SCM.2026.pdf',
     'tangier': '../Maroc.Tangier.2026.pdf',
     'gcc': '../GCC  Final Version.xlsx',
+    'musz': '../D20240409_FelnottOB_DunaArena_Overall_results_S4_20240410_1836 copy.pdf',
 }
 SAMPLES = {k: os.path.normpath(os.path.join(BACKEND_DIR, p)) for k, p in SAMPLES.items()}
 
@@ -583,6 +584,78 @@ class GccExcelTests(SanityMixin, SimpleTestCase):
         m = self.meet()
         self.assertEqual(m.total_events, 20)
         self.assertEqual(m.total_results, 139)
+
+
+@needs_sample('musz')
+class MuszTests(SanityMixin, SimpleTestCase):
+    """MÚSZ (LIVE.MUSZ.HU) Hungarian championship PDF, S4 session."""
+    KEY = 'musz'
+
+    def test_metadata(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'musz')
+        self.assertEqual(m.pool, 'LCM')
+        self.assertEqual(m.meet_name, 'CXXVI. ORSZÁGOS BAJNOKSÁG')
+        self.assertEqual(m.date_text, '2024-04-10')
+        self.assertEqual(m.location, 'Duna Aréna')
+
+    def test_counts(self):
+        # 14 individual finals (A + B for 6 events, single Final for 2×400m)
+        # plus 2 relay finals; 8 swimmers each = 128 results.
+        m = self.meet()
+        self.assertEqual(m.total_events, 16)
+        self.assertEqual(m.total_results, 128)
+
+    def test_rounds(self):
+        rounds = collections.Counter(
+            r.round_type or '(none)' for ev in self.meet().events for r in ev.results)
+        # A Final / Final -> Finals (10 events); B Final -> Consolation (6 events)
+        self.assertEqual(rounds['Finals'], 80)
+        self.assertEqual(rounds['Consolation'], 48)
+        self.assertEqual(rounds.get('(none)', 0), 0)
+
+    def test_hungarian_name_order_flipped(self):
+        # "MILÁK Kristóf" (surname first) must become "Kristóf MILÁK"
+        names = {r.swimmer_name for ev in self.meet().events for r in ev.results}
+        self.assertIn('Kristóf MILÁK', names)
+        self.assertIn('Polat Uzer TURNALI', names)  # multi-token given name
+        self.assertNotIn('MILÁK Kristóf', names)
+
+    def test_nationality_only_when_explicit_and_valid(self):
+        by_name = {r.swimmer_name: r
+                   for ev in self.meet().events for r in ev.results}
+        # Foreign swimmers carry a validated 3-letter code
+        self.assertEqual(by_name['Abdellah ARDJOUNE'].nationality_code, 'ALG')
+        self.assertEqual(by_name['Polat Uzer TURNALI'].nationality_code, 'TUR')
+        # Hungarian swimmers whose club starts with 3 capitals keep the club,
+        # not a bogus nationality ("UNI Győri…", "FTC", "KVSC").
+        self.assertEqual(by_name['Kristóf MILÁK'].nationality_code, '')
+        self.assertEqual(by_name['Kristóf MILÁK'].club, 'Budapesti Honvéd SE')
+
+    def test_wrapped_club_name_rejoined(self):
+        by_name = {r.swimmer_name: r
+                   for ev in self.meet().events for r in ev.results}
+        # "TURKIYE SWIMMING\nFEDERATION" must be a single club string
+        self.assertEqual(by_name['Polat Uzer TURNALI'].club,
+                         'TURKIYE SWIMMING FEDERATION')
+
+    def test_relays_have_four_legs(self):
+        relays = [ev for ev in self.meet().events if is_relay(ev)]
+        self.assertEqual(len(relays), 2)
+        for ev in relays:
+            self.assertEqual(ev.distance, 400)  # 4x100 total
+            for r in ev.results:
+                self.assertEqual(len(r.split_times), 4,
+                                 f'relay {r.swimmer_name} missing legs')
+
+    def test_relay_leg_names_flipped(self):
+        mens = [ev for ev in self.meet().events
+                if is_relay(ev) and ev.gender == 'M'][0]
+        legs = mens.results[0].split_times
+        # first leg reaction is corrupted in the source ("00.I6d4ő 55.45");
+        # the split time still lands and the name is flipped to given-surname
+        self.assertEqual(legs[0], 'Benedek Bendegúz KOVÁCS 55.45')
+
 
 # ---------------------------------------------------------------------------
 # 3. Same-name athlete separation (age-band matching)

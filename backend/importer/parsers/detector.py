@@ -6,7 +6,7 @@ Passes filename to parsers for pool detection.
 import os
 import pdfplumber
 
-from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser, msecm_parser, aprace_parser
+from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser, msecm_parser, aprace_parser, musz_parser
 from .base import ParsedMeet, detect_pool
 
 
@@ -96,9 +96,13 @@ def _parse_pdf(file_path, filename=''):
     # Detect pool from text + filename
     pool = detect_pool(detect_text, filename)
 
+    # MÚSZ (LIVE.MUSZ.HU) has an unmistakable column header — check it first.
+    if musz_parser.detect_format(detect_text):
+        full_text = _extract_simple(file_path)
+        meet = musz_parser.parse(full_text)
     # Splash is more specific than HY-TEK — check Splash first
     # (some Splash PDFs also contain "meet manager" which triggers HY-TEK detection)
-    if splash_parser.detect_format(detect_text):
+    elif splash_parser.detect_format(detect_text):
         # Splash PDFs often have overlapping club/time columns that garble
         # character order in default extraction ("D'Ora1n:00.89").
         # use_text_flow follows the PDF stream order and keeps them separate.

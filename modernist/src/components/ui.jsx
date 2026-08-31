@@ -100,7 +100,28 @@ export function MedalIcon({ type, size = 18, style }) {
     String(type || '').toUpperCase()
   ]
   if (!src) return null
-  return <img src={src} alt={type} width={size} height={size} style={{ display: 'inline-block', verticalAlign: 'middle', ...style }} />
+  return (
+    <img
+      src={src}
+      alt={type}
+      width={size}
+      height={size}
+      style={{
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        // Lock the square footprint so the global `img { max-width: 100% }`
+        // rule can't shrink the width inside a narrow column (e.g. the rank
+        // cell on phones) and distort the medal into a squished sliver.
+        width: size,
+        height: size,
+        minWidth: size,
+        maxWidth: size,
+        flexShrink: 0,
+        objectFit: 'contain',
+        ...style,
+      }}
+    />
+  )
 }
 
 export function Pager({ page, pageSize = 25, count, onPage }) {

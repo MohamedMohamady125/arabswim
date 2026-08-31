@@ -148,6 +148,37 @@ class LiveSession(models.Model):
         return f'Day {self.day} session @ {self.championship.name}'
 
 
+def relay_first_leg_split_cs(result, swimmer_name):
+    """Return a swimmer's relay leg split in centiseconds ONLY if they swam
+    the first leg of the relay, else None.
+
+    STRICT first-leg rule: relay legs are stored in swim order, so the first
+    leg is index 0 of relay_swimmers. The first leg starts from a standing
+    dive (like an individual race), so its split is a valid individual time.
+    Legs 2-4 are flying starts and are NOT comparable — they never count in
+    records, rankings or a swimmer's individual times.
+
+    A manually-entered leg may carry first_leg=False to mark a swimmer who did
+    not swim first; such a result is saved normally but is excluded here.
+    When the flag is absent (auto imports, legacy rows) the index-0 swimmer is
+    treated as the first leg.
+    """
+    legs = result.relay_swimmers or []
+    if not legs or not isinstance(legs[0], dict):
+        return None
+    first = legs[0]
+    if (first.get('name') or '').upper() != (swimmer_name or '').upper():
+        return None
+    if first.get('first_leg') is False:
+        return None
+    st = first.get('split_time')
+    if not st:
+        return None
+    from importer.parsers.base import parse_time_to_centiseconds
+    cs = parse_time_to_centiseconds(st)
+    return cs if cs and cs > 0 else None
+
+
 class Result(models.Model):
     ROUND_CHOICES = [
         ('Finals', 'Finals'),

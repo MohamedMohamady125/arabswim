@@ -334,6 +334,10 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
     original_rank: result.original_rank != null ? String(result.original_rank) : '',
     hc: result.is_hc ? (result.hc_type || 'HC') : '',
     is_manual: !!result.is_manual,
+    // Whether the (first) entered relay swimmer swam the first leg — only then
+    // does their split count as an individual time. Default true unless the
+    // stored leg was explicitly marked as not-first.
+    firstLeg: result.relay_swimmers?.[0]?.first_leg !== false,
     splitsText: (result.splits || []).map((s) => `${s.distance} ${s.time}`).join('\n'),
     relayText: (result.relay_swimmers || []).map((s) => `${s.name}${s.split_time ? ` | ${s.split_time}` : ''}`).join('\n'),
   }))
@@ -382,6 +386,9 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
         return { name: name || '', split_time: time || '' }
       })
       if (legs.some((l) => l === null)) { setError('Relay legs: use "Name | 1:03.63" — one swimmer per line'); return }
+      // Mark the first leg so records/rankings know whether the entered
+      // swimmer swam first (standing start → counts as an individual time).
+      if (legs.length) legs[0] = { ...legs[0], first_leg: form.firstLeg }
       payload.relay_swimmers = legs.length ? legs : null
     } else {
       const splits = form.splitsText.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
@@ -507,6 +514,10 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
               <label>Relay legs — one per line: Name | leg time (time optional)</label>
               <textarea className="input" rows={4} value={form.relayText} onChange={set('relayText')}
                 placeholder={'Abdallah TARAWNEH | 1:03.63\nHaya AL MASSARWEH | 1:09.79'} style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginTop: 8 }}>
+                <input type="checkbox" checked={form.firstLeg} onChange={(e) => setForm((f) => ({ ...f, firstLeg: e.target.checked }))} />
+                First leg (standing start) — counts as an individual time in records &amp; rankings. Uncheck for a flying-start later leg.
+              </label>
             </div>
           ) : (
             <div className="field">
@@ -868,7 +879,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             </td>
           )}
           <td className="time asw-time">
-            {isRelay && swimmers.length > 0 && swimmers.length === 1 && swimmers[0]?.split_time
+            {isRelay && swimmers.length === 1 && swimmers[0]?.split_time && swimmers[0]?.first_leg !== false
               ? <span title={`Relay time: ${r.formatted_time}`}>{swimmers[0].split_time} <span className="micro" style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 9 }}>SPLIT</span></span>
               : r.formatted_time}
           </td>

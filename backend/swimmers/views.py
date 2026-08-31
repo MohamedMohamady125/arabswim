@@ -200,20 +200,16 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 continue
             ev = info['event']
             best_cs = min(r.time_centiseconds for r in info['results'])
-            # Find the swimmer's best split time across all relay appearances
+            # First-leg rule: a relay only surfaces under the swimmer's
+            # individual times when they swam the FIRST leg (standing-start
+            # split comparable to an individual time). Flying-start later legs
+            # are saved with the relay but never shown as individual times.
+            from championships.models import relay_first_leg_split_cs
             best_split = None
             for r in info['results']:
-                for s in (r.relay_swimmers or []):
-                    if isinstance(s, dict) and s.get('name', '').upper() == swimmer.name.upper():
-                        st = s.get('split_time', '')
-                        if st:
-                            from importer.parsers.base import parse_time_to_centiseconds
-                            st_cs = parse_time_to_centiseconds(st)
-                            if st_cs and (best_split is None or st_cs < best_split):
-                                best_split = st_cs
-            # Only surface a relay under the swimmer's times when we actually
-            # have this swimmer's split (leg) time. Without a split there's no
-            # individual performance to show, so skip it.
+                st_cs = relay_first_leg_split_cs(r, swimmer.name)
+                if st_cs and (best_split is None or st_cs < best_split):
+                    best_split = st_cs
             if best_split is None:
                 continue
             data.append({
@@ -631,12 +627,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             time_display = r.formatted_time
             # If this is a relay record but swimmer is individual, show individual event
             if r.event.is_relay and not swimmer.is_relay_team and r.result:
-                legs = r.result.relay_swimmers or []
-                if len(legs) == 1 and isinstance(legs[0], dict) and legs[0].get('split_time'):
+                from championships.models import relay_first_leg_split_cs
+                if relay_first_leg_split_cs(r.result, swimmer.name):
                     ind_dist = r.event.distance // 4 if r.event.distance else 0
                     if ind_dist:
                         event_name = f'{ind_dist} M {r.event.stroke}'
-                    time_display = legs[0]['split_time']
+                    time_display = r.result.relay_swimmers[0]['split_time']
             records.append({
                 'id': r.id,
                 'record_type': r.record_type,

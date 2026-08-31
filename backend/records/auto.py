@@ -41,25 +41,23 @@ def check_and_update_records(result):
     meet_name = result.championship.name if result.championship_id else ''
     location = result.championship.location if result.championship_id else ''
 
-    # First-leg relay rule: if this is a relay event and the swimmer is an
-    # individual (not a team placeholder) with a first-leg split time,
-    # check records on the individual event with the split time instead.
+    # First-leg relay rule: only the swimmer who swam the FIRST leg (standing
+    # dive) gets their split treated as an individual time — check records on
+    # the individual event with the split time instead of the relay event.
     if event.is_relay and not swimmer.is_relay_team:
-        legs = result.relay_swimmers or []
-        if len(legs) == 1 and isinstance(legs[0], dict) and legs[0].get('split_time'):
-            from importer.parsers.base import parse_time_to_centiseconds
-            split_cs = parse_time_to_centiseconds(legs[0]['split_time'])
-            if split_cs > 0:
-                # Find the individual event (e.g. "100 M Freestyle" from "4x100 M Freestyle Relay")
-                ind_distance = event.distance // 4 if event.distance else 0
-                if ind_distance:
-                    from core.models import Event as EventModel
-                    ind_event = EventModel.objects.filter(
-                        distance=ind_distance, stroke=event.stroke,
-                        is_relay=False).first()
-                    if ind_event:
-                        event = ind_event
-                        time_cs = split_cs
+        from championships.models import relay_first_leg_split_cs
+        split_cs = relay_first_leg_split_cs(result, swimmer.name)
+        if split_cs:
+            # Find the individual event (e.g. "100 M Freestyle" from "4x100 M Freestyle Relay")
+            ind_distance = event.distance // 4 if event.distance else 0
+            if ind_distance:
+                from core.models import Event as EventModel
+                ind_event = EventModel.objects.filter(
+                    distance=ind_distance, stroke=event.stroke,
+                    is_relay=False).first()
+                if ind_event:
+                    event = ind_event
+                    time_cs = split_cs
 
     # Determine which scopes this swimmer can break records in
     scopes = []

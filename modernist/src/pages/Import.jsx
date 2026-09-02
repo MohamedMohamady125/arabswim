@@ -179,6 +179,7 @@ export default function Import() {
           location: m.location || '',
         },
         arabOnly: false,
+        excluded: false,
         existingChampId: presetChampId,
         programItems: [],
         matches: [], matchStats: {}, decisions: {}, result: null, confirmError: '',
@@ -252,16 +253,30 @@ export default function Import() {
     }
   }
 
-  const formComplete = (m) => !!m.existingChampId || (m.champForm.name && m.champForm.country && m.champForm.date)
+  const toggleExcluded = (idx) => {
+    updateMeet(idx, { excluded: !meets[idx].excluded })
+    // If excluding the active meet, jump to the next included one
+    if (!meets[idx].excluded) {
+      const next = meets.findIndex((m, i) => i !== idx && !m.excluded)
+      if (next >= 0) setActive(next)
+    }
+  }
+
+  const formComplete = (m) => m.excluded || !!m.existingChampId || (m.champForm.name && m.champForm.country && m.champForm.date)
   const allFormsComplete = meets.every(formComplete)
+  const includedMeets = meets.filter((m) => !m.excluded)
 
   const handleMatch = async () => {
     setLoading(true)
     setError('')
     try {
       const updated = [...meets]
+      const included = updated.filter((m) => !m.excluded)
+      let done = 0
       for (let i = 0; i < updated.length; i++) {
-        setLoadingMsg(updated.length > 1 ? `Matching swimmers ${i + 1} / ${updated.length}…` : 'Matching swimmers…')
+        if (updated[i].excluded) continue
+        done++
+        setLoadingMsg(included.length > 1 ? `Matching swimmers ${done} / ${included.length}…` : 'Matching swimmers…')
         const res = await matchSwimmers(updated[i].importId)
         const auto = {}
         for (const m of res.data.matches) {
@@ -288,10 +303,14 @@ export default function Import() {
     setLoading(true)
     setError('')
     const updated = [...meets]
+    const included = updated.filter((m) => !m.excluded)
     let anyOk = false
+    let done = 0
     for (let i = 0; i < updated.length; i++) {
       const m = updated[i]
-      setLoadingMsg(updated.length > 1 ? `Importing ${i + 1} / ${updated.length}: ${m.champForm.name}` : 'Importing…')
+      if (m.excluded) continue
+      done++
+      setLoadingMsg(included.length > 1 ? `Importing ${done} / ${included.length}: ${m.champForm.name}` : 'Importing…')
       try {
         const payload = {
           import_id: m.importId,
@@ -395,16 +414,22 @@ export default function Import() {
           type="button"
           onClick={() => setActive(i)}
           className={i === active ? 'btn btn-primary' : 'btn btn-secondary'}
-          style={{ fontSize: 12, padding: '5px 10px' }}
+          style={{
+            fontSize: 12, padding: '5px 10px',
+            ...(m.excluded ? { opacity: 0.4, textDecoration: 'line-through' } : {}),
+          }}
         >
           <span className="asw-num">{i + 1}</span>
           <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {m.champForm.name || m.fileName}
           </span>
-          {step === 2 && !formComplete(m) && (
+          {step === 2 && m.excluded && (
+            <span title="Excluded from import" style={{ color: i === active ? '#fff' : 'var(--asw-slow)' }}>✕</span>
+          )}
+          {step === 2 && !m.excluded && !formComplete(m) && (
             <span title="Missing required fields" style={{ color: i === active ? '#fff' : 'var(--asw-slow)' }}>●</span>
           )}
-          {step === 2 && formComplete(m) && (
+          {step === 2 && !m.excluded && formComplete(m) && (
             <span style={{ color: i === active ? '#fff' : 'var(--asw-fast)' }}>✓</span>
           )}
           {step === 4 && (m.result
@@ -559,8 +584,39 @@ export default function Import() {
               <div>
                 {meetTabs}
 
-                {/* Name repair summary (Egyptian truncated names fixed from PDFs) */}
-                {meet.preview?.name_repair && (
+                {/* Exclude/include banner for current meet */}
+                {meets.length > 1 && (
+                  <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => toggleExcluded(active)}
+                      className="btn btn-ghost"
+                      style={{
+                        fontSize: 12,
+                        color: meet.excluded ? 'var(--asw-fast)' : 'var(--asw-slow)',
+                      }}
+                    >
+                      {meet.excluded ? '↩ Re-include this meet' : '✕ Exclude this meet from import'}
+                    </button>
+                  </div>
+                )}
+
+                {meet.excluded && (
+                  <div style={{
+                    padding: 40, textAlign: 'center', color: 'var(--color-neutral-400)',
+                    border: '1px dashed var(--color-divider)',
+                  }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+                      This meet is excluded from import
+                    </div>
+                    <div style={{ fontSize: 13 }}>
+                      {meet.editedPreview?.stats?.total_results || 0} results will be skipped.
+                      Click "Re-include" above to add it back.
+                    </div>
+                  </div>
+                )}
+
+                {!meet.excluded && meet.preview?.name_repair && (
                   <div style={{
                     marginBottom: 20, padding: '12px 16px', fontSize: 13,
                     border: '1px solid var(--color-divider)', background: 'var(--color-neutral-50, #fafafa)',
@@ -573,6 +629,7 @@ export default function Import() {
                   </div>
                 )}
 
+                {!meet.excluded && <>
                 {/* Arab-only toggle */}
                 <div
                   onClick={() => toggleArabOnly(active)}
@@ -788,10 +845,22 @@ export default function Import() {
                   />
                 </div>
 
+                </>}
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
-                  {meets.length > 1 && !allFormsComplete && (
+                  {meets.length > 1 && includedMeets.length === 0 && (
+                    <span style={{ fontSize: 13, color: 'var(--asw-slow)' }}>
+                      All meets are excluded — include at least one to continue
+                    </span>
+                  )}
+                  {meets.length > 1 && !allFormsComplete && includedMeets.length > 0 && (
                     <span style={{ fontSize: 13, color: 'var(--asw-gold)' }}>
-                      Complete required fields on every meet tab to continue
+                      Complete required fields on every included meet to continue
+                    </span>
+                  )}
+                  {meets.length > 1 && includedMeets.length > 0 && includedMeets.length < meets.length && (
+                    <span style={{ fontSize: 13, color: 'var(--color-neutral-400)' }}>
+                      {meets.length - includedMeets.length} meet{meets.length - includedMeets.length > 1 ? 's' : ''} excluded
                     </span>
                   )}
                   <button
@@ -802,7 +871,7 @@ export default function Import() {
                   </button>
                   <button
                     type="button" className="btn btn-primary"
-                    onClick={handleMatch} disabled={loading || !allFormsComplete}
+                    onClick={handleMatch} disabled={loading || !allFormsComplete || includedMeets.length === 0}
                   >
                     {loading ? (loadingMsg || 'Matching swimmers…') : 'Next: Match swimmers →'}
                   </button>

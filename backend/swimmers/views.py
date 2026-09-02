@@ -622,7 +622,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         # Records held — for relay first-leg records, show the individual
         # event name and split time instead of the relay event/team time
         records = []
-        for r in Record.objects.filter(swimmer=swimmer).select_related('event'):
+        for r in Record.objects.filter(swimmer=swimmer).select_related('event', 'result__championship'):
             event_name = r.event.name
             time_display = r.formatted_time
             # If this is a relay record but swimmer is individual, show individual event
@@ -640,7 +640,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'time': time_display,
                 'time_centiseconds': r.time_centiseconds,
                 'location': r.location,
-                'meet_name': r.meet_name,
+                'meet_name': r.result.championship.name if r.result_id and r.result and r.result.championship_id else r.meet_name,
                 'pool': r.pool,
                 'date': r.result_date,
             })

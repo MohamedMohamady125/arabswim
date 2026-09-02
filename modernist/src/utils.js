@@ -40,6 +40,8 @@ export const CODE_TO_ALPHA2 = {
   FSM: 'fm', NRU: 'nr', NZL: 'nz', PLW: 'pw', PNG: 'pg', SAM: 'ws',
   SOL: 'sb', TGA: 'to', TUV: 'tv', VAN: 'vu',
   KUW: 'kw', LBA: 'ly', LIB: 'lb', BRN: 'bh',
+  // British home nations → flag-icons GB subdivision flags
+  ENG: 'gb-eng', WAL: 'gb-wls', SCO: 'gb-sct', NIR: 'gb-nir',
 }
 
 export const ARAB_COUNTRY_CODES = new Set([

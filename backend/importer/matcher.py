@@ -101,6 +101,11 @@ COUNTRY_NAME_ALIASES = {
     'IRAK': 'IRQ',
     'PALESTINE': 'PLE',
     'GREAT BRITAIN': 'GBR',
+    # British home nations — entered as "Team England" etc. at UK meets
+    'ENGLAND': 'ENG', 'TEAM ENGLAND': 'ENG',
+    'WALES': 'WAL', 'TEAM WALES': 'WAL',
+    'SCOTLAND': 'SCO', 'TEAM SCOTLAND': 'SCO',
+    'NORTHERN IRELAND': 'NIR', 'TEAM NORTHERN IRELAND': 'NIR',
     'UNITED STATES': 'USA',
     # Asian HyTek team names
     'HONG KONG CHINA': 'HKG', 'HONG KONG': 'HKG',

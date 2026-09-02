@@ -7,6 +7,8 @@ from django.db.models import Min, Q
 
 class RankingPagination(PageNumberPagination):
     page_size = 50
+    page_size_query_param = 'limit'
+    max_page_size = 100
 
 
 class RankingView(APIView):
@@ -18,6 +20,7 @@ class RankingView(APIView):
         pool = request.query_params.get('pool')
         event = request.query_params.get('event')
         age_group = request.query_params.get('age_group')
+        championship = request.query_params.get('championship')
 
         # Event is required for rankings to make sense
         if not event:
@@ -46,6 +49,8 @@ class RankingView(APIView):
             qs = qs.filter(championship__date__year=int(year))
         if pool:
             qs = qs.filter(championship__pool=pool)
+        if championship:
+            qs = qs.filter(championship_id=championship)
 
         # Age group filter
         # OPEN = best times regardless of age (no filter)

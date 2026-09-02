@@ -303,6 +303,8 @@ class RecordViewSet(viewsets.ModelViewSet):
         scope = request.query_params.get('scope', 'arab')
         country = request.query_params.get('country')
         age_group = request.query_params.get('age_group')
+        year = request.query_params.get('year')
+        championship = request.query_params.get('championship')
 
         # Build base queryset: valid timed results from championships
         qs = Result.objects.filter(
@@ -337,6 +339,13 @@ class RecordViewSet(viewsets.ModelViewSet):
             qs = qs.filter(championship__classification_id=classification)
         if sub_classification:
             qs = qs.filter(championship__sub_classification_id=sub_classification)
+        if year:
+            try:
+                qs = qs.filter(championship__date__year=int(year))
+            except (ValueError, TypeError):
+                pass
+        if championship:
+            qs = qs.filter(championship_id=championship)
         if gender:
             from django.db.models import Q
             qs = qs.filter(Q(swimmer__sex=gender) | Q(swimmer__sex='X'))

@@ -144,6 +144,81 @@ class ReportsEndpointTests(TestCase):
         res = self.client.post('/api/v1/reports/ask/', {'question': 'hi'})
         self.assertIn(res.status_code, (401, 403))
 
+    def test_medal_table_by_championship(self):
+        res = self.client.get('/api/v1/reports/medal-table/?group=championship')
+        rows = res.json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['name'], 'Arab Champs')
+        self.assertEqual(rows[0]['championship_id'], self.meet.id)
+        self.assertEqual(rows[0]['total'], 2)
+
+    def test_swimmer_report(self):
+        res = self.client.get(f'/api/v1/reports/swimmer/?swimmer={self.s1.id}')
+        self.assertEqual(res.status_code, 200)
+        d = res.json()
+        self.assertEqual(d['swimmer']['name'], 'Ali TAMER')
+        self.assertEqual(d['quick_stats']['results'], 1)
+        self.assertEqual(d['quick_stats']['gold'], 1)
+        self.assertEqual(len(d['best_times']), 1)
+        self.assertEqual(d['best_times'][0]['time_centiseconds'], 5000)
+        self.assertEqual(len(d['championships']), 1)
+        # no championship param → empty results_in_championship
+        self.assertEqual(d['results_in_championship'], [])
+
+    def test_swimmer_report_in_championship(self):
+        res = self.client.get(
+            f'/api/v1/reports/swimmer/?swimmer={self.s1.id}'
+            f'&championship={self.meet.id}')
+        rows = res.json()['results_in_championship']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['time_centiseconds'], 5000)
+
+    def test_swimmer_report_requires_swimmer(self):
+        res = self.client.get('/api/v1/reports/swimmer/')
+        self.assertEqual(res.status_code, 400)
+
+    def test_age_report(self):
+        d = self.client.get('/api/v1/reports/age/').json()
+        ages = {row['age']: row for row in d['distribution']}
+        self.assertEqual(ages[19]['swimmers'], 1)
+        self.assertEqual(ages[20]['swimmers'], 1)
+        self.assertEqual(len(d['roster']), 2)
+
+    def test_high_performance_by_swimmer(self):
+        res = self.client.get(
+            '/api/v1/reports/high-performance/?group=swimmer&fina_min=760')
+        rows = res.json()
+        # only Ali (800) clears 760; Rami (750) is filtered out
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['swimmer_name'], 'Ali TAMER')
+
+    def test_high_performance_by_country(self):
+        res = self.client.get(
+            '/api/v1/reports/high-performance/?group=country&fina_min=700')
+        rows = {r['name']: r for r in res.json()}
+        self.assertEqual(rows['Egypt']['best_fina'], 800)
+        self.assertEqual(rows['Tunisia']['best_fina'], 750)
+
+    def test_improvement_report(self):
+        # A second, later meet where s1 swims the same event faster.
+        meet2 = Championship.objects.create(
+            name='Arab Champs 2', date='2027-05-01', pool='LCM',
+            country=self.egy)
+        Result.objects.create(
+            swimmer=self.s1, championship=meet2, event=self.event,
+            round_type='Finals', time_centiseconds=4800, fina_points=850,
+            team='GEZIRA', age_at_competition=20)
+        res = self.client.get(
+            '/api/v1/reports/improvement/?year_from=2026&year_to=2027')
+        rows = res.json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['swimmer_name'], 'Ali TAMER')
+        self.assertEqual(rows[0]['drop_cs'], 200)
+
+    def test_improvement_requires_years(self):
+        res = self.client.get('/api/v1/reports/improvement/')
+        self.assertEqual(res.status_code, 400)
+
 
 class AskHeuristicTests(TestCase):
     """The no-API-key fallback parser must nail the common question shapes."""

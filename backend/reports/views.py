@@ -24,7 +24,7 @@ import re
 import urllib.request
 from datetime import date, timedelta
 
-from django.db.models import Avg, Count, F, Max, Q
+from django.db.models import Avg, Count, F, Max, Min, Q
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -52,6 +52,8 @@ def _filtered_results(request):
         qs = qs.filter(championship_id=p['championship'])
     if p.get('classification'):
         qs = qs.filter(championship__classification_id=p['classification'])
+    if p.get('sub_classification'):
+        qs = qs.filter(championship__sub_classification_id=p['sub_classification'])
     if p.get('country'):
         qs = qs.filter(nationality__code=p['country'].upper())
     if p.get('host_country'):
@@ -91,6 +93,8 @@ def _filtered_medals(request):
         qs = qs.filter(championship_id=p['championship'])
     if p.get('classification'):
         qs = qs.filter(championship__classification_id=p['classification'])
+    if p.get('sub_classification'):
+        qs = qs.filter(championship__sub_classification_id=p['sub_classification'])
     if p.get('country'):
         qs = qs.filter(nationality__code=p['country'].upper())
     if p.get('host_country'):
@@ -150,17 +154,24 @@ def medal_table(request):
                      'swimmer_id_': F('swimmer_id'),
                      'country_code': F('swimmer__nationality__code'),
                      'country_name': F('swimmer__nationality__name')}
+    elif group == 'championship':
+        key = 'championship_id'
+        name_expr = {'name': F('championship__name'),
+                     'championship_id_': F('championship_id'),
+                     'date': F('championship__date'),
+                     'pool': F('championship__pool')}
     else:  # country
         qs = qs.filter(nationality__isnull=False)
         key = 'nationality_id'
         name_expr = {'name': F('nationality__name'),
                      'country_code': F('nationality__code')}
+    order = ('-date',) if group == 'championship' else ('-gold', '-silver', '-bronze')
     rows = (qs.values(key, **name_expr)
             .annotate(gold=Count('id', filter=Q(medal_type='GOLD')),
                       silver=Count('id', filter=Q(medal_type='SILVER')),
                       bronze=Count('id', filter=Q(medal_type='BRONZE')),
                       total=Count('id'))
-            .order_by('-gold', '-silver', '-bronze'))[:_limit(request)]
+            .order_by(*order))[:_limit(request)]
     out = []
     for r in rows:
         row = {'name': r['name'], 'gold': r['gold'], 'silver': r['silver'],
@@ -171,6 +182,10 @@ def medal_table(request):
             row['country_name'] = r['country_name']
         if 'swimmer_id_' in r:
             row['swimmer_id'] = r['swimmer_id_']
+        if 'championship_id_' in r:
+            row['championship_id'] = r['championship_id_']
+            row['date'] = r['date']
+            row['pool'] = r['pool']
         out.append(row)
     return Response(out)
 
@@ -355,6 +370,263 @@ def records_report(request):
             row['swimmer_id'] = r['swimmer_id']
         out.append(row)
     return Response(out)
+
+
+def _fmt_time(cs):
+    """Centiseconds → 'M:SS.CC' / 'SS.CC'."""
+    if not cs:
+        return ''
+    minutes = cs // 6000
+    seconds = (cs % 6000) // 100
+    centis = cs % 100
+    if minutes:
+        return f'{minutes}:{seconds:02d}.{centis:02d}'
+    return f'{seconds}.{centis:02d}'
+
+
+@api_view(['GET'])
+def swimmer_report(request):
+    """Everything about one swimmer: quick stats, best time per event, the
+    meets they attended, and (when ?championship= is given) their results at
+    that meet. ?swimmer= is required."""
+    from swimmers.models import Swimmer
+    sid = request.query_params.get('swimmer')
+    if not sid:
+        return Response({'error': 'swimmer is required'}, status=400)
+    try:
+        swimmer = Swimmer.objects.select_related('nationality').get(pk=sid)
+    except (Swimmer.DoesNotExist, ValueError, TypeError):
+        return Response({'error': 'swimmer not found'}, status=404)
+
+    results = (Result.objects
+               .filter(swimmer_id=sid, time_centiseconds__gt=0, is_hc=False)
+               .select_related('event', 'championship', 'championship__country'))
+    medals = Medal.objects.filter(swimmer_id=sid)
+    magg = medals.aggregate(
+        gold=Count('id', filter=Q(medal_type='GOLD')),
+        silver=Count('id', filter=Q(medal_type='SILVER')),
+        bronze=Count('id', filter=Q(medal_type='BRONZE')),
+    )
+    ragg = results.aggregate(
+        results=Count('id'),
+        meets=Count('championship_id', distinct=True),
+        events=Count('event_id', distinct=True),
+        best_fina=Max('fina_points'),
+    )
+
+    # Best time per event (one fastest swim per event).
+    best_per_event = (results.values('event_id')
+                      .annotate(best=Min('time_centiseconds')))
+    best_times = []
+    for entry in best_per_event:
+        r = (results.filter(event_id=entry['event_id'],
+                            time_centiseconds=entry['best'])
+             .order_by('championship__date').first())
+        if r:
+            best_times.append({
+                'event_id': r.event_id,
+                'event_name': r.event.name,
+                'event_sort_order': r.event.sort_order,
+                'event_distance': r.event.distance,
+                'time': r.formatted_time,
+                'time_centiseconds': r.time_centiseconds,
+                'fina_points': r.fina_points,
+                'age': r.age_at_competition,
+                'championship_id': r.championship_id,
+                'championship_name': r.championship.name,
+                'date': r.championship.date,
+                'pool': r.championship.pool,
+            })
+    best_times.sort(key=lambda x: (x['event_sort_order'], x['event_distance']))
+
+    # Meets attended (for the "choose championship" dropdown).
+    champs = (results.values('championship_id',
+                             name=F('championship__name'),
+                             date=F('championship__date'),
+                             pool=F('championship__pool'))
+              .distinct().order_by('-date'))
+    championships = [{'id': c['championship_id'], 'name': c['name'],
+                     'date': c['date'], 'pool': c['pool']} for c in champs]
+
+    # Results at a single chosen meet.
+    results_in_championship = []
+    cid = request.query_params.get('championship')
+    if cid:
+        for r in (results.filter(championship_id=cid)
+                  .order_by('event__sort_order', 'event__distance')):
+            results_in_championship.append({
+                'event_id': r.event_id,
+                'event_name': r.event.name,
+                'time': r.formatted_time,
+                'time_centiseconds': r.time_centiseconds,
+                'fina_points': r.fina_points,
+                'round': r.round_type,
+                'age': r.age_at_competition,
+            })
+
+    nat = swimmer.nationality
+    return Response({
+        'swimmer': {
+            'id': swimmer.id,
+            'name': swimmer.name,
+            'gender': swimmer.sex,
+            'age': swimmer.age,
+            'country_name': nat.name if nat else None,
+            'country_code': nat.code if nat else None,
+            'country_flag': nat.flag_url if nat else None,
+        },
+        'quick_stats': {
+            'results': ragg['results'],
+            'meets': ragg['meets'],
+            'events': ragg['events'],
+            'best_fina': ragg['best_fina'],
+            'gold': magg['gold'],
+            'silver': magg['silver'],
+            'bronze': magg['bronze'],
+            'medals': magg['gold'] + magg['silver'] + magg['bronze'],
+        },
+        'best_times': best_times,
+        'championships': championships,
+        'results_in_championship': results_in_championship,
+    })
+
+
+@api_view(['GET'])
+def age_report(request):
+    """Age of athletes: distribution (distinct swimmers + swims per age) plus a
+    roster of swimmers with their age. Uses the shared result filters."""
+    qs = _filtered_results(request).filter(
+        swimmer__is_relay_team=False, age_at_competition__isnull=False)
+    dist = (qs.values('age_at_competition')
+            .annotate(swimmers=Count('swimmer_id', distinct=True),
+                      results=Count('id'))
+            .order_by('age_at_competition'))
+    distribution = [{'age': d['age_at_competition'], 'swimmers': d['swimmers'],
+                     'results': d['results']} for d in dist]
+    # Roster: one row per swimmer with their (min) competition age.
+    roster_rows = (qs.values('swimmer_id',
+                             name=F('swimmer__name'),
+                             country_code=F('swimmer__nationality__code'),
+                             gender=F('swimmer__sex'))
+                   .annotate(age=Min('age_at_competition'),
+                             results=Count('id'))
+                   .order_by('age', 'name'))[:_limit(request)]
+    roster = [{'swimmer_id': r['swimmer_id'], 'name': r['name'],
+               'country_code': r['country_code'], 'gender': r['gender'],
+               'age': r['age'], 'results': r['results']} for r in roster_rows]
+    return Response({'distribution': distribution, 'roster': roster})
+
+
+@api_view(['GET'])
+def improvement_report(request):
+    """Biggest time drops: for each swimmer+event, best time in the baseline
+    year (?year_from=) vs the comparison year (?year_to=); rank by largest
+    improvement. All the shared result filters apply to both years."""
+    p = request.query_params
+    try:
+        year_from = int(p.get('year_from'))
+        year_to = int(p.get('year_to'))
+    except (TypeError, ValueError):
+        return Response({'error': 'year_from and year_to are required'},
+                        status=400)
+    base = _filtered_results(request).filter(swimmer__is_relay_team=False)
+
+    def bests(year):
+        rows = (base.filter(championship__date__year=year)
+                .values('swimmer_id', 'event_id')
+                .annotate(best=Min('time_centiseconds')))
+        return {(r['swimmer_id'], r['event_id']): r['best'] for r in rows}
+
+    b_from = bests(year_from)
+    b_to = bests(year_to)
+    common = set(b_from) & set(b_to)
+    if not common:
+        return Response([])
+
+    # Resolve names/events for the swimmers/events involved.
+    from swimmers.models import Swimmer
+    swimmer_ids = {k[0] for k in common}
+    event_ids = {k[1] for k in common}
+    swimmers = {s.id: s for s in Swimmer.objects.select_related('nationality')
+                .filter(id__in=swimmer_ids)}
+    events = {e.id: e for e in Event.objects.filter(id__in=event_ids)}
+
+    rows = []
+    for (swid, evid) in common:
+        from_cs, to_cs = b_from[(swid, evid)], b_to[(swid, evid)]
+        drop = from_cs - to_cs
+        if drop <= 0:
+            continue
+        s = swimmers.get(swid)
+        e = events.get(evid)
+        if not s or not e:
+            continue
+        nat = s.nationality
+        rows.append({
+            'swimmer_id': swid,
+            'swimmer_name': s.name,
+            'country_code': nat.code if nat else None,
+            'gender': s.sex,
+            'event_id': evid,
+            'event_name': e.name,
+            'from_time': _fmt_time(from_cs),
+            'to_time': _fmt_time(to_cs),
+            'drop_cs': drop,
+            'drop_pct': round(drop / from_cs * 100, 2),
+        })
+    rows.sort(key=lambda r: r['drop_cs'], reverse=True)
+    return Response(rows[:_limit(request)])
+
+
+@api_view(['GET'])
+def high_performance(request):
+    """High-FINA swims, grouped by swimmer / country / club. ?fina_min= sets
+    the floor (default 700). Country/club rows carry a best-FINA leaderboard;
+    swimmer rows list each swimmer's single best high-FINA swim."""
+    p = request.query_params
+    try:
+        floor = int(p.get('fina_min', 700))
+    except (TypeError, ValueError):
+        floor = 700
+    group = p.get('group', 'swimmer')
+    qs = (_filtered_results(request)
+          .filter(swimmer__is_relay_team=False,
+                  fina_points__isnull=False, fina_points__gte=floor)
+          .select_related('swimmer', 'swimmer__nationality', 'event',
+                          'championship', 'nationality'))
+    if group == 'country':
+        rows = (qs.filter(nationality__isnull=False)
+                .values('nationality_id',
+                        name=F('nationality__name'),
+                        country_code=F('nationality__code'))
+                .annotate(swims=Count('id'),
+                          swimmers=Count('swimmer_id', distinct=True),
+                          best_fina=Max('fina_points'))
+                .order_by('-best_fina', '-swims'))[:_limit(request)]
+        return Response([{'name': r['name'], 'country_code': r['country_code'],
+                          'swims': r['swims'], 'swimmers': r['swimmers'],
+                          'best_fina': r['best_fina']} for r in rows])
+    if group == 'club':
+        rows = (qs.exclude(team='')
+                .values('team', name=F('team'))
+                .annotate(swims=Count('id'),
+                          swimmers=Count('swimmer_id', distinct=True),
+                          best_fina=Max('fina_points'))
+                .order_by('-best_fina', '-swims'))[:_limit(request)]
+        return Response([{'name': r['name'], 'swims': r['swims'],
+                          'swimmers': r['swimmers'],
+                          'best_fina': r['best_fina']} for r in rows])
+    # group == swimmer: each swimmer's single best high-FINA swim.
+    qs = qs.order_by('-fina_points')
+    rows, seen = [], set()
+    for r in qs.iterator(chunk_size=2000):
+        if r.swimmer_id in seen:
+            continue
+        seen.add(r.swimmer_id)
+        rows.append(_time_row(r))
+        if len(rows) >= _limit(request):
+            break
+    return Response(rows)
 
 
 # ---------------------------------------------------------------------------

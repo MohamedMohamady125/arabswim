@@ -8,5 +8,9 @@ urlpatterns = [
     path('reports/top-times/', views.top_times),
     path('reports/participation/', views.participation),
     path('reports/records/', views.records_report),
+    path('reports/swimmer/', views.swimmer_report),
+    path('reports/age/', views.age_report),
+    path('reports/improvement/', views.improvement_report),
+    path('reports/high-performance/', views.high_performance),
     path('reports/ask/', views.ask),
 ]

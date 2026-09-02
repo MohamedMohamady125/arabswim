@@ -12,9 +12,17 @@ class Record(models.Model):
         ('WORLD', 'World'),
     ]
     POOL_CHOICES = [('LCM', 'LCM'), ('SCM', 'SCM')]
+    AGE_CATEGORY_CHOICES = [
+        ('OPEN', 'Open'),
+        ('U10', 'U10'), ('U11', 'U11'), ('U12', 'U12'), ('U13', 'U13'),
+        ('U14', 'U14'), ('U15', 'U15'), ('U16', 'U16'), ('U17', 'U17'),
+        ('U18', 'U18'),
+    ]
     swimmer = models.ForeignKey(Swimmer, on_delete=models.CASCADE, related_name='records')
     event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name='records')
     record_type = models.CharField(max_length=20, choices=RECORD_TYPE_CHOICES)
+    age_category = models.CharField(max_length=10, choices=AGE_CATEGORY_CHOICES,
+                                    default='OPEN')
     pool = models.CharField(max_length=3, choices=POOL_CHOICES, default='LCM')
     time_centiseconds = models.IntegerField()
     location = models.CharField(max_length=200, blank=True, default='')

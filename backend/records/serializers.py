@@ -13,14 +13,14 @@ class RecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = Record
         fields = ['id', 'swimmer', 'swimmer_detail', 'event', 'event_detail',
-                  'record_type', 'pool', 'time_centiseconds', 'formatted_time',
-                  'location', 'meet_name', 'country', 'country_detail',
-                  'result_date', 'result', 'is_new', 'created_at']
+                  'record_type', 'age_category', 'pool', 'time_centiseconds',
+                  'formatted_time', 'location', 'meet_name', 'country',
+                  'country_detail', 'result_date', 'result', 'is_new', 'created_at']
 
 
 class RecordCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Record
-        fields = ['id', 'swimmer', 'event', 'record_type', 'pool',
+        fields = ['id', 'swimmer', 'event', 'record_type', 'age_category', 'pool',
                   'time_centiseconds', 'location', 'meet_name', 'country',
                   'result_date', 'result', 'is_new']

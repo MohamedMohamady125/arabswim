@@ -11,6 +11,9 @@ import { formatDate, RECORD_TYPES, mediaUrl, parseTime } from '../utils'
 const TYPE_LABEL = Object.fromEntries(RECORD_TYPES.map((t) => [t.value, t.label]))
 const SCOPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
 
+const AGE_CATEGORIES = ['OPEN', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18']
+const ageCategoryLabel = (v) => (!v || v === 'OPEN' ? 'Open' : v)
+
 const SCOPE_OPTIONS = [
   { value: 'NATIONAL', label: 'National' },
   { value: 'ARAB', label: 'Arab' },
@@ -23,7 +26,7 @@ function AddRecordModal({ onClose, onCreated }) {
   const [results, setResults] = useState([])
   const [sel, setSel] = useState(null)
   const [form, setForm] = useState({
-    event: '', record_type: 'NATIONAL', pool: 'LCM', time: '',
+    event: '', record_type: 'NATIONAL', age_category: 'OPEN', pool: 'LCM', time: '',
     result_date: '', meet_name: '', location: '', is_new: true,
   })
   const [saving, setSaving] = useState(false)
@@ -58,6 +61,7 @@ function AddRecordModal({ onClose, onCreated }) {
         swimmer: sel.id,
         event: Number(form.event),
         record_type: form.record_type,
+        age_category: form.age_category,
         pool: form.pool,
         time_centiseconds: cs,
         result_date: form.result_date,
@@ -132,6 +136,12 @@ function AddRecordModal({ onClose, onCreated }) {
               <label style={label}>Record scope</label>
               <select style={input} value={form.record_type} onChange={set('record_type')}>
                 {RECORD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={label}>Age category</label>
+              <select style={input} value={form.age_category} onChange={set('age_category')}>
+                {AGE_CATEGORIES.map((a) => <option key={a} value={a}>{ageCategoryLabel(a)}</option>)}
               </select>
             </div>
           </div>
@@ -316,17 +326,24 @@ function RecordCards({ rows }) {
                       {(r.swimmer_detail?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')}
                     </div>
                   )}
+                  {/* 1 — scope + age category (Open / under-age) */}
                   <div className="card-kicker" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span>{r.record_type} record</span>
-                    {r.result_date && <span style={{ fontWeight: 600 }}>{formatDate(r.result_date)}</span>}
-                    <span className="tag tag-accent-2" style={{ fontSize: 9, padding: '1px 6px' }}>{r.pool}</span>
+                    <span>{TYPE_LABEL[r.record_type] || r.record_type} record</span>
+                    <span style={{ opacity: 0.5 }}>·</span>
+                    <span>{ageCategoryLabel(r.age_category)}</span>
                   </div>
-                  <div className="asw-num rec-time" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, margin: '4px 0 2px' }}>
-                    {r.formatted_time}
+                  {/* 2 — event with gender */}
+                  <div className="rec-event" style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>
+                    {r.swimmer_detail?.sex === 'F' ? "Women's" : "Men's"} {r.event_detail?.name}
                   </div>
-                  <div className="rec-event" style={{ fontSize: 13 }}>
-                    {r.event_detail?.name} · {r.swimmer_detail?.sex === 'F' ? 'Women' : 'Men'}
+                  {/* 3 — pool badge in front of the time */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
+                    <span className="tag tag-accent-2" style={{ fontSize: 10, padding: '2px 8px', fontWeight: 700 }}>{r.pool}</span>
+                    <span className="asw-num rec-time" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>
+                      {r.formatted_time}
+                    </span>
                   </div>
+                  {/* 4 — swimmer name + flag */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                     <Flag code={r.swimmer_detail?.nationality_detail?.code} name={r.swimmer_detail?.nationality_detail?.name} />
                     {r.swimmer && !r.swimmer_detail?.is_relay_team ? (
@@ -337,10 +354,18 @@ function RecordCards({ rows }) {
                       <span className="rec-name" style={{ fontSize: 13, fontWeight: 600 }}>{r.swimmer_detail?.name}</span>
                     )}
                   </div>
-                  <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 6 }}>
-                    {[r.meet_name, r.location].filter(Boolean).join(' · ')}
-                    {r.result_date ? ` · ${formatDate(r.result_date)}` : ''}
-                  </div>
+                  {/* 5 — meet name */}
+                  {(r.meet_name || r.location) && (
+                    <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 6 }}>
+                      {[r.meet_name, r.location].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                  {/* 6 — date of meet */}
+                  {r.result_date && (
+                    <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>
+                      {formatDate(r.result_date)}
+                    </div>
+                  )}
         </div>
       ))}
     </div>

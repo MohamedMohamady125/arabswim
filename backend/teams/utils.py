@@ -564,4 +564,13 @@ def _get_skip_names():
             skip.add(v)
             skip.add(normalize_team_key(v))
 
+    # Non-English country-name spellings (French/HyTek variants like
+    # "TUNISIE", "MAROC", "ARABIE SAOUDITE") that appear in the team/club
+    # column of internationally-hosted meets. These are national teams, not
+    # clubs — skip them so they never become bogus club records.
+    from importer.matcher import COUNTRY_NAME_ALIASES
+    for alias in COUNTRY_NAME_ALIASES:
+        skip.add(alias)
+        skip.add(normalize_team_key(alias))
+
     return skip

@@ -62,6 +62,9 @@ COUNTRY_CODE_ALIASES = {
     'SDN': 'SUD',               # ISO Sudan -> IOC (DB code)
     'MRT': 'MTN',               # ISO Mauritania -> IOC (DB code)
     'MOR': 'MAR',               # legacy Morocco
+    # Sub-Saharan Africa (IOC/ISO variants seen in African-champs PDFs)
+    'MWI': 'MAW',               # ISO Malawi -> IOC (DB code)
+    'ZMB': 'ZAM',               # ISO Zambia -> IOC (DB code)
     # Egypt
     'UAR': 'EGY',               # historic (United Arab Republic)
 }

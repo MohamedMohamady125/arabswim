@@ -271,6 +271,152 @@ def _extract_page_deoverlap(page):
     return '\n'.join(page_lines)
 
 
+def _row_start_xs(words):
+    """x0 of every rank/header word that begins a row (nothing to its left).
+
+    In a HY-TEK grid, result ranks ("1", "2", ...) and event headers ("#7",
+    "(#7") start at each column's left edge. A word is a row-start when no
+    other word ends just to its left on the same text line — this rejects age
+    tokens like the "17" in "Robertson, Hannah K 17 RSA", which also look
+    like small integers but sit mid-row."""
+    by_row = {}
+    for w in words:
+        by_row.setdefault(round(w['top'] / 3.0), []).append(w)
+    xs = []
+    for w in words:
+        t = w['text']
+        is_rank = bool(_re_module.match(r'^\*?\d{1,3}$', t)) and 1 <= int(t.lstrip('*')) <= 99
+        is_hdr = t.startswith('#') or t.startswith('(#')
+        if not (is_rank or is_hdr):
+            continue
+        row = by_row.get(round(w['top'] / 3.0), ())
+        # Nearest word ending to the left, and nearest starting to the right.
+        left_gap = None
+        right = None
+        for w2 in row:
+            if w2 is w:
+                continue
+            if w2['x1'] <= w['x0']:
+                g = w['x0'] - w2['x1']
+                if left_gap is None or g < left_gap:
+                    left_gap = g
+            elif right is None or w2['x0'] < right['x0']:
+                right = w2
+        # A real column start is a rank/header with no word close to its left
+        # (true row start) OR one immediately followed by a "Last," name — the
+        # HY-TEK result signature. Age tokens ("... Shamaa 13 COL") fail both:
+        # a name sits ~25-60pt to their left and a team code (no comma) follows.
+        is_row_start = left_gap is None or left_gap >= 80
+        name_follows = (
+            right is not None
+            and right['x0'] - w['x1'] < 30
+            and right['text'].endswith(',')
+        )
+        if is_hdr or is_row_start or name_follows:
+            xs.append(w['x0'])
+    return xs
+
+
+def _detect_grid(file_path):
+    """Detect a document-wide regular column grid (3+ evenly spaced columns).
+
+    HY-TEK lays events out on a fixed geometry that's identical on every page,
+    so the grid is a document-level property. We gather the left-edge x of all
+    rank/header row-starts across the whole file, cluster them, and keep the
+    column-left positions that recur across pages. Returns the sorted list of
+    column-left x when a regular 3+-column grid is found, else None (so 1- and
+    2-column PDFs keep using the existing per-page heuristics untouched).
+    """
+    import pdfplumber
+    starts = []
+    npages = 0
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            npages += 1
+            words = page.extract_words()
+            if words:
+                starts.extend(_row_start_xs(words))
+            page.flush_cache()
+    if len(starts) < 12:
+        return None
+    starts.sort()
+    clusters = []
+    for x in starts:
+        if clusters and x - clusters[-1][-1] < 40:
+            clusters[-1].append(x)
+        else:
+            clusters.append([x])
+    # A real column holds a large, comparable share of all row-starts; require
+    # support proportional to both the page count and the busiest cluster so
+    # stray numbers (relay legs, ages) don't invent an extra column.
+    max_count = max(len(c) for c in clusters)
+    min_support = max(npages, 0.4 * max_count)
+    centers = sorted(sum(c) / len(c) for c in clusters if len(c) >= min_support)
+    if len(centers) < 3:
+        return None
+    gaps = [centers[i + 1] - centers[i] for i in range(len(centers) - 1)]
+    avg = sum(gaps) / len(gaps)
+    if any(abs(g - avg) > avg * 0.3 for g in gaps):
+        return None
+    return centers
+
+
+def _extract_by_grid(page, grid, tol=15):
+    """Extract a page by bucketing each word into a column of the fixed grid.
+
+    Each word is assigned to the right-most column whose left edge is at or
+    before the word's start (within a small tolerance), so a long event header
+    that overruns the narrow result gutter stays whole in its own column, and
+    a split time in one column never glues onto the next column's header. Each
+    column is then clustered into lines and emitted left-to-right so events
+    stay in reading order.
+    """
+    words = page.extract_words(use_text_flow=True, keep_blank_chars=True)
+    if not words:
+        return ''
+    buckets = [[] for _ in grid]
+    for w in words:
+        col = 0
+        for i, gl in enumerate(grid):
+            if w['x0'] >= gl - tol:
+                col = i
+        buckets[col].append(w)
+    parts = []
+    for bucket in buckets:
+        if not bucket:
+            continue
+        bucket.sort(key=lambda w: w['top'])
+        lines = []
+        for w in bucket:
+            if lines and abs(w['top'] - lines[-1][0]['top']) < 4:
+                lines[-1].append(w)
+            else:
+                lines.append([w])
+        for lw in lines:
+            lw.sort(key=lambda w: w['x0'])
+            parts.append(' '.join(w['text'] for w in lw))
+    return '\n'.join(parts)
+
+
+def _hytek_header_lines(page):
+    """Top-of-page meet header (title/date) lines, skipping interleaved
+    result rows. Used once, for the first page of a multi-column layout."""
+    full_page_text = page.extract_text() or ''
+    result_like = _re_module.compile(r'^\*?\d{1,3}\s+\S.*\d{1,2}[:.]\d{2}')
+    header_lines = []
+    for ln in full_page_text.split('\n')[:8]:
+        ln = ln.strip()
+        if not ln:
+            continue
+        if ln.startswith('Event ') or _re_module.match(
+                r'^#?\s*\d*\s*(Boys|Girls|Men|Women|Mixed)\b.*Met(er|re)', ln):
+            break
+        if result_like.match(ln):
+            continue
+        header_lines.append(ln)
+    return header_lines
+
+
 def _extract_columns(file_path):
     """
     Extract text from a HY-TEK PDF handling two-column layouts and
@@ -294,6 +440,8 @@ def _extract_columns(file_path):
     all_text_parts = []
     header_extracted = False
 
+    grid = _detect_grid(file_path)
+
     with pdfplumber.open(file_path) as pdf:
         for page_idx, page in enumerate(pdf.pages):
             page_width = page.width
@@ -304,6 +452,20 @@ def _extract_columns(file_path):
             # content on both sides of the midpoint
             words = page.extract_words()
             if not words:
+                continue
+
+            # Regular 3+-column grid: bucket words per column and read
+            # left-to-right so events stay separated (two-column split
+            # would merge them).
+            if grid and len(grid) >= 3:
+                if not header_extracted:
+                    hl = _hytek_header_lines(page)
+                    if hl:
+                        all_text_parts.append('\n'.join(hl))
+                    header_extracted = True
+                all_text_parts.append(_extract_by_grid(page, grid))
+                del words
+                page.flush_cache()
                 continue
 
             left_words = [w for w in words if w['x0'] < mid_x - 20]

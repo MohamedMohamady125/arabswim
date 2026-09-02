@@ -159,8 +159,15 @@ def extract_date_and_location(text):
     # --- 1. Explicit full range: "DD/MM/YYYY to DD/MM/YYYY" ---
     rm = _FULL_RANGE_RE.search(text)
     if rm:
-        start_date = _iso(int(rm.group(1)), int(rm.group(2)), int(rm.group(3)))
-        end_date = _iso(int(rm.group(4)), int(rm.group(5)), int(rm.group(6)))
+        a, b, y1 = int(rm.group(1)), int(rm.group(2)), int(rm.group(3))
+        c, d, y2 = int(rm.group(4)), int(rm.group(5)), int(rm.group(6))
+        # Default is DD/MM. If that's impossible (a "month" > 12) but the
+        # US MM/DD reading works — e.g. HY-TEK "10/11/2021 to 10/16/2021" —
+        # swap the day/month order for both endpoints.
+        if (b > 12 or d > 12) and a <= 12 and c <= 12:
+            a, b, c, d = b, a, d, c
+        start_date = _iso(a, b, y1)
+        end_date = _iso(c, d, y2)
 
     # --- 1.5 Cross-month day range: "30/7 - 4/8/2026" ---
     if not start_date:

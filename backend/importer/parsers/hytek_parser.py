@@ -34,23 +34,35 @@ from .base import (
 # Also: "Event 1 Girls 8-11 50 LC Meter Backstroke"
 # Also: "Event 1 Men Open 1500 SC Meter Freestyle"
 # Also: "Event 1 Boys 8 & Under 50 SC Meter Freestyle"
+# Age group fragment, shared by both headers. Handles ranges ("12-13"),
+# open ("Open"), "8 & Under", and the compact "17&U" / "18&O" (& Under/Over)
+# form used by some HY-TEK meets (e.g. African Junior Championships).
+_AGE_GROUP = (
+    r'(?:\d+(?:\s*[-&\s]\s*(?:\d+|Over|Under|Unde|U|O|Year\s*Olds?))?|Open)'
+)
+# Event number prefix: "Event 1 " or the compact "#1 " form.
+_EVENT_PREFIX = r'(?:Event\s+\d+\s+|#\s*\d+\s+)?'
+# Course marker ("SC Meter" / "LC Meter") is optional — some meets print
+# just "100 Meter Free".
+_METER = r'(?:(?:SC|LC)\s+)?Met(?:er|re)s?\s+'
+
 EVENT_HEADER = re.compile(
-    r'(?:Event\s+\d+\s+)?'
+    _EVENT_PREFIX +
     r'(Boys|Girls|Men|Women|Mixed)\s+'
-    r'(?:((?:\d+(?:\s*[-&\s]\s*(?:\d+|Over|Under|Year\s*Olds?))?|Open))\s+)?'
+    r'(?:(' + _AGE_GROUP + r')\s+)?'
     r'(\d+)\s+'
-    r'(?:SC|LC)\s+Met(?:er|re)s?\s+'
+    + _METER +
     r'(.+)',
     re.IGNORECASE
 )
 
 # Relay header with explicit legs: "Event 1 Boys 12-13 4x100 SC Meter Freestyle Relay"
 RELAY_HEADER = re.compile(
-    r'(?:Event\s+\d+\s+)?'
+    _EVENT_PREFIX +
     r'(Boys|Girls|Men|Women|Mixed)\s+'
-    r'(?:((?:\d+(?:\s*[-&\s]\s*(?:\d+|Over|Under|Year\s*Olds?))?|Open))\s+)?'
+    r'(?:(' + _AGE_GROUP + r')\s+)?'
     r'(\d+)\s*x\s*(\d+)\s+'
-    r'(?:SC|LC)\s+Met(?:er|re)s?\s+'
+    + _METER +
     r'(.+)',
     re.IGNORECASE
 )
@@ -61,6 +73,8 @@ SKIP_PATTERNS = [
     re.compile(r'meet manager', re.IGNORECASE),
     re.compile(r'^\s*Page\s+\d', re.IGNORECASE),
     re.compile(r'^\s*Record:', re.IGNORECASE),
+    # Record label lines: "AFR: 54.79 A 2018 Erin Gallagher", "GHA: 1:02.30 ..."
+    re.compile(r'^\s*[A-Z]{2,4}:\s+\d', re.IGNORECASE),
     re.compile(r'Age\s*G\s*Record', re.IGNORECASE),
     re.compile(r'Jor\s*Record', re.IGNORECASE),
     re.compile(r'^\s*National\s+Team\s*$', re.IGNORECASE),

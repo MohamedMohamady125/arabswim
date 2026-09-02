@@ -1820,32 +1820,63 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                       results__championship_id=championship.id)
               .distinct())
 
+        def _case(tok):
+            """'C' all-caps, 'T' has a lowercase letter, 'x' no case signal."""
+            if not any(c.isalpha() for c in tok):
+                return 'x'
+            return 'C' if tok == tok.upper() else 'T'
+
         def try_swap(name):
             tokens = name.strip().split()
             if len(tokens) < 2:
                 return None
+            cls = [_case(t) for t in tokens]
+            # Need both an ALL-CAPS part and a title-case part to tell the
+            # name order apart. Single-case names ("MOHAMED ALI", "Mohamed
+            # Ali") are ambiguous — leave them untouched.
+            if not any(c == 'C' for c in cls) or not any(c == 'T' for c in cls):
+                return None
+            n = len(tokens)
 
-            # Pattern 1: leading title-case + trailing ALL-CAPS
-            # "Khoury MARIE" → "Marie KHOURY"
-            i = 0
-            while i < len(tokens) and tokens[i] != tokens[i].upper():
-                i += 1
-            if 0 < i < len(tokens) and all(t == t.upper() for t in tokens[i:]):
-                given = ' '.join(w.capitalize() for w in tokens[i:])
-                surname = ' '.join(tokens[:i]).upper()
+            def out(given_tokens, surname_tokens):
+                given = ' '.join(w.capitalize() for w in given_tokens)
+                surname = ' '.join(surname_tokens).upper()
                 return f'{given} {surname}'
 
-            # Pattern 2: leading ALL-CAPS + trailing title-case
-            # "KHOURY Marie" → "Marie KHOURY"
-            i = 0
-            while i < len(tokens) and tokens[i] == tokens[i].upper() \
-                    and any(c.isalpha() for c in tokens[i]):
-                i += 1
-            if 0 < i < len(tokens):
-                given = ' '.join(tokens[i:])
-                surname = ' '.join(tokens[:i])
-                return f'{given} {surname}'
+            # Case A — "Family GIVEN": the trailing ALL-CAPS run is the given
+            # name, everything before it is the family name (which may itself
+            # contain an ALL-CAPS particle like "EL"). "El Khoury MARIE" and
+            # "EL Khoury MARIE" both → "Marie EL KHOURY".
+            if cls[-1] == 'C':
+                k = n
+                while k > 0 and cls[k - 1] == 'C':
+                    k -= 1
+                family, given = tokens[:k], tokens[k:]
+                if family and any(c == 'T' for c in cls[:k]):
+                    return out(given, family)
+                return None
 
+            # Case B — "SURNAME Given": the leading ALL-CAPS run is the
+            # surname, everything after is the given name. "EL KHOURY Marie"
+            # → "Marie EL KHOURY".
+            if cls[0] == 'C':
+                k = 0
+                while k < n and cls[k] == 'C':
+                    k += 1
+                surname, given = tokens[:k], tokens[k:]
+                if given:
+                    return out(given, surname)
+                return None
+
+            # Else — the ALL-CAPS surname sits in the interior, both ends
+            # title-case ("Marie KHOURY Anne"). Only swap when the caps run
+            # is contiguous; otherwise it's too ambiguous to touch.
+            caps_idx = [i for i, c in enumerate(cls) if c == 'C']
+            if caps_idx == list(range(caps_idx[0], caps_idx[-1] + 1)):
+                surname = tokens[caps_idx[0]:caps_idx[-1] + 1]
+                given = [t for i, t in enumerate(tokens)
+                         if i < caps_idx[0] or i > caps_idx[-1]]
+                return out(given, surname)
             return None
 
         renamed = 0

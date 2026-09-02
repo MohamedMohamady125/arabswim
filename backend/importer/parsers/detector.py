@@ -6,7 +6,7 @@ Passes filename to parsers for pool detection.
 import os
 import pdfplumber
 
-from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser, msecm_parser, aprace_parser, musz_parser
+from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser, msecm_parser, aprace_parser, musz_parser, microplus_parser
 from .base import ParsedMeet, detect_pool
 
 
@@ -96,8 +96,12 @@ def _parse_pdf(file_path, filename=''):
     # Detect pool from text + filename
     pool = detect_pool(detect_text, filename)
 
+    # Microplus (microplustiming.com) — per-page event+round format
+    if microplus_parser.detect_format(detect_text):
+        full_text = _extract_simple(file_path)
+        meet = microplus_parser.parse(full_text)
     # MÚSZ (LIVE.MUSZ.HU) has an unmistakable column header — check it first.
-    if musz_parser.detect_format(detect_text):
+    elif musz_parser.detect_format(detect_text):
         full_text = _extract_simple(file_path)
         meet = musz_parser.parse(full_text)
     # Splash is more specific than HY-TEK — check Splash first

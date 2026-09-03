@@ -139,6 +139,13 @@ function AddRecordModal({ onClose, onCreated }) {
               </select>
             </div>
             <div>
+              <label style={label}>Pool</label>
+              <select style={input} value={form.pool} onChange={set('pool')}>
+                <option value="LCM">LCM (50m)</option>
+                <option value="SCM">SCM (25m)</option>
+              </select>
+            </div>
+            <div>
               <label style={label}>Age category</label>
               <select style={input} value={form.age_category} onChange={set('age_category')}>
                 {AGE_CATEGORIES.map((a) => <option key={a} value={a}>{ageCategoryLabel(a)}</option>)}
@@ -147,13 +154,6 @@ function AddRecordModal({ onClose, onCreated }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 16 }}>
-            <div>
-              <label style={label}>Pool</label>
-              <select style={input} value={form.pool} onChange={set('pool')}>
-                <option value="LCM">LCM (50m)</option>
-                <option value="SCM">SCM (25m)</option>
-              </select>
-            </div>
             <div>
               <label style={label}>Time</label>
               <input style={input} className="asw-num" value={form.time} onChange={set('time')} placeholder="M:SS.hh" />

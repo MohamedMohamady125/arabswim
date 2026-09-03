@@ -49,7 +49,7 @@ _country_cache = None
 COUNTRY_CODE_ALIASES = {
     # Gulf
     'KUW': 'KWT',               # IOC Kuwait -> ISO (DB code)
-    'BRN': 'BHR', 'BAH': 'BHR',  # IOC / legacy Bahrain
+    'BRN': 'BHR',               # IOC Bahrain -> ISO (DB code); BAH is Bahamas, not Bahrain
     'SAU': 'KSA',               # ISO Saudi Arabia -> IOC (DB code)
     'ARE': 'UAE',               # ISO UAE -> IOC (DB code)
     'OMN': 'OMA',               # ISO Oman -> IOC (DB code)

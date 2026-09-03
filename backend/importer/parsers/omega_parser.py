@@ -54,6 +54,94 @@ HC_INDIVIDUAL_PREFIX = re.compile(
 # All time-like values on a line (split times + final time)
 _TIME_RE = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})')
 
+# Detailed "Results" pages repeat a round already printed on a "Results
+# Summary" page, but drop the round word from the header:
+#   "Event 331 Men's 50m Freestyle"   (heats detail, with splits)
+#   "Event 431 Men's 50m Freestyle"   (semis detail)
+#   "Event 102 Men's 400m Freestyle"  (final detail — the "Final" summary
+#                                       already carried every swim)
+# Every real round is ALSO printed with its round word ("Event 31 …
+# Heats", "Event 131 … Final"), so these round-less repeats are redundant.
+# If we don't recognise them as headers, their swims leak into whatever
+# event was open before (finals ranked 1-2 polluting the heats list).
+EVENT_NUM_HEADER = re.compile(r"^Event\s+\d+\s+(?:Men|Women|Mixed)'?s\b", re.IGNORECASE)
+
+# Medal / points summary sections at the end of the book: their lines start
+# with a number or medal word but are not results.
+STOP_SECTION = re.compile(r'^(?:Medallists|Medal Standings?|Medal Table)\b', re.IGNORECASE)
+
+# A real result row never carries the event name inline; the end-of-book
+# points table does ("45 PROUD Benjamin GBR Men's 50m Freestyle Final 21.32 943").
+_SUMMARY_INLINE = re.compile(r"(?:Men|Women|Mixed)'?s\s+\d")
+_LEADING_RANK = re.compile(r'^=?(\d{1,3})$')
+_HC_TOKEN = re.compile(r'^(?:H\.?C\.?|EXH)$', re.IGNORECASE)
+_TIMEISH = re.compile(r'^(?:\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})$')
+
+
+def _parse_individual_line(stripped):
+    """Anchor-based parse of an Omega individual result row.
+
+    Returns (status, rank, name_raw, birth_year, noc, time_text) or None.
+
+    Layout: ``[=]RANK [HEAT] [LANE] LASTNAME Firstname NOC [DD MON YYYY]
+    [R.T.] [splits…] TIME [behind] [Q/R…]``.  The NOC is pinned either to
+    the token right before a "DD MON YYYY" date of birth, or (when the row
+    has no DOB) to the last 3-letter uppercase token before the first
+    time value.  This keeps ALL-CAPS first names (e.g. "CROOKS JJG") from
+    swallowing the NOC and mis-reading a 3-letter month as the country.
+    """
+    if _SUMMARY_INLINE.search(stripped):
+        return None
+    toks = stripped.split()
+    if not toks:
+        return None
+    status = 'OK'
+    m = _LEADING_RANK.match(toks[0])
+    if m:
+        rank = int(m.group(1))
+    elif _HC_TOKEN.match(toks[0]):
+        status, rank = 'HC', 0
+    else:
+        return None
+    i = 1
+    # optional heat + lane (small integers)
+    skipped = 0
+    while i < len(toks) and skipped < 2 and re.fullmatch(r'\d{1,2}', toks[i]):
+        i += 1
+        skipped += 1
+    # NOC via a "DD MON YYYY" date of birth, else last uppercase 3-code
+    noc_idx = None
+    birth_year = 0
+    after_start = None
+    for k in range(i, len(toks) - 2):
+        if (re.fullmatch(r'\d{1,2}', toks[k])
+                and toks[k + 1][:3].upper() in _MONTHS
+                and re.fullmatch(r'\d{4}', toks[k + 2])):
+            noc_idx = k - 1
+            birth_year = int(toks[k + 2])
+            after_start = k + 3
+            break
+    if noc_idx is None:
+        t_idx = next((j for j in range(i, len(toks)) if _TIMEISH.match(toks[j])), None)
+        if t_idx is None:
+            return None
+        noc_idx = next((j for j in range(t_idx - 1, i - 1, -1)
+                        if re.fullmatch(r'[A-Z]{3}', toks[j])), None)
+        after_start = t_idx
+    if noc_idx is None or noc_idx < i:
+        return None
+    noc = toks[noc_idx]
+    if not re.fullmatch(r'[A-Z]{3}', noc):
+        return None
+    name_raw = ' '.join(toks[i:noc_idx]).strip()
+    if not name_raw:
+        return None
+    times = [t for t in toks[after_start:] if _TIMEISH.match(t)]
+    if not times:
+        return None
+    time_text = max(times, key=parse_time_to_centiseconds)
+    return status, rank, name_raw, birth_year, noc, time_text
+
 # Games-style variant (e.g. Hangzhou Asian Games results book): the event
 # header has no round on the same line — the round follows on a date line.
 #   "Women's 4 x 100m Freestyle Relay"
@@ -321,6 +409,18 @@ def parse(text):
             meet.events.append(current_event)
             continue
 
+        # Round-less "Event NNN Gender's …" repeat = a detail page whose swims
+        # already appear (with their round) on a summary page. Close the open
+        # event so finals/semis rows don't leak into the previous round.
+        if EVENT_NUM_HEADER.match(stripped):
+            current_event = None
+            continue
+
+        # End-of-book medal / points tables — not results.
+        if STOP_SECTION.match(stripped):
+            current_event = None
+            continue
+
         if current_event is None:
             continue
 
@@ -445,44 +545,10 @@ def parse(text):
                     result.split_times = list(result._relay_names)
                 continue
         else:
-            # Individual result — match prefix then grab first real time after NOC
-            im = INDIVIDUAL_PREFIX.match(stripped)
-            ind_status = 'OK'
-            if not im:
-                hc_im = HC_INDIVIDUAL_PREFIX.match(stripped)
-                if hc_im:
-                    ind_status = 'HC'
-                    im = hc_im
-            if im:
-                if ind_status == 'HC':
-                    rank = 0
-                    name_raw = im.group(1).strip()
-                    birth_year = int(im.group(2)) if im.group(2) else 0
-                    noc = im.group(3)
-                else:
-                    rank = int(im.group(1))
-                    name_raw = im.group(2).strip()
-                    birth_year = int(im.group(3)) if im.group(3) else 0
-                    noc = im.group(4)
-
-                # Text after the NOC code contains optional reaction (.NNN),
-                # optional splits, actual time, and optional time-behind.
-                # The actual time is always the largest value (splits are
-                # cumulative, time-behind is a delta).
-                after_noc = stripped[im.end():]
-                # Games-style lines carry a full date of birth after the NOC
-                # ("ZHANG Yufei CHN 19 APR 1998 0.62 24.50") — take the year
-                # and drop the DOB so its day number is never read as a time.
-                dob = DOB_RE.search(after_noc)
-                if dob:
-                    if not birth_year:
-                        birth_year = int(dob.group(1))
-                    after_noc = after_noc[:dob.start()] + after_noc[dob.end():]
-                all_times = _TIME_RE.findall(after_noc)
-                if not all_times:
-                    continue
-                time_text = max(all_times,
-                                key=parse_time_to_centiseconds)
+            # Individual result — anchor-based parse (rank/name/NOC/time)
+            parsed = _parse_individual_line(stripped)
+            if parsed:
+                ind_status, rank, name_raw, birth_year, noc, time_text = parsed
                 time_cs = parse_time_to_centiseconds(time_text)
 
                 name = normalize_name(name_raw)

@@ -32,6 +32,7 @@ SMT variant (Swim Meets Thailand, smt.in.th — e.g. Asian Age Group Champs):
   Relay team:  "1.Chinese Taipei 17 F / 5 Chinese Taipei Swimming Association 3:27.53 3:23.90 +0.61"
 """
 import re
+import unicodedata
 from .base import (
     ParsedResult, ParsedEvent, ParsedMeet,
     parse_time_to_centiseconds, normalize_stroke, detect_gender,
@@ -87,11 +88,18 @@ RELAY_INTL_LINE = re.compile(
 )
 
 # Generic relay team line (national clubs): "1. <team text> m:ss.xx pts [Q]"
+# Central-EU (Slovak) exports add a signed reaction/diff column and a trailing
+# "+ gap" behind the leader:
+#   "1. XBS swimming 1 XBS swimming 3:30.58 +0,68 714"
+#   "3. Matador Púchov 1 Matador Puchov 3:34.84 +0,49 672 + 4.26"
 RELAY_TEAM_LINE = re.compile(
     r'^\s*(\d+)\.\s+'
     r'(.+?)\s*'
-    r'(\d{1,2}:\d{2}\.\d{2})\s*'
-    r'(\d+)?\s*[QqRr?*]*\s*$'
+    r'(\d{1,2}:\d{2}\.\d{2})'
+    r'(?:\s+[+\-][\d.,]+)?'       # optional reaction/diff, e.g. +0,68
+    r'\s*(\d+)?'                  # FINA points
+    r'(?:\s*\+\s*[\d.,]+)?'       # optional gap behind leader, e.g. + 4.26
+    r'\s*[QqRr?*]*\s*$'
 )
 
 # Relay DQ/forfeit line: "disq. KUW KUW" or "forf.déc. JOR JOR"
@@ -125,9 +133,26 @@ ROUND_PATTERNS = {
 # English-variant round marker line: "30/07/2026 - 9:00 Results Prelim"
 # (French equivalent carries "Liste résultats"). The leading date is the
 # session date for the event — captured into ParsedEvent.date_text.
+# The date separator may be a slash (Algeria) or a dot (Slovak/Central-EU
+# Splash exports, e.g. "27.06.2026 - 10:07 Results Prelim").
 RESULTS_MARKER = re.compile(
-    r'^(\d{1,2})/(\d{1,2})/(\d{4})\s*-\s*\d{1,2}:\d{2}\s+'
+    r'^(\d{1,2})[./](\d{1,2})[./](\d{4})\s*-\s*\d{1,2}:\d{2}\s+'
     r'(?:Results|Liste\s+r[ée]sultats)\b',
+    re.IGNORECASE
+)
+
+# Record / qualifying-standard header lines that precede the result table in
+# Central-European Splash exports. They carry national/continental record
+# holders and time limits (with country codes like SVK/CHN/GER), and must
+# never be parsed as swimmers — nor counted when deciding whether the meet is
+# international.
+#   "Rekord VCS / Record GPS 22.54 Duša Matej SVK ..."
+#   "Rekord SR sen. 22.11 Duša Matej XBSSM Doha (QAT) ..."
+#   'MS "A" Peking/CHN : 22.05 / MS "B" ...'
+#   'MEJ "A" Munich/GER 14 - 18: 23.16 / ...'
+REFERENCE_LINE = re.compile(
+    r'^\s*(?:Rekord|Record|Rekordy)\b'
+    r'|^\s*(?:MS|ME|MSJ|MEJ|SRJ|MJ)\s*["“\'][A-D]["”\']',
     re.IGNORECASE
 )
 
@@ -446,6 +471,9 @@ def parse(text):
         # Qualifying-time limits, not results
         if 'minima' in lower or _MINIMA_PAIRS_RE.match(line):
             continue
+        # Record / qualifying-standard header lines (Central-EU exports)
+        if REFERENCE_LINE.match(line):
+            continue
 
         # Standalone category line
         cat_match = CATEGORY_LINE.match(line)
@@ -701,17 +729,40 @@ def _parse_relay_line(line, event, is_international):
     return False
 
 
+def _fold_accents(s):
+    """Lowercase and strip diacritics for accent-insensitive comparison."""
+    return unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode().lower()
+
+
 def _collapse_team_repetition(text):
     """Collapse 'Club Name 1 Club Name' → 'Club Name 1'.
 
     Splash national relay lines print the team name twice (short name +
     full name); usually identical apart from an optional team number.
+    Central-EU exports print an accented form then an ASCII-folded copy
+    ('ŠKP Košice 1 SKP Kosice'), so the two halves must be compared with
+    diacritics stripped — the accented form is kept.
     """
     m = re.match(r'^(.+?)(?:\s+(\d))?\s+\1(?:\s+(\d))?$', text)
     if m:
         base = m.group(1).strip()
         num = m.group(2) or m.group(3)
         return f'{base} {num}' if num else base
+    # Accent-insensitive fallback: split into two halves (with an optional
+    # team number between them) whose folded forms are equal.
+    tokens = text.split()
+    n = len(tokens)
+    for i in range(1, n):
+        left = tokens[:i]
+        j = i
+        num = ''
+        if j < n and tokens[j].isdigit():
+            num = tokens[j]
+            j += 1
+        right = tokens[j:]
+        if right and _fold_accents(' '.join(left)) == _fold_accents(' '.join(right)):
+            base = ' '.join(left)
+            return f'{base} {num}' if num else base
     return text
 
 
@@ -783,7 +834,13 @@ def _detect_international(text):
     one: domestic meets can have a club abbreviation that collides with an
     IOC code (e.g. Tunisian club "EST" vs Estonia) repeated on every row.
     """
-    codes = re.findall(r'\b([A-Z]{3})\b', text)
+    # Exclude record / qualifying-standard header lines: those carry national
+    # and continental record holders (SVK/CHN/GER/QAT…) that would otherwise
+    # make a domestic meet look international and turn club codes into
+    # nationalities.
+    body = '\n'.join(
+        ln for ln in text.split('\n') if not REFERENCE_LINE.match(ln))
+    codes = re.findall(r'\b([A-Z]{3})\b', body)
     hits = [c for c in codes if c in KNOWN_COUNTRY_CODES]
     return len(hits) > 5 and len(set(hits)) >= 3
 

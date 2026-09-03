@@ -1095,10 +1095,18 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 })
                 continue
 
-            # Compute age at competition
+            # Compute age at competition. Most source books give only a birth
+            # year (never a full date of birth), so fall back to birth_year
+            # when neither an explicit age nor a full DOB is available —
+            # otherwise the age column stays empty even though the year is known.
             age_at_comp = result_data.get('age', 0)
-            if not age_at_comp and swimmer.date_of_birth and championship.date:
-                age_at_comp = championship.date.year - swimmer.date_of_birth.year
+            if not age_at_comp and championship.date:
+                if swimmer.date_of_birth:
+                    age_at_comp = championship.date.year - swimmer.date_of_birth.year
+                else:
+                    by = swimmer.birth_year or result_data.get('birth_year')
+                    if by:
+                        age_at_comp = championship.date.year - by
 
             # Determine team
             if is_relay or result_data.get('is_relay', False):

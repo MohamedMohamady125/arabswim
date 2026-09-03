@@ -994,6 +994,13 @@ def _parse_result_line(line, event, is_international, prev_rank):
     before_time = rest[:time_match.start()].strip()
     after_time = rest[time_match.end():].strip()
 
+    # Central-EU (Slovak) Splash rows carry a signed reaction column right
+    # after the time ("+0,59") and a signed "+ gap" behind the leader at the
+    # end ("+ 0.23"). Neither is a split, and the reaction also blocks FINA
+    # points parsing. Genuine cumulative splits are never signed, so drop
+    # every signed numeric token before points/split extraction.
+    after_time = re.sub(r'[+\-]\s*\d+[.,]\d+', ' ', after_time).strip()
+
     name_part, birth_year, club_or_country = _extract_birth_year(before_time)
     if not name_part:
         return None

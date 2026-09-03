@@ -1438,6 +1438,22 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             restamp_result_nationalities(r.swimmer)
             changed_swimmers.add(r.swimmer_id)
 
+    # Safety net: a result's nationality is stamped from the swimmer at
+    # creation (Result.save), but only if the swimmer already had one. When a
+    # file supplies an athlete's country on some rows but not others — common
+    # at international meets where home athletes carry no explicit code — the
+    # earliest rows can be written before the nationality lands on the swimmer
+    # and stay blank. Backfill them so the flag column is never empty when the
+    # country is known. Manual edits are left untouched.
+    blanks = list(championship.results.filter(
+        nationality__isnull=True, swimmer__nationality__isnull=False,
+        manually_edited=False).values('id', 'swimmer__nationality_id'))
+    if blanks:
+        Result.objects.bulk_update(
+            [Result(id=b['id'], nationality_id=b['swimmer__nationality_id'])
+             for b in blanks],
+            ['nationality'], batch_size=500)
+
     # Auto-detect records from newly created results
     _progress('Checking records…')
     from records.auto import check_and_update_records

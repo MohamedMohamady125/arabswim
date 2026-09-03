@@ -100,18 +100,21 @@ class ProgramItem(models.Model):
     on the public meet page."""
     GENDER_CHOICES = [('M', 'Men'), ('F', 'Women'), ('X', 'Mixed')]
     SESSION_CHOICES = [('HEATS', 'Heats'), ('SEMIS', 'Semifinals'), ('FINALS', 'Finals')]
+    TIME_OF_DAY_CHOICES = [('MORNING', 'Morning'), ('EVENING', 'Evening')]
 
     championship = models.ForeignKey(Championship, on_delete=models.CASCADE, related_name='program_items')
     day = models.PositiveSmallIntegerField(help_text='1-based day of the meet (Day 1 = start date)')
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='program_items')
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='X')
     session = models.CharField(max_length=8, choices=SESSION_CHOICES, blank=True, default='')
+    time_of_day = models.CharField(max_length=8, choices=TIME_OF_DAY_CHOICES, blank=True, default='',
+                                   help_text='Optional session period — morning or evening')
     age_category = models.CharField(max_length=40, blank=True, default='',
                                     help_text='Optional age category for this line, e.g. "U14" or "13-14 years"')
     order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        unique_together = ['championship', 'day', 'event', 'gender', 'session', 'age_category']
+        unique_together = ['championship', 'day', 'event', 'gender', 'session', 'time_of_day', 'age_category']
         ordering = ['day', 'order', 'id']
         indexes = [models.Index(fields=['championship', 'day'])]
 

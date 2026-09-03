@@ -1792,6 +1792,7 @@ function RecordsBrokenTab({ meetId }) {
 const PROGRAM_GENDER = { M: 'Men', F: 'Women', X: 'Mixed' }
 
 const PROGRAM_SESSION = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
+const PROGRAM_TIME_OF_DAY = { MORNING: 'Morning', EVENING: 'Evening' }
 const SESSION_SORT = ['HEATS', 'SEMIS', 'FINALS', '']
 
 function ProgramTab({ meetId, isAdmin, resultEvents }) {
@@ -1857,6 +1858,7 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
                             <span style={{ fontWeight: 600, textDecoration: linked ? 'underline' : 'none', textDecorationColor: 'var(--color-neutral-300)', textUnderlineOffset: 3 }}>
                               {it.event_name}
                             </span>
+                            {it.time_of_day && <span className="tag tag-neutral" style={{ flex: 'none' }}>{PROGRAM_TIME_OF_DAY[it.time_of_day]}</span>}
                             {it.age_category && <span className="tag tag-neutral" style={{ flex: 'none' }}>{it.age_category}</span>}
                             <span className="micro" style={{ marginLeft: 'auto' }}>{PROGRAM_GENDER[it.gender]}</span>
                           </div>

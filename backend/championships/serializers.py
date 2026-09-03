@@ -78,7 +78,7 @@ class ProgramItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProgramItem
-        fields = ['id', 'day', 'event', 'event_name', 'is_relay', 'gender', 'session', 'age_category', 'order']
+        fields = ['id', 'day', 'event', 'event_name', 'is_relay', 'gender', 'session', 'time_of_day', 'age_category', 'order']
 
 
 class ResultSerializer(serializers.ModelSerializer):

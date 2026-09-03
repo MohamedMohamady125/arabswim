@@ -5,6 +5,7 @@ import { formatDate } from '../utils'
 
 const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
 const SESSION_LABEL = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
+const TIME_OF_DAY_LABEL = { MORNING: 'Morning', EVENING: 'Evening' }
 
 // Shared editor UI: day tabs + add row + item list. Controlled via
 // `days` ([{ day, date, items }]) and `patchDay(dayNo, items)`.
@@ -16,6 +17,7 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
   const [eventId, setEventId] = useState('')
   const [gender, setGender] = useState('M')
   const [session, setSession] = useState('')
+  const [timeOfDay, setTimeOfDay] = useState('')
   const [ageCat, setAgeCat] = useState('')
 
   useEffect(() => {
@@ -34,10 +36,11 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
     const added = []
     for (const g of genders) {
       if (day.items.some((i) => String(i.event) === String(eventId) && i.gender === g
-        && (i.session || '') === session && (i.age_category || '') === cat)) continue
+        && (i.session || '') === session && (i.time_of_day || '') === timeOfDay
+        && (i.age_category || '') === cat)) continue
       added.push({
         day: day.day, event: ev.id, event_name: ev.name, is_relay: ev.is_relay, gender: g,
-        session, age_category: cat,
+        session, time_of_day: timeOfDay, age_category: cat,
       })
     }
     if (added.length === 0) {
@@ -135,6 +138,11 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
           <option value="SEMIS">Semifinals</option>
           <option value="FINALS">Finals</option>
         </select>
+        <select style={inputStyle} value={timeOfDay} onChange={(e) => setTimeOfDay(e.target.value)}>
+          <option value="">Time…</option>
+          <option value="MORNING">Morning</option>
+          <option value="EVENING">Evening</option>
+        </select>
         <input
           style={{ ...inputStyle, width: 110 }}
           value={ageCat}
@@ -154,13 +162,14 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
         <div>
           {day.items.map((it, i) => (
             <div
-              key={`${it.event}-${it.gender}-${it.session || ''}-${it.age_category || ''}`}
+              key={`${it.event}-${it.gender}-${it.session || ''}-${it.time_of_day || ''}-${it.age_category || ''}`}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderBottom: '1px solid var(--color-divider)', fontSize: 13, background: '#fff' }}
             >
               <span className="asw-num" style={{ width: 22, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
               <span style={{ fontWeight: 600 }}>{it.event_name}</span>
               <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{GENDER_LABEL[it.gender]}</span>
               {it.session && <span className="tag tag-neutral" style={{ flex: 'none' }}>{SESSION_LABEL[it.session]}</span>}
+              {it.time_of_day && <span className="tag tag-neutral" style={{ flex: 'none' }}>{TIME_OF_DAY_LABEL[it.time_of_day]}</span>}
               {it.age_category && <span className="tag tag-neutral" style={{ flex: 'none' }}>{it.age_category}</span>}
               <span style={{ marginLeft: 'auto', display: 'flex', gap: 2 }}>
                 <button type="button" onClick={() => moveItem(i, -1)} disabled={i === 0} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px' }} aria-label="Move up">↑</button>
@@ -182,7 +191,7 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
 // Flatten [{ day, items }] into the API payload shape (order = index in day)
 export const flattenProgramDays = (days) => days.flatMap((d) => d.items.map((it, i) => ({
   day: d.day, event: it.event, gender: it.gender, order: i,
-  session: it.session || '', age_category: it.age_category || '',
+  session: it.session || '', time_of_day: it.time_of_day || '', age_category: it.age_category || '',
 })))
 
 // API-backed editor for an existing meet. Used in manual meet creation,

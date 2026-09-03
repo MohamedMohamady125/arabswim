@@ -24,6 +24,7 @@ export default function Championships() {
   const [year, setYear] = useState('')
   const [pool, setPool] = useState('ALL')
   const [country, setCountry] = useState('')
+  const [classification, setClassification] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -55,6 +56,14 @@ export default function Championships() {
     return [...ys].sort((a, b) => b - a)
   }, [meets])
 
+  const classifications = useMemo(() => {
+    const map = new Map()
+    meets.forEach((m) => {
+      if (m.classification && m.classification_name) map.set(String(m.classification), m.classification_name)
+    })
+    return [...map.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  }, [meets])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return meets
@@ -64,10 +73,11 @@ export default function Championships() {
         if (year && (!d || d.getFullYear() !== +year)) return false
         if (pool !== 'ALL' && m.pool !== pool) return false
         if (country && String(m.country) !== String(country)) return false
+        if (classification && String(m.classification) !== String(classification)) return false
         return true
       })
       .sort((a, b) => (b.d?.getTime() || 0) - (a.d?.getTime() || 0))
-  }, [meets, search, year, pool, country])
+  }, [meets, search, year, pool, country, classification])
 
   const groups = useMemo(() => {
     const out = []
@@ -154,8 +164,14 @@ export default function Championships() {
           <option value="">All countries</option>
           {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        {(search || year || country || pool !== 'ALL') && (
-          <button className="btn btn-ghost" onClick={() => { setSearch(''); setYear(''); setCountry(''); setPool('ALL') }}>Clear</button>
+        {classifications.length > 0 && (
+          <select className="select" style={{ width: 190 }} value={classification} onChange={(e) => setClassification(e.target.value)}>
+            <option value="">All classifications</option>
+            {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+        {(search || year || country || classification || pool !== 'ALL') && (
+          <button className="btn btn-ghost" onClick={() => { setSearch(''); setYear(''); setCountry(''); setClassification(''); setPool('ALL') }}>Clear</button>
         )}
       </div>
 

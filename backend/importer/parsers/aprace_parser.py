@@ -264,6 +264,15 @@ def parse(text):
             except (ValueError, IndexError):
                 distance = extract_distance(distance_text + 'm ' + rest)
 
+            # Guard against extraction artifacts: in some re-exported PDFs two
+            # event titles collapse onto one line, producing a nonsensical
+            # distance like "20100m" (200m + 100m merged) — usually a mangled
+            # Para multiclass title. Individual pool events only ever use these
+            # distances, so anything else is a phantom event; skip it.
+            if not is_relay and distance not in (50, 100, 200, 400, 800, 1500):
+                current_event = None
+                continue
+
             event_name = normalize_event_name(distance, stroke, is_relay)
 
             current_event = ParsedEvent(

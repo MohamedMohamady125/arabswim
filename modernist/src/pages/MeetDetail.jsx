@@ -961,8 +961,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             >
               <option value="ALL">All categories</option>
               {hasOpenPodium && <option value="OPEN">TC</option>}
-              {categories.map((c) => (
-                <option key={c || '_general'} value={c}>{c || 'General'}</option>
+              {categories.filter((c) => c !== '').map((c) => (
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </div>
@@ -1044,9 +1044,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                       <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>TC — all categories, ranked by time</td>
                     </tr>
                   )}
-                  {selectedCategory === 'ALL' && hasCategories && (
+                  {selectedCategory === 'ALL' && hasCategories && cat && (
                     <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>{cat || 'General'}</td>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>{cat}</td>
                     </tr>
                   )}
                   {catRows.map((r) => renderRow(r, fullByCat.get(cat) || catRows))}

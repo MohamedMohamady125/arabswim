@@ -240,7 +240,12 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         today = _date.today()
         qs = self.get_queryset().filter(
             Q(is_live=True) | Q(date__lte=today, end_date__gte=today) | Q(date=today, end_date__isnull=True),
-            is_published=True,
+        ).filter(
+            # Calendar-only meets are inherently public (they appear on the
+            # calendar with live-results links), so they count as "live now"
+            # even before they carry the published flag. Genuinely unpublished
+            # manual-entry meets (swimmer-data-only) stay hidden.
+            Q(is_published=True) | Q(is_calendar_only=True),
         ).annotate(
             results_count_annotated=Count('results'),
             swimmers_count_annotated=Count(

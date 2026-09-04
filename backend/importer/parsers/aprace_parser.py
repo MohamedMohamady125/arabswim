@@ -193,8 +193,22 @@ def _format_name(name):
     return ' '.join(tokens[:-1]) + ' ' + tokens[-1].upper()
 
 
+def _normalize_apostrophes(text):
+    """Fold curly/typographic apostrophes to a straight ASCII apostrophe.
+
+    swimming.events exports event titles inconsistently: the same header
+    ("Men's 50m Freestyle") appears with a straight apostrophe (U+0027) in one
+    grouping and a curly one (U+2019) in another. EVENT_TITLE only matches the
+    straight form, so ~75% of headers were silently skipped and their result
+    blocks attached to the previous (wrong) event. Normalize before parsing.
+    """
+    return (text.replace('\u2019', "'").replace('\u2018', "'")
+                .replace('\u02bc', "'").replace('\u2032', "'"))
+
+
 def parse(text):
     """Parse AP Race PDF text into a ParsedMeet."""
+    text = _normalize_apostrophes(text)
     lines = text.split('\n')
     meet = ParsedMeet(source_format='aprace')
 
@@ -227,6 +241,13 @@ def parse(text):
     current_relay_result = None
     current_day = 0
     current_stage = ''
+    # Page-break orphan detection: when an event's results overflow a page,
+    # swimming.events reprints a "Generated:" footer + "Pos Name" header but
+    # often DROPS the event title. A genuine continuation keeps counting ranks
+    # up; a *different* event whose title was lost restarts ranks at 1. We use
+    # that to tell "same event, next page" from "new event, header dropped".
+    saw_page_break = False
+    last_rank = 0
 
     for raw_line in lines:
         line = raw_line.strip()
@@ -238,6 +259,8 @@ def parse(text):
                 line.startswith('AP Race London') or
                 line == 'Open' or line.startswith('Pos ') or
                 'result sections' in line.lower()):
+            if 'Generated:' in line or 'swimming.events' in line:
+                saw_page_break = True
             continue
 
         # Page header: "AP RACE LONDON 2026 | DAY 1 | HEATS"
@@ -318,6 +341,8 @@ def parse(text):
             )
             current_is_relay = is_relay
             current_relay_result = None
+            saw_page_break = False
+            last_rank = 0
             meet.events.append(current_event)
             continue
 
@@ -354,6 +379,16 @@ def parse(text):
         rm = RESULT_LINE.match(line)
         if rm:
             rank = int(rm.group(1))
+            # Orphan detection: a result whose rank restarts (<= a previously
+            # seen rank) right after a page break, with no new event title,
+            # belongs to a different event whose header was dropped across the
+            # page. Discard it and stop attaching to this event — the correct
+            # copy is reprinted elsewhere under its real title.
+            if saw_page_break and rank <= last_rank:
+                current_event = None
+                continue
+            saw_page_break = False
+            last_rank = rank
             name_raw = rm.group(2).strip()
             age = int(rm.group(3))
             nat_code = rm.group(4)
@@ -422,7 +457,74 @@ def parse(text):
     # Remove events with no results
     meet.events = [e for e in meet.events if e.results]
 
+    # Distance sanity filter: page breaks can also orphan a shorter event's
+    # results onto a LONGER event of the same gender (e.g. a 50m heat spilling
+    # into a 200m Butterfly), which gender-voting can't catch. A swim faster
+    # than the world-record floor for the event's distance is physically
+    # impossible, so it must belong to a shorter event — drop it. Bounds sit
+    # just under world records so no legitimate (even elite) swim is removed.
+    MIN_CS = {50: 2100, 100: 4500, 200: 10000,
+              400: 21000, 800: 44000, 1500: 84000}
+    for ev in meet.events:
+        if 'Relay' in ev.event_name or ev.distance not in MIN_CS:
+            continue
+        floor = MIN_CS[ev.distance]
+        ev.results = [
+            r for r in ev.results
+            if r.status != 'OK' or r.time_centiseconds >= floor
+        ]
+    meet.events = [e for e in meet.events if e.results]
+
+    # Gender de-contamination: page breaks in this PDF sometimes drop an event
+    # title, so a block of (say) women's results gets attached to the preceding
+    # men's event. Because every swim is reprinted several times under its
+    # CORRECT title but orphaned at most once, the swimmer's true gender is the
+    # one they appear under most often. Drop each swimmer's minority-gender
+    # results (ties resolved by first-seen gender, which comes from the more
+    # reliable day-grouped section that leads the file).
+    from collections import defaultdict
+    gender_votes = defaultdict(lambda: {'M': 0, 'F': 0})
+    first_gender = {}
+    for ev in meet.events:
+        if ev.gender not in ('M', 'F'):
+            continue
+        for r in ev.results:
+            gender_votes[r.swimmer_name][ev.gender] += 1
+            first_gender.setdefault(r.swimmer_name, ev.gender)
+    true_gender = {}
+    for name, votes in gender_votes.items():
+        if votes['M'] and votes['F']:
+            if votes['M'] == votes['F']:
+                true_gender[name] = first_gender[name]
+            else:
+                true_gender[name] = 'M' if votes['M'] > votes['F'] else 'F'
+    for ev in meet.events:
+        if ev.gender not in ('M', 'F'):
+            continue
+        ev.results = [
+            r for r in ev.results
+            if true_gender.get(r.swimmer_name, ev.gender) == ev.gender
+        ]
+    meet.events = [e for e in meet.events if e.results]
+
     # Merge duplicate events
     merge_duplicate_events(meet)
+
+    # The PDF prints every result twice (once grouped by day, once by stage),
+    # so each event's list now holds exact duplicates. Collapse them, keeping
+    # first occurrence. Key on the identity of a swim within an event: swimmer,
+    # time and status (rank can differ between the two printings when ties are
+    # ordered differently).
+    for event in meet.events:
+        seen = set()
+        deduped = []
+        for r in event.results:
+            key = (r.swimmer_name, r.time_centiseconds, r.status,
+                   tuple(r.split_times))
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(r)
+        event.results = deduped
 
     return meet

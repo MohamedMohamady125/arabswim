@@ -51,6 +51,11 @@ class ParsedMeet:
     pool: str = ''  # LCM or SCM
     source_format: str = ''  # splash, hytek, frmn, nat2i, unknown
     events: list = field(default_factory=list)  # list of ParsedEvent
+    # Set by parsers that produce genuine heats/prelims which pair with a
+    # SEPARATE finals file (e.g. MÚSZ "Qualifiers" session PDFs). Tells
+    # promote_lone_heats_to_finals to leave those rounds as Prelims instead of
+    # relabeling a heats-only file as Finals.
+    keep_prelims: bool = False
 
     @property
     def total_results(self):
@@ -722,6 +727,10 @@ def promote_lone_heats_to_finals(meet):
     Grouped per (event_name, gender) so meets that DO run heats + finals for
     some events keep their real heats untouched.
     """
+    # Files that carry genuine prelims paired with a separate finals PDF
+    # (MÚSZ "Qualifiers" sessions) must keep their Prelims round intact.
+    if getattr(meet, 'keep_prelims', False):
+        return meet
     groups = {}
     for ev in meet.events:
         groups.setdefault((ev.event_name, ev.gender), []).append(ev)

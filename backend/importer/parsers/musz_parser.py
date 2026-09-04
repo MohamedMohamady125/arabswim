@@ -258,11 +258,50 @@ def parse(text):
     current_is_relay = False
     current_relay_result = None
     pending_event = None       # title seen, waiting for its round line
+    pending_materialized = False  # has pending_event produced ≥1 ParsedEvent?
     pending_club_result = None  # result whose club may wrap to the next line
+
+    # Distinguish the two MÚSZ session types by whether the file ever prints an
+    # "A Final"/"B Final"/"Final" round line. The evening "Overall results"
+    # PDFs do (and an event that still reaches the column header with no marker
+    # is a timed final — e.g. 1500m Free — so it is a real Final). The morning
+    # "Qualifiers" PDFs never do: every column-header table is a heat, so those
+    # materialize as Prelims and pair with the finals PDF.
+    has_round_lines = any(l.strip().lower() in ROUND_MAP for l in lines)
+    default_headerless_round = 'Finals' if has_round_lines else 'Prelims'
 
     for raw in lines:
         line = raw.strip()
         if not line:
+            continue
+
+        # --- qualifiers/heats have no "A Final" round line ---
+        # The morning "Qualifiers" PDFs list one heat-ranked table straight
+        # under the column header, with no "A Final"/"B Final" marker to
+        # materialize the event. Treat the "RNK Lane Name" header itself as the
+        # start of a Prelims table the first time the pending event is still
+        # unmaterialized. Finals PDFs always emit a round line first (so
+        # pending_materialized is already True here and this branch is skipped),
+        # which keeps A Final + B Final sharing one title working.
+        if (line.startswith('RNK Lane Name') and pending_event
+                and not pending_materialized):
+            ev = ParsedEvent(
+                event_name=pending_event['event_name'],
+                distance=pending_event['distance'],
+                stroke=pending_event['stroke'],
+                gender=pending_event['gender'],
+                round_type=default_headerless_round,
+            )
+            meet.events.append(ev)
+            current_event = ev
+            current_is_relay = pending_event['is_relay']
+            current_relay_result = None
+            pending_materialized = True
+            pending_club_result = None
+            # Genuine qualifier heats — pair with the finals-session PDF, so
+            # don't let a heats-only file be relabeled as Finals downstream.
+            if default_headerless_round == 'Prelims':
+                meet.keep_prelims = True
             continue
 
         # --- structural skips (also end any club wrap) ---
@@ -297,6 +336,7 @@ def parse(text):
                 'is_relay': is_relay,
                 'event_name': normalize_event_name(distance, stroke, is_relay),
             }
+            pending_materialized = False
             continue
 
         # --- round line -> materialize the event ---
@@ -313,6 +353,7 @@ def parse(text):
             current_event = ev
             current_is_relay = pending_event['is_relay']
             current_relay_result = None
+            pending_materialized = True
             continue
 
         # --- relay leg lines attach to the current relay team ---

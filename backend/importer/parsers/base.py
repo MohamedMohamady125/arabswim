@@ -102,10 +102,13 @@ _FULL_RANGE_RE = re.compile(
     r'\s*(?:to|¤|–|-)\s*'
     r'(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})'
 )
-# Compact day range: "19 - 22/1/2022" or "19–22/1/2022"
+# Compact day range: "19 - 22/1/2022" or "19–22/1/2022".
+# The optional trailing dot after the first day also covers the European
+# dotted style "26. - 28.6.2026" (Slovak/Central-EU Splash meet headers),
+# where the start day borrows the month/year printed on the end date.
 # (?<!\d) prevents matching "2025 - 09/..." where "25" comes from a year.
 _DAY_RANGE_RE = re.compile(
-    r'(?<!\d)(\d{1,2})\s*[-–]\s*(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})'
+    r'(?<!\d)(\d{1,2})\.?\s*[-–]\s*(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})'
 )
 # Cross-month day range with the year only at the end: "30/7 - 4/8/2026"
 _CROSS_MONTH_RANGE_RE = re.compile(
@@ -225,7 +228,7 @@ def extract_date_and_location(text):
     loc_text = _CROSS_MONTH_RANGE_RE.sub('', loc_text)
     loc_text = DATE_PATTERN.sub('', loc_text)
     loc_text = _MONTH_NAME_RE.sub('', loc_text)
-    loc_text = re.sub(r'(?<!\d)\d{1,2}\s*[-–]\s*(?=\s)', '', loc_text)
+    loc_text = re.sub(r'(?<!\d)\d{1,2}\.?\s*[-–]\s*(?=\s)', '', loc_text)
     for kw in STRIP_KEYWORDS:
         loc_text = re.sub(re.escape(kw), '', loc_text, flags=re.IGNORECASE)
     loc_text = re.sub(r'\b(to|¤)\b', '', loc_text)

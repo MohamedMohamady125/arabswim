@@ -97,6 +97,9 @@ export default function Import() {
   const presetLiveDay = searchParams.get('live_day') || ''
   const [tab, setTab] = useState('file') // 'file' | 'manual' | 'duplicates' | 'history'
   const [namePdfs, setNamePdfs] = useState([]) // companion PDFs for Egyptian name repair
+  // When several files are selected, combine them into ONE meet (e.g. one PDF
+  // per day of the same championship) instead of one meet per file.
+  const [combineFiles, setCombineFiles] = useState(true)
   const [importMethod, setImportMethod] = useState(null) // null, 'pdf', 'excel', 'html'
   const [step, setStep] = useState(0) // 0=method, 1=upload, 2=details+edit, 3=match, 4=done
   const [loading, setLoading] = useState(false)
@@ -143,6 +146,9 @@ export default function Import() {
   const selectMethod = (method) => {
     setImportMethod(method)
     setNamePdfs([])
+    // Excel exports are one meet per file; PDFs/HTML are usually one meet split
+    // over several daily files, so default to combining those.
+    setCombineFiles(method !== 'excel')
     setStep(1)
   }
 
@@ -222,9 +228,70 @@ export default function Import() {
     if (failures.length) {
       setError(`Some files could not be parsed: ${failures.join(' • ')}`)
     }
-    setMeets(parsed)
+
+    // Combine several files into a single meet (e.g. one PDF per day of the
+    // same championship). Events with the same name/gender/round are merged;
+    // the backend still dedupes identical results on confirm.
+    const finalMeets = (combineFiles && parsed.length > 1)
+      ? [mergeMeetEntries(parsed)]
+      : parsed
+    setMeets(finalMeets)
     setActive(0)
     setStep(2)
+  }
+
+  // Fold several single-file meet entries into one. Keeps the first file's meet
+  // metadata + import_id (its cached parse is still valid for the confirm call),
+  // and stacks every file's events into one combined, editable preview that is
+  // sent as `modified_preview`.
+  const mergeMeetEntries = (entries) => {
+    const base = entries[0]
+    const evKey = (ev) => `${ev.event_name}|${ev.gender}|${ev.round_type || ''}`
+    const events = []
+    const byKey = new Map()
+    let latestEnd = base.champForm.end_date || base.champForm.date || ''
+    let earliestStart = base.champForm.date || ''
+    for (const entry of entries) {
+      const p = entry.preview
+      if (entry.champForm.date && (!earliestStart || entry.champForm.date < earliestStart)) {
+        earliestStart = entry.champForm.date
+      }
+      const entryEnd = entry.champForm.end_date || entry.champForm.date || ''
+      if (entryEnd && entryEnd > latestEnd) latestEnd = entryEnd
+      for (const ev of (p.events || [])) {
+        const k = evKey(ev)
+        if (byKey.has(k)) {
+          byKey.get(k).results.push(...(ev.results || []))
+        } else {
+          const copy = { ...ev, results: [...(ev.results || [])] }
+          byKey.set(k, copy)
+          events.push(copy)
+        }
+      }
+    }
+    const merged = {
+      ...base.preview,
+      events,
+      stats: {
+        ...(base.preview.stats || {}),
+        total_events: events.length,
+        total_results: events.reduce((s, ev) => s + ev.results.length, 0),
+      },
+    }
+    return {
+      ...base,
+      fileName: `${entries.length} files → 1 meet (${entries.map((e) => e.fileName).join(', ')})`,
+      // preview stays as file #1 so it differs from editedPreview → the merged
+      // set is sent to the server as modified_preview.
+      editedPreview: merged,
+      _fullPreview: merged,
+      meetWarnings: entries.flatMap((e) => e.meetWarnings || []),
+      champForm: {
+        ...base.champForm,
+        date: earliestStart,
+        end_date: latestEnd && latestEnd !== earliestStart ? latestEnd : base.champForm.end_date,
+      },
+    }
   }
 
   const toggleArabOnly = (idx) => {
@@ -403,7 +470,7 @@ export default function Import() {
   const stepLabels = ['Method', 'Upload file', 'Review & edit', 'Match swimmers', 'Done']
 
   const acceptTypes = importMethod === 'pdf' ? '.pdf' : importMethod === 'excel' ? '.xlsx,.xls,.csv' : importMethod === 'html' ? '.html,.htm' : '.pdf,.html,.htm,.xlsx,.xls,.csv'
-  const allowMultiple = importMethod === 'excel'
+  const allowMultiple = true
 
   // Tab bar for switching between uploaded meets (steps 2-4)
   const meetTabs = meets.length > 1 && (
@@ -502,7 +569,7 @@ export default function Import() {
               <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
                 {[
                   { key: 'pdf', title: 'Upload PDF', desc: 'Import from PDF files (Splash, HY-TEK, FRMN)' },
-                  { key: 'excel', title: 'Upload Excel', desc: `Import from Excel or CSV files — up to ${MAX_FILES} meets at once` },
+                  { key: 'excel', title: 'Upload Excel', desc: `Import from Excel or CSV files — up to ${MAX_FILES} files at once` },
                   { key: 'html', title: 'Upload HTML', desc: "Import from HTML files (Nat'2i Tunisia format)" },
                 ].map((m) => (
                   <button
@@ -535,11 +602,24 @@ export default function Import() {
                 </h3>
                 <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 24 }}>
                   {importMethod === 'pdf'
-                    ? 'Supports Splash, HY-TEK, FRMN and other PDF formats'
+                    ? `Supports Splash, HY-TEK, FRMN and other PDF formats — select up to ${MAX_FILES} files at once`
                     : importMethod === 'html'
-                    ? "Supports Nat'2i HTML format (Tunisia)"
-                    : `Supports .xlsx, .xls, and .csv files — select up to ${MAX_FILES} files, one meet per file`}
+                    ? `Supports Nat'2i HTML format (Tunisia) — select up to ${MAX_FILES} files at once`
+                    : `Supports .xlsx, .xls, and .csv files — select up to ${MAX_FILES} files`}
                 </p>
+
+                {/* Combine several files into one meet — e.g. a championship
+                    whose results are published as one PDF per day. */}
+                <label style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8, margin: '0 auto 20px',
+                  fontSize: 13, color: 'var(--color-neutral-700)', cursor: 'pointer',
+                }}>
+                  <input type="checkbox" checked={combineFiles} disabled={loading}
+                    onChange={(e) => setCombineFiles(e.target.checked)} />
+                  Combine selected files into a single meet (one file per day)
+                </label>
+                <div />
+
                 {importMethod === 'excel' && (
                   <div style={{
                     margin: '0 auto 24px', maxWidth: 520, padding: 16, textAlign: 'left',

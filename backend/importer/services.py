@@ -773,9 +773,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     if championship_id:
         championship = Championship.objects.get(id=championship_id)
         if championship.is_calendar_only:
-            # Real results are being imported: promote from calendar-only
+            # Real results are being imported: promote from calendar-only to a
+            # published public meet (calendar meets start unpublished, so we
+            # must publish here or the meet vanishes from the list/live view).
             championship.is_calendar_only = False
-            championship.save(update_fields=['is_calendar_only'])
+            championship.is_published = True
+            championship.save(update_fields=['is_calendar_only', 'is_published'])
     elif (existing := _find_same_meet(
             (championship_details or {}).get('name') or meet_info.get('name', ''),
             _parse_date((championship_details or {}).get('date') or meet_info.get('date', '')),
@@ -793,7 +796,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         )
         if championship.is_calendar_only:
             championship.is_calendar_only = False
-            championship.save(update_fields=['is_calendar_only'])
+            championship.is_published = True
+            championship.save(update_fields=['is_calendar_only', 'is_published'])
     elif championship_details:
         # Use user-provided details from the form
         champ_date = _parse_date(championship_details.get('date', ''))

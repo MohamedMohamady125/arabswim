@@ -198,7 +198,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         champ.is_live = False
         if champ.is_calendar_only:
             champ.is_calendar_only = False
-        champ.save(update_fields=['is_live', 'is_calendar_only'])
+            champ.is_published = True
+        champ.save(update_fields=['is_live', 'is_calendar_only', 'is_published'])
         from medals.utils import recompute_medals
         medal_count = recompute_medals(champ)
         # Check records for all results in this meet
@@ -401,7 +402,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             result = serializer.save(championship=championship, is_manual=True, manually_edited=True)
             if championship.is_calendar_only:
                 championship.is_calendar_only = False
-                championship.save(update_fields=['is_calendar_only'])
+                championship.is_published = True
+                championship.save(update_fields=['is_calendar_only', 'is_published'])
             # Auto-compute age at competition from the swimmer's stored
             # birth data when the caller didn't supply it
             sw = result.swimmer
@@ -579,7 +581,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if created or updated:
             if championship.is_calendar_only:
                 championship.is_calendar_only = False
-                championship.save(update_fields=['is_calendar_only'])
+                championship.is_published = True
+                championship.save(update_fields=['is_calendar_only', 'is_published'])
             # Recompute medals so manual entries reflect in medal tallies
             from medals.utils import recompute_medals
             recompute_medals(championship)

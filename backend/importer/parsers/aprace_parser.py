@@ -72,6 +72,20 @@ DQ_LINE = re.compile(
     re.IGNORECASE
 )
 
+# Relay team line: "1 USA United States of America 03:56.78 0.17% (00:00.41)"
+# (no AQUA points column — that's how it differs from an individual row).
+RELAY_TEAM_LINE = re.compile(
+    r'^(\d{1,3})\s+'                              # rank
+    r'(.+?)\s+'                                  # team name (short + long)
+    r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s+'  # team time
+    r'-?\d[\d.]*%\s*\([^)]*\)\s*$'               # improvement (gap)
+)
+
+# Relay leg line: "1. Charlotte Crush 59.61"
+RELAY_LEG_LINE = re.compile(
+    r'^(\d)\.\s+(.+?)\s+(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*$'
+)
+
 # Generated date: "Generated: 25/05/2026 21:21 BST"
 GENERATED_DATE = re.compile(r'Generated:\s+(\d{2})/(\d{2})/(\d{4})')
 
@@ -84,6 +98,9 @@ STROKE_MAP = {
     'individual medley': 'Individual Medley',
     'medley relay': 'Medley',
     'freestyle relay': 'Freestyle',
+    # bare 'medley' (a relay after its 'relay' suffix is stripped) must map to
+    # a medley stroke, not fall through to the Freestyle default.
+    'medley': 'Individual Medley',
 }
 
 
@@ -147,6 +164,21 @@ def _split_camelcase(text):
     return re.sub(r'([a-zà-ÿ])([A-ZÀ-Þ])', r'\1 \2', text)
 
 
+def _relay_team_name(raw):
+    """Clean a relay team label.
+
+    swimming.events prints the team as "<short> <long>" with no delimiter
+    ("Germany Germany", "Team England Team England", "USA United States of
+    America"). When the two halves are an exact duplication, collapse to one;
+    otherwise keep the whole label.
+    """
+    toks = raw.split()
+    n = len(toks)
+    if n and n % 2 == 0 and toks[:n // 2] == toks[n // 2:]:
+        return ' '.join(toks[:n // 2])
+    return raw.strip()
+
+
 def _format_name(name):
     """Convert 'IsabelGose' or 'Isabel Gose' to 'Isabel GOSE'.
 
@@ -191,6 +223,8 @@ def parse(text):
             break
 
     current_event = None
+    current_is_relay = False
+    current_relay_result = None
     current_day = 0
     current_stage = ''
 
@@ -282,10 +316,38 @@ def parse(text):
                 gender=gender,
                 round_type=round_type,
             )
+            current_is_relay = is_relay
+            current_relay_result = None
             meet.events.append(current_event)
             continue
 
         if not current_event:
+            continue
+
+        # Relay events: a team line followed by up to 4 leg lines.
+        if current_is_relay:
+            tm = RELAY_TEAM_LINE.match(line)
+            if tm:
+                team = _relay_team_name(tm.group(2).strip())
+                time_text = tm.group(3)
+                current_relay_result = ParsedResult(
+                    swimmer_name=team,
+                    time_text=time_text,
+                    time_centiseconds=parse_time_to_centiseconds(time_text),
+                    rank=int(tm.group(1)),
+                    club=team,
+                    gender=current_event.gender,
+                    round_type=current_event.round_type,
+                    status='OK',
+                )
+                current_event.results.append(current_relay_result)
+                continue
+            lm = RELAY_LEG_LINE.match(line)
+            if lm and current_relay_result is not None:
+                leg_name = _format_name(lm.group(2).strip())
+                current_relay_result.split_times.append(
+                    f'{leg_name} {lm.group(3)}')
+                continue
             continue
 
         # Result line

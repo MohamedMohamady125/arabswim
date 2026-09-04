@@ -130,7 +130,7 @@ def _parse_pdf(file_path, filename=''):
         full_text = _extract_text_flow(file_path)
         meet = ffn_parser.parse(full_text)
     elif aprace_parser.detect_format(detect_text):
-        full_text = _extract_simple(file_path)
+        full_text = _extract_aprace(file_path)
         meet = aprace_parser.parse(full_text)
     elif msecm_parser.detect_format(detect_text):
         full_text = _fix_cid_ligatures(_extract_simple(file_path))
@@ -204,7 +204,59 @@ def _extract_text_flow(file_path):
     return text
 
 
+def _extract_aprace(file_path):
+    """Extract swimming.events (AP Race) 'grouped by day/stage' PDFs.
+
+    These PDFs draw each glyph as a separate text object and omit the space
+    character, so position-sorted extraction interleaves overlapping columns
+    ("D'Ora1n:00.89") and text-flow glues adjacent words together
+    ("IsabelGose", "GER-Germany"). Rebuilding rows from word boxes recovers
+    clean lines: extract_words(x_tolerance) merges intra-word glyphs while the
+    real blank gaps between name/age/club still separate words, then words are
+    clustered into lines by their vertical position and read left-to-right.
+    """
+    import gc
+    parts = []
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            words = page.extract_words(x_tolerance=1.5)
+            if not words:
+                page.flush_cache()
+                continue
+            words.sort(key=lambda w: w['top'])
+            lines = []
+            for w in words:
+                if lines and abs(w['top'] - lines[-1][0]['top']) < 3:
+                    lines[-1].append(w)
+                else:
+                    lines.append([w])
+            for lw in lines:
+                lw.sort(key=lambda w: w['x0'])
+                parts.append(' '.join(w['text'] for w in lw))
+            page.flush_cache()
+    text = _fix_diaeresis('\n'.join(parts))
+    del parts
+    gc.collect()
+    return text
+
+
 import re as _re_module
+
+# Spacing-diaeresis glyphs (U+00A8) that some swimming.events fonts emit
+# after the base vowel instead of a precomposed umlaut ("Bu¨ssing" → "Büssing").
+_DIAERESIS_MAP = {
+    'a\u00a8': 'ä', 'o\u00a8': 'ö', 'u\u00a8': 'ü', 'e\u00a8': 'ë',
+    'i\u00a8': 'ï', 'y\u00a8': 'ÿ',
+    'A\u00a8': 'Ä', 'O\u00a8': 'Ö', 'U\u00a8': 'Ü',
+}
+
+
+def _fix_diaeresis(text):
+    """Recompose 'vowel + U+00A8' spacing-diaeresis pairs into umlauts."""
+    for k, v in _DIAERESIS_MAP.items():
+        text = text.replace(k, v)
+    return text
+
 
 # CID codes for ligatures that pdfplumber can't decode from some fonts.
 _CID_MAP = {

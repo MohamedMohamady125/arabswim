@@ -249,18 +249,59 @@ def parse(text):
         if len(tokens) < 4:
             continue
 
-        # Check if this is a split-time continuation line (all numbers, short)
-        if all(re.match(r'^\d{1,2}\.\d{2}$', t) for t in tokens):
-            # Splits for the previous result
+        # Split continuation line: distance events (400m+) print their splits
+        # on separate lines below the result row — a CUMULATIVE line
+        # ("26.32 54.69 1:23.66 …") followed by an INCREMENTAL per-lap line
+        # ("28.37 28.97 29.54 …"). Both are made up entirely of time tokens.
+        # We keep the cumulative one (strictly increasing) and ignore the
+        # incremental one, so the stored splits are always cumulative.
+        # Finals split lines annotate each cumulative time with the swimmer's
+        # running rank in parentheses ("26.05(2) 54.88(2) …") — strip it.
+        split_tokens = [re.sub(r'\(\d+\)$', '', t) for t in tokens]
+        if len(split_tokens) > 1 and all(_TIME_RE.match(t) for t in split_tokens):
+            tokens = split_tokens
             if current_event.results:
                 prev = current_event.results[-1]
-                prev.split_times.extend(tokens)
+                cs_vals = [parse_time_to_centiseconds(t) for t in tokens]
+                is_cumulative = all(b > a for a, b in zip(cs_vals, cs_vals[1:]))
+                if is_cumulative:
+                    # Long events (800m/1500m) wrap the cumulative splits over
+                    # several lines. Extend when this line continues the rising
+                    # sequence; otherwise start a fresh set. The incremental
+                    # per-lap line is not strictly increasing, so it never lands
+                    # here and is discarded.
+                    prev_last = (parse_time_to_centiseconds(prev.split_times[-1])
+                                 if prev.split_times else 0)
+                    if prev.split_times and cs_vals[0] > prev_last:
+                        prev.split_times.extend(tokens)
+                    else:
+                        prev.split_times = list(tokens)
             continue
 
         # Try to parse as a result row
         result = _try_parse_row(tokens, current_gender, current_round, in_not_classified)
         if result:
             current_event.results.append(result)
+
+    # --- Close each split set with the finish time ---
+    # Microplus prints intermediate splits (50m, 100m, …) but treats the final
+    # length (= the swimmer's total time) as the TIME column, not a split. Add
+    # it back as the closing cumulative split so an N×50 race carries N splits
+    # (50m … full distance) — this also lets the importer infer split distances
+    # cleanly (ev_dist % N == 0). Relays store leg names, not splits — skip them.
+    for pe in event_order:
+        if 'relay' in pe.event_name.lower():
+            continue
+        seg_count = pe.distance // 50 if pe.distance else 0
+        for r in pe.results:
+            if not r.time_text:
+                continue
+            if r.split_times:
+                if r.split_times[-1] != r.time_text:
+                    r.split_times.append(r.time_text)
+            elif seg_count == 1:
+                # 50m races have no intermediate split — the finish is it.
+                r.split_times = [r.time_text]
 
     # --- Assemble the meet ---
     meet.events = event_order
@@ -399,30 +440,28 @@ def _try_parse_row(tokens, gender, round_type, in_not_classified):
     # Gap is a decimal like "0.14"
     # Qual is "q", "R1", "R2", "R?"
 
-    # Strategy: find all time-like values and the AQUA integer
+    # Row tail layout (in order):
+    #   R.T.  [50m 100m … splits]  TIME  [GAP]  [AQUA/PTS]  [qual]
+    #   - R.T. (reaction) is the first decimal and always < 1.00s
+    #   - inline splits are the cumulative times BEFORE the finish
+    #   - TIME (finish) is the largest cumulative value
+    #   - GAP is a decimal AFTER the finish (margin behind the leader)
     time_candidates = []
     for j, t in enumerate(remaining):
         if _TIME_RE.match(t):
-            cs = parse_time_to_centiseconds(t)
-            time_candidates.append((j, t, cs))
-        elif _QUAL_RE.match(t):
-            pass  # skip
-        elif t.replace('.', '').isdigit():
-            pass  # reaction time, gap, or AQUA points
+            time_candidates.append((j, t, parse_time_to_centiseconds(t)))
 
     if not time_candidates:
         return None
 
-    # The main time is the largest centiseconds value (cumulative > splits)
-    time_candidates.sort(key=lambda x: x[2], reverse=True)
-    best = time_candidates[0]
-    time_text = best[1]
-    time_cs = best[2]
+    # Finish = the largest cumulative value.
+    time_idx, time_text, time_cs = max(time_candidates, key=lambda x: x[2])
 
-    # Splits: all other time candidates with smaller values
-    splits = [t[1] for t in time_candidates[1:] if t[2] < time_cs]
-    # Reaction time is typically < 100 centiseconds — exclude from splits
-    splits = [s for s in splits if parse_time_to_centiseconds(s) >= 100]
+    # Inline splits: cumulative times that appear BEFORE the finish, kept in
+    # their original left-to-right order. The reaction time (< 1.00s) and the
+    # trailing GAP (which sits AFTER the finish) are both excluded.
+    splits = [t for (j, t, cs) in time_candidates
+              if j < time_idx and 100 <= cs < time_cs]
 
     # AQUA/FINA points: look for a bare integer > 100
     for t in remaining:

@@ -1352,6 +1352,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                                     if sp['distance'] is None:
                                         sp['distance'] = seg * (i + 1)
                         splits = splits or None
+                    # A 50m (or shorter) individual event is a single length —
+                    # any "split" is just the finish duplicated or a lone 25m
+                    # mark, which is noise. Never store splits for these.
+                    ev_dist = (event_data.get('event_distance')
+                               or getattr(db_event, 'distance', 0) or 0)
+                    if ev_dist and ev_dist <= 50:
+                        splits = None
                 if is_relay or result_data.get('is_relay', False):
                     relay_swimmers = _parse_relay_legs(
                         result_data.get('split_times', []) or []) or None

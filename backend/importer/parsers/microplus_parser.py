@@ -204,6 +204,13 @@ def parse(text):
             if current_event_text:
                 dist, stroke, relay = _parse_event_text(current_event_text)
                 ev_name = normalize_event_name(dist, stroke, relay)
+                # Mixed relays: detect_gender() has no keyword for "Mixed", so
+                # tag the team sex as X and carry "Mixed" in the event name
+                # (the UI derives Men/Women from team sex but can't express X).
+                if relay and 'mixed' in current_event_text.lower():
+                    current_gender = 'X'
+                    if 'mixed' not in ev_name.lower():
+                        ev_name = f'{ev_name} Mixed'
                 key = (ev_name, current_gender, current_round)
                 if key not in events_map:
                     pe = ParsedEvent(
@@ -242,6 +249,15 @@ def parse(text):
 
         # --- Result row parsing ---
         if not current_event:
+            continue
+
+        # Relay events print a team row ("1 4 ITA Italy 3:45.66") followed by
+        # four leg-swimmer lines ("LAZZARI Francesco (M) 15 DEC 2004 0.61 25.89
+        # 53.91 53.91"). These don't fit the individual-row shape, so parse
+        # them on a dedicated path and never fall through to _try_parse_row.
+        if 'relay' in current_event.event_name.lower():
+            _parse_relay_line(line, current_event, current_gender,
+                               current_round, in_not_classified)
             continue
 
         # Tokenize the line
@@ -487,3 +503,98 @@ def _try_parse_row(tokens, gender, round_type, in_not_classified):
         split_times=splits,
         status=status,
     )
+
+
+# --- Relay parsing ---
+# Leg-swimmer line carries the swimmer's sex in parentheses: "... (M) ..."
+_LEG_GENDER_RE = re.compile(r'\((M|F)\)')
+
+
+def _reorder_leg_name(name_part):
+    """"MANCINI Gabriele" (SURNAME Given) -> "Gabriele MANCINI".
+
+    Leading ALL-CAPS tokens are the surname (may be multi-word, e.g.
+    "SOBREVIELA JIMENEZ Naiar"); the mixed-case remainder is the given name.
+    """
+    toks = name_part.split()
+    surname, i = [], 0
+    while i < len(toks) and toks[i].isupper() and any(c.isalpha() for c in toks[i]):
+        surname.append(toks[i])
+        i += 1
+    given = toks[i:]
+    if surname and given:
+        return ' '.join(given + surname)
+    return name_part.strip()
+
+
+def _parse_relay_line(line, event, gender, round_type, in_not_classified):
+    """Parse a relay team row or one of its four leg-swimmer lines.
+
+    Team row:  "1 2 3 ITA Italy 3:50.87 q"  (RANK [HEAT] LANE NAT TEAM TIME …)
+               "5 ESP Spain DSQ"            (disqualified, in NOT CLASSIFIED)
+    Leg row:   "MANCINI Gabriele (M) 28 MAY 2002 0.27 27.22 59.49 1:53.40"
+               → the swimmer's own leg split is the second-to-last time token
+               (the last one is the running cumulative team time).
+    """
+    tokens = line.split()
+    if not tokens:
+        return
+
+    # Team row starts with the finishing rank.
+    if tokens[0].isdigit():
+        idx = 1
+        rank = int(tokens[0])
+        # Consume the heat/lane integers that precede the NAT code.
+        while idx < len(tokens) and tokens[idx].isdigit() and int(tokens[idx]) <= 30 and idx < 3:
+            idx += 1
+        if idx >= len(tokens) or not _NAT_RE.match(tokens[idx]):
+            return
+        nat = tokens[idx]
+        idx += 1
+        name_toks, time_text, time_cs, status = [], '', 0, 'OK'
+        while idx < len(tokens):
+            t = tokens[idx]
+            if t.upper() in _STATUS_MAP:
+                status = _STATUS_MAP[t.upper()]
+                break
+            if _TIME_RE.match(t):
+                time_text = t
+                time_cs = parse_time_to_centiseconds(t)
+                break
+            name_toks.append(t)
+            idx += 1
+        if in_not_classified and status == 'OK' and not time_text:
+            status = 'DNS'
+        team_name = ' '.join(name_toks).strip()
+        if not team_name:
+            return
+        event.results.append(ParsedResult(
+            swimmer_name=team_name,
+            time_text=time_text,
+            time_centiseconds=time_cs,
+            rank=rank,
+            nationality_code=nat,
+            gender=gender,
+            round_type=round_type,
+            status=status,
+            split_times=[],
+        ))
+        return
+
+    # Leg-swimmer line: attach to the team row just added.
+    gm = _LEG_GENDER_RE.search(line)
+    if not gm or not event.results:
+        return
+    leg_name = _reorder_leg_name(line[:gm.start()])
+    if not leg_name:
+        return
+    times = [t for t in line[gm.end():].split() if _TIME_RE.match(t)]
+    # Second-to-last = the swimmer's leg split; last = cumulative team time.
+    if len(times) >= 2:
+        leg = times[-2]
+    elif times:
+        leg = times[-1]
+    else:
+        leg = ''
+    team = event.results[-1]
+    team.split_times.append(f'{leg_name} {leg}'.strip())

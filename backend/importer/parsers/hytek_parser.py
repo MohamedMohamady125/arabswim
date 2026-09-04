@@ -609,7 +609,11 @@ def _attach_relay_splits(result, line):
     times = TIME_PATTERN.findall(line)
     names = getattr(result, '_relay_names', [])
     if not names:
-        result.split_times.extend(times)
+        # No leg-swimmer names were captured (e.g. scrambled multi-column
+        # HY-TEK layouts drop the "1) x 2) y" lines). The numbers on this
+        # line are the relay's own cumulative 50m marks, NOT four swimmers.
+        # Storing them as split rows fabricates phantom "swimmers" (a 4x100
+        # yields 8 nameless rows), so keep no leg rows rather than invent them.
         return
 
     # Accumulate across possibly-wrapped split lines for this team.

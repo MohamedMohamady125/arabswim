@@ -676,6 +676,10 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   const finalsCats = useMemo(() => new Set(
     rows.filter((r) => r.round_type === 'Finals' || r.round_type === 'Consolation')
       .map((r) => r.category || '')), [rows])
+  // Heats view (All categories): pool every category that has a real final
+  // into one time-ranked list — heats are seeded across ages, so category
+  // splits printed in the source don't reflect separate races.
+  const poolHeats = roundLabel(selectedRound) === 'Heats' && selectedCategory === 'ALL'
   const grouped = useMemo(() => {
     let sel
     if (isOpenView) {
@@ -697,10 +701,16 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       return (a.time_centiseconds || 0) - (b.time_centiseconds || 0)
     })
     if (isOpenView) return sorted.length ? [['OPEN', sorted]] : []
+    // Heats are seeded by time across all ages — French-style meets print a
+    // separate "Séries" block per single-year category, but the swimmers all
+    // raced together. In the Heats view, pool every category that has a real
+    // final into one time-ranked list (no category split). Categories that are
+    // heats-only keep their own group, because that classement IS their podium.
     const order = []
     const byCat = new Map()
     sorted.forEach((r) => {
-      const cat = r.category || ''
+      const rawCat = r.category || ''
+      const cat = (poolHeats && finalsCats.has(rawCat)) ? '' : rawCat
       if (!byCat.has(cat)) { byCat.set(cat, []); order.push(cat) }
       byCat.get(cat).push(r)
     })
@@ -714,7 +724,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     })
     order.sort((a, b) => (minId.get(a) ?? Infinity) - (minId.get(b) ?? Infinity))
     return order.map((cat) => [cat, byCat.get(cat)])
-  }, [rows, selectedRound, selectedCategory, isOpenView, bFinalNoMedals])
+  }, [rows, selectedRound, selectedCategory, isOpenView, bFinalNoMedals, finalsCats])
 
   useEffect(() => { setExpandedRow(null) }, [eventKey, selectedRound, selectedCategory])
   // full list — every swimmer in the selection, no pagination
@@ -800,7 +810,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     // per-category source rank doesn't apply there.
     const ranked = arr.filter((x) => !x.is_hc)
     const computedRank = r.is_hc ? 0 : ranked.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
-    const rank = !r.is_hc && !isOpenView && r.original_rank ? r.original_rank : computedRank
+    const rank = !r.is_hc && !isOpenView && !poolHeats && r.original_rank ? r.original_rank : computedRank
     const mRank = r.is_hc ? 0 : medalRank(r, ranked, rank)
     const heatsOnlyCat = !isOpenView && !!r.category && !finalsCats.has(r.category)
     const medalOnRow = (showMedals || heatsOnlyCat) && !r.is_manual && !r.is_hc && mRank >= 1 && mRank <= 3

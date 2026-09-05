@@ -144,6 +144,18 @@ RELAY_DQ_LINE = re.compile(
 RELAY_SWIMMER_MARK = re.compile(r'\d\)\s')
 RELAY_SWIMMER_PART = re.compile(r'(\d)\)\s*(.+?)(?=\s*\d\)|\s*$)')
 
+# Alternate leg format (no "N)" markers): two legs per printed line, four
+# across the two lines under a team. Each leg is "Last[ words], First[ words]
+# <age>" (single-gender relays) or "... <M|W><age>" (mixed relays carry a
+# gender letter). Used by some HY-TEK exports (e.g. Africa Junior 2021). The
+# first/middle part is lazy so it stops at the age tag rather than swallowing
+# the next swimmer's name.
+RELAY_LEG_GENDER = re.compile(
+    r"([A-Z][A-Za-zÀ-ÿ'’.\-]*(?:\s+[A-Za-zÀ-ÿ'’.\-]+)*,"
+    r"\s+[A-Za-zÀ-ÿ'’.\-]+(?:\s+[A-Za-zÀ-ÿ'’.\-]+)*?)"
+    r"\s+[MW]?\d{1,2}(?=\s|$|[A-Z])"
+)
+
 # Rank at start of a result line
 RANK_PREFIX = re.compile(r'^\s*\*?(\d{1,3})\s+')
 # HC / EXH (hors concours / exhibition) prefix
@@ -594,6 +606,21 @@ def _parse_relay_line(line, event, comma_order, take_last_time=False):
         result.split_times = list(result._relay_names)
         return True
 
+    # Leg swimmers, gender-tagged format: "Lastname, First M17 Other, Name W14"
+    # (two legs per line). Only when a team result is already open and the line
+    # holds at least one such name (avoids record-holder credit lines that
+    # appear before the first team).
+    if event.results and RELAY_LEG_GENDER.search(line):
+        result = event.results[-1]
+        if not hasattr(result, '_relay_names'):
+            result._relay_names = []
+        for pm in RELAY_LEG_GENDER.finditer(line):
+            name = normalize_name(pm.group(1).strip(), comma_order=comma_order)
+            if name:
+                result._relay_names.append(name)
+        result.split_times = list(result._relay_names)
+        return True
+
     return False
 
 
@@ -607,6 +634,12 @@ def _attach_relay_splits(result, line):
     missing; when the shape is ambiguous, keep names without times rather
     than assigning wrong ones."""
     times = TIME_PATTERN.findall(line)
+    # A lone time equal to the team's final time is the final-time echo Hy-Tek
+    # prints after the split lines, not a split — ignore it so it doesn't
+    # overwrite already-paired leg times with a bad shape.
+    if (len(times) == 1 and result.time_centiseconds
+            and abs(parse_time_to_centiseconds(times[0]) - result.time_centiseconds) <= 2):
+        return
     names = getattr(result, '_relay_names', [])
     if not names:
         # No leg-swimmer names were captured (e.g. scrambled multi-column

@@ -331,6 +331,24 @@ def parse(text):
                 meet.meet_name = stripped
             break
 
+    # Championship title heuristic: the true meet title repeats as a header line
+    # on every page (e.g. Qatar's "2nd Arab Aquatics Age Group Championships").
+    # Pick the most-frequently-repeated header line carrying a championship keyword.
+    if not meet.meet_name:
+        _TITLE_KW = re.compile(
+            r'champion|championship|coupe|\bcup\b|trophy|\bopen\b|meeting|festival'
+            r'|games|invitational|classic|grand\s*prix|aquatics',
+            re.IGNORECASE)
+        counts = {}
+        for line in lines:
+            stripped = line.strip()
+            if len(stripped) < 6 or not _TITLE_KW.search(stripped):
+                continue
+            counts[stripped] = counts.get(stripped, 0) + 1
+        if counts:
+            # most repeated wins; ties broken by longer (more descriptive) line
+            meet.meet_name = max(counts, key=lambda s: (counts[s], len(s)))
+
     # If no meet name found, try early lines (skip noise like "PTS", event headers)
     _NOISE = {'PTS', 'SWIMMING', 'RESULTS', 'RANK', 'EVENT'}
     if not meet.meet_name:
@@ -414,7 +432,9 @@ def _try_parse_row(tokens, gender, round_type, in_not_classified):
     if not name_tokens or idx >= len(tokens):
         return None
 
-    swimmer_name = ' '.join(name_tokens)
+    # Microplus prints the family name first in ALL CAPS, then the given
+    # name in mixed case ("AL SHEHHY Hamad"). Reorder to "Given SURNAME".
+    swimmer_name = _reorder_surname_first(' '.join(name_tokens))
 
     # NAT code
     nat_code = ''
@@ -510,11 +530,14 @@ def _try_parse_row(tokens, gender, round_type, in_not_classified):
 _LEG_GENDER_RE = re.compile(r'\((M|F)\)')
 
 
-def _reorder_leg_name(name_part):
+def _reorder_surname_first(name_part):
     """"MANCINI Gabriele" (SURNAME Given) -> "Gabriele MANCINI".
 
-    Leading ALL-CAPS tokens are the surname (may be multi-word, e.g.
+    Microplus (and Splash/FFN) always print the family name FIRST in ALL
+    CAPS, followed by the given name in mixed case. Leading ALL-CAPS tokens
+    are the surname (may be multi-word, e.g. "AL SHEHHY Hamad",
     "SOBREVIELA JIMENEZ Naiar"); the mixed-case remainder is the given name.
+    Reorder to the site-wide "Given SURNAME" convention.
     """
     toks = name_part.split()
     surname, i = [], 0
@@ -525,6 +548,10 @@ def _reorder_leg_name(name_part):
     if surname and given:
         return ' '.join(given + surname)
     return name_part.strip()
+
+
+# Backwards-compatible alias (relay leg call site).
+_reorder_leg_name = _reorder_surname_first
 
 
 def _parse_relay_line(line, event, gender, round_type, in_not_classified):
@@ -538,6 +565,11 @@ def _parse_relay_line(line, event, gender, round_type, in_not_classified):
     """
     tokens = line.split()
     if not tokens:
+        return
+
+    # Session/date lines ("10 JAN 2024 - 19:19", "10 JAN 2024") also start
+    # with a number, but the second token is a month — never a team row.
+    if len(tokens) >= 2 and tokens[1].upper() in _MONTHS:
         return
 
     # Team row starts with the finishing rank.
@@ -581,14 +613,22 @@ def _parse_relay_line(line, event, gender, round_type, in_not_classified):
         ))
         return
 
-    # Leg-swimmer line: attach to the team row just added.
-    gm = _LEG_GENDER_RE.search(line)
-    if not gm or not event.results:
+    # Leg-swimmer line: attach to the team row just added. Every leg line
+    # carries the swimmer's birth date ("SURNAME Given [(M)/(W)] DD MON YYYY
+    # <splits> <cumulative>"). Mixed relays tag each leg with a (M)/(W)/(F)
+    # gender marker; single-gender relays omit it — so anchor on the birth
+    # date, not the marker, or every single-gender leg would be dropped.
+    if not event.results:
         return
-    leg_name = _reorder_leg_name(line[:gm.start()])
+    bm = _BORN_RE.search(line)
+    if not bm:
+        return
+    # Name is everything before the birth date, minus a trailing gender marker.
+    name_part = re.sub(r'\(\s*[MWF]\s*\)\s*$', '', line[:bm.start()]).strip()
+    leg_name = _reorder_surname_first(name_part)
     if not leg_name:
         return
-    times = [t for t in line[gm.end():].split() if _TIME_RE.match(t)]
+    times = [t for t in line[bm.end():].split() if _TIME_RE.match(t)]
     # Second-to-last = the swimmer's leg split; last = cumulative team time.
     if len(times) >= 2:
         leg = times[-2]

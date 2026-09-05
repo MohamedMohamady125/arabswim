@@ -46,9 +46,12 @@ _EVENT_PREFIX = r'(?:Event\s+\d+\s+|#\s*\d+\s+)?'
 # just "100 Meter Free".
 _METER = r'(?:(?:SC|LC)\s+)?Met(?:er|re)s?\s+'
 
+# Gender token — "Mixted" is a common HY-TEK export typo for "Mixed".
+_GENDER = r'(Boys|Girls|Men|Women|Mixed|Mixted)'
+
 EVENT_HEADER = re.compile(
     _EVENT_PREFIX +
-    r'(Boys|Girls|Men|Women|Mixed)\s+'
+    _GENDER + r'\s+'
     r'(?:(' + _AGE_GROUP + r')\s+)?'
     r'(\d+)\s+'
     + _METER +
@@ -59,7 +62,7 @@ EVENT_HEADER = re.compile(
 # Relay header with explicit legs: "Event 1 Boys 12-13 4x100 SC Meter Freestyle Relay"
 RELAY_HEADER = re.compile(
     _EVENT_PREFIX +
-    r'(Boys|Girls|Men|Women|Mixed)\s+'
+    _GENDER + r'\s+'
     r'(?:(' + _AGE_GROUP + r')\s+)?'
     r'(\d+)\s*x\s*(\d+)\s+'
     + _METER +
@@ -75,6 +78,9 @@ SKIP_PATTERNS = [
     re.compile(r'^\s*Record:', re.IGNORECASE),
     # Record label lines: "AFR: 54.79 A 2018 Erin Gallagher", "GHA: 1:02.30 ..."
     re.compile(r'^\s*[A-Z]{2,4}:\s+\d', re.IGNORECASE),
+    # Abbreviated championship-record lines: "Arab Champ R: 23.71 2012 …",
+    # "Meet R: 2:07.79 2012 …" — an "R:" immediately followed by a time.
+    re.compile(r'\bR:\s*\d{1,2}[:.]\d', re.IGNORECASE),
     re.compile(r'Age\s*G\s*Record', re.IGNORECASE),
     re.compile(r'Jor\s*Record', re.IGNORECASE),
     re.compile(r'^\s*National\s+Team\s*$', re.IGNORECASE),
@@ -214,7 +220,17 @@ def _extract_session_date(line):
 def detect_format(text):
     """Check if this text is from HY-TEK Meet Manager."""
     t = text.lower()
-    return 'hy-tek' in t or 'meet manager' in t
+    if 'hy-tek' in t or 'meet manager' in t:
+        return True
+    # Some HY-TEK reports drop the "HY-TEK's MEET MANAGER" footer branding
+    # (e.g. the Arab-championship exports whose header instead reads
+    # "SWIMMING ARAB UNION FRMN", which would otherwise be misrouted to the
+    # French FRMN parser). The English event headers ("... LC/SC Meter ...")
+    # together with the "Name Age Team" column header are a structural
+    # signature no other supported format shares.
+    if ('lc meter' in t or 'sc meter' in t) and 'name age team' in t:
+        return True
+    return False
 
 
 def parse(text):
@@ -248,12 +264,34 @@ def parse(text):
         if len(header_lines) >= 5:
             break
 
-    # Find meet name (first line without hy-tek/meet manager)
-    for line in header_lines:
-        if 'hy-tek' in line.lower() or 'meet manager' in line.lower():
-            continue
-        if not meet.meet_name:
+    # Find the meet name. Prefer a header line that looks like an event
+    # title (has a date range or a championship keyword) over a governing-
+    # body banner such as "SWIMMING ARAB UNION FRMN" or "... FEDERATION",
+    # which some exports print on the first line.
+    title_hint = re.compile(
+        r'\d{1,2}/\d{1,2}/\d{4}|champ|coupe|\bcup\b|trophy|\bopen\b|'
+        r'meeting|festival|games|invitational|classic|grand\s*prix',
+        re.IGNORECASE)
+    org_hint = re.compile(
+        r'\b(union|federation|f[eé]d[eé]ration|association|f\.?r\.?m\.?n)\b',
+        re.IGNORECASE)
+    candidates = [l for l in header_lines
+                  if 'hy-tek' not in l.lower() and 'meet manager' not in l.lower()]
+
+    def _alpha_words(s):
+        return sum(1 for w in s.split() if any(c.isalpha() for c in w))
+
+    for line in candidates:
+        if title_hint.search(line) and not org_hint.search(line) and _alpha_words(line) >= 2:
             meet.meet_name = line
+            break
+    if not meet.meet_name:
+        for line in candidates:
+            if not org_hint.search(line):
+                meet.meet_name = line
+                break
+    if not meet.meet_name and candidates:
+        meet.meet_name = candidates[0]
 
     # Extract dates
     combined_header = ' '.join(header_lines)
@@ -366,7 +404,7 @@ def parse(text):
                 relay = is_relay_event(stroke_raw)
 
             gl = gender_text.lower()
-            if gl == 'mixed':
+            if gl in ('mixed', 'mixted'):
                 gender = 'X'
             elif gl in ('girls', 'women'):
                 gender = 'F'

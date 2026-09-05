@@ -55,6 +55,9 @@ _SESSION_DATE_RE = re.compile(
 # Event number: "Event 29"
 _EVENT_NUM_RE = re.compile(r'^Event\s+(\d+)', re.IGNORECASE)
 
+# Timed-final heat marker: "Heat 1 of 3"
+_HEAT_OF_RE = re.compile(r'\bHeat\s+\d+\s+of\s+\d+\b', re.IGNORECASE)
+
 # Age group in event titles: "Boys 13-14's 50 m Butterfly", "Mixed 17-18's 4x100 m".
 # Also tolerates "13 & Over" / "13-Under" / a lone "Open".
 _AGE_GROUP_RE = re.compile(
@@ -155,12 +158,23 @@ def _detect_event_and_round(lines):
         if upper in _ROUND_MAP:
             round_text = _ROUND_MAP[upper]
             continue
+        # Timed-final heat page: "Heat 1 of 3". These carry the individual
+        # heat swims (header "RANK LANE …"). Label them Heats so the combined
+        # overall-ranking page can be kept as the Finals ranking and the
+        # duplicate heats dropped in post-processing.
+        if not round_text and _HEAT_OF_RE.search(stripped):
+            round_text = 'Heats'
+            continue
         # "Men 50m Freestyle" or "Women 200m Individual Medley"
         if re.match(r'(?:Men|Women|Mixed|Boys|Girls)\b', stripped, re.IGNORECASE):
             event_text = stripped
             gender = detect_gender(stripped)
             continue
-        if stripped.upper().startswith('RANK'):
+        if upper.startswith('RANK'):
+            # The combined overall-ranking page has a HEAT column
+            # ("RANK HEAT LANE …") — that page IS the final classification.
+            if upper.startswith('RANK HEAT') and not round_text:
+                round_text = 'Finals'
             break
     return event_text, round_text, gender, venue
 

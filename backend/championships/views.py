@@ -1814,14 +1814,16 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='swap-names')
     def swap_names(self, request, pk=None):
-        """Swap first/last name order for all swimmers in this meet.
+        """Swap first/last name order for every swimmer in this meet.
 
-        Handles two patterns:
-        1. "Family GIVEN" (title-case + ALL-CAPS) → "Given FAMILY"
-        2. "SURNAME Given" (ALL-CAPS + title-case) → "Given SURNAME"
-
-        The surname stays ALL-CAPS in the output (site convention)."""
-        import re
+        This is the manual override for a meet the auto name-order detector
+        (importer.services.detect_and_fix_name_order) got wrong or couldn't
+        decide. It moves each swimmer's leading (family) token to the end and
+        normalises to the site's "Given SURNAME" convention — regardless of
+        the source casing, so all-caps meets ("EL KHOURY MARIE") are handled
+        just like mixed-case ones. Clicking twice on a two-token name returns
+        it to the original order (predictable toggle)."""
+        from importer.services import normalize_swimmer_name
         championship = self.get_object()
         from swimmers.models import Swimmer
         qs = (Swimmer.objects
@@ -1829,70 +1831,19 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                       results__championship_id=championship.id)
               .distinct())
 
-        def _case(tok):
-            """'C' all-caps, 'T' has a lowercase letter, 'x' no case signal."""
-            if not any(c.isalpha() for c in tok):
-                return 'x'
-            return 'C' if tok == tok.upper() else 'T'
-
-        def try_swap(name):
-            tokens = name.strip().split()
+        def do_swap(name):
+            tokens = (name or '').strip().split()
             if len(tokens) < 2:
                 return None
-            cls = [_case(t) for t in tokens]
-            # Need both an ALL-CAPS part and a title-case part to tell the
-            # name order apart. Single-case names ("MOHAMED ALI", "Mohamed
-            # Ali") are ambiguous — leave them untouched.
-            if not any(c == 'C' for c in cls) or not any(c == 'T' for c in cls):
-                return None
-            n = len(tokens)
-
-            def out(given_tokens, surname_tokens):
-                given = ' '.join(w.capitalize() for w in given_tokens)
-                surname = ' '.join(surname_tokens).upper()
-                return f'{given} {surname}'
-
-            # Case A — "Family GIVEN": the trailing ALL-CAPS run is the given
-            # name, everything before it is the family name (which may itself
-            # contain an ALL-CAPS particle like "EL"). "El Khoury MARIE" and
-            # "EL Khoury MARIE" both → "Marie EL KHOURY".
-            if cls[-1] == 'C':
-                k = n
-                while k > 0 and cls[k - 1] == 'C':
-                    k -= 1
-                family, given = tokens[:k], tokens[k:]
-                if family and any(c == 'T' for c in cls[:k]):
-                    return out(given, family)
-                return None
-
-            # Case B — "SURNAME Given": the leading ALL-CAPS run is the
-            # surname, everything after is the given name. "EL KHOURY Marie"
-            # → "Marie EL KHOURY".
-            if cls[0] == 'C':
-                k = 0
-                while k < n and cls[k] == 'C':
-                    k += 1
-                surname, given = tokens[:k], tokens[k:]
-                if given:
-                    return out(given, surname)
-                return None
-
-            # Else — the ALL-CAPS surname sits in the interior, both ends
-            # title-case ("Marie KHOURY Anne"). Only swap when the caps run
-            # is contiguous; otherwise it's too ambiguous to touch.
-            caps_idx = [i for i, c in enumerate(cls) if c == 'C']
-            if caps_idx == list(range(caps_idx[0], caps_idx[-1] + 1)):
-                surname = tokens[caps_idx[0]:caps_idx[-1] + 1]
-                given = [t for i, t in enumerate(tokens)
-                         if i < caps_idx[0] or i > caps_idx[-1]]
-                return out(given, surname)
-            return None
+            # Move the leading (family) token to the end, then let
+            # normalize_swimmer_name upper-case the trailing surname.
+            return normalize_swimmer_name(' '.join(tokens[1:] + tokens[:1]))
 
         renamed = 0
         dupes = []
         for swimmer in qs.iterator():
             name = (swimmer.name or '').strip()
-            new_name = try_swap(name)
+            new_name = do_swap(name)
             if not new_name or new_name == name:
                 continue
             twin = (Swimmer.objects

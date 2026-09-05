@@ -125,14 +125,85 @@ def normalize_swimmer_name(text):
     return uppercase_surname(normalize_name(text))
 
 
-def detect_and_fix_name_order(preview_data):
-    """Smart name-order detection: when the parser can't tell if names are
-    surname-first or given-first (e.g. all-caps Arab names), compare them
-    against existing swimmers in the DB.
+def _name_tokens(name):
+    """Alpha word tokens of a name, lowercased (punctuation dropped)."""
+    cleaned = re.sub(r"[^\w\s'’.\-]", ' ', name or '')
+    return [t.lower() for t in cleaned.split() if any(c.isalpha() for c in t)]
 
-    If more existing swimmers match the flipped version than the original,
-    flip all names in the preview. This runs once after parsing, before
-    the user sees the preview.
+
+def decide_meet_name_flip(names_and_years):
+    """Decide whether a meet's swimmer names are in the wrong order, using
+    already-registered swimmer profiles as the ground truth.
+
+    Every Arab meet we import contains at least one swimmer who already has a
+    profile on the site. Those existing profiles are stored in the correct
+    order ("Given SURNAME"). We match each meet name to an existing profile by
+    its token *set* (order-independent) + birth year, then check whether the
+    meet lists that swimmer's family name first or last:
+
+      • meet's leading token == profile's leading token  → order agrees (keep)
+      • meet's leading token == profile's trailing token → order reversed (flip)
+
+    A majority vote across all matched reference swimmers decides the whole
+    meet. Returns 'flip', 'keep', or None (no usable reference found).
+    """
+    from swimmers.models import Swimmer
+
+    keep_votes = 0
+    flip_votes = 0
+    checked = 0
+    seen = set()
+    for name, birth_year in names_and_years:
+        toks = _name_tokens(name)
+        if len(toks) < 2:
+            continue
+        key = (frozenset(toks), birth_year or 0)
+        if key in seen:
+            continue
+        seen.add(key)
+        # Narrow the candidate set by requiring every token to appear in the
+        # stored name, then confirm an exact token-set match in Python.
+        q = Swimmer.objects.filter(is_relay_team=False)
+        for t in toks:
+            q = q.filter(name__icontains=t)
+        for prof in q[:8]:
+            p_toks = _name_tokens(prof.name)
+            if set(p_toks) != set(toks):
+                continue
+            if birth_year and prof.birth_year and prof.birth_year != birth_year:
+                continue
+            if toks[0] == p_toks[0]:
+                keep_votes += 1
+            elif toks[0] == p_toks[-1]:
+                flip_votes += 1
+            else:
+                continue
+            break  # one reference vote per distinct meet name
+        checked += 1
+        # Enough evidence to be confident — stop querying.
+        if keep_votes + flip_votes >= 8:
+            break
+        if checked >= 80:
+            break
+
+    if flip_votes == 0 and keep_votes == 0:
+        return None
+    if flip_votes > keep_votes and flip_votes >= 2:
+        return 'flip'
+    return 'keep'
+
+
+def detect_and_fix_name_order(preview_data):
+    """Smart name-order detection run once after parsing, before the user sees
+    the preview.
+
+    Primary rule (Arab-reference): match meet names to existing swimmer
+    profiles and flip the whole meet if the profiles say the order is reversed
+    (see decide_meet_name_flip).
+
+    Fallback: when no existing profile matches (a meet with no already-known
+    swimmer), fall back to the old all-caps flipped-string heuristic so brand
+    new datasets still get a best-effort correction.
     """
     from swimmers.models import Swimmer
     results = []
@@ -141,6 +212,29 @@ def detect_and_fix_name_order(preview_data):
     if not results:
         return preview_data
 
+    names_and_years = [
+        (r.get('swimmer_name', ''), r.get('birth_year'))
+        for r in results if r.get('swimmer_name')
+    ]
+    decision = decide_meet_name_flip(names_and_years)
+
+    if decision == 'flip':
+        # Reference profiles say this meet is surname-first — move each
+        # swimmer's leading (family) token to the end for the whole meet.
+        for ev in preview_data.get('events', []):
+            for r in ev.get('results', []):
+                if r.get('is_relay'):
+                    continue
+                words = (r.get('swimmer_name', '') or '').split()
+                if len(words) >= 2:
+                    r['swimmer_name'] = normalize_swimmer_name(
+                        ' '.join(words[1:] + words[:1]))
+        return preview_data
+    if decision == 'keep':
+        # Reference profiles confirm the order is already correct.
+        return preview_data
+
+    # --- Fallback: no existing profile matched (brand new dataset) ---
     # Collect names that are all-caps (ambiguous order)
     ambiguous = []
     for r in results:

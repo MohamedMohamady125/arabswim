@@ -1966,6 +1966,8 @@ class CountryCodeAliasTests(TestCase):
             'UAE': 'UAE', 'OMA': 'Oman', 'LBN': 'Lebanon', 'PLE': 'Palestine',
             'LBY': 'Libya', 'ALG': 'Algeria', 'SUD': 'Sudan',
             'MTN': 'Mauritania', 'MAR': 'Morocco', 'EGY': 'Egypt',
+            # Non-Arab targets that aliases resolve to (African-champs codes)
+            'MAW': 'Malawi', 'ZAM': 'Zambia',
         }
         for code, name in codes.items():
             Country.objects.create(name=name, code=code)
@@ -1991,7 +1993,13 @@ class CountryCodeAliasTests(TestCase):
     def test_arab_country_codes_cover_all_aliases(self):
         from importer.matcher import COUNTRY_CODE_ALIASES
         from importer.services import ARAB_COUNTRY_CODES
-        for alias in COUNTRY_CODE_ALIASES:
+        # Only aliases that resolve to an Arab country must themselves be
+        # recognised as Arab (so an aliased code isn't dropped from Arab
+        # records). Non-Arab aliases (e.g. Sub-Saharan African variants
+        # like MWI/ZMB) are intentionally excluded.
+        for alias, target in COUNTRY_CODE_ALIASES.items():
+            if target not in ARAB_COUNTRY_CODES:
+                continue
             self.assertIn(alias, ARAB_COUNTRY_CODES, f'{alias} missing from ARAB_COUNTRY_CODES')
 
 

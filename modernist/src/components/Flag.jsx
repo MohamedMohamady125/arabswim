@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import 'flag-icons/css/flag-icons.min.css'
 import { flagAlpha2 } from '../utils'
+import worldAquaticsLogo from '../assets/world-aquatics.svg'
 
 // Hand-picked flag images (src/assets/flags/{alpha2}.webp) — drop a new file
 // in that folder and it is picked up automatically, overriding the SVG set.
@@ -25,6 +26,20 @@ export default function Flag({ code, name, large = false, flagUrl, placeholder =
   const upper = code ? String(code).toUpperCase() : ''
   const alpha2 = flagAlpha2(code)
   const cls = large ? 'asw-flag-lg' : 'asw-flag'
+  // FINA/World Aquatics Refugee Team competes under the World Aquatics flag —
+  // show the World Aquatics logomark instead of a text badge.
+  if (upper === 'FRT') {
+    return (
+      <img
+        className={cls}
+        src={worldAquaticsLogo}
+        alt={name || 'World Aquatics Refugee Team'}
+        title={name || 'World Aquatics Refugee Team'}
+        loading="lazy"
+        style={{ objectFit: 'contain', background: '#fff', padding: '2px' }}
+      />
+    )
+  }
   // Neutral athletes: no national flag — render a neutral badge.
   if (NEUTRAL_CODES.has(upper)) {
     return (

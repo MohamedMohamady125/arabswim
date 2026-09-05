@@ -10,9 +10,10 @@ const CUSTOM_FLAGS = Object.fromEntries(
 )
 
 // Codes that have no national flag — athletes competing under a neutral
-// banner (World Aquatics "Neutral Athletes" / "AIN" / the "NAB" relay code).
+// banner (World Aquatics "Neutral Athletes" / "AIN" / the "NAB" relay code,
+// the "FRT" FINA Refugee Team, and "SMF" Suspended Member Federation).
 // They get a dedicated neutral badge instead of a country flag.
-const NEUTRAL_CODES = new Set(['AIN', 'NAB', 'NEUTRAL'])
+const NEUTRAL_CODES = new Set(['AIN', 'NAB', 'NEUTRAL', 'FRT', 'SMF'])
 
 // Bordered rectangular flag, per the Modernist theme (.asw-flag / .asw-flag-lg).
 // Custom curated images first; the bundled flag-icons SVG set as fallback —
@@ -37,7 +38,7 @@ export default function Flag({ code, name, large = false, flagUrl, placeholder =
           fontSize: large ? '0.6rem' : '0.5rem', fontWeight: 700, letterSpacing: '0.02em',
           background: 'var(--color-neutral-100)', color: 'var(--color-neutral-500)',
         }}
-      >AIN</span>
+      >{upper || 'AIN'}</span>
     )
   }
   if (alpha2 && CUSTOM_FLAGS[alpha2]) {

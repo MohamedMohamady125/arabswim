@@ -94,6 +94,18 @@ WORLD_COUNTRIES = [
     ('Nauru', 'NRU'), ('New Zealand', 'NZL'), ('Palau', 'PLW'),
     ('Papua New Guinea', 'PNG'), ('Samoa', 'SAM'), ('Solomon Islands', 'SOL'),
     ('Tonga', 'TGA'), ('Tuvalu', 'TUV'), ('Vanuatu', 'VAN'),
+    # --- Dependent territories that enter World Aquatics meets under their
+    #     own World Aquatics codes (differ from IOC in some cases) ---
+    ('Curaçao', 'CUR'), ('Faroe Islands', 'FAR'), ('Sint Maarten', 'MAA'),
+    ('Northern Mariana Islands', 'NMA'), ('Turks and Caicos Islands', 'TCN'),
+]
+
+# Non-national World Aquatics entries — athletes competing under a neutral
+# banner. Given real Country rows (so results attach) but no national flag;
+# the frontend renders a neutral badge for these codes.
+NEUTRAL_TEAMS = [
+    ('FINA Refugee Team', 'FRT'),
+    ('Suspended Member Federation', 'SMF'),
 ]
 
 
@@ -143,6 +155,8 @@ FLAGS = {
     'AUS': 'au', 'COK': 'ck', 'FIJ': 'fj', 'GUM': 'gu', 'KIR': 'ki', 'MHL': 'mh',
     'FSM': 'fm', 'NRU': 'nr', 'NZL': 'nz', 'PLW': 'pw', 'PNG': 'pg', 'SAM': 'ws',
     'SOL': 'sb', 'TGA': 'to', 'TUV': 'tv', 'VAN': 'vu',
+    # Dependent territories
+    'CUR': 'cw', 'FAR': 'fo', 'MAA': 'sx', 'NMA': 'mp', 'TCN': 'tc',
 }
 
 
@@ -179,6 +193,7 @@ class Command(BaseCommand):
 
         rows = list(ARAB_COUNTRIES)
         rows += [{'name': n, 'code': c, 'region': 'OTHER'} for n, c in WORLD_COUNTRIES]
+        rows += [{'name': n, 'code': c, 'region': 'OTHER'} for n, c in NEUTRAL_TEAMS]
 
         for c in rows:
             Country.objects.update_or_create(

@@ -55,6 +55,26 @@ _SESSION_DATE_RE = re.compile(
 # Event number: "Event 29"
 _EVENT_NUM_RE = re.compile(r'^Event\s+(\d+)', re.IGNORECASE)
 
+# Age group in event titles: "Boys 13-14's 50 m Butterfly", "Mixed 17-18's 4x100 m".
+# Also tolerates "13 & Over" / "13-Under" / a lone "Open".
+_AGE_GROUP_RE = re.compile(
+    r"\b(\d{1,2}\s*[-&]\s*(?:\d{1,2}|Over|Under|Unde)|\d{1,2}\s*(?:&|and)\s*(?:Over|Under)|Open)"
+    r"(?:['’]s)?\b",
+    re.IGNORECASE,
+)
+
+
+def _extract_age_group(event_text):
+    """Pull the age category out of a Microplus event title.
+
+    Titles look like "Boys 13-14's 50 m Butterfly" — the "13-14" between the
+    gender prefix and the distance is the age group. Returns "" when absent.
+    """
+    m = _AGE_GROUP_RE.search(event_text or '')
+    if not m:
+        return ''
+    return re.sub(r"['’]s$", '', m.group(0).strip()).strip()
+
 # Time: "22.02", "1:49.13", "48.77"
 _TIME_RE = re.compile(r'^(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})$')
 
@@ -118,6 +138,11 @@ def _detect_event_and_round(lines):
     round_text = ''
     gender = ''
     venue = ''
+    # The "Competition Schedule" page lists every event (lines begin with
+    # "Boys/Girls/Mixed …") but carries no results. Skip it so it can't
+    # fabricate a phantom empty event.
+    if any(l.strip().upper() == 'COMPETITION SCHEDULE' for l in lines[:12]):
+        return '', '', '', ''
     for i, line in enumerate(lines[:12]):
         stripped = line.strip()
         upper = stripped.upper()
@@ -144,6 +169,9 @@ def _parse_event_text(event_text):
     """Parse "Men 50m Freestyle" into (distance, stroke, is_relay)."""
     # Strip gender prefix
     clean = re.sub(r'^(?:Men|Women|Mixed|Boys|Girls)[\'s]*\s+', '', event_text, flags=re.IGNORECASE)
+    # Strip any age-group token ("13-14's", "Open") so it can't be mistaken
+    # for a distance.
+    clean = _AGE_GROUP_RE.sub('', clean, count=1)
     relay = is_relay_event(clean)
     distance = extract_distance(clean)
     stroke = normalize_stroke(clean)
@@ -204,6 +232,7 @@ def parse(text):
             if current_event_text:
                 dist, stroke, relay = _parse_event_text(current_event_text)
                 ev_name = normalize_event_name(dist, stroke, relay)
+                current_age_group = _extract_age_group(current_event_text)
                 # Mixed relays: detect_gender() has no keyword for "Mixed", so
                 # tag the team sex as X and carry "Mixed" in the event name
                 # (the UI derives Men/Women from team sex but can't express X).
@@ -211,11 +240,12 @@ def parse(text):
                     current_gender = 'X'
                     if 'mixed' not in ev_name.lower():
                         ev_name = f'{ev_name} Mixed'
-                key = (ev_name, current_gender, current_round)
+                key = (ev_name, current_gender, current_round, current_age_group)
                 if key not in events_map:
                     pe = ParsedEvent(
                         event_name=ev_name, distance=dist, stroke=stroke,
                         gender=current_gender, round_type=current_round,
+                        age_group=current_age_group,
                     )
                     events_map[key] = pe
                     event_order.append(pe)

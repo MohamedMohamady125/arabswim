@@ -710,6 +710,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         ).annotate(
             results_count=Count('id'),
             best_time=Min('time_centiseconds'),
+            # How many of this event/gender's results carry an age category —
+            # drives the "Boys/Girls" age-category filter on the frontend.
+            categorized_count=Count(
+                'id', filter=~Q(category='') & Q(category__isnull=False)),
         ).order_by('effective_gender', 'event__sort_order', 'event__distance')
 
         events_list = []
@@ -728,6 +732,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'gender_label': gender_label,
                 'display_name': f"{e['event__name']} - {gender_label}",
                 'results_count': e['results_count'],
+                'has_categories': e['categorized_count'] > 0,
                 'best_time': best,
             })
 

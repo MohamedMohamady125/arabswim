@@ -577,6 +577,14 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     [events, genderFilter],
   )
 
+  // Age-category meets (youth championships) list at least one event with age
+  // categories. For those, the gender toggle reads "Boys / Girls" instead of
+  // "Men / Women", and the results view shows only age-category results.
+  const meetHasAgeCategories = useMemo(
+    () => events.some((e) => e.has_categories),
+    [events],
+  )
+
   // no "All" option — default to the first gender that has events (Men first)
   useEffect(() => {
     if (events.length === 0) return
@@ -723,8 +731,16 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       if (cur === undefined || (r.id != null && r.id < cur)) minId.set(cat, r.id ?? Infinity)
     })
     order.sort((a, b) => (minId.get(a) ?? Infinity) - (minId.get(b) ?? Infinity))
+    // Boys/Girls view on age-category meets: show only age-category results —
+    // drop the uncategorized/open bucket. Guarded so a heats-pooled selection
+    // (everything pooled under '') or a selection with no named categories at
+    // all never blanks the table.
+    if (meetHasAgeCategories && !poolHeats) {
+      const named = order.filter((c) => c !== '')
+      if (named.length > 0) return named.map((cat) => [cat, byCat.get(cat)])
+    }
     return order.map((cat) => [cat, byCat.get(cat)])
-  }, [rows, selectedRound, selectedCategory, isOpenView, bFinalNoMedals, finalsCats])
+  }, [rows, selectedRound, selectedCategory, isOpenView, bFinalNoMedals, finalsCats, meetHasAgeCategories, poolHeats])
 
   useEffect(() => { setExpandedRow(null) }, [eventKey, selectedRound, selectedCategory])
   // full list — every swimmer in the selection, no pagination
@@ -979,8 +995,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         )}
         <Seg
           options={[
-            { value: 'M', label: 'Men' },
-            { value: 'F', label: 'Women' },
+            { value: 'M', label: meetHasAgeCategories ? 'Boys' : 'Men' },
+            { value: 'F', label: meetHasAgeCategories ? 'Girls' : 'Women' },
             { value: 'X', label: 'Mixed' },
           ].filter((o) => events.some((e) => e.gender === o.value))}
           value={genderFilter}

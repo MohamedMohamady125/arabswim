@@ -151,6 +151,27 @@ class ResultSerializer(serializers.ModelSerializer):
                         )
                         if candidates.count() == 1:
                             match = candidates.first()
+                # Order-independent match: relay legs print "Given SURNAME" but a
+                # swimmer's profile may be stored surname-first (e.g. relay leg
+                # "Oussama SAHNOUNE" vs profile "Sahnoune OUSSAMA"). Compare the
+                # set of name tokens, ignoring order and case. Scoped to the
+                # relay's nationality so unrelated same-token swimmers don't clash.
+                if not match and nat_id:
+                    import re as _re
+                    target = frozenset(
+                        t.lower() for t in _re.split(r'[^\w]+', name) if t
+                    )
+                    if len(target) >= 2:
+                        cand_qs = Swimmer.objects.filter(
+                            is_relay_team=False, nationality_id=nat_id)
+                        for t in target:
+                            cand_qs = cand_qs.filter(name__icontains=t)
+                        for c in cand_qs[:25]:
+                            c_toks = frozenset(
+                                x.lower() for x in _re.split(r'[^\w]+', c.name) if x)
+                            if c_toks == target:
+                                match = c
+                                break
                 if match:
                     swimmer_id = match.id
             result.append({'name': name, 'split_time': split_time, 'swimmer_id': swimmer_id})

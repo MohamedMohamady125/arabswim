@@ -20,8 +20,10 @@ from .base import (
 )
 
 # Event header: "Men's 1500m Freestyle Final" or "Men's 4 x 100m Freestyle Relay Final"
+# "Mixed" relay events print the gender bare ("Mixed 4x100m Medley Relay"),
+# with no possessive "'s" like "Men's"/"Women's" — so the "'s" is optional.
 EVENT_HEADER = re.compile(
-    r"(Men|Women)'?s\s+"
+    r"(Men|Women|Mixed)(?:'?s)?\s+"
     r"(?:(\d+)\s*x\s*)?(\d+)m\s+"
     r"(.+?)(?:\s*-\s*|\s+)(Final|Semi|Heat|Prelim)\w*",
     re.IGNORECASE,
@@ -64,7 +66,7 @@ _TIME_RE = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})')
 # Heats", "Event 131 … Final"), so these round-less repeats are redundant.
 # If we don't recognise them as headers, their swims leak into whatever
 # event was open before (finals ranked 1-2 polluting the heats list).
-EVENT_NUM_HEADER = re.compile(r"^Event\s+\d+\s+(?:Men|Women|Mixed)'?s\b", re.IGNORECASE)
+EVENT_NUM_HEADER = re.compile(r"^Event\s+\d+\s+(?:Men|Women|Mixed)(?:'?s)?\b", re.IGNORECASE)
 
 # Medal / points summary sections at the end of the book: their lines start
 # with a number or medal word but are not results.

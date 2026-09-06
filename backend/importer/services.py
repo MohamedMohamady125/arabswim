@@ -1182,6 +1182,19 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 })
                 continue
 
+            # Self-heal swimmer sex from the event gender. Individual events
+            # are single-sex, so the parsed gender is authoritative. A swimmer
+            # first created (in an earlier, buggier import) with the wrong sex
+            # would otherwise keep it forever — matching never re-checks sex —
+            # and then vanish from the gendered results view. Correct it here
+            # on re-import, but never override a hand-edited profile.
+            if not (is_relay or result_data.get('is_relay', False)):
+                true_sex = result_data.get('gender', '') or event_data.get('gender', '')
+                if (true_sex in ('M', 'F') and swimmer.sex != true_sex
+                        and not swimmer.manually_edited):
+                    swimmer.sex = true_sex
+                    swimmer.save(update_fields=['sex'])
+
             # Create result (skip duplicates)
             time_cs = result_data['time_centiseconds']
             if time_cs <= 0:

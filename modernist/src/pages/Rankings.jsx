@@ -17,7 +17,7 @@ export default function Rankings() {
   const [country, setCountry] = useState('')
   const [gender, setGender] = useState('M')
   const [pool, setPool] = useState('LCM')
-  const [year, setYear] = useState(String(new Date().getFullYear()))
+  const [year, setYear] = useState('')
   const [event, setEvent] = useState('')
   const [ageGroup, setAgeGroup] = useState('OPEN')
   const [page, setPage] = useState(1)

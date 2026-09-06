@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } fr
 import { Menu, Search, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
+import Partners from './Partners'
 
 // nav path → launch-toggle key (sections the admin can hide)
 const FEATURE_PATHS = {
@@ -235,6 +236,7 @@ export default function Layout() {
       <main className="shell-main">
         <Outlet />
       </main>
+      <Partners />
       <Footer />
     </div>
   )

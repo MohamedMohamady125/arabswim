@@ -859,8 +859,11 @@ function MergeModal({ swimmer, onClose, onMerged }) {
     if (debounce.current) clearTimeout(debounce.current)
     if (q.length < 2) { setResults([]); return }
     debounce.current = setTimeout(() => {
-      searchSwimmers(q, { page_size: 10 })
-        .then((res) => setResults((res.data || []).filter((s) => s.id !== swimmer.id)))
+      searchSwimmers(q, { include_all: true })
+        .then((res) => {
+          const list = Array.isArray(res.data) ? res.data : res.data?.results || []
+          setResults(list.filter((s) => s.id !== swimmer.id))
+        })
         .catch(() => setResults([]))
     }, 300)
   }
@@ -872,8 +875,12 @@ function MergeModal({ swimmer, onClose, onMerged }) {
     try {
       await mergeSwimmers(swimmer.id, [selected.id])
       onMerged()
-    } catch {
-      window.alert('Merge failed')
+    } catch (err) {
+      const msg = err?.response?.data?.error || err?.response?.data?.detail
+        || (err?.response?.status === 401 || err?.response?.status === 403
+          ? 'You must be signed in as an admin to merge swimmers.'
+          : 'Merge failed — please try again.')
+      window.alert(msg)
       setMerging(false)
     }
   }
@@ -1149,10 +1156,11 @@ export default function SwimmerProfile() {
         <MergeModal
           swimmer={swimmer}
           onClose={() => setMergeOpen(false)}
-          onMerged={async () => {
+          onMerged={() => {
             setMergeOpen(false)
-            const res = await getSwimmer(id).catch(() => null)
-            if (res) setSwimmer(res.data)
+            // The kept profile keeps the same id, so tab fetches keyed on id
+            // won't re-run — reload to surface the transferred results/medals.
+            window.location.reload()
           }}
         />
       )}

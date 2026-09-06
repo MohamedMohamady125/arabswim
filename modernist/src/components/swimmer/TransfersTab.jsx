@@ -131,7 +131,11 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
   if (data === undefined) return <Loading label="Loading transfer history" />
   if (data === null) return <Empty label="Failed to load transfer history" />
 
-  const changes = (data.nationality_changes || []).filter((ch) => ch.from_country !== ch.to_country)
+  // Public view hides no-op rows (same from/to). Admins see every entry so a
+  // wrongly-added nationality can always be deleted.
+  const changes = isAdmin
+    ? (data.nationality_changes || [])
+    : (data.nationality_changes || []).filter((ch) => ch.from_country !== ch.to_country)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>

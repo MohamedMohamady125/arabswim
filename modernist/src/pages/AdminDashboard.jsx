@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getClaims, approveClaim, declineClaim, getPhotoRequests, approvePhotoRequest, rejectPhotoRequest, bulkApprovePhotos, bulkRejectPhotos } from '../api/claims'
 import { createOrgAccount, getCountries, updateFeatures } from '../api/core'
+import { getSponsors, createSponsor, updateSponsor, deleteSponsor } from '../api/sponsors'
 import { useFeatures } from '../context/FeaturesContext'
 import { getTeams } from '../api/teams'
 import { PageHead, SectHead, Loading, Empty, Seg } from '../components/ui'
@@ -338,6 +339,150 @@ function PhotoQueue() {
   )
 }
 
+function PartnersManager() {
+  const [partners, setPartners] = useState(null)
+  const [name, setName] = useState('')
+  const [website, setWebsite] = useState('')
+  const [file, setFile] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState(null)
+
+  const load = () => {
+    getSponsors({ ordering: 'sort_order' })
+      .then((res) => setPartners(Array.isArray(res.data) ? res.data : res.data?.results || []))
+      .catch(() => setPartners([]))
+  }
+  useEffect(load, [])
+
+  const add = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (!name.trim()) { setError('Name is required'); return }
+    if (!file) { setError('A logo image is required'); return }
+    setSaving(true)
+    try {
+      const fd = new FormData()
+      fd.append('name', name.trim())
+      if (website.trim()) fd.append('website', website.trim())
+      fd.append('logo', file)
+      fd.append('sort_order', String((partners?.length || 0) + 1))
+      await createSponsor(fd)
+      setName(''); setWebsite(''); setFile(null)
+      // clear the file input
+      const input = document.getElementById('partner-logo-input')
+      if (input) input.value = ''
+      load()
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.logo?.[0] || 'Could not add partner')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleActive = async (p) => {
+    setBusyId(p.id)
+    try {
+      await updateSponsor(p.id, { is_active: !p.is_active })
+      load()
+    } catch {
+      window.alert('Failed to update — try again')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const remove = async (p) => {
+    if (!window.confirm(`Remove partner "${p.name}"?`)) return
+    setBusyId(p.id)
+    try {
+      await deleteSponsor(p.id)
+      load()
+    } catch {
+      window.alert('Failed to delete — try again')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const move = async (p, dir) => {
+    if (!partners) return
+    const idx = partners.findIndex((x) => x.id === p.id)
+    const swapIdx = idx + dir
+    if (swapIdx < 0 || swapIdx >= partners.length) return
+    const other = partners[swapIdx]
+    setBusyId(p.id)
+    try {
+      await Promise.all([
+        updateSponsor(p.id, { sort_order: other.sort_order }),
+        updateSponsor(other.id, { sort_order: p.sort_order }),
+      ])
+      load()
+    } catch {
+      window.alert('Failed to reorder — try again')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <div>
+      <div className="micro" style={{ marginBottom: 14 }}>
+        Logos shown in the “Partners” strip at the bottom of every page. Use a transparent PNG or SVG for the cleanest look. Hidden partners stay saved but drop off the site.
+      </div>
+      <form onSubmit={add} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', marginBottom: 20, maxWidth: 720 }}>
+        <div className="field" style={{ flex: '1 1 180px' }}>
+          <label>Partner name</label>
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Speedo" />
+        </div>
+        <div className="field" style={{ flex: '1 1 200px' }}>
+          <label>Website (optional)</label>
+          <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
+        </div>
+        <div className="field" style={{ flex: '1 1 200px' }}>
+          <label>Logo image</label>
+          <input id="partner-logo-input" className="input" type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={saving} style={{ height: 40 }}>
+          {saving ? 'Adding…' : 'Add partner'}
+        </button>
+      </form>
+      {error && <div className="error-box" style={{ marginBottom: 14, maxWidth: 720 }}>{error}</div>}
+
+      {!partners ? (
+        <Loading label="Loading partners" />
+      ) : partners.length === 0 ? (
+        <Empty label="No partners yet — add your first above" />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {partners.map((p, i) => (
+            <div key={p.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', flexWrap: 'wrap' }}>
+              <div style={{ width: 120, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-divider)', background: '#fff', flex: 'none' }}>
+                {p.logo ? <img src={mediaUrl(p.logo)} alt={p.name} style={{ maxHeight: 34, maxWidth: 104, objectFit: 'contain' }} /> : <span className="micro">no logo</span>}
+              </div>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
+                {p.website && <a href={p.website} target="_blank" rel="noreferrer" className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{p.website} ↗</a>}
+                <div className="micro" style={{ color: p.is_active ? 'var(--asw-fast, #0d7a52)' : 'var(--color-neutral-700)' }}>
+                  {p.is_active ? 'Visible on site' : 'Hidden'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button className="btn btn-secondary btn-icon" disabled={busyId === p.id || i === 0} onClick={() => move(p, -1)} title="Move up" aria-label="Move up">↑</button>
+                <button className="btn btn-secondary btn-icon" disabled={busyId === p.id || i === partners.length - 1} onClick={() => move(p, 1)} title="Move down" aria-label="Move down">↓</button>
+                <button className={`btn ${p.is_active ? 'btn-secondary' : 'btn-primary'}`} style={{ height: 30, fontSize: 12 }} disabled={busyId === p.id} onClick={() => toggleActive(p)}>
+                  {p.is_active ? 'Hide' : 'Show'}
+                </button>
+                <button className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} disabled={busyId === p.id} onClick={() => remove(p)}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   return (
     <div>
@@ -354,6 +499,10 @@ export default function AdminDashboard() {
       <div className="pad rule-b">
         <SectHead title="Site Sections" />
         <SiteFeatures />
+      </div>
+      <div className="pad rule-b">
+        <SectHead title="Partners" />
+        <PartnersManager />
       </div>
       <div className="pad rule-b">
         <SectHead title="Pending Profile Claims" />

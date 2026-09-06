@@ -100,9 +100,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def search(self, request):
         q = request.query_params.get('q', '')
-        qs = Swimmer.objects.select_related('nationality').filter(
-            name__icontains=q).exclude(
-            nationality__region='OTHER').exclude(is_relay_team=True)
+        qs = Swimmer.objects.select_related('nationality').filter(name__icontains=q)
+        # The merge picker needs to find EVERY duplicate — including swimmers
+        # left with an unresolved (region OTHER) nationality or relay-team
+        # placeholders created during import. Public search hides those.
+        if request.query_params.get('include_all') not in ('1', 'true', 'True'):
+            qs = qs.exclude(nationality__region='OTHER').exclude(is_relay_team=True)
         nationality = request.query_params.get('nationality')
         if nationality:
             qs = qs.filter(nationality_id=nationality)

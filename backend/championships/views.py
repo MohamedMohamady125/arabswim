@@ -719,15 +719,22 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         events_list = []
         for e in events:
             cs = e['best_time']
-            mins = cs // 6000
+            hrs = cs // 360000
+            mins = (cs % 360000) // 6000
             secs = (cs % 6000) // 100
             cent = cs % 100
-            best = f'{mins}:{secs:02d}.{cent:02d}' if mins else f'{secs}.{cent:02d}'
+            if hrs:
+                best = f'{hrs}:{mins:02d}:{secs:02d}.{cent:02d}'
+            elif mins:
+                best = f'{mins}:{secs:02d}.{cent:02d}'
+            else:
+                best = f'{secs}.{cent:02d}'
             gender = e['effective_gender']
             gender_label = {'M': 'Men', 'F': 'Women', 'X': 'Mixed'}.get(gender, 'Men')
             events_list.append({
                 'event_id': e['event__id'],
                 'event_name': e['event__name'],
+                'stroke': e['event__stroke'],
                 'gender': gender,
                 'gender_label': gender_label,
                 'display_name': f"{e['event__name']} - {gender_label}",

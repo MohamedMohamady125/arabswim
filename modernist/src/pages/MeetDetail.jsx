@@ -580,10 +580,17 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   const [showAddOpenWater, setShowAddOpenWater] = useState(false)
   // Open-water results are only offered inside Arab / African championships.
   const allowOpenWater = ['Arab', 'African'].includes(classificationName)
+  // Keep open-water results on their own tab so they never mix with the
+  // pool events. The toggle only shows once the meet actually has OW swims.
+  const hasOpenWaterEvents = useMemo(() => events.some((e) => e.stroke === 'Open Water'), [events])
+  const [discipline, setDiscipline] = useState('POOL') // 'POOL' | 'OW'
 
   const filteredEvents = useMemo(
-    () => events.filter((e) => !genderFilter || e.gender === genderFilter),
-    [events, genderFilter],
+    () => events.filter((e) => {
+      if ((discipline === 'OW') !== (e.stroke === 'Open Water')) return false
+      return !genderFilter || e.gender === genderFilter
+    }),
+    [events, genderFilter, discipline],
   )
 
   // Age-category meets (youth championships) list at least one event with age
@@ -594,15 +601,18 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     [events],
   )
 
-  // no "All" option — default to the first gender that has events (Men first)
+  // no "All" option — default to the first gender that has events (Men first).
+  // Scoped to the current discipline so switching to Open Water lands on a
+  // gender that actually has OW swims.
   useEffect(() => {
     if (events.length === 0) return
-    if (!genderFilter || !events.some((e) => e.gender === genderFilter)) {
-      const first = ['M', 'F', 'X'].find((g) => events.some((e) => e.gender === g))
+    const inDiscipline = (e) => (discipline === 'OW') === (e.stroke === 'Open Water')
+    if (!genderFilter || !events.some((e) => e.gender === genderFilter && inDiscipline(e))) {
+      const first = ['M', 'F', 'X'].find((g) => events.some((e) => e.gender === g && inDiscipline(e)))
       if (first) setGenderFilter(first)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events])
+  }, [events, discipline])
 
   // keep a valid event selected whenever the gender filter changes the list
   useEffect(() => {
@@ -974,10 +984,21 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
 
   return (
     <div className="pad">
+      {/* Pool / Open Water discipline switch — only when the meet has OW swims */}
+      {hasOpenWaterEvents && (
+        <div style={{ marginBottom: 16 }}>
+          <Seg
+            options={[{ value: 'POOL', label: 'Pool' }, { value: 'OW', label: 'Open Water' }]}
+            value={discipline}
+            onChange={setDiscipline}
+          />
+        </div>
+      )}
+
       {/* filters row */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 16 }}>
         <div className="field" style={{ width: 320, maxWidth: '100%' }}>
-          <label>Event</label>
+          <label>{discipline === 'OW' ? 'Open water event' : 'Event'}</label>
           <select className="select" value={eventKey} onChange={(e) => setEventKey(e.target.value)}>
             {filteredEvents.map((ev) => (
               <option key={`${ev.event_id}|${ev.gender}`} value={`${ev.event_id}|${ev.gender}`}>
@@ -1007,7 +1028,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             { value: 'M', label: meetHasAgeCategories ? 'Boys' : 'Men' },
             { value: 'F', label: meetHasAgeCategories ? 'Girls' : 'Women' },
             { value: 'X', label: 'Mixed' },
-          ].filter((o) => events.some((e) => e.gender === o.value))}
+          ].filter((o) => events.some((e) => e.gender === o.value
+            && (discipline === 'OW') === (e.stroke === 'Open Water')))}
           value={genderFilter}
           onChange={setGenderFilter}
         />

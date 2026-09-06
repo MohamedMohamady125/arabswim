@@ -7,6 +7,19 @@ from .models import Record
 from .serializers import RecordSerializer, RecordCreateSerializer
 
 
+def _fmt_cs(cs):
+    """centiseconds → 'H:MM:SS.hh' / 'M:SS.hh' / 'SS.hh' (hours for open water)."""
+    hours = cs // 360000
+    minutes = (cs % 360000) // 6000
+    seconds = (cs % 6000) // 100
+    centis = cs % 100
+    if hours:
+        return f'{hours}:{minutes:02d}:{seconds:02d}.{centis:02d}'
+    if minutes:
+        return f'{minutes}:{seconds:02d}.{centis:02d}'
+    return f'{seconds}.{centis:02d}'
+
+
 class RecordViewSet(viewsets.ModelViewSet):
     queryset = Record.objects.select_related('swimmer', 'swimmer__nationality', 'event')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -75,14 +88,20 @@ class RecordViewSet(viewsets.ModelViewSet):
         age_groups = [f'U{n}' for n in range(10, 19)] + ['OPEN']
 
         held = []
-        for pool in ('LCM', 'SCM'):
-            rows = list(Result.objects.filter(
-                championship__pool=pool,
+        for pool in ('LCM', 'SCM', 'OW'):
+            base = Result.objects.filter(
                 time_centiseconds__gt=0,
                 is_hc=False,
                 swimmer__sex=swimmer.sex,
                 nationality__region__in=['ARAB', 'GCC'],
-            ).values(
+            )
+            # 'OW' is a virtual pool: open-water swims regardless of the
+            # meet's course. Pool records exclude them so they never mix.
+            if pool == 'OW':
+                base = base.filter(event__stroke='Open Water')
+            else:
+                base = base.filter(championship__pool=pool).exclude(event__stroke='Open Water')
+            rows = list(base.values(
                 'event_id', 'event__name', 'event__sort_order', 'event__distance',
                 'swimmer_id', 'nationality_id', 'nationality__region',
                 'age_at_competition', 'time_centiseconds',
@@ -123,8 +142,7 @@ class RecordViewSet(viewsets.ModelViewSet):
             key = (h['scope'], h['pool'], r['event_id'], r['time_centiseconds'], r['championship__date'])
             if key not in merged:
                 cs = r['time_centiseconds']
-                minutes, seconds, centis = cs // 6000, (cs % 6000) // 100, cs % 100
-                time_str = f'{minutes}:{seconds:02d}.{centis:02d}' if minutes else f'{seconds}.{centis:02d}'
+                time_str = _fmt_cs(cs)
                 merged[key] = {
                     'scope': h['scope'], 'pool': h['pool'],
                     'event_id': r['event_id'], 'event_name': r['event__name'],
@@ -173,18 +191,27 @@ class RecordViewSet(viewsets.ModelViewSet):
             return Response([])
 
         region = swimmer.nationality.region if swimmer.nationality else None
-
-        def fmt(cs):
-            minutes, seconds, centis = cs // 6000, (cs % 6000) // 100, cs % 100
-            return f'{minutes}:{seconds:02d}.{centis:02d}' if minutes else f'{seconds}.{centis:02d}'
+        fmt = _fmt_cs
 
         out = []
-        for pool in ('LCM', 'SCM'):
+        for pool in ('LCM', 'SCM', 'OW'):
+            own = Result.objects.filter(
+                swimmer=swimmer, time_centiseconds__gt=0, event__is_relay=False,
+            )
+            others = Result.objects.filter(
+                time_centiseconds__gt=0, is_hc=False, swimmer__sex=swimmer.sex,
+            )
+            # 'OW' is a virtual pool holding open-water swims only; pool
+            # scopes exclude them so distances never collide across courses.
+            if pool == 'OW':
+                own = own.filter(event__stroke='Open Water')
+                others = others.filter(event__stroke='Open Water')
+            else:
+                own = own.filter(championship__pool=pool).exclude(event__stroke='Open Water')
+                others = others.filter(championship__pool=pool).exclude(event__stroke='Open Water')
+
             bests = (
-                Result.objects.filter(
-                    swimmer=swimmer, championship__pool=pool,
-                    time_centiseconds__gt=0, event__is_relay=False,
-                )
+                own
                 .values('event_id', 'event__name', 'event__sort_order', 'event__distance')
                 .annotate(best=Min('time_centiseconds'))
             )
@@ -192,11 +219,7 @@ class RecordViewSet(viewsets.ModelViewSet):
             if not best_by_event:
                 continue
 
-            rows = list(Result.objects.filter(
-                championship__pool=pool,
-                time_centiseconds__gt=0,
-                is_hc=False,
-                swimmer__sex=swimmer.sex,
+            rows = list(others.filter(
                 nationality__region__in=['ARAB', 'GCC'],
                 event_id__in=best_by_event.keys(),
             ).values(
@@ -308,7 +331,6 @@ class RecordViewSet(viewsets.ModelViewSet):
 
         # Build base queryset: valid timed results from championships
         qs = Result.objects.filter(
-            championship__pool=pool,
             time_centiseconds__gt=0,
             is_hc=False,
         ).exclude(
@@ -317,6 +339,12 @@ class RecordViewSet(viewsets.ModelViewSet):
             'swimmer', 'swimmer__nationality', 'nationality', 'event', 'championship',
             'championship__country',
         )
+        # 'OW' is a virtual pool for open-water swims (any meet course);
+        # pool records exclude them so distances never mix across courses.
+        if pool == 'OW':
+            qs = qs.filter(event__stroke='Open Water')
+        else:
+            qs = qs.filter(championship__pool=pool).exclude(event__stroke='Open Water')
 
         # Scope filter
         if scope == 'national':
@@ -381,14 +409,7 @@ class RecordViewSet(viewsets.ModelViewSet):
                 .first()
             )
             if result:
-                cs = result.time_centiseconds
-                minutes = cs // 6000
-                seconds = (cs % 6000) // 100
-                centis = cs % 100
-                if minutes:
-                    time_str = f'{minutes}:{seconds:02d}.{centis:02d}'
-                else:
-                    time_str = f'{seconds}.{centis:02d}'
+                time_str = _fmt_cs(result.time_centiseconds)
 
                 records.append({
                     'result_id': result.id,

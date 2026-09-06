@@ -234,7 +234,7 @@ export default function Records() {
           </select>
         )}
         <Seg
-          options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
+          options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }, { value: 'OW', label: 'Open Water' }]}
           value={pool}
           onChange={setPool}
         />

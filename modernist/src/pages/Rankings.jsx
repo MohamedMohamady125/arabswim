@@ -7,7 +7,7 @@ import { PageHead, Loading, Empty, Seg, Pager } from '../components/ui'
 import { formatDate, AGE_GROUPS } from '../utils'
 
 const PAGE_SIZE = 25
-const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley', 'Freestyle Relay', 'Medley Relay']
+const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley', 'Freestyle Relay', 'Medley Relay', 'Open Water']
 
 export default function Rankings() {
   const navigate = useNavigate()
@@ -49,10 +49,18 @@ export default function Rankings() {
   }, [])
 
   // 100 IM only exists in SCM; group by stroke, distance-sorted within group.
+  // Open Water is its own "course" — it only lists OW events, and the pool
+  // courses exclude OW so open-water swims never mix with pool times.
   const eventGroups = useMemo(() => {
-    const filtered = pool === 'LCM'
-      ? events.filter((e) => !(e.stroke === 'Individual Medley' && e.distance === 100))
-      : events
+    let filtered
+    if (pool === 'OW') {
+      filtered = events.filter((e) => e.stroke === 'Open Water')
+    } else {
+      filtered = events.filter((e) => e.stroke !== 'Open Water')
+      if (pool === 'LCM') {
+        filtered = filtered.filter((e) => !(e.stroke === 'Individual Medley' && e.distance === 100))
+      }
+    }
     const grouped = {}
     for (const e of filtered) {
       let stroke = e.stroke || 'Other'
@@ -93,10 +101,13 @@ export default function Rankings() {
     let alive = true
     setLoading(true)
     const params = {
-      scope, gender, pool, event,
+      scope, gender, event,
       age_group: ageGroup,
       page, page_size: PAGE_SIZE,
     }
+    // Open Water is a virtual course: OW swims live in LCM/SCM-tagged meets,
+    // so don't constrain by championship pool — the OW event id is enough.
+    if (pool !== 'OW') params.pool = pool
     if (year) params.year = year
     if (scope === 'national') params.country = country
     getRankings(params)
@@ -131,7 +142,7 @@ export default function Rankings() {
             onChange={setGender}
           />
           <Seg
-            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
+            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }, { value: 'OW', label: 'Open Water' }]}
             value={pool}
             onChange={setPool}
           />

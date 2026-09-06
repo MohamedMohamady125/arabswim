@@ -245,9 +245,12 @@ class Result(models.Model):
     @property
     def formatted_time(self):
         cs = self.time_centiseconds
-        minutes = cs // 6000
+        hours = cs // 360000
+        minutes = (cs % 360000) // 6000
         seconds = (cs % 6000) // 100
         centis = cs % 100
+        if hours:
+            return f'{hours}:{minutes:02d}:{seconds:02d}.{centis:02d}'
         if minutes:
             return f'{minutes}:{seconds:02d}.{centis:02d}'
         return f'{seconds}.{centis:02d}'

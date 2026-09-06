@@ -34,7 +34,12 @@ def check_and_update_records(result):
     if not nat:
         return []
 
-    pool = result.championship.pool if result.championship_id else 'LCM'
+    # Open-water swims live in their own virtual "pool" so they never
+    # compete with pool times for the same distance/stroke.
+    if result.event.stroke == 'Open Water':
+        pool = 'OW'
+    else:
+        pool = result.championship.pool if result.championship_id else 'LCM'
     event = result.event
     time_cs = result.time_centiseconds
     meet_date = result.championship.date if result.championship_id else None

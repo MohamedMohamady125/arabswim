@@ -100,7 +100,7 @@ class Event(models.Model):
         ('Freestyle', 'Freestyle'), ('Backstroke', 'Backstroke'),
         ('Butterfly', 'Butterfly'), ('Breaststroke', 'Breaststroke'),
         ('Individual Medley', 'Individual Medley'), ('Medley Relay', 'Medley Relay'),
-        ('Freestyle Relay', 'Freestyle Relay'),
+        ('Freestyle Relay', 'Freestyle Relay'), ('Open Water', 'Open Water'),
     ]
     name = models.CharField(max_length=100, unique=True)
     distance = models.IntegerField()

@@ -93,27 +93,36 @@ export function formatDateRange(start, end) {
   return `${formatDate(start)} — ${formatDate(end)}`
 }
 
-// centiseconds → "M:SS.hh" / "SS.hh"
+// centiseconds → "H:MM:SS.hh" / "M:SS.hh" / "SS.hh"
+// Hours appear for long open-water swims that run past an hour.
 export function formatTime(centiseconds) {
   if (centiseconds == null || centiseconds === '') return '—'
   const cs = Number(centiseconds)
   if (Number.isNaN(cs)) return String(centiseconds)
-  const minutes = Math.floor(cs / 6000)
+  const hours = Math.floor(cs / 360000)
+  const minutes = Math.floor((cs % 360000) / 6000)
   const seconds = Math.floor((cs % 6000) / 100)
   const centis = Math.round(cs % 100)
+  if (hours) return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`
   if (minutes) return `${minutes}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`
   return `${seconds}.${String(centis).padStart(2, '0')}`
 }
 
-// "M:SS.hh" or "SS.hh" → centiseconds
+// "H:MM:SS.hh", "M:SS.hh" or "SS.hh" → centiseconds
 export function parseTime(timeStr) {
   if (!timeStr) return null
   const parts = String(timeStr).split(':')
+  let hours = 0
   let minutes = 0
-  let rest = parts[0]
-  if (parts.length === 2) { minutes = parseInt(parts[0]) || 0; rest = parts[1] }
+  let rest = parts[parts.length - 1]
+  if (parts.length === 3) {
+    hours = parseInt(parts[0]) || 0
+    minutes = parseInt(parts[1]) || 0
+  } else if (parts.length === 2) {
+    minutes = parseInt(parts[0]) || 0
+  }
   const [sec, cent = '0'] = rest.split('.')
-  return minutes * 6000 + (parseInt(sec) || 0) * 100 + parseInt(cent.padEnd(2, '0').slice(0, 2))
+  return hours * 360000 + minutes * 6000 + (parseInt(sec) || 0) * 100 + parseInt(cent.padEnd(2, '0').slice(0, 2))
 }
 
 const API_ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, '')

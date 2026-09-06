@@ -153,20 +153,35 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
         data = []
         seen_keys = set()
+        # Open-water swims group under a virtual 'OW' course regardless of the
+        # meet's pool (an OW event may appear in both LCM- and SCM-tagged
+        # meets), so merge rows that collapse to the same (event, OW) key.
+        merged = {}
         for e in events:
-            pool = e['championship__pool'] or ''
-            seen_keys.add((e['event__id'], pool))
-            data.append({
-                'event_id': e['event__id'],
-                'event_name': e['event__name'],
-                'distance': e['event__distance'],
-                'stroke': e['event__stroke'],
-                'pool': pool,
-                'times_count': e['times_count'],
-                'best_time': format_centiseconds(e['best_time']),
-                'best_time_centiseconds': e['best_time'],
-                'is_relay': False,
-            })
+            pool = 'OW' if e['event__stroke'] == 'Open Water' else (e['championship__pool'] or '')
+            key = (e['event__id'], pool)
+            existing = merged.get(key)
+            if existing is None:
+                merged[key] = {
+                    'event_id': e['event__id'],
+                    'event_name': e['event__name'],
+                    'distance': e['event__distance'],
+                    'stroke': e['event__stroke'],
+                    'pool': pool,
+                    'times_count': e['times_count'],
+                    'best_time_centiseconds': e['best_time'],
+                    'is_relay': False,
+                }
+            else:
+                existing['times_count'] += e['times_count']
+                if e['best_time'] is not None and (
+                        existing['best_time_centiseconds'] is None
+                        or e['best_time'] < existing['best_time_centiseconds']):
+                    existing['best_time_centiseconds'] = e['best_time']
+        for key, row in merged.items():
+            seen_keys.add(key)
+            row['best_time'] = format_centiseconds(row['best_time_centiseconds'])
+            data.append(row)
 
         # Relay events where this swimmer appears in relay_swimmers JSON.
         # Prefilter in the DB with a text match on the JSON column, then
@@ -344,7 +359,9 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 event_id=event_id,
                 relay_swimmers__isnull=False,
             ).select_related('championship', 'championship__country', 'event', 'nationality').order_by('championship__date')
-            if pool:
+            # Open-water swims use the virtual 'OW' course; the event id is
+            # already unique, so don't constrain by the meet's pool.
+            if pool and event.stroke != 'Open Water':
                 relay_results = relay_results.filter(championship__pool=pool)
 
             for r in relay_results:
@@ -401,7 +418,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             results = Result.objects.filter(
                 swimmer=swimmer, event_id=event_id
             ).select_related('championship', 'championship__country', 'event', 'nationality').order_by('championship__date')
-            if pool:
+            if pool and event.stroke != 'Open Water':
                 results = results.filter(championship__pool=pool)
 
             # Build program day map: event_id+gender → day number → actual date

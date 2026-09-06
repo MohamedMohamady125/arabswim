@@ -11,7 +11,7 @@ class Record(models.Model):
         ('MEDITERRANEAN', 'Mediterranean'), ('ISLAMIC', 'Islamic'),
         ('WORLD', 'World'),
     ]
-    POOL_CHOICES = [('LCM', 'LCM'), ('SCM', 'SCM')]
+    POOL_CHOICES = [('LCM', 'LCM'), ('SCM', 'SCM'), ('OW', 'Open Water')]
     AGE_CATEGORY_CHOICES = [
         ('OPEN', 'Open'),
         ('U10', 'U10'), ('U11', 'U11'), ('U12', 'U12'), ('U13', 'U13'),
@@ -50,9 +50,12 @@ class Record(models.Model):
     @property
     def formatted_time(self):
         cs = self.time_centiseconds
-        minutes = cs // 6000
+        hours = cs // 360000
+        minutes = (cs % 360000) // 6000
         seconds = (cs % 6000) // 100
         centis = cs % 100
+        if hours:
+            return f'{hours}:{minutes:02d}:{seconds:02d}.{centis:02d}'
         if minutes:
             return f'{minutes}:{seconds:02d}.{centis:02d}'
         return f'{seconds}.{centis:02d}'

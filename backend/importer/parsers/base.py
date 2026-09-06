@@ -301,37 +301,52 @@ def extract_meet_info(lines, max_lines=5):
 
 # --- Time parsing utilities ---
 
+# Supports optional hours (open-water 10 km+ times run past an hour):
+#   "21.90", "1:05.24", "2:08.56", and "1:52:34.10" (H:MM:SS.hh).
 TIME_PATTERN = re.compile(
-    r'^(?:(\d{1,2}):)?(\d{1,2})[.,](\d{1,2})$'
+    r'^(?:(\d{1,2}):)?(?:(\d{1,2}):)?(\d{1,2})[.,](\d{1,2})$'
 )
 
 
 def parse_time_to_centiseconds(time_str):
-    """Convert a time string like '21.90', '1:05.24', '2:08.56' to centiseconds."""
+    """Convert a time string to centiseconds.
+
+    Accepts 'SS.hh', 'M:SS.hh' and 'H:MM:SS.hh' (the last for long
+    open-water swims that exceed an hour)."""
     if not time_str:
         return 0
     time_str = time_str.strip()
     m = TIME_PATTERN.match(time_str)
     if not m:
         return 0
-    minutes = int(m.group(1)) if m.group(1) else 0
-    seconds = int(m.group(2))
-    centis_str = m.group(3)
+    # Groups 1 and 2 are the two optional leading fields. With both
+    # present the value is H:MM:SS; with one it is M:SS.
+    if m.group(1) and m.group(2):
+        hours = int(m.group(1))
+        minutes = int(m.group(2))
+    else:
+        hours = 0
+        minutes = int(m.group(1) or m.group(2) or 0)
+    seconds = int(m.group(3))
+    centis_str = m.group(4)
     # Handle both "21.9" (= 21.90) and "21.90"
     if len(centis_str) == 1:
         centis = int(centis_str) * 10
     else:
         centis = int(centis_str[:2])
-    return minutes * 6000 + seconds * 100 + centis
+    return hours * 360000 + minutes * 6000 + seconds * 100 + centis
 
 
 def format_centiseconds(cs):
-    """Convert centiseconds to display string."""
+    """Convert centiseconds to display string (H:MM:SS.hh past an hour)."""
     if cs <= 0:
         return ''
-    minutes = cs // 6000
+    hours = cs // 360000
+    minutes = (cs % 360000) // 6000
     seconds = (cs % 6000) // 100
     centis = cs % 100
+    if hours:
+        return f'{hours}:{minutes:02d}:{seconds:02d}.{centis:02d}'
     if minutes:
         return f'{minutes}:{seconds:02d}.{centis:02d}'
     return f'{seconds}.{centis:02d}'

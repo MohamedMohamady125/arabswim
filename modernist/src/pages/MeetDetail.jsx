@@ -141,7 +141,7 @@ function ClubLogo({ logo, name, size = 26 }) {
 }
 
 /* ── Admin: add one manual result from inside the results tab ── */
-function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
+function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose, onAdded }) {
   const [query, setQuery] = useState('')
   const [options, setOptions] = useState([])
   const [swimmer, setSwimmer] = useState(null)
@@ -156,8 +156,14 @@ function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
   const finaDebounce = React.useRef(null)
 
   useEffect(() => {
-    getEvents().then((r) => setAllEvents(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {})
-  }, [])
+    getEvents().then((r) => {
+      let evs = Array.isArray(r.data) ? r.data : r.data?.results || []
+      // Open-water mode only lists the open-water events so the admin can't
+      // accidentally file an OW swim under a pool event (and vice versa).
+      if (openWaterMode) evs = evs.filter((e) => e.stroke === 'Open Water')
+      setAllEvents(evs)
+    }).catch(() => {})
+  }, [openWaterMode])
 
   const search = (q) => {
     setQuery(q)
@@ -227,7 +233,7 @@ function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
     >
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-accent)' }}>
         <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <h4 style={{ margin: 0 }}>Add Result</h4>
+          <h4 style={{ margin: 0 }}>{openWaterMode ? 'Add Open Water Result' : 'Add Result'}</h4>
           <button className="btn btn-ghost" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -271,8 +277,8 @@ function AddResultModal({ meetId, defaultEventId, onClose, onAdded }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="field">
-              <label>Time * (e.g. 1:02.30)</label>
-              <input className="input asw-num" type="text" placeholder="0:00.00" value={form.time}
+              <label>{openWaterMode ? 'Time * (e.g. 1:52:34.10)' : 'Time * (e.g. 1:02.30)'}</label>
+              <input className="input asw-num" type="text" placeholder={openWaterMode ? 'H:MM:SS.hh' : '0:00.00'} value={form.time}
                 onChange={(e) => setForm({ ...form, time: e.target.value })} />
             </div>
             <div className="field">
@@ -541,7 +547,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
 
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
-function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, onDataChanged }) {
+function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, classificationName, onDataChanged }) {
   const navigate = useNavigate()
   const [initParams] = useSearchParams()
   // deep link from Records: ?event=&gender=&result= opens that exact swim
@@ -571,6 +577,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   const [editMode, setEditMode] = useState(false)
   const [editingRow, setEditingRow] = useState(null)
   const [showAddResult, setShowAddResult] = useState(false)
+  const [showAddOpenWater, setShowAddOpenWater] = useState(false)
+  // Open-water results are only offered inside Arab / African championships.
+  const allowOpenWater = ['Arab', 'African'].includes(classificationName)
 
   const filteredEvents = useMemo(
     () => events.filter((e) => !genderFilter || e.gender === genderFilter),
@@ -1011,6 +1020,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
               {editMode ? 'Done editing' : 'Edit results'}
             </button>
             <button className="btn btn-secondary" onClick={() => setShowAddResult(true)}>Add result</button>
+            {allowOpenWater && (
+              <button className="btn btn-secondary" onClick={() => setShowAddOpenWater(true)}>Add OW result</button>
+            )}
             <Link className="btn btn-secondary" to={`/import?championship=${meetId}`}>Add results</Link>
           </div>
         )}
@@ -1022,6 +1034,15 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           defaultEventId={selectedEvent?.event_id}
           onClose={() => setShowAddResult(false)}
           onAdded={() => { setShowAddResult(false); loadResults(); if (onDataChanged) onDataChanged() }}
+        />
+      )}
+
+      {isAdmin && showAddOpenWater && (
+        <AddResultModal
+          meetId={meetId}
+          openWaterMode
+          onClose={() => setShowAddOpenWater(false)}
+          onAdded={() => { setShowAddOpenWater(false); loadResults(); if (onDataChanged) onDataChanged() }}
         />
       )}
 
@@ -2493,7 +2514,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
           <ResultsTab meetId={meetId} events={events} isNational={isNational} isAdmin={isAdmin}
             hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
             hostCode={meet.country_detail?.code} bFinalNoMedals={!!meet.b_final_no_medals}
-            onDataChanged={() => {}} />
+            classificationName={meet.classification_name} onDataChanged={() => {}} />
         )}
       </div>
     </div>
@@ -2978,7 +2999,7 @@ export default function MeetDetail() {
           {tab === 'results' && (
             <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium}
               hasDoublePodium={!!meet.has_double_podium} hostCode={meet.country_detail?.code}
-              bFinalNoMedals={!!meet.b_final_no_medals} onDataChanged={refreshStats} />
+              bFinalNoMedals={!!meet.b_final_no_medals} classificationName={meet.classification_name} onDataChanged={refreshStats} />
           )}
           {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
           {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}

@@ -358,9 +358,12 @@ const finaColor = (points) =>
 function EventList({ events, selected, onSelect, detail }) {
   const lcm = events.filter((e) => e.pool === 'LCM' && !e.is_relay)
   const scm = events.filter((e) => e.pool === 'SCM' && !e.is_relay)
-  // Deduplicate relays: same event_id across pools → keep one entry
+  // Open water is its own course (individual + OW relay together).
+  const ow = events.filter((e) => e.pool === 'OW')
+  // Deduplicate relays: same event_id across pools → keep one entry.
+  // Open-water relays sit in the Open Water section, not here.
   const relayMap = new Map()
-  events.filter((e) => e.is_relay).forEach((e) => {
+  events.filter((e) => e.is_relay && e.pool !== 'OW').forEach((e) => {
     const key = e.event_id
     if (!relayMap.has(key) || e.times_count > relayMap.get(key).times_count) relayMap.set(key, e)
   })
@@ -405,6 +408,7 @@ function EventList({ events, selected, onSelect, detail }) {
     <div>
       {section('Long course', lcm)}
       {section('Short course', scm)}
+      {section('Open water', ow)}
       {section('Relay Splits', relays)}
       {events.length === 0 && <Empty label="No competition results yet" />}
     </div>

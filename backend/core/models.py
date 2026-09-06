@@ -80,6 +80,34 @@ class SiteFeature(models.Model):
         return f'{self.key}: {"on" if self.enabled else "off"}'
 
 
+class ChangeLog(models.Model):
+    """A single admin edit, kept so it can be undone. Stores the field-level
+    diff (old -> new) plus enough context to revert and to show what changed."""
+    ACTION_CHOICES = [('create', 'Create'), ('update', 'Update'), ('delete', 'Delete')]
+
+    model_label = models.CharField(max_length=60)          # e.g. 'swimmers.swimmer'
+    object_id = models.IntegerField()
+    object_repr = models.CharField(max_length=200, blank=True, default='')
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    changes = models.JSONField(default=dict)               # {field: {old, new}}
+    user = models.ForeignKey(
+        'core.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='change_logs'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    reverted = models.BooleanField(default=False)
+    reverted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['model_label', 'object_id']),
+            models.Index(fields=['-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.action} {self.model_label}#{self.object_id}'
+
+
 class Country(models.Model):
     REGION_CHOICES = [('ARAB', 'Arab'), ('GCC', 'GCC'), ('OTHER', 'Other')]
     name = models.CharField(max_length=100, unique=True)

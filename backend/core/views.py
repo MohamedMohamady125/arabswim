@@ -7,11 +7,12 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
 from django.conf import settings as django_settings
-from .models import Country, Event, ProfileClaim, PhotoRequest, SiteFeature
+from django.apps import apps
+from .models import Country, Event, ProfileClaim, PhotoRequest, SiteFeature, ChangeLog
 from .permissions import IsAdmin, is_admin
 from .serializers import (
     UserSerializer, CountrySerializer, EventSerializer,
-    RegisterSerializer, ProfileClaimSerializer,
+    RegisterSerializer, ProfileClaimSerializer, ChangeLogSerializer,
 )
 
 User = get_user_model()
@@ -660,3 +661,110 @@ class EventViewSet(viewsets.ModelViewSet):
         if self.request.query_params.get('has_results') == 'true':
             qs = qs.filter(results__isnull=False).distinct()
         return qs
+
+
+class ChangeLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """Admin edit history with one-click undo. Admin-only.
+
+    Lists recent manual edits (create/update/delete) and can revert any of
+    them, restoring the previous field values and re-running the same medal
+    recomputation the original edit triggered.
+    """
+    queryset = ChangeLog.objects.select_related('user')
+    serializer_class = ChangeLogSerializer
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        model_label = self.request.query_params.get('model_label')
+        object_id = self.request.query_params.get('object_id')
+        include_reverted = self.request.query_params.get('include_reverted')
+        if model_label:
+            qs = qs.filter(model_label=model_label)
+        if object_id:
+            qs = qs.filter(object_id=object_id)
+        if include_reverted not in ('1', 'true', 'True'):
+            qs = qs.filter(reverted=False)
+        return qs
+
+    @action(detail=True, methods=['post'])
+    def revert(self, request, pk=None):
+        cl = self.get_object()
+        if cl.reverted:
+            return Response({'error': 'This change was already undone.'}, status=400)
+        try:
+            model = apps.get_model(cl.model_label)
+        except LookupError:
+            return Response({'error': 'Unknown record type.'}, status=400)
+        try:
+            self._apply_revert(cl, model)
+        except Exception as e:
+            return Response({'error': f'Undo failed: {e}'}, status=400)
+        cl.reverted = True
+        cl.reverted_at = timezone.now()
+        cl.save(update_fields=['reverted', 'reverted_at'])
+        return Response({'status': 'reverted'})
+
+    def _apply_revert(self, cl, model):
+        is_result = cl.model_label == 'championships.result'
+        is_swimmer = cl.model_label == 'swimmers.swimmer'
+        is_champ = cl.model_label == 'championships.championship'
+
+        if cl.action == 'create':
+            # Undo a creation → delete the object.
+            obj = model.objects.filter(pk=cl.object_id).first()
+            if not obj:
+                return
+            champ = getattr(obj, 'championship', None) if is_result else None
+            obj.delete()
+            if champ:
+                self._recompute_champ(champ)
+            return
+
+        if cl.action == 'delete':
+            # Undo a deletion → recreate with the stored old values.
+            values = {f: c['old'] for f, c in cl.changes.items()}
+            obj = model(pk=cl.object_id, **values)
+            if is_result:
+                obj.manually_edited = True
+            obj.save(force_insert=True)
+            if is_result:
+                self._recompute_champ(obj.championship)
+            return
+
+        # action == 'update' → restore the old field values.
+        obj = model.objects.filter(pk=cl.object_id).first()
+        if not obj:
+            raise ValueError('the edited record no longer exists')
+        for field, ch in cl.changes.items():
+            setattr(obj, field, ch['old'])
+        obj.save()
+
+        if is_result:
+            self._recompute_champ(obj.championship)
+        elif is_champ:
+            self._recompute_champ(obj)
+        elif is_swimmer and 'nationality_id' in cl.changes:
+            self._resync_swimmer_nationality(obj)
+
+    @staticmethod
+    def _recompute_champ(championship):
+        from medals.utils import recompute_medals
+        recompute_medals(championship)
+
+    @staticmethod
+    def _resync_swimmer_nationality(swimmer):
+        from championships.models import Result, Championship
+        from medals.models import Medal
+        from records.models import Record
+        from medals.utils import recompute_medals
+        nid = swimmer.nationality_id
+        Result.objects.filter(swimmer=swimmer).exclude(nationality_id=nid).update(nationality_id=nid)
+        Medal.objects.filter(swimmer=swimmer).exclude(nationality_id=nid).update(nationality_id=nid)
+        Record.objects.filter(swimmer=swimmer).exclude(country_id=nid).update(country_id=nid)
+        if swimmer.nationality_changes.exists():
+            from swimmers.models import restamp_result_nationalities
+            restamp_result_nationalities(swimmer)
+        champ_ids = set(Result.objects.filter(swimmer=swimmer).values_list('championship_id', flat=True))
+        for cid in champ_ids:
+            recompute_medals(Championship.objects.get(id=cid))

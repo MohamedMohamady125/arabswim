@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from .models import Country, Event, ProfileClaim
+from django.apps import apps
+from .models import Country, Event, ProfileClaim, ChangeLog
 
 User = get_user_model()
 
@@ -67,3 +68,59 @@ class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = '__all__'
+
+
+# Foreign-key fields whose id we resolve to a readable label in the edit log.
+_FK_LABELS = {
+    'nationality_id': ('core', 'Country'),
+    'country_id': ('core', 'Country'),
+    'event_id': ('core', 'Event'),
+    'championship_id': ('championships', 'Championship'),
+    'swimmer_id': ('swimmers', 'Swimmer'),
+    'team_id': ('teams', 'Team'),
+}
+
+
+def _fk_display(field, value):
+    if value in (None, ''):
+        return '—'
+    spec = _FK_LABELS.get(field)
+    if not spec:
+        return value
+    try:
+        obj = apps.get_model(*spec).objects.filter(pk=value).first()
+        return str(obj) if obj else value
+    except Exception:
+        return value
+
+
+def _field_label(field):
+    return field[:-3].replace('_', ' ') if field.endswith('_id') else field.replace('_', ' ')
+
+
+class ChangeLogSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.username', read_only=True, default=None)
+    pretty_changes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChangeLog
+        fields = [
+            'id', 'model_label', 'object_id', 'object_repr', 'action',
+            'changes', 'pretty_changes', 'user', 'user_name',
+            'created_at', 'reverted', 'reverted_at',
+        ]
+
+    def get_pretty_changes(self, obj):
+        out = []
+        for field, ch in (obj.changes or {}).items():
+            ov, nv = ch.get('old'), ch.get('new')
+            if field.endswith('_id'):
+                ov_disp, nv_disp = _fk_display(field, ov), _fk_display(field, nv)
+            else:
+                ov_disp = '—' if ov in (None, '') else ov
+                nv_disp = '—' if nv in (None, '') else nv
+            out.append({
+                'field': field, 'label': _field_label(field),
+                'old': ov_disp, 'new': nv_disp,
+            })
+        return out

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getClaims, approveClaim, declineClaim, getPhotoRequests, approvePhotoRequest, rejectPhotoRequest, bulkApprovePhotos, bulkRejectPhotos } from '../api/claims'
-import { createOrgAccount, getCountries, updateFeatures } from '../api/core'
+import { createOrgAccount, getCountries, updateFeatures, getChangeLog, revertChange } from '../api/core'
 import { getSponsors, createSponsor, updateSponsor, deleteSponsor } from '../api/sponsors'
 import { useFeatures } from '../context/FeaturesContext'
 import { getTeams } from '../api/teams'
@@ -483,6 +483,94 @@ function PartnersManager() {
   )
 }
 
+const MODEL_LABELS = {
+  'swimmers.swimmer': 'Swimmer',
+  'championships.result': 'Result',
+  'championships.championship': 'Meet',
+  'records.record': 'Record',
+  'core.country': 'Country',
+}
+const ACTION_LABELS = { create: 'Added', update: 'Edited', delete: 'Deleted' }
+
+function fmtWhen(iso) {
+  try {
+    const d = new Date(iso)
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch { return '' }
+}
+
+function EditHistory() {
+  const [log, setLog] = useState(null)
+  const [busyId, setBusyId] = useState(null)
+
+  const load = () => {
+    getChangeLog({ page_size: 40 })
+      .then((res) => setLog(Array.isArray(res.data) ? res.data : res.data?.results || []))
+      .catch(() => setLog([]))
+  }
+  useEffect(load, [])
+
+  const undo = async (entry) => {
+    const what = MODEL_LABELS[entry.model_label] || entry.model_label
+    if (!window.confirm(`Undo this ${(ACTION_LABELS[entry.action] || entry.action).toLowerCase()} on ${what} “${entry.object_repr}”?`)) return
+    setBusyId(entry.id)
+    try {
+      await revertChange(entry.id)
+      load()
+    } catch (err) {
+      window.alert(err.response?.data?.error || 'Undo failed — please try again.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <div>
+      <div className="micro" style={{ marginBottom: 14 }}>
+        Every manual edit you make (times, swimmers, meets, records) is logged here. Made a mistake? Hit Undo to restore the previous values — medals and rankings recompute automatically.
+      </div>
+      {!log ? (
+        <Loading label="Loading edit history" />
+      ) : log.length === 0 ? (
+        <Empty label="No recent edits" />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {log.map((e) => (
+            <div key={e.id} className="hair-b" style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 0', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ fontSize: 13 }}>
+                  <span style={{ fontWeight: 700 }}>{ACTION_LABELS[e.action] || e.action}</span>
+                  {' '}
+                  <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{MODEL_LABELS[e.model_label] || e.model_label}</span>
+                  {' — '}
+                  <span style={{ fontWeight: 600 }}>{e.object_repr}</span>
+                </div>
+                {e.action === 'update' && e.pretty_changes?.length > 0 && (
+                  <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, marginTop: 4, lineHeight: 1.6 }}>
+                    {e.pretty_changes.map((c) => (
+                      <div key={c.field}>
+                        <span style={{ opacity: 0.7 }}>{c.label}:</span>{' '}
+                        <span style={{ textDecoration: 'line-through', opacity: 0.6 }}>{String(c.old)}</span>{' → '}
+                        <span style={{ fontWeight: 600 }}>{String(c.new)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="micro" style={{ marginTop: 4 }}>
+                  {fmtWhen(e.created_at)}{e.user_name ? ` · ${e.user_name}` : ''}
+                </div>
+              </div>
+              <button className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} disabled={busyId === e.id} onClick={() => undo(e)}>
+                {busyId === e.id ? 'Undoing…' : 'Undo'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   return (
     <div>
@@ -495,6 +583,10 @@ export default function AdminDashboard() {
         <Link to="/admin/analytics" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 18px', textDecoration: 'none' }}>
           Open Analytics →
         </Link>
+      </div>
+      <div className="pad rule-b">
+        <SectHead title="Recent Edits · Undo" />
+        <EditHistory />
       </div>
       <div className="pad rule-b">
         <SectHead title="Site Sections" />

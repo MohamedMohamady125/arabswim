@@ -256,8 +256,12 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         return Response(ChampionshipListSerializer(qs, many=True).data)
 
     def perform_update(self, serializer):
+        from core.audit import snapshot, log_update
+        old_snapshot = None
         old_flags = None
         if serializer.instance is not None:
+            from .models import Championship as _Champ
+            old_snapshot = snapshot(_Champ.objects.get(pk=serializer.instance.pk))
             old_flags = (serializer.instance.has_double_podium,
                          serializer.instance.has_open_podium,
                          serializer.instance.b_final_no_medals)
@@ -273,6 +277,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if old_flags is not None and old_flags != new_flags:
             from medals.utils import recompute_medals
             recompute_medals(championship)
+        if old_snapshot is not None:
+            championship.refresh_from_db()
+            log_update(championship, old_snapshot, snapshot(championship), self.request.user)
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -1962,13 +1969,19 @@ class ResultViewSet(viewsets.ModelViewSet):
         result = serializer.save(manually_edited=True)
         self._auto_fina(result)
         self._post_save(result)
+        from core.audit import log_create
+        log_create(result, self.request.user)
 
     def perform_update(self, serializer):
         # Any admin edit locks the result against being overwritten by a
         # later re-import of the same meet — manual edits always win.
+        from core.audit import snapshot, log_update
+        old_snapshot = snapshot(Result.objects.get(pk=serializer.instance.pk))
         result = serializer.save(manually_edited=True)
         self._auto_fina(result)
         self._post_save(result)
+        result.refresh_from_db()
+        log_update(result, old_snapshot, snapshot(result), self.request.user)
 
     @staticmethod
     def _auto_fina(result):
@@ -1988,6 +2001,8 @@ class ResultViewSet(viewsets.ModelViewSet):
                 result.save(update_fields=['fina_points'])
 
     def perform_destroy(self, instance):
+        from core.audit import log_delete
+        log_delete(instance, self.request.user)
         championship = instance.championship
         instance.delete()
         from medals.utils import recompute_medals

@@ -37,15 +37,19 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     {'error': f'You may only edit: {", ".join(sorted(self.ATHLETE_EDITABLE))}'},
                     status=400,
                 )
-        # Track old nationality before saving
+        # Track old nationality (and full snapshot for undo) before saving
+        from core.audit import snapshot, log_update
         swimmer = self.get_object()
         old_nationality_id = swimmer.nationality_id
+        old_snapshot = snapshot(swimmer)
         response = super().partial_update(request, *args, **kwargs)
         # Lock this swimmer so re-imports never overwrite hand-edited fields
         # (e.g. current club) — manual admin edits always win. Only admin
         # edits lock it; limited athlete self-edits keep club auto-syncing.
         if is_admin(request.user):
             Swimmer.objects.filter(pk=swimmer.pk, manually_edited=False).update(manually_edited=True)
+            swimmer.refresh_from_db()
+            log_update(swimmer, old_snapshot, snapshot(swimmer), request.user)
         # If nationality changed, restamp all results + recompute medals
         swimmer.refresh_from_db()
         if swimmer.nationality_id != old_nationality_id:

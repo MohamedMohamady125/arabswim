@@ -3,6 +3,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Min, F
+from core.audit import AuditLogMixin
 from .models import Record
 from .serializers import RecordSerializer, RecordCreateSerializer
 
@@ -20,7 +21,7 @@ def _fmt_cs(cs):
     return f'{seconds}.{centis:02d}'
 
 
-class RecordViewSet(viewsets.ModelViewSet):
+class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = Record.objects.select_related('swimmer', 'swimmer__nationality', 'event')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['swimmer__name']

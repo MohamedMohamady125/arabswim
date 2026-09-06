@@ -24,7 +24,7 @@ export default function Partners() {
 
   return (
     <section className="rule-t asw-partners" aria-label="Partners">
-      <span className="kicker asw-partners-label">Partners</span>
+      <span className="asw-partners-label">Our Partners</span>
       <div className="asw-partners-row">
         {partners.map((p) => {
           const pill = (

@@ -570,36 +570,41 @@ figure { margin: 0; }
 
 /* ── Partners / sponsors strip (site-wide, above the footer) ───────────── */
 .asw-partners {
-  display: flex; align-items: center; gap: 28px;
-  flex-wrap: wrap; padding: 26px 32px;
+  display: flex; align-items: center; gap: 40px;
+  flex-wrap: nowrap; padding: 48px 40px;
   background: var(--color-bg);
 }
 .asw-partners-label {
-  color: var(--color-neutral-700); flex: none;
+  flex: none; white-space: nowrap;
+  font-family: var(--font-heading); font-weight: 700; font-size: 12px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--color-neutral-600, #8b9099);
 }
+.asw-partners-label::before { content: none; }
 .asw-partners-row {
   display: flex; align-items: center; flex-wrap: wrap;
-  gap: 14px; flex: 1;
+  justify-content: space-between; gap: 18px 16px; flex: 1;
 }
 .asw-partner-pill {
   display: inline-flex; align-items: center; justify-content: center;
-  height: 62px; min-width: 128px; padding: 0 22px;
+  height: 68px; min-width: 156px; padding: 0 30px;
   background: #ffffff; border: 1px solid var(--color-divider);
   border-radius: 999px; text-decoration: none;
-  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 a.asw-partner-pill:hover {
   border-color: var(--color-accent);
-  box-shadow: var(--shadow-sm, 0 2px 8px rgba(20,24,31,0.08));
-  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(20,24,31,0.10);
+  transform: translateY(-2px);
 }
 .asw-partner-logo {
-  max-height: 36px; max-width: 120px;
+  max-height: 34px; max-width: 132px;
   width: auto; height: auto; object-fit: contain; display: block;
 }
 @media (max-width: 900px) {
-  .asw-partners { flex-direction: column; align-items: flex-start; gap: 14px; padding: 22px 16px; }
-  .asw-partners-row { gap: 10px; }
-  .asw-partner-pill { height: 54px; min-width: 108px; padding: 0 16px; }
-  .asw-partner-logo { max-height: 30px; max-width: 96px; }
+  .asw-partners { flex-direction: column; align-items: center; gap: 20px; padding: 34px 16px; }
+  .asw-partners-label { align-self: flex-start; }
+  .asw-partners-row { justify-content: center; gap: 14px; width: 100%; }
+  .asw-partner-pill { height: 58px; min-width: 128px; padding: 0 20px; }
+  .asw-partner-logo { max-height: 30px; max-width: 108px; }
 }

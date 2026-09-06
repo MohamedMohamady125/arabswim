@@ -193,11 +193,14 @@ RELAY_TEAM_DASH = re.compile(
 )
 
 # Relay team: "1 5 KUW -Kuwait 7:52.94"
+# Country names can carry apostrophes/periods ("People's Republic of China") —
+# include them or the whole team row is dropped and its legs bleed into the
+# previous team.
 RELAY_TEAM = re.compile(
     r'^\s*(\d{1,2})\s+'           # rank
     r'(?:\d{1,2}\s+)?'            # optional lane
     r'([A-Z]{3})\s+'              # NOC code
-    r'-[A-Za-z ]+\s+'             # "-CountryName"
+    r"-[A-Za-z '.]+\s+"          # "-CountryName"
     r'(\d{1,2}:?\d{2}\.\d{2})'   # time
 )
 # HC relay team: "HC KUW -Kuwait 7:52.94"
@@ -205,15 +208,22 @@ HC_RELAY_TEAM = re.compile(
     r'^\s*(?:H\.?C\.?|EXH)\s+'   # HC/EXH prefix
     r'(?:\d{1,2}\s+)?'            # optional lane
     r'([A-Z]{3})\s+'              # NOC code
-    r'-[A-Za-z ]+\s+'             # "-CountryName"
+    r"-[A-Za-z '.]+\s+"          # "-CountryName"
     r'(\d{1,2}:?\d{2}\.\d{2})',   # time
     re.IGNORECASE
 )
 
 # Relay leg swimmer: "ALSHAMROUKH Sauod 27.07 56.48 1:26.97 1:57.20 (2) 1:57.20"
 # or "ABDULRAZZAQ Waleed .740 26.91 56.92 1:28.18 1:57.29 (1) 5:51.75"
+# The name allows mixed case so lowercase particles and prefixes survive
+# ("di LIDDO Elena", "McKEOWN Kaylee", "da SILVA SANTOS Gabriel", "O'CALLAGHAN
+# Mollie") — an all-caps-only pattern silently dropped those legs.
+# Mixed relays print a gender column right after the name
+# ("ARMSTRONG Hunter M 0.63 25.39 52.14 (1) 52.14") — skip that lone M/F so
+# it doesn't get glued onto the leg swimmer's name.
 RELAY_LEG = re.compile(
-    r'^\s*([A-Z][A-Z\- ]+\s+\w[\w\- ]*?)\s+'  # name
+    r"^\s*([A-Za-z][A-Za-z.'\- ]*?[A-Za-z])\s+"  # name (mixed case, lazy)
+    r'(?:[MF]\s+)?'                            # optional gender (mixed relays)
     r'(?:\.\d{3}\s+)?'                         # optional reaction time
     r'[\d:.]'                                  # starts with a split time
 )

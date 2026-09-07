@@ -22,9 +22,12 @@ from .base import (
 # Event header: "Men's 1500m Freestyle Final" or "Men's 4 x 100m Freestyle Relay Final"
 # "Mixed" relay events print the gender bare ("Mixed 4x100m Medley Relay"),
 # with no possessive "'s" like "Men's"/"Women's" — so the "'s" is optional.
+# Some relay headers drop the "m" unit after the leg distance
+# ("Mixed 4x100 Medley Relay Heats", "Women's 4x100 Freestyle Relay Heats"),
+# so the "m" is optional too.
 EVENT_HEADER = re.compile(
     r"(Men|Women|Mixed)(?:'?s)?\s+"
-    r"(?:(\d+)\s*x\s*)?(\d+)m\s+"
+    r"(?:(\d+)\s*x\s*)?(\d+)m?\s+"
     r"(.+?)(?:\s*-\s*|\s+)(Final|Semi|Heat|Prelim)\w*",
     re.IGNORECASE,
 )

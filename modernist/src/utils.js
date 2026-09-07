@@ -41,7 +41,8 @@ export const CODE_TO_ALPHA2 = {
   SOL: 'sb', TGA: 'to', TUV: 'tv', VAN: 'vu',
   KUW: 'kw', LBA: 'ly', LIB: 'lb', BRN: 'bh',
   // Territories that appear at World Aquatics meets under their own codes
-  MAA: 'sx', NMA: 'mp', TCN: 'tc', CUR: 'cw', FAR: 'fo',
+  MAA: 'sx', NMA: 'mp', TCN: 'tc', CUR: 'cw', FAR: 'fo', FRO: 'fo',
+  ASA: 'as', AGU: 'ai',
   // British home nations → flag-icons GB subdivision flags
   ENG: 'gb-eng', WAL: 'gb-wls', SCO: 'gb-sct', NIR: 'gb-nir',
 }

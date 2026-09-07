@@ -11,10 +11,15 @@ const CUSTOM_FLAGS = Object.fromEntries(
 )
 
 // Codes that have no national flag — athletes competing under a neutral
-// banner (World Aquatics "Neutral Athletes" / "AIN" / the "NAB" relay code,
-// the "FRT" FINA Refugee Team, and "SMF" Suspended Member Federation).
+// banner (World Aquatics "Neutral Athletes" / "AIN" / the "NAA"/"NAB" relay
+// codes, and "SMF" Suspended Member Federation).
 // They get a dedicated neutral badge instead of a country flag.
-const NEUTRAL_CODES = new Set(['AIN', 'NAB', 'NEUTRAL', 'FRT', 'SMF'])
+const NEUTRAL_CODES = new Set(['AIN', 'NAA', 'NAB', 'NEUTRAL', 'SMF'])
+
+// World Aquatics Refugee Team codes — competes under the World Aquatics flag,
+// so we show the World Aquatics logomark instead of a text badge. "FRT" was the
+// old FINA code; "ART" is the 2025 Aquatics Refugee Team; "EOR" the Olympic one.
+const REFUGEE_CODES = new Set(['FRT', 'ART', 'EOR'])
 
 // Bordered rectangular flag, per the Modernist theme (.asw-flag / .asw-flag-lg).
 // Custom curated images first; the bundled flag-icons SVG set as fallback —
@@ -28,7 +33,7 @@ export default function Flag({ code, name, large = false, flagUrl, placeholder =
   const cls = large ? 'asw-flag-lg' : 'asw-flag'
   // FINA/World Aquatics Refugee Team competes under the World Aquatics flag —
   // show the World Aquatics logomark instead of a text badge.
-  if (upper === 'FRT') {
+  if (REFUGEE_CODES.has(upper)) {
     return (
       <img
         className={cls}

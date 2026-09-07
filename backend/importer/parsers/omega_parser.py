@@ -72,6 +72,13 @@ EVENT_NUM_HEADER = re.compile(r"^Event\s+\d+\s+(?:Men|Women|Mixed)(?:'?s)?\b", r
 # with a number or medal word but are not results.
 STOP_SECTION = re.compile(r'^(?:Medallists|Medal Standings?|Medal Table)\b', re.IGNORECASE)
 
+# Cross-round "Event Summary" pages (Olympic-style books) list every swimmer
+# once with separate Heats / Semifinals / Final time columns. Parsed naively
+# these rows leak into a bogus Finals event carrying the *heats* times, which
+# then makes the genuine Heats events look like duplicates and get dropped.
+# Skip the whole summary page. Must not match "Event Number" or "Results Summary".
+EVENT_SUMMARY = re.compile(r'^Event\s+Summary\b', re.IGNORECASE)
+
 # A real result row never carries the event name inline; the end-of-book
 # points table does ("45 PROUD Benjamin GBR Men's 50m Freestyle Final 21.32 943").
 _SUMMARY_INLINE = re.compile(r"(?:Men|Women|Mixed)'?s\s+\d")
@@ -419,6 +426,16 @@ def parse(text):
             )
             current_event._round_pending = bool(em_noround or em_cn)
             meet.events.append(current_event)
+            continue
+
+        # Cross-round "Event Summary" page: discard the empty event just opened
+        # by its title header and skip the page so its Heats/Semis/Final columns
+        # don't get parsed as bogus Finals rows.
+        if EVENT_SUMMARY.match(stripped):
+            if (current_event is not None and not current_event.results
+                    and meet.events and meet.events[-1] is current_event):
+                meet.events.pop()
+            current_event = None
             continue
 
         # Round-less "Event NNN Gender's …" repeat = a detail page whose swims

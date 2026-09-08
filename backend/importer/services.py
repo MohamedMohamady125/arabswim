@@ -1623,6 +1623,18 @@ def _maybe_record_nationality_change(swimmer, result_data, championship):
     if not new_country or new_country.id == swimmer.nationality_id:
         return False
 
+    # Filling a blank is not a transfer: if the profile has no nationality yet
+    # and the file states one, always adopt it (even for an older meet — the
+    # recency guard below only exists to stop an old meet from *reverting* a
+    # known nationality). This honours the rule "if the file has a nationality,
+    # show it for everyone in the meet". Manual edits still win.
+    if swimmer.nationality_id is None:
+        if swimmer.manually_edited:
+            return False
+        swimmer.nationality = new_country
+        swimmer.save(update_fields=['nationality'])
+        return True
+
     from django.db.models import Max
     latest_result_date = Result.objects.filter(swimmer=swimmer).aggregate(
         d=Max('championship__date'))['d']

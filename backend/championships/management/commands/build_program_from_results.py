@@ -89,7 +89,7 @@ class Command(BaseCommand):
                 _, created = ProgramItem.objects.get_or_create(
                     championship=champ, day=1, event_id=event_id,
                     gender=gender, session=session, age_category='',
-                    time_of_day='', defaults={'order': order},
+                    time_of_day='', defaults={'order': order, 'is_auto': True},
                 )
                 if created:
                     made += 1

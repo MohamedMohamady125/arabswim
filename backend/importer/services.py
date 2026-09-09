@@ -383,9 +383,28 @@ def repair_parsed_names(parsed_meet, repair_index):
     return stats
 
 
+# Latin letters that NFKD does not decompose to an ASCII base + combining
+# mark, so they must be folded explicitly (Slovak/Croatian/Polish/Nordic).
+_ASCII_FOLD = str.maketrans({
+    'Đ': 'D', 'Ð': 'D', 'Ł': 'L', 'Ø': 'O', 'Þ': 'TH', 'ß': 'SS', 'Æ': 'AE',
+    'Œ': 'OE', 'Ħ': 'H', 'Ŀ': 'L',
+})
+
+
 def _letters_key(name):
-    """Uppercase letters/digits only — spaces and punctuation dropped."""
-    return re.sub(r'[^A-Z0-9À-ÖØ-Þ]', '', (name or '').upper())
+    """Uppercase ASCII letters/digits only, diacritics folded, spaces and
+    punctuation dropped.
+
+    Folding matters because relay rows in some Splash exports print the club
+    both accented and stripped ('ŠKP Košice' vs 'SKP Kosice'); without folding
+    they key apart (the caron-bearing letters are dropped entirely, giving
+    'KPKOICE' vs 'SKPKOSICE') and the club's medals split across two records.
+    """
+    import unicodedata
+    folded = unicodedata.normalize('NFKD', (name or '').upper())
+    folded = ''.join(c for c in folded if not unicodedata.combining(c))
+    folded = folded.translate(_ASCII_FOLD)
+    return re.sub(r'[^A-Z0-9]', '', folded)
 
 
 def _edit_distance_le_1(a, b):

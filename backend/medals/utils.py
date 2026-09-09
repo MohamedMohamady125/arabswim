@@ -151,9 +151,24 @@ def recompute_medals(championship):
             # The source PDF's placement is authoritative: a swimmer who
             # placed 5th keeps rank 5 even after other (e.g. non-Arab)
             # results were deleted, so nobody inherits a podium spot.
+            #
+            # But a single podium sometimes arrives with several rows
+            # claiming the same place: a prelim/semi sheet mis-tagged as the
+            # final, or a Final B section that restarts its numbering at 1.
+            # Awarding each of them invents podium places (Slovakia GP: a
+            # prelim 3rd became a phantom bronze). For each podium rank keep
+            # only the fastest row(s); equal times are a genuine tie (a
+            # shared gold, a dead heat) and are all kept.
+            best_time = {}
+            for r in rows:
+                if r.original_rank in _MEDAL_BY_RANK:
+                    t = best_time.get(r.original_rank)
+                    if t is None or r.time_centiseconds < t:
+                        best_time[r.original_rank] = r.time_centiseconds
             for r in rows:
                 medal_type = _MEDAL_BY_RANK.get(r.original_rank)
-                if medal_type is not None:
+                if (medal_type is not None
+                        and r.time_centiseconds == best_time[r.original_rank]):
                     award(r, medal_type, scope=scope)
             return
 

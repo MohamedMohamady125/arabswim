@@ -12,6 +12,7 @@ python manage.py mark_relay_teams
 python manage.py fix_events --apply
 python manage.py backfill_original_ranks
 python manage.py recalculate_medals
+python manage.py build_program_from_results
 python manage.py createcachetable --database default 2>/dev/null || true
 
 # Create admin user if not exists (password comes from the ADMIN_PASSWORD

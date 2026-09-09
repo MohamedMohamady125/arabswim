@@ -18,7 +18,7 @@ _MEDAL_BY_RANK = {1: 'GOLD', 2: 'SILVER', 3: 'BRONZE'}
 # Explicitly preliminary rounds never decide a podium — the final may live
 # in a separate source file not yet imported (Egypt releases heats as
 # several PDFs). Timed-final events carry 'Finals' or a blank round.
-_PRELIM_ROUNDS = {'Prelims', 'Heats', 'Semifinals'}
+_PRELIM_ROUNDS = {'Prelims', 'Heats', 'Semifinals', 'Semis'}
 
 
 def _relay_name_tokens(name):

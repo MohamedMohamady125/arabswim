@@ -193,6 +193,39 @@ def resolve_country(code):
     return None
 
 
+def resolve_or_stub_country(code):
+    """Like resolve_country, but for an *explicit* nationality code that we
+    can't resolve, create a placeholder Country carrying the raw code (no
+    flag, region OTHER) instead of returning None.
+
+    Rationale: when a source file lists a swimmer under a code our inventory
+    doesn't know (e.g. "NMA"), we still want to keep that swimmer under that
+    code — shown verbatim with no flag — rather than silently attributing
+    them to the meet's host country. The bare, flag-less code then surfaces
+    exactly which country codes are missing from the inventory.
+
+    Only genuine-looking codes (2-3 letters) get a stub; anything longer or
+    non-alphabetic is treated as junk and returns None (caller falls back to
+    its normal meet-country behaviour).
+    """
+    hit = resolve_country(code)
+    if hit:
+        return hit
+    key = re.sub(r'[.\s]+', '', (code or '').strip().upper())
+    if not (2 <= len(key) <= 3 and key.isalpha()):
+        return None
+    country, _ = Country.objects.get_or_create(
+        code=key,
+        defaults={'name': key, 'flag_url': '', 'region': 'OTHER'},
+    )
+    # Keep the module cache coherent so later lookups in the same import
+    # resolve without another get_or_create round-trip.
+    cmap = get_country_map()
+    cmap[key] = country
+    cmap[country.name.upper()] = country
+    return country
+
+
 # Broad classifications that any swimmer can appear in — they never
 # distinguish two same-named athletes.
 _BROAD_CATEGORIES = {

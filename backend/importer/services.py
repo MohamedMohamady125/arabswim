@@ -13,7 +13,8 @@ from datetime import date, timedelta
 from django.db import transaction
 
 from .parsers.detector import detect_and_parse, detect_and_parse_upload
-from .matcher import match_all_results, find_matching_swimmer, resolve_country
+from .matcher import (match_all_results, find_matching_swimmer,
+                      resolve_country, resolve_or_stub_country)
 from swimmers.models import Swimmer
 from championships.models import Championship, Result
 from core.models import Event, Country
@@ -1073,7 +1074,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         nationality = team_country
                         nat_code = result_data.get('nationality_code', '')
                         if not nationality and nat_code:
-                            nationality = resolve_country(nat_code)
+                            nationality = resolve_or_stub_country(nat_code)
                         if not nationality:
                             nationality = swimmer_fallback
 
@@ -1572,7 +1573,7 @@ def _maybe_record_nationality_change(swimmer, result_data, championship):
     nat_code = (result_data.get('nationality_code') or '').strip()
     if not nat_code:
         return False
-    new_country = resolve_country(nat_code)
+    new_country = resolve_or_stub_country(nat_code)
     if not new_country or new_country.id == swimmer.nationality_id:
         return False
 
@@ -1616,11 +1617,13 @@ def _create_swimmer(result_data, fallback_country=None):
     if gender not in ('M', 'F'):
         gender = 'M'
 
-    # Resolve nationality: explicit code > fallback from meet
+    # Resolve nationality: explicit code > fallback from meet. An explicit
+    # code we don't recognise is kept verbatim (flag-less stub) rather than
+    # silently reassigned to the host country, so missing codes surface.
     nationality = None
     nat_code = result_data.get('nationality_code', '')
     if nat_code:
-        nationality = resolve_country(nat_code)
+        nationality = resolve_or_stub_country(nat_code)
     if not nationality:
         nationality = fallback_country
 

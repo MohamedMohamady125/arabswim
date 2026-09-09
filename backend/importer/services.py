@@ -995,13 +995,6 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         bands[band] = key
         return key
 
-    # Program entries for the day-by-day timetable. When the source gives a
-    # per-event session date we place the event on the right day; otherwise the
-    # date is '' and the event falls back to Day 1 (files that only carry a
-    # meet-level date range genuinely don't say which day an event was swum).
-    program_entries = []  # [date_iso, db_event, gender, session, age_cat]
-    program_seen = {}     # (event_id, gender, session, age_cat) -> entry list
-
     total_planned = sum(len(ev.get('results', [])) for ev in preview_data['events'])
     processed = 0
 
@@ -1012,24 +1005,6 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         db_event = _find_event(event_data, event_cache)
         if not db_event:
             continue
-
-        session_date = event_data.get('session_date') or ''
-        session = ROUND_TO_SESSION.get(event_data.get('round_type') or '', '')
-        prog_ag = event_data.get('age_group') or ''
-        if prog_ag.upper() == 'OPEN':
-            prog_ag = ''
-        prog_gender = event_data.get('gender') or 'X'
-        # Key on the day-relevant fields (not the date) so an event that has a
-        # date on one row and none on another is not duplicated; a real date
-        # wins over a blank one for placement.
-        prog_key = (db_event.id, prog_gender, session, prog_ag)
-        if prog_key in program_seen:
-            if session_date:
-                program_seen[prog_key][0] = session_date  # upgrade blank -> dated
-        else:
-            entry = [session_date, db_event, prog_gender, session, prog_ag]
-            program_seen[prog_key] = entry
-            program_entries.append(entry)
 
         is_relay = event_data.get('is_relay', False)
 
@@ -1528,40 +1503,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     from medals.utils import recompute_medals
     recompute_medals(championship)
 
-    # Rebuild the day-by-day program from the source. Events carry a real
-    # session date onto the right day (Day 1 = championship.date); events with
-    # no date fall back to Day 1 in event order. Auto lines from a prior import
-    # are wiped and regenerated so a re-import stays accurate; admin-entered
-    # lines (is_auto=False) are never touched.
-    program_items_created = 0
-    if program_entries:
-        from championships.models import ProgramItem
-        ProgramItem.objects.filter(
-            championship=championship, is_auto=True).delete()
-        next_order = {}  # day -> next order value
-        for pi in ProgramItem.objects.filter(championship=championship):
-            next_order[pi.day] = max(next_order.get(pi.day, 0), pi.order + 1)
-        for date_iso, db_event, prog_gender, session, prog_ag in program_entries:
-            day = 1
-            d = _parse_date(date_iso) if date_iso else None
-            if d and championship.date:
-                day = (d - championship.date).days + 1
-                # A date before the meet start means our stored start date is
-                # wrong — only safe to shift it for a brand-new meet.
-                if day < 1 and not championship.results.exists():
-                    championship.date = d
-                    championship.save(update_fields=['date'])
-                    day = 1
-                if day < 1 or day > 30:
-                    day = 1
-            _, created = ProgramItem.objects.get_or_create(
-                championship=championship, day=day, event=db_event,
-                gender=prog_gender, session=session, age_category=prog_ag,
-                defaults={'order': next_order.get(day, 0), 'is_auto': True},
-            )
-            if created:
-                next_order[day] = next_order.get(day, 0) + 1
-                program_items_created += 1
+    # Rebuild the day-by-day program from the source (accurate multi-day when
+    # the file carries session dates, Day-1 fallback otherwise).
+    program_items_created = rebuild_program(championship, preview_data)
 
     # Restamp per-result nationality for swimmers with nationality changes —
     # results just imported get the swimmer's current nationality, but swims
@@ -1817,6 +1761,79 @@ def repair_distance(distance, is_relay=False):
     if s.startswith('4') and s[1:].isdigit() and int(s[1:]) in {50, 100, 200}:
         return 4 * int(s[1:])
     return 0
+
+
+def rebuild_program(championship, preview_data):
+    """(Re)build a meet's day-by-day program from a parsed source file.
+
+    One program line per distinct (event, gender, session, age category) in the
+    source. When the file carries a per-event session date the line lands on its
+    real day (Day 1 = championship.date); events with no date fall back to Day 1
+    in event order — files that only give a meet-level date range genuinely
+    don't say which day an event was swum.
+
+    Auto-generated lines from a previous import are wiped and regenerated, so a
+    re-import stays accurate. Admin-entered lines (is_auto=False) are never
+    touched. Returns the number of program lines created.
+    """
+    from championships.models import ProgramItem
+
+    event_cache = {}
+    for db_event in Event.objects.all():
+        event_cache[db_event.name.upper()] = db_event
+
+    entries = []      # [date_iso, db_event, gender, session, age_cat]
+    seen = {}         # (event_id, gender, session, age_cat) -> entry list
+    for event_data in preview_data.get('events', []):
+        db_event = _find_event(event_data, event_cache)
+        if not db_event:
+            continue
+        session_date = event_data.get('session_date') or ''
+        session = ROUND_TO_SESSION.get(event_data.get('round_type') or '', '')
+        prog_ag = event_data.get('age_group') or ''
+        if prog_ag.upper() == 'OPEN':
+            prog_ag = ''
+        prog_gender = event_data.get('gender') or 'X'
+        # Key on the day-relevant fields (not the date) so an event that has a
+        # date on one round and none on another is not duplicated; a real date
+        # wins over a blank one for placement.
+        key = (db_event.id, prog_gender, session, prog_ag)
+        if key in seen:
+            if session_date:
+                seen[key][0] = session_date
+        else:
+            entry = [session_date, db_event, prog_gender, session, prog_ag]
+            seen[key] = entry
+            entries.append(entry)
+
+    ProgramItem.objects.filter(championship=championship, is_auto=True).delete()
+    next_order = {}  # day -> next order value (after any admin lines)
+    for pi in ProgramItem.objects.filter(championship=championship):
+        next_order[pi.day] = max(next_order.get(pi.day, 0), pi.order + 1)
+
+    created = 0
+    for date_iso, db_event, prog_gender, session, prog_ag in entries:
+        day = 1
+        d = _parse_date(date_iso) if date_iso else None
+        if d and championship.date:
+            day = (d - championship.date).days + 1
+            # A date before the stored start means our start date is wrong —
+            # only safe to shift it for a brand-new meet with no results yet.
+            if day < 1 and not championship.results.exists():
+                championship.date = d
+                championship.save(update_fields=['date'])
+                day = 1
+            if day < 1 or day > 30:
+                day = 1
+        _, was_created = ProgramItem.objects.get_or_create(
+            championship=championship, day=day, event=db_event,
+            gender=prog_gender, session=session, age_category=prog_ag,
+            defaults={'order': next_order.get(day, 0), 'is_auto': True},
+        )
+        if was_created:
+            next_order[day] = next_order.get(day, 0) + 1
+            created += 1
+    return created
 
 
 def _find_event(event_data, event_cache):

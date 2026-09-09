@@ -331,6 +331,26 @@ class ConfirmImportView(APIView):
                         result['time_centiseconds'] = parse_time_to_centiseconds(time_text)
             preview = modified_preview
 
+        # Program-only mode: rebuild just the day-by-day program for an existing
+        # meet from this source file — no results, swimmers or medals touched.
+        # Used to backfill accurate multi-day programs onto already-imported
+        # meets (their PDF carries the session dates the DB never stored).
+        if request.data.get('program_only'):
+            if not championship_id:
+                return Response(
+                    {'error': 'program_only requires championship_id'},
+                    status=400)
+            from championships.models import Championship
+            from .services import rebuild_program
+            try:
+                champ = Championship.objects.get(id=championship_id)
+            except Championship.DoesNotExist:
+                return Response({'error': 'championship not found'}, status=404)
+            n = rebuild_program(champ, preview)
+            cache.delete(f'import_{import_id}')
+            return Response({'status': 'ok', 'program_items_created': n,
+                             'championship_id': champ.id})
+
         # Background mode: return a job id immediately, work in a thread
         # (same pattern as scrape jobs) so huge meets can't hit the
         # gunicorn/proxy request timeout.

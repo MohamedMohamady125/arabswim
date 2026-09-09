@@ -487,6 +487,9 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
     - If names match exactly and no birth year to compare → match with 95% confidence,
       unless the result's age category conflicts with the candidate's known
       age band in meets around the same date (same name, different kid).
+    - When the file states a nationality, a same-name profile under a
+      *different* known nationality is a different athlete (never matched);
+      a profile with no nationality yet is matched and adopts the file's.
 
     Returns: (swimmer_or_None, confidence_score, match_type)
     """
@@ -517,6 +520,17 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
         if alias_ids:
             candidates = list(Swimmer.objects.filter(
                 id__in=alias_ids, is_relay_team=False))
+
+    # Nationality is part of an athlete's identity: when the file states a
+    # nationality, a same-name profile under a *different* known nationality is
+    # a different account (e.g. an athlete swimming for Wales one meet and
+    # Great Britain the next). Keep only profiles that share the file's
+    # nationality — or that have none yet, which the import then adopts. If that
+    # removes every candidate, this is a new account under the file's country.
+    file_country = resolve_country(getattr(parsed_result, 'nationality_code', '') or '')
+    if file_country and candidates:
+        candidates = [c for c in candidates
+                      if c.nationality_id in (None, file_country.id)]
 
     if not candidates:
         # Egyptian variant spelling of an existing swimmer?

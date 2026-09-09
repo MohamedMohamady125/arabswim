@@ -1624,10 +1624,9 @@ def _maybe_record_nationality_change(swimmer, result_data, championship):
         return False
 
     # Filling a blank is not a transfer: if the profile has no nationality yet
-    # and the file states one, always adopt it (even for an older meet — the
-    # recency guard below only exists to stop an old meet from *reverting* a
-    # known nationality). This honours the rule "if the file has a nationality,
-    # show it for everyone in the meet". Manual edits still win.
+    # and the file states one, always adopt it. This honours the rule "if the
+    # file has a nationality, show it for everyone in the meet". Manual edits
+    # still win.
     if swimmer.nationality_id is None:
         if swimmer.manually_edited:
             return False
@@ -1635,26 +1634,11 @@ def _maybe_record_nationality_change(swimmer, result_data, championship):
         swimmer.save(update_fields=['nationality'])
         return True
 
-    from django.db.models import Max
-    latest_result_date = Result.objects.filter(swimmer=swimmer).aggregate(
-        d=Max('championship__date'))['d']
-    if latest_result_date and championship.date < latest_result_date:
-        return False
-    last_change = swimmer.nationality_changes.order_by('-effective_date').first()
-    if last_change and championship.date < last_change.effective_date:
-        return False
-
-    from swimmers.models import NationalityChange
-    NationalityChange.objects.create(
-        swimmer=swimmer,
-        from_country=swimmer.nationality,
-        to_country=new_country,
-        effective_date=championship.date,
-        notes=f'Auto-detected during import of {championship.name}',
-    )
-    swimmer.nationality = new_country
-    swimmer.save(update_fields=['nationality'])
-    return True
+    # A *different* known nationality never switches this profile. Under the
+    # identity rule, a swim under another country belongs to a separate account
+    # (the matcher creates/keeps one profile per nationality), so we never
+    # rewrite an existing known nationality here.
+    return False
 
 
 def _parse_relay_legs(raw_splits):

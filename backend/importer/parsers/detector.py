@@ -6,7 +6,7 @@ Passes filename to parsers for pool detection.
 import os
 import pdfplumber
 
-from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser, msecm_parser, aprace_parser, musz_parser, microplus_parser
+from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser, msecm_parser, aprace_parser, musz_parser, microplus_parser, fina_parser
 from .base import ParsedMeet, detect_pool
 
 
@@ -96,8 +96,15 @@ def _parse_pdf(file_path, filename=''):
     # Detect pool from text + filename
     pool = detect_pool(detect_text, filename)
 
+    # FINA/World Aquatics World Championships "Results Summary" book: a very
+    # specific OMEGA layout (per-round pages, DOB column, Swim-Off rounds).
+    # Must be checked before omega_parser, which mishandles it (drops heats,
+    # mis-classifies swim-offs).
+    if fina_parser.detect_format(detect_text):
+        full_text = _extract_simple(file_path)
+        meet = fina_parser.parse(full_text)
     # Microplus (microplustiming.com) — per-page event+round format
-    if microplus_parser.detect_format(detect_text):
+    elif microplus_parser.detect_format(detect_text):
         full_text = _extract_simple(file_path)
         meet = microplus_parser.parse(full_text)
     # MÚSZ (LIVE.MUSZ.HU) has an unmistakable column header — check it first.

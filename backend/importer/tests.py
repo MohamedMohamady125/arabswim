@@ -564,7 +564,23 @@ class MarocTangierFrmnTests(SanityMixin, SimpleTestCase):
     def test_counts(self):
         m = self.meet()
         self.assertEqual(m.total_events, 83)
-        self.assertEqual(m.total_results, 838)
+        self.assertEqual(m.total_results, 840)
+
+    def test_overlapping_long_name_recovered(self):
+        # regression: a long surname ("EL MOKRI EL MGHARI") overlaps the NAT
+        # column in the raw PDF, merging into "EL MGHAMRIAR" and dropping the
+        # row under default extraction. De-overlap extraction must recover
+        # both of this swimmer's results (incl. his 100 free bronze).
+        m = self.meet()
+        rows = [r for ev in m.events for r in ev.results
+                if 'MGHARI' in (r.swimmer_name or '').upper()]
+        self.assertEqual(len(rows), 2)
+        free100 = [r for ev in m.events for r in ev.results
+                   if 'MGHARI' in (r.swimmer_name or '').upper()
+                   and ev.distance == 100 and 'free' in (ev.stroke or '').lower()]
+        self.assertEqual(len(free100), 1)
+        self.assertEqual(free100[0].rank, 3)
+        self.assertEqual(free100[0].nationality_code, 'MAR')
 
 
 @needs_sample('gcc')

@@ -21,9 +21,25 @@ _MEDAL_BY_RANK = {1: 'GOLD', 2: 'SILVER', 3: 'BRONZE'}
 _PRELIM_ROUNDS = {'Prelims', 'Heats', 'Semifinals'}
 
 
+def _relay_name_tokens(name):
+    """Order-independent set of alpha word tokens (lowercased) for a name."""
+    import re
+    return frozenset(
+        t.lower()
+        for t in re.sub(r"[^\w\s'’.\-]", ' ', name or '').split()
+        if any(c.isalpha() for c in t)
+    )
+
+
 def _match_relay_swimmer(name, nationality_id):
     """Find the real Swimmer record for a relay leg name, preferring the
-    relay team's nationality when several swimmers share a name."""
+    relay team's nationality when several swimmers share a name.
+
+    The relay legs and the individual profile can list the same person in a
+    different word order ("Adam Hamza ERRAFIY" on the leg vs "Hamza Adam
+    ERRAFIY" on the profile), so an exact match silently drops the relay
+    medal. Fall back to an order-independent token-set match before giving up.
+    """
     from swimmers.models import Swimmer
     name = (name or '').strip()
     if not name:
@@ -33,7 +49,24 @@ def _match_relay_swimmer(name, nationality_id):
         match = qs.filter(nationality_id=nationality_id).first()
         if match:
             return match
-    return qs.first()
+    exact = qs.first()
+    if exact:
+        return exact
+
+    # No exact string match — try an order-independent token-set match,
+    # narrowing on every token so the DB does the heavy lifting.
+    toks = _relay_name_tokens(name)
+    if len(toks) < 2:
+        return None
+    cand = Swimmer.objects.filter(is_relay_team=False)
+    for t in toks:
+        cand = cand.filter(name__icontains=t)
+    if nationality_id:
+        cand = cand.filter(nationality_id=nationality_id)
+    for s in cand[:12]:
+        if _relay_name_tokens(s.name) == toks:
+            return s
+    return None
 
 
 def recompute_medals(championship):

@@ -126,9 +126,15 @@ def _parse_pdf(file_path, filename=''):
         full_text = _extract_simple(file_path)
         meet = omega_parser.parse(full_text)
     elif frmn_parser.detect_format(detect_text):
-        # FRMN PDFs lay out fine with default extraction; text-flow order
-        # actually breaks their result-line structure.
-        full_text = _extract_simple(file_path)
+        # FRMN PDFs draw name/nationality/club as separate text objects that
+        # physically overlap when a name is long: default extraction then
+        # merges the surname into the NAT code ("EL MGHARI"+"MAR" ->
+        # "EL MGHAMRIAR"), so the row fails the NAT anchor and the swimmer is
+        # silently dropped — and it doubles the FINA-points digits. De-overlap
+        # extraction (text-flow words re-sorted by x per line) keeps every
+        # column intact; it is identical to default extraction on files with
+        # no overlap, so it is safe to use unconditionally.
+        full_text = _extract_deoverlap(file_path)
         meet = frmn_parser.parse(full_text)
     elif ffn_parser.detect_format(detect_text):
         # FFN PDFs have overlapping text layers that garble default
@@ -328,6 +334,20 @@ def _extract_page_deoverlap(page):
         line_words.sort(key=lambda w: w['x0'])
         page_lines.append(' '.join(w['text'] for w in line_words))
     return '\n'.join(page_lines)
+
+
+def _extract_deoverlap(file_path):
+    """Whole-document de-overlap extraction (see _extract_page_deoverlap)."""
+    import gc
+    parts = []
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            parts.append(_extract_page_deoverlap(page))
+            page.flush_cache()
+    text = '\n'.join(parts)
+    del parts
+    gc.collect()
+    return text
 
 
 def _row_start_xs(words):

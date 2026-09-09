@@ -47,6 +47,15 @@ RESULT_LINE = re.compile(
     re.IGNORECASE
 )
 
+# Relay leg line: the swimmers below a relay team line carry only a name,
+# birth year and nationality — no club and no time. "VIGUIER Alix (2007) FRA"
+RELAY_LEG_LINE = re.compile(
+    r"^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\- ]+?)\s+"   # name
+    r'\((\d[\d\w]{3})\)\s+'                    # birth year (may have OCR letter)
+    r'([A-Z]{2,3}(?:\s+[A-Z])?)\s*$',          # nationality code, end of line
+    re.IGNORECASE
+)
+
 # Split line: "50m : 00:25.77 (00:25.77) 100m : 00:53.96 (00:28.19)"
 SPLIT_LINE = re.compile(r'^\d+m\s*:\s*\d{2}:\d{2}\.\d{2}')
 
@@ -206,6 +215,7 @@ def parse(text):
             break
 
     current_event = None
+    current_is_relay = False
     last_result = None
 
     for raw_line in lines:
@@ -243,10 +253,16 @@ def parse(text):
             age_group_text = em.group(5) or ''  # e.g. "10-16 ans"
 
             is_relay = 'x' in distance_text.lower()
-            try:
-                distance = int(re.sub(r'[^\d]', '', distance_text))
-            except ValueError:
-                distance = extract_distance(distance_text + ' ' + stroke_text)
+            if is_relay:
+                # "4x100" → total 400 (legs × leg distance). Parsing the bare
+                # digits would give 4100, which normalize_event_name then
+                # divides by 4 into the nonsensical "4x1025".
+                distance = extract_distance(distance_text)
+            else:
+                try:
+                    distance = int(re.sub(r'[^\d]', '', distance_text))
+                except ValueError:
+                    distance = extract_distance(distance_text + ' ' + stroke_text)
             stroke = _parse_french_stroke(stroke_text)
             gender = 'F' if 'dames' in gender_text.lower() else (
                 'X' if 'mixte' in gender_text.lower() else 'M'
@@ -275,11 +291,31 @@ def parse(text):
                 date_text=event_date,
             )
             meet.events.append(current_event)
+            current_is_relay = is_relay
             last_result = None
             continue
 
-        # Check for split line (belongs to previous result)
-        if SPLIT_LINE.match(line) and last_result:
+        # Relay leg line ("VIGUIER Alix (2007) FRA"): a squad member listed
+        # below the team line, with no club or time. Append to the current
+        # relay team's leg list (carried in split_times, which
+        # services._parse_relay_legs turns into relay_swimmers). The first leg
+        # is already on the team line; these are legs 2-4.
+        # A relay always has four legs (one on the team line + three below).
+        # Capping the collection stops a squad whose team line failed to parse
+        # (e.g. a disqualified relay in a different layout) from spilling its
+        # swimmers into the preceding team's leg list.
+        if current_is_relay and last_result is not None \
+                and len(last_result.split_times) < 4:
+            lm = RELAY_LEG_LINE.match(cleaned_line)
+            if lm:
+                leg_name = re.sub(r'(?<=[a-z])\s+(?=[a-z])', '', lm.group(1).strip())
+                last_result.split_times.append(_reorder_ffn_name(leg_name))
+                continue
+
+        # Check for split line (belongs to previous result). For relays the
+        # split line holds the team's cumulative splits, not per-leg names, so
+        # it must not pollute the leg list carried in split_times.
+        if SPLIT_LINE.match(line) and last_result and not current_is_relay:
             splits = _parse_split_line(line)
             last_result.split_times.extend(splits)
             continue
@@ -335,8 +371,19 @@ def parse(text):
             rank = int(rank_str) if rank_str.isdigit() else 0
             fina_points = int(fina_str) if fina_str else 0
 
+            # For a relay, the "name" on the team line is only the first leg
+            # swimmer; the real entrant is the club (the club column). Store
+            # the club as the team name so the club tally credits the team,
+            # not a person, and seed the leg list with the first swimmer.
+            split_times = []
+            if current_is_relay:
+                swimmer_name = club
+                split_times = [name]  # already reordered to "Given SURNAME"
+            else:
+                swimmer_name = name
+
             result = ParsedResult(
-                swimmer_name=name,
+                swimmer_name=swimmer_name,
                 time_text=time_text,
                 time_centiseconds=time_cs,
                 rank=rank,
@@ -347,6 +394,7 @@ def parse(text):
                 gender=current_event.gender,
                 round_type=current_event.round_type,
                 status=status,
+                split_times=split_times,
             )
             current_event.results.append(result)
             last_result = result

@@ -166,7 +166,11 @@ EVENT_HEADER_NOROUND = re.compile(
 ROUND_LINE = re.compile(
     r'^(?:[A-Z]{3}\s+\d{1,2}\s+[A-Z]{3}\s+\d{4}\s+)?'
     r'(?:\d{1,2}:\d{2}\s+)?'  # optional time prefix "9:20 Heats"
-    r'(Heats?|Finals?|Semifinals?|Swim-?offs?)\s*$',
+    # A swim-off breaks a tie for a qualifying place ("Semifinal Swim-Off",
+    # "Heat Swim-Off", or a bare "Swim-Off"); the leading round word is
+    # optional so all forms match as one token.
+    r'((?:Semifinals?\s+|Heats?\s+|Finals?\s+)?Swim-?offs?'
+    r'|Heats?|Finals?|Semifinals?)\s*$',
     re.IGNORECASE,
 )
 # Date on the round line: "SUN 24 SEP 2023 Heats"
@@ -478,7 +482,13 @@ def parse(text):
         rl = ROUND_LINE.match(stripped)
         if rl and getattr(current_event, '_round_pending', False) and not current_event.results:
             round_word = rl.group(1).upper()
-            if round_word.startswith('SEMI'):
+            if 'SWIM' in round_word:
+                # A swim-off only breaks a tie for a qualifying place — it
+                # never decides a podium. Treat it as a prelim round so it
+                # can't award a phantom medal (its rank-2 finisher is the
+                # loser of a two-swimmer tie-break, not a silver medallist).
+                current_event.round_type = 'Semis'
+            elif round_word.startswith('SEMI'):
                 current_event.round_type = 'Semis'
             elif round_word.startswith('HEAT'):
                 current_event.round_type = 'Heats'

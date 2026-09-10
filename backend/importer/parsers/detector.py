@@ -834,7 +834,7 @@ def _excel_round(raw):
 
 
 _CATEGORY_GENDER_WORDS = re.compile(
-    r"\b(men|women|mens|womens|boys|girls|male|female|garcons|filles|"
+    r"\b(men|women|mens|womens|boys|girls|male|female|mixed|mixte|garcons|filles|"
     r"messieurs|dames|hommes|femmes)(?:['\u2018\u2019\u0027]s|['\u2018\u2019\u0027])?\b", re.IGNORECASE)
 
 

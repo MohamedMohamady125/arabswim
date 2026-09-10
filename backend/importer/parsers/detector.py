@@ -1151,6 +1151,22 @@ def _parse_individual_sheet(df, meet, events_dict):
     if not name_col or not time_col:
         return
 
+    # Splits can span several columns. A 200 might carry two 100 splits, or
+    # four 50 splits, one per column, starting at the "Split" column and
+    # running to the end of the row. Duplicate/blank headers to the right of
+    # "Split" are renamed by pandas (Split.1, Unnamed: N…), so collect them by
+    # position rather than by name. Cells that don't read as a time are
+    # dropped, so a stray trailing column can't masquerade as a split.
+    split_col = _find_column(cols, ['split time', 'split'])
+    split_cols = []
+    if split_col is not None:
+        col_list = list(df.columns)
+        try:
+            start = col_list.index(split_col)
+            split_cols = col_list[start:]
+        except ValueError:
+            split_cols = [split_col]
+
     for _, row in df.iterrows():
         event_name = _safe_str(row[event_col]) if event_col else 'Unknown Event'
         if not event_name or event_name.lower() == 'nan':
@@ -1282,6 +1298,20 @@ def _parse_individual_sheet(df, meet, events_dict):
             pts = _cell_int(row[points_col])
             if pts and 0 < pts <= 1200:
                 result.fina_points = pts
+
+        # Collect the per-segment splits, in column order, as bare time
+        # strings. confirm_import infers each segment's distance by dividing
+        # the event distance evenly across the split count (two cells over
+        # 200m → 100/200, four → 50/100/150/200). Relay rows carry leg names
+        # in split_times instead, so only individual rows read these columns.
+        if split_cols and not relay:
+            seg_splits = []
+            for sc in split_cols:
+                seg = _cell_time_str(row[sc])
+                if seg:
+                    seg_splits.append(seg)
+            if seg_splits:
+                result.split_times = seg_splits
 
         events_dict[event_key].results.append(result)
 

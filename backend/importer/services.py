@@ -545,6 +545,9 @@ def _build_preview(parsed_meet):
             # Session date (YYYY-MM-DD) when the source file schedules the
             # event on a specific day — powers program auto-extraction.
             'session_date': getattr(event, 'date_text', '') or '',
+            # 1-based meet day for sources that group events by day number
+            # without printing absolute dates (e.g. AP Race books).
+            'session_day': getattr(event, 'day', 0) or 0,
             'results': [],
         }
 
@@ -657,24 +660,27 @@ def _build_preview(parsed_meet):
     prog_seen = set()
     for event_data in events:
         sd = event_data.get('session_date')
-        if not sd:
+        sday = event_data.get('session_day') or 0
+        if not sd and not sday:
             continue
         session = ROUND_TO_SESSION.get(event_data.get('round_type') or '', '')
         ag = event_data.get('age_group') or ''
         if ag.upper() == 'OPEN':
             ag = ''
-        key = (sd, event_data['event_name'], event_data['gender'], session, ag)
+        key = (sd, sday, event_data['event_name'], event_data['gender'],
+               session, ag)
         if key in prog_seen:
             continue
         prog_seen.add(key)
         program.append({
-            'date': sd,
+            'date': sd or '',
+            'day': sday,
             'event_name': event_data['event_name'],
             'gender': event_data['gender'],
             'session': session,
             'age_category': ag,
         })
-    program.sort(key=lambda p: p['date'])
+    program.sort(key=lambda p: (p['date'] or f'~{p["day"]:02d}',))
 
     preview = {
         'meet': {
@@ -1811,6 +1817,7 @@ def rebuild_program(championship, preview_data):
         if not db_event:
             continue
         session_date = event_data.get('session_date') or ''
+        session_day = event_data.get('session_day') or 0
         session = ROUND_TO_SESSION.get(event_data.get('round_type') or '', '')
         prog_ag = event_data.get('age_group') or ''
         if prog_ag.upper() == 'OPEN':
@@ -1823,8 +1830,11 @@ def rebuild_program(championship, preview_data):
         if key in seen:
             if session_date:
                 seen[key][0] = session_date
+            if session_day:
+                seen[key][1] = session_day
         else:
-            entry = [session_date, db_event, prog_gender, session, prog_ag]
+            entry = [session_date, session_day, db_event, prog_gender,
+                     session, prog_ag]
             seen[key] = entry
             entries.append(entry)
 
@@ -1834,8 +1844,11 @@ def rebuild_program(championship, preview_data):
         next_order[pi.day] = max(next_order.get(pi.day, 0), pi.order + 1)
 
     created = 0
-    for date_iso, db_event, prog_gender, session, prog_ag in entries:
+    for date_iso, day_num, db_event, prog_gender, session, prog_ag in entries:
         day = 1
+        if day_num:
+            # Source gave an explicit day number (no absolute dates).
+            day = max(1, min(int(day_num), 30))
         d = _parse_date(date_iso) if date_iso else None
         if d and championship.date:
             day = (d - championship.date).days + 1

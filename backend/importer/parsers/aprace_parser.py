@@ -338,6 +338,9 @@ def parse(text):
                 stroke=stroke,
                 gender=gender,
                 round_type=round_type,
+                # The book gives explicit "DAY n" groupings but no absolute
+                # session dates — carry the day for program auto-detection.
+                day=current_day,
             )
             current_is_relay = is_relay
             current_relay_result = None

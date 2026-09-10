@@ -395,5 +395,12 @@ def parse(text):
         pending_club_result = None
 
     meet.events = [e for e in meet.events if e.results]
+    # A MÚSZ PDF covers a single session whose date is printed once in the
+    # page header ("2024. 04. 09., 9:00:00 (S1)") — every event in the file
+    # was swum on that date, so stamp it for program auto-detection.
+    if meet.date_text:
+        for e in meet.events:
+            if not e.date_text:
+                e.date_text = meet.date_text
     merge_duplicate_events(meet)
     return meet

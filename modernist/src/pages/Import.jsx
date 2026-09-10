@@ -45,11 +45,14 @@ function DetectedProgram({ program, startDate }) {
     const d = Math.round((new Date(`${iso}T00:00:00`) - new Date(`${startDate}T00:00:00`)) / 86400000) + 1
     return d >= 1 && d <= 30 ? d : null
   }
+  // Rows carry either an absolute session date or (for sources that only
+  // print "DAY n" groupings, e.g. AP Race) a bare day number.
+  const keyOf = (row) => row.date || `day-${row.day || 0}`
   const byDate = []
   for (const row of program) {
     const last = byDate[byDate.length - 1]
-    if (last && last.date === row.date) last.rows.push(row)
-    else byDate.push({ date: row.date, rows: [row] })
+    if (last && last.key === keyOf(row)) last.rows.push(row)
+    else byDate.push({ key: keyOf(row), date: row.date, day: row.day || 0, rows: [row] })
   }
   return (
     <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }}>
@@ -58,9 +61,11 @@ function DetectedProgram({ program, startDate }) {
         Session dates and rounds read from the source file — review the quality here. Saved automatically with the import; you can adjust it afterwards on the Done step or the meet page.
       </div>
       {byDate.map((d) => (
-        <div key={d.date} style={{ marginBottom: 10 }}>
+        <div key={d.key} style={{ marginBottom: 10 }}>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5, marginBottom: 4 }}>
-            {dayNo(d.date) ? `Day ${dayNo(d.date)} · ` : ''}{formatDate(d.date)}
+            {d.date
+              ? `${dayNo(d.date) ? `Day ${dayNo(d.date)} · ` : ''}${formatDate(d.date)}`
+              : `Day ${d.day}`}
           </div>
           {d.rows.map((r, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderBottom: '1px solid var(--color-divider)', fontSize: 13, background: '#fff' }}>

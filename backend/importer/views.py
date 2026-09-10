@@ -189,10 +189,16 @@ def _infer_live_day(preview, champ):
                 dates.append(_date.fromisoformat(sd[:10]))
             except ValueError:
                 pass
+    from collections import Counter
     if not dates or not champ.date:
+        # No absolute dates — fall back to explicit day numbers when the
+        # source groups events by meet day (e.g. AP Race books).
+        days = [ev.get('session_day') or 0
+                for ev in preview.get('events', []) if ev.get('session_day')]
+        if days:
+            return max(1, min(Counter(days).most_common(1)[0][0], 30))
         return None
     # Use the most common date in the file
-    from collections import Counter
     most_common = Counter(dates).most_common(1)[0][0]
     day = (most_common - champ.date).days + 1
     return max(1, min(day, 30))

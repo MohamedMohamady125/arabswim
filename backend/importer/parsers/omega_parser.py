@@ -460,6 +460,22 @@ def parse(text):
         if current_event is None:
             continue
 
+        # Daily-summary page date: "As of FRI 20 MAY 2022 at 18:20" (GCC-style
+        # books print one file per session, so the page's "As of" date is the
+        # session date). A true per-event date line (standalone/round-line)
+        # still wins because it overwrites this unconditionally below.
+        am = re.match(r'^As of \w+\s+(\d{1,2})\s+(\w+)\s+(\d{4})\b', stripped)
+        if am:
+            months = {'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5,
+                      'JUN': 6, 'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10,
+                      'NOV': 11, 'DEC': 12}
+            mo = months.get(am.group(2).upper()[:3], 0)
+            if mo and current_event and not current_event.results \
+                    and not current_event.date_text:
+                current_event.date_text = (
+                    f'{int(am.group(3)):04d}-{mo:02d}-{int(am.group(1)):02d}')
+            continue
+
         # Standalone date line: "22 JUL 2025" (WUG/FISU format)
         sdm = STANDALONE_DATE.match(stripped)
         if sdm:
@@ -475,6 +491,28 @@ def parse(text):
                     meet.date_text = _pending_date
                 if not getattr(meet, 'date_end', '') or _pending_date > getattr(meet, 'date_end', ''):
                     meet.date_end = _pending_date
+            continue
+
+        # Olympic-book date line right after a bare event header:
+        # "SUN 4 AUG 2024 50 m nage libre - femmes" — a weekday date followed
+        # by the French event name; the round word comes on the NEXT line
+        # (which the ROUND_LINE branch below then handles). Capture the date.
+        wd = ROUND_DATE.match(stripped)
+        if (wd and getattr(current_event, '_round_pending', False)
+                and not current_event.results
+                and not ROUND_LINE.match(stripped)):
+            months = {'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5,
+                      'JUN': 6, 'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10,
+                      'NOV': 11, 'DEC': 12}
+            mo = months.get(wd.group(2).upper(), 0)
+            if mo:
+                d = f'{int(wd.group(3)):04d}-{mo:02d}-{int(wd.group(1)):02d}'
+                if not current_event.date_text:
+                    current_event.date_text = d
+                if not meet.date_text or d < meet.date_text:
+                    meet.date_text = d
+                if not getattr(meet, 'date_end', '') or d > meet.date_end:
+                    meet.date_end = d
             continue
 
         # Games-style date/round line right after a bare event header:

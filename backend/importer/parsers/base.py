@@ -39,6 +39,7 @@ class ParsedEvent:
     round_type: str = ''
     age_group: str = ''
     date_text: str = ''  # session date (YYYY-MM-DD) when the source gives it
+    day: int = 0  # 1-based meet day when the source gives a day number but no date
     results: list = field(default_factory=list)  # list of ParsedResult
 
 

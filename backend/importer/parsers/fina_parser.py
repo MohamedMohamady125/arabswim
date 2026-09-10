@@ -70,8 +70,14 @@ EVENT_HEADER = re.compile(
 DATE_LINE = re.compile(r'^(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s*-\s*\d{1,2}:\d{2}\b')
 
 # Meet dates: "December 11 - 16, 2018"  or  "December 11 - January 5, 2019"
+# "December 11 - 16, 2018" (American) or "2 - 18 February 2024" (European)
 MEET_DATE = re.compile(
     r'^([A-Za-z]+)\s+(\d{1,2})\s*[-–]\s*(?:([A-Za-z]+)\s+)?(\d{1,2}),\s*(\d{4})')
+# "2 - 18 February 2024" or "18 June - 3 July 2022" (cross-month)
+MEET_DATE_EU = re.compile(
+    r'^(\d{1,2})\s+([A-Za-z]+)\s*[-–]\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})')
+MEET_DATE_EU_SAME = re.compile(
+    r'^(\d{1,2})\s*[-–]\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})')
 
 # Location: "Hangzhou (CHN)"
 LOCATION = re.compile(r'^([A-Za-z .\'-]+)\s+\(([A-Z]{3})\)\s*$')
@@ -289,9 +295,27 @@ def parse(text):
                 if mon1:
                     meet.date_text = f'{year:04d}-{mon1:02d}-{int(md.group(2)):02d}'
                 if mon2:
-                    # end month may roll into the next year (Dec–Jan meets)
                     end_year = year
                     meet.date_end = f'{end_year:04d}-{mon2:02d}-{int(md.group(4)):02d}'
+            else:
+                # "18 June - 3 July 2022" (cross-month EU)
+                mde = MEET_DATE_EU.match(s)
+                if mde:
+                    mon1 = _MONTH_NAMES.get(mde.group(2).lower())
+                    mon2 = _MONTH_NAMES.get(mde.group(4).lower())
+                    year = int(mde.group(5))
+                    if mon1 and mon2:
+                        meet.date_text = f'{year:04d}-{mon1:02d}-{int(mde.group(1)):02d}'
+                        meet.date_end = f'{year:04d}-{mon2:02d}-{int(mde.group(3)):02d}'
+                else:
+                    # "2 - 18 February 2024" (same-month EU)
+                    mds = MEET_DATE_EU_SAME.match(s)
+                    if mds:
+                        mon = _MONTH_NAMES.get(mds.group(3).lower())
+                        year = int(mds.group(4))
+                        if mon:
+                            meet.date_text = f'{year:04d}-{mon:02d}-{int(mds.group(1)):02d}'
+                            meet.date_end = f'{year:04d}-{mon:02d}-{int(mds.group(2)):02d}'
         if 'lcm' in s.lower() or '(50m)' in s.lower():
             meet.pool = 'LCM'
         if '(25m)' in s.lower() or 'scm' in s.lower():

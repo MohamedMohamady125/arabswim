@@ -806,6 +806,9 @@ def _build_preview(parsed_meet):
     }
     # Smart name-order detection: if the parser left all-caps names
     # ambiguous, compare against the DB to decide whether to flip.
+    # STRICT RULE: Excel imports have exact names — never touch them.
+    if parsed_meet.source_format == 'excel':
+        return preview
     return detect_and_fix_name_order(preview)
 
 
@@ -964,6 +967,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 pass
 
     meet_info = preview_data['meet']
+    is_excel_format = meet_info.get('format') == 'excel'
 
     # Resolve the country for swimmers fallback
     meet_country = None
@@ -1234,7 +1238,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                                 swimmer_map[ind_key], result_data, championship):
                             nationality_changes += 1
                     elif action == 'create':
-                        swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback)
+                        swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback, is_excel_format)
                         created_swimmers += 1
                     else:
                         # Auto: try to match, create if new
@@ -1277,7 +1281,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                                     swimmer, result_data, championship):
                                 nationality_changes += 1
                         else:
-                            swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback)
+                            swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback, is_excel_format)
                             created_swimmers += 1
 
             lookup_key = relay_key if (is_relay or result_data.get('is_relay', False)) else ind_key
@@ -1736,7 +1740,7 @@ def _parse_relay_legs(raw_splits):
     return legs
 
 
-def _create_swimmer(result_data, fallback_country=None):
+def _create_swimmer(result_data, fallback_country=None, is_excel_format=False):
     """Create a new swimmer from parsed result data."""
     birth_year = result_data.get('birth_year', 0) or None
 
@@ -1759,10 +1763,14 @@ def _create_swimmer(result_data, fallback_country=None):
     if club and (club.upper() == 'LP' or not is_valid_team_name(club)):
         club = ''
 
-    name = normalize_swimmer_name(result_data['swimmer_name'])
-    # Egyptian names: first name as-is, all subsequent words UPPERCASE
-    if nationality and getattr(nationality, 'code', '') == 'EGY':
-        name = egyptian_name_format(name)
+    # STRICT RULE: Excel imports have exact names — never normalize them.
+    if is_excel_format:
+        name = result_data['swimmer_name'].strip()
+    else:
+        name = normalize_swimmer_name(result_data['swimmer_name'])
+        # Egyptian names: first name as-is, all subsequent words UPPERCASE
+        if nationality and getattr(nationality, 'code', '') == 'EGY':
+            name = egyptian_name_format(name)
 
     swimmer = Swimmer.objects.create(
         name=name,

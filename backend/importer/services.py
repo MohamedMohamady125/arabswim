@@ -614,6 +614,7 @@ def _build_preview(parsed_meet):
                 'nationality_code': nat_code,
                 'nationality_inferred': nat_inferred,
                 'club': '' if club_is_country else r.club,
+                'team_override': r.club if club_is_country else '',
                 'fina_points': fina_points,
                 'gender': gender_for_event,
                 'is_relay': is_relay,
@@ -1236,14 +1237,17 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                 team = normalize_club_name(result_data['swimmer_name'])
             else:
                 from teams.utils import strip_squad_number
-                raw_club = strip_squad_number(result_data.get('club', '')).strip()
-                if raw_club.upper() == 'LP':
-                    # "LP" (libre passage) = no club, swimmer is transferring.
-                    # Keep the marker verbatim on the result; never treat it
-                    # as a real club.
-                    team = 'LP'
+                team_override = result_data.get('team_override', '')
+                if team_override:
+                    # International meet: club was a country name, used for
+                    # nationality — still record it as the result's team.
+                    team = normalize_club_name(team_override)
                 else:
-                    team = normalize_club_name(raw_club)
+                    raw_club = strip_squad_number(result_data.get('club', '')).strip()
+                    if raw_club.upper() == 'LP':
+                        team = 'LP'
+                    else:
+                        team = normalize_club_name(raw_club)
 
             # Keep swimmer's club current: set it when blank, and update it
             # when this meet is the swimmer's most recent one (athletes have

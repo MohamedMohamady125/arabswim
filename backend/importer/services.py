@@ -99,14 +99,15 @@ def egyptian_name_format(name):
 
 
 def normalize_swimmer_name(text):
-    """Normalize a swimmer name while preserving parser-formatted surnames.
+    """Normalize a swimmer name to "Given SURNAME" convention.
 
-    Parsers (FRMN, Nat2i, ...) already emit names as "First LASTNAME" with the
-    surname in uppercase. Title-casing those would destroy the convention and
-    leave the database with a mix of "Malak MEQDAR" (matched, kept as-is) and
-    "Malak Meqdar" (newly created, title-cased). If the name already mixes an
-    uppercase word with a non-uppercase word, keep the casing and only clean
-    whitespace; otherwise fall back to normalize_name().
+    Uses the UPPERCASE convention: all-caps words are the surname.
+    If the surname is leading (wrong order), flips to trailing.
+    Examples:
+      "MOESCH Annaliesa"         → "Annaliesa MOESCH"
+      "Freya ANDERSON"           → "Freya ANDERSON"  (already correct)
+      "BEN AJMIA Mohamed Khalil" → "Mohamed Khalil BEN AJMIA"
+      "Dora Buklu"               → "Dora BUKLU"  (no caps → uppercase last)
     """
     if not text or not isinstance(text, str):
         return text or ''
@@ -119,11 +120,55 @@ def normalize_swimmer_name(text):
     has_upper_word = any(w.isupper() and len(w) > 1 for w in words)
     has_mixed_word = any(not w.isupper() and any(c.isalpha() for c in w) for w in words)
     if has_upper_word and has_mixed_word:
-        return text
+        # Name has case distinction — check if surname is leading (wrong)
+        # and auto-fix to "Given SURNAME" order.
+        return _ensure_given_surname_order(text)
     # No uppercase surname in the source ("Dora Buklu", "DORA BUKLU",
     # "dora buklu"): title-case, then uppercase the surname so every
     # import ends up on the "Given SURNAME" convention.
     return uppercase_surname(normalize_name(text))
+
+
+def _ensure_given_surname_order(name):
+    """If uppercase (surname) words are at the start, move them to the end.
+
+    "MOESCH Annaliesa"         → "Annaliesa MOESCH"
+    "LE FALHER Asma"           → "Asma LE FALHER"
+    "Freya ANDERSON"           → "Freya ANDERSON"  (already correct)
+    "Mohamed Khalil BEN AJMIA" → "Mohamed Khalil BEN AJMIA" (correct)
+    """
+    words = name.split()
+    if len(words) < 2:
+        return name
+    # Count leading uppercase words (the surname block if wrong order)
+    leading_upper = 0
+    for w in words:
+        if w.isupper() and len(w) > 1:
+            leading_upper += 1
+        else:
+            break
+    # Count trailing uppercase words (the surname block if correct order)
+    trailing_upper = 0
+    for w in reversed(words):
+        if w.isupper() and len(w) > 1:
+            trailing_upper += 1
+        else:
+            break
+    total_upper = sum(1 for w in words if w.isupper() and len(w) > 1)
+
+    if leading_upper == 0:
+        # No leading uppercase — already correct (or no clear pattern)
+        return name
+    if trailing_upper == total_upper:
+        # All uppercase words are trailing — already correct
+        return name
+    if leading_upper == total_upper and leading_upper < len(words):
+        # All uppercase words are leading — surname first, flip it
+        surname = words[:leading_upper]
+        given = words[leading_upper:]
+        return ' '.join(given + surname)
+    # Mixed positions — leave as-is (ambiguous)
+    return name
 
 
 def _name_tokens(name):

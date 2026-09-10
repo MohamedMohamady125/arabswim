@@ -194,6 +194,60 @@ def decide_meet_name_flip(names_and_years):
     return 'keep'
 
 
+def _flip_name_by_case(name):
+    """Swap surname and given name using the UPPERCASE convention.
+
+    Swimming results use ALL-CAPS for surnames:
+      "MOHAMADY Mohamed"       → "Mohamed MOHAMADY"
+      "MOHAMADY Mohamed Ahmed" → "Mohamed Ahmed MOHAMADY"
+      "Mohamed MOHAMADY"       → already correct, returned as-is
+      "EL SAYED Ahmed"         → "Ahmed EL SAYED"
+
+    When the name has no case distinction (all caps or all title), falls
+    back to moving the first token to the end (legacy behavior).
+    """
+    words = (name or '').strip().split()
+    if len(words) < 2:
+        return name
+
+    # Identify which words are UPPERCASE (surname) vs mixed/title (given)
+    upper_words = [w for w in words if w.isupper() and len(w) > 1]
+    other_words = [w for w in words if not (w.isupper() and len(w) > 1)]
+
+    if not upper_words or not other_words:
+        # No case distinction — fall back to moving first token to end
+        return normalize_swimmer_name(' '.join(words[1:] + words[:1]))
+
+    # Check if surname is already trailing (correct order)
+    trailing_upper = 0
+    for w in reversed(words):
+        if w.isupper() and len(w) > 1:
+            trailing_upper += 1
+        else:
+            break
+    if trailing_upper == len(upper_words):
+        # Already in "Given SURNAME" order
+        return normalize_swimmer_name(name)
+
+    # Surname is leading — move all uppercase words to the end
+    # preserving their relative order, given names go first
+    given = []
+    surname = []
+    # Walk from the start: consecutive uppercase words at the beginning
+    # are the surname block; everything after is given name(s)
+    i = 0
+    while i < len(words) and words[i].isupper() and len(words[i]) > 1:
+        surname.append(words[i])
+        i += 1
+    given = words[i:]
+
+    if not given:
+        # All words are uppercase — just move the first to end
+        return normalize_swimmer_name(' '.join(words[1:] + words[:1]))
+
+    return normalize_swimmer_name(' '.join(given + surname))
+
+
 def detect_and_fix_name_order(preview_data):
     """Smart name-order detection run once after parsing, before the user sees
     the preview.
@@ -220,16 +274,15 @@ def detect_and_fix_name_order(preview_data):
     decision = decide_meet_name_flip(names_and_years)
 
     if decision == 'flip':
-        # Reference profiles say this meet is surname-first — move each
-        # swimmer's leading (family) token to the end for the whole meet.
+        # Reference profiles say this meet is surname-first — use the
+        # uppercase convention to identify surname vs given-name tokens
+        # and swap them to "Given SURNAME" order.
         for ev in preview_data.get('events', []):
             for r in ev.get('results', []):
                 if r.get('is_relay'):
                     continue
-                words = (r.get('swimmer_name', '') or '').split()
-                if len(words) >= 2:
-                    r['swimmer_name'] = normalize_swimmer_name(
-                        ' '.join(words[1:] + words[:1]))
+                r['swimmer_name'] = _flip_name_by_case(
+                    r.get('swimmer_name', ''))
         return preview_data
     if decision == 'keep':
         # Reference profiles confirm the order is already correct.

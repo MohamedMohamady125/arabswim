@@ -1850,13 +1850,16 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                       results__championship_id=championship.id)
               .distinct())
 
+        from importer.services import _flip_name_by_case
         def do_swap(name):
             tokens = (name or '').strip().split()
             if len(tokens) < 2:
                 return None
-            # Move the leading (family) token to the end, then let
-            # normalize_swimmer_name upper-case the trailing surname.
-            return normalize_swimmer_name(' '.join(tokens[1:] + tokens[:1]))
+            # Use the UPPERCASE convention to identify surname vs given
+            # name tokens, then swap them. For 3+ word names like
+            # "MOHAMADY Mohamed Ahmed", this correctly produces
+            # "Mohamed Ahmed MOHAMADY" instead of just moving one token.
+            return _flip_name_by_case(name)
 
         renamed = 0
         dupes = []

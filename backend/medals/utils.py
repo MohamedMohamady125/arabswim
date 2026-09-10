@@ -18,7 +18,7 @@ _MEDAL_BY_RANK = {1: 'GOLD', 2: 'SILVER', 3: 'BRONZE'}
 # Explicitly preliminary rounds never decide a podium — the final may live
 # in a separate source file not yet imported (Egypt releases heats as
 # several PDFs). Timed-final events carry 'Finals' or a blank round.
-_PRELIM_ROUNDS = {'Prelims', 'Heats', 'Semifinals', 'Semis'}
+_PRELIM_ROUNDS = {'Prelims', 'Heats', 'Semifinals', 'Semis', 'Swim-off'}
 
 
 def _relay_name_tokens(name):
@@ -204,6 +204,11 @@ def recompute_medals(championship):
                 cons = [r for r in group_rows if r.round_type == 'Consolation']
                 if cons:
                     award_sets.append(cons)
+            # Junior Final is a separate podium (younger swimmers
+            # competing alongside the open final)
+            jf = [r for r in group_rows if r.round_type == 'Junior Final']
+            if jf:
+                award_sets.append(jf)
         elif len(rounds) > 1:
             # Prelims/heats only from a multi-round meet: no final ranking.
             continue

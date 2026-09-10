@@ -12,7 +12,9 @@ from core.models import Country
 # meets number each club's relay squads; we store only the club name.
 _SQUAD_NUMBER_RE = re.compile(r'\s+\d{1,2}$')
 # Trailing single squad letter: " A", " B", " C" etc.
-_SQUAD_LETTER_RE = re.compile(r'\s+[A-Z]$')
+# Don't strip when preceded by a dash ("Nat Club Swim Asc - A" is the
+# full team name, not "Nat Club Swim Asc -" plus a squad suffix).
+_SQUAD_LETTER_RE = re.compile(r'(?<![-–])\s+[A-Z]$')
 # Compound squad designator: "4B", "2A", "3C" — digit + letter (or letter
 # + digit) used by some federations to label additional relay squads.
 _SQUAD_COMPOUND_RE = re.compile(r'\s+\d[A-Z]$')

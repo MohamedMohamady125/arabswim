@@ -698,9 +698,10 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   const roundsPresent = new Set(rows.map((r) => r.round_type || ''))
   // National meets run Finale A/B/C — each finale has its own podium, so
   // Final B (Consolation) rows also carry medals (matches backend recompute)
+  const _MEDAL_ROUNDS = new Set(['Finals', 'Junior Final', 'Final C', 'Final D'])
   const showMedals = isOpenView
     ? (roundsPresent.has('Finals') || roundsPresent.size <= 1)
-    : (selectedRound === 'Finals'
+    : (_MEDAL_ROUNDS.has(selectedRound)
       || (isNational && selectedRound === 'Consolation' && !bFinalNoMedals)
       || roundsPresent.size <= 1)
   // Small categories (e.g. Benjamins) often swim heats only — that heats

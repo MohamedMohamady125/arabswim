@@ -14,6 +14,7 @@ import { POOL_TYPES, ARAB_COUNTRY_CODES, formatDate } from '../utils'
 import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
 import MeetProgramEditor, { LocalProgramEditor } from '../components/MeetProgramEditor'
+import DragDropProgramEditor from '../components/DragDropProgramEditor'
 import { PageHead, Loading, Empty, Seg } from '../components/ui'
 
 const MAX_FILES = 200
@@ -907,6 +908,14 @@ export default function Import() {
                     />
                   ) : meet.existingChampId ? (
                     <MeetProgramEditor champId={Number(meet.existingChampId)} />
+                  ) : meet.champForm.date && meet.editedPreview?.events?.length > 0 ? (
+                    <DragDropProgramEditor
+                      preview={meet.editedPreview}
+                      startDate={meet.champForm.date}
+                      endDate={meet.champForm.end_date}
+                      items={meet.programItems || []}
+                      onChange={(items) => updateMeet(active, { programItems: items })}
+                    />
                   ) : meet.champForm.date ? (
                     <LocalProgramEditor
                       startDate={meet.champForm.date}

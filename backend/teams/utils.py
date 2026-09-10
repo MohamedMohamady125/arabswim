@@ -194,6 +194,12 @@ def country_for_relay_team(name):
     hit = Country.objects.filter(name__iexact=cleaned).first()
     if hit:
         return hit
+    # resolve_country alias map (multi-word names only — bare 3-letter
+    # codes may collide with club abbreviations)
+    if len(cleaned) > 3:
+        alias_hit = resolve_country(cleaned)
+        if alias_hit:
+            return alias_hit
     # Federation suffix: "Kuwait Swimming" -> "Kuwait"
     stripped = _FEDERATION_SUFFIX_RE.sub('', cleaned).strip()
     if stripped and stripped != cleaned:

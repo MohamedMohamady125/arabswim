@@ -194,6 +194,10 @@ class Result(models.Model):
         ('Prelims', 'Prelims'),
         ('Heats', 'Heats'),
         ('Consolation', 'Consolation'),
+        ('Swim-off', 'Swim-off'),
+        ('Junior Final', 'Junior Final'),
+        ('Final C', 'Final C'),
+        ('Final D', 'Final D'),
         ('', 'Unknown'),
     ]
     swimmer = models.ForeignKey(Swimmer, on_delete=models.CASCADE, related_name='results')

@@ -295,11 +295,15 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
             <div className="field">
               <label>Round</label>
               <select className="select" value={form.round_type} onChange={(e) => setForm({ ...form, round_type: e.target.value })}>
-                <option value="Finals">Final</option>
+                <option value="Finals">Final A</option>
+                <option value="Consolation">Final B</option>
+                <option value="Final C">Final C</option>
+                <option value="Final D">Final D</option>
+                <option value="Junior Final">Junior Final</option>
                 <option value="Semifinals">Semi-Final</option>
+                <option value="Swim-off">Swim-off</option>
                 <option value="Heats">Heats</option>
                 <option value="Prelims">Prelims</option>
-                <option value="Consolation">Consolation (Final B)</option>
                 <option value="">Unknown</option>
               </select>
             </div>

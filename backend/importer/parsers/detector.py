@@ -806,19 +806,27 @@ def _cell_status(val):
 
 
 def _excel_round(raw):
-    """Map a Round cell to the site's round types, tolerating wording
-    variants: Heats/Prelims/Séries, Semifinals, B/C Final -> Consolation,
-    Super/Junior/Para/A Final -> Finals, Swim-Off -> Prelims."""
-    rl = _safe_str(raw).lower()
+    """Map a Round cell to the site's round types, preserving specific
+    round names from the source: Final A → Finals, Final B → Consolation,
+    Final C/D → Final C/D, Junior Final → Junior Final, Swim-Off → Swim-off,
+    Super Final → Finals, Preliminary/Heats → Prelims."""
+    rl = _safe_str(raw).lower().strip()
     if not rl or rl == 'nan':
         return ''
+    # Specific named rounds first (before generic 'final' match)
     if 'swim' in rl and 'off' in rl:
-        return 'Prelims'
-    if 'consol' in rl or re.search(r'\b[bc][\s-]*final', rl):
+        return 'Swim-off'
+    if 'junior' in rl and 'final' in rl:
+        return 'Junior Final'
+    if re.search(r'\bfinal\s*d\b', rl):
+        return 'Final D'
+    if re.search(r'\bfinal\s*c\b', rl):
+        return 'Final C'
+    if re.search(r'\bfinal\s*b\b|consol', rl):
         return 'Consolation'
     if 'semi' in rl or '1/2' in rl:
         return 'Semis'
-    if 'final' in rl:
+    if re.search(r'\bfinal\s*a?\b', rl) or 'super' in rl or 'para' in rl:
         return 'Finals'
     if 'prelim' in rl or 'heat' in rl or 'serie' in rl or 'série' in rl or 'qual' in rl:
         return 'Prelims'
@@ -827,7 +835,7 @@ def _excel_round(raw):
 
 _CATEGORY_GENDER_WORDS = re.compile(
     r"\b(men|women|mens|womens|boys|girls|male|female|garcons|filles|"
-    r"messieurs|dames|hommes|femmes)(?:'s|')?\b", re.IGNORECASE)
+    r"messieurs|dames|hommes|femmes)(?:['\u2018\u2019\u0027]s|['\u2018\u2019\u0027])?\b", re.IGNORECASE)
 
 
 def _normalize_age_category(cat):

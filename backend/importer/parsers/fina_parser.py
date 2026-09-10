@@ -99,6 +99,26 @@ ROW_A_STATUS = re.compile(
     re.IGNORECASE,
 )
 
+# Budapest-2022 column order: the LCM books print "NAT Code" BEFORE
+# "Date of Birth" (Hangzhou-style SCM books print DOB first). Same fields,
+# swapped positions:  rank heat lane NAME NAT dob rt <rest>
+ROW_A2 = re.compile(
+    r'^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s+'      # rank heat lane
+    r'(.+?)\s+'                                    # name
+    r'([A-Z]{2,4})\s+'                             # NAT code
+    r'(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s+'          # date of birth
+    r'(\d\.\d{2})\s+'                               # reaction time
+    r'(.+)$'                                        # rest
+)
+ROW_A2_STATUS = re.compile(
+    r'^(\d{1,3})\s+(\d{1,3})\s+'
+    r'(.+?)\s+'
+    r'([A-Z]{2,4})\s+'
+    r'(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s+'
+    r'(DSQ|DNS|DNF|NS|SCR|WDR|DID NOT START)\s*$',
+    re.IGNORECASE,
+)
+
 # Layout B individual row (Final/Swim-Off): rank lane NAME NAT rt <rest>
 ROW_B = re.compile(
     r'^(\d{1,3})\s+(\d{1,3})\s+'                   # rank lane
@@ -118,28 +138,35 @@ ROW_B_STATUS = re.compile(
 )
 
 # Relay entry line (Heats): rank heat lane COUNTRY time [behind] [note]
+# The "behind" gap may print with a plus sign ("+0.61") and the record note
+# may be a comma list ("CR, OC") — both appear in the Singapore 2025 book.
 REL_TEAM_A = re.compile(
     r'^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s+'
     r'(.+?)\s+'
     r'(' + _TIME + r')'
-    r'(?:\s+' + _TIME + r')?'
-    r'(?:\s+([A-Za-z?]+))?\s*$'
+    r'(?:\s+\+?' + _TIME + r')?'
+    r'(?:\s+([A-Za-z?=][A-Za-z?=,. ]*))?\s*$'
 )
 # Relay entry line (Final): rank lane [CODE -] COUNTRY time [behind] [note]
 REL_TEAM_B = re.compile(
     r'^(\d{1,3})\s+(\d{1,3})\s+'
     r'(.+?)\s+'
     r'(' + _TIME + r')'
-    r'(?:\s+' + _TIME + r')?'
-    r'(?:\s+([A-Za-z?]+))?\s*$'
+    r'(?:\s+\+?' + _TIME + r')?'
+    r'(?:\s+([A-Za-z?=][A-Za-z?=,. ]*))?\s*$'
 )
 # Relay team that was disqualified: leading nums, COUNTRY, STATUS
 REL_TEAM_STATUS = re.compile(
     r'^(\d{1,3}\s+){1,3}(.+?)\s+(DSQ|DNS|DNF|NS|SCR|WDR)\s*$', re.IGNORECASE)
 
-# Relay leg line: NAME rt legsplit [(place)] cumulative
+# Relay leg line: NAME rt [50m-marks…] legsplit [(place)] cumulative
+# 4x50 legs print one time before the cumulative; 4x100/4x200 legs also print
+# intermediate 50m marks ("O'CALLAGHAN Mollie 0.70 25.67 52.70 (1) 52.70") —
+# the leg time is always the LAST mark before the (place)/cumulative tail.
 REL_LEG = re.compile(
-    r'^(.+?)\s+(\d\.\d{2})\s+(' + _TIME + r')'
+    r'^(.+?)\s+(\d\.\d{2})\s+'
+    r'(?:' + _TIME + r'\s+)*'
+    r'(' + _TIME + r')'
     r'(?:\s+\(=?\d+\))?\s+(' + _TIME + r')\s*$'
 )
 
@@ -194,8 +221,12 @@ def _iso_from_dmy(day, mon3, year):
 def _parse_event_title(title):
     """('4x50m Medley Relay') -> (distance, stroke, is_relay). distance is the
     full relay distance (4x50 -> 200) so normalize_event_name derives legs."""
-    relay = bool(re.search(r'relay', title, re.IGNORECASE))
-    mrel = re.search(r'(\d+)\s*x\s*(\d+)\s*m', title, re.IGNORECASE)
+    # Unit "m" is optional ("4x100 Medley Relay") and must be a whole word so
+    # it can't swallow the "M" of "Medley"/"Freestyle" ("4x100 M edley").
+    mrel = re.search(r'(\d+)\s*x\s*(\d+)\s*(?:m\b)?', title, re.IGNORECASE)
+    # Some books drop the word "Relay" from the title ("Mixed 4x100m
+    # Freestyle") — an NxM distance is a relay regardless.
+    relay = bool(re.search(r'relay', title, re.IGNORECASE)) or bool(mrel)
     if mrel:
         distance = int(mrel.group(1)) * int(mrel.group(2))
         stroke_text = title[mrel.end():]
@@ -341,8 +372,25 @@ def parse(text):
             leg = REL_LEG.match(s)
             if leg and last_team is not None and not s[0].isdigit():
                 name = leg.group(1).strip()
-                legsplit = leg.group(3)
-                last_team.split_times.append(f'{name} {legsplit}')
+                # Which token is the leg time varies by book: Budapest
+                # prints "rt marks… leg (place) cumulative", Singapore
+                # omits the duplicate cumulative on place-less legs
+                # ("rt 50mark leg"). Position alone is ambiguous, so drop
+                # any (place)+cumulative tail and take the last time
+                # plausible for the leg distance — 50m marks are shorter,
+                # legs-2+ cumulatives are longer.
+                tail = re.split(r'\(=?\d+\)', s[leg.end(1):])[0]
+                times = re.findall(_TIME, tail)
+                d = max(cur['distance'] // 4, 50)  # leg distance
+                # Ceiling must stay below the smallest legs-2+ cumulative
+                # (~94s for 4x100) while admitting slow-federation legs
+                # (PNG breast leg 1:29.62).
+                lo, hi = d * 38, d * (85 if d <= 50 else 93)
+                cands = [t for t in times
+                         if lo <= parse_time_to_centiseconds(t) <= hi]
+                legsplit = cands[-1] if cands else (times[-1] if times else '')
+                if legsplit:
+                    last_team.split_times.append(f'{name} {legsplit}')
                 continue
             tmatch = (REL_TEAM_A if cur['layout'] == 'A'
                       else REL_TEAM_B).match(s)
@@ -385,12 +433,24 @@ def parse(text):
             continue  # ignore other lines inside a relay page
 
         # -- individual --
-        ra = ROW_A.match(s)
-        if ra and cur['layout'] == 'A':
-            name = ra.group(4).strip()
-            birth_year = int(ra.group(7))
-            nat = ra.group(8)
-            splits, time_text, _ = _split_rest(ra.group(10), cur['n_inline'])
+        # Two column orders exist: NAME dob NAT (Hangzhou SCM books) and
+        # NAME NAT dob (Budapest LCM books). The DOB anchor makes the two
+        # patterns mutually exclusive on real rows, so try both.
+        ra = ROW_A.match(s) if cur['layout'] == 'A' else None
+        ra2 = None if ra else (ROW_A2.match(s) if cur['layout'] == 'A' else None)
+        if ra or ra2:
+            if ra:
+                name = ra.group(4).strip()
+                birth_year = int(ra.group(7))
+                nat = ra.group(8)
+                rest = ra.group(10)
+            else:
+                ra = ra2
+                name = ra.group(4).strip()
+                nat = ra.group(5)
+                birth_year = int(ra.group(8))
+                rest = ra.group(10)
+            splits, time_text, _ = _split_rest(rest, cur['n_inline'])
             res = ParsedResult(
                 swimmer_name=name, time_text=time_text,
                 time_centiseconds=parse_time_to_centiseconds(time_text),
@@ -423,14 +483,22 @@ def parse(text):
             continue
 
         # -- status rows (DSQ/DNS) --
-        sa = ROW_A_STATUS.match(s)
-        if sa and cur['layout'] == 'A':
+        sa = ROW_A_STATUS.match(s) if cur['layout'] == 'A' else None
+        sa2 = None if sa else (
+            ROW_A2_STATUS.match(s) if cur['layout'] == 'A' else None)
+        if sa or sa2:
+            if sa:
+                s_name, s_year, s_nat, s_status = (
+                    sa.group(3), sa.group(6), sa.group(7), sa.group(8))
+            else:
+                s_name, s_nat, s_year, s_status = (
+                    sa2.group(3), sa2.group(4), sa2.group(7), sa2.group(8))
             res = ParsedResult(
-                swimmer_name=sa.group(3).strip(), time_text='',
+                swimmer_name=s_name.strip(), time_text='',
                 time_centiseconds=0, event_name=ev().event_name,
-                gender=cur['gender'], birth_year=int(sa.group(6)),
-                nationality_code=sa.group(7), round_type=cur['round_type'],
-                status=sa.group(8).upper()[:3],
+                gender=cur['gender'], birth_year=int(s_year),
+                nationality_code=s_nat, round_type=cur['round_type'],
+                status=s_status.upper()[:3],
             )
             ev().results.append(res)
             last_result = None

@@ -10,6 +10,7 @@ import {
 import { getCountries, getEvents, getFinaPointsPreview } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
 import MeetProgramEditor from '../components/MeetProgramEditor'
+import { DragDropMeetProgramEditor } from '../components/DragDropProgramEditor'
 import ImageCropper from '../components/ImageCropper'
 import QuickStatsView from '../components/QuickStatsView'
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
@@ -1945,7 +1946,40 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
       ) : (
         !isAdmin && <Empty label="The day-by-day program has not been published for this meet" />
       )}
-      {isAdmin && <MeetProgramEditor champId={meetId} onSaved={load} />}
+      {isAdmin && (
+        <ProgramEditorToggle meetId={meetId} resultEvents={resultEvents} onSaved={load} />
+      )}
+    </div>
+  )
+}
+
+function ProgramEditorToggle({ meetId, resultEvents, onSaved }) {
+  const [mode, setMode] = useState('dropdown') // 'dropdown' | 'dragdrop'
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <button
+          type="button"
+          className={`btn ${mode === 'dropdown' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setMode('dropdown')}
+          style={{ fontSize: 12 }}
+        >
+          Dropdown editor
+        </button>
+        <button
+          type="button"
+          className={`btn ${mode === 'dragdrop' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setMode('dragdrop')}
+          style={{ fontSize: 12 }}
+        >
+          Drag &amp; drop editor
+        </button>
+      </div>
+      {mode === 'dropdown' ? (
+        <MeetProgramEditor champId={meetId} onSaved={onSaved} />
+      ) : (
+        <DragDropMeetProgramEditor champId={meetId} resultEvents={resultEvents} onSaved={onSaved} />
+      )}
     </div>
   )
 }

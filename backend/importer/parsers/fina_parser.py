@@ -62,7 +62,7 @@ SOURCE_FORMAT = 'fina_worlds'
 # "Event 101 Men's 400m Freestyle Final"  /  "... 4x50m Medley Relay Heats"
 EVENT_HEADER = re.compile(
     r"^Event\s+(\d+)\s+(Men's|Women's|Mixed)\s+(.+?)\s+"
-    r"(Heats|Semifinals|Final|Swim-?Off)$",
+    r"(Heats|Semi-?finals|Final|Swim-?Off)$",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -81,7 +81,7 @@ TIME_TOKEN = re.compile(r'^' + _TIME + r'$')
 
 # Layout A individual row (Heats/Semis): rank heat lane NAME dob NAT rt <rest>
 ROW_A = re.compile(
-    r'^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s+'      # rank heat lane
+    r'^=?(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s+'      # rank heat lane
     r'(.+?)\s+'                                    # name
     r'(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s+'          # date of birth
     r'([A-Z]{2,4})\s+'                              # NAT code
@@ -103,7 +103,7 @@ ROW_A_STATUS = re.compile(
 # "Date of Birth" (Hangzhou-style SCM books print DOB first). Same fields,
 # swapped positions:  rank heat lane NAME NAT dob rt <rest>
 ROW_A2 = re.compile(
-    r'^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s+'      # rank heat lane
+    r'^=?(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s+'      # rank heat lane
     r'(.+?)\s+'                                    # name
     r'([A-Z]{2,4})\s+'                             # NAT code
     r'(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s+'          # date of birth
@@ -121,7 +121,7 @@ ROW_A2_STATUS = re.compile(
 
 # Layout B individual row (Final/Swim-Off): rank lane NAME NAT rt <rest>
 ROW_B = re.compile(
-    r'^(\d{1,3})\s+(\d{1,3})\s+'                   # rank lane
+    r'^=?(\d{1,3})\s+(\d{1,3})\s+'                   # rank lane
     r'(.+?)\s+'                                     # name
     r'([A-Z]{2,4})\s+'                             # NAT code
     r'(\d\.\d{2})\s+'                              # reaction time
@@ -141,7 +141,7 @@ ROW_B_STATUS = re.compile(
 # The "behind" gap may print with a plus sign ("+0.61") and the record note
 # may be a comma list ("CR, OC") — both appear in the Singapore 2025 book.
 REL_TEAM_A = re.compile(
-    r'^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s+'
+    r'^=?(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s+'
     r'(.+?)\s+'
     r'(' + _TIME + r')'
     r'(?:\s+\+?' + _TIME + r')?'
@@ -149,7 +149,7 @@ REL_TEAM_A = re.compile(
 )
 # Relay entry line (Final): rank lane [CODE -] COUNTRY time [behind] [note]
 REL_TEAM_B = re.compile(
-    r'^(\d{1,3})\s+(\d{1,3})\s+'
+    r'^=?(\d{1,3})\s+(\d{1,3})\s+'
     r'(.+?)\s+'
     r'(' + _TIME + r')'
     r'(?:\s+\+?' + _TIME + r')?'
@@ -328,7 +328,9 @@ def parse(text):
             gender = {'men': 'M', 'women': 'F', 'mixed': 'X'}[
                 mh.group(2).split("'")[0].lower()]
             distance, stroke, relay = _parse_event_title(mh.group(3))
-            round_word = mh.group(4).lower().replace('swimoff', 'swim-off')
+            # Books mix "Semifinals"/"Semi-finals" and "SwimOff"/"Swim-Off";
+            # fold hyphens so one map key covers both spellings.
+            round_word = mh.group(4).lower().replace('-', '')
             round_type = _ROUND_MAP.get(round_word, 'Finals')
             # Layout follows the printed body, not the medal round: Heats and
             # Semifinals carry a DOB column (Layout A); Final and Swim-Off do
@@ -398,7 +400,7 @@ def parse(text):
             if not tmatch:
                 tmatch = (REL_TEAM_B if cur['layout'] == 'A'
                           else REL_TEAM_A).match(s)
-            if tmatch and s[0].isdigit():
+            if tmatch and (s[0].isdigit() or s[0] == '='):
                 groups = tmatch.groups()
                 country = groups[-3].strip()
                 time_text = groups[-2]

@@ -1947,9 +1947,14 @@ class ExcelWorkbookTests(SimpleTestCase):
         self.assertEqual(sami.time_text, '26.55')   # numeric-seconds cell
         self.assertEqual(sami.birth_year, 2001)     # text year
 
-    def test_dq_row_not_a_timed_result(self):
-        names = {r.swimmer_name for e in self.meet.events for r in e.results}
-        self.assertNotIn('Zed DQED', names)
+    def test_dq_row_kept_as_status_result(self):
+        """DQ rows are parsed with status='DQ' and time_centiseconds=0;
+        _build_preview filters them from the import preview."""
+        dq = [r for e in self.meet.events for r in e.results
+              if r.swimmer_name == 'Zed DQED']
+        self.assertEqual(len(dq), 1)
+        self.assertEqual(dq[0].status, 'DQ')
+        self.assertEqual(dq[0].time_centiseconds, 0)
 
     def test_all_sheets_read(self):
         names = {r.swimmer_name for e in self.meet.events for r in e.results}

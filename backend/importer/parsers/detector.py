@@ -4,6 +4,8 @@ Supports: PDF, HTML, Excel files.
 Passes filename to parsers for pool detection.
 """
 import os
+import re
+
 import pdfplumber
 
 from . import splash_parser, hytek_parser, frmn_parser, nat2i_parser, omega_parser, ffn_parser, msecm_parser, aprace_parser, musz_parser, microplus_parser, fina_parser
@@ -778,6 +780,135 @@ def _cell_int(val, allow_float=True):
     return int(m.group(1)) if m else None
 
 
+_MEDAL_WORDS = {'gold': 1, 'silver': 2, 'bronze': 3, 'or': 1, 'argent': 2}
+
+_STATUS_ALIASES = {
+    'DNS': 'DNS', 'DID NOT START': 'DNS', 'SCR': 'DNS', 'WDR': 'DNS',
+    'WD': 'DNS', 'FORFAIT': 'DNS',
+    'DQ': 'DQ', 'DSQ': 'DQ', 'DISQ': 'DQ', 'DISQUALIFIED': 'DQ',
+    'DNF': 'DNF', 'DID NOT FINISH': 'DNF',
+    'NS': 'NS',
+}
+
+
+def _cell_rank(val):
+    """Read a rank cell: numeric ("3", "1er") or a medal word (Gold=1)."""
+    rank = _cell_int(val)
+    if rank:
+        return rank
+    return _MEDAL_WORDS.get(_safe_str(val).strip().lower())
+
+
+def _cell_status(val):
+    """Recognize DNS/DQ/DNF/NS status text in a time cell."""
+    s = _safe_str(val).upper().replace('.', '').strip()
+    return _STATUS_ALIASES.get(s, '')
+
+
+def _excel_round(raw):
+    """Map a Round cell to the site's round types, tolerating wording
+    variants: Heats/Prelims/Séries, Semifinals, B/C Final -> Consolation,
+    Super/Junior/Para/A Final -> Finals, Swim-Off -> Prelims."""
+    rl = _safe_str(raw).lower()
+    if not rl or rl == 'nan':
+        return ''
+    if 'swim' in rl and 'off' in rl:
+        return 'Prelims'
+    if 'consol' in rl or re.search(r'\b[bc][\s-]*final', rl):
+        return 'Consolation'
+    if 'semi' in rl or '1/2' in rl:
+        return 'Semis'
+    if 'final' in rl:
+        return 'Finals'
+    if 'prelim' in rl or 'heat' in rl or 'serie' in rl or 'série' in rl or 'qual' in rl:
+        return 'Prelims'
+    return _safe_str(raw)
+
+
+_CATEGORY_GENDER_WORDS = re.compile(
+    r"\b(men|women|mens|womens|boys|girls|male|female|garcons|filles|"
+    r"messieurs|dames|hommes|femmes)(?:'s|')?\b", re.IGNORECASE)
+
+
+def _normalize_age_category(cat):
+    """Normalize age-category wording so variants group identically.
+
+    "Men's 18/Under", "U18", "18/U", "18 & Under", "Under 18" -> "U18";
+    "Women's Open"/"Open" -> '' (open event); gender words are stripped
+    (the Gender column carries the sex). Range categories ("13-14") and
+    anything unrecognized pass through unchanged.
+    """
+    raw = _safe_str(cat).strip()
+    if not raw or raw.lower() == 'nan':
+        return ''
+    c = _CATEGORY_GENDER_WORDS.sub('', raw)
+    c = c.strip(" \t-–—/&,.").strip()
+    low = c.lower()
+    if not low or low == 'open':
+        return ''
+    m = (re.search(r'\b(?:u|under)\s*[-/]?\s*(\d{1,2})\b', low)
+         or re.search(r'\b(\d{1,2})\s*(?:[/&+-]|and)?\s*(?:under|u)\b', low))
+    if m:
+        return f'U{m.group(1)}'
+    m = re.search(r'\b(\d{1,2})\s*(?:[/&+-]|and)?\s*(?:over|o)\b', low)
+    if m:
+        return f'{m.group(1)}+'
+    return c
+
+
+def _excel_iso_date(raw, dayfirst):
+    """'23/05/2026' -> '2026-05-23'. Accepts ISO dates as-is. When the
+    printed order is ambiguous, `dayfirst` (inferred per sheet) decides;
+    an impossible month flips the interpretation either way."""
+    raw = _safe_str(raw)
+    if re.match(r'\d{4}-\d{2}-\d{2}', raw):
+        return raw[:10]
+    m = re.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', raw)
+    if not m:
+        return ''
+    a, b, y = int(m.group(1)), int(m.group(2)), m.group(3)
+    day, month = (a, b) if dayfirst else (b, a)
+    if month > 12 and day <= 12:
+        day, month = month, day
+    if not (1 <= month <= 12 and 1 <= day <= 31):
+        return ''
+    return f'{y}-{month:02d}-{day:02d}'
+
+
+def _infer_dayfirst(series):
+    """Scan a date column: the first value with an unambiguous component
+    decides whether dates print day-first (23/05/2026) or month-first."""
+    for v in series:
+        m = re.search(r'(\d{1,2})/(\d{1,2})/', _safe_str(v))
+        if not m:
+            continue
+        if int(m.group(1)) > 12:
+            return True
+        if int(m.group(2)) > 12:
+            return False
+    return False
+
+
+def _fill_ranks_by_time(meet):
+    """Give rank-less results their time-order rank within each event.
+
+    Excel exports often carry no numeric rank (or only medal words for the
+    top 3). Rows sharing a time share a rank; explicit ranks are never
+    overwritten; DNS/DQ rows keep rank 0.
+    """
+    for ev in meet.events:
+        ok = [r for r in ev.results
+              if r.status == 'OK' and r.time_centiseconds > 0]
+        order = sorted(ok, key=lambda r: r.time_centiseconds)
+        prev_t = None
+        prev_rank = 0
+        for i, r in enumerate(order, 1):
+            rk = prev_rank if r.time_centiseconds == prev_t else i
+            if not r.rank:
+                r.rank = rk
+            prev_t, prev_rank = r.time_centiseconds, rk
+
+
 def _cell_gender(val):
     """Understand gender cells in English/French/Arabic-latin variants."""
     g = _safe_str(val).upper().rstrip('S')
@@ -971,6 +1102,7 @@ def _parse_excel(file_path, filename=''):
     for relay_df in relay_dfs:
         _parse_relay_sheet(relay_df, meet, cols_finder=_find_column)
 
+    _fill_ranks_by_time(meet)
     return meet
 
 
@@ -1111,6 +1243,7 @@ def _parse_excel_multi(individual_dfs, relay_dfs, meet_names, name_map,
                 if not filtered.empty:
                     _parse_relay_sheet(filtered, meet, cols_finder=_find_column)
 
+        _fill_ranks_by_time(meet)
         meets.append(meet)
 
     return meets
@@ -1167,36 +1300,35 @@ def _parse_individual_sheet(df, meet, events_dict):
         except ValueError:
             split_cols = [split_col]
 
+    dayfirst = _infer_dayfirst(df[session_date_col]) if session_date_col else False
+
     for _, row in df.iterrows():
         event_name = _safe_str(row[event_col]) if event_col else 'Unknown Event'
         if not event_name or event_name.lower() == 'nan':
             continue
         relay = is_relay_event(event_name)
 
-        round_type = _safe_str(row[round_col]) if round_col else ''
-        round_lower = round_type.lower()
-        if 'final' in round_lower:
-            round_type = 'Finals'
-        elif 'prelim' in round_lower or 'heat' in round_lower or 'serie' in round_lower or 'série' in round_lower:
-            round_type = 'Prelims'
-        elif 'consol' in round_lower:
-            round_type = 'Consolation'
+        raw_round = _safe_str(row[round_col]) if round_col else ''
+        round_type = _excel_round(raw_round)
 
-        category = _safe_str(row[category_col]) if category_col else ''
-        if category.lower() == 'nan':
-            category = ''
+        raw_category = _safe_str(row[category_col]) if category_col else ''
+        category = _normalize_age_category(raw_category)
+        # "Para Final" is a separate podium, not part of the open final —
+        # keep its swimmers in their own category grouping.
+        if 'para' in raw_round.lower() and not category:
+            category = 'Para'
 
         # Gender: explicit column first, then category text.
         # For mixed events (category or event name says "mixed"), force 'X'
         # — the gender column holds the individual swimmer's sex, not the
         # event's gender.
-        is_mixed = 'mixed' in category.lower() or 'mixte' in category.lower() or 'mixed' in event_name.lower()
+        is_mixed = 'mixed' in raw_category.lower() or 'mixte' in raw_category.lower() or 'mixed' in event_name.lower()
         if is_mixed:
             gender = 'X'
         else:
             gender = _cell_gender(row[gender_col]) if gender_col else ''
-            if not gender and category:
-                gender = detect_gender(category)
+            if not gender and raw_category:
+                gender = detect_gender(raw_category)
             if not gender:
                 gender = detect_gender(event_name)
 
@@ -1215,12 +1347,7 @@ def _parse_individual_sheet(df, meet, events_dict):
             if session_date_col:
                 raw_date = _safe_str(row[session_date_col])
                 if raw_date and raw_date.lower() != 'nan':
-                    import re as _re
-                    dm = _re.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', raw_date)
-                    if dm:
-                        row_date = f'{dm.group(3)}-{dm.group(1).zfill(2)}-{dm.group(2).zfill(2)}'
-                    elif _re.match(r'\d{4}-\d{2}-\d{2}', raw_date):
-                        row_date = raw_date[:10]
+                    row_date = _excel_iso_date(raw_date, dayfirst)
             parsed_event = ParsedEvent(
                 event_name=event_name,
                 distance=distance or extract_distance(event_name),
@@ -1237,18 +1364,23 @@ def _parse_individual_sheet(df, meet, events_dict):
             if session_date_col and not events_dict[event_key].date_text:
                 raw_date = _safe_str(row[session_date_col])
                 if raw_date and raw_date.lower() != 'nan':
-                    import re as _re
-                    dm = _re.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', raw_date)
-                    if dm:
-                        events_dict[event_key].date_text = f'{dm.group(3)}-{dm.group(1).zfill(2)}-{dm.group(2).zfill(2)}'
+                    events_dict[event_key].date_text = _excel_iso_date(
+                        raw_date, dayfirst)
 
         # ---- Parse result cells ----
         time_val = _cell_time_str(row[time_col])
+        status = 'OK'
         if not time_val:
-            continue  # empty or DQ/DNS/NT cell — no time swum
-        time_cs = parse_time_to_centiseconds(time_val)
-        if time_cs <= 0:
-            continue
+            # DNS/DQ/DNF rows are kept as status results; anything else
+            # without a readable time is skipped.
+            status = _cell_status(row[time_col])
+            if not status:
+                continue
+            time_cs = 0
+        else:
+            time_cs = parse_time_to_centiseconds(time_val)
+            if time_cs <= 0:
+                continue
 
         raw_name = _safe_str(row[name_col])
         if relay and (not raw_name or raw_name.lower() == 'nan') and club_col:
@@ -1269,6 +1401,7 @@ def _parse_individual_sheet(df, meet, events_dict):
             gender=gender,
             round_type=round_type,
             age_group=category,
+            status=status,
         )
 
         # Optional cells, each read tolerantly
@@ -1291,7 +1424,7 @@ def _parse_individual_sheet(df, meet, events_dict):
             if nat and nat != 'NAN':
                 result.nationality_code = nat
         if rank_col:
-            rank = _cell_int(row[rank_col])
+            rank = _cell_rank(row[rank_col])
             if rank:
                 result.rank = rank
         if points_col:
@@ -1341,10 +1474,13 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
     gender_col = cols_finder(rcols, ['gender', 'sex'])
     round_col = cols_finder(rcols, ['round'])
     category_col = cols_finder(rcols, ['category'])
-    relay_kind_col = rcols.get('relay')  # "Men's" / "Women's" / "Mixed"
+    rank_col = cols_finder(rcols, ['rank', 'place', 'medal', 'médaille'])
+    relay_kind_col = rcols.get('relay') or rcols.get('type')  # "Men's" / "Women's" / "Mixed"
+    date_col = cols_finder(rcols, ['date', 'session date'])
 
     if not event_col:
         return
+    dayfirst = _infer_dayfirst(relay_df[date_col]) if date_col else False
 
     # Group relay rows by event + team time (each team = 4 consecutive rows with same team time)
     events_dict = {}
@@ -1358,33 +1494,31 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
         team_name = _safe_str(row[team_name_col]) if team_name_col else ''
         if team_name.lower() == 'nan':
             team_name = ''
-        round_type = ''
-        if round_col:
-            rt = _safe_str(row[round_col]).lower()
-            if 'final' in rt:
-                round_type = 'Finals'
-            elif 'prelim' in rt or 'heat' in rt:
-                round_type = 'Prelims'
+        round_type = _excel_round(row[round_col]) if round_col else ''
 
-        category = _safe_str(row[category_col]) if category_col else ''
-        if category.lower() == 'nan':
-            category = ''
+        raw_category = _safe_str(row[category_col]) if category_col else ''
+        category = _normalize_age_category(raw_category)
 
         # Gender: check for mixed first (relay column, category, or event name).
         # The gender column holds the individual swimmer's sex, which must
         # NOT override 'X' for mixed relay events.
         relay_kind = _safe_str(row[relay_kind_col]) if relay_kind_col else ''
-        is_mixed = ('mixed' in category.lower() or 'mixte' in category.lower()
+        is_mixed = ('mixed' in raw_category.lower() or 'mixte' in raw_category.lower()
                     or 'mixed' in relay_kind.lower() or 'mixte' in relay_kind.lower()
                     or 'mixed' in event_name.lower())
         if is_mixed:
             gender = 'X'
         else:
-            gender = _cell_gender(row[gender_col]) if gender_col else ''
-            if not gender and relay_kind_col:
-                gender = _cell_gender(row[relay_kind_col])
-            if not gender and category:
-                gender = detect_gender(category)
+            gender = ''
+            if relay_kind_col:
+                # The Type column ("Men's"/"Women's") names the relay's
+                # gender; the Gender column is the individual leg swimmer's
+                # sex, so it only serves as a fallback.
+                gender = _cell_gender(row[relay_kind_col]) or detect_gender(relay_kind)
+            if not gender and gender_col:
+                gender = _cell_gender(row[gender_col])
+            if not gender and raw_category:
+                gender = detect_gender(raw_category)
             if not gender and relay_kind_col:
                 gender = detect_gender(relay_kind)
             if not gender:
@@ -1398,6 +1532,7 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
         if event_key not in events_dict:
             distance = extract_distance(event_name)
             stroke = normalize_stroke(event_name)
+            row_date = _excel_iso_date(row[date_col], dayfirst) if date_col else ''
             parsed_event = ParsedEvent(
                 event_name=event_name,
                 distance=distance,
@@ -1405,6 +1540,7 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
                 gender=gender,
                 round_type=round_type,
                 age_group=category,
+                date_text=row_date,
             )
             events_dict[event_key] = {'event': parsed_event, 'teams': {}}
             meet.events.append(parsed_event)
@@ -1430,6 +1566,10 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
                 nat = _safe_str(row[nation_col]).upper()
                 if nat and nat != 'NAN':
                     team_result.nationality_code = nat
+            if rank_col:
+                rank = _cell_rank(row[rank_col])
+                if rank:
+                    team_result.rank = rank
             ev_data['teams'][team_key] = team_result
             ev_data['event'].results.append(team_result)
 

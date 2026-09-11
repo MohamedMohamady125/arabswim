@@ -1906,32 +1906,23 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 return ' '.join([w.title() for w in given] + [w.upper() for w in surname])
             return normalize_swimmer_name(' '.join(tokens[1:] + tokens[:1]))
 
-        # Smart swap: detect which direction the MAJORITY of names need
-        # to go, then only swap names that match that direction. This
-        # protects already-correct names (existing athletes matched
-        # during import) from being swapped along with the wrong ones.
-        all_swimmers = list(qs)
-        leading_count = sum(1 for s in all_swimmers if _surname_position(s.name) == 'leading')
-        trailing_count = sum(1 for s in all_swimmers if _surname_position(s.name) == 'trailing')
-
-        # The majority tells us which direction is WRONG:
-        # if most names have surname leading → those need swapping (to trailing)
-        # if most names have surname trailing → those need swapping (to leading)
-        if leading_count > trailing_count:
-            target = 'leading'  # swap names with surname leading
-        elif trailing_count > leading_count:
-            target = 'trailing'  # swap names with surname trailing
-        else:
-            target = None  # can't decide — swap all
+        # Smart swap: only swap swimmers who are NEW to this meet (no
+        # results in other championships). Pre-existing athletes were
+        # matched by name and already have the correct name order —
+        # swapping them would break them.
+        from django.db.models import Count, Q
+        all_swimmers = list(qs.annotate(
+            meet_count=Count('results__championship', distinct=True)
+        ))
 
         renamed = 0
         skipped_correct = 0
         dupes = []
         for swimmer in all_swimmers:
             name = (swimmer.name or '').strip()
-            pos = _surname_position(name)
-            # Only swap names that match the majority (wrong) direction
-            if target and pos != target:
+            # Skip swimmers who exist in OTHER meets — they were
+            # pre-existing with correct names
+            if swimmer.meet_count > 1:
                 skipped_correct += 1
                 continue
             new_name = do_swap(name)

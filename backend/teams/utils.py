@@ -114,6 +114,12 @@ def merge_team_records(keep, remove):
     swimmers_updated = Swimmer.objects.filter(club__iexact=remove.name).update(club=keep.name)
     trophies_transferred = Trophy.objects.filter(team=remove).update(team=keep)
 
+    # Relay team placeholders: rename swimmer records whose name matches
+    # the removed team, so relay results display the merged team name.
+    relay_placeholders = Swimmer.objects.filter(
+        is_relay_team=True, name__iexact=remove.name)
+    relay_placeholders_updated = relay_placeholders.update(name=keep.name)
+
     for field in ['logo', 'banner', 'founded_year', 'website', 'address', 'email', 'phone']:
         if not getattr(keep, field) and getattr(remove, field):
             setattr(keep, field, getattr(remove, field))
@@ -137,6 +143,8 @@ def rename_team(team, new_name):
         return
     Result.objects.filter(team__iexact=old_name).update(team=new_name)
     Swimmer.objects.filter(club__iexact=old_name).update(club=new_name)
+    # Relay team placeholders
+    Swimmer.objects.filter(is_relay_team=True, name__iexact=old_name).update(name=new_name)
     team.name = new_name
     team.save()
 

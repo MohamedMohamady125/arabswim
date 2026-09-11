@@ -1850,16 +1850,51 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                       results__championship_id=championship.id)
               .distinct())
 
-        from importer.services import _flip_name_by_case
+        from importer.services import _is_surname_token
         def do_swap(name):
+            """Force-swap given ↔ surname using the UPPERCASE convention.
+
+            "Aoun JUDE"          → "Jude AOUN"   (surname trailing → move to front, then re-flip)
+            "JUDE Aoun"          → "Aoun JUDE"   (surname leading → move to back)
+            "Hmedeh ADAM"        → "Adam HMEDEH"
+            Works for any word count — uppercase words are the surname
+            block, everything else is the given name block.
+            """
             tokens = (name or '').strip().split()
             if len(tokens) < 2:
                 return None
-            # Use the UPPERCASE convention to identify surname vs given
-            # name tokens, then swap them. For 3+ word names like
-            # "MOHAMADY Mohamed Ahmed", this correctly produces
-            # "Mohamed Ahmed MOHAMADY" instead of just moving one token.
-            return _flip_name_by_case(name)
+            # Split into surname tokens (UPPERCASE + connectors) and given tokens
+            # Find the surname block: either leading or trailing
+            leading = 0
+            for w in tokens:
+                if _is_surname_token(w):
+                    leading += 1
+                else:
+                    break
+            trailing = 0
+            for w in reversed(tokens):
+                if _is_surname_token(w):
+                    trailing += 1
+                else:
+                    break
+            if trailing > 0 and leading == 0:
+                # Surname is trailing (e.g. "Aoun JUDE") → move to front, title-case it,
+                # then uppercase what was the given name
+                surname = tokens[-trailing:]
+                given = tokens[:-trailing]
+                # Swap: given becomes surname (uppercase), surname becomes given (title)
+                new_given = [w.title() for w in surname]
+                new_surname = [w.upper() for w in given]
+                return ' '.join(new_given + new_surname)
+            elif leading > 0:
+                # Surname is leading (e.g. "JUDE Aoun") → move to back
+                surname = tokens[:leading]
+                given = tokens[leading:]
+                new_given = [w.title() for w in given]
+                new_surname = [w.upper() for w in surname]
+                return ' '.join(new_given + new_surname)
+            # No clear pattern — just rotate first word to end
+            return normalize_swimmer_name(' '.join(tokens[1:] + tokens[:1]))
 
         renamed = 0
         dupes = []

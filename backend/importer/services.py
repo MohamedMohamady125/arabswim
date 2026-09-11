@@ -129,45 +129,54 @@ def normalize_swimmer_name(text):
     return uppercase_surname(normalize_name(text))
 
 
+def _is_surname_token(w):
+    """True for tokens that belong to a surname block: uppercase words
+    (SMITH, LE, BEN) and bare punctuation connectors (-, –)."""
+    if not any(c.isalpha() for c in w):
+        return True  # pure punctuation like "-"
+    return w.isupper() and len(w) > 1
+
+
 def _ensure_given_surname_order(name):
     """If uppercase (surname) words are at the start, move them to the end.
 
     "MOESCH Annaliesa"         → "Annaliesa MOESCH"
     "LE FALHER Asma"           → "Asma LE FALHER"
+    "SRISA - ARD Jenjira"      → "Jenjira SRISA - ARD"
     "Freya ANDERSON"           → "Freya ANDERSON"  (already correct)
     "Mohamed Khalil BEN AJMIA" → "Mohamed Khalil BEN AJMIA" (correct)
     """
     words = name.split()
     if len(words) < 2:
         return name
-    # Count leading uppercase words (the surname block if wrong order)
-    leading_upper = 0
-    for w in words:
-        if w.isupper() and len(w) > 1:
-            leading_upper += 1
-        else:
-            break
-    # Count trailing uppercase words (the surname block if correct order)
-    trailing_upper = 0
-    for w in reversed(words):
-        if w.isupper() and len(w) > 1:
-            trailing_upper += 1
-        else:
-            break
-    total_upper = sum(1 for w in words if w.isupper() and len(w) > 1)
 
-    if leading_upper == 0:
-        # No leading uppercase — already correct (or no clear pattern)
+    # Count leading surname tokens (uppercase words + connectors like "-")
+    leading = 0
+    for w in words:
+        if _is_surname_token(w):
+            leading += 1
+        else:
+            break
+    # Count trailing surname tokens
+    trailing = 0
+    for w in reversed(words):
+        if _is_surname_token(w):
+            trailing += 1
+        else:
+            break
+    total_surname = sum(1 for w in words if w.isupper() and len(w) > 1)
+
+    if leading == 0 or total_surname == 0:
         return name
-    if trailing_upper == total_upper:
+    if trailing >= total_surname:
         # All uppercase words are trailing — already correct
         return name
-    if leading_upper == total_upper and leading_upper < len(words):
-        # All uppercase words are leading — surname first, flip it
-        surname = words[:leading_upper]
-        given = words[leading_upper:]
+    if leading < len(words) and all(
+            _is_surname_token(w) for w in words[:leading]):
+        # All surname tokens are leading — flip
+        surname = words[:leading]
+        given = words[leading:]
         return ' '.join(given + surname)
-    # Mixed positions — leave as-is (ambiguous)
     return name
 
 
@@ -244,9 +253,8 @@ def _flip_name_by_case(name):
 
     Swimming results use ALL-CAPS for surnames:
       "MOHAMADY Mohamed"       → "Mohamed MOHAMADY"
-      "MOHAMADY Mohamed Ahmed" → "Mohamed Ahmed MOHAMADY"
+      "SRISA - ARD Jenjira"    → "Jenjira SRISA - ARD"
       "Mohamed MOHAMADY"       → already correct, returned as-is
-      "EL SAYED Ahmed"         → "Ahmed EL SAYED"
 
     When the name has no case distinction (all caps or all title), falls
     back to moving the first token to the end (legacy behavior).
@@ -255,42 +263,17 @@ def _flip_name_by_case(name):
     if len(words) < 2:
         return name
 
-    # Identify which words are UPPERCASE (surname) vs mixed/title (given)
     upper_words = [w for w in words if w.isupper() and len(w) > 1]
-    other_words = [w for w in words if not (w.isupper() and len(w) > 1)]
+    other_words = [w for w in words if not _is_surname_token(w)]
 
     if not upper_words or not other_words:
-        # No case distinction — fall back to moving first token to end
         return normalize_swimmer_name(' '.join(words[1:] + words[:1]))
 
-    # Check if surname is already trailing (correct order)
-    trailing_upper = 0
-    for w in reversed(words):
-        if w.isupper() and len(w) > 1:
-            trailing_upper += 1
-        else:
-            break
-    if trailing_upper == len(upper_words):
-        # Already in "Given SURNAME" order
-        return normalize_swimmer_name(name)
-
-    # Surname is leading — move all uppercase words to the end
-    # preserving their relative order, given names go first
-    given = []
-    surname = []
-    # Walk from the start: consecutive uppercase words at the beginning
-    # are the surname block; everything after is given name(s)
-    i = 0
-    while i < len(words) and words[i].isupper() and len(words[i]) > 1:
-        surname.append(words[i])
-        i += 1
-    given = words[i:]
-
-    if not given:
-        # All words are uppercase — just move the first to end
-        return normalize_swimmer_name(' '.join(words[1:] + words[:1]))
-
-    return normalize_swimmer_name(' '.join(given + surname))
+    # Use _ensure_given_surname_order which handles connectors like "-"
+    result = _ensure_given_surname_order(name)
+    if result != name:
+        return result
+    return normalize_swimmer_name(name)
 
 
 def detect_and_fix_name_order(preview_data):

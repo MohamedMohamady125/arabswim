@@ -2957,24 +2957,23 @@ class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
             }],
         }
 
-    def test_no_host_country_guess_for_new_swimmer(self):
-        # STRICT rule: a code-less new swimmer is never stamped with the
-        # meet's host country — nationality stays blank unless the file
-        # states it clearly or the swimmer already has one in the DB.
+    def test_national_meet_assigns_host_country(self):
+        # National meet rule: code-less swimmers get the host country's
+        # nationality so every swimmer shows a flag.
         from importer.services import confirm_import
         confirm_import(self._preview(), {}, championship_details={
             'name': 'Tunisia Nationals', 'date': '2026-06-01',
             'pool': 'LCM', 'country': self.country.id})
         swimmer = Swimmer.objects.get(name__icontains='MABROUK')
-        self.assertIsNone(swimmer.nationality)
+        self.assertEqual(swimmer.nationality, self.country)
 
-    def test_uae_meet_leaves_nationality_empty(self):
+    def test_uae_meet_assigns_host_country(self):
         from importer.services import confirm_import
         confirm_import(self._preview(), {}, championship_details={
             'name': 'Dubai Open', 'date': '2026-06-01',
             'pool': 'LCM', 'country': self.uae.id})
         swimmer = Swimmer.objects.get(name__icontains='MABROUK')
-        self.assertIsNone(swimmer.nationality)
+        self.assertEqual(swimmer.nationality, self.uae)
 
     def test_explicit_code_beats_fallback(self):
         from importer.services import confirm_import

@@ -782,6 +782,7 @@ def _build_preview(parsed_meet):
             'classification': excel_classification,
             'sub_classification': excel_sub_classification,
             'has_open_results': getattr(parsed_meet, '_has_open_results', False),
+            'is_international': is_international,
         },
         'stats': {
             'total_events': len(events),
@@ -1042,6 +1043,17 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             country=meet_country,
             location=normalize_name(meet_info.get('location', '')),
         )
+
+    # National meet nationality rule: when the meet is a national
+    # championship (classification = National/Other or a single-country meet)
+    # AND the file has no explicit nationality data, assign the host country's
+    # flag to ALL swimmers. Foreigners are detected by their club name
+    # resolving as a different country — those keep the foreign nationality.
+    is_international = meet_info.get('is_international', False)
+    if not is_international and championship.country:
+        cls_name = championship.classification.name if championship.classification_id else ''
+        if cls_name in ('National', 'Other', '') or not cls_name:
+            swimmer_fallback = championship.country
 
     # The source published an open classification alongside age groups
     # (Egyptian Hy-Tek 'Event 1O' duplicates, dropped at parse time):
@@ -1805,13 +1817,24 @@ def _create_swimmer(result_data, fallback_country=None, is_excel_format=False):
     if gender not in ('M', 'F'):
         gender = 'M'
 
-    # Resolve nationality: explicit code > fallback from meet. An explicit
-    # code we don't recognise is kept verbatim (flag-less stub) rather than
-    # silently reassigned to the host country, so missing codes surface.
+    # Resolve nationality: explicit code > club-as-country > fallback.
+    # An explicit code we don't recognise is kept verbatim (flag-less stub)
+    # rather than silently reassigned to the host country.
     nationality = None
     nat_code = result_data.get('nationality_code', '')
     if nat_code:
         nationality = resolve_or_stub_country(nat_code)
+    # National meet foreigner detection: if the club name resolves as a
+    # country DIFFERENT from the host, the swimmer is a foreigner.
+    if not nationality and fallback_country:
+        club_name = result_data.get('club', '').strip()
+        team_override = result_data.get('team_override', '').strip()
+        foreign_name = team_override or club_name
+        if foreign_name and len(foreign_name) > 3:
+            from importer.matcher import resolve_country
+            club_country = resolve_country(foreign_name)
+            if club_country and club_country.id != fallback_country.id:
+                nationality = club_country
     if not nationality:
         nationality = fallback_country
 

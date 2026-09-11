@@ -859,6 +859,11 @@ def normalize_name(name, comma_order='first_last'):
             # "ALZAMIL, ALI" → "Ali ALZAMIL"
             last = parts[0].strip().upper()
             first = parts[1].strip().title()
+        elif comma_order == 'raw':
+            # Keep original casing — let normalize_swimmer_name decide
+            # which part is the surname based on context/DB matching.
+            # Just reorder to "part1 part2" (no comma).
+            return f'{parts[0].strip()} {parts[1].strip()}'.strip()
         else:
             # "Adam, Hmedeh" → "Adam HMEDEH"
             first = parts[0].strip().title()

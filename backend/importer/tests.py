@@ -474,9 +474,12 @@ class LebanonHytekTests(SanityMixin, SimpleTestCase):
                          'no result may be missing its round')
 
     def test_lebanese_comma_order(self):
-        # "Jude, Aoun" means First=Jude Last=Aoun in this federation's HyTek output
+        # Lebanese HyTek uses "Last, First" like all other HyTek federations.
+        # "Jude, Aoun" → parsed as Last=Jude, First=Aoun → "Aoun JUDE".
+        # detect_and_fix_name_order auto-flips if DB profiles exist;
+        # otherwise the admin uses "Swap names".
         names = {r.swimmer_name for ev in self.meet().events for r in ev.results}
-        self.assertIn('Jude AOUN', names)
+        self.assertIn('Aoun JUDE', names)
 
     def test_relay_legs_mapped_to_swimmers(self):
         relay_ok = [r for ev in self.meet().events if is_relay(ev)

@@ -317,11 +317,11 @@ def parse(text):
     elif ' lc ' in text_lower or 'long course' in text_lower or 'lc meter' in text_lower:
         meet.pool = 'LCM'
 
-    # Name comma order:
-    #   Most HY-TEK meets print "LAST, First" (Hamilton, Jordan).
-    #   Lebanese federation files print "First, LAST" ("Jude, Aoun" = Jude AOUN).
-    sniff = (meet.meet_name + ' ' + ' '.join(header_lines)).lower()
-    comma_order = 'first_last' if ('leban' in sniff or 'liban' in sniff) else 'last_first'
+    # Name comma order: all HY-TEK meets use "LAST, First" — the old
+    # Lebanese 'first_last' exception was wrong (the 2020 file has
+    # "mrad, Taleen" = Last, First like everyone else; the 2018 file
+    # varied but detect_and_fix_name_order handles that automatically).
+    comma_order = 'last_first'
 
     # ---- PARSE EVENTS AND RESULTS ----
     current_event = None

@@ -91,7 +91,16 @@ export function formatDate(value) {
 export function formatDateRange(start, end) {
   if (!start) return ''
   if (!end || end === start) return formatDate(start)
-  return `${formatDate(start)} — ${formatDate(end)}`
+  // Parse both dates
+  const _p = (s) => { const m = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return m ? { y: +m[1], m: +m[2], d: +m[3] } : null }
+  const a = _p(start), b = _p(end)
+  if (!a || !b) return `${formatDate(start)} — ${formatDate(end)}`
+  // Same year + same month: "23-25 May 2026"
+  if (a.y === b.y && a.m === b.m) return `${a.d}-${b.d} ${MONTHS_SHORT[a.m - 1]} ${a.y}`
+  // Same year, different month: "28 Jun - 3 Jul 2026"
+  if (a.y === b.y) return `${a.d} ${MONTHS_SHORT[a.m - 1]} - ${b.d} ${MONTHS_SHORT[b.m - 1]} ${a.y}`
+  // Different year: "29 Dec 2025 - 2 Jan 2026"
+  return `${formatDate(start)} - ${formatDate(end)}`
 }
 
 // centiseconds → "H:MM:SS.hh" / "M:SS.hh" / "SS.hh"

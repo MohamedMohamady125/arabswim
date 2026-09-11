@@ -14,12 +14,16 @@ const CUSTOM_FLAGS = Object.fromEntries(
 // banner (World Aquatics "Neutral Athletes" / "AIN" / the "NAA"/"NAB" relay
 // codes, and "SMF" Suspended Member Federation).
 // They get a dedicated neutral badge instead of a country flag.
-const NEUTRAL_CODES = new Set(['AIN', 'NAA', 'NAB', 'NEUTRAL', 'SMF'])
-
-// World Aquatics Refugee Team codes — competes under the World Aquatics flag,
-// so we show the World Aquatics logomark instead of a text badge. "FRT" was the
-// old FINA code; "ART" is the 2025 Aquatics Refugee Team; "EOR" the Olympic one.
-const REFUGEE_CODES = new Set(['FRT', 'ART', 'EOR'])
+// Codes that are NOT real countries — neutral athletes, refugee teams,
+// suspended federations, etc. They all display the World Aquatics logo
+// as their flag instead of a national flag.
+const AQUATICS_LOGO_CODES = new Set([
+  'AIN', 'NAA', 'NAB', 'NAC', 'NIA',  // neutral athlete codes
+  'FRT', 'ART', 'EOR',                  // refugee team codes
+  'SMF',                                 // suspended member federation
+  'NEUTRAL',                             // generic neutral marker
+  'AGU',                                 // Aguascalientes (non-country)
+])
 
 // Bordered rectangular flag, per the Modernist theme (.asw-flag / .asw-flag-lg).
 // Custom curated images first; the bundled flag-icons SVG set as fallback —
@@ -31,34 +35,18 @@ export default function Flag({ code, name, large = false, flagUrl, placeholder =
   const upper = code ? String(code).toUpperCase() : ''
   const alpha2 = flagAlpha2(code)
   const cls = large ? 'asw-flag-lg' : 'asw-flag'
-  // FINA/World Aquatics Refugee Team competes under the World Aquatics flag —
-  // show the World Aquatics logomark instead of a text badge.
-  if (REFUGEE_CODES.has(upper)) {
+  // Non-country codes (neutral athletes, refugee teams, suspended feds) —
+  // show the World Aquatics logo instead of a national flag.
+  if (AQUATICS_LOGO_CODES.has(upper)) {
     return (
       <img
         className={cls}
         src={worldAquaticsLogo}
-        alt={name || 'World Aquatics Refugee Team'}
-        title={name || 'World Aquatics Refugee Team'}
+        alt={name || upper || 'World Aquatics'}
+        title={name || upper || 'World Aquatics'}
         loading="lazy"
         style={{ objectFit: 'contain', background: '#fff', padding: '2px' }}
       />
-    )
-  }
-  // Neutral athletes: no national flag — render a neutral badge.
-  if (NEUTRAL_CODES.has(upper)) {
-    return (
-      <span
-        className={cls}
-        role="img"
-        aria-label={name || 'Neutral Athletes'}
-        title={name || 'Neutral Athletes'}
-        style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: large ? '0.6rem' : '0.5rem', fontWeight: 700, letterSpacing: '0.02em',
-          background: 'var(--color-neutral-100)', color: 'var(--color-neutral-500)',
-        }}
-      >{upper || 'AIN'}</span>
     )
   }
   if (alpha2 && CUSTOM_FLAGS[alpha2]) {

@@ -1607,6 +1607,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     # so every club in this meet belongs to that country.
     apply_subclassification_country(championship)
 
+    # Create Swimmer profiles for relay-only athletes. These appear as names
+    # inside relay_swimmers JSON but have no individual results → no Swimmer
+    # record. Without one they can't be clicked, have no profile page, and
+    # relay medals aren't linked to them.
+    _progress('Creating relay-only swimmer profiles…')
+    relay_profiles_created = _create_relay_only_swimmers(championship)
+
     # TC source files publish some events without age categories: infer them
     # from the meet's own categorized results before awarding medals, so
     # every category keeps its own podium.
@@ -1707,6 +1714,60 @@ def _maybe_record_nationality_change(swimmer, result_data, championship):
     # (the matcher creates/keeps one profile per nationality), so we never
     # rewrite an existing known nationality here.
     return False
+
+
+def _create_relay_only_swimmers(championship):
+    """Create Swimmer profiles for athletes who only appear in relay legs.
+
+    Relay leg names are stored in Result.relay_swimmers JSON. If a leg
+    swimmer has no individual results (and therefore no Swimmer row), this
+    creates one so they get a clickable profile page and relay medals.
+    """
+    from swimmers.models import Swimmer
+
+    created = 0
+    relay_results = championship.results.filter(
+        relay_swimmers__isnull=False,
+        event__is_relay=True,
+    ).select_related('swimmer')
+
+    for r in relay_results:
+        if not r.relay_swimmers:
+            continue
+        # The relay team's nationality applies to its leg swimmers
+        team_nat_id = r.nationality_id or (r.swimmer.nationality_id if r.swimmer else None)
+        team_sex = r.swimmer.sex if r.swimmer else 'M'
+
+        for leg in r.relay_swimmers:
+            name = leg.get('name', '') if isinstance(leg, dict) else (leg if isinstance(leg, str) else '')
+            if not name or len(name) < 2:
+                continue
+            # Check if a Swimmer profile already exists (case-insensitive)
+            if Swimmer.objects.filter(name__iexact=name, is_relay_team=False).exists():
+                continue
+            # Also check with token-set match (different word order)
+            name_tokens = set(name.upper().split())
+            if len(name_tokens) < 2:
+                continue
+            # Quick check: any swimmer whose name contains all the same tokens?
+            qs = Swimmer.objects.filter(is_relay_team=False)
+            for tok in list(name_tokens)[:4]:
+                qs = qs.filter(name__icontains=tok)
+            if qs.exists():
+                continue
+            # Create the profile
+            from core.models import Country
+            nat = None
+            if team_nat_id:
+                nat = Country.objects.filter(id=team_nat_id).first()
+            Swimmer.objects.create(
+                name=name,
+                nationality=nat,
+                sex=team_sex,
+                is_relay_team=False,
+            )
+            created += 1
+    return created
 
 
 def _parse_relay_legs(raw_splits, is_excel=False):

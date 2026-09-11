@@ -1851,20 +1851,12 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
               .distinct())
 
         from importer.services import _is_surname_token
-        def do_swap(name):
-            """Force-swap given ↔ surname using the UPPERCASE convention.
 
-            "Aoun JUDE"          → "Jude AOUN"   (surname trailing → move to front, then re-flip)
-            "JUDE Aoun"          → "Aoun JUDE"   (surname leading → move to back)
-            "Hmedeh ADAM"        → "Adam HMEDEH"
-            Works for any word count — uppercase words are the surname
-            block, everything else is the given name block.
-            """
+        def _surname_position(name):
+            """Return 'leading', 'trailing', or None for the uppercase surname block."""
             tokens = (name or '').strip().split()
             if len(tokens) < 2:
                 return None
-            # Split into surname tokens (UPPERCASE + connectors) and given tokens
-            # Find the surname block: either leading or trailing
             leading = 0
             for w in tokens:
                 if _is_surname_token(w):
@@ -1877,29 +1869,71 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     trailing += 1
                 else:
                     break
-            if trailing > 0 and leading == 0:
-                # Surname is trailing (e.g. "Aoun JUDE") → move to front, title-case it,
-                # then uppercase what was the given name
+            total = sum(1 for w in tokens if w.isupper() and len(w) > 1)
+            if total == 0:
+                return None
+            if leading >= total and leading < len(tokens):
+                return 'leading'
+            if trailing >= total and trailing < len(tokens):
+                return 'trailing'
+            return None
+
+        def do_swap(name):
+            """Swap surname ↔ given name blocks."""
+            tokens = (name or '').strip().split()
+            if len(tokens) < 2:
+                return None
+            pos = _surname_position(name)
+            if pos == 'trailing':
+                trailing = 0
+                for w in reversed(tokens):
+                    if _is_surname_token(w):
+                        trailing += 1
+                    else:
+                        break
                 surname = tokens[-trailing:]
                 given = tokens[:-trailing]
-                # Swap: given becomes surname (uppercase), surname becomes given (title)
-                new_given = [w.title() for w in surname]
-                new_surname = [w.upper() for w in given]
-                return ' '.join(new_given + new_surname)
-            elif leading > 0:
-                # Surname is leading (e.g. "JUDE Aoun") → move to back
+                return ' '.join([w.title() for w in surname] + [w.upper() for w in given])
+            elif pos == 'leading':
+                leading = 0
+                for w in tokens:
+                    if _is_surname_token(w):
+                        leading += 1
+                    else:
+                        break
                 surname = tokens[:leading]
                 given = tokens[leading:]
-                new_given = [w.title() for w in given]
-                new_surname = [w.upper() for w in surname]
-                return ' '.join(new_given + new_surname)
-            # No clear pattern — just rotate first word to end
+                return ' '.join([w.title() for w in given] + [w.upper() for w in surname])
             return normalize_swimmer_name(' '.join(tokens[1:] + tokens[:1]))
 
+        # Smart swap: detect which direction the MAJORITY of names need
+        # to go, then only swap names that match that direction. This
+        # protects already-correct names (existing athletes matched
+        # during import) from being swapped along with the wrong ones.
+        all_swimmers = list(qs)
+        leading_count = sum(1 for s in all_swimmers if _surname_position(s.name) == 'leading')
+        trailing_count = sum(1 for s in all_swimmers if _surname_position(s.name) == 'trailing')
+
+        # The majority tells us which direction is WRONG:
+        # if most names have surname leading → those need swapping (to trailing)
+        # if most names have surname trailing → those need swapping (to leading)
+        if leading_count > trailing_count:
+            target = 'leading'  # swap names with surname leading
+        elif trailing_count > leading_count:
+            target = 'trailing'  # swap names with surname trailing
+        else:
+            target = None  # can't decide — swap all
+
         renamed = 0
+        skipped_correct = 0
         dupes = []
-        for swimmer in qs.iterator():
+        for swimmer in all_swimmers:
             name = (swimmer.name or '').strip()
+            pos = _surname_position(name)
+            # Only swap names that match the majority (wrong) direction
+            if target and pos != target:
+                skipped_correct += 1
+                continue
             new_name = do_swap(name)
             if not new_name or new_name == name:
                 continue
@@ -1911,7 +1945,11 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             swimmer.name = new_name
             swimmer.save(update_fields=['name'])
             renamed += 1
-        return Response({'renamed': renamed, 'duplicates': dupes})
+        return Response({
+            'renamed': renamed,
+            'skipped_already_correct': skipped_correct,
+            'duplicates': dupes,
+        })
 
     @action(detail=True, methods=['post'], url_path='quick-import',
             parser_classes=[MultiPartParser, FormParser])

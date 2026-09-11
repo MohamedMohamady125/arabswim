@@ -633,6 +633,12 @@ def _build_preview(parsed_meet):
         }
 
         for r in event.results:
+            # DQ/DNS/DNF swimmers must never carry a time — some parsers
+            # accidentally pick up the Seed Time column when the Finals
+            # Time is a status word (XDQ, NS). Zero it out as a safety net.
+            if r.status not in ('OK', 'HC', 'TLD'):
+                r.time_text = ''
+                r.time_centiseconds = 0
             if r.status not in ('OK', 'HC', 'TLD') or r.time_centiseconds <= 0:
                 continue
 

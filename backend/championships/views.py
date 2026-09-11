@@ -1936,9 +1936,36 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             swimmer.name = new_name
             swimmer.save(update_fields=['name'])
             renamed += 1
+        # Also swap relay leg names inside relay_swimmers JSON so they
+        # match the individual swimmer profiles.
+        relay_results = (Result.objects
+                         .filter(championship=championship,
+                                 relay_swimmers__isnull=False,
+                                 event__is_relay=True))
+        relay_legs_swapped = 0
+        for r in relay_results:
+            if not r.relay_swimmers:
+                continue
+            changed = False
+            new_legs = []
+            for leg in r.relay_swimmers:
+                name = leg.get('name', '') if isinstance(leg, dict) else str(leg)
+                new_name = do_swap(name) if name else name
+                if new_name and new_name != name:
+                    changed = True
+                    relay_legs_swapped += 1
+                if isinstance(leg, dict):
+                    new_legs.append({**leg, 'name': new_name or name})
+                else:
+                    new_legs.append(new_name or name)
+            if changed:
+                r.relay_swimmers = new_legs
+                r.save(update_fields=['relay_swimmers'])
+
         return Response({
             'renamed': renamed,
             'skipped_already_correct': skipped_correct,
+            'relay_legs_swapped': relay_legs_swapped,
             'duplicates': dupes,
         })
 

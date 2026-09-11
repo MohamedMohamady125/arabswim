@@ -121,12 +121,13 @@ TIME_PATTERN = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})')
 DQ_LINE = re.compile(
     r'^\s*---\s+(?:\d{6,10}\s+)?(.+?)\s+(\d{1,2})\s+(\S+)\s+'
     r'(?:(?:NT|\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})\s+)?'
-    r'(DQ|NS|DFS|DNF|SCR|DSQ)',
+    r'(X?DQ|X?NS|X?DFS|X?DNF|X?SCR|X?DSQ|XDQ)',
     re.IGNORECASE
 )
 
 # A result line must never end in a status word (DQ row with a seed time)
-STATUS_TAIL = re.compile(r'\b(DQ|NS|DFS|DNF|SCR|DSQ)\s*$', re.IGNORECASE)
+# X-prefixed variants (XDQ, XNS) are exhibition DQ/DNS in HyTek.
+STATUS_TAIL = re.compile(r'\b(X?DQ|X?NS|X?DFS|X?DNF|X?SCR|X?DSQ)\s*$', re.IGNORECASE)
 
 # Relay team result/DQ patterns are now handled flexibly inside
 # _parse_relay_line() using TIME_PATTERN anchoring (no rigid regex).
@@ -167,7 +168,11 @@ RANK_PREFIX = re.compile(r'^\s*\*?(\d{1,3})\s+')
 # HC / EXH (hors concours / exhibition) prefix
 HC_PREFIX = re.compile(r'^\s*(?:H\.?C\.?|EXH)\s+', re.IGNORECASE)
 
-STATUS_MAP = {'DQ': 'DQ', 'DSQ': 'DQ', 'NS': 'DNS', 'DFS': 'DNS', 'DNF': 'DNF', 'SCR': 'DNS'}
+STATUS_MAP = {
+    'DQ': 'DQ', 'DSQ': 'DQ', 'XDQ': 'DQ', 'XDSQ': 'DQ',
+    'NS': 'DNS', 'DFS': 'DNS', 'SCR': 'DNS', 'XNS': 'DNS', 'XDFS': 'DNS', 'XSCR': 'DNS',
+    'DNF': 'DNF', 'XDNF': 'DNF',
+}
 
 # ---- SESSION / PAGE DATE PATTERNS ----
 # "Results - Sunday 27 July 2026", "Session 3 - Friday 25 July 2026"

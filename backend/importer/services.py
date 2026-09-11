@@ -1398,7 +1398,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     # "M13"/"W14" tokens from mixed relays) — a re-upload
                     # of the source file repairs them in place.
                     new_legs = _parse_relay_legs(
-                        result_data.get('split_times', []) or [])
+                        result_data.get('split_times', []) or [], is_excel=is_excel_format)
                     if new_legs and existing.relay_swimmers != new_legs:
                         existing.relay_swimmers = new_legs
                         existing.save(update_fields=['relay_swimmers'])
@@ -1450,7 +1450,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     same_team.original_rank = source_rank(result_data.get('rank'))
                     same_team.team = team  # normalize team name
                     same_team.relay_swimmers = _parse_relay_legs(
-                        result_data.get('split_times', []) or []) or same_team.relay_swimmers
+                        result_data.get('split_times', []) or [], is_excel=is_excel_format) or same_team.relay_swimmers
                     same_team.fina_points = calculate_points(
                         time_cs, event_data.get('event_name', db_event.name),
                         gender_code, championship.pool) or None
@@ -1567,7 +1567,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         splits = None
                 if is_relay or result_data.get('is_relay', False):
                     relay_swimmers = _parse_relay_legs(
-                        result_data.get('split_times', []) or []) or None
+                        result_data.get('split_times', []) or [], is_excel=is_excel_format) or None
 
                 # Always calculate FINA points from World Aquatics base times
                 from .points import calculate_points
@@ -1709,17 +1709,24 @@ def _maybe_record_nationality_change(swimmer, result_data, championship):
     return False
 
 
-def _parse_relay_legs(raw_splits):
+def _parse_relay_legs(raw_splits, is_excel=False):
     """Turn parsed relay leg strings ("Ali TAMER SAYED 0:50.38" or just a
-    name) into structured {name, split_time} dicts."""
+    name) into structured {name, split_time} dicts.
+
+    Applies the same UPPERCASE surname-order fix as individual swimmers
+    (unless source is Excel, where names are kept verbatim).
+    """
     legs = []
     for split_str in raw_splits:
         m = re.search(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})$', split_str.strip())
         if m:
-            legs.append({'name': split_str[:m.start()].strip(),
-                         'split_time': m.group(1)})
+            raw_name = split_str[:m.start()].strip()
+            name = raw_name if is_excel else normalize_swimmer_name(raw_name)
+            legs.append({'name': name, 'split_time': m.group(1)})
         else:
-            legs.append({'name': split_str.strip(), 'split_time': ''})
+            raw_name = split_str.strip()
+            name = raw_name if is_excel else normalize_swimmer_name(raw_name)
+            legs.append({'name': name, 'split_time': ''})
     return legs
 
 

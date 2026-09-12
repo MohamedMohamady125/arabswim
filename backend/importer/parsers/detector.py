@@ -95,6 +95,21 @@ def _parse_pdf(file_path, filename=''):
     if not detect_text.strip():
         raise ValueError('Could not extract text from PDF. The file may be image-based.')
 
+    # Large books (Olympics, World Champs) can have 20+ pages of preamble
+    # (table of contents, medal standings) before the actual results.
+    # If no parser matched the first 5 pages, sample deeper.
+    def _detect_deeper():
+        nonlocal detect_text
+        with pdfplumber.open(file_path) as pdf2:
+            extra = min(len(pdf2.pages), 40)
+            parts = []
+            for page in pdf2.pages[:extra]:
+                parts.append(page.extract_text() or '')
+                page.flush_cache()
+            detect_text = '\n'.join(parts)
+            del parts
+            gc.collect()
+
     # Detect pool from text + filename
     pool = detect_pool(detect_text, filename)
 
@@ -153,7 +168,21 @@ def _parse_pdf(file_path, filename=''):
     elif nat2i_parser.detect_format(detect_text):
         full_text = _extract_simple(file_path)
         meet = nat2i_parser.parse_text(full_text)
+    elif num_pages > 10:
+        # Large books with preamble: retry detection with more pages
+        _detect_deeper()
+        if fina_parser.detect_format(detect_text):
+            full_text = _extract_simple(file_path)
+            meet = fina_parser.parse(full_text)
+        elif omega_parser.detect_format(detect_text):
+            full_text = _extract_simple(file_path)
+            meet = omega_parser.parse(full_text)
+        else:
+            meet = None
     else:
+        meet = None
+
+    if meet is None:
         simple_text = _extract_simple(file_path)
         # Try each parser and pick the one that extracts the most results
         results = []

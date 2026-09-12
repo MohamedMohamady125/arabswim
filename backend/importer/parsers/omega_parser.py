@@ -42,7 +42,7 @@ INDIVIDUAL_PREFIX = re.compile(
     r'^\s*(\d{1,3})\s+'           # rank
     r'(?:\d{1,2}\s+)?'            # optional heat number
     r'(?:\d{1,2}\s+)?'            # optional lane number
-    r'([A-Z][A-Z\- ]+\s+\w[\w\- ]*?)\s+'  # name
+    r'([A-Z][A-Za-z\'\- ]+\s+\w[\w\- ]*?)\s+'  # name (allows Mc, O', de in surname)
     r'(?:(\d{4})\s+)?'            # optional birth year
     r'([A-Z]{3})\b'               # NOC code
 )
@@ -51,7 +51,7 @@ HC_INDIVIDUAL_PREFIX = re.compile(
     r'^\s*(?:H\.?C\.?|EXH)\s+'    # HC/EXH prefix
     r'(?:\d{1,2}\s+)?'            # optional heat number
     r'(?:\d{1,2}\s+)?'            # optional lane number
-    r'([A-Z][A-Z\- ]+\s+\w[\w\- ]*?)\s+'  # name
+    r'([A-Z][A-Za-z\'\- ]+\s+\w[\w\- ]*?)\s+'  # name
     r'(?:(\d{4})\s+)?'            # optional birth year
     r'([A-Z]{3})\b',              # NOC code
     re.IGNORECASE
@@ -158,8 +158,11 @@ def _parse_individual_line(stripped):
 # header has no round on the same line — the round follows on a date line.
 #   "Women's 4 x 100m Freestyle Relay"
 #   "SUN 24 SEP 2023 Heats"
+# Bare event header (no round word): "Women's 50m Freestyle" or
+# "Centre aquatique de Tokyo Women's 50m Freestyle" (Olympic books
+# prepend the venue name).
 EVENT_HEADER_NOROUND = re.compile(
-    r"^(Men|Women|Mixed)'?s?\s+"
+    r"(?:^|.*\s)(Men|Women|Mixed)'?s?\s+"
     r"(?:(\d+)\s*x\s*)?(\d+)m\s+"
     r"([A-Za-z ]+?)\s*$"
 )

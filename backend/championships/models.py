@@ -85,6 +85,9 @@ class Championship(models.Model):
     # but Finale B athletes get NO medals (only Finale A and the open/TC
     # podium award). Toggled per meet in the edit form.
     b_final_no_medals = models.BooleanField(default=False)
+    # Algerian-style medal system: award medals BOTH in heats (per age
+    # category) AND in finals (overall). A swimmer can medal in both rounds.
+    heats_category_medals = models.BooleanField(default=False)
     # Live results mode: turned on by the first session upload during the
     # meet, turned off by the admin's "Finish meet" button. While live, the
     # meet shows a LIVE badge and results grow session by session.

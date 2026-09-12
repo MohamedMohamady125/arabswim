@@ -704,10 +704,12 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   // National meets run Finale A/B/C — each finale has its own podium, so
   // Final B (Consolation) rows also carry medals (matches backend recompute)
   const _MEDAL_ROUNDS = new Set(['Finals', 'Junior Final', 'Final C', 'Final D'])
+  const heatsCategoryMedals = !!meet.heats_category_medals
   const showMedals = isOpenView
     ? (roundsPresent.has('Finals') || roundsPresent.size <= 1)
     : (_MEDAL_ROUNDS.has(selectedRound)
       || (isNational && selectedRound === 'Consolation' && !bFinalNoMedals)
+      || (heatsCategoryMedals && (selectedRound === 'Heats' || selectedRound === 'Prelims'))
       || roundsPresent.size <= 1)
   // Small categories (e.g. Benjamins) often swim heats only — that heats
   // classement IS their podium, so their rows medal even in the Heats view.
@@ -2029,6 +2031,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
     registration_url: meet.registration_url || '',
     has_double_podium: !!meet.has_double_podium,
     b_final_no_medals: !!meet.b_final_no_medals,
+    heats_category_medals: !!meet.heats_category_medals,
   })
   const [photo, setPhoto] = useState(null)
   const [cropFile, setCropFile] = useState(null)
@@ -2072,6 +2075,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
       fd.append('registration_url', form.registration_url.trim())
       fd.append('has_double_podium', form.has_double_podium ? 'true' : 'false')
       fd.append('b_final_no_medals', form.b_final_no_medals ? 'true' : 'false')
+      fd.append('heats_category_medals', form.heats_category_medals ? 'true' : 'false')
       if (photo) fd.append('meet_photo', photo)
       const res = await updateChampionship(meet.id, fd)
       onSaved(res.data)
@@ -2176,10 +2180,20 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
                 checked={form.b_final_no_medals}
                 onChange={(e) => setForm((f) => ({ ...f, b_final_no_medals: e.target.checked }))}
               />
-              Finale B gets no medals — Tunisian TC LCM nationals rule: only Finale A and the open/TC podium award medals (medals recompute on save)
+              Finale B gets no medals — only Finale A and the open/TC podium award medals
             </label>
           </div>
         )}
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={form.heats_category_medals}
+              onChange={(e) => setForm((f) => ({ ...f, heats_category_medals: e.target.checked }))}
+            />
+            Heats award category medals — each age category gets its own podium in heats, plus finals medals separately (Algerian system)
+          </label>
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving || deleting}>

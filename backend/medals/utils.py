@@ -209,12 +209,29 @@ def recompute_medals(championship):
             jf = [r for r in group_rows if r.round_type == 'Junior Final']
             if jf:
                 award_sets.append(jf)
+            # Algerian mode: heats also award per-category medals
+            if championship.heats_category_medals:
+                heats = [r for r in group_rows
+                         if r.round_type in ('Heats', 'Prelims')]
+                if heats:
+                    award_sets.append(heats)
         elif len(rounds) > 1:
             # Prelims/heats only from a multi-round meet: no final ranking.
-            continue
+            # Exception: heats_category_medals mode awards from heats too.
+            if championship.heats_category_medals:
+                heats = [r for r in group_rows
+                         if r.round_type in ('Heats', 'Prelims')]
+                if heats:
+                    award_sets.append(heats)
+            else:
+                continue
         elif rounds <= _PRELIM_ROUNDS and (event_id, sex) not in finals_events:
             # Heats/semis of an event with no final yet: phantom medals.
-            continue
+            # Exception: heats_category_medals mode awards from heats too.
+            if championship.heats_category_medals:
+                award_sets.append(group_rows)
+            else:
+                continue
         else:
             award_sets.append(group_rows)
 

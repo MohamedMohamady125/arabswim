@@ -1228,6 +1228,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'flag_url': country.flag_url if country else '',
                 'pool': champ.pool,
                 'classification': champ.classification.name if champ.classification else '',
+                'gender_display': champ.gender_display or '',
+                'category_gender_map': champ.category_gender_map,
             },
             'counts': {
                 'countries': athletes.exclude(nationality__isnull=True)

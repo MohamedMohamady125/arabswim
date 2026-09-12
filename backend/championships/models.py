@@ -38,6 +38,20 @@ class Championship(models.Model):
     # Open meet vs age-group meet — shown on the calendar dropdown
     MEET_CATEGORY_CHOICES = [('OPEN', 'Open'), ('AGE_GROUP', 'Age Group')]
     meet_category = models.CharField(max_length=10, choices=MEET_CATEGORY_CHOICES, blank=True, default='')
+    # Gender display mode: how the gender tabs show on the meet page.
+    # 'men_women' (default) = "Men / Women"; 'boys_girls' = "Boys / Girls";
+    # 'all' = "Men / Women / Boys / Girls" — categories assigned via
+    # category_gender_map. Empty = auto-detect from results.
+    GENDER_DISPLAY_CHOICES = [
+        ('', 'Auto-detect'),
+        ('men_women', 'Men / Women'),
+        ('boys_girls', 'Boys / Girls'),
+        ('all', 'Men / Women / Boys / Girls'),
+    ]
+    gender_display = models.CharField(max_length=12, choices=GENDER_DISPLAY_CHOICES, blank=True, default='')
+    # When gender_display='all', maps each age category to 'men'/'boys':
+    # {"Seniors": "men", "Juniors": "men", "Cadets": "boys", "Benjamins": "boys"}
+    category_gender_map = models.JSONField(blank=True, null=True, default=None)
     country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name='championships', null=True, blank=True)
     location = models.CharField(max_length=200, blank=True, default='')
     classification_category = models.ForeignKey(ClassificationCategory, on_delete=models.SET_NULL, blank=True, null=True)

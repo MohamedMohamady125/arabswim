@@ -22,6 +22,7 @@ const MAX_FILES = 200
 const emptyForm = {
   name: '', date: '', end_date: '', pool: 'LCM', country: '',
   location: '', classification: '', sub_classification: '',
+  gender_display: '', category_gender_map: null,
 }
 
 const errorBox = {
@@ -894,6 +895,62 @@ export default function Import() {
                             </select>
                           </div>
                         </div>
+                      </div>
+
+                      {/* Gender display + category mapping */}
+                      <div className="rule-t" style={{ marginTop: 16, paddingTop: 16 }}>
+                        <div className="micro" style={{ marginBottom: 10 }}>Gender display</div>
+                        <div className="field">
+                          <label>How to label gender tabs</label>
+                          <select
+                            className="select"
+                            value={meet.champForm.gender_display || ''}
+                            onChange={(e) => setChampForm({ gender_display: e.target.value })}
+                          >
+                            <option value="">Auto-detect</option>
+                            <option value="men_women">Men / Women</option>
+                            <option value="boys_girls">Boys / Girls</option>
+                            <option value="all">Men / Women / Boys / Girls</option>
+                          </select>
+                        </div>
+
+                        {/* When "all" mode: map each detected category to men/boys */}
+                        {meet.champForm.gender_display === 'all' && (() => {
+                          const cats = [...new Set(
+                            (meet.editedPreview?.events || [])
+                              .map((e) => e.age_group)
+                              .filter(Boolean)
+                          )].sort()
+                          if (!cats.length) return (
+                            <div className="micro" style={{ marginTop: 8, textTransform: 'none', letterSpacing: 0 }}>
+                              No age categories detected in this file.
+                            </div>
+                          )
+                          const map = meet.champForm.category_gender_map || {}
+                          return (
+                            <div style={{ marginTop: 10 }}>
+                              <div className="micro" style={{ marginBottom: 6, textTransform: 'none', letterSpacing: 0 }}>
+                                Assign each category to Men/Women or Boys/Girls:
+                              </div>
+                              {cats.map((cat) => (
+                                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                                  <span style={{ fontWeight: 600, fontSize: 13, width: 140 }}>{cat}</span>
+                                  <select
+                                    className="select"
+                                    style={{ fontSize: 13, padding: '4px 8px' }}
+                                    value={map[cat] || 'men'}
+                                    onChange={(e) => setChampForm({
+                                      category_gender_map: { ...map, [cat]: e.target.value }
+                                    })}
+                                  >
+                                    <option value="men">Men / Women</option>
+                                    <option value="boys">Boys / Girls</option>
+                                  </select>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
                       </div>
                     </>
                   )}

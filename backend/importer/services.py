@@ -1030,6 +1030,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             val = championship_details.get(field)
             if val:
                 champ_kwargs[field + '_id'] = int(val)
+        # Gender display mode
+        gd = championship_details.get('gender_display', '')
+        if gd:
+            champ_kwargs['gender_display'] = gd
+        cgm = championship_details.get('category_gender_map')
+        if cgm and isinstance(cgm, dict):
+            champ_kwargs['category_gender_map'] = cgm
 
         championship = Championship.objects.create(**champ_kwargs)
     else:

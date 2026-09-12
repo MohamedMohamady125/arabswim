@@ -601,10 +601,15 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   // Age-category meets (youth championships) list at least one event with age
   // categories. For those, the gender toggle reads "Boys / Girls" instead of
   // "Men / Women", and the results view shows only age-category results.
-  const meetHasAgeCategories = useMemo(
-    () => events.some((e) => e.has_categories),
-    [events],
-  )
+  // Gender display: admin can set 'men_women', 'boys_girls', 'all', or '' (auto-detect)
+  const genderDisplay = meet.gender_display || ''
+  const categoryGenderMap = meet.category_gender_map || {}
+  const meetHasAgeCategories = useMemo(() => {
+    if (genderDisplay === 'boys_girls') return true
+    if (genderDisplay === 'men_women') return false
+    // 'all' mode or auto-detect
+    return genderDisplay === 'all' || events.some((e) => e.has_categories)
+  }, [events, genderDisplay])
 
   // no "All" option — default to the first gender that has events (Men first).
   // Scoped to the current discipline so switching to Open Water lands on a

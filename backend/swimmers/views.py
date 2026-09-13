@@ -228,12 +228,25 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             # are saved with the relay but never shown as individual times.
             from championships.models import relay_first_leg_split_cs
             best_split = None
+            best_split_cs = None
             for r in info['results']:
                 st_cs = relay_first_leg_split_cs(r, swimmer.name)
                 if st_cs and (best_split is None or st_cs < best_split):
                     best_split = st_cs
-            if best_split is None:
+                # Also find best leg split (any leg position)
+                for leg in (r.relay_swimmers or []):
+                    leg_name = leg.get('name', '') if isinstance(leg, dict) else ''
+                    if leg_name.upper() == swimmer.name.upper():
+                        from importer.parsers.base import parse_time_to_centiseconds
+                        leg_time = leg.get('split_time', '') if isinstance(leg, dict) else ''
+                        if leg_time:
+                            cs = parse_time_to_centiseconds(leg_time)
+                            if cs > 0 and (best_split_cs is None or cs < best_split_cs):
+                                best_split_cs = cs
+            # Show relay on profile if swimmer appears in ANY leg
+            if best_split_cs is None and best_split is None:
                 continue
+            show_cs = best_split or best_split_cs
             data.append({
                 'event_id': ev.id,
                 'event_name': ev.name,
@@ -241,10 +254,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'stroke': ev.stroke,
                 'pool': pool,
                 'times_count': len(info['results']),
-                'best_time': format_centiseconds(best_split) if best_split else format_centiseconds(best_cs),
-                'best_time_centiseconds': best_split or best_cs,
+                'best_time': format_centiseconds(show_cs),
+                'best_time_centiseconds': show_cs,
                 'relay_team_time': format_centiseconds(best_cs),
+                'split_time': format_centiseconds(best_split_cs) if best_split_cs else None,
                 'is_relay': True,
+                'is_first_leg': best_split is not None,
             })
 
         return Response(data)

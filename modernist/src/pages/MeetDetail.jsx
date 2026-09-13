@@ -590,12 +590,22 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   const hasOpenWaterEvents = useMemo(() => events.some((e) => e.stroke === 'Open Water'), [events])
   const [discipline, setDiscipline] = useState('POOL') // 'POOL' | 'OW'
 
+  // Resolve virtual gender filters: M_BOYS/F_GIRLS → actual gender M/F
+  const effectiveGender = genderFilter === 'M_BOYS' ? 'M'
+    : genderFilter === 'F_GIRLS' ? 'F' : genderFilter
+  // Which categories belong to "boys" vs "men" (for the 'all' display mode)
+  const boysCats = useMemo(() => {
+    if (genderDisplay !== 'all' || !categoryGenderMap) return null
+    return new Set(Object.entries(categoryGenderMap)
+      .filter(([, v]) => v === 'boys').map(([k]) => k))
+  }, [genderDisplay, categoryGenderMap])
+
   const filteredEvents = useMemo(
     () => events.filter((e) => {
       if ((discipline === 'OW') !== (e.stroke === 'Open Water')) return false
-      return !genderFilter || e.gender === genderFilter
+      return !effectiveGender || e.gender === effectiveGender
     }),
-    [events, genderFilter, discipline],
+    [events, effectiveGender, discipline],
   )
 
   // Age-category meets (youth championships) list at least one event with age
@@ -731,6 +741,14 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     } else {
       sel = rows.filter((r) => (r.round_type || '') === (selectedRound ?? ''))
       if (selectedCategory !== 'ALL') sel = sel.filter((r) => (r.category || '') === selectedCategory)
+      // In 'all' mode, filter to only boys/men categories based on virtual gender
+      if (boysCats && selectedCategory === 'ALL') {
+        if (genderFilter === 'M_BOYS' || genderFilter === 'F_GIRLS') {
+          sel = sel.filter((r) => boysCats.has(r.category || ''))
+        } else if (genderFilter === 'M' || genderFilter === 'F') {
+          sel = sel.filter((r) => !r.category || !boysCats.has(r.category))
+        }
+      }
     }
     // HC results sink to the bottom of each category, times ascending otherwise
     const sorted = [...sel].sort((a, b) => {
@@ -1027,7 +1045,17 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             >
               <option value="ALL">All categories</option>
               {hasOpenPodium && <option value="OPEN">TC</option>}
-              {categories.filter((c) => c !== '').map((c) => (
+              {categories.filter((c) => {
+                if (!c) return false
+                // In 'all' mode with Boys/Girls filter, only show matching categories
+                if (boysCats && (genderFilter === 'M_BOYS' || genderFilter === 'F_GIRLS')) {
+                  return boysCats.has(c)
+                }
+                if (boysCats && (genderFilter === 'M' || genderFilter === 'F')) {
+                  return !boysCats.has(c)
+                }
+                return true
+              }).map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
@@ -1035,20 +1063,23 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         )}
         <Seg
           options={(() => {
-            // 'all' mode: label depends on which category is selected
-            const catMap = (genderDisplay === 'all' && categoryGenderMap) || null
-            const isBoysCat = catMap && selectedCategory && selectedCategory !== 'ALL'
-              && catMap[selectedCategory] === 'boys'
-            const mLabel = meetHasAgeCategories ? 'Boys'
-              : (genderDisplay === 'all' && isBoysCat) ? 'Boys' : 'Men'
-            const fLabel = meetHasAgeCategories ? 'Girls'
-              : (genderDisplay === 'all' && isBoysCat) ? 'Girls' : 'Women'
+            const hasDiscipline = (g) => events.some((e) => e.gender === g
+              && (discipline === 'OW') === (e.stroke === 'Open Water'))
+            if (genderDisplay === 'all') {
+              // Show all four: Men, Women, Boys, Girls
+              const opts = []
+              if (hasDiscipline('M')) opts.push({ value: 'M', label: 'Men' })
+              if (hasDiscipline('F')) opts.push({ value: 'F', label: 'Women' })
+              if (hasDiscipline('M')) opts.push({ value: 'M_BOYS', label: 'Boys' })
+              if (hasDiscipline('F')) opts.push({ value: 'F_GIRLS', label: 'Girls' })
+              if (hasDiscipline('X')) opts.push({ value: 'X', label: 'Mixed' })
+              return opts
+            }
             return [
-              { value: 'M', label: mLabel },
-              { value: 'F', label: fLabel },
+              { value: 'M', label: meetHasAgeCategories ? 'Boys' : 'Men' },
+              { value: 'F', label: meetHasAgeCategories ? 'Girls' : 'Women' },
               { value: 'X', label: 'Mixed' },
-            ].filter((o) => events.some((e) => e.gender === o.value
-              && (discipline === 'OW') === (e.stroke === 'Open Water')))
+            ].filter((o) => hasDiscipline(o.value))
           })()}
           value={genderFilter}
           onChange={setGenderFilter}

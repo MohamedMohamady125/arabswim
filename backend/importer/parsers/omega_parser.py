@@ -553,11 +553,19 @@ def parse(text):
         if SPLIT_LINE.match(stripped):
             if current_event and current_event.results and not in_relay:
                 last = current_event.results[-1]
-                if not last.split_times:
-                    # Extract labelled splits: "50m 27.78 100m 57.41 ..."
-                    pairs = re.findall(r'(\d+)m\.?\s+(\d{1,2}:?\d{2}\.\d{2})', stripped)
-                    if pairs:
-                        last.split_times = [f'{d}m {t}' for d, t in pairs]
+                # Extract labelled splits: "50m 27.78 100m 57.41 ..."
+                # Merge with any inline splits already captured
+                pairs = re.findall(r'(\d+)m\.?\s+(\d{1,2}:?\d{2}\.\d{2})', stripped)
+                if pairs:
+                    new_splits = {int(d): f'{d}m {t}' for d, t in pairs}
+                    # Merge: separate-line splits replace inline at same distance
+                    existing = {}
+                    for s in (last.split_times or []):
+                        m = re.match(r'(\d+)m ', s)
+                        if m:
+                            existing[int(m.group(1))] = s
+                    existing.update(new_splits)
+                    last.split_times = [existing[d] for d in sorted(existing)]
             continue
         if ECHO_TIME.match(stripped):
             continue
@@ -647,6 +655,32 @@ def parse(text):
                 if not name:
                     continue
 
+                # Extract inline splits: times between NOC and final time
+                # Format: "... GBR 0.64 (2) 24.21 (3) 50.46 (3) 1:17.38 1:44.22"
+                # Strip (rank) markers first, then collect all times after NOC
+                inline_splits = []
+                noc_pos = stripped.find(f' {noc} ')
+                if noc_pos >= 0 and current_event.distance > 50:
+                    after_noc = stripped[noc_pos + len(noc) + 2:]
+                    # Remove (N) rank markers
+                    cleaned = re.sub(r'\(\=?\d+\)', '', after_noc)
+                    all_times = re.findall(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})', cleaned)
+                    if len(all_times) >= 2:
+                        # Splits are cumulative times between reaction time
+                        # and the final time. Skip reaction (<2s) and the
+                        # final time itself, and any "time behind" (<final).
+                        split_times = []
+                        for t in all_times:
+                            cs = parse_time_to_centiseconds(t)
+                            if cs <= 200:  # reaction time
+                                continue
+                            if cs >= time_cs:  # final time or behind delta
+                                continue
+                            split_times.append(t)
+                        if split_times:
+                            step = 50
+                            inline_splits = [f'{(i+1)*step}m {t}' for i, t in enumerate(split_times)]
+
                 current_event.results.append(ParsedResult(
                     swimmer_name=name,
                     time_text=time_text,
@@ -661,6 +695,7 @@ def parse(text):
                     round_type=current_event.round_type,
                     age_group=current_event.age_group,
                     status=ind_status,
+                    split_times=inline_splits,
                 ))
                 continue
 

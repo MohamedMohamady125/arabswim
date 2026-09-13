@@ -1048,25 +1048,32 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             </select>
           </div>
         )}
-        {isAllMode && (
-          <Seg
-            options={[
-              { value: 'men', label: 'Men / Women' },
-              { value: 'boys', label: 'Boys / Girls' },
-            ]}
-            value={ageView}
-            onChange={setAgeView}
-          />
-        )}
         <Seg
-          options={[
-            { value: 'M', label: showingBoys ? 'Boys' : 'Men' },
-            { value: 'F', label: showingBoys ? 'Girls' : 'Women' },
-            { value: 'X', label: 'Mixed' },
-          ].filter((o) => events.some((e) => e.gender === o.value
-            && (discipline === 'OW') === (e.stroke === 'Open Water')))}
-          value={genderFilter}
-          onChange={setGenderFilter}
+          options={(() => {
+            const has = (g) => events.some((e) => e.gender === g && (discipline === 'OW') === (e.stroke === 'Open Water'))
+            if (isAllMode) {
+              const opts = []
+              if (has('M')) opts.push({ value: 'M_MEN', label: 'Men' })
+              if (has('F')) opts.push({ value: 'F_WOMEN', label: 'Women' })
+              if (has('M')) opts.push({ value: 'M_BOYS', label: 'Boys' })
+              if (has('F')) opts.push({ value: 'F_GIRLS', label: 'Girls' })
+              if (has('X')) opts.push({ value: 'X', label: 'Mixed' })
+              return opts
+            }
+            return [
+              { value: 'M', label: showingBoys ? 'Boys' : 'Men' },
+              { value: 'F', label: showingBoys ? 'Girls' : 'Women' },
+              { value: 'X', label: 'Mixed' },
+            ].filter((o) => has(o.value))
+          })()}
+          value={isAllMode ? `${genderFilter}_${ageView === 'boys' ? (genderFilter === 'M' ? 'BOYS' : 'GIRLS') : (genderFilter === 'M' ? 'MEN' : genderFilter === 'F' ? 'WOMEN' : '')}` : genderFilter}
+          onChange={(v) => {
+            if (v === 'M_MEN') { setGenderFilter('M'); setAgeView('men') }
+            else if (v === 'F_WOMEN') { setGenderFilter('F'); setAgeView('men') }
+            else if (v === 'M_BOYS') { setGenderFilter('M'); setAgeView('boys') }
+            else if (v === 'F_GIRLS') { setGenderFilter('F'); setAgeView('boys') }
+            else { setGenderFilter(v); setAgeView('men') }
+          }}
         />
         {isAdmin && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -1080,7 +1087,6 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             {allowOpenWater && (
               <button className="btn btn-secondary" onClick={() => setShowAddOpenWater(true)}>Add OW result</button>
             )}
-            <Link className="btn btn-secondary" to={`/import?championship=${meetId}`}>Add results</Link>
           </div>
         )}
       </div>

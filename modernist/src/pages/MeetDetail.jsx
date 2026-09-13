@@ -552,7 +552,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
 
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
-function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, heatsCategoryMedals, genderDisplayMode, classificationName, onDataChanged }) {
+function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, heatsCategoryMedals, genderDisplayMode, categoryGenderMap, classificationName, onDataChanged }) {
   const navigate = useNavigate()
   const [initParams] = useSearchParams()
   // deep link from Records: ?event=&gender=&result= opens that exact swim
@@ -605,9 +605,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   const genderDisplay = genderDisplayMode || ''
   const meetHasAgeCategories = useMemo(() => {
     if (genderDisplay === 'boys_girls') return true
-    if (genderDisplay === 'men_women') return false
-    // 'all' mode or auto-detect
-    return genderDisplay === 'all' || events.some((e) => e.has_categories)
+    if (genderDisplay === 'men_women' || genderDisplay === 'all') return false
+    return events.some((e) => e.has_categories)
   }, [events, genderDisplay])
 
   // no "All" option — default to the first gender that has events (Men first).
@@ -1035,12 +1034,22 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           </div>
         )}
         <Seg
-          options={[
-            { value: 'M', label: meetHasAgeCategories ? 'Boys' : 'Men' },
-            { value: 'F', label: meetHasAgeCategories ? 'Girls' : 'Women' },
-            { value: 'X', label: 'Mixed' },
-          ].filter((o) => events.some((e) => e.gender === o.value
-            && (discipline === 'OW') === (e.stroke === 'Open Water')))}
+          options={(() => {
+            // 'all' mode: label depends on which category is selected
+            const catMap = (genderDisplay === 'all' && categoryGenderMap) || null
+            const isBoysCat = catMap && selectedCategory && selectedCategory !== 'ALL'
+              && catMap[selectedCategory] === 'boys'
+            const mLabel = meetHasAgeCategories ? 'Boys'
+              : (genderDisplay === 'all' && isBoysCat) ? 'Boys' : 'Men'
+            const fLabel = meetHasAgeCategories ? 'Girls'
+              : (genderDisplay === 'all' && isBoysCat) ? 'Girls' : 'Women'
+            return [
+              { value: 'M', label: mLabel },
+              { value: 'F', label: fLabel },
+              { value: 'X', label: 'Mixed' },
+            ].filter((o) => events.some((e) => e.gender === o.value
+              && (discipline === 'OW') === (e.stroke === 'Open Water')))
+          })()}
           value={genderFilter}
           onChange={setGenderFilter}
         />
@@ -2593,6 +2602,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
             hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
             hostCode={meet.country_detail?.code} bFinalNoMedals={!!meet.b_final_no_medals}
             heatsCategoryMedals={!!meet.heats_category_medals} genderDisplayMode={meet.gender_display || ''}
+            categoryGenderMap={meet.category_gender_map || {}}
             classificationName={meet.classification_name} onDataChanged={() => {}} />
         )}
       </div>
@@ -3079,7 +3089,8 @@ export default function MeetDetail() {
             <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium}
               hasDoublePodium={!!meet.has_double_podium} hostCode={meet.country_detail?.code}
               bFinalNoMedals={!!meet.b_final_no_medals} heatsCategoryMedals={!!meet.heats_category_medals}
-              genderDisplayMode={meet.gender_display || ''} classificationName={meet.classification_name} onDataChanged={refreshStats} />
+              genderDisplayMode={meet.gender_display || ''} categoryGenderMap={meet.category_gender_map || {}}
+              classificationName={meet.classification_name} onDataChanged={refreshStats} />
           )}
           {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
           {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}

@@ -2107,8 +2107,8 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
       fd.append('b_final_no_medals', form.b_final_no_medals ? 'true' : 'false')
       fd.append('heats_category_medals', form.heats_category_medals ? 'true' : 'false')
       fd.append('gender_display', form.gender_display || '')
-      if (form.category_gender_map && Object.keys(form.category_gender_map).length) {
-        fd.append('category_gender_map', JSON.stringify(form.category_gender_map))
+      if (form.gender_display === 'all') {
+        fd.append('category_gender_map', JSON.stringify(form.category_gender_map || {}))
       }
       if (photo) fd.append('meet_photo', photo)
       const res = await updateChampionship(meet.id, fd)
@@ -2233,11 +2233,22 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
         <div className="field" style={{ gridColumn: '1 / -1', marginTop: 8 }}>
           <label>Gender display</label>
           <select className="select" value={form.gender_display}
-            onChange={(e) => setForm((f) => ({ ...f, gender_display: e.target.value }))}>
+            onChange={(e) => {
+              const v = e.target.value
+              const patch = { gender_display: v }
+              // Auto-populate category map with defaults when switching to 'all'
+              if (v === 'all' && !Object.keys(form.category_gender_map || {}).length) {
+                const cats = (meet.categories || []).filter(Boolean)
+                const autoMap = {}
+                cats.forEach((c) => { autoMap[c] = 'men' })
+                patch.category_gender_map = autoMap
+              }
+              setForm((f) => ({ ...f, ...patch }))
+            }}>
             <option value="">Auto-detect</option>
             <option value="men_women">Men / Women</option>
             <option value="boys_girls">Boys / Girls</option>
-            <option value="all">Men / Women / Boys / Girls</option>
+            <option value="all">Men's / Women's / Boy's / Girl's</option>
           </select>
         </div>
         {form.gender_display === 'all' && (() => {

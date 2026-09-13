@@ -71,15 +71,27 @@ def infer_blank_categories(championship):
         if r.age_at_competition:
             age_cats[(r.swimmer.sex, r.age_at_competition)][r.category] += 1
 
+    # Algerian-style meets have an open general final (no category) +
+    # heats per age category. The final results should stay uncategorized —
+    # only infer categories on heats/prelims rows, never on finals.
+    # Detect this pattern: file has categorized heats AND uncategorized finals.
+    blank_rounds = {r.round_type for r in blanks}
+    cat_rounds = {r.round_type for r in categorized}
+    has_cat_heats = cat_rounds & {'Heats', 'Prelims'}
+    has_blank_finals = blank_rounds & {'Finals', 'Consolation', 'Junior Final'}
+    skip_finals_inference = bool(has_cat_heats and has_blank_finals)
+
     changed = []
     for r in blanks:
+        # Never assign a category to a final when heats already have categories —
+        # the final is intentionally general/open.
+        if skip_finals_inference and r.round_type in ('Finals', 'Consolation', 'Junior Final'):
+            continue
         cats = swimmer_cats.get(r.swimmer_id)
         if cats and len(cats) == 1:
             r.category = next(iter(cats))
         else:
             counter = age_cats.get((r.swimmer.sex, r.age_at_competition))
-            # Only trust the age map when this meet puts that age in exactly
-            # one category — never guess across ambiguous boundaries.
             if counter and len(counter) == 1:
                 r.category = next(iter(counter))
             else:

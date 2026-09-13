@@ -172,7 +172,7 @@ ROUND_LINE = re.compile(
     # A swim-off breaks a tie for a qualifying place ("Semifinal Swim-Off",
     # "Heat Swim-Off", or a bare "Swim-Off"); the leading round word is
     # optional so all forms match as one token.
-    r'((?:Semifinals?\s+|Heats?\s+|Finals?\s+)?Swim-?offs?'
+    r'((?:Semifinals?\s*[-–]?\s*|Heats?\s*[-–]?\s*|Finals?\s*[-–]?\s*)?Swim-?offs?'
     r'|Heats?|Finals?|Semifinals?)\s*$',
     re.IGNORECASE,
 )

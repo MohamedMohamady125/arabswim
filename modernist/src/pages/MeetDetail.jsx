@@ -1053,10 +1053,10 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             const has = (g) => events.some((e) => e.gender === g && (discipline === 'OW') === (e.stroke === 'Open Water'))
             if (isAllMode) {
               const opts = []
-              if (has('M')) opts.push({ value: 'M_MEN', label: 'Men' })
-              if (has('F')) opts.push({ value: 'F_WOMEN', label: 'Women' })
-              if (has('M')) opts.push({ value: 'M_BOYS', label: 'Boys' })
-              if (has('F')) opts.push({ value: 'F_GIRLS', label: 'Girls' })
+              if (has('M')) opts.push({ value: 'M_MEN', label: "Men's" })
+              if (has('F')) opts.push({ value: 'F_WOMEN', label: "Women's" })
+              if (has('M')) opts.push({ value: 'M_BOYS', label: "Boy's" })
+              if (has('F')) opts.push({ value: 'F_GIRLS', label: "Girl's" })
               if (has('X')) opts.push({ value: 'X', label: 'Mixed' })
               return opts
             }

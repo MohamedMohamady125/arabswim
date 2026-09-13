@@ -698,6 +698,7 @@ def _build_preview(parsed_meet):
                 # the current year when the file carried no date.
                 'src_birth_year': r.birth_year,
                 'src_age': r.age,
+                'date_of_birth': getattr(r, 'date_of_birth', '') or '',
                 'nationality_code': nat_code,
                 'nationality_inferred': nat_inferred,
                 'club': '' if club_is_country else r.club,
@@ -1331,6 +1332,19 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             # year (never a full date of birth), so fall back to birth_year
             # when neither an explicit age nor a full DOB is available —
             # otherwise the age column stays empty even though the year is known.
+            # Backfill DOB on existing swimmer if they don't have one
+            dob_str = result_data.get('date_of_birth', '')
+            if dob_str and not swimmer.date_of_birth and not swimmer.manually_edited:
+                try:
+                    from datetime import date as _date
+                    parts = dob_str.split('-')
+                    swimmer.date_of_birth = _date(int(parts[0]), int(parts[1]), int(parts[2]))
+                    if not swimmer.birth_year:
+                        swimmer.birth_year = swimmer.date_of_birth.year
+                    swimmer.save(update_fields=['date_of_birth', 'birth_year'])
+                except (ValueError, IndexError):
+                    pass
+
             age_at_comp = result_data.get('age', 0)
             if not age_at_comp and championship.date:
                 if swimmer.date_of_birth:
@@ -1859,10 +1873,21 @@ def _create_swimmer(result_data, fallback_country=None, is_excel_format=False):
         if nationality and getattr(nationality, 'code', '') == 'EGY':
             name = egyptian_name_format(name)
 
+    # Parse full date of birth if available
+    dob = None
+    dob_str = result_data.get('date_of_birth', '')
+    if dob_str:
+        try:
+            from datetime import date as _date
+            parts = dob_str.split('-')
+            dob = _date(int(parts[0]), int(parts[1]), int(parts[2]))
+        except (ValueError, IndexError):
+            pass
+
     swimmer = Swimmer.objects.create(
         name=name,
-        date_of_birth=None,
-        birth_year=birth_year,
+        date_of_birth=dob,
+        birth_year=birth_year or (dob.year if dob else None),
         nationality=nationality,
         sex=gender,
         club=normalize_club_name(club),

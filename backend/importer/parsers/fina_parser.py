@@ -467,21 +467,27 @@ def parse(text):
         if ra or ra2:
             if ra:
                 name = ra.group(4).strip()
-                birth_year = int(ra.group(7))
+                dob_day, dob_mon, dob_year = int(ra.group(5)), ra.group(6), int(ra.group(7))
+                birth_year = dob_year
                 nat = ra.group(8)
                 rest = ra.group(10)
             else:
                 ra = ra2
                 name = ra.group(4).strip()
                 nat = ra.group(5)
-                birth_year = int(ra.group(8))
+                dob_day, dob_mon, dob_year = int(ra.group(6)), ra.group(7), int(ra.group(8))
+                birth_year = dob_year
                 rest = ra.group(10)
+            # Build full DOB: "17 NOV 2001" → "2001-11-17"
+            mon_num = _MONTHS.get(dob_mon.upper(), 0)
+            dob_str = f'{dob_year:04d}-{mon_num:02d}-{dob_day:02d}' if mon_num else ''
             splits, time_text, _ = _split_rest(rest, cur['n_inline'])
             res = ParsedResult(
                 swimmer_name=name, time_text=time_text,
                 time_centiseconds=parse_time_to_centiseconds(time_text),
                 event_name=ev().event_name, gender=cur['gender'],
                 rank=int(ra.group(1)), birth_year=birth_year,
+                date_of_birth=dob_str,
                 nationality_code=nat, round_type=cur['round_type'],
                 split_times=[f'{d}m {t}' for d, t in _label_splits(
                     splits, cur['distance'])],

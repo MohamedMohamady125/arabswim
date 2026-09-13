@@ -18,6 +18,7 @@ class ParsedResult:
     gender: str = ''  # M or F
     rank: int = 0
     birth_year: int = 0
+    date_of_birth: str = ''  # full DOB as YYYY-MM-DD when the source provides it
     age: int = 0
     nationality_code: str = ''
     club: str = ''

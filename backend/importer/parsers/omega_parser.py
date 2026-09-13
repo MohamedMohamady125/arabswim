@@ -661,10 +661,13 @@ def parse(text):
     if dob_map:
         for event in meet.events:
             for r in event.results:
-                if not r.birth_year and r.swimmer_name:
+                if r.swimmer_name:
                     key = r.swimmer_name.upper().strip()
                     dob = dob_map.get(key)
                     if dob:
-                        r.birth_year = dob[0]
+                        if not r.birth_year:
+                            r.birth_year = dob[0]
+                        if not r.date_of_birth:
+                            r.date_of_birth = dob[1]
 
     return meet

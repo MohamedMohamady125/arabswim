@@ -552,7 +552,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
 
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
-function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, classificationName, onDataChanged }) {
+function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, heatsCategoryMedals, genderDisplayMode, classificationName, onDataChanged }) {
   const navigate = useNavigate()
   const [initParams] = useSearchParams()
   // deep link from Records: ?event=&gender=&result= opens that exact swim
@@ -602,8 +602,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   // categories. For those, the gender toggle reads "Boys / Girls" instead of
   // "Men / Women", and the results view shows only age-category results.
   // Gender display: admin can set 'men_women', 'boys_girls', 'all', or '' (auto-detect)
-  const genderDisplay = meet.gender_display || ''
-  const categoryGenderMap = meet.category_gender_map || {}
+  const genderDisplay = genderDisplayMode || ''
   const meetHasAgeCategories = useMemo(() => {
     if (genderDisplay === 'boys_girls') return true
     if (genderDisplay === 'men_women') return false
@@ -704,7 +703,6 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   // National meets run Finale A/B/C — each finale has its own podium, so
   // Final B (Consolation) rows also carry medals (matches backend recompute)
   const _MEDAL_ROUNDS = new Set(['Finals', 'Junior Final', 'Final C', 'Final D'])
-  const heatsCategoryMedals = !!meet.heats_category_medals
   const showMedals = isOpenView
     ? (roundsPresent.has('Finals') || roundsPresent.size <= 1)
     : (_MEDAL_ROUNDS.has(selectedRound)
@@ -2594,6 +2592,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
           <ResultsTab meetId={meetId} events={events} isNational={isNational} isAdmin={isAdmin}
             hasOpenPodium={!!meet.has_open_podium} hasDoublePodium={!!meet.has_double_podium}
             hostCode={meet.country_detail?.code} bFinalNoMedals={!!meet.b_final_no_medals}
+            heatsCategoryMedals={!!meet.heats_category_medals} genderDisplayMode={meet.gender_display || ''}
             classificationName={meet.classification_name} onDataChanged={() => {}} />
         )}
       </div>
@@ -3079,7 +3078,8 @@ export default function MeetDetail() {
           {tab === 'results' && (
             <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium}
               hasDoublePodium={!!meet.has_double_podium} hostCode={meet.country_detail?.code}
-              bFinalNoMedals={!!meet.b_final_no_medals} classificationName={meet.classification_name} onDataChanged={refreshStats} />
+              bFinalNoMedals={!!meet.b_final_no_medals} heatsCategoryMedals={!!meet.heats_category_medals}
+              genderDisplayMode={meet.gender_display || ''} classificationName={meet.classification_name} onDataChanged={refreshStats} />
           )}
           {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
           {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}

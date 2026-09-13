@@ -999,6 +999,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'clubs': clubs,
             'age_profile': age_profile,
             'busiest_swimmers': busiest_swimmers,
+            'categories': sorted(set(
+                results.exclude(category='').values_list('category', flat=True)
+            )),
         })
 
     @action(detail=False, methods=['get'], url_path='quick-stats')

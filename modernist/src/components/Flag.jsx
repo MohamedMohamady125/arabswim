@@ -7,7 +7,8 @@ import worldAquaticsLogo from '../assets/world-aquatics.svg'
 // in that folder and it is picked up automatically, overriding the SVG set.
 const CUSTOM_FLAGS = Object.fromEntries(
   Object.entries(import.meta.glob('../assets/flags/*.webp', { eager: true, import: 'default' }))
-    .map(([path, url]) => [path.match(/([a-z]{2})\.webp$/)[1], url])
+    .map(([path, url]) => [path.match(/([a-z]{2,3})\.webp$/)?.[1], url])
+    .filter(([k]) => k)
 )
 
 // Codes that have no national flag — athletes competing under a neutral
@@ -49,9 +50,12 @@ export default function Flag({ code, name, large = false, flagUrl, placeholder =
       />
     )
   }
-  if (alpha2 && CUSTOM_FLAGS[alpha2]) {
+  // Custom flag: try alpha2 first, then the 3-letter IOC code (e.g. 'roc')
+  const customKey = (alpha2 && CUSTOM_FLAGS[alpha2]) ? alpha2
+    : CUSTOM_FLAGS[upper.toLowerCase()] ? upper.toLowerCase() : null
+  if (customKey) {
     return (
-      <img className={cls} src={CUSTOM_FLAGS[alpha2]} alt={name || code || ''}
+      <img className={cls} src={CUSTOM_FLAGS[customKey]} alt={name || code || ''}
         title={name || undefined} loading="lazy" />
     )
   }

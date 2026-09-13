@@ -215,17 +215,19 @@ RELAY_TEAM_DASH = re.compile(
 # previous team.
 RELAY_TEAM = re.compile(
     r'^\s*(\d{1,2})\s+'           # rank
+    r'(?:\d{1,2}\s+)?'            # optional heat
     r'(?:\d{1,2}\s+)?'            # optional lane
     r'([A-Z]{3})\s+'              # NOC code
-    r"-[A-Za-z '.]+\s+"          # "-CountryName"
+    r"[\-–][A-Za-z '.]+\s+"      # "-CountryName" or "– Country"
     r'(\d{1,2}:?\d{2}\.\d{2})'   # time
 )
 # HC relay team: "HC KUW -Kuwait 7:52.94"
 HC_RELAY_TEAM = re.compile(
     r'^\s*(?:H\.?C\.?|EXH)\s+'   # HC/EXH prefix
+    r'(?:\d{1,2}\s+)?'            # optional heat
     r'(?:\d{1,2}\s+)?'            # optional lane
     r'([A-Z]{3})\s+'              # NOC code
-    r"-[A-Za-z '.]+\s+"          # "-CountryName"
+    r"[\-–][A-Za-z '.]+\s+"      # "-CountryName"
     r'(\d{1,2}:?\d{2}\.\d{2})',   # time
     re.IGNORECASE
 )
@@ -246,7 +248,8 @@ RELAY_LEG = re.compile(
 )
 
 # Split lines to skip: "50 m. 28.77 100 m. 1:01.63 ..."
-SPLIT_LINE = re.compile(r'^\s*\d+\s*m\.\s')
+# "50m. 27.78  100m. 57.41" (Splash/GCC) or "50m 27.78  100m 57.41" (Olympic)
+SPLIT_LINE = re.compile(r'^\s*\d+\s*m\.?\s')
 
 # Standalone time at end of result (total time echo): "16:43.20"
 ECHO_TIME = re.compile(r'^\s*\d{1,2}:?\d{2}\.\d{2}\s*$')
@@ -524,11 +527,7 @@ def parse(text):
         if rl and getattr(current_event, '_round_pending', False) and not current_event.results:
             round_word = rl.group(1).upper()
             if 'SWIM' in round_word:
-                # A swim-off only breaks a tie for a qualifying place — it
-                # never decides a podium. Treat it as a prelim round so it
-                # can't award a phantom medal (its rank-2 finisher is the
-                # loser of a two-swimmer tie-break, not a silver medallist).
-                current_event.round_type = 'Semis'
+                current_event.round_type = 'Swim-off'
             elif round_word.startswith('SEMI'):
                 current_event.round_type = 'Semis'
             elif round_word.startswith('HEAT'):
@@ -549,8 +548,18 @@ def parse(text):
             current_event._round_pending = False
             continue
 
-        # Skip split lines, echo times, metadata
-        if SPLIT_LINE.match(stripped) or ECHO_TIME.match(stripped):
+        # Split lines: "50m 27.78  100m 57.41  150m 1:27.35" — capture for
+        # the most recently parsed result (individual or relay leg).
+        if SPLIT_LINE.match(stripped):
+            if current_event and current_event.results and not in_relay:
+                last = current_event.results[-1]
+                if not last.split_times:
+                    # Extract labelled splits: "50m 27.78 100m 57.41 ..."
+                    pairs = re.findall(r'(\d+)m\.?\s+(\d{1,2}:?\d{2}\.\d{2})', stripped)
+                    if pairs:
+                        last.split_times = [f'{d}m {t}' for d, t in pairs]
+            continue
+        if ECHO_TIME.match(stripped):
             continue
         if SKIP_LINE.match(stripped):
             continue

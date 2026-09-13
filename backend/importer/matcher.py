@@ -125,6 +125,8 @@ COUNTRY_NAME_ALIASES = {
     'P.R. CHINA': 'CHN', 'P.R.CHINA': 'CHN', "PEOPLE'S REPUBLIC OF CHINA": 'CHN',
     'TURKIYE': 'TUR', 'TÜRKIYE': 'TUR',
     'REPUBLIC OF SRPSKA': 'BIH',  # competes under Bosnia-Herzegovina
+    'ROC': 'ROC', 'RUSSIAN OLYMPIC COMMITTEE': 'ROC',
+    'OAR': 'RUS', 'OLYMPIC ATHLETES FROM RUSSIA': 'RUS',
 }
 
 

@@ -156,7 +156,6 @@ export default function Medals() {
 
       {/* filter bar: one line, scrolls sideways on phone */}
       <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Seg options={CATEGORIES} value={category} onChange={setCategory} />
         <select
           className="select" style={{ width: 'auto', minWidth: 150 }}
           value={category}

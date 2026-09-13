@@ -966,8 +966,10 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         # record_only: log the change in history without touching the
         # swimmer's current nationality (for past changes).
         record_only = str(request.data.get('record_only', '')).lower() in ('1', 'true', 'yes')
+        # If the swimmer already has the target nationality, treat it as
+        # record-only (just log the history without changing current).
         if not record_only and swimmer.nationality_id == country.id:
-            return Response({'error': 'Swimmer already has this nationality'}, status=400)
+            record_only = True
 
         raw_date = request.data.get('effective_date')
         if raw_date:

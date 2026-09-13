@@ -701,6 +701,66 @@ def _is_status_cell(text):
     return bool(STATUS_CELL.match(text.strip()))
 
 
+def _cell_dob(val):
+    """Read a date-of-birth cell in any common format → 'YYYY-MM-DD' or ''.
+
+    Handles: datetime objects, 'DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD',
+    'DD-Mon-YYYY', 'DD Mon YYYY', Excel date numbers, etc.
+    """
+    import datetime
+    import pandas as pd
+
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return ''
+    if isinstance(val, (datetime.datetime, pd.Timestamp)):
+        return val.strftime('%Y-%m-%d')
+    if isinstance(val, datetime.date):
+        return val.isoformat()
+
+    s = _safe_str(val).strip()
+    if not s or s.lower() == 'nan':
+        return ''
+
+    # ISO format: 2001-11-17
+    m = re.match(r'^(\d{4})-(\d{1,2})-(\d{1,2})', s)
+    if m:
+        return f'{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}'
+
+    # DD/MM/YYYY or MM/DD/YYYY — use _infer_dayfirst logic
+    m = re.match(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$', s)
+    if m:
+        a, b, y = int(m.group(1)), int(m.group(2)), m.group(3)
+        # If first number > 12, it must be the day
+        if a > 12 and b <= 12:
+            return f'{y}-{b:02d}-{a:02d}'
+        if b > 12 and a <= 12:
+            return f'{y}-{a:02d}-{b:02d}'
+        # Ambiguous — assume DD/MM (international standard)
+        return f'{y}-{b:02d}-{a:02d}'
+
+    # "17 NOV 2001" or "17-Nov-2001"
+    _MON3 = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+             'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12}
+    m = re.match(r'^(\d{1,2})[\s\-./]+([A-Za-z]{3})[\s\-./]+(\d{4})$', s)
+    if m:
+        mon = _MON3.get(m.group(2).lower()[:3])
+        if mon:
+            return f'{m.group(3)}-{mon:02d}-{int(m.group(1)):02d}'
+
+    # "Nov 17, 2001" or "November 17, 2001"
+    m = re.match(r'^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$', s)
+    if m:
+        mon = _MON3.get(m.group(1).lower()[:3])
+        if mon:
+            return f'{m.group(3)}-{mon:02d}-{int(m.group(2)):02d}'
+
+    # Just a year: "2001" — not a DOB
+    if re.match(r'^\d{4}$', s):
+        return ''
+
+    return ''
+
+
 _WEEKDAYS = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
              'friday': 4, 'saturday': 5, 'sunday': 6}
 
@@ -1056,7 +1116,8 @@ def _parse_excel(file_path, filename=''):
     time_col = _find_column(cols, ['time', 'temps', 'tps', 'finals time', 'result'])
     event_col = _find_column(cols, ['event', 'epreuve', 'race', 'épreuve'])
     age_col = _find_column(cols, ['age', 'âge'])
-    year_col = _find_column(cols, ['yob', 'birth', 'naissance', 'year of birth', 'year', 'an', 'lic', 'dob'])
+    year_col = _find_column(cols, ['yob', 'year of birth', 'year', 'an', 'lic'])
+    dob_col = _find_column(cols, ['date of birth', 'dob', 'birth', 'naissance', 'date de naissance'])
     club_col = _find_column(cols, ['club', 'team', 'équipe'])
     nation_col = _find_column(cols, ['nationality', 'nation', 'nat', 'country', 'pays'])
     gender_col = _find_column(cols, ['gender', 'sex', 'sexe'])
@@ -1307,7 +1368,8 @@ def _parse_individual_sheet(df, meet, events_dict):
     time_col = _find_column(cols, ['time', 'temps', 'tps', 'finals time', 'result'])
     event_col = _find_column(cols, ['event', 'epreuve', 'race', 'épreuve'])
     age_col = _find_column(cols, ['age', 'âge'])
-    year_col = _find_column(cols, ['yob', 'birth', 'naissance', 'year of birth', 'year', 'an', 'lic', 'dob'])
+    year_col = _find_column(cols, ['yob', 'year of birth', 'year', 'an', 'lic'])
+    dob_col = _find_column(cols, ['date of birth', 'dob', 'birth', 'naissance', 'date de naissance'])
     club_col = _find_column(cols, ['club', 'team', 'équipe'])
     nation_col = _find_column(cols, ['nationality', 'nation', 'nat', 'country', 'pays'])
     gender_col = _find_column(cols, ['gender', 'sex', 'sexe'])
@@ -1446,7 +1508,12 @@ def _parse_individual_sheet(df, meet, events_dict):
             age = _cell_int(row[age_col])
             if age and 4 < age < 100:
                 result.age = age
-        if year_col:
+        if dob_col:
+            dob_val = _cell_dob(row[dob_col])
+            if dob_val:
+                result.date_of_birth = dob_val
+                result.birth_year = int(dob_val[:4])
+        if not result.birth_year and year_col:
             by = _cell_int(row[year_col])
             if by and 1900 < by < 2100:
                 result.birth_year = by

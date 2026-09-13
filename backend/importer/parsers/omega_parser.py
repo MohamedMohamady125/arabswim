@@ -472,12 +472,18 @@ def parse(text):
         # still wins because it overwrites this unconditionally below.
         am = re.match(r'^As of \w+\s+(\d{1,2})\s+(\w+)\s+(\d{4})\b', stripped)
         if am:
+            # Only stamp "As of" dates on events that are NOT from entry list
+            # pages (entry lists open events then immediately close them via
+            # EVENT_SUMMARY — their "As of" is the publication date, not the
+            # session date). Check _round_pending: entry list events have it
+            # True (bare header, no round line seen yet).
             months = {'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5,
                       'JUN': 6, 'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10,
                       'NOV': 11, 'DEC': 12}
             mo = months.get(am.group(2).upper()[:3], 0)
             if mo and current_event and not current_event.results \
-                    and not current_event.date_text:
+                    and not current_event.date_text \
+                    and not getattr(current_event, '_round_pending', True):
                 current_event.date_text = (
                     f'{int(am.group(3)):04d}-{mo:02d}-{int(am.group(1)):02d}')
             continue
@@ -733,5 +739,13 @@ def parse(text):
                             r.birth_year = dob[0]
                         if not r.date_of_birth:
                             r.date_of_birth = dob[1]
+
+    # Recompute meet dates from event dates (preamble pages like entry
+    # lists and table of contents can set bogus early dates via standalone
+    # date lines like "1 AUG 2021 18:00" on page 1).
+    event_dates = sorted(set(e.date_text for e in meet.events if e.date_text))
+    if event_dates:
+        meet.date_text = event_dates[0]
+        meet.date_end = event_dates[-1]
 
     return meet

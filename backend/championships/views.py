@@ -94,11 +94,15 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if champ.end_date and champ.end_date >= champ.date:
             n_days = min((champ.end_date - champ.date).days + 1, 30)
         n_days = max(n_days, max(by_day, default=1))
+        # Only include days from the first day with events to the last —
+        # skip leading/trailing empty days (e.g. meet date set too early).
+        first_day = min(by_day, default=1)
+        last_day = max(by_day, default=n_days)
         days = [{
             'day': d,
             'date': str(champ.date + timedelta(days=d - 1)),
             'items': ProgramItemSerializer(by_day.get(d, []), many=True).data,
-        } for d in range(1, n_days + 1)]
+        } for d in range(first_day, max(last_day, n_days) + 1)]
         return Response({'days': days})
 
     @action(detail=True, methods=['post'], url_path='upload-bulletin')

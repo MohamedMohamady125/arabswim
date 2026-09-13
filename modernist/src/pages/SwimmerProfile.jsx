@@ -610,14 +610,15 @@ function RankingsPreview({ swimmerId, onViewAll }) {
 }
 
 const PERFORMANCE_TIERS = [
-  { min: 900, max: null, label: 'International Elite' },
-  { min: 800, max: 900, label: 'High Performance' },
-  { min: 700, max: 800, label: 'Advanced' },
-  { min: 600, max: 700, label: 'Competitive' },
-  { min: 500, max: 600, label: 'Developing' },
-  { min: 400, max: 500, label: 'Foundation' },
-  { min: 300, max: 400, label: 'Novice' },
-  { min: 200, max: 300, label: 'Entry Level' },
+  { min: 900, max: null, label: 'World-Class' },
+  { min: 800, max: 900, label: 'International Elite' },
+  { min: 700, max: 800, label: 'High Performance' },
+  { min: 600, max: 700, label: 'Advanced' },
+  { min: 500, max: 600, label: 'Competitive' },
+  { min: 400, max: 500, label: 'Developing' },
+  { min: 300, max: 400, label: 'Foundation' },
+  { min: 200, max: 300, label: 'Novice' },
+  { min: 100, max: 200, label: 'Entry Level' },
 ]
 
 function OverallTab({ stats, swimmerId, onViewRankings }) {

@@ -738,10 +738,10 @@ def _cell_dob(val):
         # Ambiguous — assume DD/MM (international standard)
         return f'{y}-{b:02d}-{a:02d}'
 
-    # "17 NOV 2001" or "17-Nov-2001"
+    # "17 NOV 2001", "17-Nov-2001", "16 January 2009"
     _MON3 = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
              'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12}
-    m = re.match(r'^(\d{1,2})[\s\-./]+([A-Za-z]{3})[\s\-./]+(\d{4})$', s)
+    m = re.match(r'^(\d{1,2})[\s\-./]+([A-Za-z]{3,9})[\s\-./]+(\d{4})$', s)
     if m:
         mon = _MON3.get(m.group(2).lower()[:3])
         if mon:

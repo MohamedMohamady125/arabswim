@@ -1042,7 +1042,7 @@ export default function SwimmerProfile() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'nowrap' }}>
             {swimmer.date_of_birth
-              ? chip('Born', swimmer.date_of_birth.split('-')[0])
+              ? chip('Born', isAdmin ? formatDate(swimmer.date_of_birth) : swimmer.date_of_birth.split('-')[0])
               : swimmer.birth_year ? chip('Born', swimmer.birth_year) : null}
             {swimmer.age != null && chip('Age', swimmer.age)}
             {swimmer.sex && chip('', swimmer.sex === 'M' ? 'Male' : 'Female')}

@@ -787,7 +787,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       if (named.length > 0) return named.map((cat) => [cat, byCat.get(cat)])
     }
     return order.map((cat) => [cat, byCat.get(cat)])
-  }, [rows, selectedRound, selectedCategory, isOpenView, bFinalNoMedals, finalsCats, meetHasAgeCategories, poolHeats])
+  }, [rows, selectedRound, selectedCategory, isOpenView, bFinalNoMedals, finalsCats, meetHasAgeCategories, poolHeats, boysCats, genderFilter])
 
   useEffect(() => { setExpandedRow(null) }, [eventKey, selectedRound, selectedCategory])
   // full list — every swimmer in the selection, no pagination
@@ -3126,7 +3126,7 @@ export default function MeetDetail() {
 
       {isAdmin && editing && (
         <MeetEditPanel
-          meet={meet}
+          meet={{ ...meet, categories: stats?.categories || [] }}
           onSaved={(m) => { setMeet(m); setEditing(false) }}
           onClose={() => setEditing(false)}
         />

@@ -239,7 +239,7 @@ export default function Records() {
           onChange={setPool}
         />
         <Seg
-          options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+          options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
           value={gender}
           onChange={setGender}
         />

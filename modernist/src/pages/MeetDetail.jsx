@@ -44,7 +44,7 @@ const roundLabel = (r, allRounds) => {
   return r
 }
 
-const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
+const GENDER_LABEL = { M: "Men's", F: "Women's", X: 'Mixed' }
 
 // Some sources omit the final split (e.g. an 800 recorded only to 700).
 // When the official total sits about one lap beyond the last split, append
@@ -1061,8 +1061,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
               return opts
             }
             return [
-              { value: 'M', label: showingBoys ? 'Boys' : 'Men' },
-              { value: 'F', label: showingBoys ? 'Girls' : 'Women' },
+              { value: 'M', label: showingBoys ? "Boy's" : "Men's" },
+              { value: 'F', label: showingBoys ? "Girl's" : "Women's" },
               { value: 'X', label: 'Mixed' },
             ].filter((o) => has(o.value))
           })()}
@@ -1315,7 +1315,7 @@ function MedalsTab({ meetId, isNational }) {
       )}
 
       <div className="pad">
-        <FeaturedCards picks={[decoratedPick('M', 'Men'), decoratedPick('F', 'Women')]} />
+        <FeaturedCards picks={[decoratedPick('M', "Men's"), decoratedPick('F', "Women's")]} />
         {/* tally */}
         {scopeOptions.length > 0 && (
           <>
@@ -1323,7 +1323,7 @@ function MedalsTab({ meetId, isNational }) {
               <Seg options={scopeOptions} value={activeScope} onChange={setScope} />
               {activeScope === 'swimmer' && (
                 <Seg
-                  options={[{ value: 'ALL', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+                  options={[{ value: 'ALL', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
                   value={swimmerGender}
                   onChange={setSwimmerGender}
                 />
@@ -1474,7 +1474,7 @@ function PersonalBestsTab({ stats }) {
 
   return (
     <div className="pad">
-      <FeaturedCards picks={[pbPick('M', 'Men'), pbPick('F', 'Women')]} />
+      <FeaturedCards picks={[pbPick('M', "Men's"), pbPick('F', "Women's")]} />
       {/* personal bests achieved */}
       {hasPbs && (
         <div style={{ marginBottom: 28 }}>
@@ -1557,13 +1557,13 @@ function TopPerformancesTab({ stats }) {
 
   return (
     <div className="pad">
-      <FeaturedCards picks={[perfPick('M', 'Men'), perfPick('F', 'Women')]} />
+      <FeaturedCards picks={[perfPick('M', "Men's"), perfPick('F', "Women's")]} />
       {(
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
             <div className="kicker">Top performances — highest FINA points</div>
             <Seg
-              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
               value={perfGender}
               onChange={setPerfGender}
             />
@@ -1713,14 +1713,14 @@ function MostImprovedTab({ meetId }) {
 
   return (
     <div className="pad">
-      <FeaturedCards picks={[improvedPick('M', 'Men'), improvedPick('F', 'Women')]} />
+      <FeaturedCards picks={[improvedPick('M', "Men's"), improvedPick('F', "Women's")]} />
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
         <div>
           <div className="kicker">Most improved swimmers</div>
           <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, fontSize: 12, marginTop: 4 }}>Biggest time drops vs previous personal best</div>
         </div>
         <Seg
-          options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+          options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
           value={gender}
           onChange={setGender}
         />
@@ -1899,7 +1899,7 @@ function RecordsBrokenTab({ meetId }) {
 
 /* ─────────────────────────── Program tab ─────────────────────────── */
 
-const PROGRAM_GENDER = { M: 'Men', F: 'Women', X: 'Mixed' }
+const PROGRAM_GENDER = { M: "Men's", F: "Women's", X: 'Mixed' }
 
 const PROGRAM_SESSION = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
 const PROGRAM_TIME_OF_DAY = { MORNING: 'Morning', EVENING: 'Evening' }
@@ -2340,7 +2340,7 @@ function CompareMeetsModal({ meet, onClose }) {
     ['Best FINA points', a.best_fina ?? '—', b.best_fina ?? '—'],
   ] : []
 
-  const genders = [['M', 'Men'], ['F', 'Women'], ['X', 'Mixed']]
+  const genders = [['M', "Men's"], ['F', "Women's"], ['X', 'Mixed']]
 
   return (
     <div

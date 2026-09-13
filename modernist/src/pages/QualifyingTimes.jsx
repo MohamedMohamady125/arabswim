@@ -288,7 +288,7 @@ export default function QualifyingTimes() {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <Seg
-                options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+                options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
                 value={gender}
                 onChange={setGender}
               />

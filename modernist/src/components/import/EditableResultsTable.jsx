@@ -116,7 +116,7 @@ export default function EditableResultsTable({ preview, onPreviewChange }) {
                 <span className="micro" style={{ width: 12 }}>{expandedEvents[eventIdx] ? '▼' : '▶'}</span>
                 <span style={{ fontWeight: 700, fontSize: 13 }}>{ev.event_name}</span>
                 <span className="micro">
-                  {ev.gender === 'M' ? 'Men' : ev.gender === 'F' ? 'Women' : 'Mixed'}
+                  {ev.gender === 'M' ? "Men's" : ev.gender === 'F' ? "Women's" : 'Mixed'}
                 </span>
                 {ev.age_group && <span className="tag tag-accent">{ev.age_group}</span>}
                 {ev.round_type && <span className="tag tag-neutral">{ev.round_type}</span>}

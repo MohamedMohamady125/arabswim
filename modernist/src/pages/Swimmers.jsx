@@ -329,7 +329,7 @@ export default function Swimmers() {
           ))}
         </select>
         <Seg
-          options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+          options={[{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
           value={sex}
           onChange={(v) => { setSex(v); setPage(1) }}
         />

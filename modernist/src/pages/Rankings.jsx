@@ -137,7 +137,7 @@ export default function Rankings() {
             onChange={setScope}
           />
           <Seg
-            options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+            options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
             value={gender}
             onChange={setGender}
           />
@@ -188,7 +188,7 @@ export default function Rankings() {
                 {selectedEvent.name}
               </span>
               <span className="kicker" style={{ marginLeft: 10 }}>
-                {gender === 'M' ? 'Men' : 'Women'} · {pool} · {year || 'All-time'}
+                {gender === 'M' ? "Men's" : "Women's"} · {pool} · {year || 'All-time'}
               </span>
             </div>
           )}

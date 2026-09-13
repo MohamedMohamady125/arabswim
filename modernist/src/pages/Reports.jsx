@@ -43,7 +43,7 @@ const PLAIN_YEARS = (() => {
   return yrs
 })()
 
-const GENDER_OPTS = [{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]
+const GENDER_OPTS = [{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]
 const POOL_OPTS = [{ value: '', label: 'All pools' }, { value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]
 
 const CTRL = { flex: '0 1 auto', width: 'auto', minWidth: 0, height: 36 }

@@ -170,7 +170,7 @@ function RecordsTable({ records }) {
             <tr key={r.id ?? i}>
               <td><span className="tag tag-outline">{r.record_type || '—'}</span></td>
               <td style={{ fontWeight: 600 }}>{r.event || '—'}</td>
-              <td className="text-muted">{r.sex === 'F' ? 'Women' : r.sex === 'M' ? 'Men' : '—'}</td>
+              <td className="text-muted">{r.sex === 'F' ? "Women's" : r.sex === 'M' ? "Men's" : '—'}</td>
               <td className="time asw-time">{r.time || '—'}</td>
               <td><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></td>
               <td className="text-muted">{r.location || '—'}</td>
@@ -412,7 +412,7 @@ export default function CountryProfile() {
         <SectHead title={`National Best Times · ${filteredBest.length}`}>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <Seg
-              options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+              options={[{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
               value={btSex}
               onChange={setBtSex}
             />
@@ -445,7 +445,7 @@ export default function CountryProfile() {
                 {filteredBest.map((t, i) => (
                   <tr key={i}>
                     <td style={{ fontWeight: 600 }}>{t.event}</td>
-                    <td className="text-muted">{t.sex === 'F' ? 'Women' : 'Men'}</td>
+                    <td className="text-muted">{t.sex === 'F' ? "Women's" : 'Men'}</td>
                     <td className="text-muted">{t.pool}</td>
                     <td className="time asw-time">{t.time}</td>
                     <td className="num asw-num">{t.fina ?? '—'}</td>

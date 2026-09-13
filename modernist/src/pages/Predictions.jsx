@@ -61,7 +61,7 @@ function SwimmerCard({ c, showDelta }) {
   return (
     <div>
       <div className="card-kicker kicker" style={{ marginBottom: 6 }}>
-        {c.event} · {c.gender === 'M' ? 'Men' : 'Women'}{c.age_group ? ` · ${c.age_group}` : ''}
+        {c.event} · {c.gender === 'M' ? "Men's" : "Women's"}{c.age_group ? ` · ${c.age_group}` : ''}
       </div>
       <div className="rec-name" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
         <Flag code={c.country_code} name={c.country_name} />
@@ -362,7 +362,7 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
             .filter((e, i, arr) => arr.findIndex((x) => x.event_id === e.event_id && x.gender === e.gender) === i)
             .map((e) => (
               <option key={`${e.event_id}-${e.gender}`} value={e.event_id}>
-                {e.event} ({e.gender === 'M' ? 'Men' : 'Women'})
+                {e.event} ({e.gender === 'M' ? "Men's" : "Women's"})
               </option>
             ))}
         </select>
@@ -398,7 +398,7 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
               {entries.map((en) => (
                 <tr key={en.id} style={en.withdrawn ? { opacity: 0.5 } : undefined}>
                   <td style={{ fontWeight: 600 }}>{en.swimmer_name} {en.nationality_code ? `(${en.nationality_code})` : ''}</td>
-                  <td>{en.event_name} ({en.gender === 'M' ? 'Men' : 'Women'})</td>
+                  <td>{en.event_name} ({en.gender === 'M' ? "Men's" : "Women's"})</td>
                   <td className="time asw-time">{formatTime(en.entry_time_cs)}</td>
                   <td>{en.withdrawn ? 'Withdrawn' : 'Entered'}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>
@@ -717,7 +717,7 @@ function OverviewTab({ snap, onOpenEvent }) {
             })}
             <span style={{ marginLeft: 'auto' }}>
               <Seg
-                options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+                options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
                 value={gender}
                 onChange={(g) => { setGender(g); setOpenKey('') }}
               />
@@ -1024,7 +1024,7 @@ export default function Predictions() {
                 <SectHead title="Medal Chances by Event" />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '4px 0 12px' }}>
                   <Seg
-                    options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+                    options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
                     value={gender}
                     onChange={(g) => { setGender(g); setEventKey('') }}
                   />

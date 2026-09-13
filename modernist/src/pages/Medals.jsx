@@ -161,7 +161,7 @@ export default function Medals() {
         {isNational && countrySelect}
         <Seg options={scopeOptions} value={scope} onChange={setScope} />
         <Seg
-          options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+          options={[{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
           value={gender}
           onChange={setGender}
         />

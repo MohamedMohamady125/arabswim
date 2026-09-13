@@ -2039,6 +2039,8 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
     has_double_podium: !!meet.has_double_podium,
     b_final_no_medals: !!meet.b_final_no_medals,
     heats_category_medals: !!meet.heats_category_medals,
+    gender_display: meet.gender_display || '',
+    category_gender_map: meet.category_gender_map || {},
   })
   const [photo, setPhoto] = useState(null)
   const [cropFile, setCropFile] = useState(null)
@@ -2083,6 +2085,10 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
       fd.append('has_double_podium', form.has_double_podium ? 'true' : 'false')
       fd.append('b_final_no_medals', form.b_final_no_medals ? 'true' : 'false')
       fd.append('heats_category_medals', form.heats_category_medals ? 'true' : 'false')
+      fd.append('gender_display', form.gender_display || '')
+      if (form.category_gender_map && Object.keys(form.category_gender_map).length) {
+        fd.append('category_gender_map', JSON.stringify(form.category_gender_map))
+      }
       if (photo) fd.append('meet_photo', photo)
       const res = await updateChampionship(meet.id, fd)
       onSaved(res.data)
@@ -2201,6 +2207,41 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
             Heats award category medals — each age category gets its own podium in heats, plus finals medals separately (Algerian system)
           </label>
         </div>
+
+        {/* Gender display control */}
+        <div className="field" style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+          <label>Gender display</label>
+          <select className="select" value={form.gender_display}
+            onChange={(e) => setForm((f) => ({ ...f, gender_display: e.target.value }))}>
+            <option value="">Auto-detect</option>
+            <option value="men_women">Men / Women</option>
+            <option value="boys_girls">Boys / Girls</option>
+            <option value="all">Men / Women / Boys / Girls</option>
+          </select>
+        </div>
+        {form.gender_display === 'all' && (() => {
+          const allCats = (meet.categories || []).filter(Boolean).sort()
+          if (!allCats.length) return null
+          const map = form.category_gender_map || {}
+          return (
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label>Assign categories</label>
+              {allCats.map((cat) => (
+                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13, width: 140 }}>{cat}</span>
+                  <select className="select" style={{ fontSize: 13, padding: '4px 8px' }}
+                    value={map[cat] || 'men'}
+                    onChange={(e) => setForm((f) => ({
+                      ...f, category_gender_map: { ...f.category_gender_map, [cat]: e.target.value }
+                    }))}>
+                    <option value="men">Men / Women</option>
+                    <option value="boys">Boys / Girls</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving || deleting}>

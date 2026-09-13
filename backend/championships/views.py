@@ -264,16 +264,22 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             old_snapshot = snapshot(_Champ.objects.get(pk=serializer.instance.pk))
             old_flags = (serializer.instance.has_double_podium,
                          serializer.instance.has_open_podium,
-                         serializer.instance.b_final_no_medals)
+                         serializer.instance.b_final_no_medals,
+                         serializer.instance.heats_category_medals)
+        # category_gender_map arrives as a JSON string from FormData
+        import json
+        cgm = self.request.data.get('category_gender_map')
+        if isinstance(cgm, str):
+            try:
+                serializer.validated_data['category_gender_map'] = json.loads(cgm)
+            except (json.JSONDecodeError, ValueError):
+                pass
         championship = serializer.save()
-        # Classifying a meet after import (e.g. Other/France) tells us which
-        # country its clubs belong to — reapply the club-country rule so
-        # foreign clubs aren't left tagged with a swimmer's nationality.
         from teams.utils import apply_subclassification_country
         apply_subclassification_country(championship)
         # Podium rules changed → medals must be re-awarded
         new_flags = (championship.has_double_podium, championship.has_open_podium,
-                     championship.b_final_no_medals)
+                     championship.b_final_no_medals, championship.heats_category_medals)
         if old_flags is not None and old_flags != new_flags:
             from medals.utils import recompute_medals
             recompute_medals(championship)
@@ -1246,6 +1252,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'records': records_total,
                 'personal_bests': pb_total,
             },
+            'categories': sorted(
+                results.exclude(category='').values_list('category', flat=True).distinct()
+            ),
             'participation': {
                 'by_country': by_country, 'by_club': by_club,
                 'male': male, 'female': female, 'age_groups': age_groups,

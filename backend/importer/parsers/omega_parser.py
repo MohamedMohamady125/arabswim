@@ -555,7 +555,7 @@ def parse(text):
                 last = current_event.results[-1]
                 # Extract labelled splits: "50m 27.78 100m 57.41 ..."
                 # Merge with any inline splits already captured
-                pairs = re.findall(r'(\d+)m\.?\s+(\d{1,2}:?\d{2}\.\d{2})', stripped)
+                pairs = re.findall(r'(\d+)m\.?\s+(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})', stripped)
                 if pairs:
                     new_splits = {int(d): f'{d}m {t}' for d, t in pairs}
                     # Merge: separate-line splits replace inline at same distance

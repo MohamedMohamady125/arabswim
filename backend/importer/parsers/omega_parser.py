@@ -641,9 +641,27 @@ def parse(text):
                 name = normalize_name(lm.group(1).strip())
                 if name:
                     result = current_event.results[-1]
+                    # Extract leg split time from the times on this line
+                    # Format: "NAME [M/F] [rt] [50m] legtime cumulative"
+                    after_name = stripped[lm.end(1):].strip()
+                    # Remove gender marker and reaction time
+                    after_name = re.sub(r'^[MF]\s+', '', after_name)
+                    after_name = re.sub(r'^\.\d{3}\s+', '', after_name)
+                    # Remove (rank) markers
+                    after_name = re.sub(r'\(\=?\d+\)\s*', '', after_name)
+                    times = re.findall(r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})', after_name)
+                    # For 4x100: rt, 50m, 100m(=leg), cumulative → leg is 2nd-to-last or the max non-cumulative
+                    # For 4x50: rt, 50m(=leg), cumulative → leg is 1st real time
+                    leg_time = ''
+                    if times:
+                        # The leg time is typically the second-to-last time
+                        # (last = cumulative). If only 1 time, that's both.
+                        leg_time = times[-2] if len(times) >= 2 else times[0]
+
                     if not hasattr(result, '_relay_names'):
                         result._relay_names = []
-                    result._relay_names.append(name)
+                    entry = f'{name} {leg_time}' if leg_time else name
+                    result._relay_names.append(entry)
                     result.split_times = list(result._relay_names)
                 continue
         else:

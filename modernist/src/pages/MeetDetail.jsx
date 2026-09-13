@@ -899,10 +899,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                  on the exact vertical center of the row, level with the flag */
               <MedalIcon type={mRank === 1 ? 'GOLD' : mRank === 2 ? 'SILVER' : 'BRONZE'} size={18} style={{ display: 'block' }} />
             ) : (
-              // Double podium: below the medals, host-country swimmers continue
-              // their own podium ranking (4,5,6…) and guests keep their overall
-              // source placement — so the number matches the two parallel podiums.
-              (hasDoublePodium && hostCode ? mRank : rank) || '—'
+              rank || '—'
             )}
           </td>
           <td className="swimmer-cell">

@@ -103,6 +103,234 @@ function RecordsTable({ records }) {
   )
 }
 
+const CARD = { background: '#fff', border: '1px solid var(--color-divider)', padding: '16px 18px' }
+const CARD_TITLE = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }
+const CARD_SUB = { fontSize: 11, color: 'var(--color-neutral-500)', marginBottom: 12 }
+const PERF_COLORS = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#27ae60', '#3498db', '#2980b9', '#9b59b6', '#8e44ad']
+
+function StatCard({ title, subtitle, children }) {
+  return (
+    <div style={CARD}>
+      <div style={CARD_TITLE}>{title}</div>
+      {subtitle && <div style={CARD_SUB}>{subtitle}</div>}
+      {children}
+    </div>
+  )
+}
+
+function TopPerfTable({ swimmers, sex }) {
+  const filtered = swimmers.filter((s) => s.sex === sex).slice(0, 5)
+  if (!filtered.length) return <Empty label="No data" />
+  return (
+    <table className="table" style={{ fontSize: 13 }}>
+      <thead><tr><th style={{ width: 24 }}>#</th><th>Swimmer</th><th>Event</th><th className="time">Time</th><th className="num">Pts</th></tr></thead>
+      <tbody>{filtered.map((s, i) => (
+        <tr key={s.id}><td className="asw-num" style={{ fontWeight: 800, color: i < 3 ? 'var(--color-accent)' : undefined }}>{i + 1}</td>
+        <td><SwimmerLink id={s.id} name={s.name} /></td><td className="text-muted">{s.best_event}</td>
+        <td className="time asw-time">{s.best_time}</td><td className="num asw-num" style={{ fontWeight: 700 }}>{s.best_fina}</td></tr>
+      ))}</tbody>
+    </table>
+  )
+}
+
+function MedalRow({ name, gold, silver, bronze, total, color }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-divider)', fontSize: 13 }}>
+      <span style={{ flex: 1, fontWeight: 600 }}>{name}</span>
+      <span className="asw-num" style={{ width: 28, textAlign: 'center', fontWeight: 800, color: 'var(--asw-gold)' }}>{gold}</span>
+      <span className="asw-num" style={{ width: 28, textAlign: 'center', color: 'var(--asw-silver)' }}>{silver}</span>
+      <span className="asw-num" style={{ width: 28, textAlign: 'center', color: 'var(--asw-bronze)' }}>{bronze}</span>
+      <span className="asw-num" style={{ width: 36, textAlign: 'center', fontWeight: 800 }}>{total}</span>
+    </div>
+  )
+}
+
+function DecoratedTable({ swimmers, sex }) {
+  const filtered = swimmers.filter((s) => (sex === 'M' ? !s.name?.includes('(F)') : true)).slice(0, 5)
+  if (!filtered.length) return <Empty label="No data" />
+  return (
+    <table className="table" style={{ fontSize: 13 }}>
+      <thead><tr><th style={{ width: 24 }}>#</th><th>Swimmer</th><th className="num" style={{ color: 'var(--asw-gold)' }}>G</th><th className="num" style={{ color: 'var(--asw-silver)' }}>S</th><th className="num" style={{ color: 'var(--asw-bronze)' }}>B</th><th className="num">Total</th></tr></thead>
+      <tbody>{filtered.map((m, i) => (
+        <tr key={m.id ?? i}><td className="asw-num" style={{ fontWeight: 800, color: i < 3 ? 'var(--color-accent)' : undefined }}>{i + 1}</td>
+        <td><SwimmerLink id={m.id} name={m.name} /></td>
+        <td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{m.gold}</td>
+        <td className="num asw-num">{m.silver}</td><td className="num asw-num">{m.bronze}</td>
+        <td className="num asw-num" style={{ fontWeight: 800 }}>{m.total}</td></tr>
+      ))}</tbody>
+    </table>
+  )
+}
+
+function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, medalBoxes, hosted, participated }) {
+  const maleTopSwimmers = topSwimmers.filter((s) => s.sex === 'M')
+  const femaleTopSwimmers = topSwimmers.filter((s) => s.sex === 'F')
+  const maleTopMedalists = topMedalists.filter((m) => m.sex === 'M').slice(0, 5)
+  const femaleTopMedalists = topMedalists.filter((m) => m.sex === 'F').slice(0, 5)
+
+  // Last records
+  const maleRecords = records.filter((r) => r.sex === 'M').sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+  const femaleRecords = records.filter((r) => r.sex === 'F').sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+  const lastMaleRecord = maleRecords[0]
+  const lastFemaleRecord = femaleRecords[0]
+
+  // Most records by swimmer
+  const recBySwimmer = {}
+  records.forEach((r) => {
+    const key = `${r.swimmer_id}_${r.sex}`
+    if (!recBySwimmer[key]) recBySwimmer[key] = { id: r.swimmer_id, name: r.swimmer, sex: r.sex, count: 0 }
+    recBySwimmer[key].count++
+  })
+  const maleRecordmen = Object.values(recBySwimmer).filter((r) => r.sex === 'M').sort((a, b) => b.count - a.count).slice(0, 1)
+  const femaleRecordmen = Object.values(recBySwimmer).filter((r) => r.sex === 'F').sort((a, b) => b.count - a.count).slice(0, 1)
+
+  // Performance index distribution from topSwimmers FINA points
+  const perfTiers = [
+    { label: 'World-Class', min: 900, max: Infinity },
+    { label: 'Int\'l Elite', min: 800, max: 900 },
+    { label: 'High Perf', min: 700, max: 800 },
+    { label: 'Advanced', min: 600, max: 700 },
+    { label: 'Competitive', min: 500, max: 600 },
+    { label: 'Developing', min: 400, max: 500 },
+    { label: 'Foundation', min: 300, max: 400 },
+    { label: 'Novice', min: 200, max: 300 },
+    { label: 'Entry', min: 100, max: 200 },
+  ]
+  const perfDist = perfTiers.map((t) => ({
+    ...t, count: topSwimmers.filter((s) => s.best_fina >= t.min && s.best_fina < t.max).length,
+  }))
+  const maxPerf = Math.max(...perfDist.map((d) => d.count), 1)
+
+  // Participation by competition
+  const partByClass = {}
+  participated.forEach((c) => {
+    const cls = c.classification || 'Other'
+    partByClass[cls] = (partByClass[cls] || 0) + 1
+  })
+  const participationList = Object.entries(partByClass).sort((a, b) => b[1] - a[1])
+
+  return (
+    <div className="pad-lg" style={{ background: 'var(--color-surface)' }}>
+      <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, textAlign: 'center', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 20 }}>Statistics</h2>
+
+      {/* Row 1: Top Performance Male + Female */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <StatCard title="Top Performance" subtitle={`Best Performances by ${country.name} Male Swimmers (FINA Points)`}>
+          <TopPerfTable swimmers={topSwimmers} sex="M" />
+        </StatCard>
+        <StatCard title="Top Performance" subtitle={`Best Performances by ${country.name} Female Swimmers (FINA Points)`}>
+          <TopPerfTable swimmers={topSwimmers} sex="F" />
+        </StatCard>
+      </div>
+
+      {/* Row 2: Participation | Championships Hosted | Most Participated */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <StatCard title="Participation" subtitle="Total Participations by Competition">
+          {participationList.map(([cls, n]) => (
+            <div key={cls} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13 }}>
+              <span style={{ flex: 1 }}>{cls}</span>
+              <span className="asw-num" style={{ fontWeight: 700 }}>{n}</span>
+            </div>
+          ))}
+        </StatCard>
+        <StatCard title="Championships Hosted" subtitle="Number of Championships Hosted">
+          {hosted.length === 0 ? <Empty label="None" /> : hosted.slice(0, 6).map((c) => (
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13 }}>
+              <span style={{ flex: 1 }}>{c.name}</span>
+              <div style={{ width: Math.min(120, 120 * (1)), height: 18, background: 'var(--color-accent)', borderRadius: 2 }} />
+            </div>
+          ))}
+        </StatCard>
+        <StatCard title="Most Participated Swimmer" subtitle={`Top 5 ${country.name} Swimmers by International Participations`}>
+          <table className="table" style={{ fontSize: 13 }}>
+            <thead><tr><th style={{ width: 24 }}>#</th><th>Swimmer</th><th className="num">Participations</th></tr></thead>
+            <tbody>{maleTopSwimmers.slice(0, 5).map((s, i) => (
+              <tr key={s.id}><td className="asw-num" style={{ fontWeight: 800, color: i < 3 ? 'var(--color-accent)' : undefined }}>{i + 1}</td>
+              <td><SwimmerLink id={s.id} name={s.name} /></td>
+              <td className="num asw-num">{s.championships_count || '—'}</td></tr>
+            ))}</tbody>
+          </table>
+        </StatCard>
+      </div>
+
+      {/* Row 3: Medals | Most Male Decorated | Most Female Decorated */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <StatCard title="Medals" subtitle="Total Medals by Competition">
+          <div style={{ display: 'flex', gap: 12, marginBottom: 8, fontSize: 11 }}>
+            <span style={{ color: 'var(--asw-gold)', fontWeight: 700 }}>● Gold</span>
+            <span style={{ color: 'var(--asw-silver)', fontWeight: 700 }}>● Silver</span>
+            <span style={{ color: 'var(--asw-bronze)', fontWeight: 700 }}>● Bronze</span>
+          </div>
+          {medalBoxes.map((m) => <MedalRow key={m.name} {...m} />)}
+        </StatCard>
+        <StatCard title="Most Male Decorated" subtitle={`Top 5 ${country.name} Male Swimmers by Total Medals`}>
+          <DecoratedTable swimmers={maleTopMedalists} sex="M" />
+        </StatCard>
+        <StatCard title="Most Female Decorated" subtitle={`Top 5 ${country.name} Female Swimmers by Total Medals`}>
+          <DecoratedTable swimmers={femaleTopMedalists} sex="F" />
+        </StatCard>
+      </div>
+
+      {/* Row 4: Last Records + Most Recordmen */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <StatCard title="Last Male Record" subtitle="Most Recent Male Record">
+          {lastMaleRecord ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}><SwimmerLink id={lastMaleRecord.swimmer_id} name={lastMaleRecord.swimmer} /></div>
+              <div className="text-muted" style={{ fontSize: 12 }}>{lastMaleRecord.event}</div>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, color: 'var(--color-accent)', margin: '6px 0' }}>{lastMaleRecord.time}</div>
+              <div className="text-muted" style={{ fontSize: 12 }}>{formatDate(lastMaleRecord.date)}</div>
+            </div>
+          ) : <Empty label="No records" />}
+        </StatCard>
+        <StatCard title="Last Female Record" subtitle="Most Recent Female Record">
+          {lastFemaleRecord ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}><SwimmerLink id={lastFemaleRecord.swimmer_id} name={lastFemaleRecord.swimmer} /></div>
+              <div className="text-muted" style={{ fontSize: 12 }}>{lastFemaleRecord.event}</div>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, color: 'var(--color-accent)', margin: '6px 0' }}>{lastFemaleRecord.time}</div>
+              <div className="text-muted" style={{ fontSize: 12 }}>{formatDate(lastFemaleRecord.date)}</div>
+            </div>
+          ) : <Empty label="No records" />}
+        </StatCard>
+        <StatCard title="Most Male Recordman" subtitle={`Top ${country.name} Male by Records`}>
+          {maleRecordmen[0] ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}><SwimmerLink id={maleRecordmen[0].id} name={maleRecordmen[0].name} /></div>
+              <div className="text-muted" style={{ fontSize: 12 }}>Total Records</div>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: 'var(--color-accent)' }}>{maleRecordmen[0].count}</div>
+            </div>
+          ) : <Empty label="No records" />}
+        </StatCard>
+        <StatCard title="Most Female Recordman" subtitle={`Top ${country.name} Female by Records`}>
+          {femaleRecordmen[0] ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}><SwimmerLink id={femaleRecordmen[0].id} name={femaleRecordmen[0].name} /></div>
+              <div className="text-muted" style={{ fontSize: 12 }}>Total Records</div>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: 'var(--color-accent)' }}>{femaleRecordmen[0].count}</div>
+            </div>
+          ) : <Empty label="No records" />}
+        </StatCard>
+      </div>
+
+      {/* Row 5: Performance Index */}
+      <div style={{ ...CARD, marginBottom: 14 }}>
+        <div style={CARD_TITLE}>Performance Index</div>
+        <div style={CARD_SUB}>Distribution of {country.name} Swimmers by Performance Level</div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 160, padding: '0 4px' }}>
+          {perfDist.map((d, i) => (
+            <div key={d.label} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+              <div className="asw-num" style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{d.count || ''}</div>
+              <div style={{ width: '70%', height: `${Math.max(4, (d.count / maxPerf) * 120)}px`, background: PERF_COLORS[i % PERF_COLORS.length], borderRadius: '3px 3px 0 0' }} />
+              <div style={{ fontSize: 8, marginTop: 4, lineHeight: 1.2, color: 'var(--color-neutral-500)' }}>{d.label}<br />({d.min}-{d.max === Infinity ? '+' : d.max})</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CountryProfile() {
   const { id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -354,19 +582,15 @@ export default function CountryProfile() {
         </div>
       )}
 
-      {/* ===== STATISTICS (Progression) ===== */}
-      {tab === 'statistics' && (
-        <div className="pad-lg">
-          <SectHead title="Performance Progression">
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <Seg options={STROKES} value={progStroke} onChange={setProgStroke} />
-              <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={progPool} onChange={setProgPool} />
-            </div>
-          </SectHead>
-          <div className="micro" style={{ marginBottom: 14 }}>National best per event over time — higher is faster</div>
-          {progLoading ? <Loading label="Loading progression" /> : <ProgressionChart lines={progLines} />}
-        </div>
-      )}
+      {/* ===== STATISTICS ===== */}
+      {tab === 'statistics' && <StatisticsTab
+        profile={profile} country={country} topSwimmers={topSwimmers}
+        topMedalists={topMedalists} records={records} medalBoxes={medalBoxes}
+        hosted={hosted} participated={participated}
+        progStroke={progStroke} setProgStroke={setProgStroke}
+        progPool={progPool} setProgPool={setProgPool}
+        progLines={progLines} progLoading={progLoading}
+      />}
 
       {/* ===== RECORDS ===== */}
       {tab === 'records' && (

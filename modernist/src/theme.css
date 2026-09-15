@@ -242,7 +242,7 @@ figure { margin: 0; }
 }
 
 /* — page shell — */
-.shell { max-width: 1280px; margin: 0 auto; background: var(--color-bg); box-shadow: var(--shadow-lg); min-height: 100vh; display: flex; flex-direction: column; }
+.shell { max-width: 100%; margin: 0; background: var(--color-bg); min-height: 100vh; display: flex; flex-direction: column; }
 .shell-main { flex: 1; }
 .rule-b { border-bottom: 2px solid var(--color-divider); }
 .rule-t { border-top: 2px solid var(--color-divider); }

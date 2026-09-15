@@ -105,22 +105,27 @@ function RecordsTable({ records }) {
 
 // ─── Statistics dashboard (blue-themed cards matching ISF design) ───
 const S = {
-  bg: 'linear-gradient(180deg, #0a2d5c 0%, #0d3a73 100%)',
-  card: { background: '#fff', borderRadius: 10, padding: '18px 20px', boxShadow: '0 2px 12px rgba(0,0,0,.12)', borderLeft: '4px solid #1a56a0' },
-  title: { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#0a2d5c', display: 'flex', alignItems: 'center', gap: 8 },
-  sub: { fontSize: 10, color: '#6b7d94', marginBottom: 12, marginTop: 2 },
-  viewAll: { fontSize: 10, color: '#3b82f6', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer', textDecoration: 'none', textTransform: 'none', letterSpacing: 0 },
+  bg: 'linear-gradient(180deg, #091e3a 0%, #0c2d54 40%, #0e3668 100%)',
+  card: { background: '#fff', borderRadius: 12, padding: '20px 22px', boxShadow: '0 3px 15px rgba(0,0,0,.15)', borderLeft: '4px solid #1a56a0', position: 'relative' },
+  title: { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#0b2948', display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.2 },
+  sub: { fontSize: 10.5, color: '#7a8ca0', marginBottom: 14, marginTop: 3, lineHeight: 1.3 },
+  viewAll: { fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer', textDecoration: 'none', textTransform: 'none', letterSpacing: '0.03em' },
   rankBadge: (i) => ({
-    width: 24, height: 24, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 12, fontWeight: 800, color: '#fff', background: i < 3 ? '#0a2d5c' : '#b0bec5', flexShrink: 0,
+    width: 26, height: 26, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 12, fontWeight: 800, color: '#fff',
+    background: i === 0 ? '#0b2948' : i === 1 ? '#1a4a7a' : i === 2 ? '#2d6aaa' : '#b0bec5',
+    flexShrink: 0, boxShadow: i < 3 ? '0 1px 3px rgba(0,0,0,.2)' : 'none',
   }),
   medalCircle: (color) => ({
-    width: 28, height: 28, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     fontSize: 12, fontWeight: 800, color: '#fff', background: color, flexShrink: 0,
+    boxShadow: '0 1px 3px rgba(0,0,0,.15)',
   }),
-  th: { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7d94', padding: '6px 0', borderBottom: '2px solid #e2e8f0' },
+  th: { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', padding: '8px 0', borderBottom: '2px solid #e2e8f0' },
+  row: (i) => ({ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid #f0f3f7', fontSize: 13, background: i % 2 === 1 ? '#fafbfd' : 'transparent' }),
+  photo: { width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, #e8edf3, #d0d8e4)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: '#8a9bb5', border: '2px solid #e2e8f0' },
 }
-const PERF_BAR_COLORS = ['#e74c3c', '#e67e22', '#f39c12', '#f1c40f', '#2ecc71', '#27ae60', '#3498db', '#2980b9', '#8e44ad']
+const PERF_BAR_COLORS = ['#e63946', '#f4845f', '#f7b731', '#f5d547', '#2ecc71', '#27ae60', '#3b9dd6', '#2471a3', '#7d3c98']
 
 function SCard({ icon, title, subtitle, viewAll, children, style: extra }) {
   return (
@@ -147,9 +152,9 @@ function STableHead({ cols }) {
   )
 }
 
-function RankedRow({ rank, children }) {
+function RankedRow({ rank, idx, children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}>
+    <div style={S.row(idx ?? rank - 1)}>
       <span style={S.rankBadge(rank - 1)}>{rank}</span>
       {children}
     </div>
@@ -231,15 +236,12 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   const recordCard = (rec, label, sub) => (
     <SCard icon="🏅" title={label} subtitle={sub}>
       {rec ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '8px 0' }}>
-          {/* Photo placeholder */}
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#e2e8f0', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#94a3b8' }}>🏊</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: '#0a2d5c' }}><SwimmerLink id={rec.swimmer_id} name={rec.swimmer} /></div>
-            <div style={{ fontSize: 11, color: '#6b7d94', marginTop: 2 }}>{rec.event}</div>
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, color: '#3b82f6', marginTop: 4 }}>{rec.time || rec.count}</div>
-            {rec.date && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{formatDate(rec.date)}</div>}
-          </div>
+        <div style={{ textAlign: 'center', padding: '6px 0' }}>
+          <div style={{ ...S.photo, margin: '0 auto 10px' }}>🏊</div>
+          <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={rec.swimmer_id} name={rec.swimmer} /></div>
+          <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 3 }}>{rec.event}</div>
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#1a56a0', margin: '8px 0 4px', letterSpacing: '-0.02em' }}>{rec.time || rec.count}</div>
+          {rec.date && <div style={{ fontSize: 10, color: '#9baab8' }}>{formatDate(rec.date)}</div>}
         </div>
       ) : <Empty label="—" />}
     </SCard>
@@ -247,12 +249,12 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
   return (
     <div style={{ background: S.bg, padding: '32px 28px' }}>
-      <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, textAlign: 'center', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#fff', marginBottom: 24 }}>
-        Statistics
+      <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, textAlign: 'center', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#fff', marginBottom: 26, textShadow: '0 2px 8px rgba(0,0,0,.3)' }}>
+        ★ Statistics
       </h2>
 
       {/* Row 1: Top Performance Male + Female */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <SCard icon="♂" title="Top Performance" subtitle={`Best Performances by ${country.name} Male Swimmers (FINA Points)`} viewAll>
           {maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}
         </SCard>
@@ -262,7 +264,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
 
       {/* Row 2: Participation | Championships Hosted | Most Participated */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <SCard icon="📋" title="Participation" subtitle="Total Participations by Competition" viewAll>
           {participationList.map(([cls, n]) => (
             <div key={cls} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px dotted #cbd5e1', fontSize: 13 }}>
@@ -300,7 +302,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
 
       {/* Row 3: Medals | Most Male Decorated | Most Female Decorated */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <SCard icon="🏅" title="Medals" subtitle="Total Medals by Competition" viewAll>
           <div style={{ display: 'flex', gap: 14, marginBottom: 8, fontSize: 10 }}>
             <span><span style={{ color: '#d4af37' }}>●</span> Gold</span>
@@ -326,37 +328,33 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
 
       {/* Row 4: Last Records + Most Recordmen */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         {recordCard(lastMR, 'Last Male Record', `Most Recent ${country.name} Male Record`)}
         {recordCard(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`)}
         <SCard icon="🏅" title="Most Male Recordman" subtitle={`Top ${country.name} Male by Records`} viewAll>
           {topMaleRec ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '8px 0' }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#e2e8f0', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#94a3b8' }}>🏊</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: 14, color: '#0a2d5c' }}><SwimmerLink id={topMaleRec.id} name={topMaleRec.name} /></div>
-                <div style={{ fontSize: 11, color: '#6b7d94', marginTop: 2 }}>Total Records</div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, color: '#3b82f6', marginTop: 2 }}>{topMaleRec.count}</div>
-              </div>
+            <div style={{ textAlign: 'center', padding: '6px 0' }}>
+              <div style={{ ...S.photo, margin: '0 auto 10px' }}>🏊</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={topMaleRec.id} name={topMaleRec.name} /></div>
+              <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 3 }}>Total Records</div>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: '#1a56a0', marginTop: 4 }}>{topMaleRec.count}</div>
             </div>
           ) : <Empty label="—" />}
         </SCard>
         <SCard icon="🏅" title="Most Female Recordman" subtitle={`Top ${country.name} Female by Records`} viewAll>
           {topFemaleRec ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '8px 0' }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#e2e8f0', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#94a3b8' }}>🏊</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: 14, color: '#0a2d5c' }}><SwimmerLink id={topFemaleRec.id} name={topFemaleRec.name} /></div>
-                <div style={{ fontSize: 11, color: '#6b7d94', marginTop: 2 }}>Total Records</div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, color: '#3b82f6', marginTop: 2 }}>{topFemaleRec.count}</div>
-              </div>
+            <div style={{ textAlign: 'center', padding: '6px 0' }}>
+              <div style={{ ...S.photo, margin: '0 auto 10px' }}>🏊</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={topFemaleRec.id} name={topFemaleRec.name} /></div>
+              <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 3 }}>Total Records</div>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: '#1a56a0', marginTop: 4 }}>{topFemaleRec.count}</div>
             </div>
           ) : <Empty label="—" />}
         </SCard>
       </div>
 
       {/* Row 5: Performance Index + Country Battle */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 12 }}>
         <SCard icon="📊" title="Performance Index" subtitle={`Distribution of ${country.name} Swimmers by Performance Level`} viewAll>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 200, padding: '0 4px' }}>
             {perfDist.map((d, i) => (

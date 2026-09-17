@@ -29,7 +29,7 @@ function SwimmerLink({ id, name }) {
 
 const TABS = [
   { value: 'overview', label: 'Overview' },
-  { value: 'team', label: 'Team' },
+  { value: 'team', label: 'Swimmers' },
   { value: 'results', label: 'Results' },
   { value: 'championships', label: 'Championships' },
   { value: 'statistics', label: 'Statistics' },

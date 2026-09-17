@@ -106,7 +106,7 @@ function RecordsTable({ records }) {
 // ─── Statistics dashboard (blue-themed cards matching ISF design) ───
 const S = {
   bg: '#ffffff',
-  card: { background: '#fff', borderRadius: 8, padding: '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,.08)', border: '1px solid #e2e8f0', position: 'relative' },
+  card: { background: '#fff', borderRadius: 6, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,.06)', border: '1px solid #dde3ea', position: 'relative' },
   title: { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#0b2948', display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.2 },
   sub: { fontSize: 10.5, color: '#7a8ca0', marginBottom: 14, marginTop: 3, lineHeight: 1.3 },
   viewAll: { fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer', textDecoration: 'none', textTransform: 'none', letterSpacing: '0.03em' },
@@ -123,7 +123,8 @@ const S = {
   }),
   th: { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', padding: '8px 0', borderBottom: '2px solid #e2e8f0' },
   row: (i) => ({ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid #f0f3f7', fontSize: 13, background: i % 2 === 1 ? '#fafbfd' : 'transparent' }),
-  photo: { width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, #e8edf3, #d0d8e4)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: '#8a9bb5', border: '2px solid #e2e8f0' },
+  photo: { width: 52, height: 52, borderRadius: '50%', background: '#e8ecf1', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#8a9bb5', border: '2px solid #d0d8e4', overflow: 'hidden' },
+  photoSmall: { width: 28, height: 28, borderRadius: '50%', background: '#e8ecf1', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#8a9bb5', border: '1.5px solid #d0d8e4', overflow: 'hidden' },
 }
 const PERF_BAR_COLORS = ['#e63946', '#f4845f', '#f7b731', '#f5d547', '#2ecc71', '#27ae60', '#3b9dd6', '#2471a3', '#7d3c98']
 
@@ -206,10 +207,11 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
   const topPerfTable = (list) => (
     <>
-      <STableHead cols={[['', 20], ['Swimmer'], ['Event', 130], ['Time', 65, 'right'], ['Pts', 40, 'right']]} />
+      <STableHead cols={[['Swimmer'], ['Event', 130], ['Time', 65, 'right'], ['Pts', 40, 'right']]} />
       {list.map((s, i) => (
         <RankedRow key={s.id} rank={i + 1} idx={i}>
-          <Flag code={s.nationality_code || country.code} style={{ width: 20, height: 14 }} />
+          <span style={S.photoSmall}>🏊</span>
+          <Flag code={s.nationality_code || country.code} />
           <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}><SwimmerLink id={s.id} name={s.name} /></span>
           <span style={{ width: 130, color: '#6b7d94', fontSize: 11.5 }}>{s.best_event}</span>
           <span className="asw-num" style={{ width: 65, textAlign: 'right', fontWeight: 800, color: '#0b2948', fontSize: 13 }}>{s.best_time}</span>
@@ -225,7 +227,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       {list.map((m, i) => (
         <RankedRow key={m.id ?? i} rank={i + 1} idx={i}>
           <span style={{ flex: 1, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Flag code={m.nationality_code || country.code} />
+            <span style={S.photoSmall}>🏊</span>
             <SwimmerLink id={m.id} name={m.name} />
           </span>
           <span style={S.medalCircle('#d4af37')}>{m.gold}</span>
@@ -297,10 +299,10 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           })()}
         </SCard>
         <SCard icon="🏊" title="Most Participated Swimmer" subtitle={`Top 5 ${country.name} Swimmers by Int'l Participations`} viewAll>
-          <STableHead cols={[['', 20], ['Swimmer'], ['Participations', 90, 'right']]} />
+          <STableHead cols={[['Swimmer'], ['Participations', 90, 'right']]} />
           {topSwimmers.slice(0, 5).map((s, i) => (
             <RankedRow key={s.id} rank={i + 1} idx={i}>
-              <Flag code={s.nationality_code || country.code} />
+              <span style={S.photoSmall}>🏊</span>
               <span style={{ flex: 1, fontWeight: 700 }}><SwimmerLink id={s.id} name={s.name} /></span>
               <span className="asw-num" style={{ width: 90, textAlign: 'right', fontWeight: 900, fontSize: 14, color: '#0b2948' }}>{s.championships_count || '—'}</span>
             </RankedRow>

@@ -162,6 +162,91 @@ function RankedRow({ rank, idx, children }) {
   )
 }
 
+const AGE_CATS = ['U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'Open']
+
+function RecordsTab({ records, country }) {
+  const [gender, setGender] = useState('')
+  const [pool, setPool] = useState('')
+  const [ageCat, setAgeCat] = useState('Open')
+
+  const filtered = records.filter((r) => {
+    if (gender && r.sex !== gender) return false
+    if (pool && r.pool !== pool) return false
+    return true
+  })
+
+  const selStyle = { padding: '10px 20px', border: '1px solid #c0cad8', borderRadius: 6, fontSize: 14, fontWeight: 600, color: '#0b2948', background: '#fff', cursor: 'pointer', minWidth: 180, appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%230b2948\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }
+  const pillBase = { padding: '8px 18px', border: '2px solid #1a56a0', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }
+  const pillActive = { ...pillBase, background: '#1a56a0', color: '#fff' }
+  const pillInactive = { ...pillBase, background: '#fff', color: '#1a56a0' }
+
+  return (
+    <div style={{ padding: '28px 28px', background: '#fff' }}>
+      {/* Title */}
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{ fontSize: 28, marginBottom: 4 }}>🏅</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <div style={{ width: 60, height: 2, background: '#1a56a0' }} />
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0b2948', margin: 0 }}>Records</h2>
+          <div style={{ width: 60, height: 2, background: '#1a56a0' }} />
+        </div>
+      </div>
+
+      {/* Filters: Gender + Pool dropdowns */}
+      <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 20 }}>
+        <select style={selStyle} value={gender} onChange={(e) => setGender(e.target.value)}>
+          <option value="">♂ Gender</option>
+          <option value="M">♂ Men's</option>
+          <option value="F">♀ Women's</option>
+        </select>
+        <select style={selStyle} value={pool} onChange={(e) => setPool(e.target.value)}>
+          <option value="">🏊 Pool</option>
+          <option value="LCM">LCM (50m)</option>
+          <option value="SCM">SCM (25m)</option>
+        </select>
+      </div>
+
+      {/* Age category pills */}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
+        {AGE_CATS.map((cat) => (
+          <button key={cat} type="button" onClick={() => setAgeCat(cat)}
+            style={ageCat === cat ? pillActive : pillInactive}>
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Record cards grid */}
+      {filtered.length === 0 ? <Empty label="No records for this selection" /> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 16 }}>
+          {filtered.map((r, i) => (
+            <div key={i} style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 8, overflow: 'hidden', textAlign: 'center' }}>
+              {/* Photo area */}
+              <div style={{ height: 140, background: 'linear-gradient(135deg, #d6e4f0, #e8edf4)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#c8d5e2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, color: '#8a9bb5', border: '3px solid #fff' }}>🏊</div>
+                {/* Flag badge */}
+                <div style={{ position: 'absolute', bottom: 8, right: 8 }}>
+                  <Flag code={country.code} />
+                </div>
+              </div>
+              {/* Info */}
+              <div style={{ padding: '12px 10px 16px' }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948', marginBottom: 2 }}>
+                  <SwimmerLink id={r.swimmer_id} name={r.swimmer} />
+                </div>
+                <div style={{ fontSize: 11, color: '#7a8ca0', marginBottom: 8 }}>{r.event}</div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, color: '#1a56a0', letterSpacing: '-0.02em', marginBottom: 6 }}>{r.time}</div>
+                <div style={{ fontSize: 10, color: '#7a8ca0', fontWeight: 600 }}>National Record</div>
+                <div style={{ fontSize: 10, color: '#9baab8' }}>{r.pool} | {r.sex === 'F' ? "Women's" : "Men's"}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, medalBoxes, hosted, participated }) {
   const maleTop = topSwimmers.filter((s) => s.sex === 'M').slice(0, 5)
   const femaleTop = topSwimmers.filter((s) => s.sex === 'F').slice(0, 5)
@@ -650,18 +735,7 @@ export default function CountryProfile() {
       />}
 
       {/* ===== RECORDS ===== */}
-      {tab === 'records' && (
-        <div className="pad-lg">
-          {newRecords.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <SectHead title={`New Records · ${newRecords.length}`} to="/new-records" linkLabel="All new records" />
-              <RecordsTable records={newRecords} />
-            </div>
-          )}
-          <SectHead title={`Records Held · ${currentRecords.length}`} />
-          {currentRecords.length === 0 ? <Empty label="No records held" /> : <RecordsTable records={currentRecords} />}
-        </div>
-      )}
+      {tab === 'records' && <RecordsTab records={records} country={country} />}
 
       {/* ===== MEDALS ===== */}
       {tab === 'medals' && (

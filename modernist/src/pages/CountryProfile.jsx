@@ -206,13 +206,14 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
   const topPerfTable = (list) => (
     <>
-      <STableHead cols={[['Swimmer'], ['Event', 120], ['Time', 65, 'right'], ['Pts', 40, 'right']]} />
+      <STableHead cols={[['', 20], ['Swimmer'], ['Event', 130], ['Time', 65, 'right'], ['Pts', 40, 'right']]} />
       {list.map((s, i) => (
-        <RankedRow key={s.id} rank={i + 1}>
+        <RankedRow key={s.id} rank={i + 1} idx={i}>
+          <Flag code={s.nationality_code || country.code} style={{ width: 20, height: 14 }} />
           <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}><SwimmerLink id={s.id} name={s.name} /></span>
-          <span style={{ width: 120, color: '#6b7d94', fontSize: 12 }}>{s.best_event}</span>
-          <span className="asw-num" style={{ width: 65, textAlign: 'right', fontWeight: 800, color: '#0a2d5c', fontSize: 13 }}>{s.best_time}</span>
-          <span className="asw-num" style={{ width: 40, textAlign: 'right', fontWeight: 800, color: '#3b82f6', fontSize: 13 }}>{s.best_fina}</span>
+          <span style={{ width: 130, color: '#6b7d94', fontSize: 11.5 }}>{s.best_event}</span>
+          <span className="asw-num" style={{ width: 65, textAlign: 'right', fontWeight: 800, color: '#0b2948', fontSize: 13 }}>{s.best_time}</span>
+          <span className="asw-num" style={{ width: 40, textAlign: 'right', fontWeight: 900, color: '#1a56a0', fontSize: 14 }}>{s.best_fina}</span>
         </RankedRow>
       ))}
     </>
@@ -220,14 +221,17 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
   const decoratedTable = (list) => (
     <>
-      <STableHead cols={[['Swimmer'], ['', 28, 'center'], ['', 28, 'center'], ['', 28, 'center'], ['Total', 40, 'center']]} />
+      <STableHead cols={[['Swimmer'], ['🥇', 30, 'center'], ['🥈', 30, 'center'], ['🥉', 30, 'center'], ['Total', 44, 'center']]} />
       {list.map((m, i) => (
-        <RankedRow key={m.id ?? i} rank={i + 1}>
-          <span style={{ flex: 1, fontWeight: 700 }}><SwimmerLink id={m.id} name={m.name} /></span>
+        <RankedRow key={m.id ?? i} rank={i + 1} idx={i}>
+          <span style={{ flex: 1, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Flag code={m.nationality_code || country.code} />
+            <SwimmerLink id={m.id} name={m.name} />
+          </span>
           <span style={S.medalCircle('#d4af37')}>{m.gold}</span>
           <span style={S.medalCircle('#a8a9ad')}>{m.silver}</span>
           <span style={S.medalCircle('#cd7f32')}>{m.bronze}</span>
-          <span className="asw-num" style={{ width: 40, textAlign: 'center', fontWeight: 900, fontSize: 15, color: '#0a2d5c' }}>{m.total}</span>
+          <span className="asw-num" style={{ width: 44, textAlign: 'center', fontWeight: 900, fontSize: 16, color: '#0b2948' }}>{m.total}</span>
         </RankedRow>
       ))}
     </>
@@ -236,12 +240,14 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   const recordCard = (rec, label, sub) => (
     <SCard icon="🏅" title={label} subtitle={sub}>
       {rec ? (
-        <div style={{ textAlign: 'center', padding: '6px 0' }}>
-          <div style={{ ...S.photo, margin: '0 auto 10px' }}>🏊</div>
-          <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={rec.swimmer_id} name={rec.swimmer} /></div>
-          <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 3 }}>{rec.event}</div>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#1a56a0', margin: '8px 0 4px', letterSpacing: '-0.02em' }}>{rec.time || rec.count}</div>
-          {rec.date && <div style={{ fontSize: 10, color: '#9baab8' }}>{formatDate(rec.date)}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0' }}>
+          <div style={S.photo}>🏊</div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={rec.swimmer_id} name={rec.swimmer} /></div>
+            <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 2 }}>{rec.event}</div>
+            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 32, color: '#1a56a0', marginTop: 6, letterSpacing: '-0.02em' }}>{rec.time || rec.count}</div>
+            {rec.date && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 2 }}>{formatDate(rec.date)}</div>}
+          </div>
         </div>
       ) : <Empty label="—" />}
     </SCard>
@@ -291,11 +297,12 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           })()}
         </SCard>
         <SCard icon="🏊" title="Most Participated Swimmer" subtitle={`Top 5 ${country.name} Swimmers by Int'l Participations`} viewAll>
-          <STableHead cols={[['Swimmer'], ['Participations', 80, 'right']]} />
+          <STableHead cols={[['', 20], ['Swimmer'], ['Participations', 90, 'right']]} />
           {topSwimmers.slice(0, 5).map((s, i) => (
-            <RankedRow key={s.id} rank={i + 1}>
+            <RankedRow key={s.id} rank={i + 1} idx={i}>
+              <Flag code={s.nationality_code || country.code} />
               <span style={{ flex: 1, fontWeight: 700 }}><SwimmerLink id={s.id} name={s.name} /></span>
-              <span className="asw-num" style={{ width: 80, textAlign: 'right', fontWeight: 800, color: '#0a2d5c' }}>{s.championships_count || '—'}</span>
+              <span className="asw-num" style={{ width: 90, textAlign: 'right', fontWeight: 900, fontSize: 14, color: '#0b2948' }}>{s.championships_count || '—'}</span>
             </RankedRow>
           ))}
         </SCard>
@@ -304,18 +311,18 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       {/* Row 3: Medals | Most Male Decorated | Most Female Decorated */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <SCard icon="🏅" title="Medals" subtitle="Total Medals by Competition" viewAll>
-          <div style={{ display: 'flex', gap: 14, marginBottom: 8, fontSize: 10 }}>
-            <span><span style={{ color: '#d4af37' }}>●</span> Gold</span>
-            <span><span style={{ color: '#a8a9ad' }}>●</span> Silver</span>
-            <span><span style={{ color: '#cd7f32' }}>●</span> Bronze</span>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: 11 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={S.medalCircle('#d4af37')}>&#8203;</span> Gold</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={S.medalCircle('#a8a9ad')}>&#8203;</span> Silver</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={S.medalCircle('#cd7f32')}>&#8203;</span> Bronze</span>
           </div>
-          {medalBoxes.map((m) => (
-            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', borderBottom: '1px solid #f1f5f9', fontSize: 12 }}>
-              <span style={{ flex: 1, fontWeight: 600 }}>{m.name}</span>
+          {medalBoxes.map((m, i) => (
+            <div key={m.name} style={S.row(i)}>
+              <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}>{m.name}</span>
               <span style={S.medalCircle('#d4af37')}>{m.gold}</span>
               <span style={S.medalCircle('#a8a9ad')}>{m.silver}</span>
               <span style={S.medalCircle('#cd7f32')}>{m.bronze}</span>
-              <span className="asw-num" style={{ width: 30, textAlign: 'center', fontWeight: 900, color: '#0a2d5c' }}>{m.total}</span>
+              <span className="asw-num" style={{ width: 36, textAlign: 'center', fontWeight: 900, fontSize: 15, color: '#0b2948' }}>{m.total}</span>
             </div>
           ))}
         </SCard>
@@ -333,21 +340,25 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         {recordCard(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`)}
         <SCard icon="🏅" title="Most Male Recordman" subtitle={`Top ${country.name} Male by Records`} viewAll>
           {topMaleRec ? (
-            <div style={{ textAlign: 'center', padding: '6px 0' }}>
-              <div style={{ ...S.photo, margin: '0 auto 10px' }}>🏊</div>
-              <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={topMaleRec.id} name={topMaleRec.name} /></div>
-              <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 3 }}>Total Records</div>
-              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: '#1a56a0', marginTop: 4 }}>{topMaleRec.count}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0' }}>
+              <div style={S.photo}>🏊</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={topMaleRec.id} name={topMaleRec.name} /></div>
+                <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 2 }}>Total Records</div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: '#1a56a0', marginTop: 4 }}>{topMaleRec.count}</div>
+              </div>
             </div>
           ) : <Empty label="—" />}
         </SCard>
         <SCard icon="🏅" title="Most Female Recordman" subtitle={`Top ${country.name} Female by Records`} viewAll>
           {topFemaleRec ? (
-            <div style={{ textAlign: 'center', padding: '6px 0' }}>
-              <div style={{ ...S.photo, margin: '0 auto 10px' }}>🏊</div>
-              <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={topFemaleRec.id} name={topFemaleRec.name} /></div>
-              <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 3 }}>Total Records</div>
-              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: '#1a56a0', marginTop: 4 }}>{topFemaleRec.count}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0' }}>
+              <div style={S.photo}>🏊</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={topFemaleRec.id} name={topFemaleRec.name} /></div>
+                <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 2 }}>Total Records</div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: '#1a56a0', marginTop: 4 }}>{topFemaleRec.count}</div>
+              </div>
             </div>
           ) : <Empty label="—" />}
         </SCard>

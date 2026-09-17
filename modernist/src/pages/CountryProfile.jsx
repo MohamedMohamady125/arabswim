@@ -733,16 +733,7 @@ export default function CountryProfile() {
                   <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}>—</div>
                   <div style={{ fontSize: 12, color: '#4a90d9', fontWeight: 600, marginTop: 2 }}>{role}</div>
                 </div>
-                {/* Audio waveform placeholder */}
-                <div style={{ padding: '8px 14px 14px', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>▶</div>
-                  <div style={{ flex: 1, height: 20, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {Array.from({ length: 30 }, (_, j) => (
-                      <div key={j} style={{ width: 2, height: 4 + Math.random() * 14, background: '#b0c4d8', borderRadius: 1 }} />
-                    ))}
-                  </div>
-                </div>
-                <div style={{ fontSize: 10, color: '#7a8ca0', paddingBottom: 12 }}>Listen</div>
+                <div style={{ paddingBottom: 14 }} />
               </div>
             ))}
           </div>

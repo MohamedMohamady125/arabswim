@@ -105,8 +105,8 @@ function RecordsTable({ records }) {
 
 // ─── Statistics dashboard (blue-themed cards matching ISF design) ───
 const S = {
-  bg: 'linear-gradient(180deg, #091e3a 0%, #0c2d54 40%, #0e3668 100%)',
-  card: { background: '#fff', borderRadius: 12, padding: '20px 22px', boxShadow: '0 3px 15px rgba(0,0,0,.15)', borderLeft: '4px solid #1a56a0', position: 'relative' },
+  bg: '#ffffff',
+  card: { background: '#fff', borderRadius: 8, padding: '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,.08)', border: '1px solid #e2e8f0', position: 'relative' },
   title: { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#0b2948', display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.2 },
   sub: { fontSize: 10.5, color: '#7a8ca0', marginBottom: 14, marginTop: 3, lineHeight: 1.3 },
   viewAll: { fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer', textDecoration: 'none', textTransform: 'none', letterSpacing: '0.03em' },
@@ -255,8 +255,8 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
   return (
     <div style={{ background: S.bg, padding: '32px 28px' }}>
-      <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, textAlign: 'center', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#fff', marginBottom: 26, textShadow: '0 2px 8px rgba(0,0,0,.3)' }}>
-        ★ Statistics
+      <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, textAlign: 'center', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 26 }}>
+        Statistics
       </h2>
 
       {/* Row 1: Top Performance Male + Female */}

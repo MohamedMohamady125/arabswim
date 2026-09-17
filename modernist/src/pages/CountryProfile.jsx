@@ -699,16 +699,50 @@ export default function CountryProfile() {
       })()}
 
       {/* ===== TEAM (Swimmers) ===== */}
-      {tab === 'team' && (
-        <div className="pad-lg">
-          <SectHead title={`National Team · ${topSwimmers.length} swimmers`} />
-          {topSwimmers.length === 0 ? <Empty label="No swimmers" /> : (
-            <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th>Sex</th><th>Best event</th><th className="time">Time</th><th className="num">FINA</th></tr></thead><tbody>
-              {topSwimmers.map((s, i) => (<tr key={s.id}><td className="asw-num">{i + 1}</td><td><SwimmerLink id={s.id} name={s.name} /></td><td className="text-muted">{s.sex === 'F' ? "Women's" : "Men's"}</td><td>{s.best_event || '—'}</td><td className="time asw-time">{s.best_time || '—'}</td><td className="num asw-num">{s.best_fina ?? '—'}</td></tr>))}
-            </tbody></table></div>
-          )}
-        </div>
-      )}
+      {tab === 'team' && (() => {
+        const secTitle = (icon, text) => (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '28px 0 22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 22 }}>{icon}</span>
+              <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+            </div>
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0 }}>{text}</h3>
+            <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+          </div>
+        )
+        const swimmerCard = (s) => (
+          <div key={s.id} style={{ border: '1px solid #dde3ea', borderRadius: 8, overflow: 'hidden', textAlign: 'center' }}>
+            {/* Photo */}
+            <div style={{ height: 130, background: 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              <div style={{ width: 90, height: 90, borderRadius: '50%', background: '#b8c8d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', border: '3px solid #fff', boxShadow: '0 2px 6px rgba(0,0,0,.1)' }}>🏊</div>
+            </div>
+            {/* Info */}
+            <div style={{ padding: '10px 10px 14px' }}>
+              <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948', marginBottom: 4 }}>
+                <SwimmerLink id={s.id} name={s.name} />
+              </div>
+              <div style={{ fontSize: 11, color: '#7a8ca0', lineHeight: 1.5 }}>
+                {s.best_event || '—'}<br />
+                {s.sex === 'F' ? "Women's" : "Men's"}
+              </div>
+              <Link to={`/swimmers/${s.id}`} style={{ display: 'inline-block', marginTop: 8, fontSize: 11, color: '#4a90d9', fontWeight: 700, textDecoration: 'none' }}>
+                View Profile →
+              </Link>
+            </div>
+          </div>
+        )
+        return (
+          <div style={{ padding: '0 28px 28px', background: '#fff' }}>
+            {/* Swimmers section */}
+            {secTitle('🏊', 'Swimmers')}
+            {topSwimmers.length === 0 ? <Empty label="No swimmers" /> : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
+                {topSwimmers.map(swimmerCard)}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ===== RESULTS (Best Times) ===== */}
       {tab === 'results' && (

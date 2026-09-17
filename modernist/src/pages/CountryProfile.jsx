@@ -579,68 +579,124 @@ export default function CountryProfile() {
       </div>
 
       {/* ===== OVERVIEW ===== */}
-      {tab === 'overview' && (
-        <div>
-          {/* Medals by competition */}
-          {medalBoxes.length > 0 && (
-            <div className="pad-lg rule-b">
-              <SectHead title="Medals by Competition" />
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {medalBoxes.map((m) => (
-                  <div key={m.name} className="asw-fade-up" style={{ background: CLASS_COLORS[m.name] || 'var(--color-accent)', color: '#fff', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.75 }}>{m.name}</div>
-                    <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2 }}>{formatNumber(m.total)}</div>
-                    <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 700 }}>
-                      <span style={{ color: 'var(--asw-gold)' }}>{m.gold}G</span>
-                      <span style={{ color: 'var(--asw-silver)' }}>{m.silver}S</span>
-                      <span style={{ color: '#e3a869' }}>{m.bronze}B</span>
+      {tab === 'overview' && (() => {
+        const bestPerf = topSwimmers[0]
+        const topMedalist = topMedalists[0]
+        const newestRecord = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
+        const topRecords = records.slice(0, 5)
+        const hCard = { background: '#fff', border: '1px solid #dde3ea', borderRadius: 8, overflow: 'hidden', display: 'flex', gap: 0 }
+        const hPhoto = { width: 130, minHeight: 100, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#8a9bb5', flexShrink: 0 }
+        const hBody = { padding: '14px 16px', flex: 1 }
+        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 6 }
+        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, color: '#1a56a0', letterSpacing: '-0.02em' }
+        const hSub = { fontSize: 11, color: '#7a8ca0', marginTop: 2 }
+        const secTitle = (text) => (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '28px 0 20px' }}>
+            <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 20, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0 }}>{text}</h3>
+            <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+          </div>
+        )
+        return (
+          <div style={{ padding: '0 28px 28px', background: '#fff' }}>
+            {/* Main layout: News left + Highlights right */}
+            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 20, alignItems: 'start' }}>
+              {/* LEFT: Latest News */}
+              <div>
+                <div style={{ textAlign: 'center', marginBottom: 4 }}><span style={{ fontSize: 20 }}>📰</span></div>
+                {secTitle('Latest News')}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                      <div style={{ height: 120, background: 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: '#8a9bb5' }}>📷</div>
+                      <div style={{ padding: '10px 10px 12px' }}>
+                        <div style={{ fontSize: 10, color: '#4a90d9', fontWeight: 600, marginBottom: 4 }}>Coming soon</div>
+                        <div style={{ fontSize: 12, color: '#0b2948', fontWeight: 600, lineHeight: 1.3, marginBottom: 8 }}>Federation news will appear here</div>
+                        <span style={{ fontSize: 11, color: '#4a90d9', fontWeight: 600 }}>Read more →</span>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* RIGHT: Highlight cards */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Best Season Performance */}
+                <div style={hCard}>
+                  <div style={hPhoto}>🏊</div>
+                  <div style={hBody}>
+                    <div style={hTitle}>Best Season Performance</div>
+                    <div style={hBig}>{bestPerf?.best_time || '—'}</div>
+                    <div style={hSub}>{bestPerf?.best_event || ''}</div>
+                    <div style={hSub}>{bestPerf?.name || ''}</div>
                   </div>
-                ))}
+                </div>
+
+                {/* Most Decorated Swimmer */}
+                <div style={hCard}>
+                  <div style={hPhoto}>🏊</div>
+                  <div style={hBody}>
+                    <div style={hTitle}>Most Decorated Swimmer</div>
+                    <div style={hBig}>{topMedalist?.total || 0}</div>
+                    <div style={hSub}>Total Medals</div>
+                    <div style={hSub}>{topMedalist?.name || '—'}</div>
+                  </div>
+                </div>
+
+                {/* New Record */}
+                <div style={hCard}>
+                  <div style={hPhoto}>🏊</div>
+                  <div style={hBody}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={hTitle}>New Record</span>
+                      {newestRecord && <span style={{ fontSize: 9, fontWeight: 700, background: '#1a56a0', color: '#fff', padding: '2px 8px', borderRadius: 10 }}>NEW</span>}
+                    </div>
+                    <div style={hBig}>{newestRecord?.time || '—'}</div>
+                    <div style={hSub}>{newestRecord?.event || ''}</div>
+                    <div style={hSub}>{newestRecord?.swimmer || ''}</div>
+                    {newestRecord?.date && <div style={hSub}>{formatDate(newestRecord.date)}</div>}
+                  </div>
+                </div>
+
+                {/* Quick Stats */}
+                <div style={hCard}>
+                  <div style={hPhoto}>🏊</div>
+                  <div style={hBody}>
+                    <div style={hTitle}>Quick Stats</div>
+                    <div style={hBig}>{formatNumber(profile.stats?.swimmers)}</div>
+                    <div style={hSub}>Total Swimmers</div>
+                    <div style={{ ...hSub, marginTop: 6 }}>{formatNumber(profile.stats?.medals)} Medals · {formatNumber(profile.stats?.records)} Records</div>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Quick stats */}
-          <div className="pad-lg rule-b">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-              {[
-                ['Swimmers', profile.stats?.swimmers],
-                ['Results', profile.stats?.results],
-                ['Records', profile.stats?.records],
-                ['Medals', profile.stats?.medals],
-                ['Clubs', teams.length],
-                ['Championships Hosted', hosted.length],
-              ].map(([label, val]) => (
-                <div key={label} style={{ background: 'var(--color-surface)', padding: '14px 16px', border: '1px solid var(--color-divider)' }}>
-                  <div className="micro" style={{ marginBottom: 4 }}>{label}</div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{formatNumber(val)}</div>
+            {/* National Record Holders */}
+            <div style={{ textAlign: 'center', marginTop: 10 }}><span style={{ fontSize: 20 }}>🏅</span></div>
+            {secTitle('National Record Holders')}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
+              {topRecords.map((r, i) => (
+                <div key={i} style={{ border: '1px solid #dde3ea', borderRadius: 8, overflow: 'hidden', textAlign: 'center' }}>
+                  {/* Circular photo */}
+                  <div style={{ padding: '16px 0 8px', background: '#f5f8fb' }}>
+                    <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#d6e0ec', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, color: '#8a9bb5', border: '3px solid #fff', boxShadow: '0 2px 6px rgba(0,0,0,.1)' }}>🏊</div>
+                  </div>
+                  <div style={{ padding: '8px 10px 0' }}>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
+                    <div style={{ fontSize: 10, color: '#7a8ca0', marginTop: 2 }}>{r.event}</div>
+                    <div style={{ fontSize: 10, color: '#7a8ca0' }}>{r.pool === 'LCM' ? 'Long Course' : 'Short Course'}</div>
+                  </div>
+                  {/* Blue footer with time */}
+                  <div style={{ background: '#1a56a0', color: '#fff', padding: '10px 8px 12px', marginTop: 10 }}>
+                    <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '-0.01em' }}>{r.time}</div>
+                    <div style={{ fontSize: 9, fontWeight: 600, marginTop: 2, opacity: 0.8 }}>National Record</div>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Top swimmers + medalists */}
-          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-            <div className="pad-lg rule-r">
-              <SectHead title={`Top Swimmers · ${topSwimmers.length}`} />
-              {topSwimmers.length === 0 ? <Empty label="No swimmers" /> : (
-                <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th>Best event</th><th className="time">Time</th><th className="num">FINA</th></tr></thead><tbody>
-                  {topSwimmers.map((s, i) => (<tr key={s.id}><td className="asw-num">{i + 1}</td><td><SwimmerLink id={s.id} name={s.name} /><span className="text-muted" style={{ fontSize: 12 }}> · {s.sex === 'F' ? 'W' : 'M'}</span></td><td>{s.best_event || '—'}</td><td className="time asw-time">{s.best_time || '—'}</td><td className="num asw-num">{s.best_fina ?? '—'}</td></tr>))}
-                </tbody></table></div>
-              )}
-            </div>
-            <div className="pad-lg">
-              <SectHead title={`Top Medalists · ${topMedalists.length}`} />
-              {topMedalists.length === 0 ? <Empty label="No medals" /> : (
-                <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
-                  {topMedalists.map((m, i) => (<tr key={m.id ?? i}><td className="asw-num">{i + 1}</td><td><SwimmerLink id={m.id} name={m.name} /></td><td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{m.gold}</td><td className="num asw-num">{m.silver}</td><td className="num asw-num">{m.bronze}</td><td className="num asw-num" style={{ fontWeight: 800 }}>{m.total}</td></tr>))}
-                </tbody></table></div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ===== TEAM (Swimmers) ===== */}
       {tab === 'team' && (

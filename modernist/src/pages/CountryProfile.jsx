@@ -224,10 +224,6 @@ function RecordsTab({ records, country }) {
               {/* Photo area */}
               <div style={{ height: 140, background: 'linear-gradient(135deg, #d6e4f0, #e8edf4)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#c8d5e2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, color: '#8a9bb5', border: '3px solid #fff' }}>🏊</div>
-                {/* Flag badge */}
-                <div style={{ position: 'absolute', bottom: 8, right: 8 }}>
-                  <Flag code={country.code} />
-                </div>
               </div>
               {/* Info */}
               <div style={{ padding: '12px 10px 16px' }}>

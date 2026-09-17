@@ -29,6 +29,7 @@ function SwimmerLink({ id, name }) {
 
 const TABS = [
   { value: 'overview', label: 'Overview' },
+  { value: 'board', label: 'Board' },
   { value: 'team', label: 'Swimmers' },
   { value: 'results', label: 'Results' },
   { value: 'championships', label: 'Championships' },
@@ -697,6 +698,56 @@ export default function CountryProfile() {
           </div>
         )
       })()}
+
+      {/* ===== BOARD ===== */}
+      {tab === 'board' && (
+        <div style={{ padding: '0 28px 28px', background: '#fff' }}>
+          {/* Title */}
+          <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 4 }}>
+            <span style={{ fontSize: 24 }}>👥</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
+            <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 24, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0 }}>Board of Directors</h2>
+            <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+          </div>
+          <p style={{ textAlign: 'center', fontSize: 13, color: '#6b7d94', maxWidth: 500, margin: '0 auto 28px', lineHeight: 1.5 }}>
+            The Board of Directors is responsible for the strategic direction, governance, and overall leadership of the {country.name} Swimming Federation.
+          </p>
+
+          {/* Board member cards — placeholder data */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
+            {['President', 'Vice President', 'Treasurer', 'Secretary General', 'Technical Director',
+              'Member', 'Member', 'Member', 'Member', 'Member'].map((role, i) => (
+              <div key={i} style={{ border: '1px solid #dde3ea', borderRadius: 10, overflow: 'hidden', textAlign: 'center', background: '#fff' }}>
+                {/* Number badge */}
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 8, left: 8, width: 26, height: 26, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, zIndex: 1 }}>{i + 1}</div>
+                  {/* Photo area */}
+                  <div style={{ height: 140, background: 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 100, height: 100, borderRadius: '50%', background: '#b0c4d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#8a9bb5', border: '3px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,.1)' }}>👤</div>
+                  </div>
+                </div>
+                {/* Name + role */}
+                <div style={{ padding: '12px 10px 6px' }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}>—</div>
+                  <div style={{ fontSize: 12, color: '#4a90d9', fontWeight: 600, marginTop: 2 }}>{role}</div>
+                </div>
+                {/* Audio waveform placeholder */}
+                <div style={{ padding: '8px 14px 14px', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>▶</div>
+                  <div style={{ flex: 1, height: 20, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {Array.from({ length: 30 }, (_, j) => (
+                      <div key={j} style={{ width: 2, height: 4 + Math.random() * 14, background: '#b0c4d8', borderRadius: 1 }} />
+                    ))}
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: '#7a8ca0', paddingBottom: 12 }}>Listen</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ===== TEAM (Swimmers) ===== */}
       {tab === 'team' && (() => {

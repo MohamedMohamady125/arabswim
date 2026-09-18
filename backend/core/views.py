@@ -534,7 +534,8 @@ class CountryViewSet(viewsets.ModelViewSet):
         championships_hosted = [{
             'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,
             'location': c.location,
-        } for c in country.championships.all()[:25]]
+            'classification': c.classification.name if c.classification else None,
+        } for c in country.championships.select_related('classification').all()[:25]]
 
         # Championships participated: every championship where this country has results
         from championships.models import Championship
@@ -542,7 +543,7 @@ class CountryViewSet(viewsets.ModelViewSet):
                             .distinct())
         participated_champs = (Championship.objects
                                .filter(id__in=participated_ids)
-                               .select_related('country')
+                               .select_related('country', 'classification')
                                .order_by('-date'))
         championships_participated = []
         for c in participated_champs:
@@ -565,6 +566,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             championships_participated.append({
                 'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,
                 'location': c.location,
+                'classification': c.classification.name if c.classification else None,
                 'results_count': c_results_count,
                 'swimmers_count': len(c_swimmers),
                 'swimmers': c_swimmers,

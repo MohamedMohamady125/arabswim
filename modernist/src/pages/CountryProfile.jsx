@@ -356,21 +356,24 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <SCard icon="📋" title="Participation" subtitle="Total Participations by Competition" viewAll>
           {participationList.map(([cls, n]) => (
-            <div key={cls} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px dotted #cbd5e1', fontSize: 13 }}>
-              <span style={{ flex: 1 }}>{cls}</span>
-              <span className="asw-num" style={{ fontWeight: 800, color: '#0a2d5c', fontSize: 14 }}>{n}</span>
+            <div key={cls} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+              <span style={{ width: 110, fontSize: 11.5, fontWeight: 600, flexShrink: 0 }}>{cls}</span>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: `${(n / maxPart) * 100}%`, minWidth: 20, height: 20, background: 'linear-gradient(90deg, #1a56a0, #3b82f6)', borderRadius: 3 }} />
+                <span className="asw-num" style={{ fontWeight: 800, color: '#0a2d5c', fontSize: 13 }}>{n}</span>
+              </div>
             </div>
           ))}
         </SCard>
         <SCard icon="🏟" title="Championships Hosted" subtitle="Number of Championships Hosted" viewAll>
           {hosted.length === 0 ? <Empty label="None" /> : (() => {
             const counts = {}
-            hosted.forEach((c) => { counts[c.name] = (counts[c.name] || 0) + 1 })
+            hosted.forEach((c) => { const k = c.classification || 'Other'; counts[k] = (counts[k] || 0) + 1 })
             const list = Object.entries(counts).sort((a, b) => b[1] - a[1])
             const mx = Math.max(...list.map(([, n]) => n), 1)
-            return list.slice(0, 6).map(([name, n]) => (
-              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
-                <span style={{ width: 140, fontSize: 11, flexShrink: 0 }}>{name}</span>
+            return list.map(([cls, n]) => (
+              <div key={cls} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+                <span style={{ width: 110, fontSize: 11.5, fontWeight: 600, flexShrink: 0 }}>{cls}</span>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: `${(n / mx) * 100}%`, minWidth: 20, height: 20, background: 'linear-gradient(90deg, #1a56a0, #3b82f6)', borderRadius: 3 }} />
                   <span className="asw-num" style={{ fontWeight: 800, color: '#0a2d5c', fontSize: 13 }}>{n}</span>
@@ -394,20 +397,33 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       {/* Row 3: Medals | Most Male Decorated | Most Female Decorated */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <SCard icon="🏅" title="Medals" subtitle="Total Medals by Competition" viewAll>
-          <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: 11 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={S.medalCircle('#d4af37')}>&#8203;</span> Gold</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={S.medalCircle('#a8a9ad')}>&#8203;</span> Silver</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={S.medalCircle('#cd7f32')}>&#8203;</span> Bronze</span>
+          <div style={{ display: 'flex', gap: 14, marginBottom: 12, fontSize: 11, alignItems: 'center' }}>
+            {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([label, color]) => (
+              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, display: 'inline-block' }} /> {label}
+              </span>
+            ))}
           </div>
-          {medalBoxes.map((m, i) => (
-            <div key={m.name} style={S.row(i)}>
-              <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}>{m.name}</span>
-              <span style={S.medalCircle('#d4af37')}>{m.gold}</span>
-              <span style={S.medalCircle('#a8a9ad')}>{m.silver}</span>
-              <span style={S.medalCircle('#cd7f32')}>{m.bronze}</span>
-              <span className="asw-num" style={{ width: 36, textAlign: 'center', fontWeight: 900, fontSize: 15, color: '#0b2948' }}>{m.total}</span>
-            </div>
-          ))}
+          {(() => {
+            const maxTotal = Math.max(...medalBoxes.map((m) => m.total), 1)
+            return medalBoxes.map((m) => (
+              <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 12 }}>
+                <span style={{ width: 90, fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>{m.name}</span>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: `${(m.total / maxTotal) * 100}%`, minWidth: m.total > 0 ? 24 : 0, height: 20, display: 'flex', borderRadius: 3, overflow: 'hidden' }}>
+                    {[['gold', '#d4af37'], ['silver', '#a8a9ad'], ['bronze', '#cd7f32']].map(([key, color]) => (
+                      m[key] > 0 && (
+                        <div key={key} style={{ flex: m[key], background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 10.5, minWidth: 14 }} className="asw-num">
+                          {m[key]}
+                        </div>
+                      )
+                    ))}
+                  </div>
+                  <span className="asw-num" style={{ fontWeight: 900, color: '#0b2948', fontSize: 13 }}>{m.total}</span>
+                </div>
+              </div>
+            ))
+          })()}
         </SCard>
         <SCard icon="♂" title="Most Male Decorated" subtitle={`Top 5 ${country.name} Male Swimmers by Total Medals`} viewAll>
           {maleMedalists.length ? decoratedTable(maleMedalists) : <Empty label="No data" />}

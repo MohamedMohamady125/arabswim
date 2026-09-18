@@ -520,16 +520,17 @@ class CountryViewSet(viewsets.ModelViewSet):
 
         top_medalists = list(
             medals_qs.filter(swimmer__is_relay_team=False)
-            .values('swimmer_id', 'swimmer__name')
+            .values('swimmer_id', 'swimmer__name', 'swimmer__sex')
             .annotate(gold=Count('id', filter=Q(medal_type='GOLD')),
                       silver=Count('id', filter=Q(medal_type='SILVER')),
                       bronze=Count('id', filter=Q(medal_type='BRONZE')),
                       total=Count('id'))
-            .order_by('-gold', '-silver', '-bronze')[:10]
+            .order_by('-gold', '-silver', '-bronze')[:20]
         )
         for m in top_medalists:
             m['id'] = m.pop('swimmer_id')
             m['name'] = m.pop('swimmer__name')
+            m['sex'] = m.pop('swimmer__sex')
 
         championships_hosted = [{
             'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,

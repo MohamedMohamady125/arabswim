@@ -585,12 +585,12 @@ export default function CountryProfile() {
         const topMedalist = topMedalists[0]
         const newestRecord = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
         const topRecords = records.slice(0, 5)
-        const hCard = { background: '#fff', border: '1px solid #dde3ea', borderRadius: 8, overflow: 'hidden', display: 'flex', gap: 0 }
-        const hPhoto = { width: 130, minHeight: 100, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#8a9bb5', flexShrink: 0 }
-        const hBody = { padding: '14px 16px', flex: 1 }
-        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 6 }
-        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, color: '#1a56a0', letterSpacing: '-0.02em' }
-        const hSub = { fontSize: 11, color: '#7a8ca0', marginTop: 2 }
+        const hCard = { background: '#fff', border: '1px solid #dde3ea', borderRadius: 12, overflow: 'hidden', display: 'flex', gap: 0, boxShadow: '0 2px 8px rgba(11,41,72,.06)' }
+        const hPhoto = { width: 160, minHeight: 170, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: '#8a9bb5', flexShrink: 0 }
+        const hBody = { padding: '20px 22px', flex: 1 }
+        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 8, lineHeight: 1.25 }
+        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, color: '#1a56a0', letterSpacing: '-0.02em' }
+        const hSub = { fontSize: 13, color: '#7a8ca0', marginTop: 3 }
         const secTitle = (text) => (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '28px 0 20px' }}>
             <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
@@ -621,7 +621,7 @@ export default function CountryProfile() {
               </div>
 
               {/* RIGHT: Highlight cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Best Season Performance */}
                 <div style={hCard}>
                   <div style={hPhoto}>🏊</div>
@@ -650,7 +650,7 @@ export default function CountryProfile() {
                   <div style={hBody}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={hTitle}>New Record</span>
-                      {newestRecord && <span style={{ fontSize: 9, fontWeight: 700, background: '#1a56a0', color: '#fff', padding: '2px 8px', borderRadius: 10 }}>NEW</span>}
+                      {newestRecord && <span style={{ fontSize: 11, fontWeight: 700, background: '#1a56a0', color: '#fff', padding: '3px 10px', borderRadius: 12 }}>NEW</span>}
                     </div>
                     <div style={hBig}>{newestRecord?.time || '—'}</div>
                     <div style={hSub}>{newestRecord?.event || ''}</div>
@@ -675,22 +675,22 @@ export default function CountryProfile() {
             {/* National Record Holders */}
             <div style={{ textAlign: 'center', marginTop: 10 }}><span style={{ fontSize: 20 }}>🏅</span></div>
             {secTitle('National Record Holders')}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 18 }}>
               {topRecords.map((r, i) => (
-                <div key={i} style={{ border: '1px solid #dde3ea', borderRadius: 8, overflow: 'hidden', textAlign: 'center' }}>
+                <div key={i} style={{ border: '1px solid #dde3ea', borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', boxShadow: '0 2px 8px rgba(11,41,72,.06)' }}>
                   {/* Circular photo */}
-                  <div style={{ padding: '16px 0 8px', background: '#f5f8fb' }}>
-                    <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#d6e0ec', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, color: '#8a9bb5', border: '3px solid #fff', boxShadow: '0 2px 6px rgba(0,0,0,.1)' }}>🏊</div>
+                  <div style={{ padding: '24px 0 12px', background: '#f5f8fb' }}>
+                    <div style={{ width: 150, height: 150, borderRadius: '50%', background: '#d6e0ec', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: '#8a9bb5', border: '4px solid #fff', boxShadow: '0 3px 10px rgba(0,0,0,.12)' }}>🏊</div>
                   </div>
-                  <div style={{ padding: '8px 10px 0' }}>
-                    <div style={{ fontWeight: 800, fontSize: 13, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
-                    <div style={{ fontSize: 10, color: '#7a8ca0', marginTop: 2 }}>{r.event}</div>
-                    <div style={{ fontSize: 10, color: '#7a8ca0' }}>{r.pool === 'LCM' ? 'Long Course' : 'Short Course'}</div>
+                  <div style={{ padding: '12px 12px 0' }}>
+                    <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
+                    <div style={{ fontSize: 13, color: '#7a8ca0', marginTop: 4 }}>{r.event}</div>
+                    <div style={{ fontSize: 13, color: '#7a8ca0' }}>{r.pool === 'LCM' ? 'Long Course' : 'Short Course'}</div>
                   </div>
                   {/* Blue footer with time */}
-                  <div style={{ background: '#1a56a0', color: '#fff', padding: '10px 8px 12px', marginTop: 10 }}>
-                    <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '-0.01em' }}>{r.time}</div>
-                    <div style={{ fontSize: 9, fontWeight: 600, marginTop: 2, opacity: 0.8 }}>National Record</div>
+                  <div style={{ background: '#1a56a0', color: '#fff', padding: '14px 10px 16px', marginTop: 14 }}>
+                    <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, letterSpacing: '-0.01em' }}>{r.time}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginTop: 3, opacity: 0.85 }}>National Record</div>
                   </div>
                 </div>
               ))}

@@ -778,6 +778,20 @@ export default function CountryProfile() {
                   <div style={{ fontWeight: 800, fontSize: 18, color: '#0b2948' }}>—</div>
                   <div style={{ fontSize: 14, color: '#5a6b80', fontWeight: 600, marginTop: 8 }}>{role}</div>
                 </div>
+                {/* Listen row: play button + waveform */}
+                <div style={{ marginTop: 'auto', paddingTop: 22, width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#0d2d5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
+                      <div style={{ width: 0, height: 0, borderTop: '7px solid transparent', borderBottom: '7px solid transparent', borderLeft: '11px solid #fff', marginLeft: 3 }} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 26 }}>
+                      {[9, 15, 6, 19, 12, 23, 8, 16, 11, 21, 7, 14, 18, 10, 24, 13, 6, 17, 9, 20, 12, 7, 15, 10].map((h, k) => (
+                        <span key={k} style={{ width: 2.5, height: h, background: '#0d2d5e', borderRadius: 2, display: 'inline-block' }} />
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#0b2948', fontWeight: 700, marginTop: 10 }}>Listen</div>
+                </div>
               </div>
             ))}
           </div>

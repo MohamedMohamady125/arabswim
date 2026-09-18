@@ -127,7 +127,7 @@ const S = {
   photo: { width: 52, height: 52, borderRadius: '50%', background: '#e8ecf1', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#8a9bb5', border: '2px solid #d0d8e4', overflow: 'hidden' },
   photoSmall: { width: 28, height: 28, borderRadius: '50%', background: '#e8ecf1', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#8a9bb5', border: '1.5px solid #d0d8e4', overflow: 'hidden' },
 }
-const PERF_BAR_COLORS = ['#e63946', '#f4845f', '#f7b731', '#f5d547', '#2ecc71', '#27ae60', '#3b9dd6', '#2471a3', '#7d3c98']
+const PERF_BAR_COLORS = ['#e63946', '#f4845f', '#f7b731', '#f5d547', '#52c78a', '#27ae60', '#3b9dd6', '#2471a3', '#7d3c98', '#b0bec5']
 
 function SCard({ icon, title, subtitle, viewAll, children, style: extra }) {
   return (
@@ -265,18 +265,19 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   const topFemaleRec = Object.values(recBySwimmer).filter((r) => r.sex === 'F').sort((a, b) => b.count - a.count)[0]
 
   const perfTiers = [
-    { label: 'World-Class', range: '(900+)', min: 900, max: Infinity },
-    { label: 'Int\'l Elite', range: '(800-899)', min: 800, max: 900 },
-    { label: 'High Perf', range: '(700-799)', min: 700, max: 800 },
-    { label: 'Advanced', range: '(600-699)', min: 600, max: 700 },
-    { label: 'Competitive', range: '(500-599)', min: 500, max: 600 },
-    { label: 'Developing', range: '(400-499)', min: 400, max: 500 },
-    { label: 'Foundation', range: '(300-399)', min: 300, max: 400 },
-    { label: 'Novice', range: '(200-299)', min: 200, max: 300 },
-    { label: 'Entry', range: '(100-199)', min: 100, max: 200 },
+    { label: 'World Class', range: '1000+', min: 1000, max: Infinity },
+    { label: 'Super Elite', range: '900-999', min: 900, max: 1000 },
+    { label: 'Elite', range: '700-799', min: 700, max: 900 },
+    { label: 'Excellence', range: '600-699', min: 600, max: 700 },
+    { label: 'Advanced', range: '500-599', min: 500, max: 600 },
+    { label: 'Competitive', range: '400-499', min: 400, max: 500 },
+    { label: 'Developing', range: '300-399', min: 300, max: 400 },
+    { label: 'Fondation', range: '200-299', min: 200, max: 300 },
+    { label: 'Novice', range: '100-199', min: 100, max: 200 },
+    { label: 'Initiation', range: '0-99', min: 0, max: 100 },
   ]
   const perfDist = perfTiers.map((t) => ({
-    ...t, count: topSwimmers.filter((s) => s.best_fina >= t.min && s.best_fina < t.max).length,
+    ...t, count: topSwimmers.filter((s) => (s.best_fina || 0) >= t.min && (s.best_fina || 0) < t.max).length,
   }))
   const maxPerf = Math.max(...perfDist.map((d) => d.count), 1)
 
@@ -285,221 +286,232 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   const participationList = Object.entries(partByClass).sort((a, b) => b[1] - a[1])
   const maxPart = Math.max(...participationList.map(([, n]) => n), 1)
 
-  const maxHosted = Math.max(...hosted.map(() => 1), 1)
+  // Helpers
+  const cardHeader = (icon, title, sub) => (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 16, color: '#1a56a0' }}>{icon}</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0b2948' }}>{title}</span>
+        <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer' }}>View All</span>
+      </div>
+      <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 2, lineHeight: 1.3 }}>{sub}</div>
+    </div>
+  )
+  const card = (children, extra = {}) => (
+    <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea', ...extra }}>{children}</div>
+  )
+  const thStyle = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', paddingBottom: 6, borderBottom: '2px solid #e2e8f0' }
+  const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f0f4f8', fontSize: 12.5, background: i % 2 === 1 ? '#fafbfd' : 'transparent' })
+  const badge = { width: 24, height: 24, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }
+  const mc = (color) => ({ width: 26, height: 26, borderRadius: '50%', background: color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 })
+  const barRow = (label, n, max) => (
+    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
+      <span style={{ width: 130, fontSize: 11.5, fontWeight: 600, flexShrink: 0, color: '#374151' }}>{label}</span>
+      <div style={{ flex: 1, height: 18, background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${(n / max) * 100}%`, height: '100%', background: '#1a56a0', borderRadius: 3, minWidth: n > 0 ? 8 : 0 }} />
+      </div>
+      <span className="asw-num" style={{ width: 28, textAlign: 'right', fontWeight: 800, color: '#0b2948', fontSize: 13, flexShrink: 0 }}>{n}</span>
+    </div>
+  )
 
   const topPerfTable = (list) => (
     <>
-      <STableHead cols={[['Swimmer'], ['Event', 130], ['Time', 65, 'right'], ['Pts', 40, 'right']]} />
+      <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
+        <span style={{ width: 24 }}>#</span>
+        <span style={{ flex: 1 }}>Swimmer</span>
+        <span style={{ width: 120 }}>Event</span>
+        <span style={{ width: 60, textAlign: 'right' }}>Time</span>
+        <span style={{ width: 36, textAlign: 'right' }}>Pts</span>
+      </div>
       {list.map((s, i) => (
-        <RankedRow key={s.id} rank={i + 1} idx={i}>
+        <div key={s.id} style={rowStyle(i)}>
+          <span style={badge}>{i + 1}</span>
           <Flag code={s.nationality_code || country.code} />
-          <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}><SwimmerLink id={s.id} name={s.name} /></span>
-          <span style={{ width: 130, color: '#6b7d94', fontSize: 11.5 }}>{s.best_event}</span>
-          <span className="asw-num" style={{ width: 65, textAlign: 'right', fontWeight: 800, color: '#0b2948', fontSize: 13 }}>{s.best_time}</span>
-          <span className="asw-num" style={{ width: 40, textAlign: 'right', fontWeight: 900, color: '#1a56a0', fontSize: 14 }}>{s.best_fina}</span>
-        </RankedRow>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948' }}><SwimmerLink id={s.id} name={s.name} /></span>
+          <span style={{ width: 120, color: '#6b7d94', fontSize: 11 }}>{s.best_event}</span>
+          <span className="asw-num" style={{ width: 60, textAlign: 'right', fontWeight: 800, color: '#0b2948', fontSize: 12.5 }}>{s.best_time}</span>
+          <span className="asw-num" style={{ width: 36, textAlign: 'right', fontWeight: 900, color: '#1a56a0', fontSize: 13 }}>{s.best_fina}</span>
+        </div>
       ))}
     </>
   )
 
   const decoratedTable = (list) => (
     <>
-      <STableHead cols={[['Swimmer'], ['🥇', 30, 'center'], ['🥈', 30, 'center'], ['🥉', 30, 'center'], ['Total', 44, 'center']]} />
+      <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
+        <span style={{ width: 24 }}>#</span>
+        <span style={{ flex: 1 }}>Swimmer</span>
+        <span style={{ width: 28, textAlign: 'center' }}>🥇</span>
+        <span style={{ width: 28, textAlign: 'center' }}>🥈</span>
+        <span style={{ width: 28, textAlign: 'center' }}>🥉</span>
+        <span style={{ width: 40, textAlign: 'center' }}>Total</span>
+      </div>
       {list.map((m, i) => (
-        <RankedRow key={m.id ?? i} rank={i + 1} idx={i}>
-          <span style={{ flex: 1, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={S.photoSmall}>🏊</span>
-            <SwimmerLink id={m.id} name={m.name} />
-          </span>
-          <span style={S.medalCircle('#d4af37')}>{m.gold}</span>
-          <span style={S.medalCircle('#a8a9ad')}>{m.silver}</span>
-          <span style={S.medalCircle('#cd7f32')}>{m.bronze}</span>
-          <span className="asw-num" style={{ width: 44, textAlign: 'center', fontWeight: 900, fontSize: 16, color: '#0b2948' }}>{m.total}</span>
-        </RankedRow>
+        <div key={m.id ?? i} style={rowStyle(i)}>
+          <span style={badge}>{i + 1}</span>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948' }}><SwimmerLink id={m.id} name={m.name} /></span>
+          <span style={mc('#d4af37')}>{m.gold}</span>
+          <span style={mc('#a8a9ad')}>{m.silver}</span>
+          <span style={mc('#cd7f32')}>{m.bronze}</span>
+          <span className="asw-num" style={{ width: 40, textAlign: 'center', fontWeight: 900, fontSize: 14, color: '#0b2948' }}>{m.total}</span>
+        </div>
       ))}
     </>
   )
 
-  const recordCard = (rec, label, sub, icon) => (
-    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
-      {/* Header */}
-      <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid #f0f3f7' }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#0b2948', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span>{icon || '🏅'}</span>{label}
-          <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
+  const recCard4 = (rec, label, sub, icon, isRecordman = false) => (
+    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
+      <div style={{ padding: '10px 12px 6px', borderBottom: '1px solid #f0f3f7' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ fontSize: 14, color: '#1a56a0' }}>{icon}</span>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0b2948' }}>{label}</span>
+          <span style={{ fontSize: 9, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
         </div>
-        <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 2 }}>{sub}</div>
+        <div style={{ fontSize: 9.5, color: '#7a8ca0', marginTop: 2 }}>{sub}</div>
       </div>
       {rec ? (
-        <div style={{ display: 'flex', alignItems: 'stretch' }}>
-          {/* Large photo left */}
-          <div style={{ width: 110, minHeight: 140, background: 'linear-gradient(160deg, #1a3a6a, #2d6aaa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>🏊</div>
-          {/* Info right */}
-          <div style={{ padding: '14px 14px', flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <Flag code={rec.nationality_code || country.code} />
-              <span style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={rec.swimmer_id} name={rec.swimmer} /></span>
-            </div>
-            <div style={{ fontSize: 11, color: '#7a8ca0', marginBottom: 8 }}>{rec.event}</div>
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>{rec.time}</div>
-            {rec.date && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 6 }}>{formatDate(rec.date)}</div>}
-          </div>
-        </div>
-      ) : (
-        <div style={{ padding: '24px', textAlign: 'center', color: '#aab', fontSize: 13 }}>—</div>
-      )}
-    </div>
-  )
-
-  const recordmanCard = (rec, label, sub, icon) => (
-    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
-      <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid #f0f3f7' }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#0b2948', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span>{icon || '🏅'}</span>{label}
-          <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
-        </div>
-        <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 2 }}>{sub}</div>
-      </div>
-      {rec ? (
-        <div style={{ display: 'flex', alignItems: 'stretch' }}>
-          <div style={{ width: 110, minHeight: 140, background: 'linear-gradient(160deg, #1a3a6a, #2d6aaa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>🏊</div>
-          <div style={{ padding: '14px 14px', flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
+          {/* Photo panel */}
+          <div style={{ width: 100, background: 'linear-gradient(170deg, #0d2d5e 0%, #1a56a0 60%, #3b82c4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>🏊</div>
+          {/* Info */}
+          <div style={{ padding: '12px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
               <Flag code={country.code} />
-              <span style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={rec.id} name={rec.name} /></span>
+              <span style={{ fontWeight: 800, fontSize: 12.5, color: '#0b2948', lineHeight: 1.2 }}>
+                <SwimmerLink id={isRecordman ? rec.id : rec.swimmer_id} name={isRecordman ? rec.name : rec.swimmer} />
+              </span>
             </div>
-            <div style={{ fontSize: 11, color: '#7a8ca0', marginBottom: 8 }}>Total Records</div>
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 42, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>{rec.count}</div>
+            {!isRecordman && <div style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>{rec.event}</div>}
+            {isRecordman && <div style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>Total Records</div>}
+            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: isRecordman ? 40 : 30, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>
+              {isRecordman ? rec.count : rec.time}
+            </div>
+            {!isRecordman && rec.date && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 5 }}>{formatDate(rec.date)}</div>}
           </div>
         </div>
       ) : (
-        <div style={{ padding: '24px', textAlign: 'center', color: '#aab', fontSize: 13 }}>—</div>
+        <div style={{ padding: '30px', textAlign: 'center', color: '#bbb', fontSize: 13, minHeight: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>—</div>
       )}
     </div>
   )
 
   return (
-    <div style={{ background: S.bg, padding: '32px 28px' }}>
-      <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, textAlign: 'center', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 26 }}>
-        Statistics
-      </h2>
+    <div style={{ background: '#f8fafc', padding: '28px 24px' }}>
+      {/* Page title */}
+      <div style={{ textAlign: 'center', marginBottom: 22 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 2, background: '#1a56a0' }} />
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0b2948' }}>Statistics</span>
+          <div style={{ width: 40, height: 2, background: '#1a56a0' }} />
+        </div>
+      </div>
 
-      {/* Row 1: Top Performance Male + Female */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <SCard icon="♂" title="Top Performance" subtitle={`Best Performances by ${country.name} Male Swimmers (FINA Points)`} viewAll>
-          {maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}
-        </SCard>
-        <SCard icon="♀" title="Top Performance" subtitle={`Best Performances by ${country.name} Female Swimmers (FINA Points)`} viewAll>
-          {femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No data" />}
-        </SCard>
+      {/* Row 1: Top Performance Male | Female */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        {card(<>{cardHeader('♂', 'Top Performance', `Best Performances by ${country.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}</>)}
+        {card(<>{cardHeader('♀', 'Top Performance', `Best Performances by ${country.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No data" />}</>)}
       </div>
 
       {/* Row 2: Participation | Championships Hosted | Most Participated */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <SCard icon="📋" title="Participation" subtitle="Total Participations by Competition" viewAll>
-          {participationList.map(([cls, n]) => (
-            <div key={cls} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
-              <span style={{ width: 110, fontSize: 11.5, fontWeight: 600, flexShrink: 0 }}>{cls}</span>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: `${(n / maxPart) * 100}%`, minWidth: 20, height: 20, background: 'linear-gradient(90deg, #1a56a0, #3b82f6)', borderRadius: 3 }} />
-                <span className="asw-num" style={{ fontWeight: 800, color: '#0a2d5c', fontSize: 13 }}>{n}</span>
-              </div>
-            </div>
-          ))}
-        </SCard>
-        <SCard icon="🏟" title="Championships Hosted" subtitle="Number of Championships Hosted" viewAll>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+        {card(<>
+          {cardHeader('🌐', 'Participation', 'Total Participations by Competition')}
+          {participationList.length === 0 ? <Empty label="No data" /> : participationList.map(([cls, n]) => barRow(cls, n, maxPart))}
+        </>)}
+        {card(<>
+          {cardHeader('🏟', 'Championships Hosted', 'Number of Championships Hosted')}
           {hosted.length === 0 ? <Empty label="None" /> : (() => {
             const counts = {}
             hosted.forEach((c) => { const k = c.classification || 'Other'; counts[k] = (counts[k] || 0) + 1 })
             const list = Object.entries(counts).sort((a, b) => b[1] - a[1])
             const mx = Math.max(...list.map(([, n]) => n), 1)
-            return list.map(([cls, n]) => (
-              <div key={cls} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
-                <span style={{ width: 110, fontSize: 11.5, fontWeight: 600, flexShrink: 0 }}>{cls}</span>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: `${(n / mx) * 100}%`, minWidth: 20, height: 20, background: 'linear-gradient(90deg, #1a56a0, #3b82f6)', borderRadius: 3 }} />
-                  <span className="asw-num" style={{ fontWeight: 800, color: '#0a2d5c', fontSize: 13 }}>{n}</span>
-                </div>
-              </div>
-            ))
+            return list.map(([cls, n]) => barRow(cls, n, mx))
           })()}
-        </SCard>
-        <SCard icon="🏊" title="Most Participated Swimmer" subtitle={`Top 5 ${country.name} Swimmers by Int'l Participations`} viewAll>
-          <STableHead cols={[['Swimmer'], ['Participations', 90, 'right']]} />
+        </>)}
+        {card(<>
+          {cardHeader('👥', 'Most Participed Swimmer', `Top 5 ${country.name} Swimmers by International Participations`)}
+          <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
+            <span style={{ width: 24 }}>#</span>
+            <span style={{ flex: 1 }}>Swimmer</span>
+            <span style={{ width: 90, textAlign: 'right' }}>Participations</span>
+          </div>
           {topSwimmers.slice(0, 5).map((s, i) => (
-            <RankedRow key={s.id} rank={i + 1} idx={i}>
-              <span style={S.photoSmall}>🏊</span>
-              <span style={{ flex: 1, fontWeight: 700 }}><SwimmerLink id={s.id} name={s.name} /></span>
-              <span className="asw-num" style={{ width: 90, textAlign: 'right', fontWeight: 900, fontSize: 14, color: '#0b2948' }}>{s.championships_count || '—'}</span>
-            </RankedRow>
+            <div key={s.id} style={rowStyle(i)}>
+              <span style={badge}>{i + 1}</span>
+              <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948' }}><SwimmerLink id={s.id} name={s.name} /></span>
+              <span className="asw-num" style={{ width: 90, textAlign: 'right', fontWeight: 900, fontSize: 14, color: '#0b2948' }}>{s.championships_count ?? '—'}</span>
+            </div>
           ))}
-        </SCard>
+        </>)}
       </div>
 
       {/* Row 3: Medals | Most Male Decorated | Most Female Decorated */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <SCard icon="🏅" title="Medals" subtitle="Total Medals by Competition" viewAll>
-          <div style={{ display: 'flex', gap: 14, marginBottom: 12, fontSize: 11, alignItems: 'center' }}>
-            {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([label, color]) => (
-              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, display: 'inline-block' }} /> {label}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+        {card(<>
+          {cardHeader('🏅', 'Medals', 'Total Medals by Competition')}
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11 }}>
+            {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([lbl, c]) => (
+              <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: c, display: 'inline-block' }} />{lbl}
               </span>
             ))}
           </div>
           {(() => {
             const maxTotal = Math.max(...medalBoxes.map((m) => m.total), 1)
             return medalBoxes.map((m) => (
-              <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 12 }}>
-                <span style={{ width: 90, fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>{m.name}</span>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: `${(m.total / maxTotal) * 100}%`, minWidth: m.total > 0 ? 24 : 0, height: 20, display: 'flex', borderRadius: 3, overflow: 'hidden' }}>
-                    {[['gold', '#d4af37'], ['silver', '#a8a9ad'], ['bronze', '#cd7f32']].map(([key, color]) => (
-                      m[key] > 0 && (
-                        <div key={key} style={{ flex: m[key], background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 10.5, minWidth: 14 }} className="asw-num">
-                          {m[key]}
-                        </div>
-                      )
-                    ))}
+              <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+                <span style={{ width: 88, fontSize: 11.5, fontWeight: 700, flexShrink: 0, color: '#374151' }}>{m.name}</span>
+                <div style={{ flex: 1, height: 20, display: 'flex', background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${(m.total / maxTotal) * 100}%`, display: 'flex', minWidth: m.total > 0 ? 20 : 0 }}>
+                    {[['gold', '#d4af37'], ['silver', '#a8a9ad'], ['bronze', '#cd7f32']].map(([key, color]) =>
+                      m[key] > 0 && <div key={key} style={{ flex: m[key], background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 10, minWidth: 14 }} className="asw-num">{m[key]}</div>
+                    )}
                   </div>
-                  <span className="asw-num" style={{ fontWeight: 900, color: '#0b2948', fontSize: 13 }}>{m.total}</span>
                 </div>
+                <span className="asw-num" style={{ width: 26, textAlign: 'right', fontWeight: 900, color: '#0b2948', fontSize: 13, flexShrink: 0 }}>{m.total}</span>
               </div>
             ))
           })()}
-        </SCard>
-        <SCard icon="♂" title="Most Male Decorated" subtitle={`Top 5 ${country.name} Male Swimmers by Total Medals`} viewAll>
-          {maleMedalists.length ? decoratedTable(maleMedalists) : <Empty label="No data" />}
-        </SCard>
-        <SCard icon="♀" title="Most Female Decorated" subtitle={`Top 5 ${country.name} Female Swimmers by Total Medals`} viewAll>
-          {femaleMedalists.length ? decoratedTable(femaleMedalists) : <Empty label="No data" />}
-        </SCard>
+        </>)}
+        {card(<>{cardHeader('♂', 'Most Male Decorated', `Top 5 ${country.name} Male Swimmers by Total Medals`)}{maleMedalists.length ? decoratedTable(maleMedalists) : <Empty label="No data" />}</>)}
+        {card(<>{cardHeader('♀', 'Most Female Decorated', `Top 5 ${country.name} Female Swimmers by Total Medals`)}{femaleMedalists.length ? decoratedTable(femaleMedalists) : <Empty label="No data" />}</>)}
       </div>
 
-      {/* Row 4: Last Records + Most Recordmen */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-        {recordCard(lastMR, 'Last Male Record', `Most Recent ${country.name} Male Record`, '♂')}
-        {recordCard(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`, '♀')}
-        {recordmanCard(topMaleRec, 'Most Male Recordan', `Top 5 ${country.name} Male Swimmers by Records`, '♂')}
-        {recordmanCard(topFemaleRec, 'Most Female Recordan', `Top 5 ${country.name} Female Swimmers by Records`, '♀')}
+      {/* Row 4: Last Male Record | Last Female Record | Most Male Recordan | Most Femal Recordan */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+        {recCard4(lastMR, 'Last Male Record', `Most Recent ${country.name} Male Record`, '♂', false)}
+        {recCard4(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`, '♀', false)}
+        {recCard4(topMaleRec, 'Most Male Recordan', `Top ${country.name} Male Swimmers by Records`, '♂', true)}
+        {recCard4(topFemaleRec, 'Most Femal Recordan', `Top ${country.name} Female Swimmers by Records`, '♀', true)}
       </div>
 
-      {/* Row 5: Performance Index + Country Battle */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 12 }}>
-        <SCard icon="📊" title="Performance Index" subtitle={`Distribution of ${country.name} Swimmers by Performance Level`} viewAll>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 200, padding: '0 4px' }}>
+      {/* Row 5: Performance Index (dark bg) | Country Battle */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+        {/* Performance Index — dark navy background like ISF */}
+        <div style={{ background: '#0b2948', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 16, color: '#4a90d9' }}>📊</span>
+            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#fff' }}>Performance Index</span>
+            <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer' }}>View All</span>
+          </div>
+          <div style={{ fontSize: 10.5, color: '#8aaccc', marginBottom: 18, lineHeight: 1.3 }}>Distribution of {country.name} Swimmers by Performance Level</div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 180 }}>
             {perfDist.map((d, i) => (
               <div key={d.label} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                {d.count > 0 && <div className="asw-num" style={{ fontSize: 13, fontWeight: 900, marginBottom: 4, color: '#0a2d5c' }}>{d.count}</div>}
-                <div style={{ width: '80%', height: `${Math.max(6, (d.count / maxPerf) * 150)}px`, background: PERF_BAR_COLORS[i], borderRadius: '4px 4px 0 0' }} />
-                <div style={{ fontSize: 8, marginTop: 6, lineHeight: 1.15, color: '#475569', fontWeight: 700 }}>{d.label}</div>
-                <div style={{ fontSize: 7, color: '#94a3b8' }}>{d.range}</div>
+                {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: '#fff' }}>{d.count}</div>}
+                <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: '3px 3px 0 0' }} />
+                <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, color: '#8aaccc', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
+                <div style={{ fontSize: 6.5, color: '#4a6a8a', marginTop: 1 }}>({d.range})</div>
               </div>
             ))}
           </div>
-        </SCard>
-        <SCard icon="⚔" title="Country Battle" subtitle="Number of Swimmers in the Top 100 Arab Ranking" viewAll>
+        </div>
+        {/* Country Battle */}
+        {card(<>
+          {cardHeader('👥', 'Country Battle', 'Number of Swimmers in the Top 100 Arab Ranking')}
           <Empty label="Coming soon" />
-        </SCard>
+        </>)}
       </div>
     </div>
   )

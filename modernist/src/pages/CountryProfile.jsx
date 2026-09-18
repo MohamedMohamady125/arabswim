@@ -750,21 +750,19 @@ export default function CountryProfile() {
           </div>
         )
         const swimmerCard = (s) => (
-          <div key={s.id} style={{ border: '1px solid #dde3ea', borderRadius: 8, overflow: 'hidden', textAlign: 'center' }}>
-            {/* Photo */}
-            <div style={{ height: 130, background: 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-              <div style={{ width: 90, height: 90, borderRadius: '50%', background: '#b8c8d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', border: '3px solid #fff', boxShadow: '0 2px 6px rgba(0,0,0,.1)' }}>🏊</div>
-            </div>
+          <div key={s.id} style={{ borderRadius: 16, overflow: 'hidden', textAlign: 'center', background: 'linear-gradient(180deg, #f4f8fc 0%, #eef3f9 100%)', border: '1px solid #e2e9f2', boxShadow: '0 2px 10px rgba(11,41,72,.06)', padding: '24px 14px 22px' }}>
+            {/* Circular photo blended on white ring */}
+            <div style={{ width: 150, height: 150, borderRadius: '50%', background: 'radial-gradient(circle at 50% 40%, #e8eef5, #cdd9e6)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: '#8a9bb5', border: '6px solid #fff', boxShadow: '0 4px 14px rgba(11,41,72,.12)' }}>🏊</div>
             {/* Info */}
-            <div style={{ padding: '10px 10px 14px' }}>
-              <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948', marginBottom: 4 }}>
+            <div style={{ padding: '16px 4px 0' }}>
+              <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948', marginBottom: 6 }}>
                 <SwimmerLink id={s.id} name={s.name} />
               </div>
-              <div style={{ fontSize: 11, color: '#7a8ca0', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: '#5a6b80', lineHeight: 1.55 }}>
                 {s.best_event || '—'}<br />
                 {s.sex === 'F' ? "Women's" : "Men's"}
               </div>
-              <Link to={`/swimmers/${s.id}`} style={{ display: 'inline-block', marginTop: 8, fontSize: 11, color: '#4a90d9', fontWeight: 700, textDecoration: 'none' }}>
+              <Link to={`/swimmers/${s.id}`} style={{ display: 'inline-block', marginTop: 12, fontSize: 13, color: '#1a56a0', fontWeight: 700, textDecoration: 'none' }}>
                 View Profile →
               </Link>
             </div>
@@ -775,7 +773,7 @@ export default function CountryProfile() {
             {/* Swimmers section */}
             {secTitle('🏊', 'Swimmers')}
             {topSwimmers.length === 0 ? <Empty label="No swimmers" /> : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 18 }}>
                 {topSwimmers.map(swimmerCard)}
               </div>
             )}

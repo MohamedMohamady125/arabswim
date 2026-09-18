@@ -320,20 +320,62 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
     </>
   )
 
-  const recordCard = (rec, label, sub) => (
-    <SCard icon="🏅" title={label} subtitle={sub}>
+  const recordCard = (rec, label, sub, icon) => (
+    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
+      {/* Header */}
+      <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid #f0f3f7' }}>
+        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#0b2948', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{icon || '🏅'}</span>{label}
+          <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
+        </div>
+        <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 2 }}>{sub}</div>
+      </div>
       {rec ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0' }}>
-          <div style={S.photo}>🏊</div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={rec.swimmer_id} name={rec.swimmer} /></div>
-            <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 2 }}>{rec.event}</div>
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 32, color: '#1a56a0', marginTop: 6, letterSpacing: '-0.02em' }}>{rec.time || rec.count}</div>
-            {rec.date && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 2 }}>{formatDate(rec.date)}</div>}
+        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+          {/* Large photo left */}
+          <div style={{ width: 110, minHeight: 140, background: 'linear-gradient(160deg, #1a3a6a, #2d6aaa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>🏊</div>
+          {/* Info right */}
+          <div style={{ padding: '14px 14px', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Flag code={rec.nationality_code || country.code} />
+              <span style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={rec.swimmer_id} name={rec.swimmer} /></span>
+            </div>
+            <div style={{ fontSize: 11, color: '#7a8ca0', marginBottom: 8 }}>{rec.event}</div>
+            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>{rec.time}</div>
+            {rec.date && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 6 }}>{formatDate(rec.date)}</div>}
           </div>
         </div>
-      ) : <Empty label="—" />}
-    </SCard>
+      ) : (
+        <div style={{ padding: '24px', textAlign: 'center', color: '#aab', fontSize: 13 }}>—</div>
+      )}
+    </div>
+  )
+
+  const recordmanCard = (rec, label, sub, icon) => (
+    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
+      <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid #f0f3f7' }}>
+        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#0b2948', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{icon || '🏅'}</span>{label}
+          <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
+        </div>
+        <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 2 }}>{sub}</div>
+      </div>
+      {rec ? (
+        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+          <div style={{ width: 110, minHeight: 140, background: 'linear-gradient(160deg, #1a3a6a, #2d6aaa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>🏊</div>
+          <div style={{ padding: '14px 14px', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Flag code={country.code} />
+              <span style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={rec.id} name={rec.name} /></span>
+            </div>
+            <div style={{ fontSize: 11, color: '#7a8ca0', marginBottom: 8 }}>Total Records</div>
+            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 42, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>{rec.count}</div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding: '24px', textAlign: 'center', color: '#aab', fontSize: 13 }}>—</div>
+      )}
+    </div>
   )
 
   return (
@@ -435,32 +477,10 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
       {/* Row 4: Last Records + Most Recordmen */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-        {recordCard(lastMR, 'Last Male Record', `Most Recent ${country.name} Male Record`)}
-        {recordCard(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`)}
-        <SCard icon="🏅" title="Most Male Recordman" subtitle={`Top ${country.name} Male by Records`} viewAll>
-          {topMaleRec ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0' }}>
-              <div style={S.photo}>🏊</div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={topMaleRec.id} name={topMaleRec.name} /></div>
-                <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 2 }}>Total Records</div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: '#1a56a0', marginTop: 4 }}>{topMaleRec.count}</div>
-              </div>
-            </div>
-          ) : <Empty label="—" />}
-        </SCard>
-        <SCard icon="🏅" title="Most Female Recordman" subtitle={`Top ${country.name} Female by Records`} viewAll>
-          {topFemaleRec ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0' }}>
-              <div style={S.photo}>🏊</div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}><SwimmerLink id={topFemaleRec.id} name={topFemaleRec.name} /></div>
-                <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 2 }}>Total Records</div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 36, color: '#1a56a0', marginTop: 4 }}>{topFemaleRec.count}</div>
-              </div>
-            </div>
-          ) : <Empty label="—" />}
-        </SCard>
+        {recordCard(lastMR, 'Last Male Record', `Most Recent ${country.name} Male Record`, '♂')}
+        {recordCard(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`, '♀')}
+        {recordmanCard(topMaleRec, 'Most Male Recordan', `Top 5 ${country.name} Male Swimmers by Records`, '♂')}
+        {recordmanCard(topFemaleRec, 'Most Female Recordan', `Top 5 ${country.name} Female Swimmers by Records`, '♀')}
       </div>
 
       {/* Row 5: Performance Index + Country Battle */}

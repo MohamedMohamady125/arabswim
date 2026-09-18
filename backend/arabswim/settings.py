@@ -146,6 +146,8 @@ STORAGES = {
 # (comma-separated), e.g. a future custom domain.
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^https://arabswim.*\.vercel\.app$',
+    r'^https://arabswim.*\.web\.app$',
+    r'^https://arabswim.*\.firebaseapp\.com$',
 ]
 CORS_ALLOWED_ORIGINS = [
     o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()

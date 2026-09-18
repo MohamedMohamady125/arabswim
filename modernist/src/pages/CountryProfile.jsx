@@ -810,33 +810,6 @@ export default function CountryProfile() {
             <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
           </div>
         )
-        const waveHeights = [7, 12, 5, 15, 9, 17, 6, 13, 8, 16, 5, 11, 14, 7, 18, 10, 5, 13, 7, 15, 9, 6, 12, 8]
-        const listenRow = (label) => (
-          <div style={{ marginTop: 'auto', paddingTop: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0d2d5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
-                <div style={{ width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '10px solid #fff', marginLeft: 3 }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 20 }}>
-                {waveHeights.map((h, k) => (
-                  <span key={k} style={{ width: 2, height: h, background: '#0d2d5e', borderRadius: 2, display: 'inline-block' }} />
-                ))}
-              </div>
-            </div>
-            <div style={{ fontSize: 12, color: '#0b2948', fontWeight: 600, marginTop: 8 }}>{label}</div>
-          </div>
-        )
-        const coachCard = (role, i) => (
-          <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
-            {/* Large rounded-square photo */}
-            <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>👤</div>
-            <div style={{ paddingTop: 16 }}>
-              <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}>—</div>
-              <div style={{ fontSize: 13.5, color: '#1a56a0', fontWeight: 600, marginTop: 6 }}>{role}</div>
-            </div>
-            {listenRow('Listen to message')}
-          </div>
-        )
         const swimmerCard = (s) => (
           <div key={s.id} style={{ borderRadius: 16, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '22px 14px 18px', display: 'flex', flexDirection: 'column' }}>
             {/* Circular photo with navy ring */}
@@ -860,11 +833,6 @@ export default function CountryProfile() {
         )
         return (
           <div style={{ padding: '0 28px 28px', background: '#eef3f9' }}>
-            {/* Coaches section */}
-            {secTitle('👤', 'Coaches')}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18, marginBottom: 36 }}>
-              {['Head Coach', 'Assistant Coach', 'Swimming Coach', 'Conditioning Coach'].map(coachCard)}
-            </div>
             {/* Swimmers section */}
             {secTitle('🏊', 'Swimmers')}
             {topSwimmers.length === 0 ? <Empty label="No swimmers" /> : (

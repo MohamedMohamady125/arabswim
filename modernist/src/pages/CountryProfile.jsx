@@ -349,7 +349,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       {list.map((m, i) => (
         <div key={m.id ?? i} style={rowStyle(i)}>
           <span style={badge}>{i + 1}</span>
-          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948' }}><SwimmerLink id={m.id} name={m.name} /></span>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948', display: 'flex', alignItems: 'center', gap: 6 }}><Flag code={m.nationality_code || country.code} /><SwimmerLink id={m.id} name={m.name} /></span>
           <span style={mc('#d4af37')}>{m.gold}</span>
           <span style={mc('#a8a9ad')}>{m.silver}</span>
           <span style={mc('#cd7f32')}>{m.bronze}</span>
@@ -429,7 +429,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           })()}
         </>)}
         {card(<>
-          {cardHeader('👥', 'Most Participed Swimmer', `Top 5 ${country.name} Swimmers by International Participations`)}
+          {cardHeader('👥', 'Most Participated Swimmer', `Top 5 ${country.name} Swimmers by International Participations`)}
           <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
             <span style={{ width: 24 }}>#</span>
             <span style={{ flex: 1 }}>Swimmer</span>
@@ -438,7 +438,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           {topSwimmers.slice(0, 5).map((s, i) => (
             <div key={s.id} style={rowStyle(i)}>
               <span style={badge}>{i + 1}</span>
-              <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948' }}><SwimmerLink id={s.id} name={s.name} /></span>
+              <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948', display: 'flex', alignItems: 'center', gap: 6 }}><Flag code={s.nationality_code || country.code} /><SwimmerLink id={s.id} name={s.name} /></span>
               <span className="asw-num" style={{ width: 90, textAlign: 'right', fontWeight: 900, fontSize: 14, color: '#0b2948' }}>{s.championships_count ?? '—'}</span>
             </div>
           ))}

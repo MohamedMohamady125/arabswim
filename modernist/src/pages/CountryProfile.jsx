@@ -716,24 +716,21 @@ export default function CountryProfile() {
           </p>
 
           {/* Board member cards — placeholder data */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 18 }}>
             {['President', 'Vice President', 'Treasurer', 'Secretary General', 'Technical Director',
               'Member', 'Member', 'Member', 'Member', 'Member'].map((role, i) => (
-              <div key={i} style={{ border: '1px solid #dde3ea', borderRadius: 10, overflow: 'hidden', textAlign: 'center', background: '#fff' }}>
+              <div key={i} style={{ borderRadius: 16, overflow: 'hidden', textAlign: 'center', background: 'linear-gradient(180deg, #f4f8fc 0%, #eef3f9 100%)', border: '1px solid #e2e9f2', boxShadow: '0 2px 10px rgba(11,41,72,.06)', position: 'relative', padding: '18px 14px 26px' }}>
                 {/* Number badge */}
-                <div style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 8, left: 8, width: 26, height: 26, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, zIndex: 1 }}>{i + 1}</div>
-                  {/* Photo area */}
-                  <div style={{ height: 140, background: 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: 100, height: 100, borderRadius: '50%', background: '#b0c4d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#8a9bb5', border: '3px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,.1)' }}>👤</div>
-                  </div>
+                <div style={{ position: 'absolute', top: 12, left: 12, width: 30, height: 30, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, zIndex: 1 }}>{i + 1}</div>
+                {/* Circular photo blended on white ring */}
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle at 50% 40%, #e8eef5, #cdd9e6)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '6px solid #fff', boxShadow: '0 4px 14px rgba(11,41,72,.12)' }}>👤</div>
                 </div>
                 {/* Name + role */}
-                <div style={{ padding: '12px 10px 6px' }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948' }}>—</div>
-                  <div style={{ fontSize: 12, color: '#4a90d9', fontWeight: 600, marginTop: 2 }}>{role}</div>
+                <div style={{ padding: '18px 6px 0' }}>
+                  <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}>—</div>
+                  <div style={{ fontSize: 13, color: '#5a6b80', fontWeight: 600, marginTop: 5 }}>{role}</div>
                 </div>
-                <div style={{ paddingBottom: 14 }} />
               </div>
             ))}
           </div>

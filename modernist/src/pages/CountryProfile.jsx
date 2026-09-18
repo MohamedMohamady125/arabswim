@@ -114,8 +114,8 @@ const S = {
   rankBadge: (i) => ({
     width: 26, height: 26, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     fontSize: 12, fontWeight: 800, color: '#fff',
-    background: i === 0 ? '#0b2948' : i === 1 ? '#1a4a7a' : i === 2 ? '#2d6aaa' : '#b0bec5',
-    flexShrink: 0, boxShadow: i < 3 ? '0 1px 3px rgba(0,0,0,.2)' : 'none',
+    background: '#1a56a0',
+    flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,.2)',
   }),
   medalCircle: (color) => ({
     width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -292,7 +292,6 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       <STableHead cols={[['Swimmer'], ['Event', 130], ['Time', 65, 'right'], ['Pts', 40, 'right']]} />
       {list.map((s, i) => (
         <RankedRow key={s.id} rank={i + 1} idx={i}>
-          <span style={S.photoSmall}>🏊</span>
           <Flag code={s.nationality_code || country.code} />
           <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}><SwimmerLink id={s.id} name={s.name} /></span>
           <span style={{ width: 130, color: '#6b7d94', fontSize: 11.5 }}>{s.best_event}</span>

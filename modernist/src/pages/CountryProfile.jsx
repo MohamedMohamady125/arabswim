@@ -1,21 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { getCountryProfile, getCountryProgression, getEvents } from '../api/core'
-import { getClassifications } from '../api/championships'
-import { getMedalSummary } from '../api/medals'
+import { getCountryProfile, getCountryProgression, getEvents, getCountries } from '../api/core'
 import { getArticles } from '../api/news'
 import { getRankings } from '../api/rankings'
 import { getQualifyingStandards, getQualifyingStandard } from '../api/qualifyingTimes'
 import { getPredictions } from '../api/predictions'
 import { getAlbums } from '../api/media'
+import { getBoardMembers } from '../api/teams'
+import { getCoaches } from '../api/coaches'
 import Flag from '../components/Flag'
 import { Loading, Empty, SectHead, Seg } from '../components/ui'
 import { formatDate, formatNumber, formatTime } from '../utils'
 
 const CLASS_ORDER = ['Arab', 'GCC', 'African', 'Asian', 'Mediterranean', 'Islamic', 'World', 'Olympic']
+const COACH_LEVELS = {
+  HEAD: 'Head Coach', ASSISTANT: 'Assistant Coach', TECHNIQUE: 'Technique Coach',
+  FITNESS: 'Fitness / S&C Coach', YOUTH: 'Youth Development Coach', PRIVATE: 'Private Coach',
+}
 const CLASS_COLORS = {
   Arab: '#1c4e86', GCC: '#7d8a99', African: '#a8402f', Asian: '#a05f2c',
   Mediterranean: '#4a8fc0', Islamic: '#0d7a52', World: '#b98a1e', Olympic: '#0c2340',
+  National: '#2e6b4f', University: '#6b4f8a', Other: '#5a6572',
 }
 
 const STROKES = [
@@ -87,17 +92,30 @@ function timeToCs(str) {
 /* ===== NEWS TAB ===== */
 function NewsTab({ countryId, countryName }) {
   const [articles, setArticles] = useState(null)
+  const [regionWide, setRegionWide] = useState(false)
   useEffect(() => {
     let alive = true
+    const unwrap = (r) => (Array.isArray(r.data) ? r.data : r.data?.results || [])
     getArticles({ country: countryId, status: 'PUBLISHED', ordering: '-published_at' })
-      .then((r) => alive && setArticles(Array.isArray(r.data) ? r.data : r.data?.results || []))
+      .then((r) => {
+        const mine = unwrap(r)
+        if (mine.length) { if (alive) { setArticles(mine); setRegionWide(false) }; return null }
+        // No country-tagged articles — fall back to Arab swimming news
+        return getArticles({ status: 'PUBLISHED', ordering: '-published_at' })
+          .then((r2) => { if (alive) { setArticles(unwrap(r2)); setRegionWide(true) } })
+      })
       .catch(() => alive && setArticles([]))
     return () => { alive = false }
   }, [countryId])
   if (articles === null) return <Loading label="Loading news" />
   return (
     <div className="pad-lg">
-      <TabHeading title={`${countryName} News`} />
+      <TabHeading title={regionWide ? 'Arab Swimming News' : `${countryName} News`} />
+      {regionWide && articles.length > 0 && (
+        <div style={{ textAlign: 'center', fontSize: 12.5, color: '#6b7d94', margin: '-8px 0 18px' }}>
+          No {countryName}-specific articles yet — showing the latest news from around the Arab swimming world.
+        </div>
+      )}
       {articles.length === 0 ? <Empty label="No news articles yet" /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {articles.map((a) => (
@@ -338,7 +356,7 @@ function PredictionTab({ countryName }) {
 }
 
 /* ===== MULTIMEDIA TAB ===== */
-function MultimediaTab({ champIds, countryName }) {
+function MultimediaTab({ champIds, champNames, countryName }) {
   const [albums, setAlbums] = useState(null)
   useEffect(() => {
     let alive = true
@@ -348,7 +366,13 @@ function MultimediaTab({ champIds, countryName }) {
     return () => { alive = false }
   }, [])
   if (albums === null) return <Loading label="Loading albums" />
-  const mine = albums.filter((a) => a.championship && champIds.has(a.championship))
+  // Match by championship id, or fall back to title matching — album↔meet
+  // links can be severed when a meet is deleted and re-imported (SET_NULL).
+  const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const nameSet = new Set([...(champNames || [])].map(norm))
+  const mine = albums.filter((a) =>
+    (a.championship && champIds.has(a.championship)) ||
+    (!a.championship && nameSet.has(norm(a.title))))
   return (
     <div className="pad-lg">
       <TabHeading title={`${countryName} Multimedia`} />
@@ -592,6 +616,9 @@ function RecordsTab({ records, country }) {
   const filtered = records.filter((r) => {
     if (gender && r.sex !== gender) return false
     if (pool && r.pool !== pool) return false
+    const wanted = ageCat === 'Open' ? 'OPEN' : ageCat
+    if (r.age_category && r.age_category !== wanted) return false
+    if (!r.age_category && ageCat !== 'Open') return false
     return true
   })
 
@@ -655,6 +682,90 @@ function RecordsTab({ records, country }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CompareTab({ profile, country }) {
+  const [countries, setCountries] = useState([])
+  const [otherId, setOtherId] = useState('')
+  const [other, setOther] = useState(null)
+  const [loadingOther, setLoadingOther] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    getCountries({ page_size: 100 })
+      .then((r) => {
+        const rows = Array.isArray(r.data) ? r.data : r.data?.results || []
+        if (alive) setCountries(rows.filter((c) => ['ARAB', 'GCC'].includes(c.region) && c.id !== country.id))
+      })
+      .catch(() => alive && setCountries([]))
+    return () => { alive = false }
+  }, [country.id])
+
+  useEffect(() => {
+    if (!otherId) { setOther(null); return }
+    let alive = true; setLoadingOther(true)
+    getCountryProfile(otherId)
+      .then((r) => alive && setOther(r.data))
+      .catch(() => alive && setOther(null))
+      .finally(() => alive && setLoadingOther(false))
+    return () => { alive = false }
+  }, [otherId])
+
+  const battleCount = (p, cid) => (p?.country_battle || []).find((b) => b.country_id === cid)?.count || 0
+  const bestFina = (p, sex) => {
+    const pts = (p?.top_swimmers || []).filter((s) => s.sex === sex).map((s) => s.best_fina || 0)
+    return pts.length ? Math.max(...pts) : null
+  }
+
+  const rows = other ? [
+    ['Swimmers', profile.stats.swimmers, other.stats.swimmers],
+    ['Registered Clubs', profile.stats.teams, other.stats.teams],
+    ['Results in Database', profile.stats.results, other.stats.results],
+    ['National Records', profile.stats.records, other.stats.records],
+    ['Championships Hosted', profile.stats.championships_hosted, other.stats.championships_hosted],
+    ['Gold Medals', profile.medals.gold, other.medals.gold],
+    ['Silver Medals', profile.medals.silver, other.medals.silver],
+    ['Bronze Medals', profile.medals.bronze, other.medals.bronze],
+    ['Total Medals', profile.medals.total, other.medals.total],
+    ['Swimmers in Top 100 Arab Ranking', battleCount(profile, country.id), battleCount(profile, other.country.id)],
+    ['Best Male FINA Points', bestFina(profile, 'M'), bestFina(other, 'M')],
+    ['Best Female FINA Points', bestFina(profile, 'F'), bestFina(other, 'F')],
+  ] : []
+
+  return (
+    <div className="pad-lg">
+      <TabHeading title="Federation Comparison" />
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, margin: '18px 0 26px', flexWrap: 'wrap' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: '#0b2948' }}><Flag code={country.code} /> {country.name}</span>
+        <span style={{ fontWeight: 900, color: '#1a56a0', fontSize: 15 }}>VS</span>
+        <select value={otherId} onChange={(e) => setOtherId(e.target.value)} style={{ padding: '9px 14px', border: '2px solid #1a56a0', borderRadius: 6, fontSize: 13.5, fontWeight: 700, color: '#0b2948', background: '#fff', fontFamily: 'inherit' }}>
+          <option value="">Choose a federation…</option>
+          {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </div>
+      {loadingOther && <Loading label="Loading federation" />}
+      {!loadingOther && !other && <Empty label="Pick a federation to compare against" />}
+      {!loadingOther && other && (
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#0b2948', color: '#fff', borderRadius: '8px 8px 0 0', fontWeight: 800, fontSize: 14 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Flag code={country.code} /> {country.name}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{other.country.name} <Flag code={other.country.code} /></span>
+          </div>
+          {rows.map(([label, a, b], i) => {
+            const winA = a > b; const winB = b > a
+            const numStyle = (win) => ({ width: 110, fontWeight: 900, fontSize: 16, color: win ? '#1a56a0' : '#6b7a90' })
+            return (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', background: i % 2 ? '#f4f8fc' : '#fff', borderBottom: '1px solid #e3ecf5' }}>
+                <span className="asw-num" style={{ ...numStyle(winA), textAlign: 'left' }}>{formatNumber(a)}</span>
+                <span style={{ flex: 1, textAlign: 'center', fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#374151' }}>{label}</span>
+                <span className="asw-num" style={{ ...numStyle(winB), textAlign: 'right' }}>{formatNumber(b)}</span>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -852,7 +963,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
             <span style={{ flex: 1 }}>Swimmer</span>
             <span style={{ width: 90, textAlign: 'right' }}>Participations</span>
           </div>
-          {topSwimmers.slice(0, 5).map((s, i) => (
+          {(profile.most_participated?.length ? profile.most_participated : topSwimmers).slice(0, 5).map((s, i) => (
             <div key={s.id} style={rowStyle(i)}>
               <span style={badge}>{i + 1}</span>
               <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948', display: 'flex', alignItems: 'center', gap: 6 }}><Flag code={s.nationality_code || country.code} /><SwimmerLink id={s.id} name={s.name} /></span>
@@ -927,7 +1038,24 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         {/* Country Battle */}
         {card(<>
           {cardHeader('👥', 'Country Battle', 'Number of Swimmers in the Top 100 Arab Ranking')}
-          <Empty label="Coming soon" />
+          {!(profile.country_battle || []).length ? <Empty label="No data" /> : (() => {
+            const battle = profile.country_battle.slice(0, 10)
+            const mx = Math.max(...battle.map((b) => b.count), 1)
+            return battle.map((b) => {
+              const mine = b.country_id === country.id
+              return (
+                <div key={b.country_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
+                  <span style={{ width: 96, fontSize: 11.5, fontWeight: mine ? 900 : 600, flexShrink: 0, color: mine ? '#1a56a0' : '#374151', display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    <Flag code={b.code} />{b.name}
+                  </span>
+                  <div style={{ flex: 1, height: 18, background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ width: `${(b.count / mx) * 100}%`, height: '100%', background: mine ? '#1a56a0' : '#9db8d6', borderRadius: 3, minWidth: b.count > 0 ? 8 : 0 }} />
+                  </div>
+                  <span className="asw-num" style={{ width: 24, textAlign: 'right', fontWeight: 800, color: '#0b2948', fontSize: 13, flexShrink: 0 }}>{b.count}</span>
+                </div>
+              )
+            })
+          })()}
         </>)}
       </div>
     </div>
@@ -953,30 +1081,40 @@ export default function CountryProfile() {
   const [resultsSub, setResultsSub] = useState('national')
   const [champSub, setChampSub] = useState('hosted')
   const [qualSub, setQualSub] = useState('standards')
-  const [classMedals, setClassMedals] = useState(null)
   const [ovNews, setOvNews] = useState([])
+  const [boardMembers, setBoardMembers] = useState([])
+  const [countryCoaches, setCountryCoaches] = useState([])
 
   useEffect(() => {
     let alive = true
-    getArticles({ country: id, status: 'PUBLISHED', ordering: '-published_at' })
-      .then((r) => alive && setOvNews((Array.isArray(r.data) ? r.data : r.data?.results || []).slice(0, 4)))
-      .catch(() => alive && setOvNews([]))
+    getCoaches({ country: id })
+      .then((r) => alive && setCountryCoaches((Array.isArray(r.data) ? r.data : r.data?.results || []).slice(0, 8)))
+      .catch(() => alive && setCountryCoaches([]))
     return () => { alive = false }
   }, [id])
 
   useEffect(() => {
+    if (!profile) return
+    const nat = (profile.teams || []).find((t) => t.is_national_team) || null
+    if (!nat) { setBoardMembers([]); return }
     let alive = true
-    getClassifications()
-      .then(async (res) => {
-        const all = Array.isArray(res.data) ? res.data : res.data?.results || []
-        const wanted = CLASS_ORDER.map((name) => all.find((c) => c.name === name)).filter(Boolean)
-        const sums = await Promise.all(wanted.map((c) =>
-          getMedalSummary({ classification: c.id, country: id })
-            .then((r) => { const rows = Array.isArray(r.data) ? r.data : r.data?.results || []; const row = rows[0] || {}; return { name: c.name, gold: row.gold || 0, silver: row.silver || 0, bronze: row.bronze || 0, total: row.total || 0 } })
-            .catch(() => ({ name: c.name, gold: 0, silver: 0, bronze: 0, total: 0 }))))
-        if (alive) setClassMedals(sums)
+    getBoardMembers({ team: nat.id })
+      .then((r) => alive && setBoardMembers(Array.isArray(r.data) ? r.data : r.data?.results || []))
+      .catch(() => alive && setBoardMembers([]))
+    return () => { alive = false }
+  }, [profile])
+
+  useEffect(() => {
+    let alive = true
+    const unwrap = (r) => (Array.isArray(r.data) ? r.data : r.data?.results || [])
+    getArticles({ country: id, status: 'PUBLISHED', ordering: '-published_at' })
+      .then((r) => {
+        const mine = unwrap(r)
+        if (mine.length) { if (alive) setOvNews(mine.slice(0, 4)); return null }
+        return getArticles({ status: 'PUBLISHED', ordering: '-published_at' })
+          .then((r2) => alive && setOvNews(unwrap(r2).slice(0, 4)))
       })
-      .catch(() => { if (alive) setClassMedals([]) })
+      .catch(() => alive && setOvNews([]))
     return () => { alive = false }
   }, [id])
 
@@ -1013,7 +1151,18 @@ export default function CountryProfile() {
   const filteredBest = bestTimes.filter((b) => (!btSex || b.sex === btSex) && (!btPool || b.pool === btPool))
   const newRecords = records.filter((r) => r.is_new)
   const currentRecords = records.filter((r) => !r.is_new)
-  const medalBoxes = (classMedals || []).filter((m) => m.name === 'Arab' || (m.name === 'GCC' && country.region === 'GCC') || m.total > 0)
+  // Medal tally per competition type: real counts from the profile payload,
+  // plus a zero box for every classification this country competed in.
+  const medalBoxes = (() => {
+    const byName = {}
+    for (const m of profile.medals_by_classification || []) byName[m.name] = { ...m }
+    for (const c of [...hosted, ...participated]) {
+      const k = c.classification || 'Other'
+      if (!byName[k]) byName[k] = { name: k, gold: 0, silver: 0, bronze: 0, total: 0 }
+    }
+    const orderOf = (n) => { const i = CLASS_ORDER.indexOf(n); return i === -1 ? 99 : i }
+    return Object.values(byName).sort((a, b) => (b.total - a.total) || (orderOf(a.name) - orderOf(b.name)))
+  })()
 
   return (
     <div>
@@ -1227,20 +1376,24 @@ export default function CountryProfile() {
             The Board of Directors is responsible for the strategic direction, governance, and overall leadership of the {country.name} Swimming Federation.
           </p>
 
-          {/* Board member cards — placeholder data */}
+          {/* Board member cards — real data when the national team has board
+              members registered, ISF-style placeholders otherwise */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 18 }}>
-            {['President', 'Vice President', 'Treasurer', 'Secretary General', 'Technical Director',
-              'Member', 'Member', 'Member', 'Member', 'Member'].map((role, i) => (
+            {(boardMembers.length
+              ? boardMembers.map((m) => ({ role: m.role || 'Member', name: m.name, photo: m.photo }))
+              : ['President', 'Vice President', 'Treasurer', 'Secretary General', 'Technical Director',
+                 'Member', 'Member', 'Member', 'Member', 'Member'].map((role) => ({ role, name: '—', photo: null }))
+            ).map(({ role, name, photo }, i) => (
               <div key={i} style={{ borderRadius: 16, overflow: 'hidden', textAlign: 'center', background: 'linear-gradient(180deg, #f4f8fc 0%, #eef3f9 100%)', border: '1px solid #e2e9f2', boxShadow: '0 2px 10px rgba(11,41,72,.06)', position: 'relative', padding: '26px 14px 30px', minHeight: 400, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 {/* Number badge */}
                 <div style={{ position: 'absolute', top: 12, left: 12, width: 30, height: 30, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, zIndex: 1 }}>{i + 1}</div>
                 {/* Circular photo blended on white ring */}
                 <div style={{ marginTop: 20 }}>
-                  <div style={{ width: 170, height: 170, borderRadius: '50%', background: 'radial-gradient(circle at 50% 40%, #e8eef5, #cdd9e6)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56, color: '#8a9bb5', border: '6px solid #fff', boxShadow: '0 4px 14px rgba(11,41,72,.12)' }}>👤</div>
+                  <div style={{ width: 170, height: 170, borderRadius: '50%', background: photo ? `url(${photo}) center/cover` : 'radial-gradient(circle at 50% 40%, #e8eef5, #cdd9e6)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56, color: '#8a9bb5', border: '6px solid #fff', boxShadow: '0 4px 14px rgba(11,41,72,.12)' }}>{photo ? '' : '👤'}</div>
                 </div>
                 {/* Name + role */}
                 <div style={{ padding: '26px 6px 0' }}>
-                  <div style={{ fontWeight: 800, fontSize: 18, color: '#0b2948' }}>—</div>
+                  <div style={{ fontWeight: 800, fontSize: 18, color: '#0b2948' }}>{name}</div>
                   <div style={{ fontSize: 14, color: '#5a6b80', fontWeight: 600, marginTop: 8 }}>{role}</div>
                 </div>
                 {/* Listen row: play button + waveform */}
@@ -1297,11 +1450,11 @@ export default function CountryProfile() {
           </div>
         )
         const waveHeights = [7, 12, 5, 15, 9, 17, 6, 13, 8, 16, 5, 11, 14, 7, 18, 10, 5, 13, 7, 15, 9, 6, 12, 8]
-        const coachCard = (role, i) => (
+        const coachCard = ({ role, name, photo }, i) => (
           <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
-            <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>👤</div>
+            <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: photo ? `url(${photo}) center/cover` : 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>{photo ? '' : '👤'}</div>
             <div style={{ paddingTop: 16 }}>
-              <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}>—</div>
+              <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}>{name}</div>
               <div style={{ fontSize: 13.5, color: '#1a56a0', fontWeight: 600, marginTop: 6 }}>{role}</div>
             </div>
             <div style={{ marginTop: 'auto', paddingTop: 16 }}>
@@ -1325,7 +1478,10 @@ export default function CountryProfile() {
             {teamSub === 'coaches' && (<>
               {secTitle('👤', 'Coaches')}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
-                {['Head Coach', 'Assistant Coach', 'Swimming Coach', 'Conditioning Coach'].map(coachCard)}
+                {(countryCoaches.length
+                  ? countryCoaches.map((c) => ({ role: COACH_LEVELS[c.level] || c.level || 'Coach', name: c.name, photo: c.photo }))
+                  : ['Head Coach', 'Assistant Coach', 'Swimming Coach', 'Conditioning Coach'].map((role) => ({ role, name: '—', photo: null }))
+                ).map(coachCard)}
               </div>
             </>)}
             {teamSub === 'swimmers' && (<>
@@ -1501,11 +1657,7 @@ export default function CountryProfile() {
       )}
 
       {/* ===== COMPARE ===== */}
-      {tab === 'compare' && (
-        <div className="pad-lg">
-          <Empty label="Federation comparison — coming soon" />
-        </div>
-      )}
+      {tab === 'compare' && <CompareTab profile={profile} country={country} />}
 
       {/* ===== QUALIFYING ===== */}
       {tab === 'qualifying' && <QualifyingTab bestTimes={bestTimes} qualSub={qualSub} setQualSub={setQualSub} />}
@@ -1515,7 +1667,7 @@ export default function CountryProfile() {
       {tab === 'ranking' && <RankingTab countryId={id} />}
       {tab === 'pools' && <PoolsTab hosted={hosted} countryName={country.name} />}
       {tab === 'prediction' && <PredictionTab countryName={country.name} />}
-      {tab === 'multimedia' && <MultimediaTab champIds={new Set([...hosted, ...participated].map((c) => c.id))} countryName={country.name} />}
+      {tab === 'multimedia' && <MultimediaTab champIds={new Set([...hosted, ...participated].map((c) => c.id))} champNames={[...hosted, ...participated].map((c) => c.name)} countryName={country.name} />}
       {tab === 'archives' && <ArchivesTab hosted={hosted} participated={participated} countryName={country.name} />}
     </div>
   )

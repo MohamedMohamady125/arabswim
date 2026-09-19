@@ -447,6 +447,49 @@ class CountryViewSet(viewsets.ModelViewSet):
         )
         records_qs = Record.objects.filter(swimmer__nationality=country)
 
+        # Medal tally per championship classification (Arab, National, ...)
+        medals_by_classification = [
+            {'name': m['championship__classification__name'] or 'Other',
+             'gold': m['gold'], 'silver': m['silver'],
+             'bronze': m['bronze'], 'total': m['total']}
+            for m in (medals_qs.values('championship__classification__name')
+                      .annotate(gold=Count('id', filter=Q(medal_type='GOLD')),
+                                silver=Count('id', filter=Q(medal_type='SILVER')),
+                                bronze=Count('id', filter=Q(medal_type='BRONZE')),
+                                total=Count('id'))
+                      .order_by('-total'))
+        ]
+
+        # Country battle: swimmers per country in the top-100 Arab ranking
+        # (best single-swim FINA points, individual swimmers, Arab+GCC region)
+        from django.db.models import Max
+        from swimmers.models import Swimmer
+        top100 = list(
+            Result.objects.filter(
+                fina_points__isnull=False, swimmer__is_relay_team=False,
+                swimmer__nationality__region__in=['ARAB', 'GCC'])
+            .values('swimmer_id')
+            .annotate(best=Max('fina_points'))
+            .order_by('-best')[:100]
+        )
+        battle_counts = {}
+        for s in Swimmer.objects.filter(
+                id__in=[r['swimmer_id'] for r in top100]).select_related('nationality'):
+            if not s.nationality_id:
+                continue
+            key = s.nationality_id
+            if key not in battle_counts:
+                battle_counts[key] = {
+                    'country_id': s.nationality_id,
+                    'name': s.nationality.name,
+                    'code': s.nationality.code,
+                    'flag_url': s.nationality.flag_url,
+                    'count': 0,
+                }
+            battle_counts[key]['count'] += 1
+        country_battle = sorted(
+            battle_counts.values(), key=lambda x: -x['count'])
+
         stats = {
             'swimmers': swimmer_counts['total'],
             'swimmers_male': swimmer_counts['male'],
@@ -513,7 +556,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             'id': rec.id, 'record_type': rec.record_type, 'event': rec.event.name,
             'swimmer_id': rec.swimmer_id, 'swimmer': rec.swimmer.name,
             'sex': rec.swimmer.sex, 'time': _fmt_cs(rec.time_centiseconds),
-            'pool': rec.pool,
+            'pool': rec.pool, 'age_category': rec.age_category,
             'location': rec.location, 'meet_name': rec.meet_name,
             'date': rec.result_date, 'is_new': rec.is_new,
         } for rec in records_qs.select_related('event', 'swimmer')
@@ -579,10 +622,27 @@ class CountryViewSet(viewsets.ModelViewSet):
             'id': t.id, 'name': t.name, 'is_national_team': t.is_national_team,
         } for t in country.teams.all()]
 
+        # Most participated swimmers (distinct international meets; falls back
+        # to all meets for countries with only national results)
+        part_qs = results_qs.filter(swimmer__is_relay_team=False)
+        intl_qs = part_qs.exclude(championship__classification__name='National')
+        source_qs = intl_qs if intl_qs.exists() else part_qs
+        most_participated = [{
+            'id': m['swimmer_id'], 'name': m['swimmer__name'],
+            'sex': m['swimmer__sex'],
+            'championships_count': m['championships_count'],
+        } for m in (source_qs
+                    .values('swimmer_id', 'swimmer__name', 'swimmer__sex')
+                    .annotate(championships_count=Count('championship_id', distinct=True))
+                    .order_by('-championships_count', 'swimmer__name')[:5])]
+
         return Response({
             'country': CountrySerializer(country).data,
             'stats': stats,
             'medals': medal_counts,
+            'medals_by_classification': medals_by_classification,
+            'country_battle': country_battle,
+            'most_participated': most_participated,
             'top_swimmers': top_swimmers,
             'top_medalists': top_medalists,
             'best_times': best_times,

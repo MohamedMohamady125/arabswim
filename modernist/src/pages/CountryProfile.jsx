@@ -954,6 +954,15 @@ export default function CountryProfile() {
   const [champSub, setChampSub] = useState('hosted')
   const [qualSub, setQualSub] = useState('standards')
   const [classMedals, setClassMedals] = useState(null)
+  const [ovNews, setOvNews] = useState([])
+
+  useEffect(() => {
+    let alive = true
+    getArticles({ country: id, status: 'PUBLISHED', ordering: '-published_at' })
+      .then((r) => alive && setOvNews((Array.isArray(r.data) ? r.data : r.data?.results || []).slice(0, 4)))
+      .catch(() => alive && setOvNews([]))
+    return () => { alive = false }
+  }, [id])
 
   useEffect(() => {
     let alive = true
@@ -1052,43 +1061,62 @@ export default function CountryProfile() {
         const bestPerf = topSwimmers[0]
         const topMedalist = topMedalists[0]
         const newestRecord = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
-        const topRecords = records.slice(0, 5)
-        const hCard = { background: '#fff', border: '1px solid #dde3ea', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 2px 8px rgba(11,41,72,.06)', position: 'relative' }
-        const hPhoto = { width: 148, height: 150, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0 }
-        const hBody = { padding: '10px 8px 10px 0', flex: 1, display: 'flex', flexDirection: 'column' }
-        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.03em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 6, lineHeight: 1.25 }
-        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1.1 }
-        const hSub = { fontSize: 12.5, color: '#5a6b80', marginTop: 3 }
-        const hIcon = { position: 'absolute', right: 14, bottom: 12, fontSize: 22, color: '#1a56a0' }
+        const seenHolders = new Set()
+        const topRecords = records.filter((r) => {
+          if (!r.swimmer_id || seenHolders.has(r.swimmer_id)) return false
+          seenHolders.add(r.swimmer_id); return true
+        }).slice(0, 5)
+        const usDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
+        const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative' }
+        const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0 }
+        const hBody = { padding: '12px 8px 10px 2px', flex: 1, display: 'flex', flexDirection: 'column' }
+        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 7, lineHeight: 1.3 }
+        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 29, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1.1 }
+        const hSub = { fontSize: 12.5, color: '#33415c', marginTop: 4 }
+        // small blue bar-chart icon like the reference
+        const barsIcon = (
+          <span style={{ position: 'absolute', right: 16, bottom: 14, display: 'inline-flex', alignItems: 'flex-end', gap: 2.5 }}>
+            {[7, 12, 17, 22].map((h, k) => <span key={k} style={{ width: 4.5, height: h, background: '#1a56a0', borderRadius: 1.5, display: 'inline-block' }} />)}
+          </span>
+        )
+        const taperL = { width: 130, height: 3, background: 'linear-gradient(to left, #0d2d5e, rgba(13,45,94,0))', transform: 'skewX(-30deg)' }
+        const taperR = { width: 130, height: 3, background: 'linear-gradient(to right, #0d2d5e, rgba(13,45,94,0))', transform: 'skewX(-30deg)' }
         const secTitle = (text) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '28px 0 20px' }}>
-            <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
-            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 20, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0 }}>{text}</h3>
-            <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, margin: '26px 0 22px' }}>
+            <div style={taperL} />
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '0.02em', textTransform: 'uppercase', color: '#123a7d', margin: 0, whiteSpace: 'nowrap' }}>{text}</h3>
+            <div style={taperR} />
           </div>
         )
+        const newsItems = ovNews.length > 0 ? ovNews : [null, null, null, null]
         return (
-          <div style={{ padding: '0 28px 28px', background: '#fff' }}>
+          <div style={{ padding: '0 28px 32px', background: '#eaf1f9' }}>
             {/* Main layout: News left + Highlights right */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 22, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
               {/* LEFT: Latest News */}
               <div>
-                <div style={{ textAlign: 'center', marginBottom: 4 }}><span style={{ fontSize: 20 }}>🏊</span></div>
+                <div style={{ textAlign: 'center', marginBottom: 2 }}><span style={{ fontSize: 22, color: '#123a7d' }}>🏊</span></div>
                 {secTitle('Latest News')}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-                  {[0, 1, 2, 3].map((i) => (
-                    <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', background: '#fff', boxShadow: '0 2px 8px rgba(11,41,72,.05)', display: 'flex', flexDirection: 'column', minHeight: 340 }}>
-                      <div style={{ height: 175, background: 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5' }}>📷</div>
-                      <div style={{ padding: '14px 12px 14px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                        <div style={{ fontSize: 11, color: '#1a56a0', fontWeight: 700, marginBottom: 8 }}>Coming soon</div>
-                        <div style={{ fontSize: 13, color: '#0b2948', fontWeight: 600, lineHeight: 1.45 }}>Federation news will appear here</div>
-                        <div style={{ marginTop: 'auto', paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 12, color: '#0b2948', fontWeight: 700 }}>Read more</span>
-                          <span style={{ color: '#1a56a0', fontWeight: 800 }}>→</span>
+                  {newsItems.map((a, i) => {
+                    const inner = (
+                      <>
+                        <div style={{ margin: 10, height: 200, borderRadius: 8, background: a?.cover_image ? `url(${a.cover_image}) center/cover` : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>{a?.cover_image ? '' : '📷'}</div>
+                        <div style={{ padding: '4px 14px 16px', display: 'flex', flexDirection: 'column', flex: 1, textAlign: 'left' }}>
+                          <div style={{ fontSize: 12, color: '#1a56a0', fontWeight: 600, marginBottom: 9 }}>{a ? usDate(a.published_at || a.created_at) : 'Coming soon'}</div>
+                          <div style={{ fontSize: 14.5, color: '#0b2948', fontWeight: 700, lineHeight: 1.5 }}>{a ? a.title : 'Federation news will appear here'}</div>
+                          <div style={{ marginTop: 'auto', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 12.5, color: '#0b2948', fontWeight: 700 }}>Read more</span>
+                            <span style={{ color: '#1a56a0', fontWeight: 800 }}>→</span>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
+                      </>
+                    )
+                    const cardStyle = { borderRadius: 12, overflow: 'hidden', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column', minHeight: 425, textDecoration: 'none' }
+                    return a
+                      ? <Link key={a.id} to={`/news/${a.id}`} style={cardStyle}>{inner}</Link>
+                      : <div key={`ph-${i}`} style={cardStyle}>{inner}</div>
+                  })}
                 </div>
               </div>
 
@@ -1102,8 +1130,9 @@ export default function CountryProfile() {
                     <div style={hBig}>{bestPerf?.best_time || '—'}</div>
                     <div style={hSub}>{bestPerf?.best_event || ''}</div>
                     <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{bestPerf?.name || ''}</div>
+                    {bestPerf?.championship && <div style={{ ...hSub, color: '#5a6b80' }}>{bestPerf.championship}</div>}
                   </div>
-                  <span style={hIcon}>📈</span>
+                  {barsIcon}
                 </div>
 
                 {/* Most Decorated Swimmer */}
@@ -1115,7 +1144,7 @@ export default function CountryProfile() {
                     <div style={hSub}>Total Medals</div>
                     <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{topMedalist?.name || '—'}</div>
                   </div>
-                  <span style={hIcon}>🏆</span>
+                  <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🏆</span>
                 </div>
 
                 {/* New Record */}
@@ -1126,7 +1155,7 @@ export default function CountryProfile() {
                     <div style={hBig}>{newestRecord?.time || '—'}</div>
                     <div style={hSub}>{newestRecord?.event || ''}</div>
                     <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{newestRecord?.swimmer || ''}</div>
-                    {newestRecord?.date && <div style={hSub}>{formatDate(newestRecord.date)}</div>}
+                    {newestRecord?.date && <div style={hSub}>{usDate(newestRecord.date)}</div>}
                   </div>
                   {newestRecord && <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: '#0d2d5e', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span>}
                 </div>
@@ -1140,30 +1169,28 @@ export default function CountryProfile() {
                     <div style={hSub}>Total Swimmers</div>
                     <div style={{ ...hSub, marginTop: 6 }}>{formatNumber(profile.stats?.medals)} Medals · {formatNumber(profile.stats?.records)} Records</div>
                   </div>
-                  <span style={hIcon}>📊</span>
+                  {barsIcon}
                 </div>
               </div>
             </div>
 
             {/* National Record Holders */}
-            <div style={{ textAlign: 'center', marginTop: 10 }}><span style={{ fontSize: 20 }}>🏅</span></div>
             {secTitle('National Record Holders')}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 18 }}>
               {topRecords.map((r, i) => (
-                <div key={i} style={{ border: '1px solid #dde3ea', borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', boxShadow: '0 2px 8px rgba(11,41,72,.06)', display: 'flex', flexDirection: 'column' }}>
+                <div key={i} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
                   {/* Circular photo with navy ring */}
-                  <div style={{ padding: '22px 0 10px' }}>
-                    <div style={{ width: 150, height: 150, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: '#8a9bb5', border: '4px solid #0d2d5e', boxShadow: '0 3px 10px rgba(0,0,0,.12)' }}>🏊</div>
+                  <div style={{ padding: '24px 0 8px' }}>
+                    <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '4px solid #0d2d5e', boxShadow: '0 3px 10px rgba(0,0,0,.12)' }}>🏊</div>
                   </div>
-                  <div style={{ padding: '10px 12px 0' }}>
+                  <div style={{ padding: '12px 12px 0' }}>
                     <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
-                    <div style={{ fontSize: 13, color: '#5a6b80', marginTop: 6 }}>{r.event}</div>
-                    <div style={{ fontSize: 13, color: '#5a6b80' }}>{r.pool === 'LCM' ? 'Long Course' : 'Short Course'}</div>
+                    <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55 }}>{r.event}<br />{r.pool === 'LCM' ? 'Long Course' : 'Short Course'}</div>
                   </div>
                   {/* Navy footer with time */}
-                  <div style={{ background: '#123a7d', color: '#fff', padding: '14px 10px 16px', marginTop: 'auto' }}>
-                    <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, letterSpacing: '-0.01em' }}>{r.time}</div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 4, opacity: 0.9 }}>National Record</div>
+                  <div style={{ background: '#123a7d', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 8 }}>
+                    <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '-0.01em' }}>{r.time}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 3, opacity: 0.92 }}>National Record</div>
                   </div>
                 </div>
               ))}

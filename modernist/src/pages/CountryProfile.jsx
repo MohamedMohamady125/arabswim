@@ -1061,11 +1061,23 @@ export default function CountryProfile() {
         const bestPerf = topSwimmers[0]
         const topMedalist = topMedalists[0]
         const newestRecord = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
-        const seenHolders = new Set()
-        const topRecords = records.filter((r) => {
-          if (!r.swimmer_id || seenHolders.has(r.swimmer_id)) return false
-          seenHolders.add(r.swimmer_id); return true
-        }).slice(0, 5)
+        // 5 distinct holders (dedupe duplicate DB swimmers by normalized name),
+        // varied events, Long Course first — like the ISF reference.
+        const nameKey = (n) => (n || '').toLowerCase().replace(/\d+/g, '').trim().split(/\s+/).sort().join(' ')
+        const seenHolders = new Set(); const seenEvents = new Set()
+        const pickHolders = (requireNewEvent) => {
+          const out = []
+          const ordered = [...records].sort((a, b) => (a.pool === 'LCM' ? 0 : 1) - (b.pool === 'LCM' ? 0 : 1))
+          for (const r of ordered) {
+            if (!r.swimmer_id) continue
+            const nk = nameKey(r.swimmer)
+            if (seenHolders.has(nk)) continue
+            if (requireNewEvent && seenEvents.has(r.event)) continue
+            seenHolders.add(nk); seenEvents.add(r.event); out.push(r)
+          }
+          return out
+        }
+        const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 5)
         const usDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
         const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative' }
         const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0 }
@@ -1185,7 +1197,7 @@ export default function CountryProfile() {
                   </div>
                   <div style={{ padding: '12px 12px 0' }}>
                     <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
-                    <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55 }}>{r.event}<br />{r.pool === 'LCM' ? 'Long Course' : 'Short Course'}</div>
+                    <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55 }}>{r.event}<br />{r.pool === 'SCM' ? 'Short Course' : 'Long Course'}</div>
                   </div>
                   {/* Navy footer with time */}
                   <div style={{ background: '#123a7d', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 8 }}>

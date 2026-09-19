@@ -513,6 +513,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             'id': rec.id, 'record_type': rec.record_type, 'event': rec.event.name,
             'swimmer_id': rec.swimmer_id, 'swimmer': rec.swimmer.name,
             'sex': rec.swimmer.sex, 'time': _fmt_cs(rec.time_centiseconds),
+            'pool': rec.pool,
             'location': rec.location, 'meet_name': rec.meet_name,
             'date': rec.result_date, 'is_new': rec.is_new,
         } for rec in records_qs.select_related('event', 'swimmer')

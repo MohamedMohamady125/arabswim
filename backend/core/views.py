@@ -499,6 +499,13 @@ class CountryViewSet(viewsets.ModelViewSet):
             'teams': country.teams.count(),
             'records': records_qs.count(),
             'medals': medal_counts['total'],
+            # International-level metrics (National-classified meets excluded)
+            'arab_records': records_qs.filter(record_type='ARAB').count(),
+            'intl_swimmers': (
+                results_qs.filter(swimmer__is_relay_team=False)
+                .exclude(championship__classification__name='National')
+                .values('swimmer_id').distinct().count()
+            ),
         }
 
         # Top swimmers by best FINA (best single swim each)

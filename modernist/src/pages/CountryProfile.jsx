@@ -721,24 +721,34 @@ function CompareTab({ profile, country }) {
     return pts.length ? Math.max(...pts) : null
   }
 
+  // International-level comparison only — domestic national championship
+  // data (medals, participations) is excluded so federations are measured
+  // on the same playing field.
+  const intlMedals = (p, key) => (p?.medals_by_classification || [])
+    .filter((m) => m.name !== 'National')
+    .reduce((sum, m) => sum + (m[key] || 0), 0)
+  const intlParticipations = (p) => (p?.championships_participated || [])
+    .filter((c) => c.classification && c.classification !== 'National').length
+
   const rows = other ? [
-    ['Swimmers', profile.stats.swimmers, other.stats.swimmers],
-    ['Registered Clubs', profile.stats.teams, other.stats.teams],
-    ['Results in Database', profile.stats.results, other.stats.results],
-    ['National Records', profile.stats.records, other.stats.records],
-    ['Championships Hosted', profile.stats.championships_hosted, other.stats.championships_hosted],
-    ['Gold Medals', profile.medals.gold, other.medals.gold],
-    ['Silver Medals', profile.medals.silver, other.medals.silver],
-    ['Bronze Medals', profile.medals.bronze, other.medals.bronze],
-    ['Total Medals', profile.medals.total, other.medals.total],
     ['Swimmers in Top 100 Arab Ranking', battleCount(profile, country.id), battleCount(profile, other.country.id)],
+    ['Arab Records Held', profile.stats.arab_records, other.stats.arab_records],
+    ['International Gold Medals', intlMedals(profile, 'gold'), intlMedals(other, 'gold')],
+    ['International Silver Medals', intlMedals(profile, 'silver'), intlMedals(other, 'silver')],
+    ['International Bronze Medals', intlMedals(profile, 'bronze'), intlMedals(other, 'bronze')],
+    ['International Medals Total', intlMedals(profile, 'total'), intlMedals(other, 'total')],
     ['Best Male FINA Points', bestFina(profile, 'M'), bestFina(other, 'M')],
     ['Best Female FINA Points', bestFina(profile, 'F'), bestFina(other, 'F')],
+    ['International Meets Participated', intlParticipations(profile), intlParticipations(other)],
+    ['Swimmers with International Experience', profile.stats.intl_swimmers, other.stats.intl_swimmers],
   ] : []
 
   return (
     <div className="pad-lg">
       <TabHeading title="Federation Comparison" />
+      <div style={{ textAlign: 'center', fontSize: 12.5, color: '#5a6b80', margin: '10px 0 0', fontWeight: 600 }}>
+        International-level data only — domestic national championships are excluded
+      </div>
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, margin: '18px 0 26px', flexWrap: 'wrap' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: '#0b2948' }}><Flag code={country.code} /> {country.name}</span>
         <span style={{ fontWeight: 900, color: '#1a56a0', fontSize: 15 }}>VS</span>

@@ -1,0 +1,23 @@
+# Keep the Railway Docker build context small — only backend/ is copied.
+**/node_modules
+**/dist
+**/.git
+backend/venv
+backend/.venv
+backend/db.sqlite3
+backend/staticfiles
+backend/media
+**/__pycache__
+*.pyc
+*.png
+*.JPG
+*.jpg
+*.pdf
+egypt_meets_excel
+frontend
+modernist
+prediction
+flags
+.playwright-mcp
+.agents
+.claude

@@ -592,6 +592,97 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
             return QualifyingStandardListSerializer
         return QualifyingStandardSerializer
 
+    @action(detail=True, methods=['get'])
+    def qualified(self, request, pk=None):
+        """Swimmers from a country who meet this standard's cuts.
+
+        World Aquatics rule: entry times only count if swum during the
+        published qualification period (e.g. Paris 2024: 1 Mar 2023 –
+        23 Jun 2024; Singapore 2025 Worlds: 9 Mar 2024 – 29 Jun 2025 —
+        roughly a 16-month window closing a few weeks before the meet).
+        When a standard has a stored window, only swims inside it count;
+        standards without a published window fall back to all-time bests.
+        """
+        from django.db.models import Min, Q as DQ
+        from championships.models import Result
+
+        standard = self.get_object()
+        country_id = request.query_params.get('country')
+        if not country_id:
+            return Response({'error': 'country query param is required'}, status=400)
+
+        cut_map = {}
+        for qt in standard.times.select_related('event'):
+            cut_map.setdefault((qt.event_id, qt.gender, qt.pool), {})[qt.cut] = qt
+
+        results = Result.objects.filter(
+            swimmer__nationality_id=country_id,
+            swimmer__is_relay_team=False,
+            event__is_relay=False,
+            time_centiseconds__gt=0,
+        )
+        window = None
+        if standard.qualifying_period_start and standard.qualifying_period_end:
+            window = {'start': standard.qualifying_period_start,
+                      'end': standard.qualifying_period_end}
+            results = results.filter(
+                championship__date__gte=standard.qualifying_period_start,
+                championship__date__lte=standard.qualifying_period_end)
+
+        best = (results.values('swimmer_id', 'swimmer__name', 'swimmer__sex',
+                               'event_id', 'event__name', 'championship__pool')
+                .annotate(best_cs=Min('time_centiseconds')))
+
+        def fmt(cs):
+            m, s, c = cs // 6000, (cs % 6000) // 100, cs % 100
+            return f'{m}:{s:02d}.{c:02d}' if m else f'{s}.{c:02d}'
+
+        qualified = []
+        swim_filter = DQ()
+        hits = []
+        for row in best:
+            cm = cut_map.get((row['event_id'], row['swimmer__sex'],
+                              row['championship__pool']))
+            if not cm:
+                continue
+            a, b = cm.get('A'), cm.get('B')
+            cs = row['best_cs']
+            if a and cs <= a.time_centiseconds:
+                cut, cut_qt = 'A', a
+            elif b and cs <= b.time_centiseconds:
+                cut, cut_qt = 'B', b
+            else:
+                continue
+            hits.append((row, cut, cut_qt))
+            swim_filter |= DQ(swimmer_id=row['swimmer_id'], event_id=row['event_id'],
+                              championship__pool=row['championship__pool'],
+                              time_centiseconds=cs)
+
+        # Where/when each qualifying swim happened
+        swim_info = {}
+        if hits:
+            for r in (results.filter(swim_filter)
+                      .select_related('championship')
+                      .order_by('championship__date')):
+                key = (r.swimmer_id, r.event_id, r.championship.pool)
+                if key not in swim_info:
+                    swim_info[key] = {'championship': r.championship.name,
+                                      'date': r.championship.date}
+
+        for row, cut, cut_qt in hits:
+            info = swim_info.get((row['swimmer_id'], row['event_id'],
+                                  row['championship__pool']), {})
+            qualified.append({
+                'swimmer_id': row['swimmer_id'], 'swimmer': row['swimmer__name'],
+                'sex': row['swimmer__sex'], 'event': row['event__name'],
+                'pool': row['championship__pool'], 'time': fmt(row['best_cs']),
+                'cut': cut, 'cut_time': cut_qt.formatted_time,
+                'championship': info.get('championship'),
+                'date': info.get('date'),
+            })
+        qualified.sort(key=lambda x: (x['event'], x['cut'], x['time']))
+        return Response({'window': window, 'qualified': qualified})
+
     @action(detail=True, methods=['post'], url_path='upload-pdf',
             parser_classes=[MultiPartParser, FormParser])
     def upload_pdf(self, request, pk=None):

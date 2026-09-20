@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { getCountryProfile, getCountryProgression, getEvents, getCountries } from '../api/core'
 import { getArticles } from '../api/news'
 import { getRankings } from '../api/rankings'
-import { getQualifyingStandards, getQualifyingStandard } from '../api/qualifyingTimes'
+import { getQualifyingStandards, getQualifyingStandard, getQualifiedSwimmers } from '../api/qualifyingTimes'
 import { getPredictions } from '../api/predictions'
 import { getAlbums } from '../api/media'
 import { getBoardMembers } from '../api/teams'
@@ -79,14 +79,6 @@ function TabHeading({ title }) {
       <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
     </div>
   )
-}
-
-// "1:02.34" / "27.45" → centiseconds (null if unparseable)
-function timeToCs(str) {
-  if (!str) return null
-  const m = String(str).trim().match(/^(?:(\d+):)?(\d{1,2})\.(\d{2})$/)
-  if (!m) return null
-  return (m[1] ? parseInt(m[1], 10) * 6000 : 0) + parseInt(m[2], 10) * 100 + parseInt(m[3], 10)
 }
 
 /* ===== NEWS TAB ===== */
@@ -211,12 +203,13 @@ function RankingTab({ countryId }) {
 }
 
 /* ===== QUALIFYING TAB ===== */
-function QualifyingTab({ bestTimes, qualSub, setQualSub }) {
+function QualifyingTab({ countryId, qualSub, setQualSub }) {
   const [standards, setStandards] = useState(null)
   const [standardId, setStandardId] = useState('')
   const [detail, setDetail] = useState(null)
   const [gender, setGender] = useState('M')
   const [pool, setPool] = useState('LCM')
+  const [qualData, setQualData] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -240,6 +233,18 @@ function QualifyingTab({ bestTimes, qualSub, setQualSub }) {
     return () => { alive = false }
   }, [standardId])
 
+  // Qualified swimmers — computed server-side so only swims inside the
+  // official qualification window count (World Aquatics rule: ~16-month
+  // window ending a few weeks before the meet).
+  useEffect(() => {
+    if (!standardId || qualSub !== 'qualified') return
+    let alive = true; setQualData(null)
+    getQualifiedSwimmers(standardId, { country: countryId })
+      .then((r) => alive && setQualData(r.data))
+      .catch(() => alive && setQualData({ window: null, qualified: [] }))
+    return () => { alive = false }
+  }, [standardId, qualSub, countryId])
+
   const times = detail?.times || []
   const filtered = times.filter((t) => t.gender === gender && t.pool === pool)
   // group by event → { event_name, A, B }
@@ -253,20 +258,8 @@ function QualifyingTab({ bestTimes, qualSub, setQualSub }) {
     return Object.values(map).sort((a, b) => (a.stroke || '').localeCompare(b.stroke || '') || a.distance - b.distance)
   }, [filtered])
 
-  // Qualified: country best times that beat a cut for this standard
-  const qualifiedRows = useMemo(() => {
-    const out = []
-    bestTimes.forEach((bt) => {
-      const cs = timeToCs(bt.time)
-      if (cs == null) return
-      const cuts = times.filter((t) => t.event_name === bt.event && t.gender === bt.sex && t.pool === bt.pool)
-      const aCut = cuts.find((c) => c.cut === 'A')
-      const bCut = cuts.find((c) => c.cut === 'B')
-      if (aCut && cs <= aCut.time_centiseconds) out.push({ ...bt, cut: 'A', cutTime: aCut.formatted_time })
-      else if (bCut && cs <= bCut.time_centiseconds) out.push({ ...bt, cut: 'B', cutTime: bCut.formatted_time })
-    })
-    return out.sort((a, b) => a.event.localeCompare(b.event))
-  }, [bestTimes, times])
+  const qualifiedRows = qualData?.qualified || []
+  const qualWindow = qualData?.window
 
   if (standards === null) return <Loading label="Loading qualifying standards" />
   return (
@@ -291,9 +284,14 @@ function QualifyingTab({ bestTimes, qualSub, setQualSub }) {
               ))}
             </tbody></table></div>
           )
-        ) : (
-          qualifiedRows.length === 0 ? <Empty label="No swimmers meet these cuts yet" /> : (
-            <div className="table-scroll"><table className="table"><thead><tr><th>Swimmer</th><th>Event</th><th>Sex</th><th>Pool</th><th className="time">Best Time</th><th className="time">Cut</th><th>Standard</th></tr></thead><tbody>
+        ) : qualData === null ? <Loading label="Checking qualifying swims" /> : (<>
+          <div style={{ textAlign: 'center', fontSize: 12.5, color: '#5a6b80', fontWeight: 600, margin: '0 0 16px' }}>
+            {qualWindow
+              ? <>Qualification period: <span className="asw-num" style={{ color: '#0b2948', fontWeight: 800 }}>{formatDate(qualWindow.start)} – {formatDate(qualWindow.end)}</span> — only swims in this window count</>
+              : 'Qualification period not published yet — showing all-time best times'}
+          </div>
+          {qualifiedRows.length === 0 ? <Empty label={qualWindow ? 'No swimmers have made a cut inside the qualification period yet' : 'No swimmers meet these cuts yet'} /> : (
+            <div className="table-scroll"><table className="table"><thead><tr><th>Swimmer</th><th>Event</th><th>Sex</th><th>Pool</th><th className="time">Time</th><th className="time">Cut</th><th>Standard</th><th>Where Achieved</th></tr></thead><tbody>
               {qualifiedRows.map((r, i) => (
                 <tr key={i}>
                   <td><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></td>
@@ -301,13 +299,14 @@ function QualifyingTab({ bestTimes, qualSub, setQualSub }) {
                   <td className="text-muted">{r.sex === 'F' ? "Women's" : "Men's"}</td>
                   <td className="text-muted">{r.pool}</td>
                   <td className="time asw-time" style={{ fontWeight: 800, color: '#1a56a0' }}>{r.time}</td>
-                  <td className="time asw-time">{r.cutTime}</td>
+                  <td className="time asw-time">{r.cut_time}</td>
                   <td><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 800, background: r.cut === 'A' ? '#0d7a52' : '#b98a1e', color: '#fff' }}>{r.cut} Cut</span></td>
+                  <td className="text-muted" style={{ fontSize: 12 }}>{r.championship || '—'}{r.date ? ` · ${formatDate(r.date)}` : ''}</td>
                 </tr>
               ))}
             </tbody></table></div>
-          )
-        )}
+          )}
+        </>)}
       </>)}
     </div>
   )
@@ -1670,7 +1669,7 @@ export default function CountryProfile() {
       {tab === 'compare' && <CompareTab profile={profile} country={country} />}
 
       {/* ===== QUALIFYING ===== */}
-      {tab === 'qualifying' && <QualifyingTab bestTimes={bestTimes} qualSub={qualSub} setQualSub={setQualSub} />}
+      {tab === 'qualifying' && <QualifyingTab countryId={id} qualSub={qualSub} setQualSub={setQualSub} />}
 
       {/* ===== DATA TABS ===== */}
       {tab === 'news' && <NewsTab countryId={id} countryName={country.name} />}

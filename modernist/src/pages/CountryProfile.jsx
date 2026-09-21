@@ -694,6 +694,19 @@ function CompareTab({ profile, country }) {
   const [otherId, setOtherId] = useState('')
   const [other, setOther] = useState(null)
   const [loadingOther, setLoadingOther] = useState(false)
+  const [battleKey, setBattleKey] = useState(null)
+
+  // Events where BOTH federations have a national best time — one is picked at random per compare
+  const commonEvents = useMemo(() => {
+    if (!other) return []
+    const keyOf = (t) => `${t.event}|${t.sex}|${t.pool}`
+    const mine = new Set((profile.best_times || []).map(keyOf))
+    return [...new Set((other.best_times || []).map(keyOf))].filter((k) => mine.has(k))
+  }, [other, profile])
+
+  useEffect(() => {
+    setBattleKey(commonEvents.length ? commonEvents[Math.floor(Math.random() * commonEvents.length)] : null)
+  }, [commonEvents])
 
   useEffect(() => {
     let alive = true
@@ -777,6 +790,51 @@ function CompareTab({ profile, country }) {
               </div>
             )
           })}
+
+          {/* Event Battle — random event, fastest swimmer of each country */}
+          {battleKey && (() => {
+            const [ev, sex, pool] = battleKey.split('|')
+            const pick = (p) => (p.best_times || []).find((t) => t.event === ev && t.sex === sex && t.pool === pool)
+            const a = pick(profile); const b = pick(other)
+            if (!a || !b) return null
+            const secs = (t) => String(t || '').split(':').reduce((acc, x) => acc * 60 + (parseFloat(x) || 0), 0)
+            const aWins = secs(a.time) <= secs(b.time)
+            const side = (t, cn, code, win, align) => (
+              <div style={{ flex: 1, textAlign: align, padding: '14px 18px', background: win ? '#eef6ef' : '#fff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: align === 'right' ? 'flex-end' : 'flex-start', fontWeight: 800, fontSize: 13, color: '#0b2948' }}>
+                  {align === 'left' && <Flag code={code} />}{cn}{align === 'right' && <Flag code={code} />}
+                </div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 27, color: win ? '#0d7a52' : '#6b7a90', marginTop: 6, letterSpacing: '-0.01em' }}>
+                  {t.time}{win && <span style={{ fontSize: 10.5, fontWeight: 800, background: '#0d7a52', color: '#fff', padding: '3px 9px', borderRadius: 12, letterSpacing: '0.05em', margin: '0 8px', verticalAlign: 'middle' }}>FASTER</span>}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0b2948', marginTop: 4 }}><SwimmerLink id={t.swimmer_id} name={t.swimmer} /></div>
+                <div style={{ fontSize: 11.5, color: '#5a6b80', marginTop: 2 }}>{t.fina ? `${t.fina} FINA pts` : ''}{t.date ? ` · ${formatDate(t.date)}` : ''}</div>
+              </div>
+            )
+            return (
+              <div style={{ marginTop: 26, border: '1px solid #dde6f0', borderRadius: 10, overflow: 'hidden', boxShadow: '0 3px 12px rgba(11,41,72,.07)' }}>
+                <div style={{ background: '#0b2948', color: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8fb3dd' }}>Event Battle · Fastest of Each Country</div>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 17, marginTop: 2 }}>
+                      {ev} · {sex === 'F' ? "Women" : "Men"} · {pool === 'SCM' ? 'Short Course' : 'Long Course'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => commonEvents.length > 1 && setBattleKey(commonEvents.filter((k) => k !== battleKey)[Math.floor(Math.random() * (commonEvents.length - 1))])}
+                    style={{ background: '#1a56a0', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 14px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    🎲 Another event
+                  </button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                  {side(a, country.name, country.code, aWins, 'left')}
+                  <div style={{ width: 1, background: '#dde6f0' }} />
+                  {side(b, other.country.name, other.country.code, !aWins, 'right')}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
     </div>

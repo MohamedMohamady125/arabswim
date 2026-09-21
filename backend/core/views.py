@@ -643,9 +643,70 @@ class CountryViewSet(viewsets.ModelViewSet):
                     .annotate(championships_count=Count('championship_id', distinct=True))
                     .order_by('-championships_count', 'swimmer__name')[:5])]
 
+        # Trending swimmer: the federation's biggest climber in the Arab
+        # ranking (best single-swim FINA points, individual swimmers,
+        # ARAB+GCC region — same basis as country_battle) comparing the
+        # ranking today vs the ranking 6 months ago.
+        from datetime import timedelta
+        trending = None
+        cutoff = timezone.now().date() - timedelta(days=180)
+        rank_base = Result.objects.filter(
+            fina_points__isnull=False, swimmer__is_relay_team=False,
+            swimmer__nationality__region__in=['ARAB', 'GCC'],
+            championship__date__isnull=False)
+        now_rows = list(rank_base.values('swimmer_id')
+                        .annotate(best=Max('fina_points'))
+                        .order_by('-best')[:300])
+        prev_rows = list(rank_base.filter(championship__date__lt=cutoff)
+                         .values('swimmer_id')
+                         .annotate(best=Max('fina_points'))
+                         .order_by('-best')[:300])
+        now_rank = {r['swimmer_id']: i + 1 for i, r in enumerate(now_rows)}
+        prev_rank = {r['swimmer_id']: i + 1 for i, r in enumerate(prev_rows)}
+        mine = set(Swimmer.objects.filter(
+            id__in=list(now_rank),
+            nationality=country).values_list('id', flat=True))
+        best_mover = None          # (delta, -now_rank, sid) for max()
+        best_new = None            # (-now_rank, sid) best-ranked new entrant
+        for sid in mine:
+            nr = now_rank[sid]
+            if sid in prev_rank:
+                delta = prev_rank[sid] - nr
+                if delta != 0 and (best_mover is None
+                                   or (delta, -nr) > best_mover[:2]):
+                    best_mover = (delta, -nr, sid)
+            elif best_new is None or -nr > best_new[0]:
+                best_new = (-nr, sid)
+        pick = None
+        if best_mover and best_mover[0] > 0:
+            pick, delta, is_new = best_mover[2], best_mover[0], False
+        elif best_new:
+            pick, delta, is_new = best_new[1], None, True
+        elif best_mover:  # nobody climbed and nobody is new — biggest drop
+            pick, delta, is_new = best_mover[2], best_mover[0], False
+        if pick:
+            sw = Swimmer.objects.filter(id=pick).first()
+            recent = (Result.objects.filter(
+                swimmer_id=pick, fina_points__isnull=False,
+                championship__date__gte=cutoff)
+                .select_related('event', 'championship')
+                .order_by('-fina_points').first())
+            trending = {
+                'id': pick, 'name': sw.name, 'sex': sw.sex,
+                'photo': sw.photo.url if sw.photo else None,
+                'rank': now_rank[pick],
+                'prev_rank': prev_rank.get(pick),
+                'delta': delta, 'is_new': is_new,
+                'best_event': recent.event.name if recent else None,
+                'best_time': _fmt_cs(recent.time_centiseconds) if recent else None,
+                'fina': recent.fina_points if recent else None,
+                'championship': recent.championship.name if recent else None,
+            }
+
         return Response({
             'country': CountrySerializer(country).data,
             'stats': stats,
+            'trending': trending,
             'medals': medal_counts,
             'medals_by_classification': medals_by_classification,
             'country_battle': country_battle,

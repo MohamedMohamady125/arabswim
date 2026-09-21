@@ -8,10 +8,11 @@ import { getPredictions } from '../api/predictions'
 import { getAlbums } from '../api/media'
 import { getBoardMembers } from '../api/teams'
 import { getCoaches } from '../api/coaches'
+import { getCalendarEvents } from '../api/calendar'
 import Flag from '../components/Flag'
 import FederationProgressionTab from '../components/FederationProgression'
 import { Loading, Empty, SectHead, Seg } from '../components/ui'
-import { formatDate, formatNumber, formatTime } from '../utils'
+import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
 
 const CLASS_ORDER = ['Arab', 'GCC', 'African', 'Asian', 'Mediterranean', 'Islamic', 'World', 'Olympic']
 const COACH_LEVELS = {
@@ -1093,6 +1094,7 @@ export default function CountryProfile() {
   const [champSub, setChampSub] = useState('hosted')
   const [qualSub, setQualSub] = useState('standards')
   const [ovNews, setOvNews] = useState([])
+  const [calEvents, setCalEvents] = useState([])
   const [boardMembers, setBoardMembers] = useState([])
   const [countryCoaches, setCountryCoaches] = useState([])
 
@@ -1128,6 +1130,14 @@ export default function CountryProfile() {
       .catch(() => alive && setOvNews([]))
     return () => { alive = false }
   }, [id])
+
+  useEffect(() => {
+    let alive = true
+    getCalendarEvents({ page_size: 200 })
+      .then((r) => alive && setCalEvents(Array.isArray(r.data) ? r.data : r.data?.results || []))
+      .catch(() => alive && setCalEvents([]))
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     let alive = true; setLoading(true)
@@ -1332,19 +1342,109 @@ export default function CountryProfile() {
                   {newestRecord && <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: '#0d2d5e', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span>}
                 </div>
 
-                {/* Quick Stats */}
-                <div style={hCard}>
-                  <div style={hPhoto}>🏊</div>
-                  <div style={hBody}>
-                    <div style={hTitle}>Quick Stats</div>
-                    <div style={hBig}>{formatNumber(profile.stats?.swimmers)}</div>
-                    <div style={hSub}>Total Swimmers</div>
-                    <div style={{ ...hSub, marginTop: 6 }}>{formatNumber(profile.stats?.medals)} Medals · {formatNumber(profile.stats?.records)} Records</div>
-                  </div>
-                  {barsIcon}
-                </div>
+                {/* Trending Swimmer — biggest Arab-ranking climber (last 6 months) */}
+                {(() => {
+                  const t = profile.trending
+                  if (!t) {
+                    return (
+                      <div style={hCard}>
+                        <div style={hPhoto}>🏊</div>
+                        <div style={hBody}>
+                          <div style={hTitle}>Quick Stats</div>
+                          <div style={hBig}>{formatNumber(profile.stats?.swimmers)}</div>
+                          <div style={hSub}>Total Swimmers</div>
+                          <div style={{ ...hSub, marginTop: 6 }}>{formatNumber(profile.stats?.medals)} Medals · {formatNumber(profile.stats?.records)} Records</div>
+                        </div>
+                        {barsIcon}
+                      </div>
+                    )
+                  }
+                  const up = t.is_new || (t.delta ?? 0) > 0
+                  const col = up ? '#0d7a52' : '#a8402f'
+                  return (
+                    <div style={hCard}>
+                      <div style={{ ...hPhoto, overflow: 'hidden' }}>
+                        {t.photo
+                          ? <img src={mediaUrl(t.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                          : '🏊'}
+                      </div>
+                      <div style={hBody}>
+                        <div style={hTitle}>Trending<br />Swimmer</div>
+                        <div style={{ ...hBig, color: col, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {t.is_new ? 'NEW' : `${t.delta > 0 ? '+' : ''}${t.delta}`}
+                          {!t.is_new && (
+                            <span style={{ fontSize: 17, lineHeight: 1 }}>{up ? '▲' : '▼'}</span>
+                          )}
+                        </div>
+                        <div style={hSub}>
+                          Arab ranking #{t.rank}{t.is_new ? ' · new entry' : ` · was #${t.prev_rank}`}
+                        </div>
+                        <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>
+                          <SwimmerLink id={t.id} name={t.name} />
+                        </div>
+                        {t.best_event && (
+                          <div style={hSub}>{t.best_event} · {t.best_time}{t.fina ? ` · ${t.fina} pts` : ''}</div>
+                        )}
+                      </div>
+                      <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{up ? '📈' : '📉'}</span>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
+
+            {/* Current + Upcoming Events */}
+            {(() => {
+              const todayISO = new Date().toISOString().slice(0, 10)
+              const evs = [...calEvents].filter((e) => e.date).sort((a, b) => a.date.localeCompare(b.date))
+              const current = evs.find((e) => e.date <= todayISO && todayISO <= (e.end_date || e.date)) || null
+              const upcoming = evs.find((e) => e.date > todayISO) || null
+              const daysUntil = upcoming ? Math.round((new Date(upcoming.date) - new Date(todayISO)) / 86400000) : 0
+              const dayNum = current ? Math.round((new Date(todayISO) - new Date(current.date)) / 86400000) + 1 : 0
+              const range = (e) => e.end_date && e.end_date !== e.date ? `${usDate(e.date)} – ${usDate(e.end_date)}` : usDate(e.date)
+              const evCard = { borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 130, position: 'relative' }
+              const evKick = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#123a7d' }
+              const evTitle = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, color: '#0b2948', lineHeight: 1.3 }
+              const badge = (bg, text) => (
+                <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 11, fontWeight: 800, background: bg, color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.05em' }}>{text}</span>
+              )
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginTop: 22 }}>
+                  <div style={evCard}>
+                    <div style={evKick}>Current Event</div>
+                    {current ? (
+                      <>
+                        {badge('#0d7a52', `LIVE · DAY ${dayNum}`)}
+                        <div style={evTitle}>{current.championship ? <Link to={`/meets/${current.championship}`} style={{ color: 'inherit' }}>{current.title}</Link> : current.title}</div>
+                        <div style={hSub}>{range(current)}</div>
+                        {current.description && <div style={{ ...hSub, color: '#5a6b80' }}>{current.description}</div>}
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ ...evTitle, color: '#8a9bb5', fontWeight: 700 }}>No event currently running</div>
+                        <div style={hSub}>Live events will appear here during championships</div>
+                      </>
+                    )}
+                  </div>
+                  <div style={evCard}>
+                    <div style={evKick}>Upcoming Event</div>
+                    {upcoming ? (
+                      <>
+                        {badge('#123a7d', daysUntil === 1 ? 'TOMORROW' : `IN ${daysUntil} DAYS`)}
+                        <div style={evTitle}>{upcoming.championship ? <Link to={`/meets/${upcoming.championship}`} style={{ color: 'inherit' }}>{upcoming.title}</Link> : upcoming.title}</div>
+                        <div style={hSub}>{range(upcoming)}</div>
+                        {upcoming.description && <div style={{ ...hSub, color: '#5a6b80' }}>{upcoming.description}</div>}
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ ...evTitle, color: '#8a9bb5', fontWeight: 700 }}>No upcoming events scheduled</div>
+                        <div style={hSub}>Check the calendar for future championships</div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* National Record Holders */}
             {secTitle('National Record Holders')}

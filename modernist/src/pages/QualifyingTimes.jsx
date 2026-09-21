@@ -104,11 +104,27 @@ function StandardModal({ standard, onClose, onSaved }) {
     qualifying_period_start: standard?.qualifying_period_start || '',
     qualifying_period_end: standard?.qualifying_period_end || '',
   })
+  const [compDate, setCompDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // World Aquatics rule of thumb: the qualification window is ~16 months,
+  // closing on the competition date. Entering just the competition date
+  // fills both period fields (still editable afterwards).
+  const applyCompDate = (v) => {
+    setCompDate(v)
+    if (!v) return
+    const d = new Date(v + 'T00:00:00')
+    const start = new Date(d)
+    start.setMonth(start.getMonth() - 16)
+    const iso = (x) => x.toISOString().slice(0, 10)
+    setForm((f) => ({ ...f, qualifying_period_start: iso(start), qualifying_period_end: iso(d), year: f.year || d.getFullYear() }))
+  }
   const submit = async (e) => {
     e.preventDefault()
     if (!form.name) { setError('Name required'); return }
+    if (!form.qualifying_period_start || !form.qualifying_period_end) {
+      setError('Qualifying period required — enter the competition date or the period dates'); return
+    }
     setSaving(true)
     try {
       if (standard?.id) await updateQualifyingStandard(standard.id, form)
@@ -125,9 +141,19 @@ function StandardModal({ standard, onClose, onSaved }) {
           <div className="field"><label>Competition type</label><input className="input" value={form.competition_type} onChange={(e) => setForm({ ...form, competition_type: e.target.value })} placeholder="e.g. world_championships" /></div>
           <div className="field"><label>Year</label><input className="input" type="number" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} /></div>
         </div>
+        <div className="field">
+          <label>Competition date</label>
+          <input className="input" type="date" value={compDate} onChange={(e) => applyCompDate(e.target.value)} />
+          <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+            Enter the meet date and the qualifying period is calculated automatically (16-month window ending on this date) — or set the period yourself below.
+          </div>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div className="field"><label>Qualifying start</label><input className="input" type="date" value={form.qualifying_period_start} onChange={(e) => setForm({ ...form, qualifying_period_start: e.target.value })} /></div>
-          <div className="field"><label>Qualifying end</label><input className="input" type="date" value={form.qualifying_period_end} onChange={(e) => setForm({ ...form, qualifying_period_end: e.target.value })} /></div>
+          <div className="field"><label>Qualifying start *</label><input className="input" type="date" value={form.qualifying_period_start} onChange={(e) => setForm({ ...form, qualifying_period_start: e.target.value })} /></div>
+          <div className="field"><label>Qualifying end *</label><input className="input" type="date" value={form.qualifying_period_end} onChange={(e) => setForm({ ...form, qualifying_period_end: e.target.value })} /></div>
+        </div>
+        <div className="text-muted" style={{ fontSize: 12 }}>
+          Only swims inside this window count toward qualification in the federation Qualifying tab.
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>

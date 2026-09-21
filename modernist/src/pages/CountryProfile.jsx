@@ -291,7 +291,7 @@ function QualifyingTab({ countryId, qualSub, setQualSub }) {
         ) : qualData === null ? <Loading label="Checking qualifying swims" /> : (<>
           <div style={{ textAlign: 'center', fontSize: 12.5, color: '#5a6b80', fontWeight: 600, margin: '0 0 16px' }}>
             {qualWindow
-              ? <>Qualification period: <span className="asw-num" style={{ color: '#0b2948', fontWeight: 800 }}>{formatDate(qualWindow.start)} – {formatDate(qualWindow.end)}</span> — only swims in this window count</>
+              ? <>Qualification period{qualWindow.derived ? ' (estimated)' : ''}: <span className="asw-num" style={{ color: '#0b2948', fontWeight: 800 }}>{formatDate(qualWindow.start)} – {formatDate(qualWindow.end)}</span> — only swims in this window count</>
               : 'Qualification period not published yet — showing all-time best times'}
           </div>
           {qualifiedRows.length === 0 ? <Empty label={qualWindow ? 'No swimmers have made a cut inside the qualification period yet' : 'No swimmers meet these cuts yet'} /> : (

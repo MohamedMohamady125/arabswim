@@ -600,8 +600,10 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
         published qualification period (e.g. Paris 2024: 1 Mar 2023 –
         23 Jun 2024; Singapore 2025 Worlds: 9 Mar 2024 – 29 Jun 2025 —
         roughly a 16-month window closing a few weeks before the meet).
-        When a standard has a stored window, only swims inside it count;
-        standards without a published window fall back to all-time bests.
+        When a standard has a stored window, only swims inside it count.
+        Standards without a stored window get a derived default window —
+        1 Sep of the year before the standard's year through 31 Dec of the
+        standard's year — so ancient swims never count as qualifying.
         """
         from django.db.models import Min, Q as DQ
         from championships.models import Result
@@ -621,13 +623,22 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
             event__is_relay=False,
             time_centiseconds__gt=0,
         )
+        import datetime
+        start = standard.qualifying_period_start
+        end = standard.qualifying_period_end
+        derived = False
+        if not start and not end and standard.year:
+            # No published window stored — derive a ~16-month default
+            derived = True
+            start = datetime.date(standard.year - 1, 9, 1)
+            end = datetime.date(standard.year, 12, 31)
         window = None
-        if standard.qualifying_period_start and standard.qualifying_period_end:
-            window = {'start': standard.qualifying_period_start,
-                      'end': standard.qualifying_period_end}
-            results = results.filter(
-                championship__date__gte=standard.qualifying_period_start,
-                championship__date__lte=standard.qualifying_period_end)
+        if start or end:
+            window = {'start': start, 'end': end, 'derived': derived}
+            if start:
+                results = results.filter(championship__date__gte=start)
+            if end:
+                results = results.filter(championship__date__lte=end)
 
         best = (results.values('swimmer_id', 'swimmer__name', 'swimmer__sex',
                                'event_id', 'event__name', 'championship__pool')

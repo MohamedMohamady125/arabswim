@@ -44,7 +44,6 @@ const TABS = [
   { value: 'news', label: 'News' },
   { value: 'board', label: 'Board' },
   { value: 'team', label: 'Team' },
-  { value: 'results', label: 'Results' },
   { value: 'championships', label: 'Championships' },
   { value: 'statistics', label: 'Statistics' },
   { value: 'progression', label: 'Progression' },
@@ -1082,15 +1081,12 @@ export default function CountryProfile() {
 
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [btSex, setBtSex] = useState('')
-  const [btPool, setBtPool] = useState('')
   const [progStroke, setProgStroke] = useState('Freestyle')
   const [progPool, setProgPool] = useState('LCM')
   const [progLines, setProgLines] = useState([])
   const [progLoading, setProgLoading] = useState(false)
   const [openChamp, setOpenChamp] = useState(null)
   const [teamSub, setTeamSub] = useState('coaches')
-  const [resultsSub, setResultsSub] = useState('national')
   const [champSub, setChampSub] = useState('hosted')
   const [qualSub, setQualSub] = useState('standards')
   const [ovNews, setOvNews] = useState([])
@@ -1164,12 +1160,10 @@ export default function CountryProfile() {
   const { country, medals } = profile
   const topSwimmers = profile.top_swimmers || []
   const topMedalists = profile.top_medalists || []
-  const bestTimes = profile.best_times || []
   const records = profile.records || []
   const hosted = profile.championships_hosted || []
   const participated = profile.championships_participated || []
   const teams = profile.teams || []
-  const filteredBest = bestTimes.filter((b) => (!btSex || b.sex === btSex) && (!btPool || b.pool === btPool))
   const newRecords = records.filter((r) => r.is_new)
   const currentRecords = records.filter((r) => !r.is_new)
   // Medal tally per competition type: real counts from the profile payload,
@@ -1300,6 +1294,59 @@ export default function CountryProfile() {
                       : <div key={`ph-${i}`} style={cardStyle}>{inner}</div>
                   })}
                 </div>
+
+                {/* Current + Upcoming Events — fills the gap below the news cards */}
+                {(() => {
+                  const todayISO = new Date().toISOString().slice(0, 10)
+                  const evs = [...calEvents].filter((e) => e.date).sort((a, b) => a.date.localeCompare(b.date))
+                  const current = evs.find((e) => e.date <= todayISO && todayISO <= (e.end_date || e.date)) || null
+                  const upcoming = evs.find((e) => e.date > todayISO) || null
+                  const daysUntil = upcoming ? Math.round((new Date(upcoming.date) - new Date(todayISO)) / 86400000) : 0
+                  const dayNum = current ? Math.round((new Date(todayISO) - new Date(current.date)) / 86400000) + 1 : 0
+                  const range = (e) => e.end_date && e.end_date !== e.date ? `${usDate(e.date)} – ${usDate(e.end_date)}` : usDate(e.date)
+                  const evCard = { borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 150, position: 'relative' }
+                  const evKick = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#123a7d' }
+                  const evTitle = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, color: '#0b2948', lineHeight: 1.3 }
+                  const badge = (bg, text) => (
+                    <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 11, fontWeight: 800, background: bg, color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.05em' }}>{text}</span>
+                  )
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+                      <div style={evCard}>
+                        <div style={evKick}>Current Event</div>
+                        {current ? (
+                          <>
+                            {badge('#0d7a52', `LIVE · DAY ${dayNum}`)}
+                            <div style={evTitle}>{current.championship ? <Link to={`/meets/${current.championship}`} style={{ color: 'inherit' }}>{current.title}</Link> : current.title}</div>
+                            <div style={hSub}>{range(current)}</div>
+                            {current.description && <div style={{ ...hSub, color: '#5a6b80' }}>{current.description}</div>}
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ ...evTitle, color: '#8a9bb5', fontWeight: 700 }}>No event currently running</div>
+                            <div style={hSub}>Live events will appear here during championships</div>
+                          </>
+                        )}
+                      </div>
+                      <div style={evCard}>
+                        <div style={evKick}>Upcoming Event</div>
+                        {upcoming ? (
+                          <>
+                            {badge('#123a7d', daysUntil === 1 ? 'TOMORROW' : `IN ${daysUntil} DAYS`)}
+                            <div style={evTitle}>{upcoming.championship ? <Link to={`/meets/${upcoming.championship}`} style={{ color: 'inherit' }}>{upcoming.title}</Link> : upcoming.title}</div>
+                            <div style={hSub}>{range(upcoming)}</div>
+                            {upcoming.description && <div style={{ ...hSub, color: '#5a6b80' }}>{upcoming.description}</div>}
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ ...evTitle, color: '#8a9bb5', fontWeight: 700 }}>No upcoming events scheduled</div>
+                            <div style={hSub}>Check the calendar for future championships</div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* RIGHT: Highlight cards */}
@@ -1392,59 +1439,6 @@ export default function CountryProfile() {
                 })()}
               </div>
             </div>
-
-            {/* Current + Upcoming Events */}
-            {(() => {
-              const todayISO = new Date().toISOString().slice(0, 10)
-              const evs = [...calEvents].filter((e) => e.date).sort((a, b) => a.date.localeCompare(b.date))
-              const current = evs.find((e) => e.date <= todayISO && todayISO <= (e.end_date || e.date)) || null
-              const upcoming = evs.find((e) => e.date > todayISO) || null
-              const daysUntil = upcoming ? Math.round((new Date(upcoming.date) - new Date(todayISO)) / 86400000) : 0
-              const dayNum = current ? Math.round((new Date(todayISO) - new Date(current.date)) / 86400000) + 1 : 0
-              const range = (e) => e.end_date && e.end_date !== e.date ? `${usDate(e.date)} – ${usDate(e.end_date)}` : usDate(e.date)
-              const evCard = { borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 130, position: 'relative' }
-              const evKick = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#123a7d' }
-              const evTitle = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, color: '#0b2948', lineHeight: 1.3 }
-              const badge = (bg, text) => (
-                <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 11, fontWeight: 800, background: bg, color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.05em' }}>{text}</span>
-              )
-              return (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginTop: 22 }}>
-                  <div style={evCard}>
-                    <div style={evKick}>Current Event</div>
-                    {current ? (
-                      <>
-                        {badge('#0d7a52', `LIVE · DAY ${dayNum}`)}
-                        <div style={evTitle}>{current.championship ? <Link to={`/meets/${current.championship}`} style={{ color: 'inherit' }}>{current.title}</Link> : current.title}</div>
-                        <div style={hSub}>{range(current)}</div>
-                        {current.description && <div style={{ ...hSub, color: '#5a6b80' }}>{current.description}</div>}
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ ...evTitle, color: '#8a9bb5', fontWeight: 700 }}>No event currently running</div>
-                        <div style={hSub}>Live events will appear here during championships</div>
-                      </>
-                    )}
-                  </div>
-                  <div style={evCard}>
-                    <div style={evKick}>Upcoming Event</div>
-                    {upcoming ? (
-                      <>
-                        {badge('#123a7d', daysUntil === 1 ? 'TOMORROW' : `IN ${daysUntil} DAYS`)}
-                        <div style={evTitle}>{upcoming.championship ? <Link to={`/meets/${upcoming.championship}`} style={{ color: 'inherit' }}>{upcoming.title}</Link> : upcoming.title}</div>
-                        <div style={hSub}>{range(upcoming)}</div>
-                        {upcoming.description && <div style={{ ...hSub, color: '#5a6b80' }}>{upcoming.description}</div>}
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ ...evTitle, color: '#8a9bb5', fontWeight: 700 }}>No upcoming events scheduled</div>
-                        <div style={hSub}>Check the calendar for future championships</div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )
-            })()}
 
             {/* National Record Holders */}
             {secTitle('National Record Holders')}
@@ -1606,54 +1600,6 @@ export default function CountryProfile() {
           </div>
         )
       })()}
-
-      {/* ===== RESULTS (Best Times) ===== */}
-      {tab === 'results' && (
-        <div className="pad-lg">
-          <SubTabs options={[['national', 'National'], ['international', 'International']]} value={resultsSub} onChange={setResultsSub} />
-          {resultsSub === 'international' ? (() => {
-            const intl = participated.filter((c) => c.classification && c.classification !== 'National')
-            return (
-              <>
-                <SectHead title={`International Meets · ${intl.length}`} />
-                {intl.length === 0 ? <Empty label="No international participations" /> : (
-                  <div className="table-scroll"><table className="table"><thead><tr><th>Championship</th><th>Classification</th><th>Date</th><th>Location</th><th className="num">Swimmers</th><th className="num">Results</th><th>Medals</th></tr></thead><tbody>
-                    {intl.map((c) => (
-                      <tr key={c.id}>
-                        <td><Link to={`/meets/${c.id}`} style={{ fontWeight: 600, color: 'inherit', textDecoration: 'none' }}>{c.name}</Link></td>
-                        <td><span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', background: CLASS_COLORS[c.classification] || '#1a56a0', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>{c.classification}</span></td>
-                        <td className="text-muted">{formatDate(c.date)}</td>
-                        <td className="text-muted">{c.location || '—'}</td>
-                        <td className="num asw-num">{c.swimmers_count}</td>
-                        <td className="num asw-num">{c.results_count}</td>
-                        <td>{c.medals?.total > 0 ? (
-                          <span className="asw-num" style={{ fontSize: 12, display: 'inline-flex', gap: 8 }}>
-                            <span style={{ color: 'var(--asw-gold)', fontWeight: 800 }}>{c.medals.gold}G</span>
-                            <span style={{ color: 'var(--asw-silver)', fontWeight: 800 }}>{c.medals.silver}S</span>
-                            <span style={{ color: 'var(--asw-bronze)', fontWeight: 800 }}>{c.medals.bronze}B</span>
-                          </span>
-                        ) : <span className="text-muted">—</span>}</td>
-                      </tr>
-                    ))}
-                  </tbody></table></div>
-                )}
-              </>
-            )
-          })() : (<>
-          <SectHead title={`National Best Times · ${filteredBest.length}`}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <Seg options={[{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]} value={btSex} onChange={setBtSex} />
-              <Seg options={[{ value: '', label: 'All Pools' }, { value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={btPool} onChange={setBtPool} />
-            </div>
-          </SectHead>
-          {filteredBest.length === 0 ? <Empty label="No times" /> : (
-            <div className="table-scroll"><table className="table"><thead><tr><th>Event</th><th>Sex</th><th>Pool</th><th className="time">Time</th><th className="num">FINA</th><th>Swimmer</th><th className="num">Age</th><th>Championship</th><th>Date</th></tr></thead><tbody>
-              {filteredBest.map((t, i) => (<tr key={i}><td style={{ fontWeight: 600 }}>{t.event}</td><td className="text-muted">{t.sex === 'F' ? "Women's" : "Men's"}</td><td className="text-muted">{t.pool}</td><td className="time asw-time">{t.time}</td><td className="num asw-num">{t.fina ?? '—'}</td><td><SwimmerLink id={t.swimmer_id} name={t.swimmer} /></td><td className="num asw-num">{t.age_at_competition || '—'}</td><td className="text-muted">{t.championship || '—'}</td><td className="text-muted">{formatDate(t.date)}</td></tr>))}
-            </tbody></table></div>
-          )}
-          </>)}
-        </div>
-      )}
 
       {/* ===== CHAMPIONSHIPS ===== */}
       {tab === 'championships' && (

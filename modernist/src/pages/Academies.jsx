@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Phone, Mail, Globe, Instagram, MapPin } from 'lucide-react'
+import { Phone, Mail, Globe, AtSign, MapPin } from 'lucide-react'
 import { getAcademies } from '../api/academies'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
@@ -137,7 +137,7 @@ export default function Academies() {
                   <ContactLink href={a.website || ''} icon={Globe} label="Website" />
                   <ContactLink
                     href={a.instagram ? `https://instagram.com/${String(a.instagram).replace(/^@/, '')}` : ''}
-                    icon={Instagram} label="Instagram"
+                    icon={AtSign} label="Instagram"
                   />
                 </div>
               </div>

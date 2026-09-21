@@ -150,21 +150,22 @@ export default function Medals() {
     </select>
   )
 
+  const classificationTabs = useMemo(
+    () => classifications.map((c) => ({ value: c.name, label: c.name })),
+    [classifications],
+  )
+
   return (
     <div>
       <PageHead title="Medal Tables" />
 
-      {/* filter bar: one line, scrolls sideways on phone */}
+      {/* Classification tab bar */}
+      <div className="rule-b tabbar">
+        <Seg tabs options={classificationTabs} value={category} onChange={(v) => { setCategory(v); setCountry('') }} />
+      </div>
+
+      {/* filter bar */}
       <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <select
-          className="select" style={{ width: 'auto', minWidth: 150 }}
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          {classifications.map((c) => (
-            <option key={c.id} value={c.name}>{c.name}</option>
-          ))}
-        </select>
         {/* National → country picker comes straight after the category */}
         {isNational && countrySelect}
         <Seg options={scopeOptions} value={scope} onChange={setScope} />

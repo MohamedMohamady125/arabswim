@@ -520,6 +520,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             seen.add(r.swimmer_id)
             top_swimmers.append({
                 'id': r.swimmer_id, 'name': r.swimmer.name, 'sex': r.swimmer.sex,
+                'photo': r.swimmer.photo.url if r.swimmer.photo else None,
                 'club': r.swimmer.club, 'best_fina': r.fina_points,
                 'best_event': r.event.name, 'best_time': _fmt_cs(r.time_centiseconds),
                 'championship': r.championship.name,
@@ -562,6 +563,7 @@ class CountryViewSet(viewsets.ModelViewSet):
         records = [{
             'id': rec.id, 'record_type': rec.record_type, 'event': rec.event.name,
             'swimmer_id': rec.swimmer_id, 'swimmer': rec.swimmer.name,
+            'swimmer_photo': rec.swimmer.photo.url if rec.swimmer.photo else None,
             'sex': rec.swimmer.sex, 'time': _fmt_cs(rec.time_centiseconds),
             'pool': rec.pool, 'age_category': rec.age_category,
             'location': rec.location, 'meet_name': rec.meet_name,
@@ -571,17 +573,20 @@ class CountryViewSet(viewsets.ModelViewSet):
 
         top_medalists = list(
             medals_qs.filter(swimmer__is_relay_team=False)
-            .values('swimmer_id', 'swimmer__name', 'swimmer__sex')
+            .values('swimmer_id', 'swimmer__name', 'swimmer__sex', 'swimmer__photo')
             .annotate(gold=Count('id', filter=Q(medal_type='GOLD')),
                       silver=Count('id', filter=Q(medal_type='SILVER')),
                       bronze=Count('id', filter=Q(medal_type='BRONZE')),
                       total=Count('id'))
             .order_by('-gold', '-silver', '-bronze')[:20]
         )
+        from django.conf import settings as _settings
         for m in top_medalists:
             m['id'] = m.pop('swimmer_id')
             m['name'] = m.pop('swimmer__name')
             m['sex'] = m.pop('swimmer__sex')
+            _photo = m.pop('swimmer__photo')
+            m['photo'] = (_settings.MEDIA_URL + _photo) if _photo else None
 
         championships_hosted = [{
             'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,
@@ -634,12 +639,14 @@ class CountryViewSet(viewsets.ModelViewSet):
         part_qs = results_qs.filter(swimmer__is_relay_team=False)
         intl_qs = part_qs.exclude(championship__classification__name='National')
         source_qs = intl_qs if intl_qs.exists() else part_qs
+        from django.conf import settings as _mp_settings
         most_participated = [{
             'id': m['swimmer_id'], 'name': m['swimmer__name'],
             'sex': m['swimmer__sex'],
+            'photo': (_mp_settings.MEDIA_URL + m['swimmer__photo']) if m['swimmer__photo'] else None,
             'championships_count': m['championships_count'],
         } for m in (source_qs
-                    .values('swimmer_id', 'swimmer__name', 'swimmer__sex')
+                    .values('swimmer_id', 'swimmer__name', 'swimmer__sex', 'swimmer__photo')
                     .annotate(championships_count=Count('championship_id', distinct=True))
                     .order_by('-championships_count', 'swimmer__name')[:5])]
 

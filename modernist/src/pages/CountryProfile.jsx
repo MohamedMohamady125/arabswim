@@ -672,7 +672,9 @@ function RecordsTab({ records, country }) {
           {filtered.map((r, i) => (
             <div key={i} style={{ background: '#f8fafc', border: '1px solid #dde3ea', borderRadius: 10, overflow: 'hidden', textAlign: 'center', boxShadow: '0 2px 8px rgba(11,41,72,.06)' }}>
               {/* Square photo area */}
-              <div style={{ height: 190, background: 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5' }}>🏊</div>
+              <div style={{ height: 190, background: 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', overflow: 'hidden' }}>
+                {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+              </div>
               {/* Info */}
               <div style={{ padding: '14px 10px 18px' }}>
                 <div style={{ fontWeight: 800, fontSize: 16, color: '#0b2948', marginBottom: 4 }}>
@@ -1114,7 +1116,11 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       {rec ? (
         <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
           {/* Photo panel */}
-          <div style={{ width: 100, background: 'linear-gradient(170deg, #0d2d5e 0%, #1a56a0 60%, #3b82c4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>🏊</div>
+          <div style={{ width: 100, background: 'linear-gradient(170deg, #0d2d5e 0%, #1a56a0 60%, #3b82c4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
+            {(isRecordman ? rec.photo : rec.swimmer_photo)
+              ? <img src={mediaUrl(isRecordman ? rec.photo : rec.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+              : '🏊'}
+          </div>
           {/* Info */}
           <div style={{ padding: '12px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
@@ -1557,7 +1563,9 @@ export default function CountryProfile() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Best Season Performance */}
                 <div style={hCard}>
-                  <div style={hPhoto}>🏊</div>
+                  <div style={{ ...hPhoto, overflow: 'hidden' }}>
+                    {bestPerf?.photo ? <img src={mediaUrl(bestPerf.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+                  </div>
                   <div style={hBody}>
                     <div style={hTitle}>Best Season<br />Performance</div>
                     <div style={hBig}>{bestPerf?.best_time || '—'}</div>
@@ -1570,7 +1578,9 @@ export default function CountryProfile() {
 
                 {/* Most Decorated Swimmer */}
                 <div style={hCard}>
-                  <div style={hPhoto}>🏊</div>
+                  <div style={{ ...hPhoto, overflow: 'hidden' }}>
+                    {topMedalist?.photo ? <img src={mediaUrl(topMedalist.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+                  </div>
                   <div style={hBody}>
                     <div style={hTitle}>Most Decorated<br />Swimmer</div>
                     <div style={hBig}>{topMedalist?.total || 0}</div>
@@ -1582,7 +1592,9 @@ export default function CountryProfile() {
 
                 {/* New Record */}
                 <div style={hCard}>
-                  <div style={hPhoto}>🏊</div>
+                  <div style={{ ...hPhoto, overflow: 'hidden' }}>
+                    {newestRecord?.swimmer_photo ? <img src={mediaUrl(newestRecord.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+                  </div>
                   <div style={hBody}>
                     <div style={hTitle}>New Record</div>
                     <div style={hBig}>{newestRecord?.time || '—'}</div>
@@ -1651,7 +1663,9 @@ export default function CountryProfile() {
                 <div key={i} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
                   {/* Circular photo with navy ring */}
                   <div style={{ padding: '24px 0 8px' }}>
-                    <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '4px solid #0d2d5e', boxShadow: '0 3px 10px rgba(0,0,0,.12)' }}>🏊</div>
+                    <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '4px solid #0d2d5e', boxShadow: '0 3px 10px rgba(0,0,0,.12)', overflow: 'hidden' }}>
+                      {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+                    </div>
                   </div>
                   <div style={{ padding: '12px 12px 0' }}>
                     <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
@@ -1740,7 +1754,9 @@ export default function CountryProfile() {
         const swimmerCard = (s) => (
           <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
             {/* Circular photo with navy ring */}
-            <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, color: '#8a9bb5', border: '3px solid #0d2d5e', boxShadow: '0 3px 10px rgba(11,41,72,.14)' }}>🏊</div>
+            <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, color: '#8a9bb5', border: '3px solid #0d2d5e', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
+              {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+            </div>
             {/* Info */}
             <div style={{ padding: '10px 2px 0' }}>
               <div style={{ fontWeight: 800, fontSize: 13.5, color: '#0b2948', marginBottom: 5, lineHeight: 1.25 }}>

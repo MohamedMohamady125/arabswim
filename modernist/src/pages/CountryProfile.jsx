@@ -1236,21 +1236,16 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
       {/* Row 5: Performance Index (dark bg) | Country Battle */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-        {/* Performance Index — dark navy background like ISF */}
-        <div style={{ background: '#0b2948', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
-            <span style={{ width: 4, height: 17, background: 'linear-gradient(180deg, #4a90d9, #1a56a0)', borderRadius: 2, flexShrink: 0 }} />
-            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#fff' }}>Performance Index</span>
-            <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer' }}>View All</span>
-          </div>
-          <div style={{ fontSize: 10.5, color: '#8aaccc', marginBottom: 18, lineHeight: 1.3, paddingLeft: 13 }}>Distribution of {country.name} Swimmers by Performance Level</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 180 }}>
+        {/* Performance Index */}
+        <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea' }}>
+          {cardHeader('Performance Index', `Distribution of ${country.name} Swimmers by Performance Level`)}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 180, marginTop: 10 }}>
             {perfDist.map((d, i) => (
               <div key={d.label} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: '#fff' }}>{d.count}</div>}
+                {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: '#0b2948' }}>{d.count}</div>}
                 <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: '3px 3px 0 0' }} />
-                <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, color: '#8aaccc', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
-                <div style={{ fontSize: 6.5, color: '#4a6a8a', marginTop: 1 }}>({d.range})</div>
+                <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, color: '#5a6b80', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
+                <div style={{ fontSize: 6.5, color: '#9baab8', marginTop: 1 }}>({d.range})</div>
               </div>
             ))}
           </div>

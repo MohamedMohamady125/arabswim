@@ -1031,14 +1031,14 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   const maxPart = Math.max(...participationList.map(([, n]) => n), 1)
 
   // Helpers
-  const cardHeader = (icon, title, sub) => (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 16, color: '#1a56a0' }}>{icon}</span>
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0b2948' }}>{title}</span>
+  const cardHeader = (title, sub) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+        <span style={{ width: 4, height: 17, background: 'linear-gradient(180deg, #1a56a0, #0b2948)', borderRadius: 2, flexShrink: 0 }} />
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0b2948' }}>{title}</span>
         <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer' }}>View All</span>
       </div>
-      <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 2, lineHeight: 1.3 }}>{sub}</div>
+      <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
     </div>
   )
   const card = (children, extra = {}) => (
@@ -1085,9 +1085,9 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
         <span style={{ width: 24 }}>#</span>
         <span style={{ flex: 1 }}>Swimmer</span>
-        <span style={{ width: 28, textAlign: 'center' }}>🥇</span>
-        <span style={{ width: 28, textAlign: 'center' }}>🥈</span>
-        <span style={{ width: 28, textAlign: 'center' }}>🥉</span>
+        <span style={{ width: 28, textAlign: 'center', color: '#d4af37', fontWeight: 900 }}>G</span>
+        <span style={{ width: 28, textAlign: 'center', color: '#a8a9ad', fontWeight: 900 }}>S</span>
+        <span style={{ width: 28, textAlign: 'center', color: '#cd7f32', fontWeight: 900 }}>B</span>
         <span style={{ width: 40, textAlign: 'center' }}>Total</span>
       </div>
       {list.map((m, i) => (
@@ -1103,15 +1103,15 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
     </>
   )
 
-  const recCard4 = (rec, label, sub, icon, isRecordman = false) => (
+  const recCard4 = (rec, label, sub, isRecordman = false) => (
     <div style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
-      <div style={{ padding: '10px 12px 6px', borderBottom: '1px solid #f0f3f7' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 14, color: '#1a56a0' }}>{icon}</span>
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0b2948' }}>{label}</span>
+      <div style={{ padding: '10px 12px 7px', borderBottom: '1px solid #f0f3f7' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 4, height: 14, background: 'linear-gradient(180deg, #1a56a0, #0b2948)', borderRadius: 2, flexShrink: 0 }} />
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#0b2948' }}>{label}</span>
           <span style={{ fontSize: 9, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
         </div>
-        <div style={{ fontSize: 9.5, color: '#7a8ca0', marginTop: 2 }}>{sub}</div>
+        <div style={{ fontSize: 9.5, color: '#7a8ca0', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
       </div>
       {rec ? (
         <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
@@ -1156,18 +1156,18 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
       {/* Row 1: Top Performance Male | Female */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {card(<>{cardHeader('♂', 'Top Performance', `Best Performances by ${country.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}</>)}
-        {card(<>{cardHeader('♀', 'Top Performance', `Best Performances by ${country.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No data" />}</>)}
+        {card(<>{cardHeader('Top Performance · Men', `Best Performances by ${country.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}</>)}
+        {card(<>{cardHeader('Top Performance · Women', `Best Performances by ${country.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No data" />}</>)}
       </div>
 
       {/* Row 2: Participation | Championships Hosted | Most Participated */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>
-          {cardHeader('🌐', 'Participation', 'Total Participations by Competition')}
+          {cardHeader('Participation', 'Total Participations by Competition')}
           {participationList.length === 0 ? <Empty label="No data" /> : participationList.map(([cls, n]) => barRow(cls, n, maxPart))}
         </>)}
         {card(<>
-          {cardHeader('🏟', 'Championships Hosted', 'Number of Championships Hosted')}
+          {cardHeader('Championships Hosted', 'Number of Championships Hosted')}
           {hosted.length === 0 ? <Empty label="None" /> : (() => {
             const counts = {}
             hosted.forEach((c) => { const k = c.classification || 'Other'; counts[k] = (counts[k] || 0) + 1 })
@@ -1177,7 +1177,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           })()}
         </>)}
         {card(<>
-          {cardHeader('👥', 'Most Participated Swimmer', `Top 5 ${country.name} Swimmers by International Participations`)}
+          {cardHeader('Most Participated Swimmer', `Top 5 ${country.name} Swimmers by International Participations`)}
           <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
             <span style={{ width: 24 }}>#</span>
             <span style={{ flex: 1 }}>Swimmer</span>
@@ -1196,7 +1196,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       {/* Row 3: Medals | Most Male Decorated | Most Female Decorated */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>
-          {cardHeader('🏅', 'Medals', 'Total Medals by Competition')}
+          {cardHeader('Medals', 'Total Medals by Competition')}
           {/* Legend */}
           <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11 }}>
             {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([lbl, c]) => (
@@ -1222,28 +1222,28 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
             ))
           })()}
         </>)}
-        {card(<>{cardHeader('♂', 'Most Male Decorated', `Top 5 ${country.name} Male Swimmers by Total Medals`)}{maleMedalists.length ? decoratedTable(maleMedalists) : <Empty label="No data" />}</>)}
-        {card(<>{cardHeader('♀', 'Most Female Decorated', `Top 5 ${country.name} Female Swimmers by Total Medals`)}{femaleMedalists.length ? decoratedTable(femaleMedalists) : <Empty label="No data" />}</>)}
+        {card(<>{cardHeader('Most Decorated · Men', `Top 5 ${country.name} Male Swimmers by Total Medals`)}{maleMedalists.length ? decoratedTable(maleMedalists) : <Empty label="No data" />}</>)}
+        {card(<>{cardHeader('Most Decorated · Women', `Top 5 ${country.name} Female Swimmers by Total Medals`)}{femaleMedalists.length ? decoratedTable(femaleMedalists) : <Empty label="No data" />}</>)}
       </div>
 
       {/* Row 4: Last Male Record | Last Female Record | Most Male Recordan | Most Femal Recordan */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {recCard4(lastMR, 'Last Male Record', `Most Recent ${country.name} Male Record`, '♂', false)}
-        {recCard4(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`, '♀', false)}
-        {recCard4(topMaleRec, 'Most Male Recordan', `Top ${country.name} Male Swimmers by Records`, '♂', true)}
-        {recCard4(topFemaleRec, 'Most Femal Recordan', `Top ${country.name} Female Swimmers by Records`, '♀', true)}
+        {recCard4(lastMR, 'Last Male Record', `Most Recent ${country.name} Male Record`, false)}
+        {recCard4(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`, false)}
+        {recCard4(topMaleRec, 'Most Male Recordman', `Top ${country.name} Male Swimmers by Records`, true)}
+        {recCard4(topFemaleRec, 'Most Female Recordman', `Top ${country.name} Female Swimmers by Records`, true)}
       </div>
 
       {/* Row 5: Performance Index (dark bg) | Country Battle */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
         {/* Performance Index — dark navy background like ISF */}
         <div style={{ background: '#0b2948', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <span style={{ fontSize: 16, color: '#4a90d9' }}>📊</span>
-            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#fff' }}>Performance Index</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
+            <span style={{ width: 4, height: 17, background: 'linear-gradient(180deg, #4a90d9, #1a56a0)', borderRadius: 2, flexShrink: 0 }} />
+            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#fff' }}>Performance Index</span>
             <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer' }}>View All</span>
           </div>
-          <div style={{ fontSize: 10.5, color: '#8aaccc', marginBottom: 18, lineHeight: 1.3 }}>Distribution of {country.name} Swimmers by Performance Level</div>
+          <div style={{ fontSize: 10.5, color: '#8aaccc', marginBottom: 18, lineHeight: 1.3, paddingLeft: 13 }}>Distribution of {country.name} Swimmers by Performance Level</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 180 }}>
             {perfDist.map((d, i) => (
               <div key={d.label} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
@@ -1257,7 +1257,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         </div>
         {/* Country Battle */}
         {card(<>
-          {cardHeader('👥', 'Country Battle', 'Number of Swimmers in the Top 100 Arab Ranking')}
+          {cardHeader('Country Battle', 'Number of Swimmers in the Top 100 Arab Ranking')}
           {!(profile.country_battle || []).length ? <Empty label="No data" /> : (() => {
             const battle = profile.country_battle.slice(0, 10)
             const mx = Math.max(...battle.map((b) => b.count), 1)

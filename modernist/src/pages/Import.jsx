@@ -337,6 +337,13 @@ export default function Import() {
   }
 
   const formComplete = (m) => m.excluded || !!m.existingChampId || (m.champForm.name && m.champForm.country && m.champForm.date)
+  const missingFields = (m) => {
+    const out = []
+    if (!m.champForm.name) out.push('name')
+    if (!m.champForm.country) out.push('country')
+    if (!m.champForm.date) out.push('start date')
+    return out
+  }
   const allFormsComplete = meets.every(formComplete)
   const includedMeets = meets.filter((m) => !m.excluded)
 
@@ -1004,9 +1011,22 @@ export default function Import() {
                       All meets are excluded — include at least one to continue
                     </span>
                   )}
-                  {meets.length > 1 && !allFormsComplete && includedMeets.length > 0 && (
-                    <span style={{ fontSize: 13, color: 'var(--asw-gold)' }}>
-                      Complete required fields on every included meet to continue
+                  {!allFormsComplete && includedMeets.length > 0 && (
+                    <span style={{ fontSize: 13, color: 'var(--asw-gold)', textAlign: 'right' }}>
+                      {meets.length > 1 ? 'Missing required fields on: ' : 'Missing required fields: '}
+                      {meets.map((m, i) => (!m.excluded && !formComplete(m)) ? (
+                        <button
+                          key={m.importId} type="button"
+                          onClick={() => setActive(i)}
+                          style={{
+                            background: 'none', border: 'none', padding: 0, margin: '0 0 0 4px',
+                            font: 'inherit', color: 'var(--asw-gold)', fontWeight: 700,
+                            textDecoration: 'underline', cursor: 'pointer',
+                          }}
+                        >
+                          {meets.length > 1 ? `${m.champForm.name || m.fileName} (${missingFields(m).join(', ')})` : missingFields(m).join(', ')}
+                        </button>
+                      ) : null)}
                     </span>
                   )}
                   {meets.length > 1 && includedMeets.length > 0 && includedMeets.length < meets.length && (

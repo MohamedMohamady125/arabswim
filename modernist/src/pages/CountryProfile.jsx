@@ -9,6 +9,8 @@ import { getAlbums } from '../api/media'
 import { getBoardMembers } from '../api/teams'
 import { getCoaches } from '../api/coaches'
 import { getCalendarEvents } from '../api/calendar'
+import { getMedals, getMedalSwimmerSummary } from '../api/medals'
+import { getClassifications } from '../api/records'
 import Flag from '../components/Flag'
 import FederationProgressionTab from '../components/FederationProgression'
 import { Loading, Empty, SectHead, Seg } from '../components/ui'
@@ -689,6 +691,149 @@ function RecordsTab({ records, country }) {
   )
 }
 
+// Drill-down page for one classification's medals (opened from the tally widgets)
+function MedalClassDetail({ countryId, className, box, onBack }) {
+  const [rows, setRows] = useState([])
+  const [medalists, setMedalists] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [sub, setSub] = useState('championships')
+
+  useEffect(() => {
+    let alive = true
+    setLoading(true)
+    getClassifications()
+      .then((r) => {
+        const all = Array.isArray(r.data) ? r.data : r.data?.results || []
+        const cls = all.find((c) => c.name === className)
+        if (!cls) return Promise.reject(new Error('unknown classification'))
+        return Promise.all([
+          getMedals({ country: countryId, classification: cls.id, page_size: 5000 }),
+          getMedalSwimmerSummary({ country: countryId, classification: cls.id, limit: 'all' }),
+        ])
+      })
+      .then(([m, s]) => {
+        if (!alive) return
+        setRows(Array.isArray(m.data) ? m.data : m.data?.results || [])
+        setMedalists(Array.isArray(s.data) ? s.data : s.data?.results || [])
+      })
+      .catch(() => { if (alive) { setRows([]); setMedalists([]) } })
+      .finally(() => alive && setLoading(false))
+    return () => { alive = false }
+  }, [countryId, className])
+
+  const byChamp = useMemo(() => {
+    const map = {}
+    rows.forEach((m) => {
+      const c = m.championship_detail
+      if (!c) return
+      if (!map[c.id]) map[c.id] = { id: c.id, name: c.name, date: c.date, location: c.location, gold: 0, silver: 0, bronze: 0, total: 0 }
+      const k = m.medal_type === 'GOLD' ? 'gold' : m.medal_type === 'SILVER' ? 'silver' : 'bronze'
+      map[c.id][k]++; map[c.id].total++
+    })
+    return Object.values(map).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+  }, [rows])
+
+  const sortedMedals = useMemo(() => {
+    const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
+    return [...rows].sort((a, b) =>
+      (b.championship_detail?.date || '').localeCompare(a.championship_detail?.date || '') ||
+      (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3))
+  }, [rows])
+
+  const color = CLASS_COLORS[className] || '#1a56a0'
+  const medalBadge = (type) => {
+    const map = { GOLD: ['G', 'var(--asw-gold)'], SILVER: ['S', 'var(--asw-silver)'], BRONZE: ['B', '#c88a4d'] }
+    const [letter, bg] = map[type] || ['?', '#999']
+    return <span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: bg, color: '#fff', fontWeight: 900, fontSize: 12 }}>{letter}</span>
+  }
+  const statBox = (label, value, accent) => (
+    <div style={{ flex: '1 1 100px', maxWidth: 160, background: '#fff', border: '1px solid #dde6f0', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, color: accent }}>{formatNumber(value)}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5a6b80', marginTop: 2 }}>{label}</div>
+    </div>
+  )
+
+  return (
+    <div className="pad-lg">
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#1a56a0', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+        ← All competitions
+      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '14px 0 18px', flexWrap: 'wrap' }}>
+        <span style={{ background: color, color: '#fff', padding: '8px 18px', borderRadius: 6, fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 20, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{className}</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, color: '#0b2948' }}>Medal Details</span>
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        {statBox('Gold', box?.gold ?? 0, 'var(--asw-gold)')}
+        {statBox('Silver', box?.silver ?? 0, '#8a94a3')}
+        {statBox('Bronze', box?.bronze ?? 0, '#c88a4d')}
+        {statBox('Total', box?.total ?? 0, '#0b2948')}
+      </div>
+
+      <SubTabs
+        options={[['championships', 'By Championship'], ['medalists', 'Medalists'], ['medals', 'All Medals']]}
+        value={sub} onChange={setSub}
+      />
+
+      {loading && <Loading label="Loading medals" />}
+
+      {!loading && sub === 'championships' && (
+        byChamp.length === 0 ? <Empty label="No medals" /> : (
+          <div className="table-scroll"><table className="table"><thead><tr><th>Championship</th><th>Date</th><th>Location</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
+            {byChamp.map((c) => (
+              <tr key={c.id}>
+                <td><Link to={`/meets/${c.id}`} style={{ fontWeight: 600, color: 'inherit', textDecoration: 'none' }}>{c.name}</Link></td>
+                <td className="text-muted">{formatDate(c.date)}</td>
+                <td className="text-muted">{c.location || '—'}</td>
+                <td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{c.gold}</td>
+                <td className="num asw-num">{c.silver}</td>
+                <td className="num asw-num">{c.bronze}</td>
+                <td className="num asw-num" style={{ fontWeight: 800 }}>{c.total}</td>
+              </tr>
+            ))}
+          </tbody></table></div>
+        )
+      )}
+
+      {!loading && sub === 'medalists' && (
+        medalists.length === 0 ? <Empty label="No medalists" /> : (
+          <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
+            {medalists.map((m, i) => (
+              <tr key={m.swimmer__id ?? i}>
+                <td className="asw-num">{i + 1}</td>
+                <td><SwimmerLink id={m.swimmer__id} name={m.swimmer__name} /></td>
+                <td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{m.gold}</td>
+                <td className="num asw-num">{m.silver}</td>
+                <td className="num asw-num">{m.bronze}</td>
+                <td className="num asw-num" style={{ fontWeight: 800 }}>{m.total}</td>
+              </tr>
+            ))}
+          </tbody></table></div>
+        )
+      )}
+
+      {!loading && sub === 'medals' && (
+        sortedMedals.length === 0 ? <Empty label="No medals" /> : (
+          <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 40 }}></th><th>Event</th><th>Swimmer</th><th>Championship</th><th>Date</th></tr></thead><tbody>
+            {sortedMedals.map((m) => (
+              <tr key={m.id}>
+                <td>{medalBadge(m.medal_type)}</td>
+                <td style={{ fontWeight: 600 }}>{m.event_detail?.name || '—'}</td>
+                <td>{m.swimmer_detail?.is_relay_team
+                  ? <span style={{ fontWeight: 600 }}>{m.swimmer_detail?.name}</span>
+                  : <SwimmerLink id={m.swimmer_detail?.id} name={m.swimmer_detail?.name} />}</td>
+                <td>{m.championship_detail
+                  ? <Link to={`/meets/${m.championship_detail.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{m.championship_detail.name}</Link>
+                  : '—'}</td>
+                <td className="text-muted">{formatDate(m.championship_detail?.date)}</td>
+              </tr>
+            ))}
+          </tbody></table></div>
+        )
+      )}
+    </div>
+  )
+}
+
 function CompareTab({ profile, country }) {
   const [countries, setCountries] = useState([])
   const [otherId, setOtherId] = useState('')
@@ -1135,6 +1280,7 @@ export default function CountryProfile() {
   const { id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') || 'overview'
+  const mclass = searchParams.get('mclass') || ''
   const setTab = (t) => setSearchParams({ tab: t }, { replace: true })
 
   const [profile, setProfile] = useState(null)
@@ -1732,13 +1878,27 @@ export default function CountryProfile() {
       {tab === 'records' && <RecordsTab records={records} country={country} />}
 
       {/* ===== MEDALS ===== */}
-      {tab === 'medals' && (
+      {tab === 'medals' && mclass && (
+        <MedalClassDetail
+          countryId={id}
+          className={mclass}
+          box={medalBoxes.find((m) => m.name === mclass)}
+          onBack={() => setSearchParams({ tab: 'medals' }, { replace: true })}
+        />
+      )}
+      {tab === 'medals' && !mclass && (
         <div className="pad-lg">
           <SectHead title="Medal Tally by Competition" />
           {medalBoxes.length === 0 ? <Empty label="No medals" /> : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
               {medalBoxes.map((m) => (
-                <div key={m.name} style={{ background: CLASS_COLORS[m.name] || 'var(--color-accent)', color: '#fff', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
+                <div
+                  key={m.name}
+                  onClick={() => setSearchParams({ tab: 'medals', mclass: m.name })}
+                  role="button" tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter') setSearchParams({ tab: 'medals', mclass: m.name }) }}
+                  style={{ background: CLASS_COLORS[m.name] || 'var(--color-accent)', color: '#fff', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240, cursor: 'pointer', position: 'relative' }}
+                >
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.75 }}>{m.name}</div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2 }}>{formatNumber(m.total)}</div>
                   <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 700 }}>
@@ -1746,6 +1906,7 @@ export default function CountryProfile() {
                     <span style={{ color: 'var(--asw-silver)' }}>{m.silver}S</span>
                     <span style={{ color: '#e3a869' }}>{m.bronze}B</span>
                   </div>
+                  <span style={{ position: 'absolute', right: 12, bottom: 12, fontSize: 11, fontWeight: 700, opacity: 0.85 }}>Details →</span>
                 </div>
               ))}
             </div>

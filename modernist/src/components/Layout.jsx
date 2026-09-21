@@ -59,7 +59,8 @@ const NAV = [
     links: [
       ['Swimmers', '/swimmers'],
       ['Coaches', '/coaches'],
-      ['Clubs / Teams', '/teams'],
+      ['Clubs', '/teams'],
+      ['Academies', '/academies'],
       ['Compare', '/compare'],
       ['Hall of Fame', '/hall-of-fame'],
     ],

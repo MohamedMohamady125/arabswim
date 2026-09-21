@@ -176,6 +176,14 @@ export default function Import() {
     const buildMeetEntry = (fileName, meetData) => {
       const m = meetData.meet
       const inferredCountry = countries.find((c) => c.code === m.inferred_country)
+      // Auto-fill start/end dates: parsed meet dates first (any format the
+      // file used), then fall back to the detected day-by-day program dates.
+      const startDates = _extractDatesForInput(m.date)
+      const endDates = _extractDatesForInput(m.date_end)
+      const progDates = (meetData.program || []).map((p) => p.date).filter(Boolean).sort()
+      const autoStart = startDates[0] || progDates[0] || ''
+      const autoEndRaw = endDates[0] || startDates[1] || progDates[progDates.length - 1] || ''
+      const autoEnd = autoEndRaw && autoEndRaw !== autoStart ? autoEndRaw : ''
       return {
         fileName,
         importId: meetData.import_id,
@@ -185,8 +193,8 @@ export default function Import() {
         champForm: {
           ...emptyForm,
           name: m.name || '',
-          date: m.date || _formatDateForInput(m.date) || '',
-          end_date: m.date_end || '',
+          date: autoStart,
+          end_date: autoEnd,
           pool: m.pool || 'LCM',
           country: inferredCountry?.id?.toString() || '',
           location: m.location || '',
@@ -1775,12 +1783,24 @@ function HistoryTab() {
   )
 }
 
-function _formatDateForInput(dateStr) {
-  if (!dateStr) return ''
-  const m1 = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
-  if (m1) return `${m1[3]}-${m1[2].padStart(2, '0')}-${m1[1].padStart(2, '0')}`
-  const m2 = dateStr.match(/(\d{1,2})-(\d{1,2})-(\d{4})/)
-  if (m2) return `${m2[3]}-${m2[2].padStart(2, '0')}-${m2[1].padStart(2, '0')}`
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
-  return ''
+// Pull every recognizable date out of a header string (handles ISO, DD/MM/YYYY,
+// DD-MM-YYYY, DD.MM.YYYY and ranges like "12/05/2026 to 15/05/2026" or
+// "2026-05-12 - 2026-05-15"). Returns YYYY-MM-DD strings in order of appearance.
+function _extractDatesForInput(dateStr) {
+  if (!dateStr) return []
+  const s = String(dateStr).trim()
+  const iso = s.match(/\d{4}-\d{2}-\d{2}/g)
+  if (iso) return iso
+  const out = []
+  const re = /(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})/g
+  let m
+  while ((m = re.exec(s))) {
+    let d = Number(m[1]); let mo = Number(m[2])
+    // Default DD/MM; swap for US MM/DD headers when DD/MM is impossible
+    if (mo > 12 && d <= 12) { const t = d; d = mo; mo = t }
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      out.push(`${m[3]}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`)
+    }
+  }
+  return out
 }

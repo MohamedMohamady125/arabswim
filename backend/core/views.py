@@ -667,6 +667,10 @@ class CountryViewSet(viewsets.ModelViewSet):
         from championships.models import Result
         from django.db.models import Min, Count
 
+        view = request.query_params.get('view')
+        if view in ('overview', 'event', 'records'):
+            return self._progression_v2(request, country, view)
+
         stroke = request.query_params.get('stroke', 'Freestyle')
         pool = request.query_params.get('pool', 'LCM')
 
@@ -719,6 +723,166 @@ class CountryViewSet(viewsets.ModelViewSet):
                 })
 
         return Response(lines)
+
+    def _progression_v2(self, request, country, view):
+        """Season-based federation progression.
+
+        view=overview  → per-event season-best matrix (heatmap data)
+        view=event     → one event: yearly national best + top-8 depth
+                         average + benchmark lines (Arab record, A/B cuts)
+        view=records   → chronological national-best (record) timeline
+        """
+        from django.db.models import F, Window
+        from django.db.models.functions import RowNumber, ExtractYear
+        from championships.models import Result
+
+        params = request.query_params
+        sex = params.get('sex', 'M')
+        pool = params.get('pool', 'LCM')
+        base = Result.objects.filter(
+            swimmer__nationality=country, swimmer__is_relay_team=False,
+            swimmer__sex=sex, championship__pool=pool,
+            event__is_relay=False, time_centiseconds__gt=0,
+            championship__date__isnull=False,
+        )
+
+        if view == 'overview':
+            rows = (
+                base.annotate(year=ExtractYear('championship__date'))
+                .annotate(rn=Window(
+                    RowNumber(),
+                    partition_by=[F('event_id'), F('year')],
+                    order_by=[F('time_centiseconds').asc(),
+                              F('championship__date').asc()]))
+                .filter(rn=1)
+                .values('event_id', 'event__name', 'event__stroke',
+                        'event__sort_order', 'event__distance', 'year',
+                        'time_centiseconds', 'swimmer_id', 'swimmer__name',
+                        'championship__name')
+            )
+            events, years = {}, set()
+            for r in rows:
+                ev = events.setdefault(r['event_id'], {
+                    'event_id': r['event_id'], 'name': r['event__name'],
+                    'stroke': r['event__stroke'],
+                    '_sort': (r['event__sort_order'] or 0,
+                              r['event__distance'] or 0),
+                    'cells': {},
+                })
+                years.add(r['year'])
+                ev['cells'][r['year']] = {
+                    'time_cs': r['time_centiseconds'],
+                    'time': _fmt_cs(r['time_centiseconds']),
+                    'swimmer': r['swimmer__name'],
+                    'swimmer_id': r['swimmer_id'],
+                    'meet': r['championship__name'],
+                }
+            ev_list = sorted(events.values(), key=lambda e: e['_sort'])
+            for e in ev_list:
+                del e['_sort']
+            return Response({'years': sorted(years), 'events': ev_list})
+
+        event_id = params.get('event')
+        if not event_id:
+            return Response({'error': 'event query param is required'},
+                            status=400)
+
+        if view == 'event':
+            qs = base.filter(event_id=event_id).annotate(
+                year=ExtractYear('championship__date'))
+            best_rows = list(
+                qs.annotate(rn=Window(
+                    RowNumber(), partition_by=[F('year')],
+                    order_by=[F('time_centiseconds').asc(),
+                              F('championship__date').asc()]))
+                .filter(rn=1)
+                .values('year', 'time_centiseconds', 'swimmer_id',
+                        'swimmer__name', 'championship__name',
+                        'championship__date', 'fina_points')
+            )
+            # Season best per swimmer → depth (top-8 average) per year
+            swim_rows = (
+                qs.annotate(rn=Window(
+                    RowNumber(),
+                    partition_by=[F('year'), F('swimmer_id')],
+                    order_by=[F('time_centiseconds').asc()]))
+                .filter(rn=1)
+                .values('year', 'time_centiseconds')
+            )
+            depth = {}
+            for r in swim_rows:
+                depth.setdefault(r['year'], []).append(r['time_centiseconds'])
+
+            seasons = []
+            for b in sorted(best_rows, key=lambda x: x['year']):
+                times = sorted(depth.get(b['year'], []))
+                top8 = times[:8]
+                avg = round(sum(top8) / len(top8)) if top8 else None
+                seasons.append({
+                    'year': b['year'],
+                    'best_cs': b['time_centiseconds'],
+                    'best': _fmt_cs(b['time_centiseconds']),
+                    'swimmer': b['swimmer__name'],
+                    'swimmer_id': b['swimmer_id'],
+                    'meet': b['championship__name'],
+                    'date': b['championship__date'],
+                    'fina': b['fina_points'],
+                    'top8_avg_cs': avg,
+                    'top8_avg': _fmt_cs(avg) if avg else None,
+                    'top8_count': len(top8),
+                    'swimmers_count': len(times),
+                })
+
+            benchmarks = {}
+            from records.models import Record
+            rec = (Record.objects
+                   .filter(record_type='ARAB', event_id=event_id, pool=pool,
+                           swimmer__sex=sex)
+                   .order_by('time_centiseconds')
+                   .select_related('swimmer').first())
+            if rec:
+                benchmarks['arab_record'] = {
+                    'time_cs': rec.time_centiseconds,
+                    'time': _fmt_cs(rec.time_centiseconds),
+                    'swimmer': rec.swimmer.name,
+                }
+            from qualifying_times.models import QualifyingTime
+            qts = (QualifyingTime.objects
+                   .filter(event_id=event_id, gender=sex, pool=pool)
+                   .select_related('standard')
+                   .order_by('-standard__year', 'standard_id'))
+            first_std = None
+            for t in qts:
+                if first_std is None:
+                    first_std = t.standard_id
+                if t.standard_id != first_std:
+                    continue
+                benchmarks['cut_' + t.cut.lower()] = {
+                    'time_cs': t.time_centiseconds,
+                    'time': t.formatted_time,
+                    'standard': t.standard.name,
+                }
+            return Response({'seasons': seasons, 'benchmarks': benchmarks})
+
+        # view == 'records' — every time the national best improved
+        rows = (base.filter(event_id=event_id)
+                .values('championship__date', 'championship__name',
+                        'swimmer_id', 'swimmer__name', 'time_centiseconds')
+                .order_by('championship__date', 'time_centiseconds'))
+        timeline, best = [], None
+        for r in rows:
+            cs = r['time_centiseconds']
+            if best is None or cs < best:
+                timeline.append({
+                    'date': r['championship__date'],
+                    'time_cs': cs, 'time': _fmt_cs(cs),
+                    'swimmer': r['swimmer__name'],
+                    'swimmer_id': r['swimmer_id'],
+                    'meet': r['championship__name'],
+                    'improved_cs': (best - cs) if best is not None else None,
+                })
+                best = cs
+        return Response({'timeline': timeline})
 
 
 class EventViewSet(viewsets.ModelViewSet):

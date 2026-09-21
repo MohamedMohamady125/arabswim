@@ -9,6 +9,7 @@ import { getAlbums } from '../api/media'
 import { getBoardMembers } from '../api/teams'
 import { getCoaches } from '../api/coaches'
 import Flag from '../components/Flag'
+import FederationProgressionTab from '../components/FederationProgression'
 import { Loading, Empty, SectHead, Seg } from '../components/ui'
 import { formatDate, formatNumber, formatTime } from '../utils'
 
@@ -45,6 +46,7 @@ const TABS = [
   { value: 'results', label: 'Results' },
   { value: 'championships', label: 'Championships' },
   { value: 'statistics', label: 'Statistics' },
+  { value: 'progression', label: 'Progression' },
   { value: 'records', label: 'Records' },
   { value: 'ranking', label: 'Ranking' },
   { value: 'medals', label: 'Medals' },
@@ -1618,6 +1620,9 @@ export default function CountryProfile() {
         progPool={progPool} setProgPool={setProgPool}
         progLines={progLines} progLoading={progLoading}
       />}
+
+      {/* ===== PROGRESSION ===== */}
+      {tab === 'progression' && <FederationProgressionTab countryId={id} />}
 
       {/* ===== RECORDS ===== */}
       {tab === 'records' && <RecordsTab records={records} country={country} />}

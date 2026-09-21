@@ -745,6 +745,16 @@ class CountryViewSet(viewsets.ModelViewSet):
             event__is_relay=False, time_centiseconds__gt=0,
             championship__date__isnull=False,
         )
+        # Optional meet-level filter: a specific classification name, or
+        # INTL = everything except domestic National/University/Other meets
+        classification = params.get('classification')
+        if classification == 'INTL':
+            base = base.exclude(
+                championship__classification__name__in=[
+                    'National', 'University', 'Other'])
+        elif classification:
+            base = base.filter(
+                championship__classification__name=classification)
 
         if view == 'overview':
             rows = (

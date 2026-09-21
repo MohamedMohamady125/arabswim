@@ -500,6 +500,13 @@ function StepChart({ timeline }) {
 
 /* ── Main tab ─────────────────────────────────────────────────────────── */
 
+const MEET_LEVELS = [
+  ['INTL', 'All International'],
+  ['Arab', 'Arab'], ['GCC', 'GCC'], ['African', 'African'], ['Asian', 'Asian'],
+  ['Mediterranean', 'Mediterranean'], ['Islamic', 'Islamic'],
+  ['World', 'World'], ['Olympic', 'Olympic'],
+]
+
 export default function FederationProgressionTab({ countryId }) {
   const [sub, setSub] = useState('overview')
   const [sex, setSex] = useState('M')
@@ -509,6 +516,11 @@ export default function FederationProgressionTab({ countryId }) {
   const [overview, setOverview] = useState(null)
   const [eventData, setEventData] = useState(null)
   const [recordsData, setRecordsData] = useState(null)
+  // International view (meets filtered by classification — no National)
+  const [cls, setCls] = useState('INTL')
+  const [intlMode, setIntlMode] = useState('heatmap')
+  const [intlOverview, setIntlOverview] = useState(null)
+  const [intlEventData, setIntlEventData] = useState(null)
 
   // Overview data doubles as the event-picker source (only events with data)
   useEffect(() => {
@@ -543,6 +555,39 @@ export default function FederationProgressionTab({ countryId }) {
     return () => { alive = false }
   }, [countryId, sub, eventId, sex, pool])
 
+  // International overview (also feeds the intl event picker)
+  useEffect(() => {
+    if (sub !== 'intl') return
+    const key = `iov|${cls}|${sex}|${pool}`
+    setIntlOverview(null)
+    if (cache.current[key]) { setIntlOverview(cache.current[key]); return }
+    let alive = true
+    getCountryProgression(countryId, { view: 'overview', sex, pool, classification: cls })
+      .then((r) => { if (alive) { cache.current[key] = r.data; setIntlOverview(r.data) } })
+      .catch(() => alive && setIntlOverview({ years: [], events: [] }))
+    return () => { alive = false }
+  }, [countryId, sub, cls, sex, pool])
+
+  const intlEvents = intlOverview?.events || []
+  useEffect(() => {
+    if (sub !== 'intl' || intlMode !== 'event' || !intlEvents.length) return
+    if (eventId && intlEvents.some((e) => e.event_id === Number(eventId))) return
+    const preferred = intlEvents.find((e) => /100 ?m free/i.test(e.name)) || intlEvents[0]
+    setEventId(String(preferred.event_id))
+  }, [sub, intlMode, intlEvents]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (sub !== 'intl' || intlMode !== 'event' || !eventId) return
+    const key = `iev|${cls}|${eventId}|${sex}|${pool}`
+    setIntlEventData(null)
+    if (cache.current[key]) { setIntlEventData(cache.current[key]); return }
+    let alive = true
+    getCountryProgression(countryId, { view: 'event', event: eventId, sex, pool, classification: cls })
+      .then((r) => { if (alive) { cache.current[key] = r.data; setIntlEventData(r.data) } })
+      .catch(() => alive && setIntlEventData({ seasons: [], benchmarks: {} }))
+    return () => { alive = false }
+  }, [countryId, sub, intlMode, cls, eventId, sex, pool])
+
   useEffect(() => {
     if (sub !== 'records' || !eventId) return
     const key = `rec|${eventId}|${sex}|${pool}`
@@ -561,6 +606,12 @@ export default function FederationProgressionTab({ countryId }) {
     return Object.entries(g)
   }, [events])
 
+  const intlGrouped = useMemo(() => {
+    const g = {}
+    intlEvents.forEach((e) => { (g[e.stroke || 'Other'] = g[e.stroke || 'Other'] || []).push(e) })
+    return Object.entries(g)
+  }, [intlEvents])
+
   return (
     <div className="pad-lg">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '4px 0 8px' }}>
@@ -572,10 +623,27 @@ export default function FederationProgressionTab({ countryId }) {
         Season-best analysis — how the federation moves year over year
       </div>
       <SubTabs value={sub} onChange={setSub}
-        options={[['overview', 'Overview'], ['event', 'By Event'], ['records', 'Record History']]} />
+        options={[['overview', 'Overview'], ['event', 'By Event'], ['records', 'Record History'], ['intl', 'International']]} />
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
-        {sub !== 'overview' && (
+        {sub === 'intl' && (
+          <select className="select" style={{ width: 'auto', minWidth: 160 }} value={cls} onChange={(e) => setCls(e.target.value)}>
+            {MEET_LEVELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        )}
+        {sub === 'intl' && (
+          <Seg options={[{ value: 'heatmap', label: 'Heatmap' }, { value: 'event', label: 'By Event' }]} value={intlMode} onChange={setIntlMode} />
+        )}
+        {sub === 'intl' && intlMode === 'event' && (
+          <select className="select" style={{ width: 'auto', minWidth: 190 }} value={eventId || ''} onChange={(e) => setEventId(e.target.value)}>
+            {intlGrouped.map(([stroke, evs]) => (
+              <optgroup key={stroke} label={stroke}>
+                {evs.map((ev) => <option key={ev.event_id} value={ev.event_id}>{ev.name}</option>)}
+              </optgroup>
+            ))}
+          </select>
+        )}
+        {(sub === 'event' || sub === 'records') && (
           <select className="select" style={{ width: 'auto', minWidth: 190 }} value={eventId || ''} onChange={(e) => setEventId(e.target.value)}>
             {grouped.map(([stroke, evs]) => (
               <optgroup key={stroke} label={stroke}>
@@ -593,6 +661,13 @@ export default function FederationProgressionTab({ countryId }) {
       )}
       {sub === 'event' && (overview && !events.length ? <Empty label="No results for this selection" /> : <EventView data={eventData} />)}
       {sub === 'records' && (overview && !events.length ? <Empty label="No results for this selection" /> : <RecordsView data={recordsData} />)}
+      {sub === 'intl' && (intlMode === 'heatmap'
+        ? (intlOverview && !intlEvents.length
+            ? <Empty label="No international results for this selection" />
+            : <OverviewHeatmap data={intlOverview} onPickEvent={(id) => { setEventId(String(id)); setIntlMode('event') }} />)
+        : (intlOverview && !intlEvents.length
+            ? <Empty label="No international results for this selection" />
+            : <EventView data={intlEventData} />))}
     </div>
   )
 }

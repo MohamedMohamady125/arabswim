@@ -1501,7 +1501,7 @@ export default function CountryProfile() {
           }
           return out
         }
-        const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 5)
+        const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 12)
         const usDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
         const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative' }
         const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0 }
@@ -1708,9 +1708,11 @@ export default function CountryProfile() {
 
             {/* National Record Holders */}
             {secTitle('National Record Holders')}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 18 }}>
-              {topRecords.map((r, i) => (
-                <div key={i} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
+            {/* Auto-scrolling ticker — track duplicated for a seamless loop, pauses on hover */}
+            <div className="asw-ticker" style={{ overflow: 'hidden', padding: '4px 0 10px' }}>
+              <div className="asw-ticker-track" style={{ display: 'flex', width: 'max-content', animationDuration: `${Math.max(topRecords.length * 5, 25)}s` }}>
+              {[...topRecords, ...topRecords].map((r, i) => (
+                <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
                   {/* Circular photo with navy ring */}
                   <div style={{ padding: '24px 0 8px' }}>
                     <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '4px solid #0d2d5e', boxShadow: '0 3px 10px rgba(0,0,0,.12)', overflow: 'hidden' }}>
@@ -1728,6 +1730,7 @@ export default function CountryProfile() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           </div>
         )

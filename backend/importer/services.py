@@ -1781,6 +1781,11 @@ def _create_relay_only_swimmers(championship):
             name = leg.get('name', '') if isinstance(leg, dict) else (leg if isinstance(leg, str) else '')
             if not name or len(name) < 2:
                 continue
+            # Garbage guard: cumulative-split lines ("1:17.54 (25.1") and
+            # rank-glued strings ("15hamza ASIF") are not athlete names.
+            # Real names never contain digits.
+            if re.search(r'\d', name):
+                continue
             # Check if a Swimmer profile already exists (case-insensitive)
             if Swimmer.objects.filter(name__iexact=name, is_relay_team=False).exists():
                 continue

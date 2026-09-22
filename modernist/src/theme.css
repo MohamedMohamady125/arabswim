@@ -545,6 +545,14 @@ figure { margin: 0; }
   .swimmer-stat-cards { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* ── Auto-scrolling ticker (federation record holders) ────────────────── */
+@keyframes asw-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.asw-ticker-track { animation: asw-ticker-scroll 40s linear infinite; }
+.asw-ticker:hover .asw-ticker-track { animation-play-state: paused; }
+
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.35; transform: scale(0.7); }

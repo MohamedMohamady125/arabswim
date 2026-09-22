@@ -106,27 +106,27 @@ function AttBlock({ r, accent }) {
   const year = r.date ? String(r.date).slice(0, 4) : ''
   const evShort = String(r.event || '').replace(/\s*M\s+/, 'm ').replace('Individual Medley', 'IM')
   return (
-    <Link to={`/swimmers/${r.swimmer_id}`} style={{ flex: 'none', width: 250, textDecoration: 'none', color: '#0b2948', position: 'relative', padding: '20px 16px 16px', borderRadius: 12, background: '#fff', border: '1px solid #dde3ea', boxShadow: '0 1px 5px rgba(11,41,72,.07)', transition: 'box-shadow .15s' }}
+    <Link to={`/swimmers/${r.swimmer_id}`} style={{ flex: 'none', width: 250, textDecoration: 'none', color: '#0b2948', position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#fff', border: '1px solid #dde3ea', boxShadow: '0 1px 5px rgba(11,41,72,.07)', transition: 'box-shadow .15s', display: 'flex', flexDirection: 'column' }}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 5px 16px rgba(11,41,72,.16)' }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 5px rgba(11,41,72,.07)' }}>
-      {/* starting block number chip */}
-      <div style={{ position: 'absolute', top: -1, left: -1, background: accent, color: '#fff', fontSize: 11, fontWeight: 900, letterSpacing: '0.06em', padding: '4px 11px', borderRadius: '11px 0 10px 0', textTransform: 'uppercase' }}>
-        {evShort}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12 }}>
-        <div style={{ width: 84, height: 84, borderRadius: '50%', flex: 'none', overflow: 'hidden', border: `3px solid ${accent}`, background: '#eef3f8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>
-          {r.photo
-            ? <img src={mediaUrl(r.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-            : '🏊'}
+      {/* big squared photo */}
+      <div style={{ height: 220, background: '#eef3f8', borderBottom: `3px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, position: 'relative' }}>
+        {r.photo
+          ? <img src={mediaUrl(r.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+          : '🏊'}
+        <div style={{ position: 'absolute', top: 0, left: 0, background: accent, color: '#fff', fontSize: 11, fontWeight: 900, letterSpacing: '0.06em', padding: '5px 12px', borderRadius: '0 0 10px 0', textTransform: 'uppercase' }}>
+          {evShort}
         </div>
-        <div style={{ minWidth: 0 }}>
+      </div>
+      <div style={{ padding: '13px 15px 15px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
           <div className="asw-num" style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.05, color: '#0b2948' }}>{r.time}</div>
-          {r.fina != null && <div className="asw-num" style={{ fontSize: 12, fontWeight: 800, color: accent, marginTop: 4 }}>{r.fina} FINA</div>}
+          {r.fina != null && <div className="asw-num" style={{ fontSize: 12, fontWeight: 800, color: accent }}>{r.fina} FINA</div>}
         </div>
-      </div>
-      <div style={{ fontSize: 14, fontWeight: 800, marginTop: 13, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'var(--font-heading)' }}>{r.swimmer}</div>
-      <div style={{ fontSize: 11.5, color: '#7a8ca0', marginTop: 3 }}>
-        {year}{r.age_at_competition ? ` · aged ${r.age_at_competition}` : ''}
+        <div style={{ fontSize: 14, fontWeight: 800, marginTop: 9, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'var(--font-heading)' }}>{r.swimmer}</div>
+        <div style={{ fontSize: 11.5, color: '#7a8ca0', marginTop: 3 }}>
+          {year}{r.age_at_competition ? ` · aged ${r.age_at_competition}` : ''}
+        </div>
       </div>
     </Link>
   )

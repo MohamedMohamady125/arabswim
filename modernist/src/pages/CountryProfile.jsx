@@ -8,12 +8,13 @@ import { getPredictions } from '../api/predictions'
 import { getAlbums } from '../api/media'
 import { getBoardMembers } from '../api/teams'
 import { getCoaches } from '../api/coaches'
+import { getAcademies } from '../api/academies'
 import { getCalendarEvents } from '../api/calendar'
-import { getMedals, getMedalSwimmerSummary } from '../api/medals'
+import { getMedals, getMedalSummary, getMedalSwimmerSummary } from '../api/medals'
 import { getClassifications } from '../api/records'
 import Flag from '../components/Flag'
 import FederationProgressionTab from '../components/FederationProgression'
-import { Loading, Empty, SectHead, Seg } from '../components/ui'
+import { Loading, Empty, SectHead, Seg, Pager } from '../components/ui'
 import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
 
 const CLASS_ORDER = ['Arab', 'GCC', 'African', 'Asian', 'Mediterranean', 'Islamic', 'World', 'Olympic']
@@ -46,7 +47,6 @@ const TABS = [
   { value: 'news', label: 'News' },
   { value: 'board', label: 'Board' },
   { value: 'team', label: 'Team' },
-  { value: 'championships', label: 'Championships' },
   { value: 'statistics', label: 'Statistics' },
   { value: 'progression', label: 'Progression' },
   { value: 'records', label: 'Records' },
@@ -54,11 +54,11 @@ const TABS = [
   { value: 'medals', label: 'Medals' },
   { value: 'qualifying', label: 'Qualifying' },
   { value: 'clubs', label: 'Clubs' },
+  { value: 'academies', label: 'Academies' },
   { value: 'pools', label: 'Pools' },
   { value: 'compare', label: 'Compare' },
   { value: 'prediction', label: 'Prediction' },
   { value: 'multimedia', label: 'Multimedia' },
-  { value: 'archives', label: 'Archives' },
 ]
 
 function SubTabs({ options, value, onChange }) {
@@ -139,6 +139,8 @@ function RankingTab({ countryId }) {
   const [pool, setPool] = useState('LCM')
   const [ageGroup, setAgeGroup] = useState('OPEN')
   const [rows, setRows] = useState([])
+  const [count, setCount] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -156,12 +158,19 @@ function RankingTab({ countryId }) {
   useEffect(() => {
     if (!event) return
     let alive = true; setLoading(true)
-    getRankings({ scope: 'national', country: countryId, gender, pool, event, age_group: ageGroup, limit: 50 })
-      .then((r) => alive && setRows(r.data?.results || (Array.isArray(r.data) ? r.data : [])))
+    getRankings({ scope: 'national', country: countryId, gender, pool, event, age_group: ageGroup, limit: 20, page })
+      .then((r) => {
+        if (!alive) return
+        setRows(r.data?.results || (Array.isArray(r.data) ? r.data : []))
+        setCount(r.data?.count ?? 0)
+      })
       .catch(() => alive && setRows([]))
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [countryId, event, gender, pool, ageGroup])
+  }, [countryId, event, gender, pool, ageGroup, page])
+
+  // New filter selection restarts from page 1
+  useEffect(() => { setPage(1) }, [event, gender, pool, ageGroup])
 
   const grouped = useMemo(() => {
     const g = {}
@@ -188,7 +197,8 @@ function RankingTab({ countryId }) {
         </select>
       </div>
       {loading ? <Loading label="Loading ranking" /> : rows.length === 0 ? <Empty label="No results for this event" /> : (
-        <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 40 }}>#</th><th>Swimmer</th><th className="num">Age</th><th className="time">Time</th><th className="num">FINA</th><th>Championship</th><th>Date</th></tr></thead><tbody>
+        <>
+        <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 40 }}>#</th><th>Swimmer</th><th className="num">Age</th><th className="time">Time</th><th className="num">FINA</th><th>Championship</th><th>Location</th><th>Date</th></tr></thead><tbody>
           {rows.map((r) => (
             <tr key={r.result_id}>
               <td><span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: '#0b2948', color: '#fff', fontWeight: 800, fontSize: 12 }}>{r.rank}</span></td>
@@ -197,10 +207,51 @@ function RankingTab({ countryId }) {
               <td className="time asw-time" style={{ fontWeight: 800 }}>{r.time}</td>
               <td className="num asw-num">{r.fina_points ?? '—'}</td>
               <td className="text-muted">{r.championship_name}</td>
+              <td className="text-muted">{[r.championship_location, r.championship_country].filter(Boolean).join(', ') || '—'}</td>
               <td className="text-muted">{formatDate(r.date)}</td>
             </tr>
           ))}
         </tbody></table></div>
+        <Pager page={page} pageSize={20} count={count} onPage={setPage} />
+        </>
+      )}
+    </div>
+  )
+}
+
+/* ===== ACADEMIES TAB ===== */
+function AcademiesTab({ countryId }) {
+  const [academies, setAcademies] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let alive = true
+    setLoading(true)
+    getAcademies()
+      .then((r) => {
+        if (!alive) return
+        const all = Array.isArray(r.data) ? r.data : r.data?.results || []
+        setAcademies(all.filter((a) => String(a.country) === String(countryId)))
+      })
+      .catch(() => alive && setAcademies([]))
+      .finally(() => alive && setLoading(false))
+    return () => { alive = false }
+  }, [countryId])
+
+  if (loading) return <Loading label="Loading academies" />
+  return (
+    <div className="pad-lg">
+      <SectHead title={`Academies · ${academies.length}`} />
+      {academies.length === 0 ? <Empty label="No academies registered" /> : (
+        <div>{academies.map((a) => (
+          <div key={a.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0' }}>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ fontWeight: 600, display: 'block' }}>{a.name}</span>
+              {a.city && <span className="text-muted" style={{ fontSize: 12 }}>{a.city}</span>}
+            </span>
+            {a.phone && <span className="text-muted asw-num" style={{ fontSize: 12, flex: 'none' }}>{a.phone}</span>}
+          </div>
+        ))}</div>
       )}
     </div>
   )
@@ -733,12 +784,6 @@ function RecordsTab({ records, country }) {
                 <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#1a56a0', letterSpacing: '-0.02em', marginBottom: 8 }}>{r.time}</div>
                 <div style={{ fontSize: 12.5, color: REC_TYPE_COLORS[r.record_type] || '#0b2948', fontWeight: 700 }}>{REC_TYPE_LABELS[r.record_type] || r.record_type} Record</div>
                 <div style={{ fontSize: 12, color: '#8a9bb5', marginTop: 2 }}>{r.pool} | {r.sex === 'F' ? "Women's" : "Men's"}</div>
-                {(r.meet_name || r.date) && (
-                  <div style={{ fontSize: 11.5, color: '#8a9bb5', marginTop: 6, lineHeight: 1.4 }}>
-                    {r.meet_name && <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.meet_name}</div>}
-                    {r.date && <div>{r.date}</div>}
-                  </div>
-                )}
               </div>
             </div>
           ))}
@@ -749,11 +794,23 @@ function RecordsTab({ records, country }) {
 }
 
 // Drill-down page for one classification's medals (opened from the tally widgets)
+// Which countries belong to each regional classification (FINA codes).
+// Non-regional classifications (Olympic, World, Arab, National, Islamic,
+// Other…) show every country.
+const GCC_CODES = ['KSA', 'KWT', 'QAT', 'BHR', 'UAE', 'OMA']
+const CLASS_COUNTRY_CODES = {
+  GCC: GCC_CODES,
+  Asian: [...GCC_CODES, 'IRQ', 'YEM', 'LBN', 'PLE', 'JOR', 'SYR'],
+  African: ['EGY', 'SUD', 'COM', 'SOM', 'DJI', 'LBY', 'TUN', 'ALG', 'MAR', 'MTN'],
+  Mediterranean: ['MAR', 'ALG', 'TUN', 'LBY', 'EGY', 'LBN', 'SYR'],
+}
+
 function MedalClassDetail({ countryId, className, box, onBack }) {
   const [rows, setRows] = useState([])
   const [medalists, setMedalists] = useState([])
+  const [standings, setStandings] = useState([])
   const [loading, setLoading] = useState(true)
-  const [sub, setSub] = useState('championships')
+  const [sub, setSub] = useState('countries')
 
   useEffect(() => {
     let alive = true
@@ -766,14 +823,18 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
         return Promise.all([
           getMedals({ country: countryId, classification: cls.id, page_size: 5000 }),
           getMedalSwimmerSummary({ country: countryId, classification: cls.id, limit: 'all' }),
+          getMedalSummary({ classification: cls.id }),
         ])
       })
-      .then(([m, s]) => {
+      .then(([m, s, t]) => {
         if (!alive) return
         setRows(Array.isArray(m.data) ? m.data : m.data?.results || [])
         setMedalists(Array.isArray(s.data) ? s.data : s.data?.results || [])
+        const all = Array.isArray(t.data) ? t.data : t.data?.results || []
+        const allowed = CLASS_COUNTRY_CODES[className]
+        setStandings(allowed ? all.filter((r) => allowed.includes(r.swimmer__nationality__code)) : all)
       })
-      .catch(() => { if (alive) { setRows([]); setMedalists([]) } })
+      .catch(() => { if (alive) { setRows([]); setMedalists([]); setStandings([]) } })
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [countryId, className])
@@ -827,11 +888,33 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
       </div>
 
       <SubTabs
-        options={[['championships', 'By Championship'], ['medalists', 'Medalists'], ['medals', 'All Medals']]}
+        options={[['countries', 'Countries'], ['championships', 'By Championship'], ['medalists', 'Medalists'], ['medals', 'All Medals']]}
         value={sub} onChange={setSub}
       />
 
       {loading && <Loading label="Loading medals" />}
+
+      {!loading && sub === 'countries' && (
+        standings.length === 0 ? <Empty label="No medals" /> : (
+          <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Country</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
+            {standings.map((c, i) => (
+              <tr key={c.swimmer__nationality__code || i}>
+                <td className="asw-num">{i + 1}</td>
+                <td>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                    <Flag code={c.swimmer__nationality__code} name={c.swimmer__nationality__name} flagUrl={c.swimmer__nationality__flag_url} />
+                    {c.swimmer__nationality__name}
+                  </span>
+                </td>
+                <td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{c.gold}</td>
+                <td className="num asw-num">{c.silver}</td>
+                <td className="num asw-num">{c.bronze}</td>
+                <td className="num asw-num" style={{ fontWeight: 800 }}>{c.total}</td>
+              </tr>
+            ))}
+          </tbody></table></div>
+        )
+      )}
 
       {!loading && sub === 'championships' && (
         byChamp.length === 0 ? <Empty label="No medals" /> : (
@@ -1754,37 +1837,30 @@ export default function CountryProfile() {
 
           {/* Board member cards — real data when the national team has board
               members registered, ISF-style placeholders otherwise */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
             {(boardMembers.length
               ? boardMembers.map((m) => ({ role: m.role || 'Member', name: m.name, photo: m.photo }))
               : ['President', 'Vice President', 'Treasurer', 'Secretary General', 'Technical Director',
                  'Member', 'Member', 'Member', 'Member', 'Member'].map((role) => ({ role, name: '—', photo: null }))
             ).map(({ role, name, photo }, i) => (
-              <div key={i} style={{ borderRadius: 16, overflow: 'hidden', textAlign: 'center', background: 'linear-gradient(180deg, #f4f8fc 0%, #eef3f9 100%)', border: '1px solid #e2e9f2', boxShadow: '0 2px 10px rgba(11,41,72,.06)', position: 'relative', padding: '26px 14px 30px', minHeight: 400, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                {/* Number badge */}
-                <div style={{ position: 'absolute', top: 12, left: 12, width: 30, height: 30, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, zIndex: 1 }}>{i + 1}</div>
-                {/* Circular photo blended on white ring */}
-                <div style={{ marginTop: 20 }}>
-                  <div style={{ width: 170, height: 170, borderRadius: '50%', background: photo ? `url(${photo}) center/cover` : 'radial-gradient(circle at 50% 40%, #e8eef5, #cdd9e6)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56, color: '#8a9bb5', border: '6px solid #fff', boxShadow: '0 4px 14px rgba(11,41,72,.12)' }}>{photo ? '' : '👤'}</div>
+              <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
+                <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: photo ? `url(${photo}) center/cover` : 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>{photo ? '' : '👤'}</div>
+                <div style={{ paddingTop: 16 }}>
+                  <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}>{name}</div>
+                  <div style={{ fontSize: 13.5, color: '#1a56a0', fontWeight: 600, marginTop: 6 }}>{role}</div>
                 </div>
-                {/* Name + role */}
-                <div style={{ padding: '26px 6px 0' }}>
-                  <div style={{ fontWeight: 800, fontSize: 18, color: '#0b2948' }}>{name}</div>
-                  <div style={{ fontSize: 14, color: '#5a6b80', fontWeight: 600, marginTop: 8 }}>{role}</div>
-                </div>
-                {/* Listen row: play button + waveform */}
-                <div style={{ marginTop: 'auto', paddingTop: 22, width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#0d2d5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
-                      <div style={{ width: 0, height: 0, borderTop: '7px solid transparent', borderBottom: '7px solid transparent', borderLeft: '11px solid #fff', marginLeft: 3 }} />
+                <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0d2d5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
+                      <div style={{ width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '10px solid #fff', marginLeft: 3 }} />
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 26 }}>
-                      {[9, 15, 6, 19, 12, 23, 8, 16, 11, 21, 7, 14, 18, 10, 24, 13, 6, 17, 9, 20, 12, 7, 15, 10].map((h, k) => (
-                        <span key={k} style={{ width: 2.5, height: h, background: '#0d2d5e', borderRadius: 2, display: 'inline-block' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 20 }}>
+                      {[7, 12, 5, 15, 9, 17, 6, 13, 8, 16, 5, 11, 14, 7, 18, 10, 5, 13, 7, 15, 9, 6, 12, 8].map((h, k) => (
+                        <span key={k} style={{ width: 2, height: h, background: '#0d2d5e', borderRadius: 2, display: 'inline-block' }} />
                       ))}
                     </div>
                   </div>
-                  <div style={{ fontSize: 13, color: '#0b2948', fontWeight: 700, marginTop: 10 }}>Listen</div>
+                  <div style={{ fontSize: 12, color: '#0b2948', fontWeight: 600, marginTop: 8 }}>Listen to message</div>
                 </div>
               </div>
             ))}
@@ -1807,16 +1883,15 @@ export default function CountryProfile() {
         const swimmerCard = (s) => (
           <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
             {/* Circular photo with navy ring */}
-            <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, color: '#8a9bb5', border: '3px solid #0d2d5e', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
+            <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', border: '3px solid #0d2d5e', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
               {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
             </div>
             {/* Info */}
             <div style={{ padding: '10px 2px 0' }}>
-              <div style={{ fontWeight: 800, fontSize: 13.5, color: '#0b2948', marginBottom: 5, lineHeight: 1.25 }}>
+              <div style={{ fontWeight: 800, fontSize: 14.5, color: '#0b2948', marginBottom: 5, lineHeight: 1.25 }}>
                 <SwimmerLink id={s.id} name={s.name} />
               </div>
               <div style={{ fontSize: 11.5, color: '#33415c', fontWeight: 500, lineHeight: 1.5 }}>
-                {s.best_event || '—'}<br />
                 {s.sex === 'F' ? "Women's" : "Men's"}
               </div>
             </div>
@@ -1865,7 +1940,7 @@ export default function CountryProfile() {
             {teamSub === 'swimmers' && (<>
               {secTitle('🏊', 'Swimmers')}
               {topSwimmers.length === 0 ? <Empty label="No swimmers" /> : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
                   {topSwimmers.map(swimmerCard)}
                 </div>
               )}
@@ -2003,6 +2078,9 @@ export default function CountryProfile() {
           )}
         </div>
       )}
+
+      {/* ===== ACADEMIES ===== */}
+      {tab === 'academies' && <AcademiesTab countryId={id} />}
 
       {/* ===== COMPARE ===== */}
       {tab === 'compare' && <CompareTab profile={profile} country={country} />}

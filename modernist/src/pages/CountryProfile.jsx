@@ -46,7 +46,6 @@ const TABS = [
   { value: 'news', label: 'News' },
   { value: 'board', label: 'Board' },
   { value: 'team', label: 'Team' },
-  { value: 'alltime', label: 'All-Time Team' },
   { value: 'championships', label: 'Championships' },
   { value: 'statistics', label: 'Statistics' },
   { value: 'progression', label: 'Progression' },
@@ -82,131 +81,6 @@ function TabHeading({ title }) {
       <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
       <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0, textAlign: 'center' }}>{title}</h2>
       <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
-    </div>
-  )
-}
-
-/* ===== ALL-TIME TEAM TAB — pool-lane starting lineup ===== */
-const ATT_LANES = [
-  { stroke: 'Freestyle', accent: '#1c4e86' },
-  { stroke: 'Backstroke', accent: '#2f6cae' },
-  { stroke: 'Breaststroke', accent: '#0c2340' },
-  { stroke: 'Butterfly', accent: '#4a8fc0' },
-  { stroke: 'Individual Medley', accent: '#17416f' },
-]
-
-function AttRope() {
-  // clean hairline divider between lanes
-  return <div style={{ height: 1, background: '#e7edf4', flex: 'none', margin: '0 18px' }} />
-}
-
-function AttBlock({ r, accent }) {
-  const year = r.date ? String(r.date).slice(0, 4) : ''
-  const evShort = String(r.event || '').replace(/\s*M\s+/, 'm ').replace('Individual Medley', 'IM')
-  return (
-    <Link to={`/swimmers/${r.swimmer_id}`} style={{ flex: 'none', width: 250, textDecoration: 'none', color: '#0b2948', position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#fff', border: '1px solid #dde3ea', boxShadow: '0 1px 5px rgba(11,41,72,.07)', transition: 'box-shadow .15s', display: 'flex', flexDirection: 'column' }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 5px 16px rgba(11,41,72,.16)' }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 5px rgba(11,41,72,.07)' }}>
-      {/* big squared photo */}
-      <div style={{ height: 220, background: '#eef3f8', borderBottom: `3px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, position: 'relative' }}>
-        {r.photo
-          ? <img src={mediaUrl(r.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-          : '🏊'}
-        <div style={{ position: 'absolute', top: 0, left: 0, background: accent, color: '#fff', fontSize: 11, fontWeight: 900, letterSpacing: '0.06em', padding: '5px 12px', borderRadius: '0 0 10px 0', textTransform: 'uppercase' }}>
-          {evShort}
-        </div>
-      </div>
-      <div style={{ padding: '13px 15px 15px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-          <div className="asw-num" style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.05, color: '#0b2948' }}>{r.time}</div>
-          {r.fina != null && <div className="asw-num" style={{ fontSize: 12, fontWeight: 800, color: accent }}>{r.fina} FINA</div>}
-        </div>
-        <div style={{ fontSize: 14, fontWeight: 800, marginTop: 9, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'var(--font-heading)' }}>{r.swimmer}</div>
-        <div style={{ fontSize: 11.5, color: '#7a8ca0', marginTop: 3 }}>
-          {year}{r.age_at_competition ? ` · aged ${r.age_at_competition}` : ''}
-        </div>
-      </div>
-    </Link>
-  )
-}
-
-function AllTimeTeamTab({ profile, country }) {
-  const [sex, setSex] = useState('M')
-  const [pool, setPool] = useState('LCM')
-
-  const rows = useMemo(
-    () => (profile.best_times || []).filter((t) => t.sex === sex && t.pool === pool),
-    [profile, sex, pool],
-  )
-
-  const distOf = (ev) => parseInt(String(ev || '').match(/\d+/)?.[0] || 0, 10)
-  const laneRows = (stroke) => rows
-    .filter((r) => (stroke === 'Individual Medley' ? String(r.event).includes('Medley') : String(r.event).includes(stroke) && !String(r.event).includes('Medley')))
-    .sort((a, b) => distOf(a.event) - distOf(b.event))
-
-  const swimmers = useMemo(() => new Set(rows.map((r) => r.swimmer_id)).size, [rows])
-  const lanes = ATT_LANES.filter((l) => laneRows(l.stroke).length)
-
-  return (
-    <div className="pad-lg">
-      <TabHeading title="All-Time Team" />
-      <div style={{ textAlign: 'center', fontSize: 13, color: '#6b7d94', margin: '-10px 0 18px' }}>
-        The fastest {country.name} swimmer ever in every event, lined up in the pool — one lane per stroke.
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
-        <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={sex} onChange={setSex} />
-        <Seg options={[{ value: 'LCM', label: 'Long Course' }, { value: 'SCM', label: 'Short Course' }]} value={pool} onChange={setPool} />
-      </div>
-
-      {rows.length === 0 ? <Empty label="No times recorded yet for this selection" /> : (
-        <div style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 3px 18px rgba(11,41,72,.10)', border: '1px solid #dde3ea', background: '#fff' }}>
-          {/* Pool deck header */}
-          <div style={{ background: '#fff', borderBottom: '2px solid #eef2f7', padding: '20px 24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Flag code={country.code} name={country.name} large />
-              <div>
-                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 17, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0b2948' }}>Starting Lineup</div>
-                <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 2 }}>{country.name} · all-time bests · {pool === 'SCM' ? 'short course' : 'long course'}</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 22 }}>
-              <div style={{ textAlign: 'center' }}>
-                <div className="asw-num" style={{ fontSize: 22, fontWeight: 900, color: '#0b2948', lineHeight: 1 }}>{swimmers}</div>
-                <div style={{ fontSize: 9, color: '#7a8ca0', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 3 }}>Swimmers</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div className="asw-num" style={{ fontSize: 22, fontWeight: 900, color: '#0b2948', lineHeight: 1 }}>{rows.length}</div>
-                <div style={{ fontSize: 9, color: '#7a8ca0', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 3 }}>Events</div>
-              </div>
-            </div>
-          </div>
-
-          {/* The pool: one lane per stroke, ropes between */}
-          <div style={{ background: '#fff', padding: '14px 0 18px', display: 'flex', flexDirection: 'column' }}>
-            {lanes.map((lane, i) => (
-              <div key={lane.stroke} style={{ display: 'flex', flexDirection: 'column' }}>
-                {i > 0 && <AttRope />}
-                <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, padding: '14px 0' }}>
-                  {/* Lane wall label */}
-                  <div style={{ flex: 'none', width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, borderRight: '1px solid #eef2f7' }}>
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: lane.accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13.5, fontWeight: 900 }} className="asw-num">{i + 1}</div>
-                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 10, fontWeight: 900, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#5a6b80', fontFamily: 'var(--font-heading)' }}>
-                      {lane.stroke === 'Individual Medley' ? 'Medley' : lane.stroke}
-                    </div>
-                  </div>
-                  {/* Swimmers on the blocks */}
-                  <div style={{ display: 'flex', gap: 16, overflowX: 'auto', padding: '6px 18px 8px', alignItems: 'stretch', flex: 1, position: 'relative' }}>
-                    {laneRows(lane.stroke).map((r) => <AttBlock key={r.event + r.swimmer_id} r={r} accent={lane.accent} />)}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {/* pool floor T-mark */}
-            <div style={{ height: 4, width: 120, background: '#dde3ea', borderRadius: 2, margin: '10px auto 0' }} />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -2077,9 +1951,6 @@ export default function CountryProfile() {
 
       {/* ===== QUALIFYING ===== */}
       {tab === 'qualifying' && <QualifyingTab countryId={id} qualSub={qualSub} setQualSub={setQualSub} />}
-
-      {/* ===== ALL-TIME TEAM ===== */}
-      {tab === 'alltime' && <AllTimeTeamTab profile={profile} country={country} />}
 
       {/* ===== DATA TABS ===== */}
       {tab === 'news' && <NewsTab countryId={id} countryName={country.name} />}

@@ -3,6 +3,7 @@ import {
   getQualifyingStandards, getQualifyingStandard,
   createQualifyingStandard, updateQualifyingStandard, deleteQualifyingStandard,
   uploadQualifyingPdf, addQualifyingTime, deleteQualifyingTime,
+  saveQualifyingTimesBulk,
 } from '../api/qualifyingTimes'
 import { getEvents } from '../api/core'
 import { PageHead, Loading, Empty, Seg, Modal } from '../components/ui'
@@ -127,9 +128,10 @@ function StandardModal({ standard, onClose, onSaved }) {
     }
     setSaving(true)
     try {
-      if (standard?.id) await updateQualifyingStandard(standard.id, form)
-      else await createQualifyingStandard(form)
-      onSaved()
+      const res = standard?.id
+        ? await updateQualifyingStandard(standard.id, form)
+        : await createQualifyingStandard(form)
+      onSaved(res?.data, !standard?.id)
     } catch (err) { setError(err.response?.data?.detail || 'Failed'); setSaving(false) }
   }
   return (
@@ -214,6 +216,124 @@ function AddTimeModal({ standardId, onClose, onSaved }) {
   )
 }
 
+/* Bulk builder: type times for every event, men + women, in one grid. */
+function BulkTimesModal({ standard, onClose, onSaved }) {
+  const [events, setEvents] = useState([])
+  const [pool, setPool] = useState('LCM')
+  const [cut, setCut] = useState('A')
+  const [values, setValues] = useState({}) // `${eventId}-${gender}` -> time text
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getEvents().then((r) => {
+      const evs = (Array.isArray(r.data) ? r.data : r.data?.results || [])
+        .filter((e) => !e.is_relay)
+        .sort((a, b) => {
+          const sa = STROKE_ORDER[a.stroke] ?? 99
+          const sb = STROKE_ORDER[b.stroke] ?? 99
+          if (sa !== sb) return sa - sb
+          return (a.distance || 0) - (b.distance || 0)
+        })
+      setEvents(evs)
+    }).catch(() => {})
+  }, [])
+
+  // Prefill from existing times whenever pool/cut changes
+  useEffect(() => {
+    const next = {}
+    ;(standard.times || []).forEach((t) => {
+      if (t.pool === pool && (t.cut || 'A') === cut) {
+        next[`${t.event}-${t.gender}`] = t.formatted_time
+      }
+    })
+    setValues(next)
+  }, [standard, pool, cut])
+
+  const existing = useMemo(() => {
+    const set = new Set()
+    ;(standard.times || []).forEach((t) => {
+      if (t.pool === pool && (t.cut || 'A') === cut) set.add(`${t.event}-${t.gender}`)
+    })
+    return set
+  }, [standard, pool, cut])
+
+  const submit = async () => {
+    const rows = []
+    for (const ev of events) {
+      for (const g of ['M', 'F']) {
+        const key = `${ev.id}-${g}`
+        const text = (values[key] || '').trim()
+        if (text) {
+          const cs = parseTime(text)
+          if (!cs) { setError(`Invalid time "${text}" for ${ev.name} (${g === 'M' ? 'Men' : 'Women'})`); return }
+          rows.push({ event: ev.id, gender: g, cut, pool, time_centiseconds: cs })
+        } else if (existing.has(key)) {
+          rows.push({ event: ev.id, gender: g, cut, pool, time_centiseconds: null })
+        }
+      }
+    }
+    if (rows.length === 0) { setError('Nothing to save'); return }
+    setSaving(true)
+    setError('')
+    try {
+      const res = await saveQualifyingTimesBulk(standard.id, rows)
+      if (res.data?.errors?.length) { setError(res.data.errors.join('; ')); setSaving(false); return }
+      onSaved()
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.error || 'Failed to save')
+      setSaving(false)
+    }
+  }
+
+  const inputStyle = { width: '100%', boxSizing: 'border-box' }
+  return (
+    <Modal title={`Times — ${standard.name}`} onClose={onClose} width={720}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {error && <div className="error-box">{error}</div>}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="micro">Cut</span>
+            <input className="input" value={cut} onChange={(e) => setCut(e.target.value.toUpperCase())}
+              style={{ width: 52, textAlign: 'center' }} maxLength={2} />
+          </div>
+          <span className="micro" style={{ marginLeft: 'auto' }}>
+            Type times like 27.45 or 1:02.34 — clear a cell to remove that time
+          </span>
+        </div>
+        <div className="table-scroll" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+          <table className="table">
+            <thead>
+              <tr><th>Event</th><th className="time">Men</th><th className="time">Women</th></tr>
+            </thead>
+            <tbody>
+              {events.map((ev) => (
+                <tr key={ev.id}>
+                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{ev.name}</td>
+                  {['M', 'F'].map((g) => (
+                    <td key={g} className="time" style={{ minWidth: 110 }}>
+                      <input className="input asw-num" placeholder="—" style={inputStyle}
+                        value={values[`${ev.id}-${g}`] || ''}
+                        onChange={(e) => setValues((v) => ({ ...v, [`${ev.id}-${g}`]: e.target.value }))} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn btn-primary" disabled={saving} onClick={submit}>
+            {saving ? 'Saving…' : 'Save all times'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function QualifyingTimes() {
   const [standards, setStandards] = useState([])
   const [selectedId, setSelectedId] = useState(null)
@@ -225,6 +345,7 @@ export default function QualifyingTimes() {
   const [loading, setLoading] = useState(true)
   const [editModal, setEditModal] = useState(null) // null=closed, {}=create, standard=edit
   const [addTimeModal, setAddTimeModal] = useState(false)
+  const [bulkModal, setBulkModal] = useState(null) // standard object or null
   const [uploadFile, setUploadFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
@@ -345,6 +466,7 @@ export default function QualifyingTimes() {
               {isAdmin && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                   <button className="btn btn-secondary" onClick={() => setEditModal(detail)}>Edit standard</button>
+                  <button className="btn btn-secondary" onClick={() => setBulkModal(detail)}>Edit all times</button>
                   <button className="btn btn-secondary" onClick={() => setAddTimeModal(true)}>Add time</button>
                   <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
                     Upload PDF
@@ -383,7 +505,17 @@ export default function QualifyingTimes() {
 
       {editModal !== null && (
         <StandardModal standard={editModal.id ? editModal : null} onClose={() => setEditModal(null)}
-          onSaved={() => { setEditModal(null); setReloadKey((k) => k + 1) }} />
+          onSaved={(saved, isNew) => {
+            setEditModal(null)
+            setReloadKey((k) => k + 1)
+            if (saved?.id) setSelectedId(saved.id)
+            // fresh standard: jump straight into the times grid
+            if (isNew && saved?.id) setBulkModal({ ...saved, times: [] })
+          }} />
+      )}
+      {bulkModal && (
+        <BulkTimesModal standard={bulkModal} onClose={() => setBulkModal(null)}
+          onSaved={() => { setBulkModal(null); setReloadKey((k) => k + 1) }} />
       )}
       {addTimeModal && selectedId && (
         <AddTimeModal standardId={selectedId} onClose={() => setAddTimeModal(false)}

@@ -11,11 +11,12 @@ class UserSerializer(serializers.ModelSerializer):
     swimmer_name = serializers.CharField(source='swimmer.name', read_only=True, default=None)
     team_name = serializers.CharField(source='team.name', read_only=True, default=None)
     country_name = serializers.CharField(source='country.name', read_only=True, default=None)
+    academy_name = serializers.CharField(source='academy.name', read_only=True, default=None)
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'role', 'swimmer', 'swimmer_name',
-                  'team', 'team_name', 'country', 'country_name']
+                  'team', 'team_name', 'country', 'country_name', 'academy', 'academy_name']
 
 
 class RegisterSerializer(serializers.ModelSerializer):

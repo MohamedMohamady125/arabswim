@@ -7,6 +7,7 @@ class User(AbstractUser):
         ('ADMIN', 'Admin'),
         ('ATHLETE', 'Athlete'),
         ('CLUB', 'Club'),
+        ('ACADEMY', 'Academy'),
         ('FEDERATION', 'Federation'),
         ('VIEWER', 'Viewer'),
     ]
@@ -19,6 +20,9 @@ class User(AbstractUser):
     )
     country = models.ForeignKey(
         'core.Country', null=True, blank=True, on_delete=models.SET_NULL, related_name='federation_accounts'
+    )
+    academy = models.ForeignKey(
+        'academies.Academy', null=True, blank=True, on_delete=models.SET_NULL, related_name='accounts'
     )
 
 

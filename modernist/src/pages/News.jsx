@@ -31,6 +31,7 @@ function ArticleModal({ article, onClose, onSaved }) {
     country: article?.country || '',
   })
   const [cover, setCover] = useState(null)
+  const [attachment, setAttachment] = useState(null)
   const [countries, setCountries] = useState([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -50,6 +51,7 @@ function ArticleModal({ article, onClose, onSaved }) {
       fd.append('status', form.status)
       if (form.country) fd.append('country', form.country)
       if (cover) fd.append('cover_image', cover)
+      if (attachment) fd.append('attachment', attachment)
       if (article) {
         await updateArticle(article.id, fd)
       } else {
@@ -57,7 +59,8 @@ function ArticleModal({ article, onClose, onSaved }) {
       }
       onSaved()
     } catch (err) {
-      setError(err.response?.data?.detail || err.response?.data?.title?.[0] || 'Failed to save')
+      setError(err.response?.data?.detail || err.response?.data?.title?.[0]
+        || err.response?.data?.attachment?.[0] || err.response?.data?.cover_image?.[0] || 'Failed to save')
       setSaving(false)
     }
   }
@@ -94,6 +97,15 @@ function ArticleModal({ article, onClose, onSaved }) {
         <div className="field">
           <label>Cover image</label>
           <input className="input" type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} />
+        </div>
+        <div className="field">
+          <label>PDF attachment (optional)</label>
+          <input className="input" type="file" accept=".pdf,application/pdf" onChange={(e) => setAttachment(e.target.files?.[0] || null)} />
+          {article?.attachment && !attachment && (
+            <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+              Current: <a href={mediaUrl(article.attachment)} target="_blank" rel="noreferrer">view PDF</a> — choose a file to replace it
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -200,7 +212,7 @@ export default function News() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 28, alignItems: 'start' }}>
               {lead.cover_image && (
                 <div className="grayscale news-cover" style={{ width: '100%', height: 380, overflow: 'hidden' }}>
-                  <img src={mediaUrl(lead.cover_image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={mediaUrl(lead.cover_image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 20%' }} />
                 </div>
               )}
               <div>
@@ -246,7 +258,7 @@ export default function News() {
                   <Link key={a.id} to={`/news/${a.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
                     {a.cover_image ? (
                       <div className="grayscale news-cover" style={{ width: '100%', height: 180, overflow: 'hidden' }}>
-                        <img src={mediaUrl(a.cover_image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={mediaUrl(a.cover_image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 20%' }} />
                       </div>
                     ) : (
                       <div style={{ width: '100%', height: 180, background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -103,6 +103,28 @@ export default function Article() {
           </div>
         )}
 
+        {/* ── PDF attachment ── */}
+        {article.attachment && (
+          <div dir={textDir} style={{ margin: '0 0 28px' }}>
+            <a
+              href={mediaUrl(article.attachment)} target="_blank" rel="noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 10,
+                padding: '12px 18px', textDecoration: 'none',
+                background: '#f7f7f7', border: '1px solid #e0e0e0', borderRadius: 6,
+                color: '#1a1a2e', fontWeight: 600, fontSize: 15,
+                fontFamily: isRTL ? AJ_FONTS : 'var(--font-body)',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              {isRTL ? 'اطّلع على المستند (PDF)' : 'View document (PDF)'}
+            </a>
+          </div>
+        )}
+
         {/* ── Article body ── */}
         <div dir={textDir} style={{ fontFamily: isRTL ? AJ_FONTS : 'var(--font-body)' }}>
           {paragraphs.length === 0 ? (

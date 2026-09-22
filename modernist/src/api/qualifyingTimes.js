@@ -9,3 +9,4 @@ export const getQualifiedSwimmers = (id, params) => api.get(`/qualifying-standar
 export const uploadQualifyingPdf =(id, formData) => api.post(`/qualifying-standards/${id}/upload-pdf/`, formData, { timeout: 120000 })
 export const addQualifyingTime = (id, data) => api.post(`/qualifying-standards/${id}/add-time/`, data)
 export const deleteQualifyingTime = (standardId, timeId) => api.delete(`/qualifying-standards/${standardId}/times/${timeId}/`)
+export const saveQualifyingTimesBulk = (standardId, times) => api.post(`/qualifying-standards/${standardId}/bulk-times/`, { times })

@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
+from core.permissions import CanManageOwnAcademy
 from .models import Academy
 from .serializers import AcademySerializer
 
@@ -10,6 +11,7 @@ from .serializers import AcademySerializer
 class AcademyViewSet(viewsets.ModelViewSet):
     queryset = Academy.objects.select_related('country')
     serializer_class = AcademySerializer
+    permission_classes = [CanManageOwnAcademy]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'city']
     ordering_fields = ['name', 'created_at']

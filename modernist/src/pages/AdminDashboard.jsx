@@ -5,6 +5,7 @@ import { createOrgAccount, getCountries, updateFeatures, getChangeLog, revertCha
 import { getSponsors, createSponsor, updateSponsor, deleteSponsor } from '../api/sponsors'
 import { useFeatures } from '../context/FeaturesContext'
 import { getTeams } from '../api/teams'
+import { getAcademies } from '../api/academies'
 import { PageHead, SectHead, Loading, Empty, Seg } from '../components/ui'
 import { mediaUrl } from '../utils'
 
@@ -79,8 +80,10 @@ function OrgAccountForm() {
   const [email, setEmail] = useState('')
   const [teamId, setTeamId] = useState('')
   const [countryId, setCountryId] = useState('')
+  const [academyId, setAcademyId] = useState('')
   const [teamCountry, setTeamCountry] = useState('')
   const [teams, setTeams] = useState([])
+  const [academies, setAcademies] = useState([])
   const [countries, setCountries] = useState([])
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
@@ -90,6 +93,7 @@ function OrgAccountForm() {
   useEffect(() => {
     getTeams({ ordering: 'name' }).then((res) => setTeams(Array.isArray(res.data) ? res.data : res.data?.results || [])).catch(() => {})
     getCountries().then((res) => setCountries(Array.isArray(res.data) ? res.data : res.data?.results || [])).catch(() => {})
+    getAcademies().then((res) => setAcademies(Array.isArray(res.data) ? res.data : res.data?.results || [])).catch(() => {})
   }, [])
 
   const handleSubmit = async (e) => {
@@ -101,12 +105,14 @@ function OrgAccountForm() {
     try {
       const body = { kind, email }
       if (kind === 'CLUB') body.team = teamId
+      else if (kind === 'ACADEMY') body.academy = academyId
       else body.country = countryId
       const res = await createOrgAccount(body)
       setResult(res.data)
       setEmail('')
       setTeamId('')
       setCountryId('')
+      setAcademyId('')
     } catch (err) {
       setError(err.response?.data?.error || 'Could not create the account')
     } finally {
@@ -128,7 +134,7 @@ function OrgAccountForm() {
     <div style={{ maxWidth: 520 }}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Seg
-          options={[{ value: 'CLUB', label: 'Club' }, { value: 'FEDERATION', label: 'Federation' }]}
+          options={[{ value: 'CLUB', label: 'Club' }, { value: 'ACADEMY', label: 'Academy' }, { value: 'FEDERATION', label: 'Federation' }]}
           value={kind}
           onChange={setKind}
         />
@@ -150,6 +156,24 @@ function OrgAccountForm() {
               <select className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)} required>
                 <option value="">Select club…</option>
                 {visibleTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+          </>
+        ) : kind === 'ACADEMY' ? (
+          <>
+            <div className="field">
+              <label>Country</label>
+              <select className="select" value={teamCountry} onChange={(e) => { setTeamCountry(e.target.value); setAcademyId('') }}>
+                <option value="">All countries</option>
+                {arabCountries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Academy</label>
+              <select className="select" value={academyId} onChange={(e) => setAcademyId(e.target.value)} required>
+                <option value="">Select academy…</option>
+                {(teamCountry ? academies.filter((a) => String(a.country) === String(teamCountry)) : academies)
+                  .map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
           </>

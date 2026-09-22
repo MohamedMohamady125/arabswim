@@ -42,18 +42,18 @@ def register(request):
 @api_view(['POST'])
 @permission_classes([IsAdmin])
 def create_org_account(request):
-    """Admin creates a CLUB or FEDERATION account for an org's email.
-    The generated password is returned exactly once."""
+    """Admin creates a CLUB, ACADEMY or FEDERATION account for an org's
+    email. The generated password is returned exactly once."""
     kind = str(request.data.get('kind', '')).upper()
     email = str(request.data.get('email', '')).strip().lower()
-    if kind not in ('CLUB', 'FEDERATION'):
-        return Response({'error': 'kind must be CLUB or FEDERATION'}, status=400)
+    if kind not in ('CLUB', 'ACADEMY', 'FEDERATION'):
+        return Response({'error': 'kind must be CLUB, ACADEMY or FEDERATION'}, status=400)
     if not email or '@' not in email:
         return Response({'error': 'A valid email is required'}, status=400)
     if User.objects.filter(email__iexact=email).exists():
         return Response({'error': 'An account with this email already exists'}, status=400)
 
-    team = country = None
+    team = country = academy = None
     if kind == 'CLUB':
         from teams.models import Team
         team = Team.objects.filter(pk=request.data.get('team')).first()
@@ -61,6 +61,13 @@ def create_org_account(request):
             return Response({'error': 'A valid team is required for a club account'}, status=400)
         if team.accounts.exists():
             return Response({'error': 'This club already has an account'}, status=400)
+    elif kind == 'ACADEMY':
+        from academies.models import Academy
+        academy = Academy.objects.filter(pk=request.data.get('academy')).first()
+        if not academy:
+            return Response({'error': 'A valid academy is required for an academy account'}, status=400)
+        if academy.accounts.exists():
+            return Response({'error': 'This academy already has an account'}, status=400)
     else:
         country = Country.objects.filter(pk=request.data.get('country')).first()
         if not country:
@@ -78,7 +85,7 @@ def create_org_account(request):
     password = get_random_string(14)
     user = User.objects.create_user(
         username=username, email=email, password=password,
-        role=kind, team=team, country=country,
+        role=kind, team=team, country=country, academy=academy,
     )
     data = UserSerializer(user).data
     data['password'] = password

@@ -792,6 +792,57 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
         return Response(QualifyingTimeSerializer(qt).data,
                         status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'], url_path='bulk-times')
+    def bulk_times(self, request, pk=None):
+        """Save many qualifying times at once (the custom-standard builder).
+
+        Body: {"times": [{"event": id, "gender": "M"|"F", "cut": "A",
+                          "pool": "LCM"|"SCM", "time_centiseconds": int|null}]}
+        A row with a positive time is upserted; a row with an empty/zero
+        time deletes any existing entry for that event/gender/cut/pool.
+        """
+        rows = request.data.get('times')
+        if not isinstance(rows, list):
+            return Response({'error': 'times must be a list'}, status=400)
+        standard = self.get_object()
+        event_ids = {e.id for e in Event.objects.filter(is_relay=False)}
+        saved = deleted = 0
+        errors = []
+        for i, t in enumerate(rows):
+            try:
+                event_id = int(t.get('event'))
+            except (TypeError, ValueError):
+                errors.append(f'row {i}: invalid event')
+                continue
+            gender = t.get('gender')
+            cut = (t.get('cut') or 'A').strip() or 'A'
+            pool = t.get('pool', 'LCM')
+            if event_id not in event_ids:
+                errors.append(f'row {i}: unknown event {event_id}')
+                continue
+            if gender not in ('M', 'F'):
+                errors.append(f'row {i}: gender must be M or F')
+                continue
+            if pool not in ('LCM', 'SCM'):
+                errors.append(f'row {i}: pool must be LCM or SCM')
+                continue
+            cs = t.get('time_centiseconds')
+            key = dict(standard=standard, event_id=event_id,
+                       gender=gender, cut=cut, pool=pool)
+            if cs:
+                try:
+                    cs = int(cs)
+                except (TypeError, ValueError):
+                    errors.append(f'row {i}: invalid time')
+                    continue
+                QualifyingTime.objects.update_or_create(
+                    defaults={'time_centiseconds': cs}, **key)
+                saved += 1
+            else:
+                n, _ = QualifyingTime.objects.filter(**key).delete()
+                deleted += n
+        return Response({'saved': saved, 'deleted': deleted, 'errors': errors})
+
     @action(detail=True, methods=['delete'], url_path='times/(?P<time_id>[^/.]+)')
     def delete_time(self, request, pk=None, time_id=None):
         """Delete a single qualifying time."""

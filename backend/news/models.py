@@ -7,6 +7,8 @@ class Article(models.Model):
 
     title = models.CharField(max_length=255)
     cover_image = models.ImageField(upload_to='news/covers/', blank=True, null=True)
+    attachment = models.FileField(upload_to='news/attachments/', blank=True, null=True,
+                                  help_text='Optional PDF shown to readers on the article page')
     body = models.TextField(blank=True, default='')
     country = models.ForeignKey(Country, on_delete=models.SET_NULL, blank=True, null=True, related_name='articles')
     team = models.ForeignKey('teams.Team', on_delete=models.CASCADE, blank=True, null=True, related_name='articles')

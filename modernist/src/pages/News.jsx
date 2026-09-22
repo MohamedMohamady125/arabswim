@@ -189,7 +189,6 @@ export default function News() {
         </div>
       </PageHead>
 
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
       {loading ? (
         <Loading label="Loading news" />
       ) : articles.length === 0 ? (
@@ -210,20 +209,20 @@ export default function News() {
                   {statusTag(lead)}
                 </div>
                 <div dir={isRTLText(lead.title) ? 'rtl' : 'ltr'} style={{
-                  fontFamily: isRTLText(lead.title) ? "'Noto Naskh Arabic', 'Amiri', serif" : 'var(--font-heading)',
+                  fontFamily: isRTLText(lead.title) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'var(--font-heading)',
                   fontWeight: isRTLText(lead.title) ? 700 : 800,
-                  fontSize: isRTLText(lead.title) ? 32 : 34,
-                  lineHeight: isRTLText(lead.title) ? 1.6 : 1.06,
+                  fontSize: 34,
+                  lineHeight: isRTLText(lead.title) ? 1.7 : 1.06,
                   letterSpacing: isRTLText(lead.title) ? 0 : '-0.025em',
                   margin: '8px 0 12px', color: '#1a1a2e',
                 }}>
                   {lead.title}
                 </div>
                 <p dir={isRTLText(lead.body) ? 'rtl' : 'ltr'} style={{
-                  fontSize: isRTLText(lead.body) ? 17 : 15,
-                  lineHeight: isRTLText(lead.body) ? 1.9 : 1.55,
+                  fontSize: isRTLText(lead.body) ? 18 : 15,
+                  lineHeight: isRTLText(lead.body) ? 1.8 : 1.55,
                   color: '#2c2c2c', margin: '0 0 14px',
-                  fontFamily: isRTLText(lead.body) ? "'Noto Naskh Arabic', serif" : 'inherit',
+                  fontFamily: isRTLText(lead.body) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'inherit',
                   textAlign: isRTLText(lead.body) ? 'justify' : 'left',
                 }}>
                   {excerpt(lead.body, 300)}
@@ -256,7 +255,7 @@ export default function News() {
                     )}
                     {isAdmin && <div style={{ marginTop: 8 }}>{statusTag(a)}</div>}
                     <div dir={isRTLText(a.title) ? 'rtl' : 'ltr'} style={{
-                      fontFamily: isRTLText(a.title) ? "'Noto Naskh Arabic', 'Amiri', serif" : 'var(--font-heading)',
+                      fontFamily: isRTLText(a.title) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'var(--font-heading)',
                       fontWeight: isRTLText(a.title) ? 700 : 800,
                       fontSize: isRTLText(a.title) ? 20 : 18,
                       lineHeight: isRTLText(a.title) ? 1.6 : 1.18,
@@ -267,10 +266,10 @@ export default function News() {
                     </div>
                     {a.body && (
                       <p dir={isRTLText(a.body) ? 'rtl' : 'ltr'} style={{
-                        fontSize: isRTLText(a.body) ? 15 : 13,
+                        fontSize: isRTLText(a.body) ? 16 : 13,
                         lineHeight: isRTLText(a.body) ? 1.8 : 1.5,
                         color: '#2c2c2c', margin: '0 0 8px',
-                        fontFamily: isRTLText(a.body) ? "'Noto Naskh Arabic', serif" : 'inherit',
+                        fontFamily: isRTLText(a.body) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'inherit',
                       }}>
                         {excerpt(a.body)}
                       </p>

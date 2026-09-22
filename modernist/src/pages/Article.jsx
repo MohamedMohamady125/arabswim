@@ -6,9 +6,9 @@ import { Loading, Empty } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
-/* ── Al Jazeera–inspired Arabic typography ────────────────────────── */
-const AJ_FONTS = "'Noto Naskh Arabic', 'Amiri', 'Traditional Arabic', Georgia, serif"
-const AJ_HEADING_FONTS = "'Noto Naskh Arabic', 'Amiri', serif"
+/* ── Al Jazeera typography — the real aljazeera.net stack ─────────── */
+const AJ_FONTS = "'Al-Jazeera', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
+const AJ_HEADING_FONTS = AJ_FONTS
 
 export default function Article() {
   const { id } = useParams()
@@ -38,8 +38,6 @@ export default function Article() {
 
   return (
     <div style={{ background: '#fff', minHeight: '80vh' }}>
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
-
       {/* Top accent bar */}
       <div style={{ height: 3, background: 'linear-gradient(90deg, var(--asw-gold), var(--color-accent))' }} />
 
@@ -71,7 +69,7 @@ export default function Article() {
             fontFamily: isRTL ? AJ_HEADING_FONTS : 'var(--font-heading)',
             fontSize: isRTL ? 34 : 36,
             fontWeight: isRTL ? 700 : 800,
-            lineHeight: isRTL ? 1.6 : 1.12,
+            lineHeight: isRTL ? 1.7 : 1.12,
             letterSpacing: isRTL ? 0 : '-0.03em',
             color: '#1a1a2e',
           }}>{article.title}</h1>
@@ -112,8 +110,8 @@ export default function Article() {
           ) : (
             paragraphs.map((p, i) => (
               <p key={i} style={{
-                fontSize: isRTL ? 20 : 17,
-                lineHeight: isRTL ? 2.0 : 1.7,
+                fontSize: 18,
+                lineHeight: isRTL ? 1.8 : 1.7,
                 margin: '0 0 24px',
                 textAlign: isRTL ? 'justify' : 'left',
                 color: '#2c2c2c',

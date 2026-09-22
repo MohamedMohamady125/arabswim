@@ -532,6 +532,12 @@ figure { margin: 0; }
   .qs-rec-counters { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* ── Al Jazeera typeface (news section) — self-hosted, 4 weights ──────── */
+@font-face { font-family: 'Al-Jazeera'; font-display: swap; src: url('/fonts/Al-Jazeera-Light.woff2') format('woff2'); font-weight: 200; font-style: normal; }
+@font-face { font-family: 'Al-Jazeera'; font-display: swap; src: url('/fonts/Al-Jazeera-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; }
+@font-face { font-family: 'Al-Jazeera'; font-display: swap; src: url('/fonts/Al-Jazeera-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; }
+@font-face { font-family: 'Al-Jazeera'; font-display: swap; src: url('/fonts/Al-Jazeera-Heavy.woff2') format('woff2'); font-weight: 900; font-style: normal; }
+
 /* ── Micro animations ─────────────────────────────────────────────────── */
 @keyframes asw-fade-up {
   from { opacity: 0; transform: translateY(8px); }

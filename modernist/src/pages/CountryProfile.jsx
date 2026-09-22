@@ -610,13 +610,48 @@ function RankedRow({ rank, idx, children }) {
 }
 
 const AGE_CATS = ['U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'Open']
+const REC_TYPE_LABELS = {
+  NATIONAL: 'National', ARAB: 'Arab', GCC: 'GCC', AFRICAN: 'African',
+  ASIAN: 'Asian', MEDITERRANEAN: 'Mediterranean', ISLAMIC: 'Islamic', WORLD: 'World',
+}
+const REC_TYPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
+const REC_TYPE_COLORS = {
+  NATIONAL: '#1a56a0', ARAB: '#b98a1e', GCC: '#0d7a52', AFRICAN: '#a8402f',
+  ASIAN: '#a05f2c', MEDITERRANEAN: '#4a8fc0', ISLAMIC: '#0d7a52', WORLD: '#0c2340',
+}
+
+// Time parser for defensive client-side dedupe ("1:49.26" -> centiseconds)
+function timeToCs(t) {
+  const parts = String(t || '').split(':').map(Number)
+  if (parts.some(Number.isNaN)) return Infinity
+  let s = 0
+  for (const p of parts) s = s * 60 + p
+  return Math.round(s * 100)
+}
 
 function RecordsTab({ records, country }) {
   const [gender, setGender] = useState('')
   const [pool, setPool] = useState('')
   const [ageCat, setAgeCat] = useState('Open')
 
-  const filtered = records.filter((r) => {
+  // Defensive dedupe: keep only the fastest row per scope group even if the
+  // API ever returns history rows again.
+  const currentRecords = useMemo(() => {
+    const best = new Map()
+    records.forEach((r) => {
+      const key = [r.record_type, r.event, r.sex, r.pool, r.age_category].join('|')
+      const held = best.get(key)
+      if (!held || timeToCs(r.time) < timeToCs(held.time)) best.set(key, r)
+    })
+    return records.filter((r) => best.get([r.record_type, r.event, r.sex, r.pool, r.age_category].join('|')) === r)
+  }, [records])
+
+  const typesPresent = REC_TYPE_ORDER.filter((t) => currentRecords.some((r) => r.record_type === t))
+  const [recType, setRecType] = useState('NATIONAL')
+  const activeType = typesPresent.includes(recType) ? recType : (typesPresent[0] || 'NATIONAL')
+
+  const filtered = currentRecords.filter((r) => {
+    if (r.record_type !== activeType) return false
     if (gender && r.sex !== gender) return false
     if (pool && r.pool !== pool) return false
     const wanted = ageCat === 'Open' ? 'OPEN' : ageCat
@@ -641,6 +676,20 @@ function RecordsTab({ records, country }) {
           <div style={{ width: 60, height: 2, background: '#1a56a0' }} />
         </div>
       </div>
+
+      {/* Record type sub-tabs */}
+      {typesPresent.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+          {typesPresent.map((t) => (
+            <button key={t} type="button" onClick={() => setRecType(t)}
+              style={activeType === t
+                ? { ...pillBase, border: `2px solid ${REC_TYPE_COLORS[t]}`, background: REC_TYPE_COLORS[t], color: '#fff' }
+                : { ...pillBase, border: `2px solid ${REC_TYPE_COLORS[t]}`, background: '#fff', color: REC_TYPE_COLORS[t] }}>
+              {REC_TYPE_LABELS[t]} Records
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filters: Gender + Pool dropdowns */}
       <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 20 }}>
@@ -682,8 +731,14 @@ function RecordsTab({ records, country }) {
                 </div>
                 <div style={{ fontSize: 12.5, color: '#5a6b80', marginBottom: 10 }}>{r.event}</div>
                 <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#1a56a0', letterSpacing: '-0.02em', marginBottom: 8 }}>{r.time}</div>
-                <div style={{ fontSize: 12.5, color: '#0b2948', fontWeight: 600 }}>National Record</div>
+                <div style={{ fontSize: 12.5, color: REC_TYPE_COLORS[r.record_type] || '#0b2948', fontWeight: 700 }}>{REC_TYPE_LABELS[r.record_type] || r.record_type} Record</div>
                 <div style={{ fontSize: 12, color: '#8a9bb5', marginTop: 2 }}>{r.pool} | {r.sex === 'F' ? "Women's" : "Men's"}</div>
+                {(r.meet_name || r.date) && (
+                  <div style={{ fontSize: 11.5, color: '#8a9bb5', marginTop: 6, lineHeight: 1.4 }}>
+                    {r.meet_name && <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.meet_name}</div>}
+                    {r.date && <div>{r.date}</div>}
+                  </div>
+                )}
               </div>
             </div>
           ))}

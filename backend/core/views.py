@@ -560,6 +560,46 @@ class CountryViewSet(viewsets.ModelViewSet):
                     'date': r.championship.date,
                 })
 
+        # Only CURRENT records: the DB keeps progression history, so pick the
+        # fastest row per scope group. For regional scopes (ARAB/GCC/...) the
+        # group minimum is computed globally — a beaten Arab record still held
+        # in this country's history must not display as current.
+        rec_rows = list(records_qs.select_related('event', 'swimmer')
+                        .order_by('event__sort_order', 'event__distance'))
+        regional_types = {rec.record_type for rec in rec_rows
+                          if rec.record_type != 'NATIONAL'}
+        global_min = {}
+        if regional_types:
+            for g in (Record.objects.filter(record_type__in=regional_types)
+                      .values('record_type', 'event_id', 'swimmer__sex',
+                              'pool', 'age_category')
+                      .annotate(best=Min('time_centiseconds'))):
+                global_min[(g['record_type'], g['event_id'], g['swimmer__sex'],
+                            g['pool'], g['age_category'])] = g['best']
+        national_min = {}
+        for rec in rec_rows:
+            if rec.record_type != 'NATIONAL':
+                continue
+            k = (rec.event_id, rec.swimmer.sex, rec.pool, rec.age_category)
+            if k not in national_min or rec.time_centiseconds < national_min[k]:
+                national_min[k] = rec.time_centiseconds
+        best_row = {}   # group key -> record (ties: earliest date wins)
+        for rec in rec_rows:
+            key = (rec.record_type, rec.event_id, rec.swimmer.sex,
+                   rec.pool, rec.age_category)
+            if rec.record_type == 'NATIONAL':
+                best = national_min[(rec.event_id, rec.swimmer.sex,
+                                     rec.pool, rec.age_category)]
+            else:
+                best = global_min.get(key, rec.time_centiseconds)
+            if rec.time_centiseconds != best:
+                continue
+            held = best_row.get(key)
+            if held is None or rec.result_date < held.result_date:
+                best_row[key] = rec
+        kept = set(best_row.values())
+        current = [rec for rec in rec_rows if rec in kept]
+
         records = [{
             'id': rec.id, 'record_type': rec.record_type, 'event': rec.event.name,
             'swimmer_id': rec.swimmer_id, 'swimmer': rec.swimmer.name,
@@ -568,8 +608,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             'pool': rec.pool, 'age_category': rec.age_category,
             'location': rec.location, 'meet_name': rec.meet_name,
             'date': rec.result_date, 'is_new': rec.is_new,
-        } for rec in records_qs.select_related('event', 'swimmer')
-            .order_by('event__sort_order', 'event__distance')]
+        } for rec in current]
 
         top_medalists = list(
             medals_qs.filter(swimmer__is_relay_team=False)

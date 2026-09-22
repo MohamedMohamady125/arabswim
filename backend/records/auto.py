@@ -100,6 +100,8 @@ def check_and_update_records(result):
         if best and time_cs >= best.time_centiseconds:
             continue  # Not a record
 
+        rec_date = meet_date or __import__('datetime').date.today()
+
         # New record! Create it
         Record.objects.create(
             swimmer=swimmer,
@@ -110,10 +112,16 @@ def check_and_update_records(result):
             location=location,
             meet_name=meet_name,
             country=nat,
-            result_date=meet_date or __import__('datetime').date.today(),
+            result_date=rec_date,
             result=result,
             is_new=True,
         )
         broken.append(scope)
+
+        # Meets are not always imported in chronological order. If this
+        # record predates existing rows that are SLOWER, those rows were
+        # never actually records — prune them so history stays clean.
+        existing.filter(result_date__gte=rec_date,
+                        time_centiseconds__gt=time_cs).delete()
 
     return broken

@@ -96,10 +96,8 @@ const ATT_LANES = [
 ]
 
 function AttRope() {
-  // lane rope: alternating navy / light-blue floats
-  return (
-    <div style={{ height: 7, borderRadius: 4, flex: 'none', margin: '0 6px', background: 'repeating-linear-gradient(90deg, #1c4e86 0 16px, #dbe6f2 16px 32px, #1c4e86 32px 48px, #aecae4 48px 64px)', opacity: 0.75, boxShadow: '0 1px 3px rgba(11,41,72,.12)' }} />
-  )
+  // clean hairline divider between lanes
+  return <div style={{ height: 1, background: '#e7edf4', flex: 'none', margin: '0 18px' }} />
 }
 
 function AttBlock({ r, accent }) {
@@ -191,7 +189,7 @@ function AllTimeTeamTab({ profile, country }) {
                 {i > 0 && <AttRope />}
                 <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, padding: '14px 0' }}>
                   {/* Lane wall label */}
-                  <div style={{ flex: 'none', width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, borderRight: '2px dashed #dde3ea' }}>
+                  <div style={{ flex: 'none', width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, borderRight: '1px solid #eef2f7' }}>
                     <div style={{ width: 28, height: 28, borderRadius: '50%', background: lane.accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13.5, fontWeight: 900 }} className="asw-num">{i + 1}</div>
                     <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 10, fontWeight: 900, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#5a6b80', fontFamily: 'var(--font-heading)' }}>
                       {lane.stroke === 'Individual Medley' ? 'Medley' : lane.stroke}

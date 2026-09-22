@@ -46,6 +46,7 @@ const TABS = [
   { value: 'news', label: 'News' },
   { value: 'board', label: 'Board' },
   { value: 'team', label: 'Team' },
+  { value: 'alltime', label: 'All-Time Team' },
   { value: 'championships', label: 'Championships' },
   { value: 'statistics', label: 'Statistics' },
   { value: 'progression', label: 'Progression' },
@@ -81,6 +82,144 @@ function TabHeading({ title }) {
       <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
       <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0, textAlign: 'center' }}>{title}</h2>
       <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+    </div>
+  )
+}
+
+/* ===== ALL-TIME TEAM TAB ===== */
+const ATT_STROKES = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
+const ATT_STROKE_COLORS = {
+  Freestyle: '#1a56a0', Backstroke: '#0d7a52', Breaststroke: '#a05f2c',
+  Butterfly: '#7a3b8f', 'Individual Medley': '#b98a1e',
+}
+
+function AttPhoto({ photo, name, height = 210 }) {
+  if (photo) {
+    return (
+      <div style={{ height, overflow: 'hidden', background: '#e8eef5' }}>
+        <img src={mediaUrl(photo)} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+      </div>
+    )
+  }
+  return (
+    <div style={{ height, background: 'linear-gradient(150deg, #0b2948, #1a56a0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, opacity: 0.9 }}>
+      🏊
+    </div>
+  )
+}
+
+function AllTimeTeamTab({ profile, country }) {
+  const [sex, setSex] = useState('M')
+  const [pool, setPool] = useState('LCM')
+
+  const rows = useMemo(
+    () => (profile.best_times || []).filter((t) => t.sex === sex && t.pool === pool),
+    [profile, sex, pool],
+  )
+
+  const strokeOf = (ev) => {
+    const e = String(ev || '')
+    if (e.includes('Medley')) return 'Individual Medley'
+    return ATT_STROKES.find((s) => e.includes(s)) || 'Other'
+  }
+  const distOf = (ev) => parseInt(String(ev || '').match(/\d+/)?.[0] || 0, 10)
+
+  const byStroke = useMemo(() => {
+    const g = {}
+    rows.forEach((r) => { (g[strokeOf(r.event)] ||= []).push(r) })
+    Object.values(g).forEach((arr) => arr.sort((a, b) => distOf(a.event) - distOf(b.event)))
+    return g
+  }, [rows])
+
+  // Roster: distinct swimmers ranked by how many events they own
+  const roster = useMemo(() => {
+    const m = {}
+    rows.forEach((r) => {
+      const s = (m[r.swimmer_id] ||= { id: r.swimmer_id, name: r.swimmer, photo: r.photo, events: 0, bestFina: 0 })
+      s.events += 1
+      if (r.photo && !s.photo) s.photo = r.photo
+      if ((r.fina || 0) > s.bestFina) s.bestFina = r.fina || 0
+    })
+    return Object.values(m).sort((a, b) => b.events - a.events || b.bestFina - a.bestFina)
+  }, [rows])
+
+  const yearOf = (d) => (d ? String(d).slice(0, 4) : '')
+
+  return (
+    <div className="pad-lg">
+      <TabHeading title="All-Time Team" />
+      <div style={{ textAlign: 'center', fontSize: 13, color: '#6b7d94', margin: '-10px 0 18px' }}>
+        The fastest {country.name} swimmer ever in every event — the federation's dream team across all generations.
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginBottom: 26, flexWrap: 'wrap' }}>
+        <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={sex} onChange={setSex} />
+        <Seg options={[{ value: 'LCM', label: 'Long Course' }, { value: 'SCM', label: 'Short Course' }]} value={pool} onChange={setPool} />
+      </div>
+
+      {rows.length === 0 ? <Empty label="No times recorded yet for this selection" /> : (
+        <>
+          {/* Squad roster strip */}
+          <div style={{ background: 'linear-gradient(135deg, #0b2948, #143c6b)', borderRadius: 12, padding: '20px 22px 22px', marginBottom: 30, boxShadow: '0 2px 10px rgba(11,41,72,.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#fff' }}>The Squad</span>
+              <span style={{ fontSize: 11.5, color: '#9fb8d4' }}>{roster.length} swimmer{roster.length !== 1 ? 's' : ''} · {rows.length} events</span>
+            </div>
+            <div style={{ display: 'flex', gap: 18, overflowX: 'auto', paddingBottom: 4 }}>
+              {roster.map((s) => (
+                <Link key={s.id} to={`/swimmers/${s.id}`} style={{ textDecoration: 'none', color: '#fff', textAlign: 'center', flex: 'none', width: 96 }}>
+                  <div style={{ width: 72, height: 72, borderRadius: '50%', margin: '0 auto', overflow: 'hidden', border: '2.5px solid rgba(255,255,255,.85)', background: '#1a56a0', position: 'relative' }}>
+                    {s.photo
+                      ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🏊</div>}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, marginTop: 7, lineHeight: 1.25 }}>{s.name}</div>
+                  <div style={{ fontSize: 10, color: '#8fb0d6', marginTop: 2 }}>{s.events} event{s.events !== 1 ? 's' : ''}</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Event lineup by stroke */}
+          {ATT_STROKES.filter((st) => byStroke[st]?.length).map((st) => (
+            <div key={st} style={{ marginBottom: 30 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
+                <span style={{ width: 4, height: 17, background: ATT_STROKE_COLORS[st] || '#1a56a0', borderRadius: 2 }} />
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0b2948' }}>{st}</span>
+                <span style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(215px, 1fr))', gap: 16 }}>
+                {byStroke[st].map((r) => (
+                  <Link key={`${r.event}-${r.swimmer_id}`} to={`/swimmers/${r.swimmer_id}`}
+                    style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 10, overflow: 'hidden', textDecoration: 'none', color: 'inherit', boxShadow: '0 1px 4px rgba(0,0,0,.06)', display: 'flex', flexDirection: 'column', transition: 'box-shadow .15s' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(11,41,72,.18)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.06)' }}>
+                    <div style={{ position: 'relative' }}>
+                      <AttPhoto photo={r.photo} name={r.swimmer} />
+                      <div style={{ position: 'absolute', top: 10, left: 10, background: ATT_STROKE_COLORS[st] || '#1a56a0', color: '#fff', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', padding: '4px 9px', borderRadius: 4, textTransform: 'uppercase' }}>
+                        {r.event.replace(/\s*M\s+/, 'm ')}
+                      </div>
+                      {r.fina != null && (
+                        <div className="asw-num" style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(11,41,72,.88)', color: '#ffd876', fontSize: 11, fontWeight: 900, padding: '4px 8px', borderRadius: 4 }}>
+                          {r.fina} pts
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+                      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13.5, lineHeight: 1.25, color: '#0b2948' }}>{r.swimmer}</div>
+                      <div className="asw-num" style={{ fontSize: 24, fontWeight: 900, color: '#1a56a0', lineHeight: 1.15 }}>{r.time}</div>
+                      <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 'auto', lineHeight: 1.4 }}>
+                        {r.championship}{yearOf(r.date) ? ` · ${yearOf(r.date)}` : ''}
+                        {r.age_at_competition ? ` · aged ${r.age_at_competition}` : ''}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   )
 }
@@ -1951,6 +2090,9 @@ export default function CountryProfile() {
 
       {/* ===== QUALIFYING ===== */}
       {tab === 'qualifying' && <QualifyingTab countryId={id} qualSub={qualSub} setQualSub={setQualSub} />}
+
+      {/* ===== ALL-TIME TEAM ===== */}
+      {tab === 'alltime' && <AllTimeTeamTab profile={profile} country={country} />}
 
       {/* ===== DATA TABS ===== */}
       {tab === 'news' && <NewsTab countryId={id} countryName={country.name} />}

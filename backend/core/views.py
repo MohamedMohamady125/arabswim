@@ -555,6 +555,7 @@ class CountryViewSet(viewsets.ModelViewSet):
                     'time': _fmt_cs(r.time_centiseconds),
                     'fina': r.fina_points,
                     'swimmer_id': r.swimmer_id, 'swimmer': r.swimmer.name,
+                    'photo': r.swimmer.photo.url if r.swimmer.photo else None,
                     'age_at_competition': r.age_at_competition,
                     'championship': r.championship.name,
                     'date': r.championship.date,

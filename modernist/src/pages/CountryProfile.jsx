@@ -86,25 +86,49 @@ function TabHeading({ title }) {
   )
 }
 
-/* ===== ALL-TIME TEAM TAB ===== */
-const ATT_STROKES = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
-const ATT_STROKE_COLORS = {
-  Freestyle: '#1a56a0', Backstroke: '#0d7a52', Breaststroke: '#a05f2c',
-  Butterfly: '#7a3b8f', 'Individual Medley': '#b98a1e',
+/* ===== ALL-TIME TEAM TAB — pool-lane starting lineup ===== */
+const ATT_LANES = [
+  { stroke: 'Freestyle', accent: '#4aa8ff' },
+  { stroke: 'Backstroke', accent: '#3fd69a' },
+  { stroke: 'Breaststroke', accent: '#ffa85e' },
+  { stroke: 'Butterfly', accent: '#c98bff' },
+  { stroke: 'Individual Medley', accent: '#ffd876' },
+]
+
+function AttRope() {
+  // lane rope: alternating red / white / navy floats
+  return (
+    <div style={{ height: 8, borderRadius: 4, flex: 'none', margin: '0 2px', background: 'repeating-linear-gradient(90deg, #d84343 0 16px, #f2f5f9 16px 32px, #d84343 32px 48px, #16406e 48px 64px)', opacity: 0.85, boxShadow: '0 1px 3px rgba(0,0,0,.35)' }} />
+  )
 }
 
-function AttPhoto({ photo, name, height = 210 }) {
-  if (photo) {
-    return (
-      <div style={{ height, overflow: 'hidden', background: '#e8eef5' }}>
-        <img src={mediaUrl(photo)} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-      </div>
-    )
-  }
+function AttBlock({ r, accent }) {
+  const year = r.date ? String(r.date).slice(0, 4) : ''
+  const evShort = String(r.event || '').replace(/\s*M\s+/, 'm ').replace('Individual Medley', 'IM')
   return (
-    <div style={{ height, background: 'linear-gradient(150deg, #0b2948, #1a56a0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, opacity: 0.9 }}>
-      🏊
-    </div>
+    <Link to={`/swimmers/${r.swimmer_id}`} style={{ flex: 'none', width: 168, textDecoration: 'none', color: '#fff', position: 'relative', padding: '14px 12px 12px', borderRadius: 10, background: 'rgba(255,255,255,.055)', border: '1px solid rgba(255,255,255,.12)', backdropFilter: 'blur(2px)', transition: 'background .15s' }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.12)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.055)' }}>
+      {/* starting block number chip */}
+      <div style={{ position: 'absolute', top: -1, left: -1, background: accent, color: '#071a30', fontSize: 9.5, fontWeight: 900, letterSpacing: '0.06em', padding: '3px 8px', borderRadius: '9px 0 8px 0', textTransform: 'uppercase' }}>
+        {evShort}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', flex: 'none', overflow: 'hidden', border: `2px solid ${accent}`, background: '#12335c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+          {r.photo
+            ? <img src={mediaUrl(r.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+            : '🏊'}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div className="asw-num" style={{ fontSize: 19, fontWeight: 900, lineHeight: 1.05, color: '#fff' }}>{r.time}</div>
+          {r.fina != null && <div className="asw-num" style={{ fontSize: 10, fontWeight: 800, color: accent, marginTop: 2 }}>{r.fina} FINA</div>}
+        </div>
+      </div>
+      <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 9, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.swimmer}</div>
+      <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,.55)', marginTop: 2 }}>
+        {year}{r.age_at_competition ? ` · aged ${r.age_at_competition}` : ''}
+      </div>
+    </Link>
   )
 }
 
@@ -117,108 +141,73 @@ function AllTimeTeamTab({ profile, country }) {
     [profile, sex, pool],
   )
 
-  const strokeOf = (ev) => {
-    const e = String(ev || '')
-    if (e.includes('Medley')) return 'Individual Medley'
-    return ATT_STROKES.find((s) => e.includes(s)) || 'Other'
-  }
   const distOf = (ev) => parseInt(String(ev || '').match(/\d+/)?.[0] || 0, 10)
+  const laneRows = (stroke) => rows
+    .filter((r) => (stroke === 'Individual Medley' ? String(r.event).includes('Medley') : String(r.event).includes(stroke) && !String(r.event).includes('Medley')))
+    .sort((a, b) => distOf(a.event) - distOf(b.event))
 
-  const byStroke = useMemo(() => {
-    const g = {}
-    rows.forEach((r) => { (g[strokeOf(r.event)] ||= []).push(r) })
-    Object.values(g).forEach((arr) => arr.sort((a, b) => distOf(a.event) - distOf(b.event)))
-    return g
-  }, [rows])
-
-  // Roster: distinct swimmers ranked by how many events they own
-  const roster = useMemo(() => {
-    const m = {}
-    rows.forEach((r) => {
-      const s = (m[r.swimmer_id] ||= { id: r.swimmer_id, name: r.swimmer, photo: r.photo, events: 0, bestFina: 0 })
-      s.events += 1
-      if (r.photo && !s.photo) s.photo = r.photo
-      if ((r.fina || 0) > s.bestFina) s.bestFina = r.fina || 0
-    })
-    return Object.values(m).sort((a, b) => b.events - a.events || b.bestFina - a.bestFina)
-  }, [rows])
-
-  const yearOf = (d) => (d ? String(d).slice(0, 4) : '')
+  const swimmers = useMemo(() => new Set(rows.map((r) => r.swimmer_id)).size, [rows])
+  const lanes = ATT_LANES.filter((l) => laneRows(l.stroke).length)
 
   return (
     <div className="pad-lg">
       <TabHeading title="All-Time Team" />
       <div style={{ textAlign: 'center', fontSize: 13, color: '#6b7d94', margin: '-10px 0 18px' }}>
-        The fastest {country.name} swimmer ever in every event — the federation's dream team across all generations.
+        The fastest {country.name} swimmer ever in every event, lined up in the pool — one lane per stroke.
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginBottom: 26, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
         <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={sex} onChange={setSex} />
         <Seg options={[{ value: 'LCM', label: 'Long Course' }, { value: 'SCM', label: 'Short Course' }]} value={pool} onChange={setPool} />
       </div>
 
       {rows.length === 0 ? <Empty label="No times recorded yet for this selection" /> : (
-        <>
-          {/* Squad roster strip */}
-          <div style={{ background: 'linear-gradient(135deg, #0b2948, #143c6b)', borderRadius: 12, padding: '20px 22px 22px', marginBottom: 30, boxShadow: '0 2px 10px rgba(11,41,72,.25)' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
-              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#fff' }}>The Squad</span>
-              <span style={{ fontSize: 11.5, color: '#9fb8d4' }}>{roster.length} swimmer{roster.length !== 1 ? 's' : ''} · {rows.length} events</span>
+        <div style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 6px 26px rgba(7,26,48,.35)', border: '1px solid #0c2f55' }}>
+          {/* Pool deck header */}
+          <div style={{ background: 'linear-gradient(135deg, #071a30, #0e3560)', padding: '20px 24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Flag code={country.code} name={country.name} large />
+              <div>
+                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 17, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#fff' }}>Starting Lineup</div>
+                <div style={{ fontSize: 11, color: '#8fb0d6', marginTop: 2 }}>{country.name} · all-time bests · {pool === 'SCM' ? 'short course' : 'long course'}</div>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 18, overflowX: 'auto', paddingBottom: 4 }}>
-              {roster.map((s) => (
-                <Link key={s.id} to={`/swimmers/${s.id}`} style={{ textDecoration: 'none', color: '#fff', textAlign: 'center', flex: 'none', width: 96 }}>
-                  <div style={{ width: 72, height: 72, borderRadius: '50%', margin: '0 auto', overflow: 'hidden', border: '2.5px solid rgba(255,255,255,.85)', background: '#1a56a0', position: 'relative' }}>
-                    {s.photo
-                      ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🏊</div>}
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, marginTop: 7, lineHeight: 1.25 }}>{s.name}</div>
-                  <div style={{ fontSize: 10, color: '#8fb0d6', marginTop: 2 }}>{s.events} event{s.events !== 1 ? 's' : ''}</div>
-                </Link>
-              ))}
+            <div style={{ display: 'flex', gap: 22 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div className="asw-num" style={{ fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{swimmers}</div>
+                <div style={{ fontSize: 9, color: '#8fb0d6', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 3 }}>Swimmers</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div className="asw-num" style={{ fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{rows.length}</div>
+                <div style={{ fontSize: 9, color: '#8fb0d6', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 3 }}>Events</div>
+              </div>
             </div>
           </div>
 
-          {/* Event lineup by stroke */}
-          {ATT_STROKES.filter((st) => byStroke[st]?.length).map((st) => (
-            <div key={st} style={{ marginBottom: 30 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
-                <span style={{ width: 4, height: 17, background: ATT_STROKE_COLORS[st] || '#1a56a0', borderRadius: 2 }} />
-                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0b2948' }}>{st}</span>
-                <span style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(215px, 1fr))', gap: 16 }}>
-                {byStroke[st].map((r) => (
-                  <Link key={`${r.event}-${r.swimmer_id}`} to={`/swimmers/${r.swimmer_id}`}
-                    style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 10, overflow: 'hidden', textDecoration: 'none', color: 'inherit', boxShadow: '0 1px 4px rgba(0,0,0,.06)', display: 'flex', flexDirection: 'column', transition: 'box-shadow .15s' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(11,41,72,.18)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.06)' }}>
-                    <div style={{ position: 'relative' }}>
-                      <AttPhoto photo={r.photo} name={r.swimmer} />
-                      <div style={{ position: 'absolute', top: 10, left: 10, background: ATT_STROKE_COLORS[st] || '#1a56a0', color: '#fff', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', padding: '4px 9px', borderRadius: 4, textTransform: 'uppercase' }}>
-                        {r.event.replace(/\s*M\s+/, 'm ')}
-                      </div>
-                      {r.fina != null && (
-                        <div className="asw-num" style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(11,41,72,.88)', color: '#ffd876', fontSize: 11, fontWeight: 900, padding: '4px 8px', borderRadius: 4 }}>
-                          {r.fina} pts
-                        </div>
-                      )}
+          {/* The pool: one lane per stroke, ropes between */}
+          <div style={{ background: 'linear-gradient(180deg, #0d3d6e 0%, #0a2f57 55%, #082744 100%)', padding: '14px 0 18px', display: 'flex', flexDirection: 'column' }}>
+            {lanes.map((lane, i) => (
+              <div key={lane.stroke} style={{ display: 'flex', flexDirection: 'column' }}>
+                {i > 0 && <AttRope />}
+                <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, padding: '12px 0' }}>
+                  {/* Lane wall label */}
+                  <div style={{ flex: 'none', width: 46, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, borderRight: '2px dashed rgba(255,255,255,.14)' }}>
+                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: lane.accent, color: '#071a30', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900 }} className="asw-num">{i + 1}</div>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 9.5, fontWeight: 900, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,.75)', fontFamily: 'var(--font-heading)' }}>
+                      {lane.stroke === 'Individual Medley' ? 'Medley' : lane.stroke}
                     </div>
-                    <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
-                      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13.5, lineHeight: 1.25, color: '#0b2948' }}>{r.swimmer}</div>
-                      <div className="asw-num" style={{ fontSize: 24, fontWeight: 900, color: '#1a56a0', lineHeight: 1.15 }}>{r.time}</div>
-                      <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 'auto', lineHeight: 1.4 }}>
-                        {r.championship}{yearOf(r.date) ? ` · ${yearOf(r.date)}` : ''}
-                        {r.age_at_competition ? ` · aged ${r.age_at_competition}` : ''}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+                  </div>
+                  {/* Swimmers on the blocks */}
+                  <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '4px 16px 6px', alignItems: 'stretch', flex: 1, position: 'relative' }}>
+                    {laneRows(lane.stroke).map((r) => <AttBlock key={r.event + r.swimmer_id} r={r} accent={lane.accent} />)}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-        </>
+            ))}
+            {/* pool floor T-mark */}
+            <div style={{ height: 4, width: 120, background: 'rgba(255,255,255,.18)', borderRadius: 2, margin: '10px auto 0' }} />
+          </div>
+        </div>
       )}
     </div>
   )

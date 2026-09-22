@@ -88,17 +88,17 @@ function TabHeading({ title }) {
 
 /* ===== ALL-TIME TEAM TAB — pool-lane starting lineup ===== */
 const ATT_LANES = [
-  { stroke: 'Freestyle', accent: '#1a56a0' },
-  { stroke: 'Backstroke', accent: '#0d7a52' },
-  { stroke: 'Breaststroke', accent: '#a05f2c' },
-  { stroke: 'Butterfly', accent: '#7a3b8f' },
-  { stroke: 'Individual Medley', accent: '#b98a1e' },
+  { stroke: 'Freestyle', accent: '#1c4e86' },
+  { stroke: 'Backstroke', accent: '#2f6cae' },
+  { stroke: 'Breaststroke', accent: '#0c2340' },
+  { stroke: 'Butterfly', accent: '#4a8fc0' },
+  { stroke: 'Individual Medley', accent: '#17416f' },
 ]
 
 function AttRope() {
-  // lane rope: alternating red / grey / navy floats
+  // lane rope: alternating navy / light-blue floats
   return (
-    <div style={{ height: 8, borderRadius: 4, flex: 'none', margin: '0 6px', background: 'repeating-linear-gradient(90deg, #d84343 0 16px, #dfe6ee 16px 32px, #d84343 32px 48px, #16406e 48px 64px)', opacity: 0.9, boxShadow: '0 1px 3px rgba(11,41,72,.15)' }} />
+    <div style={{ height: 7, borderRadius: 4, flex: 'none', margin: '0 6px', background: 'repeating-linear-gradient(90deg, #1c4e86 0 16px, #dbe6f2 16px 32px, #1c4e86 32px 48px, #aecae4 48px 64px)', opacity: 0.75, boxShadow: '0 1px 3px rgba(11,41,72,.12)' }} />
   )
 }
 

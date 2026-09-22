@@ -824,15 +824,34 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
           getMedals({ country: countryId, classification: cls.id, page_size: 5000 }),
           getMedalSwimmerSummary({ country: countryId, classification: cls.id, limit: 'all' }),
           getMedalSummary({ classification: cls.id }),
+          getCountries(),
         ])
       })
-      .then(([m, s, t]) => {
+      .then(([m, s, t, c]) => {
         if (!alive) return
         setRows(Array.isArray(m.data) ? m.data : m.data?.results || [])
         setMedalists(Array.isArray(s.data) ? s.data : s.data?.results || [])
-        const all = Array.isArray(t.data) ? t.data : t.data?.results || []
+        const tally = Array.isArray(t.data) ? t.data : t.data?.results || []
+        const countries = Array.isArray(c.data) ? c.data : c.data?.results || []
+        const byCode = {}
+        tally.forEach((r) => { byCode[r.swimmer__nationality__code] = r })
         const allowed = CLASS_COUNTRY_CODES[className]
-        setStandings(allowed ? all.filter((r) => allowed.includes(r.swimmer__nationality__code)) : all)
+        // Show the classification's full country list — zero-medal
+        // countries included — not just those that have medalled.
+        const pool = allowed
+          ? allowed.map((code) => ({ code, meta: countries.find((x) => x.code === code) }))
+          : countries.filter((x) => x.region === 'ARAB' || x.region === 'GCC')
+              .map((x) => ({ code: x.code, meta: x }))
+        const merged = pool.map(({ code, meta }) => byCode[code] || {
+          swimmer__nationality__code: code,
+          swimmer__nationality__name: meta?.name || code,
+          swimmer__nationality__flag_url: meta?.flag_url || null,
+          gold: 0, silver: 0, bronze: 0, total: 0,
+        })
+        merged.sort((a, b) => b.gold - a.gold || b.silver - a.silver
+          || b.bronze - a.bronze
+          || String(a.swimmer__nationality__name).localeCompare(String(b.swimmer__nationality__name)))
+        setStandings(merged)
       })
       .catch(() => { if (alive) { setRows([]); setMedalists([]); setStandings([]) } })
       .finally(() => alive && setLoading(false))

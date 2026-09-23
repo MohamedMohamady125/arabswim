@@ -237,9 +237,9 @@ export default function Rankings() {
                       {/* one line — long meet names ellipsize so rows stay short */}
                       <td className="text-muted hide-mobile"
                         style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 300 }}
-                        title={`${r.championship_name}${r.championship_location ? ` · ${r.championship_location}` : ''}`}>
+                        title={`${r.championship_name}${r.championship_location ? ` · ${r.championship_location.split(',').pop().trim()}` : ''}`}>
                         {r.championship_name}
-                        {r.championship_location ? ` · ${r.championship_location}` : ''}
+                        {r.championship_location ? ` · ${r.championship_location.split(',').pop().trim()}` : ''}
                       </td>
                       <td className="hide-mobile" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
                     </tr>

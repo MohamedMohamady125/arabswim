@@ -14,18 +14,19 @@ function acronym(name) {
   return words.slice(0, 3).map((w) => w[0]).join('').toUpperCase()
 }
 
-function AcademyLogo({ logo, name, size = 72 }) {
-  if (logo) {
-    return (
-      <div style={{ width: size, height: size, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)', background: '#fff', padding: 3 }}>
-        <img src={mediaUrl(logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-      </div>
-    )
-  }
+function AcademyLogo({ logo, name, size = 52 }) {
   return (
-    <div style={{ width: size, height: size, flex: 'none', border: '1px solid var(--color-divider)', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16 }}>
-      {acronym(name)}
-    </div>
+    <span style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+      background: '#eef3f9', border: '1px solid #dbe4ef',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {logo ? (
+        <img src={mediaUrl(logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#1a56a0' }}>{acronym(name)}</span>
+      )}
+    </span>
   )
 }
 
@@ -110,14 +111,18 @@ export default function Academies() {
         <Empty label="No academies found" />
       ) : (
         <div className="pad">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
             {filtered.map((a) => (
-              <div key={a.id} style={{ border: '1px solid var(--color-divider)', padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div key={a.id} style={{
+                background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
+                boxShadow: '0 1px 6px rgba(11,41,72,.06)', padding: '14px 16px',
+                display: 'flex', flexDirection: 'column', gap: 12,
+              }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <AcademyLogo logo={a.logo} name={a.name} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, lineHeight: 1.25 }}>{a.name}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, fontSize: 12.5, color: 'var(--color-neutral-800)' }}>
+                    <div style={{ fontWeight: 700, fontSize: 14.5, color: '#0b2948', lineHeight: 1.3 }}>{a.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, fontSize: 12, color: 'var(--color-neutral-800)' }}>
                       {a.country_detail && <Flag code={a.country_detail.code} name={a.country_detail.name} />}
                       <span>{a.country_detail?.name}{a.city ? ` · ${a.city}` : ''}</span>
                     </div>

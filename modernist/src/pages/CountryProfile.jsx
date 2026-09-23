@@ -275,7 +275,7 @@ function RankingTab({ countryId }) {
               <td className="time asw-time" style={{ fontWeight: 800 }}>{r.time}</td>
               <td className="num asw-num">{r.fina_points ?? '—'}</td>
               <td className="text-muted">{r.championship_name}</td>
-              <td className="text-muted">{[r.championship_location, r.championship_country].filter(Boolean).join(', ') || '—'}</td>
+              <td className="text-muted">{r.championship_country || (r.championship_location || '').split(',').pop().trim() || '—'}</td>
               <td className="text-muted">{formatDate(r.date)}</td>
             </tr>
           ))}
@@ -311,15 +311,35 @@ function AcademiesTab({ countryId }) {
     <div className="pad-lg">
       <SectHead title={`Academies · ${academies.length}`} />
       {academies.length === 0 ? <Empty label="No academies registered" /> : (
-        <div>{academies.map((a) => (
-          <div key={a.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0' }}>
-            <span style={{ minWidth: 0 }}>
-              <span style={{ fontWeight: 600, display: 'block' }}>{a.name}</span>
-              {a.city && <span className="text-muted" style={{ fontSize: 12 }}>{a.city}</span>}
-            </span>
-            {a.phone && <span className="text-muted asw-num" style={{ fontSize: 12, flex: 'none' }}>{a.phone}</span>}
-          </div>
-        ))}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
+          {academies.map((a) => (
+            <div key={a.id} style={{
+              display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
+              background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
+              boxShadow: '0 1px 6px rgba(11,41,72,.06)',
+            }}>
+              <span style={{
+                width: 52, height: 52, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+                background: '#eef3f9', border: '1px solid #dbe4ef',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {a.logo ? (
+                  <img src={mediaUrl(a.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#1a56a0' }}>
+                    {a.name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                  </span>
+                )}
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ fontWeight: 700, fontSize: 14.5, color: '#0b2948', display: 'block', lineHeight: 1.3 }}>{a.name}</span>
+                {(a.city || a.phone) && (
+                  <span className="text-muted" style={{ fontSize: 12 }}>{[a.city, a.phone].filter(Boolean).join(' · ')}</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -909,12 +929,12 @@ function RecordsTab({ records, country }) {
                 <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}>
                   <SwimmerLink id={r.swimmer_id} name={r.swimmer} />
                 </div>
-                <div style={{ fontSize: 13.5, color: '#1a56a0', fontWeight: 600, marginTop: 6 }}>{r.event}</div>
+                <div style={{ fontSize: 13.5, color: '#1a56a0', fontWeight: 600, marginTop: 6 }}>{r.event} | {r.pool}</div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#0d2d5e', letterSpacing: '-0.02em', marginTop: 6 }}>{r.time}</div>
               </div>
               <div style={{ marginTop: 'auto', paddingTop: 12 }}>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#0d2d5e', letterSpacing: '-0.02em' }}>{r.time}</div>
-                <div style={{ fontSize: 12.5, color: REC_TYPE_COLORS[r.record_type] || '#0b2948', fontWeight: 700, marginTop: 6 }}>{REC_TYPE_LABELS[r.record_type] || r.record_type} Record</div>
-                <div style={{ fontSize: 12, color: '#8a9bb5', marginTop: 2 }}>{r.pool} | {r.sex === 'F' ? "Women's" : "Men's"}</div>
+                <div style={{ fontSize: 12.5, color: REC_TYPE_COLORS[r.record_type] || '#0b2948', fontWeight: 700 }}>{REC_TYPE_LABELS[r.record_type] || r.record_type} Record</div>
+                <div style={{ fontSize: 12, color: '#8a9bb5', marginTop: 2 }}>{r.sex === 'F' ? "Women's" : "Men's"}</div>
               </div>
             </div>
           ))}

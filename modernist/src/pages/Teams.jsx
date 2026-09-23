@@ -504,17 +504,20 @@ export default function Teams() {
               Select page
             </label>
           )}
-          {/* logo + name only — clean card grid */}
-          <div className="club-grid">
+          {/* card grid matching the federation Clubs tab: circular logo + name */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
             {pageRows.map((t) => (
               <Link
                 key={t.id}
                 to={`/teams/${t.id}`}
-                className="club-card"
-                style={{ position: 'relative', color: 'inherit', textDecoration: 'none' }}
+                style={{
+                  position: 'relative', display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
+                  background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
+                  boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'inherit', textDecoration: 'none',
+                }}
               >
                 {isAdmin && (
-                  <span style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 6, alignItems: 'center' }}
+                  <span style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6, alignItems: 'center' }}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation() }}>
                     <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleOne(t.id)} aria-label={`Select ${t.name}`} style={{ cursor: 'pointer' }} />
                     <button className="btn btn-secondary btn-icon" title="Delete team" aria-label="Delete team" onClick={() => handleDelete(t)}>
@@ -522,8 +525,23 @@ export default function Teams() {
                     </button>
                   </span>
                 )}
-                <TeamLogo logo={t.logo} name={t.name} size={72} />
-                <div className="club-card-name">{t.name}</div>
+                <span style={{
+                  width: 52, height: 52, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+                  background: '#eef3f9', border: '1px solid #dbe4ef',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {t.logo ? (
+                    <img src={mediaUrl(t.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#1a56a0' }}>{acronym(t.name)}</span>
+                  )}
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14.5, color: '#0b2948', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
+                  <span className="text-muted" style={{ fontSize: 12 }}>
+                    {[t.country_detail?.name, t.swimmers_count > 0 ? `${t.swimmers_count} swimmer${t.swimmers_count === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
               </Link>
             ))}
           </div>

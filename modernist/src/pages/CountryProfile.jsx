@@ -2052,9 +2052,21 @@ export default function CountryProfile() {
       {tab === 'medals' && !mclass && (
         <div className="pad-lg">
           <SectHead title="Medal Tally by Competition" />
-          {medalBoxes.length === 0 ? <Empty label="No medals" /> : (
+          {(() => {
+            // Every classification is always clickable — zero-medal ones
+            // included — so each drill-down's country standings can be seen.
+            const ALL_CLASSES = ['Olympic', 'World', 'Arab', 'National', 'Islamic',
+              'GCC', 'Asian', 'African', 'Mediterranean', 'Other']
+            const byName = {}
+            medalBoxes.forEach((m) => { byName[m.name] = m })
+            const boxes = [
+              ...medalBoxes,
+              ...ALL_CLASSES.filter((n) => !byName[n])
+                .map((n) => ({ name: n, gold: 0, silver: 0, bronze: 0, total: 0 })),
+            ]
+            return (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
-              {medalBoxes.map((m) => (
+              {boxes.map((m) => (
                 <div
                   key={m.name}
                   onClick={() => setSearchParams({ tab: 'medals', mclass: m.name })}
@@ -2073,7 +2085,8 @@ export default function CountryProfile() {
                 </div>
               ))}
             </div>
-          )}
+            )
+          })()}
           <SectHead title={`Top Medalists · ${topMedalists.length}`} />
           {topMedalists.length === 0 ? <Empty label="No medals" /> : (
             <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>

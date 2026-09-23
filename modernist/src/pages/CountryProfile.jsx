@@ -47,9 +47,9 @@ function FedHeroPhoto({ candidates }) {
       img.src = src
     }))).then((loaded) => {
       if (!alive) return
-      // reject anything too small to survive being blown up to banner size
-      const ok = loaded.filter((p) => p && p.w >= 320 && p.h >= 300)
-      if (!ok.length) { setBest(null); return }
+      const all = loaded.filter(Boolean)
+      // sharp tier: large enough to survive being blown up to banner size
+      const ok = all.filter((p) => p.w >= 320 && p.h >= 300)
       const score = (p) => {
         const ar = p.w / p.h
         let s = Math.min(p.w, 1600)          // sharper = better (capped)
@@ -58,19 +58,29 @@ function FedHeroPhoto({ candidates }) {
         if (p.w >= 700) s += 400             // truly banner-worthy resolution
         return s
       }
-      setBest([...ok].sort((a, b) => score(b) - score(a))[0])
+      if (ok.length) {
+        setBest({ ...[...ok].sort((a, b) => score(b) - score(a))[0], mode: 'sharp' })
+      } else if (all.length) {
+        // only tiny thumbnails exist — use the largest as a soft blurred
+        // atmosphere layer rather than a pixelated blow-up
+        setBest({ ...[...all].sort((a, b) => b.w * b.h - a.w * a.h)[0], mode: 'blur' })
+      } else {
+        setBest(null)
+      }
     })
     return () => { alive = false }
   }, [key])
   if (!best) return null
   const ar = best.w / best.h
   const pos = ar < 0.85 ? '50% 8%' : ar < 1.15 ? '50% 16%' : '50% 30%'
+  const mask = 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 34%, #000 62%)'
+  const blurred = best.mode === 'blur'
   return (
     <div className="fed-hero-photo" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '52%', pointerEvents: 'none' }}>
       <img src={best.src} alt="" style={{
         width: '100%', height: '100%', objectFit: 'cover', objectPosition: pos,
-        WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 34%, #000 62%)',
-        maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 34%, #000 62%)',
+        WebkitMaskImage: mask, maskImage: mask,
+        ...(blurred ? { filter: 'blur(26px) saturate(1.1)', transform: 'scale(1.2)', opacity: 0.55 } : {}),
       }} />
     </div>
   )

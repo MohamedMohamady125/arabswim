@@ -115,7 +115,14 @@ function NewsTab({ countryId, countryName }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {articles.map((a) => (
             <Link key={a.id} to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div style={{ height: 175, background: a.cover_image ? `url(${a.cover_image}) center/cover` : 'linear-gradient(135deg, #0b2948, #1a56a0)', flex: 'none' }} />
+              <div style={{ position: 'relative', height: 175, overflow: 'hidden', background: 'linear-gradient(135deg, #0b2948, #1a56a0)', flex: 'none' }}>
+                {a.cover_image && (
+                  <>
+                    <img src={a.cover_image} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(20px)', transform: 'scale(1.15)', opacity: 0.5 }} />
+                    <img src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
+                  </>
+                )}
+              </div>
               <div style={{ padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                 <div className="micro" style={{ marginBottom: 6 }}>{formatDate(a.published_at || a.created_at)}</div>
                 <div style={{ fontWeight: 800, fontSize: 15.5, lineHeight: 1.3, color: '#0b2948', marginBottom: 8 }}>{a.title}</div>
@@ -1692,7 +1699,14 @@ export default function CountryProfile() {
                   {newsItems.map((a, i) => {
                     const inner = (
                       <>
-                        <div style={{ margin: 10, height: 200, borderRadius: 8, background: a?.cover_image ? `url(${a.cover_image}) center/cover` : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>{a?.cover_image ? '' : '📷'}</div>
+                        <div style={{ position: 'relative', margin: 10, height: 200, borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? '#0b2948' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>
+                          {a?.cover_image ? (
+                            <>
+                              <img src={a.cover_image} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(20px)', transform: 'scale(1.15)', opacity: 0.5 }} />
+                              <img src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
+                            </>
+                          ) : '📷'}
+                        </div>
                         <div style={{ padding: '4px 14px 16px', display: 'flex', flexDirection: 'column', flex: 1, textAlign: 'left' }}>
                           <div style={{ fontSize: 12, color: '#1a56a0', fontWeight: 600, marginBottom: 9 }}>{a ? usDate(a.published_at || a.created_at) : 'Coming soon'}</div>
                           <div style={{ fontSize: 14.5, color: '#0b2948', fontWeight: 700, lineHeight: 1.5 }}>{a ? a.title : 'Federation news will appear here'}</div>

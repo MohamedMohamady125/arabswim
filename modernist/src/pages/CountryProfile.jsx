@@ -767,21 +767,22 @@ function RecordsTab({ records, country }) {
 
       {/* Record cards grid */}
       {filtered.length === 0 ? <Empty label="No records for this selection" /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 18 }}>
           {filtered.map((r, i) => (
-            <div key={i} style={{ background: '#f8fafc', border: '1px solid #dde3ea', borderRadius: 10, overflow: 'hidden', textAlign: 'center', boxShadow: '0 2px 8px rgba(11,41,72,.06)' }}>
-              {/* Square photo area */}
-              <div style={{ height: 190, background: 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', overflow: 'hidden' }}>
+            <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column' }}>
+              {/* Large rounded photo */}
+              <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, overflow: 'hidden', background: 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>
                 {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
               </div>
-              {/* Info */}
-              <div style={{ padding: '14px 10px 18px' }}>
-                <div style={{ fontWeight: 800, fontSize: 16, color: '#0b2948', marginBottom: 4 }}>
+              <div style={{ paddingTop: 16 }}>
+                <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}>
                   <SwimmerLink id={r.swimmer_id} name={r.swimmer} />
                 </div>
-                <div style={{ fontSize: 12.5, color: '#5a6b80', marginBottom: 10 }}>{r.event}</div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#1a56a0', letterSpacing: '-0.02em', marginBottom: 8 }}>{r.time}</div>
-                <div style={{ fontSize: 12.5, color: REC_TYPE_COLORS[r.record_type] || '#0b2948', fontWeight: 700 }}>{REC_TYPE_LABELS[r.record_type] || r.record_type} Record</div>
+                <div style={{ fontSize: 13.5, color: '#1a56a0', fontWeight: 600, marginTop: 6 }}>{r.event}</div>
+              </div>
+              <div style={{ marginTop: 'auto', paddingTop: 12 }}>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#0d2d5e', letterSpacing: '-0.02em' }}>{r.time}</div>
+                <div style={{ fontSize: 12.5, color: REC_TYPE_COLORS[r.record_type] || '#0b2948', fontWeight: 700, marginTop: 6 }}>{REC_TYPE_LABELS[r.record_type] || r.record_type} Record</div>
                 <div style={{ fontSize: 12, color: '#8a9bb5', marginTop: 2 }}>{r.pool} | {r.sex === 'F' ? "Women's" : "Men's"}</div>
               </div>
             </div>

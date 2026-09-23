@@ -31,6 +31,15 @@ const AQUATICS_LOGO_CODES = new Set([
 // every flag cropped to the same 4:3 box so rows line up perfectly.
 // With `placeholder`, swimmers without a nationality still reserve the flag's
 // footprint (empty bordered box) so names line up across every row.
+// Resolve a curated flag image URL for a country code (or null if none).
+// Used by the federation hero, which needs the raw image to fill its circle.
+export function flagImage(code) {
+  const alpha2 = flagAlpha2(code)
+  if (alpha2 && CUSTOM_FLAGS[alpha2]) return CUSTOM_FLAGS[alpha2]
+  const lower = String(code || '').toLowerCase()
+  return CUSTOM_FLAGS[lower] || null
+}
+
 export default function Flag({ code, name, large = false, flagUrl, placeholder = false }) {
   const [failed, setFailed] = useState(false)
   const upper = code ? String(code).toUpperCase() : ''

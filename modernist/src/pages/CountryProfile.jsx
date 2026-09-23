@@ -12,10 +12,10 @@ import { getAcademies } from '../api/academies'
 import { getCalendarEvents } from '../api/calendar'
 import { getMedals, getMedalSummary, getMedalSwimmerSummary } from '../api/medals'
 import { getClassifications } from '../api/records'
-import Flag from '../components/Flag'
+import Flag, { flagImage } from '../components/Flag'
 import FederationProgressionTab from '../components/FederationProgression'
 import { Loading, Empty, SectHead, Seg, Pager } from '../components/ui'
-import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
+import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2 } from '../utils'
 
 const CLASS_ORDER = ['Arab', 'GCC', 'African', 'Asian', 'Mediterranean', 'Islamic', 'World', 'Olympic']
 const COACH_LEVELS = {
@@ -26,6 +26,54 @@ const CLASS_COLORS = {
   Arab: '#1c4e86', GCC: '#7d8a99', African: '#a8402f', Asian: '#a05f2c',
   Mediterranean: '#4a8fc0', Islamic: '#0d7a52', World: '#b98a1e', Olympic: '#0c2340',
   National: '#2e6b4f', University: '#6b4f8a', Other: '#5a6572',
+}
+
+// Federation hero banner photo: probes every candidate swimmer photo's real
+// resolution + aspect ratio and picks the best one for a wide banner —
+// large landscape action shots score highest, tiny images that would blur
+// when scaled up are rejected outright. objectPosition adapts to the shape
+// so faces stay in frame (portrait → anchor high, wide → centre).
+function FedHeroPhoto({ candidates }) {
+  const [best, setBest] = useState(null)
+  const key = (candidates || []).filter(Boolean).join('|')
+  useEffect(() => {
+    let alive = true
+    const urls = [...new Set((candidates || []).filter(Boolean).map(mediaUrl))]
+    if (!urls.length) { setBest(null); return undefined }
+    Promise.all(urls.map((src) => new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve({ src, w: img.naturalWidth, h: img.naturalHeight })
+      img.onerror = () => resolve(null)
+      img.src = src
+    }))).then((loaded) => {
+      if (!alive) return
+      // reject anything too small to survive being blown up to banner size
+      const ok = loaded.filter((p) => p && p.w >= 320 && p.h >= 300)
+      if (!ok.length) { setBest(null); return }
+      const score = (p) => {
+        const ar = p.w / p.h
+        let s = Math.min(p.w, 1600)          // sharper = better (capped)
+        if (ar >= 1.15) s += 900             // landscape action shots first
+        else if (ar >= 0.85) s += 300        // square headshots acceptable
+        if (p.w >= 700) s += 400             // truly banner-worthy resolution
+        return s
+      }
+      setBest([...ok].sort((a, b) => score(b) - score(a))[0])
+    })
+    return () => { alive = false }
+  }, [key])
+  if (!best) return null
+  const ar = best.w / best.h
+  const pos = ar < 0.85 ? '50% 8%' : ar < 1.15 ? '50% 16%' : '50% 30%'
+  return (
+    <div className="fed-hero-photo" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '52%', pointerEvents: 'none' }}>
+      <img src={best.src} alt="" style={{
+        width: '100%', height: '100%', objectFit: 'cover', objectPosition: pos,
+        WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 34%, #000 62%)',
+        maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 34%, #000 62%)',
+      }} />
+    </div>
+  )
 }
 
 const STROKES = [
@@ -1553,11 +1601,14 @@ export default function CountryProfile() {
       {/* ===== ISF-style federation header: circular flag logo + info left,
              swimmer action photo blended into the right half ===== */}
       {(() => {
-        const heroPhoto =
-          topSwimmers.find((s) => s.photo)?.photo ||
-          topMedalists.find((s) => s.photo)?.photo ||
-          records.find((r) => r.swimmer_photo)?.swimmer_photo || null
+        const photoCandidates = [
+          ...topSwimmers.map((s) => s.photo),
+          ...topMedalists.map((s) => s.photo),
+          ...records.map((r) => r.swimmer_photo),
+        ]
         const navy = '#0c2340'
+        const customFlag = flagImage(country.code)
+        const alpha2 = flagAlpha2(country.code)
         const icon = (d) => (
           <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
@@ -1570,28 +1621,31 @@ export default function CountryProfile() {
         )
         return (
           <div className="rule-b" style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)' }}>
-            {/* swimmer photo blended on the right */}
-            {heroPhoto && (
-              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '52%', pointerEvents: 'none' }}>
-                <img src={mediaUrl(heroPhoto)} alt="" style={{
-                  width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 18%',
-                  WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 34%, #000 62%)',
-                  maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 34%, #000 62%)',
-                }} />
-              </div>
-            )}
+            <style>{`
+              @media (max-width: 760px) {
+                .fed-hero-photo { display: none; }
+                .fed-hero-flag { width: 108px !important; height: 108px !important; }
+              }
+            `}</style>
+            {/* swimmer photo blended on the right — auto-picked by resolution/aspect */}
+            <FedHeroPhoto candidates={photoCandidates} />
             <div style={{ position: 'relative', padding: '20px 32px 30px' }}>
               <Link to="/countries" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: '#1a56a0' }}>← All federations</Link>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
                 {/* Circular federation logo = country flag */}
-                <div style={{
+                <div className="fed-hero-flag" style={{
                   width: 148, height: 148, borderRadius: '50%', background: '#fff', flexShrink: 0,
                   border: `4px solid ${navy}`, boxShadow: '0 0 0 6px #fff, 0 6px 24px rgba(12,35,64,0.18)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                 }}>
-                  {country.flag_url
-                    ? <img src={country.flag_url} alt={country.name} style={{ width: '78%', height: '78%', objectFit: 'cover', borderRadius: '50%' }} />
-                    : <Flag code={country.code} name={country.name} large />}
+                  {customFlag ? (
+                    <img src={customFlag} alt={country.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : alpha2 ? (
+                    <span className={`fi fi-${alpha2}`} role="img" aria-label={country.name}
+                      style={{ width: '100%', height: '100%', display: 'block', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  ) : (
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, color: navy }}>{country.code}</span>
+                  )}
                 </div>
                 <div style={{ minWidth: 260, maxWidth: 560 }}>
                   <h1 style={{

@@ -1543,30 +1543,83 @@ export default function CountryProfile() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="pad-lg rule-b">
-        <Link to="/countries" style={{ fontSize: 12, textDecoration: 'none' }}>← All federations</Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, flexWrap: 'wrap' }}>
-          <Flag code={country.code} name={country.name} large />
-          <div>
-            <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>{country.name}</h1>
-            <div className="micro" style={{ marginTop: 4 }}>Federation · {country.code}</div>
+      {/* ===== ISF-style federation header: circular flag logo + info left,
+             swimmer action photo blended into the right half ===== */}
+      {(() => {
+        const heroPhoto =
+          topSwimmers.find((s) => s.photo)?.photo ||
+          topMedalists.find((s) => s.photo)?.photo ||
+          records.find((r) => r.swimmer_photo)?.swimmer_photo || null
+        const navy = '#0c2340'
+        const icon = (d) => (
+          <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+          </span>
+        )
+        const contactRow = (ic, content) => (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14.5, fontWeight: 600, color: navy }}>
+            {ic}{content}
           </div>
-          {country.region === 'GCC' ? <span className="tag tag-dark">GCC</span>
-            : country.region === 'ARAB' ? <span className="tag tag-accent">Arab</span>
-            : <span className="tag tag-neutral">Other</span>}
-          {medals && (
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 18, alignItems: 'baseline' }}>
-              {[['G', medals.gold, 'var(--asw-gold)'], ['S', medals.silver, 'var(--asw-silver)'], ['B', medals.bronze, 'var(--asw-bronze)'], ['T', medals.total, 'var(--color-text)']].map(([l, n, color]) => (
-                <span key={l} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
-                  <span className="micro">{l}</span>
-                  <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color }}>{formatNumber(n)}</span>
-                </span>
-              ))}
+        )
+        return (
+          <div className="rule-b" style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)' }}>
+            {/* swimmer photo blended on the right */}
+            {heroPhoto && (
+              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '52%', pointerEvents: 'none' }}>
+                <img src={mediaUrl(heroPhoto)} alt="" style={{
+                  width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 18%',
+                  WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 34%, #000 62%)',
+                  maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 34%, #000 62%)',
+                }} />
+              </div>
+            )}
+            <div style={{ position: 'relative', padding: '20px 32px 30px' }}>
+              <Link to="/countries" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: '#1a56a0' }}>← All federations</Link>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
+                {/* Circular federation logo = country flag */}
+                <div style={{
+                  width: 148, height: 148, borderRadius: '50%', background: '#fff', flexShrink: 0,
+                  border: `4px solid ${navy}`, boxShadow: '0 0 0 6px #fff, 0 6px 24px rgba(12,35,64,0.18)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                }}>
+                  {country.flag_url
+                    ? <img src={country.flag_url} alt={country.name} style={{ width: '78%', height: '78%', objectFit: 'cover', borderRadius: '50%' }} />
+                    : <Flag code={country.code} name={country.name} large />}
+                </div>
+                <div style={{ minWidth: 260, maxWidth: 560 }}>
+                  <h1 style={{
+                    margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 900,
+                    fontSize: 'clamp(28px, 4vw, 42px)', lineHeight: 1.04, letterSpacing: '-0.02em',
+                    color: navy, textTransform: 'uppercase',
+                  }}>
+                    {country.name}<br />Swimming Federation
+                  </h1>
+                  <div style={{ marginTop: 6, fontSize: 15, fontWeight: 700, color: '#1a56a0' }}>
+                    {country.federation_tagline || 'Excellence in Water, Unity in Sport'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 16 }}>
+                    {country.federation_phone && contactRow(
+                      icon(<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />),
+                      <span className="asw-num">{country.federation_phone}</span>)}
+                    {country.federation_email && contactRow(
+                      icon(<><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></>),
+                      <span>{country.federation_email}</span>)}
+                    {country.federation_website && contactRow(
+                      icon(<><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></>),
+                      <a href={/^https?:/.test(country.federation_website) ? country.federation_website : `https://${country.federation_website}`}
+                        target="_blank" rel="noreferrer" style={{ color: navy, textDecoration: 'none' }}>
+                        {country.federation_website.replace(/^https?:\/\//, '')}
+                      </a>)}
+                    {contactRow(
+                      icon(<><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></>),
+                      <span>{country.federation_address || country.name}</span>)}
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )
+      })()}
 
       {/* Tab bar */}
       <div className="rule-b" style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto' }}>

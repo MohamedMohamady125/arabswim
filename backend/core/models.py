@@ -118,6 +118,12 @@ class Country(models.Model):
     code = models.CharField(max_length=3, unique=True)
     flag_url = models.CharField(max_length=255, blank=True, default='')
     region = models.CharField(max_length=10, choices=REGION_CHOICES, default='ARAB')
+    # Federation contact card (shown in the federation profile header)
+    federation_tagline = models.CharField(max_length=120, blank=True, default='')
+    federation_phone = models.CharField(max_length=40, blank=True, default='')
+    federation_email = models.CharField(max_length=120, blank=True, default='')
+    federation_website = models.CharField(max_length=200, blank=True, default='')
+    federation_address = models.CharField(max_length=200, blank=True, default='')
 
     class Meta:
         verbose_name_plural = 'countries'

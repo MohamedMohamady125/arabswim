@@ -33,16 +33,19 @@ const CLASS_COLORS = {
 // large landscape action shots score highest, tiny images that would blur
 // when scaled up are rejected outright. objectPosition adapts to the shape
 // so faces stay in frame (portrait → anchor high, wide → centre).
-function FedHeroPhoto({ candidates }) {
+function FedHeroPhoto({ candidates, extras }) {
   const [best, setBest] = useState(null)
-  const key = (candidates || []).filter(Boolean).join('|')
+  const key = [...(candidates || []), '::', ...(extras || [])].filter(Boolean).join('|')
   useEffect(() => {
     let alive = true
-    const urls = [...new Set((candidates || []).filter(Boolean).map(mediaUrl))]
+    const primary = [...new Set((candidates || []).filter(Boolean).map(mediaUrl))]
+    const backup = [...new Set((extras || []).filter(Boolean).map(mediaUrl))]
+      .filter((u) => !primary.includes(u))
+    const urls = [...primary.map((src) => ({ src, primary: true })), ...backup.map((src) => ({ src, primary: false }))]
     if (!urls.length) { setBest(null); return undefined }
-    Promise.all(urls.map((src) => new Promise((resolve) => {
+    Promise.all(urls.map(({ src, primary: isPrimary }) => new Promise((resolve) => {
       const img = new Image()
-      img.onload = () => resolve({ src, w: img.naturalWidth, h: img.naturalHeight })
+      img.onload = () => resolve({ src, primary: isPrimary, w: img.naturalWidth, h: img.naturalHeight })
       img.onerror = () => resolve(null)
       img.src = src
     }))).then((loaded) => {
@@ -56,6 +59,7 @@ function FedHeroPhoto({ candidates }) {
         if (ar >= 1.15) s += 900             // landscape action shots first
         else if (ar >= 0.85) s += 300        // square headshots acceptable
         if (p.w >= 700) s += 400             // truly banner-worthy resolution
+        if (p.primary) s += 600              // the federation's own swimmers win ties
         return s
       }
       if (ok.length) {
@@ -1637,8 +1641,9 @@ export default function CountryProfile() {
                 .fed-hero-flag { width: 108px !important; height: 108px !important; }
               }
             `}</style>
-            {/* swimmer photo blended on the right — auto-picked by resolution/aspect */}
-            <FedHeroPhoto candidates={photoCandidates} />
+            {/* swimmer photo blended on the right — auto-picked by resolution/aspect;
+                falls back to high-res news action shots when swimmer photos are tiny */}
+            <FedHeroPhoto candidates={photoCandidates} extras={ovNews.map((a) => a?.cover_image)} />
             <div style={{ position: 'relative', padding: '20px 32px 30px' }}>
               <Link to="/countries" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: '#1a56a0' }}>← All federations</Link>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>

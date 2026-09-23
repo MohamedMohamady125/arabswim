@@ -6,7 +6,7 @@ import { getRankings } from '../api/rankings'
 import { getQualifyingStandards, getQualifyingStandard, getQualifiedSwimmers } from '../api/qualifyingTimes'
 import { getPredictions } from '../api/predictions'
 import { getAlbums } from '../api/media'
-import { getBoardMembers } from '../api/teams'
+import { getBoardMembers, getTeams } from '../api/teams'
 import { getCoaches } from '../api/coaches'
 import { getAcademies } from '../api/academies'
 import { getCalendarEvents } from '../api/calendar'
@@ -320,6 +320,68 @@ function AcademiesTab({ countryId }) {
             {a.phone && <span className="text-muted asw-num" style={{ fontSize: 12, flex: 'none' }}>{a.phone}</span>}
           </div>
         ))}</div>
+      )}
+    </div>
+  )
+}
+
+/* ===== CLUBS TAB ===== */
+function ClubsTab({ countryId }) {
+  const [clubs, setClubs] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let alive = true
+    setLoading(true)
+    getTeams({ country: countryId })
+      .then((r) => {
+        if (!alive) return
+        const all = Array.isArray(r.data) ? r.data : r.data?.results || []
+        // clubs only — the national team lives in the Team tab, not here
+        setClubs(all.filter((t) => !t.is_national_team)
+          .sort((a, b) => (b.swimmers_count || 0) - (a.swimmers_count || 0) || a.name.localeCompare(b.name)))
+      })
+      .catch(() => alive && setClubs([]))
+      .finally(() => alive && setLoading(false))
+    return () => { alive = false }
+  }, [countryId])
+
+  if (loading) return <Loading label="Loading clubs" />
+  return (
+    <div className="pad-lg">
+      <SectHead title={`Clubs · ${clubs.length}`} />
+      {clubs.length === 0 ? <Empty label="No clubs registered" /> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
+          {clubs.map((t) => (
+            <Link key={t.id} to={`/teams/${t.id}`} style={{
+              display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
+              background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
+              boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'inherit', textDecoration: 'none',
+            }}>
+              <span style={{
+                width: 52, height: 52, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+                background: '#eef3f9', border: '1px solid #dbe4ef',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {t.logo ? (
+                  <img src={mediaUrl(t.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: '#1a56a0' }}>
+                    {t.name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                  </span>
+                )}
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ fontWeight: 700, fontSize: 14.5, color: '#0b2948', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
+                {t.swimmers_count > 0 && (
+                  <span className="text-muted" style={{ fontSize: 12 }}>
+                    {t.swimmers_count} swimmer{t.swimmers_count === 1 ? '' : 's'}
+                  </span>
+                )}
+              </span>
+            </Link>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -2233,19 +2295,7 @@ export default function CountryProfile() {
       )}
 
       {/* ===== CLUBS ===== */}
-      {tab === 'clubs' && (
-        <div className="pad-lg">
-          <SectHead title={`Clubs & Teams · ${teams.length}`} />
-          {teams.length === 0 ? <Empty label="No clubs registered" /> : (
-            <div>{teams.map((t) => (
-              <Link key={t.id} to={`/teams/${t.id}`} className="hair-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', color: 'inherit', textDecoration: 'none' }}>
-                <span style={{ fontWeight: 600 }}>{t.name}</span>
-                {t.is_national_team && <span className="tag tag-dark">National team</span>}
-              </Link>
-            ))}</div>
-          )}
-        </div>
-      )}
+      {tab === 'clubs' && <ClubsTab countryId={id} />}
 
       {/* ===== ACADEMIES ===== */}
       {tab === 'academies' && <AcademiesTab countryId={id} />}

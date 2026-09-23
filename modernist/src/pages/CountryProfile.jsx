@@ -55,7 +55,6 @@ const TABS = [
   { value: 'qualifying', label: 'Qualifying' },
   { value: 'clubs', label: 'Clubs' },
   { value: 'academies', label: 'Academies' },
-  { value: 'pools', label: 'Pools' },
   { value: 'compare', label: 'Compare' },
   { value: 'prediction', label: 'Prediction' },
   { value: 'multimedia', label: 'Multimedia' },

@@ -934,8 +934,7 @@ function RecordsTab({ records, country }) {
                 <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#0d2d5e', letterSpacing: '-0.02em', marginTop: 6 }}>{r.time}</div>
               </div>
               <div style={{ marginTop: 'auto', paddingTop: 12 }}>
-                <div style={{ fontSize: 12.5, color: REC_TYPE_COLORS[r.record_type] || '#0b2948', fontWeight: 700 }}>{REC_TYPE_LABELS[r.record_type] || r.record_type} Record</div>
-                <div style={{ fontSize: 12, color: '#8a9bb5', marginTop: 2 }}>{r.sex === 'F' ? "Women's" : "Men's"}</div>
+                <div style={{ fontSize: 12, color: '#8a9bb5' }}>{r.sex === 'F' ? "Women's" : "Men's"}</div>
               </div>
             </div>
           ))}
@@ -2043,9 +2042,9 @@ export default function CountryProfile() {
                   <div style={{ padding: '12px 12px 0' }}>
                     <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
                     <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <span>{r.event}</span>
+                      <span>{String(r.event || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
                       <span style={{ color: '#c6d4e2' }}>|</span>
-                      <span>{r.pool === 'SCM' ? 'Short Course' : 'Long Course'}</span>
+                      <span>{r.pool === 'SCM' ? 'SCM' : 'LCM'}</span>
                     </div>
                   </div>
                   {/* Navy footer with time */}

@@ -2294,16 +2294,18 @@ export default function CountryProfile() {
                   onClick={() => setSearchParams({ tab: 'medals', mclass: m.name })}
                   role="button" tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter') setSearchParams({ tab: 'medals', mclass: m.name }) }}
-                  style={{ background: CLASS_COLORS[m.name] || 'var(--color-accent)', color: '#fff', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240, cursor: 'pointer', position: 'relative' }}
+                  style={{ background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid #0d2d5e', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: '#0b2948', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240, cursor: 'pointer', position: 'relative' }}
                 >
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.75 }}>{m.name}</div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2 }}>{formatNumber(m.total)}</div>
-                  <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 700 }}>
-                    <span style={{ color: 'var(--asw-gold)' }}>{m.gold}G</span>
-                    <span style={{ color: 'var(--asw-silver)' }}>{m.silver}S</span>
-                    <span style={{ color: '#e3a869' }}>{m.bronze}B</span>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a8aa0' }}>{m.name}</div>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: '#0d2d5e' }}>{formatNumber(m.total)}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                    <div className="asw-num" style={{ display: 'flex', gap: 8, fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                      <span style={{ color: '#b98a1e' }}>{m.gold}G</span>
+                      <span style={{ color: '#8a97a8' }}>{m.silver}S</span>
+                      <span style={{ color: '#b06a35' }}>{m.bronze}B</span>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#1a56a0', whiteSpace: 'nowrap' }}>Details →</span>
                   </div>
-                  <span style={{ position: 'absolute', right: 12, bottom: 12, fontSize: 11, fontWeight: 700, opacity: 0.85 }}>Details →</span>
                 </div>
               ))}
             </div>

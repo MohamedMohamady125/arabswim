@@ -1659,13 +1659,13 @@ export default function TeamDetail() {
           {medalBoxes.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'center' }}>
               {medalBoxes.map((m) => (
-                <div key={m.name} style={{ background: CLASS_COLORS[m.name] || 'var(--color-accent)', color: '#fff', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.75 }}>{m.name}</div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2 }}>{formatNumber(m.total)}</div>
-                  <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 700 }}>
-                    <span style={{ color: 'var(--asw-gold)' }}>{m.gold}G</span>
-                    <span style={{ color: 'var(--asw-silver)' }}>{m.silver}S</span>
-                    <span style={{ color: '#e3a869' }}>{m.bronze}B</span>
+                <div key={m.name} style={{ background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid #0d2d5e', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: '#0b2948', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a8aa0' }}>{m.name}</div>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: '#0d2d5e' }}>{formatNumber(m.total)}</div>
+                  <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 800 }}>
+                    <span style={{ color: '#b98a1e' }}>{m.gold}G</span>
+                    <span style={{ color: '#8a97a8' }}>{m.silver}S</span>
+                    <span style={{ color: '#b06a35' }}>{m.bronze}B</span>
                   </div>
                 </div>
               ))}

@@ -1431,10 +1431,10 @@ export default function TeamDetail() {
                     </div>
                     <div style={{ padding: '12px 12px 0' }}>
                       <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} /></div>
-                      <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <span>{r.event_name}</span>
+                      <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                        <span>{String(r.event_name || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
                         <span style={{ color: '#c6d4e2' }}>|</span>
-                        <span>{r.pool === 'SCM' ? 'Short Course' : 'Long Course'}</span>
+                        <span>{r.pool === 'SCM' ? 'SCM' : 'LCM'}</span>
                       </div>
                     </div>
                     <div style={{ background: '#123a7d', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 8 }}>

@@ -33,7 +33,7 @@ const CLASS_COLORS = {
 // large landscape action shots score highest, tiny images that would blur
 // when scaled up are rejected outright. objectPosition adapts to the shape
 // so faces stay in frame (portrait → anchor high, wide → centre).
-function FedHeroPhoto({ candidates, extras }) {
+export function FedHeroPhoto({ candidates, extras }) {
   const [best, setBest] = useState(null)
   const key = [...(candidates || []), '::', ...(extras || [])].filter(Boolean).join('|')
   useEffect(() => {
@@ -122,7 +122,7 @@ const TABS = [
   { value: 'multimedia', label: 'Multimedia' },
 ]
 
-function SubTabs({ options, value, onChange }) {
+export function SubTabs({ options, value, onChange }) {
   const base = { padding: '8px 22px', border: '2px solid #1a56a0', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }
   return (
     <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', margin: '18px 0 24px' }}>
@@ -136,7 +136,7 @@ function SubTabs({ options, value, onChange }) {
   )
 }
 
-function TabHeading({ title }) {
+export function TabHeading({ title }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '4px 0 24px' }}>
       <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
@@ -313,10 +313,11 @@ function AcademiesTab({ countryId }) {
       {academies.length === 0 ? <Empty label="No academies registered" /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
           {academies.map((a) => (
-            <div key={a.id} style={{
+            <Link key={a.id} to={`/academies/${a.id}`} style={{
               display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
               background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
               boxShadow: '0 1px 6px rgba(11,41,72,.06)',
+              color: 'inherit', textDecoration: 'none',
             }}>
               <span style={{
                 width: 52, height: 52, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
@@ -337,7 +338,7 @@ function AcademiesTab({ countryId }) {
                   <span className="text-muted" style={{ fontSize: 12 }}>{[a.city, a.phone].filter(Boolean).join(' · ')}</span>
                 )}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       )}

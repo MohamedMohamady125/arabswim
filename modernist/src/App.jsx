@@ -24,6 +24,7 @@ import SwimmerProfile from './pages/SwimmerProfile'
 import Compare from './pages/Compare'
 import Teams from './pages/Teams'
 import Academies from './pages/Academies'
+import AcademyProfile from './pages/AcademyProfile'
 import TeamDetail from './pages/TeamDetail'
 import Coaches from './pages/Coaches'
 import HallOfFame from './pages/HallOfFame'
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="/teams" element={<RequireFeature flag="teams"><Teams /></RequireFeature>} />
         <Route path="/teams/:id" element={<RequireFeature flag="teams"><TeamDetail /></RequireFeature>} />
         <Route path="/academies" element={<RequireFeature flag="academies"><Academies /></RequireFeature>} />
+        <Route path="/academies/:id" element={<RequireFeature flag="academies"><AcademyProfile /></RequireFeature>} />
         <Route path="/coaches" element={<RequireFeature flag="coaches"><Coaches /></RequireFeature>} />
         <Route path="/hall-of-fame" element={<RequireFeature flag="hall_of_fame"><HallOfFame /></RequireFeature>} />
         <Route path="/news" element={<RequireFeature flag="news"><News /></RequireFeature>} />

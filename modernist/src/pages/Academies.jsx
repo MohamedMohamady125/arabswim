@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Phone, Mail, Globe, AtSign, MapPin } from 'lucide-react'
 import { getAcademies } from '../api/academies'
 import { getCountries } from '../api/core'
@@ -113,10 +114,11 @@ export default function Academies() {
         <div className="pad">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
             {filtered.map((a) => (
-              <div key={a.id} style={{
+              <Link key={a.id} to={`/academies/${a.id}`} style={{
                 background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
                 boxShadow: '0 1px 6px rgba(11,41,72,.06)', padding: '14px 16px',
                 display: 'flex', flexDirection: 'column', gap: 12,
+                color: 'inherit', textDecoration: 'none',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <AcademyLogo logo={a.logo} name={a.name} />
@@ -145,7 +147,7 @@ export default function Academies() {
                     icon={AtSign} label="Instagram"
                   />
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

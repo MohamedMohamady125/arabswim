@@ -643,7 +643,7 @@ function RecordsTab({ records, photoById, sexById }) {
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#0d2d5e', letterSpacing: '-0.02em', marginTop: 6 }}>{typeof r.time === 'number' ? formatTime(r.time) : r.time}</div>
                 </div>
                 <div style={{ marginTop: 'auto', paddingTop: 12 }}>
-                  <div style={{ fontSize: 12, color: '#8a9bb5' }}>{sex ? (sex === 'F' ? "Women's" : "Men's") : ''}{r.date ? `${sex ? ' · ' : ''}${formatDate(r.date)}` : ''}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#5b6b82' }}>{sex ? (sex === 'F' ? "Women's" : "Men's") : ''}{r.date ? `${sex ? ' · ' : ''}${formatDate(r.date)}` : ''}</div>
                 </div>
               </div>
             )

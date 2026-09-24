@@ -2041,7 +2041,11 @@ export default function CountryProfile() {
                   </div>
                   <div style={{ padding: '12px 12px 0' }}>
                     <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
-                    <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55 }}>{r.event}<br />{r.pool === 'SCM' ? 'Short Course' : 'Long Course'}</div>
+                    <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span>{r.event}</span>
+                      <span style={{ color: '#c6d4e2' }}>|</span>
+                      <span>{r.pool === 'SCM' ? 'Short Course' : 'Long Course'}</span>
+                    </div>
                   </div>
                   {/* Navy footer with time */}
                   <div style={{ background: '#123a7d', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 8 }}>

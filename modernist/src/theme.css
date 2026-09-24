@@ -358,6 +358,18 @@ figure { margin: 0; }
 /* — mobile — */
 @media (max-width: 900px) {
   .hide-mobile { display: none !important; }
+  /* generic grid collapses for inline-styled desktop grids */
+  .m-col1 { grid-template-columns: 1fr !important; }
+  .m-col2 { grid-template-columns: repeat(2, 1fr) !important; }
+  .m-pad { padding-left: 16px !important; padding-right: 16px !important; }
+  /* let grid items shrink below their content (images, wide tables) */
+  .m-col1 > *, .m-col2 > * { min-width: 0; }
+  .m-col1 > * > *, .m-col2 > * > * { min-width: 0; }
+  /* wide stat tables scroll inside their card instead of stretching the page */
+  .m-col1 table, .m-col2 table { max-width: 100%; }
+  /* section titles: allow wrapping, smaller type on phone */
+  .m-sectitle h3 { white-space: normal !important; font-size: 20px !important; text-align: center; }
+  .m-sectitle > div { flex: 1 1 12px; min-width: 0; max-width: 50px; }
   /* flags read better slightly larger on small screens */
   .asw-flag, .fi.asw-flag { width: 27px; height: 20px; line-height: 20px; }
   .asw-flag-lg, .fi.asw-flag-lg { width: 40px; height: 30px; line-height: 30px; }

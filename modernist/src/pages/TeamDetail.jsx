@@ -588,7 +588,7 @@ function RecordsTab({ records, photoById, sexById }) {
   const pillBase = { padding: '8px 18px', border: '2px solid #1a56a0', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }
 
   return (
-    <div style={{ padding: '28px 28px', background: '#fff' }}>
+    <div className="m-pad" style={{ padding: '28px 28px', background: '#fff' }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ fontSize: 28, marginBottom: 4 }}>🏅</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
@@ -811,7 +811,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
   const maxBattle = Math.max(...battle.map((r) => r.total), 1)
 
   return (
-    <div style={{ background: '#f8fafc', padding: '28px 24px' }}>
+    <div className="m-pad" style={{ background: '#f8fafc', padding: '28px 24px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 40, height: 2, background: '#1a56a0' }} />
@@ -832,13 +832,13 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       </div>
 
       {/* Row 1: Top Performance Men | Women */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>{cardHeader('Top Performance · Men', `Best Performances by ${team.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}</>)}
         {card(<>{cardHeader('Top Performance · Women', `Best Performances by ${team.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No data" />}</>)}
       </div>
 
       {/* Row 2: Medals by competition | Most Decorated Men | Women */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>
           {cardHeader('Medals', 'Total Medals by Competition')}
           <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11 }}>
@@ -867,7 +867,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       </div>
 
       {/* Row 3: Latest Record | Top Recordman | Best FINA | Top Medalist */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {recCard('Latest Record', `Most Recent ${team.name} Record`,
           latestRecord ? recBody(photoById[latestRecord.swimmer_id], latestRecord.swimmer_name, latestRecord.swimmer_id, latestRecord.event_name, typeof latestRecord.time === 'number' ? formatTime(latestRecord.time) : latestRecord.time, formatDate(latestRecord.date)) : recEmpty)}
         {recCard('Top Recordman', `${team.name} Swimmer Holding the Most Records`,
@@ -879,7 +879,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       </div>
 
       {/* Row 4: Performance Index | Club Battle */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
         <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea' }}>
           {cardHeader('Performance Index', `Distribution of ${team.name} Swimmers by Performance Level`)}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 180, marginTop: 10 }}>
@@ -1123,7 +1123,7 @@ export default function TeamDetail() {
     const taperL = { width: 130, height: 3, background: 'linear-gradient(to left, #0d2d5e, rgba(13,45,94,0))', transform: 'skewX(-30deg)' }
     const taperR = { width: 130, height: 3, background: 'linear-gradient(to right, #0d2d5e, rgba(13,45,94,0))', transform: 'skewX(-30deg)' }
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, margin: '26px 0 22px' }}>
+      <div className="m-sectitle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, margin: '26px 0 22px' }}>
         <div style={taperL} />
         <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '0.02em', textTransform: 'uppercase', color: '#123a7d', margin: 0, whiteSpace: 'nowrap' }}>{text}</h3>
         <div style={taperR} />
@@ -1202,7 +1202,7 @@ export default function TeamDetail() {
           }
         `}</style>
         <FedHeroPhoto candidates={roster.map((s) => s.photo)} extras={articles.map((a) => a?.cover_image)} />
-        <div style={{ position: 'relative', padding: '20px 32px 30px' }}>
+        <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
           <Link to="/teams" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: '#1a56a0' }}>← All clubs</Link>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
             {/* Circular club logo */}
@@ -1310,18 +1310,18 @@ export default function TeamDetail() {
         )
         const newsItems = articles.length > 0 ? articles.slice(0, 4) : [null, null, null, null]
         return (
-          <div style={{ padding: '0 28px 32px', background: '#eaf1f9' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
+          <div className="m-pad" style={{ padding: '0 28px 32px', background: '#eaf1f9' }}>
+            <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
               {/* LEFT: Latest News + About/Info */}
               <div>
                 <div style={{ textAlign: 'center', marginBottom: 2 }}><span style={{ fontSize: 22, color: '#123a7d' }}>🏊</span></div>
                 {secTitle('Latest News')}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+                <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
                   {newsItems.map(newsCard)}
                 </div>
 
                 {/* About + Club Information — fills the gap below the news cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+                <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
                   <div style={{ borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px' }}>
                     <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#123a7d', marginBottom: 8 }}>About the Club</div>
                     {team.description
@@ -1486,7 +1486,7 @@ export default function TeamDetail() {
 
       {/* ===== BOARD ===== */}
       {tab === 'board' && (
-        <div style={{ padding: '0 28px 28px', background: '#fff' }}>
+        <div className="m-pad" style={{ padding: '0 28px 28px', background: '#fff' }}>
           <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 4 }}>
             <span style={{ fontSize: 24 }}>👥</span>
           </div>
@@ -1520,7 +1520,7 @@ export default function TeamDetail() {
 
       {/* ===== TEAM (Coaches / Swimmers) ===== */}
       {tab === 'team' && (
-        <div style={{ padding: '0 28px 28px', background: '#eef3f9' }}>
+        <div className="m-pad" style={{ padding: '0 28px 28px', background: '#eef3f9' }}>
           <SubTabs options={[['coaches', 'Coaches'], ['swimmers', 'Swimmers']]} value={teamSub} onChange={setTeamSub} />
           {teamSub === 'coaches' && (<>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '10px 0 22px' }}>

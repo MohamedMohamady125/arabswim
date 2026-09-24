@@ -868,7 +868,7 @@ function RecordsTab({ records, country }) {
   const pillInactive = { ...pillBase, background: '#fff', color: '#1a56a0' }
 
   return (
-    <div style={{ padding: '28px 28px', background: '#fff' }}>
+    <div className="m-pad" style={{ padding: '28px 28px', background: '#fff' }}>
       {/* Title */}
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ fontSize: 28, marginBottom: 4 }}>🏅</div>
@@ -1452,7 +1452,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   )
 
   return (
-    <div style={{ background: '#f8fafc', padding: '28px 24px' }}>
+    <div className="m-pad" style={{ background: '#f8fafc', padding: '28px 24px' }}>
       {/* Page title */}
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
@@ -1463,13 +1463,13 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
 
       {/* Row 1: Top Performance Male | Female */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>{cardHeader('Top Performance · Men', `Best Performances by ${country.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}</>)}
         {card(<>{cardHeader('Top Performance · Women', `Best Performances by ${country.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No data" />}</>)}
       </div>
 
       {/* Row 2: Participation | Championships Hosted | Most Participated */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>
           {cardHeader('Participation', 'Total Participations by Competition')}
           {participationList.length === 0 ? <Empty label="No data" /> : participationList.map(([cls, n]) => barRow(cls, n, maxPart))}
@@ -1502,7 +1502,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
 
       {/* Row 3: Medals | Most Male Decorated | Most Female Decorated */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>
           {cardHeader('Medals', 'Total Medals by Competition')}
           {/* Legend */}
@@ -1535,7 +1535,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
 
       {/* Row 4: Last Male Record | Last Female Record | Most Male Recordan | Most Femal Recordan */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {recCard4(lastMR, 'Last Male Record', `Most Recent ${country.name} Male Record`, false)}
         {recCard4(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`, false)}
         {recCard4(topMaleRec, 'Most Male Recordman', `Top ${country.name} Male Swimmers by Records`, true)}
@@ -1543,7 +1543,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
 
       {/* Row 5: Performance Index (dark bg) | Country Battle */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
         {/* Performance Index */}
         <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea' }}>
           {cardHeader('Performance Index', `Distribution of ${country.name} Swimmers by Performance Level`)}
@@ -1726,7 +1726,7 @@ export default function CountryProfile() {
             {/* swimmer photo blended on the right — auto-picked by resolution/aspect;
                 falls back to high-res news action shots when swimmer photos are tiny */}
             <FedHeroPhoto candidates={photoCandidates} extras={ovNews.map((a) => a?.cover_image)} />
-            <div style={{ position: 'relative', padding: '20px 32px 30px' }}>
+            <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
               <Link to="/countries" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: '#1a56a0' }}>← All federations</Link>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
                 {/* Circular federation logo = country flag */}
@@ -1831,7 +1831,7 @@ export default function CountryProfile() {
         const taperL = { width: 130, height: 3, background: 'linear-gradient(to left, #0d2d5e, rgba(13,45,94,0))', transform: 'skewX(-30deg)' }
         const taperR = { width: 130, height: 3, background: 'linear-gradient(to right, #0d2d5e, rgba(13,45,94,0))', transform: 'skewX(-30deg)' }
         const secTitle = (text) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, margin: '26px 0 22px' }}>
+          <div className="m-sectitle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, margin: '26px 0 22px' }}>
             <div style={taperL} />
             <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '0.02em', textTransform: 'uppercase', color: '#123a7d', margin: 0, whiteSpace: 'nowrap' }}>{text}</h3>
             <div style={taperR} />
@@ -1839,14 +1839,14 @@ export default function CountryProfile() {
         )
         const newsItems = ovNews.length > 0 ? ovNews : [null, null, null, null]
         return (
-          <div style={{ padding: '0 28px 32px', background: '#eaf1f9' }}>
+          <div className="m-pad" style={{ padding: '0 28px 32px', background: '#eaf1f9' }}>
             {/* Main layout: News left + Highlights right */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
+            <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
               {/* LEFT: Latest News */}
               <div>
                 <div style={{ textAlign: 'center', marginBottom: 2 }}><span style={{ fontSize: 22, color: '#123a7d' }}>🏊</span></div>
                 {secTitle('Latest News')}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+                <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
                   {newsItems.map((a, i) => {
                     const inner = (
                       <>
@@ -1891,7 +1891,7 @@ export default function CountryProfile() {
                     <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 11, fontWeight: 800, background: bg, color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.05em' }}>{text}</span>
                   )
                   return (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
                       <div style={evCard}>
                         <div style={evKick}>Current Event</div>
                         {current ? (
@@ -2062,7 +2062,7 @@ export default function CountryProfile() {
 
       {/* ===== BOARD ===== */}
       {tab === 'board' && (
-        <div style={{ padding: '0 28px 28px', background: '#fff' }}>
+        <div className="m-pad" style={{ padding: '0 28px 28px', background: '#fff' }}>
           {/* Title */}
           <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 4 }}>
             <span style={{ fontSize: 24 }}>👥</span>
@@ -2078,7 +2078,7 @@ export default function CountryProfile() {
 
           {/* Board member cards — real data when the national team has board
               members registered, ISF-style placeholders otherwise */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
+          <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
             {(boardMembers.length
               ? boardMembers.map((m) => ({ role: m.role || 'Member', name: m.name, photo: m.photo }))
               : ['President', 'Vice President', 'Treasurer', 'Secretary General', 'Technical Director',
@@ -2167,11 +2167,11 @@ export default function CountryProfile() {
           </div>
         )
         return (
-          <div style={{ padding: '0 28px 28px', background: '#eef3f9' }}>
+          <div className="m-pad" style={{ padding: '0 28px 28px', background: '#eef3f9' }}>
             <SubTabs options={[['coaches', 'Coaches'], ['swimmers', 'Swimmers']]} value={teamSub} onChange={setTeamSub} />
             {teamSub === 'coaches' && (<>
               {secTitle('👤', 'Coaches')}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
+              <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
                 {(countryCoaches.length
                   ? countryCoaches.map((c) => ({ role: COACH_LEVELS[c.level] || c.level || 'Coach', name: c.name, photo: c.photo }))
                   : ['Head Coach', 'Assistant Coach', 'Swimming Coach', 'Conditioning Coach'].map((role) => ({ role, name: '—', photo: null }))

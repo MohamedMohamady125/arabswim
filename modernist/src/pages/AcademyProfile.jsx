@@ -73,7 +73,7 @@ export default function AcademyProfile() {
   return (
     <div>
       {/* Hero */}
-      <div className="rule-b" style={{
+      <div className="rule-b m-pad" style={{
         background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)',
         padding: '30px 32px 28px',
       }}>
@@ -122,7 +122,7 @@ export default function AcademyProfile() {
       </div>
 
       {/* Overview */}
-      <div style={{ background: '#eaf1f9', padding: '26px 32px 40px' }}>
+      <div className="m-pad" style={{ background: '#eaf1f9', padding: '26px 32px 40px' }}>
         <div style={{ maxWidth: 860 }}>
           {a.description && (
             <div style={{

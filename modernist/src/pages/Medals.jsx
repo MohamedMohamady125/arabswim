@@ -33,13 +33,16 @@ function ClubLogo({ logo, name, size = 24 }) {
   )
 }
 
-// Category → which tallies make sense. National meets are club-based;
-// Arab/GCC meets are country-based.
-const CATEGORIES = [
-  { value: 'Arab', label: 'Arab' },
-  { value: 'GCC', label: 'GCC' },
-  { value: 'National', label: 'National' },
-]
+// Regional classifications → only the Arab countries that belong to that
+// region. Everything else (Olympic, World, Arab, National, Islamic, Other…)
+// shows the full Arab country list.
+const GCC_CODES = ['KSA', 'KWT', 'QAT', 'BHR', 'UAE', 'OMA']
+const CATEGORY_COUNTRIES = {
+  GCC: GCC_CODES,
+  Asian: [...GCC_CODES, 'IRQ', 'YEM', 'LBN', 'PLE', 'JOR', 'SYR'],
+  African: ['EGY', 'SUD', 'COM', 'SOM', 'DJI', 'LBY', 'TUN', 'ALG', 'MAR', 'MTN'],
+  Mediterranean: ['MAR', 'ALG', 'TUN', 'LBY', 'EGY', 'LBN', 'SYR'],
+}
 
 export default function Medals() {
   const [classifications, setClassifications] = useState([])
@@ -70,6 +73,16 @@ export default function Medals() {
   )
 
   const isNational = category === 'National'
+
+  // Countries that belong to the selected classification's region
+  const regionCountries = useMemo(() => {
+    const codes = CATEGORY_COUNTRIES[category]
+    if (!codes) return countries
+    const order = new Map(codes.map((c, i) => [c, i]))
+    return countries
+      .filter((c) => order.has(c.code))
+      .sort((a, b) => order.get(a.code) - order.get(b.code))
+  }, [countries, category])
 
   // Default view per category: club tally for National, country tally otherwise.
   useEffect(() => {
@@ -116,7 +129,7 @@ export default function Medals() {
     if (scope !== 'country') return scope === 'club' ? clubRows : swimmerRows
     const byCode = {}
     for (const r of summary) byCode[r.swimmer__nationality__code] = r
-    const merged = countries.map((c) => byCode[c.code] || {
+    const merged = regionCountries.map((c) => byCode[c.code] || {
       swimmer__nationality__name: c.name,
       swimmer__nationality__code: c.code,
       swimmer__nationality__flag_url: c.flag_url,
@@ -124,7 +137,7 @@ export default function Medals() {
     })
     merged.sort((a, b) => (b.gold - a.gold) || (b.silver - a.silver) || (b.bronze - a.bronze))
     return merged
-  }, [scope, summary, clubRows, swimmerRows, countries])
+  }, [scope, summary, clubRows, swimmerRows, regionCountries])
 
   // National + country filter → only show that federation's meets in the picker
   const visibleMeets = useMemo(
@@ -146,7 +159,7 @@ export default function Medals() {
       onChange={(e) => { setCountry(e.target.value); setChampionship('') }}
     >
       <option value="">All countries</option>
-      {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      {regionCountries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
     </select>
   )
 

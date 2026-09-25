@@ -32,7 +32,7 @@ export default function Home() {
       {liveMeets.length > 0 && (
         <Link to={liveMeets.length === 1 ? `/meets/${liveMeets[0].id}` : '/live'} style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          background: '#c0392b', color: '#fff', textDecoration: 'none',
+          background: 'var(--asw-slow)', color: '#fff', textDecoration: 'none',
           padding: '10px 16px', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em',
         }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite', flex: 'none' }} />

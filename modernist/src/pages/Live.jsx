@@ -9,7 +9,7 @@ import { PageHead, Loading, Empty } from '../components/ui'
 const GOLD = 'var(--asw-gold)'
 const SILVER = 'var(--asw-silver)'
 const BRONZE = 'var(--asw-bronze)'
-const LIVE_RED = '#c0392b'
+const LIVE_RED = 'var(--asw-slow)'
 const POLL_MS = 60000
 
 // Days elapsed within the meet window (1-based), clamped to [1, total]
@@ -49,8 +49,8 @@ function MedalDots({ size = 8, gap = 3 }) {
 const SESSION_LABEL = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
 const GENDER_STYLE = {
   M: { label: 'Men', color: 'var(--color-accent)', bg: 'var(--color-accent-100)' },
-  F: { label: 'Women', color: '#8a3a62', bg: '#f7ecf2' },
-  X: { label: 'Mixed', color: 'var(--color-accent-2-700)', bg: 'var(--color-accent-2-100)' },
+  F: { label: 'Women', color: 'var(--color-accent-2-700)', bg: 'var(--color-accent-2-100)' },
+  X: { label: 'Mixed', color: 'var(--color-neutral-700)', bg: 'var(--color-neutral-200)' },
 }
 
 /* One program entry — order no, event name, gender, chips */
@@ -93,7 +93,8 @@ function ProgramRow({ item, meetId, hasResults, last }) {
         <span className="hide-mobile" style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 800,
           letterSpacing: '0.04em', padding: '4px 10px', borderRadius: 999,
-          border: '1px solid #e3d1a1', color: '#8a6d1a', background: '#fdf8ec', flex: 'none',
+          border: '1px solid color-mix(in srgb, var(--asw-gold) 40%, #fff)', color: 'var(--asw-gold)',
+          background: 'color-mix(in srgb, var(--asw-gold) 8%, #fff)', flex: 'none',
         }}>
           <MedalDots size={7} /> MEDAL
         </span>
@@ -253,7 +254,7 @@ function MedalsPanel({ rows }) {
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.swimmer__nationality__code || i} style={{ background: i < 3 ? '#fcfaf4' : '#fff' }}>
+              <tr key={r.swimmer__nationality__code || i} style={{ background: i < 3 ? 'color-mix(in srgb, var(--asw-gold) 6%, #fff)' : '#fff' }}>
                 <td className="asw-num" style={{ ...td, fontWeight: 800, color: i < 3 ? 'var(--color-accent-800)' : 'inherit' }}>{i + 1}</td>
                 <td style={td}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

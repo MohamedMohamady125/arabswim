@@ -2634,7 +2634,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                 <span style={{
                   position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
                   fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em', padding: '2px 8px',
-                  borderRadius: 999, background: '#c0392b', color: '#fff',
+                  borderRadius: 999, background: 'var(--asw-slow)', color: '#fff',
                 }}>
                   TODAY
                 </span>
@@ -3039,7 +3039,7 @@ function LivePanel({ meet, onFinished }) {
 
 const LIVE_BADGE = (
   <span className="tag" style={{
-    verticalAlign: 'middle', background: '#c0392b', color: '#fff',
+    verticalAlign: 'middle', background: 'var(--asw-slow)', color: '#fff',
     display: 'inline-flex', alignItems: 'center', gap: 5,
   }}>
     <span style={{

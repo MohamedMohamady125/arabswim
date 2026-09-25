@@ -2495,6 +2495,20 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   const [selectedDay, setSelectedDay] = useState(null)
   const [showProgram, setShowProgram] = useState(false)
   const [program, setProgram] = useState(null)
+  // deep link from the Live hub: ?event=&gender=&day=&session= auto-opens that event
+  const [initParams] = useSearchParams()
+  const deepLink = React.useRef({
+    event: Number(initParams.get('event')) || null,
+    gender: initParams.get('gender') || null,
+    day: Number(initParams.get('day')) || null,
+    session: initParams.get('session') || null,
+  })
+  const isDeepTarget = (p) => {
+    const d = deepLink.current
+    return !!d.event && p.event === d.event
+      && (!d.gender || p.gender === d.gender)
+      && (!d.session || p.session === d.session)
+  }
 
   useEffect(() => {
     getMeetProgram(meetId).then((res) => setProgram(res.data)).catch(() => setProgram(null))
@@ -2512,6 +2526,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   })
 
   useEffect(() => {
+    if (deepLink.current.day) { setSelectedDay(deepLink.current.day); return }
     const todayDay = days.find((d) => d.isToday)
     if (todayDay) setSelectedDay(todayDay.num)
     else {
@@ -2645,7 +2660,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                         marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
                       }}>Men</div>
                       {g.M.map((p, i) => (
-                        <EventRow key={`${p.event}-M-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact />
+                        <EventRow key={`${p.event}-M-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact autoOpen={isDeepTarget(p)} />
                       ))}
                     </div>
                     {/* Women column */}
@@ -2656,14 +2671,14 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                         marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
                       }}>Women</div>
                       {g.F.map((p, i) => (
-                        <EventRow key={`${p.event}-F-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact />
+                        <EventRow key={`${p.event}-F-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact autoOpen={isDeepTarget(p)} />
                       ))}
                     </div>
                   </div>
                 ) : (
                   /* Single gender or mixed — full width */
                   [...g.M, ...g.F, ...g.X].map((p, i) => (
-                    <EventRow key={`${p.event}-${p.gender}-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} />
+                    <EventRow key={`${p.event}-${p.gender}-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} autoOpen={isDeepTarget(p)} />
                   ))
                 )}
 
@@ -2676,7 +2691,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                       marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
                     }}>Mixed</div>
                     {g.X.map((p, i) => (
-                      <EventRow key={`${p.event}-X-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} />
+                      <EventRow key={`${p.event}-X-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} autoOpen={isDeepTarget(p)} />
                     ))}
                   </div>
                 )}
@@ -2696,8 +2711,9 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   )
 }
 
-function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact }) {
+function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, autoOpen }) {
   const [open, setOpen] = useState(false)
+  const rowRef = React.useRef(null)
   const [tab, setTab] = useState('results') // 'results' or 'heats'
   const [results, setResults] = useState(null)
   const [heats, setHeats] = useState(null)
@@ -2720,6 +2736,15 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact }
       })
       .catch(() => {})
   }
+
+  // Deep link from the Live hub: expand this event and scroll to it
+  useEffect(() => {
+    if (!autoOpen) return
+    loadResults()
+    const t = setTimeout(() => rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const switchTab = (t) => {
     setTab(t)
@@ -2794,7 +2819,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact }
   )
 
   return (
-    <div style={{ marginBottom: 4 }}>
+    <div ref={rowRef} style={{ marginBottom: 4 }}>
       <div onClick={loadResults}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: compact ? '9px 10px' : '11px 14px', cursor: 'pointer',

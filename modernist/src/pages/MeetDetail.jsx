@@ -2919,7 +2919,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
               </div>
             </div>
           ) : (
-            renderTable(activeData, tab === 'results')
+            renderTable(activeData, tab === 'results' && p.session === 'FINALS')
           )}
         </div>
       )}

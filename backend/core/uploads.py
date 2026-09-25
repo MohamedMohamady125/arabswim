@@ -9,7 +9,7 @@ MAX_PDF_SIZE = 40 * 1024 * 1024     # 40 MB (full meet result books)
 MAX_IMPORT_SIZE = 120 * 1024 * 1024  # 120 MB (Omega/Swiss-Timing books with embedded fonts hit ~90 MB)
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
-IMPORT_EXTENSIONS = {'.pdf', '.xlsx', '.xls', '.html', '.htm'}
+IMPORT_EXTENSIONS = {'.pdf', '.xlsx', '.xls', '.csv', '.html', '.htm'}
 
 
 def _extension(name):
@@ -57,7 +57,7 @@ def validate_import_file(uploaded_file):
     if uploaded_file is None:
         return 'No file provided'
     if _extension(uploaded_file.name) not in IMPORT_EXTENSIONS:
-        return 'Only PDF, Excel (.xlsx/.xls) or HTML result files are allowed'
+        return 'Only PDF, Excel (.xlsx/.xls), CSV or HTML result files are allowed'
     if uploaded_file.size > MAX_IMPORT_SIZE:
         return 'File is too large (max 50 MB)'
     return None

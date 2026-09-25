@@ -2014,15 +2014,27 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
         champ_id = championship.id
 
+        # Step 1: Parse SYNCHRONOUSLY so the admin gets a real error message
+        # right away (e.g. an Excel sheet missing name/time columns) instead
+        # of a silent background failure that looks like "nothing happened".
+        try:
+            from importer.services import parse_file
+            preview = parse_file(file_path=tmp_path)
+            if isinstance(preview, list):
+                preview = preview[0]
+        except Exception as exc:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            return Response({'error': f'Could not read this file: {exc}'}, status=400)
+
+        stats = preview.get('stats', {})
+
         def run_import():
             db_conn.close()
             try:
-                from importer.services import parse_file, match_swimmers_preview, confirm_import
-
-                # Step 1: Parse
-                preview = parse_file(file_path=tmp_path)
-                if isinstance(preview, list):
-                    preview = preview[0]
+                from importer.services import match_swimmers_preview, confirm_import
 
                 # Step 2: Match swimmers — returns a list of match dicts
                 matched = match_swimmers_preview(preview)
@@ -2052,7 +2064,16 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     pass
 
         threading.Thread(target=run_import, daemon=True).start()
-        return Response({'status': 'importing', 'message': 'File is being imported in the background. Results will appear shortly.'})
+        return Response({
+            'status': 'importing',
+            'stats': stats,
+            'message': (
+                f"Parsed {stats.get('total_events', 0)} events / "
+                f"{stats.get('total_results', 0)} results / "
+                f"{stats.get('total_swimmers', 0)} swimmers — importing in the background. "
+                'Refresh in a few seconds to see results.'
+            ),
+        })
 
 
 class ResultViewSet(viewsets.ModelViewSet):

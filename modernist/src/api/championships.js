@@ -6,6 +6,7 @@ export const createChampionship = (data) => api.post('/championships/', data, { 
 export const updateChampionship = (id, data) => api.patch(`/championships/${id}/`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const deleteChampionship = (id) => api.delete(`/championships/${id}/`)
 export const getChampionshipResults = (id, params) => api.get(`/championships/${id}/results/`, { params })
+export const getResults = (params) => api.get('/results/', { params })
 export const getChampionshipStats = (id) => api.get(`/championships/${id}/stats/`)
 export const getQuickStats = (championship) => api.get('/championships/quick-stats/', { params: championship ? { championship } : {} })
 export const getChampionshipCountrySwimmers = (id, countryId) => api.get(`/championships/${id}/country-swimmers/`, { params: { country: countryId } })

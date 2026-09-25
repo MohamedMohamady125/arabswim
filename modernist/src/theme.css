@@ -637,3 +637,26 @@ a.asw-partner-pill:hover {
   .asw-partner-pill { height: 58px; min-width: 128px; padding: 0 20px; }
   .asw-partner-logo { max-height: 30px; max-width: 108px; }
 }
+
+/* ── Live results hub ─────────────────────────────────────────────── */
+.live-row {
+  transition: background .12s ease;
+}
+a.live-row-link { text-decoration: none; color: inherit; display: block; }
+a.live-row-link .live-row:hover { background: var(--color-accent-100); }
+a.live-row-link .live-row:hover .live-chevron { transform: translateX(3px); }
+.live-chevron { transition: transform .12s ease; }
+.live-daychip {
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.live-daychip:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(12,35,64,.12); }
+.live-tabpill { transition: background .12s ease, color .12s ease, border-color .12s ease; }
+.live-tabpill:hover:not(.active) { border-color: var(--color-accent-500); color: var(--color-accent); }
+.live-fade-in { animation: liveFade .25s ease; }
+@keyframes liveFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.athlete-card-pop { animation: athletePop .22s cubic-bezier(.2,.9,.3,1.1); }
+@keyframes athletePop { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (max-width: 640px) {
+  .athlete-card-overlay { padding: 0 !important; align-items: flex-end !important; }
+  .athlete-card-pop { align-self: flex-end; max-height: 88vh !important; border-radius: 18px 18px 0 0 !important; }
+}

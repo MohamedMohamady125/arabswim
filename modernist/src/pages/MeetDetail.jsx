@@ -16,6 +16,7 @@ import QuickStatsView from '../components/QuickStatsView'
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
+import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 import { Loading, Empty, Seg, MedalIcon } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES } from '../utils'
@@ -2713,6 +2714,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
 
 function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, autoOpen }) {
   const [open, setOpen] = useState(false)
+  const [athlete, setAthlete] = useState(null) // swimmer_detail → pop-over card
   const rowRef = React.useRef(null)
   const [tab, setTab] = useState('results') // 'results' or 'heats'
   const [results, setResults] = useState(null)
@@ -2801,10 +2803,19 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
-                  <Link to={`/swimmers/${r.swimmer_detail?.id || r.swimmer}`}
-                    style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (r.swimmer_detail && !r.swimmer_detail.is_relay_team) setAthlete(r.swimmer_detail)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && r.swimmer_detail && !r.swimmer_detail.is_relay_team) setAthlete(r.swimmer_detail)
+                    }}
+                    style={{ color: 'inherit', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                     {r.swimmer_detail?.name}
-                  </Link>
+                  </span>
                 </div>
               </td>
               <td className="num asw-num hide-mobile">{r.age_at_competition || '—'}</td>
@@ -2820,6 +2831,9 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
 
   return (
     <div ref={rowRef} style={{ marginBottom: 4 }}>
+      {athlete && (
+        <AthleteMeetCard swimmer={athlete} meet={{ id: Number(meetId), name: meet?.name }} onClose={() => setAthlete(null)} />
+      )}
       <div onClick={loadResults}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: compact ? '9px 10px' : '11px 14px', cursor: 'pointer',

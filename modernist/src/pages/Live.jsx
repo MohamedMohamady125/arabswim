@@ -6,9 +6,9 @@ import { formatDateRange, formatNumber } from '../utils'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty } from '../components/ui'
 
-const GOLD = '#c9a227'
-const SILVER = '#9aa3ab'
-const BRONZE = '#b0713a'
+const GOLD = 'var(--asw-gold)'
+const SILVER = 'var(--asw-silver)'
+const BRONZE = 'var(--asw-bronze)'
 const LIVE_RED = '#c0392b'
 const POLL_MS = 60000
 
@@ -24,9 +24,10 @@ function dayProgress(meet) {
 
 function LivePill({ small = false }) {
   return (
-    <span className="tag" style={{
+    <span style={{
       background: LIVE_RED, color: '#fff', display: 'inline-flex', alignItems: 'center',
-      gap: 5, fontSize: small ? 10 : 11,
+      gap: 6, fontSize: small ? 10 : 11, fontWeight: 800, letterSpacing: '0.1em',
+      padding: small ? '3px 9px' : '4px 12px', borderRadius: 999,
     }}>
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite' }} />
       LIVE
@@ -34,67 +35,83 @@ function LivePill({ small = false }) {
   )
 }
 
-function MedalDots({ size = 8 }) {
+function MedalDots({ size = 8, gap = 3 }) {
   const dot = (c) => (
     <span style={{ width: size, height: size, borderRadius: '50%', background: c, display: 'inline-block' }} />
   )
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap }}>
       {dot(GOLD)}{dot(SILVER)}{dot(BRONZE)}
     </span>
   )
 }
 
 const SESSION_LABEL = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
-const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
+const GENDER_STYLE = {
+  M: { label: 'Men', color: 'var(--color-accent)', bg: 'var(--color-accent-100)' },
+  F: { label: 'Women', color: '#8a3a62', bg: '#f7ecf2' },
+  X: { label: 'Mixed', color: 'var(--color-accent-2-700)', bg: 'var(--color-accent-2-100)' },
+}
 
 /* One program entry — order no, event name, gender, chips */
-function ProgramRow({ item, meetId, hasResults }) {
+function ProgramRow({ item, meetId, hasResults, last }) {
   const isFinal = item.session === 'FINALS'
+  const g = GENDER_STYLE[item.gender] || GENDER_STYLE.X
   const inner = (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-      borderBottom: '1px solid var(--color-divider)', background: hasResults ? '#fff' : 'var(--color-surface)',
+    <div className="live-row" style={{
+      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+      borderBottom: last ? 'none' : '1px solid var(--color-neutral-200)',
+      background: '#fff',
     }}>
       <span className="asw-num" style={{
-        width: 28, height: 28, borderRadius: 8, flex: 'none', display: 'inline-flex', alignItems: 'center',
-        justifyContent: 'center', fontSize: 12, fontWeight: 700,
-        background: isFinal ? 'var(--color-accent-800)' : 'var(--color-neutral-200)',
+        width: 30, height: 30, borderRadius: '50%', flex: 'none', display: 'inline-flex', alignItems: 'center',
+        justifyContent: 'center', fontSize: 12.5, fontWeight: 800,
+        background: isFinal ? 'var(--color-accent-800)' : '#fff',
         color: isFinal ? '#fff' : 'var(--color-neutral-700)',
+        border: isFinal ? 'none' : '1.5px solid var(--color-neutral-300)',
       }}>
-        {item.order || '·'}
+        {item.order || '–'}
       </span>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.3 }}>
-          {item.event_name}
-          <span style={{ fontWeight: 600, color: 'var(--color-neutral-700)' }}> — {GENDER_LABEL[item.gender] || item.gender}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, lineHeight: 1.3 }}>
+            {item.event_name}
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+            padding: '2px 8px', borderRadius: 4, background: g.bg, color: g.color, flex: 'none',
+          }}>
+            {g.label}
+          </span>
         </div>
-        <div className="micro" style={{ marginTop: 2 }}>
+        <div style={{ fontSize: 11.5, color: 'var(--color-neutral-600)', marginTop: 3, fontWeight: 600 }}>
           {SESSION_LABEL[item.session] || item.session}
           {item.age_category ? ` · ${item.age_category}` : ''}
         </div>
       </div>
       {isFinal && (
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700,
-          padding: '3px 9px', borderRadius: 999, border: `1px solid ${GOLD}`, color: '#8a6d1a', background: '#fdf8ec',
+        <span className="hide-mobile" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 800,
+          letterSpacing: '0.04em', padding: '4px 10px', borderRadius: 999,
+          border: '1px solid #e3d1a1', color: '#8a6d1a', background: '#fdf8ec', flex: 'none',
         }}>
-          <MedalDots /> Medal
+          <MedalDots size={7} /> MEDAL
         </span>
       )}
       {hasResults ? (
         <span style={{
-          fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
-          background: '#1e7d43', color: '#fff',
+          display: 'inline-flex', alignItems: 'center', gap: 4, flex: 'none',
+          fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', padding: '4px 11px', borderRadius: 999,
+          background: 'var(--asw-fast)', color: '#fff',
         }}>
-          Official ›
+          OFFICIAL <span className="live-chevron">›</span>
         </span>
       ) : (
         <span style={{
-          fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999,
-          border: '1px solid var(--color-neutral-300)', color: 'var(--color-neutral-600)', background: '#fff',
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', padding: '4px 11px', borderRadius: 999, flex: 'none',
+          border: '1px solid var(--color-neutral-300)', color: 'var(--color-neutral-500)', background: '#fff',
         }}>
-          Scheduled
+          SCHEDULED
         </span>
       )}
     </div>
@@ -102,55 +119,87 @@ function ProgramRow({ item, meetId, hasResults }) {
   if (!hasResults) return inner
   return (
     <Link
+      className="live-row-link"
       to={`/meets/${meetId}?tab=results&event=${item.event}&gender=${item.gender}&day=${item.day}&session=${item.session}`}
-      style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
     >
       {inner}
     </Link>
   )
 }
 
-/* Program for one day, grouped Morning / Evening */
+/* Program for one day, grouped Morning / Evening as session cards */
 function DayProgram({ day, meetId, resultKeys }) {
   if (!day || (day.items || []).length === 0) {
     return <Empty label="No program published for this day yet." />
   }
-  const groups = [
-    ['MORNING', 'Morning session'],
-    ['EVENING', 'Evening session'],
-  ].map(([key, label]) => [label, day.items.filter((i) => i.time_of_day === key)])
-    .filter(([, items]) => items.length > 0)
-  // items without a recognized time_of_day
+  const groups = []
+  const morning = day.items.filter((i) => i.time_of_day === 'MORNING')
+  const evening = day.items.filter((i) => i.time_of_day === 'EVENING')
   const rest = day.items.filter((i) => i.time_of_day !== 'MORNING' && i.time_of_day !== 'EVENING')
-  if (rest.length > 0) groups.push(['Program', rest])
+  if (morning.length) groups.push(['Morning', 'Heats & semifinals', morning, false])
+  if (evening.length) groups.push(['Evening', 'Finals session', evening, true])
+  if (rest.length) {
+    const allFinals = rest.every((i) => i.session === 'FINALS')
+    groups.push([allFinals ? 'Finals' : 'Program', allFinals ? 'Medal events' : 'All events', rest, allFinals])
+  }
   return (
-    <div>
-      {groups.map(([label, items]) => (
-        <div key={label} style={{ marginBottom: 18 }}>
-          <div className="kicker" style={{ padding: '0 2px', marginBottom: 8 }}>{label}</div>
-          <div style={{ border: '1px solid var(--color-neutral-200)', borderRadius: 10, overflow: 'hidden' }}>
-            {items.map((item) => (
-              <ProgramRow
-                key={item.id}
-                item={item}
-                meetId={meetId}
-                hasResults={resultKeys.has(`${item.event}|${item.gender}`)}
-              />
-            ))}
+    <div className="live-fade-in" style={{ display: 'grid', gap: 18 }}>
+      {groups.map(([label, sub, items, isFinals]) => (
+        <div key={label} style={{
+          border: '1px solid var(--color-neutral-200)', borderRadius: 14, overflow: 'hidden',
+          boxShadow: '0 1px 4px rgba(12,35,64,.05)',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px',
+            background: isFinals ? 'var(--color-accent-800)' : 'var(--color-surface)',
+            borderBottom: '1px solid var(--color-neutral-200)',
+          }}>
+            <span style={{
+              fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13,
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+              color: isFinals ? '#fff' : 'var(--color-accent-800)',
+            }}>
+              {label}
+            </span>
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: isFinals ? 'rgba(255,255,255,.65)' : 'var(--color-neutral-600)' }}>
+              {sub}
+            </span>
+            {isFinals && <span style={{ marginLeft: 'auto' }}><MedalDots size={7} /></span>}
+            <span style={{
+              marginLeft: isFinals ? 10 : 'auto', fontSize: 11, fontWeight: 700,
+              color: isFinals ? 'rgba(255,255,255,.65)' : 'var(--color-neutral-500)',
+            }}>
+              {items.length} {items.length === 1 ? 'event' : 'events'}
+            </span>
           </div>
+          {items.map((item, i) => (
+            <ProgramRow
+              key={item.id}
+              item={item}
+              meetId={meetId}
+              hasResults={resultKeys.has(`${item.event}|${item.gender}`)}
+              last={i === items.length - 1}
+            />
+          ))}
         </div>
       ))}
     </div>
   )
 }
 
-/* Medal standings table */
-function MedalsTable({ rows }) {
+/* Medal standings: top-3 podium cards + full table */
+function MedalsPanel({ rows }) {
   if (!rows || rows.length === 0) {
     return <Empty label="Medals will appear here once finals are official." />
   }
-  const th = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 10px', color: 'var(--color-neutral-600)' }
-  const td = { padding: '9px 10px', fontSize: 13.5, borderTop: '1px solid var(--color-divider)' }
+  const top3 = rows.slice(0, 3)
+  const podiumMeta = [
+    { ring: GOLD, label: '1st' },
+    { ring: SILVER, label: '2nd' },
+    { ring: BRONZE, label: '3rd' },
+  ]
+  const th = { fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '10px 12px', color: 'var(--color-neutral-600)' }
+  const td = { padding: '10px 12px', fontSize: 13.5, borderTop: '1px solid var(--color-neutral-200)' }
   const medalTh = (c, label) => (
     <th style={{ ...th, textAlign: 'center' }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -160,37 +209,68 @@ function MedalsTable({ rows }) {
     </th>
   )
   return (
-    <div style={{ border: '1px solid var(--color-neutral-200)', borderRadius: 10, overflow: 'hidden' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead style={{ background: 'var(--color-surface)' }}>
-          <tr>
-            <th style={{ ...th, textAlign: 'left', width: 40 }}>Rk</th>
-            <th style={{ ...th, textAlign: 'left' }}>Country</th>
-            {medalTh(GOLD, 'Gold')}
-            {medalTh(SILVER, 'Silver')}
-            {medalTh(BRONZE, 'Bronze')}
-            <th style={{ ...th, textAlign: 'center' }}>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={r.swimmer__nationality__code || i} style={{ background: i < 3 ? '#fdfaf1' : '#fff' }}>
-              <td className="asw-num" style={{ ...td, fontWeight: 700 }}>{i + 1}</td>
-              <td style={td}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <Flag code={r.swimmer__nationality__code} />
-                  <span style={{ fontWeight: 700 }}>{r.swimmer__nationality__code}</span>
-                  <span className="hide-mobile" style={{ color: 'var(--color-neutral-700)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
-                </span>
-              </td>
-              <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 700 }}>{r.gold}</td>
-              <td className="asw-num" style={{ ...td, textAlign: 'center' }}>{r.silver}</td>
-              <td className="asw-num" style={{ ...td, textAlign: 'center' }}>{r.bronze}</td>
-              <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800 }}>{r.total}</td>
+    <div className="live-fade-in">
+      {/* podium cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+        {top3.map((r, i) => (
+          <div key={r.swimmer__nationality__code || i} style={{
+            border: '1px solid var(--color-neutral-200)', borderTop: `3px solid ${podiumMeta[i].ring}`,
+            borderRadius: 12, padding: '12px 14px', background: '#fff',
+            boxShadow: '0 1px 4px rgba(12,35,64,.05)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-neutral-500)' }}>
+                {podiumMeta[i].label}
+              </span>
+              <Flag code={r.swimmer__nationality__code} />
+              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>{r.swimmer__nationality__code}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1 }}>
+                {r.total}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--color-neutral-600)', fontWeight: 700, display: 'inline-flex', gap: 8 }}>
+                <span style={{ color: GOLD }}>{r.gold}G</span>
+                <span style={{ color: SILVER }}>{r.silver}S</span>
+                <span style={{ color: BRONZE }}>{r.bronze}B</span>
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* full table */}
+      <div style={{ border: '1px solid var(--color-neutral-200)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(12,35,64,.05)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
+          <thead style={{ background: 'var(--color-surface)' }}>
+            <tr>
+              <th style={{ ...th, textAlign: 'left', width: 40 }}>Rk</th>
+              <th style={{ ...th, textAlign: 'left' }}>Country</th>
+              {medalTh(GOLD, 'Gold')}
+              {medalTh(SILVER, 'Silver')}
+              {medalTh(BRONZE, 'Bronze')}
+              <th style={{ ...th, textAlign: 'center' }}>Total</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.swimmer__nationality__code || i} style={{ background: i < 3 ? '#fcfaf4' : '#fff' }}>
+                <td className="asw-num" style={{ ...td, fontWeight: 800, color: i < 3 ? 'var(--color-accent-800)' : 'inherit' }}>{i + 1}</td>
+                <td style={td}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <Flag code={r.swimmer__nationality__code} />
+                    <span style={{ fontWeight: 800 }}>{r.swimmer__nationality__code}</span>
+                    <span className="hide-mobile" style={{ color: 'var(--color-neutral-600)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
+                  </span>
+                </td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800 }}>{r.gold}</td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center' }}>{r.silver}</td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center' }}>{r.bronze}</td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800 }}>{r.total}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -203,10 +283,11 @@ function LiveHub({ meet }) {
   const [stats, setStats] = useState(null)
   const [medals, setMedals] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
+  const [updatedAt, setUpdatedAt] = useState(null)
   const pollRef = useRef(null)
 
   const refresh = () => {
-    getMeetLive(meet.id).then((r) => setLive(r.data)).catch(() => {})
+    getMeetLive(meet.id).then((r) => { setLive(r.data); setUpdatedAt(new Date()) }).catch(() => {})
     getChampionshipStats(meet.id).then((r) => setStats(r.data)).catch(() => {})
     getMedalSummary({ championship: meet.id }).then((r) => setMedals(r.data)).catch(() => setMedals([]))
   }
@@ -228,12 +309,12 @@ function LiveHub({ meet }) {
   }, [stats])
 
   const days = program?.days || []
+  const prog = dayProgress(meet)
   const todayNum = useMemo(() => {
     const t = (live?.days || []).find((d) => d.is_today)
     if (t) return t.day
-    const prog = dayProgress(meet)
     return prog ? prog.current : 1
-  }, [live, meet])
+  }, [live, prog])
   const todayDay = days.find((d) => d.day === todayNum) || days[0]
   const scheduleDay = days.find((d) => d.day === (selectedDay ?? todayNum)) || days[0]
 
@@ -244,62 +325,97 @@ function LiveHub({ meet }) {
 
   const loading = !program || !live
 
-  const pill = (key, label) => {
-    const active = tab === key
-    return (
-      <button
-        key={key}
-        onClick={() => setTab(key)}
-        style={{
-          padding: '8px 18px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
-          letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-          background: active ? 'var(--color-accent-800)' : '#fff',
-          color: active ? '#fff' : 'var(--color-neutral-700)',
-          border: `1px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
-        }}
-      >
-        {label}
-      </button>
-    )
+  const TABS = [
+    ['today', 'Today'],
+    ['schedule', 'Schedule'],
+    ['medals', 'Medals'],
+  ]
+
+  const weekday = (iso) => {
+    const d = new Date(iso + 'T00:00:00')
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { weekday: 'short' })
   }
 
   return (
     <div style={{ marginTop: 20 }}>
-      {/* header card */}
+      {/* ── hero card ── */}
       <div style={{
-        border: '1px solid var(--color-neutral-200)', borderRadius: 12, overflow: 'hidden', marginBottom: 16,
+        borderRadius: 16, overflow: 'hidden', marginBottom: 18,
+        boxShadow: '0 4px 18px rgba(12,35,64,.14)',
       }}>
-        <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '16px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{
+          background: 'linear-gradient(140deg, var(--color-accent-700), var(--color-accent-900))',
+          color: '#fff', padding: '20px 22px 18px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <LivePill />
-            {(() => { const p = dayProgress(meet); return p ? <span className="micro" style={{ color: 'rgba(255,255,255,.75)' }}>Day {p.current} of {p.total}</span> : null })()}
-            <span className="micro" style={{ color: 'rgba(255,255,255,.75)', marginLeft: 'auto' }}>
-              <span className="asw-num" style={{ fontWeight: 700, color: '#fff' }}>{formatNumber(live?.total_results ?? meet.results_count ?? 0)}</span> results in
+            {prog && (
+              <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,.7)', textTransform: 'uppercase' }}>
+                Day {prog.current} of {prog.total}
+              </span>
+            )}
+            <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>
+              <span className="asw-num" style={{ fontWeight: 800, color: '#fff', fontSize: 14 }}>{formatNumber(live?.total_results ?? meet.results_count ?? 0)}</span>
+              {' '}results in
             </span>
           </div>
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, marginTop: 8, lineHeight: 1.25 }}>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(19px, 3.4vw, 26px)', marginTop: 10, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             {meet.name}
           </div>
-          <div className="micro" style={{ color: 'rgba(255,255,255,.75)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.75)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', fontWeight: 600 }}>
             {meet.country_detail && <Flag code={meet.country_detail.code} />}
             {meet.location || meet.country_detail?.name}
-            {' · '}{formatDateRange(meet.date, meet.end_date)}
+            <span style={{ opacity: 0.5 }}>·</span>
+            {formatDateRange(meet.date, meet.end_date)}
           </div>
+          {/* day progress bar */}
+          {prog && prog.total > 1 && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 14 }}>
+              {Array.from({ length: prog.total }, (_, i) => (
+                <span key={i} style={{
+                  flex: 1, height: 4, borderRadius: 2,
+                  background: i + 1 < prog.current ? 'rgba(255,255,255,.85)'
+                    : i + 1 === prog.current ? LIVE_RED
+                    : 'rgba(255,255,255,.22)',
+                }} />
+              ))}
+            </div>
+          )}
         </div>
         {/* pill tabs */}
-        <div style={{ display: 'flex', gap: 8, padding: '12px 16px', overflowX: 'auto', background: 'var(--color-surface)' }}>
-          {pill('today', 'Today')}
-          {pill('schedule', 'Schedule')}
-          {pill('medals', 'Medals')}
-          <Link
-            to={`/meets/${meet.id}`}
-            style={{
-              marginLeft: 'auto', alignSelf: 'center', whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 700,
-              textDecoration: 'none', color: 'var(--color-accent-800)',
-            }}
-          >
-            Full meet page ›
-          </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', overflowX: 'auto', background: '#fff', borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          {TABS.map(([key, label]) => {
+            const active = tab === key
+            return (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`live-tabpill${active ? ' active' : ''}`}
+                style={{
+                  padding: '9px 22px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                  letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                  background: active ? 'var(--color-accent-800)' : '#fff',
+                  color: active ? '#fff' : 'var(--color-neutral-600)',
+                  border: `1.5px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14, flex: 'none' }}>
+            {updatedAt && (
+              <span className="hide-mobile" style={{ fontSize: 11, color: 'var(--color-neutral-500)', fontWeight: 600 }}>
+                Updated {updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · auto-refreshes
+              </span>
+            )}
+            <Link
+              to={`/meets/${meet.id}`}
+              style={{ whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 800, textDecoration: 'none', color: 'var(--color-accent)' }}
+            >
+              Full meet page ›
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -310,9 +426,9 @@ function LiveHub({ meet }) {
           )}
 
           {tab === 'schedule' && (
-            <div>
+            <div className="live-fade-in">
               {/* day chips */}
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '10px 2px 12px', marginBottom: 14 }}>
                 {days.map((d) => {
                   const active = d.day === (selectedDay ?? todayNum)
                   const isToday = d.day === todayNum
@@ -321,23 +437,37 @@ function LiveHub({ meet }) {
                     <button
                       key={d.day}
                       onClick={() => setSelectedDay(d.day)}
+                      className="live-daychip"
                       style={{
-                        flex: 'none', minWidth: 72, padding: '8px 12px', borderRadius: 10, cursor: 'pointer',
-                        textAlign: 'center',
+                        flex: 'none', minWidth: 84, padding: '10px 12px 9px', borderRadius: 12, cursor: 'pointer',
+                        textAlign: 'center', position: 'relative',
                         background: active ? 'var(--color-accent-800)' : '#fff',
                         color: active ? '#fff' : 'inherit',
-                        border: `2px solid ${active ? 'var(--color-accent-800)' : hasFinals ? GOLD : 'var(--color-neutral-300)'}`,
+                        border: `1.5px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
+                        boxShadow: active ? '0 4px 14px rgba(12,35,64,.22)' : 'none',
                       }}
                     >
-                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: active ? 0.85 : 0.6 }}>
-                        {isToday ? 'Today' : `Day ${d.day}`}
-                      </div>
-                      <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>
-                        {d.date ? d.date.slice(8, 10) + '/' + d.date.slice(5, 7) : d.day}
-                      </div>
-                      {hasFinals && !active && (
-                        <div style={{ marginTop: 3 }}><MedalDots size={6} /></div>
+                      {isToday && (
+                        <span style={{
+                          position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)',
+                          fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em', padding: '2px 8px',
+                          borderRadius: 999, background: LIVE_RED, color: '#fff',
+                        }}>
+                          TODAY
+                        </span>
                       )}
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
+                        {weekday(d.date) || `Day ${d.day}`}
+                      </div>
+                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 800, marginTop: 2, lineHeight: 1 }}>
+                        {d.date ? Number(d.date.slice(8, 10)) : d.day}
+                      </div>
+                      <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.06em' }}>
+                        DAY {d.day}
+                      </div>
+                      <div style={{ marginTop: 5, height: 7 }}>
+                        {hasFinals && <MedalDots size={6} gap={2} />}
+                      </div>
                     </button>
                   )
                 })}
@@ -346,7 +476,7 @@ function LiveHub({ meet }) {
             </div>
           )}
 
-          {tab === 'medals' && <MedalsTable rows={medals} />}
+          {tab === 'medals' && <MedalsPanel rows={medals} />}
         </>
       )}
     </div>
@@ -359,10 +489,12 @@ function MeetCard({ meet, active, onSelect }) {
   return (
     <button
       onClick={onSelect}
+      className="live-daychip"
       style={{
         textAlign: 'left', cursor: 'pointer', display: 'block', width: '100%',
         border: `2px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-200)'}`,
-        borderRadius: 12, padding: '14px 16px', background: active ? 'var(--color-surface)' : '#fff',
+        borderRadius: 14, padding: '14px 16px', background: '#fff',
+        boxShadow: active ? '0 4px 14px rgba(12,35,64,.16)' : '0 1px 4px rgba(12,35,64,.05)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>

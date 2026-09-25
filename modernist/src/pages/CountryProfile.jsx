@@ -933,7 +933,7 @@ function RecordsTab({ records, country }) {
                 <div style={{ fontSize: 13.5, color: '#1a56a0', fontWeight: 600, marginTop: 6 }}>{r.event} | {r.pool}</div>
                 <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#0d2d5e', letterSpacing: '-0.02em', marginTop: 6 }}>{r.time}</div>
               </div>
-              <div style={{ marginTop: 'auto', paddingTop: 12 }}>
+              <div style={{ paddingTop: 8 }}>
                 <div style={{ fontSize: 12, fontWeight: 800, color: '#5b6b82' }}>{r.sex === 'F' ? "Women's" : "Men's"}</div>
               </div>
             </div>

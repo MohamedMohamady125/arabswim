@@ -1693,7 +1693,7 @@ export default function CountryProfile() {
   })()
 
   return (
-    <div>
+    <div className="m-zoom">
       {/* ===== ISF-style federation header: circular flag logo + info left,
              swimmer action photo blended into the right half ===== */}
       {(() => {

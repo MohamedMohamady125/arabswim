@@ -1192,7 +1192,7 @@ export default function TeamDetail() {
   }
 
   return (
-    <div>
+    <div className="m-zoom">
       {/* ===== ISF-style club header ===== */}
       <div className="rule-b" style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)' }}>
         <style>{`

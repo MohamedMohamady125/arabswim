@@ -71,7 +71,7 @@ export default function AcademyProfile() {
   const country = a.country_detail
 
   return (
-    <div>
+    <div className="m-zoom">
       {/* Hero */}
       <div className="rule-b m-pad" style={{
         background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)',

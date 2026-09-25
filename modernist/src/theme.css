@@ -370,6 +370,9 @@ figure { margin: 0; }
   /* section titles: allow wrapping, smaller type on phone */
   .m-sectitle h3 { white-space: normal !important; font-size: 20px !important; text-align: center; }
   .m-sectitle > div { flex: 1 1 12px; min-width: 0; max-width: 50px; }
+  /* profile pages render zoomed-out on phone: everything scales down and
+     the layout reflows at a wider effective width so tables/cards fit */
+  .m-zoom { zoom: 0.75; }
   /* flags read better slightly larger on small screens */
   .asw-flag, .fi.asw-flag { width: 27px; height: 20px; line-height: 20px; }
   .asw-flag-lg, .fi.asw-flag-lg { width: 40px; height: 30px; line-height: 30px; }

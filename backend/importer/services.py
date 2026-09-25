@@ -636,10 +636,12 @@ def _build_preview(parsed_meet):
             # DQ/DNS/DNF swimmers must never carry a time — some parsers
             # accidentally pick up the Seed Time column when the Finals
             # Time is a status word (XDQ, NS). Zero it out as a safety net.
+            # The row itself is KEPT: status swims are imported and shown
+            # as-is (DQ/DNS/DNF tag) — they just never rank or medal.
             if r.status not in ('OK', 'HC', 'TLD'):
                 r.time_text = ''
                 r.time_centiseconds = 0
-            if r.status not in ('OK', 'HC', 'TLD') or r.time_centiseconds <= 0:
+            elif r.time_centiseconds <= 0:
                 continue
 
             # STRICT nationality rule: a swimmer's nationality is only ever
@@ -1317,9 +1319,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     swimmer.sex = true_sex
                     swimmer.save(update_fields=['sex'])
 
-            # Create result (skip duplicates)
+            # Create result (skip duplicates). DQ/DNS/DNF rows legitimately
+            # carry no time — they are stored (and displayed) as unranked
+            # rows; a zero time on an OK row is a parse error and is skipped.
             time_cs = result_data['time_centiseconds']
-            if time_cs <= 0:
+            status = result_data.get('status', 'OK') or 'OK'
+            is_status_row = status not in ('OK', 'HC', 'TLD')
+            if time_cs <= 0 and not is_status_row:
                 skipped_results += 1
                 skipped_details.append({
                     'swimmer': parsed_name,
@@ -1482,7 +1488,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         'reason': 'Preserved manual edit — re-import did not overwrite',
                     })
                     continue
-                if same_team:
+                if same_team and time_cs > 0:
                     from .points import calculate_points
                     gender_code = result_data.get('gender', 'M') or 'M'
                     same_team.time_centiseconds = time_cs
@@ -1536,13 +1542,16 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         'round': round_type,
                         'reason': 'Preserved manual edit — re-import did not overwrite',
                     })
-                # Keep the better time
-                elif time_cs < existing.time_centiseconds:
+                # Keep the better time. A status row (DQ/DNS/DNF, time 0)
+                # never overwrites a real time; a real time always replaces
+                # a zero-time status row.
+                elif time_cs > 0 and (existing.time_centiseconds <= 0
+                                      or time_cs < existing.time_centiseconds):
                     existing.time_centiseconds = time_cs
                     existing.original_rank = source_rank(result_data.get('rank'))
                     existing.fina_points = result_data.get('fina_points', 0) or existing.fina_points
-                    existing.is_hc = (result_data.get('status') in ('HC', 'TLD'))
-                    existing.hc_type = result_data.get('status') if result_data.get('status') in ('HC', 'TLD') else ''
+                    existing.is_hc = (status != 'OK')
+                    existing.hc_type = status if status != 'OK' else ''
                     if team:
                         existing.team = team
                     existing.save()
@@ -1631,8 +1640,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     age_at_competition=age_at_comp or None,
                     relay_swimmers=relay_swimmers,
                     splits=splits,
-                    is_hc=(result_data.get('status') in ('HC', 'TLD')),
-                    hc_type=result_data.get('status') if result_data.get('status') in ('HC', 'TLD') else '',
+                    is_hc=(status != 'OK'),
+                    hc_type=status if status != 'OK' else '',
                 )
                 claimed_results.add(new_result.id)
                 created_results += 1

@@ -702,12 +702,18 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   // National meets run Finale A/B/C — each finale has its own podium, so
   // Final B (Consolation) rows also carry medals (matches backend recompute)
   const _MEDAL_ROUNDS = new Set(['Finals', 'Junior Final', 'Final C', 'Final D'])
-  const showMedals = isOpenView
-    ? (roundsPresent.has('Finals') || roundsPresent.size <= 1)
-    : (_MEDAL_ROUNDS.has(selectedRound)
-      || (isNational && selectedRound === 'Consolation' && !bFinalNoMedals)
-      || (heatsCategoryMedals && (selectedRound === 'Heats' || selectedRound === 'Prelims'))
-      || roundsPresent.size <= 1)
+  // Explicitly preliminary rounds never decide a podium — a live meet's
+  // heats-only event just means the final hasn't been swum/imported yet
+  // (mirrors backend medals/utils._PRELIM_ROUNDS).
+  const _PRELIM_ROUNDS = new Set(['Heats', 'Prelims', 'Semifinals', 'Semis', 'Swim-off'])
+  const onlyPrelims = roundsPresent.size > 0
+    && [...roundsPresent].every((r) => _PRELIM_ROUNDS.has(r))
+  const showMedals = (heatsCategoryMedals && (selectedRound === 'Heats' || selectedRound === 'Prelims'))
+    || (!onlyPrelims && (isOpenView
+      ? (roundsPresent.has('Finals') || roundsPresent.size <= 1)
+      : (_MEDAL_ROUNDS.has(selectedRound)
+        || (isNational && selectedRound === 'Consolation' && !bFinalNoMedals)
+        || roundsPresent.size <= 1)))
   // Small categories (e.g. Benjamins) often swim heats only — that heats
   // classement IS their podium, so their rows medal even in the Heats view.
   const finalsCats = useMemo(() => new Set(
@@ -866,7 +872,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     const computedRank = r.is_hc ? 0 : ranked.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
     const rank = !r.is_hc && !isOpenView && !poolHeats && r.original_rank ? r.original_rank : computedRank
     const mRank = r.is_hc ? 0 : medalRank(r, ranked, rank)
-    const heatsOnlyCat = !isOpenView && !!r.category && !finalsCats.has(r.category)
+    // A heats-only *category* is only a real podium when the event ran a
+    // final for other categories; a heats-only *event* awaits its final.
+    const heatsOnlyCat = !isOpenView && !onlyPrelims && !!r.category && !finalsCats.has(r.category)
     const medalOnRow = (showMedals || heatsOnlyCat) && !r.is_manual && !r.is_hc && mRank >= 1 && mRank <= 3
       // b_final_no_medals meets: Finale B rows never medal, even in the
       // pooled open/TC view (matches backend recompute_medals)
@@ -893,7 +901,13 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         >
           <td className="asw-num">
             {r.is_hc ? (
-              <span className="tag tag-neutral" title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}>{r.hc_type || 'HC'}</span>
+              <span
+                className="tag tag-neutral"
+                title={{
+                  TLD: 'Time limit exceeded', DQ: 'Disqualified',
+                  DNS: 'Did not start', DNF: 'Did not finish',
+                }[r.hc_type] || 'Hors concours'}
+              >{r.hc_type || 'HC'}</span>
             ) : medalOnRow ? (
               /* block display kills the inline baseline gap so the medal sits
                  on the exact vertical center of the row, level with the flag */
@@ -940,7 +954,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             </td>
           )}
           <td className="time asw-time">
-            {isRelay && swimmers.length === 1 && swimmers[0]?.split_time && swimmers[0]?.first_leg !== false
+            {!r.time_centiseconds
+              ? <span className="text-muted">{r.hc_type || '—'}</span>
+              : isRelay && swimmers.length === 1 && swimmers[0]?.split_time && swimmers[0]?.first_leg !== false
               ? <span title={`Relay time: ${r.formatted_time}`}>{swimmers[0].split_time} <span className="micro" style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 9 }}>SPLIT</span></span>
               : r.formatted_time}
           </td>

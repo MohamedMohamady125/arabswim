@@ -1689,7 +1689,16 @@ export default function CountryProfile() {
       if (!byName[k]) byName[k] = { name: k, gold: 0, silver: 0, bronze: 0, total: 0 }
     }
     const orderOf = (n) => { const i = CLASS_ORDER.indexOf(n); return i === -1 ? 99 : i }
-    return Object.values(byName).sort((a, b) => (b.total - a.total) || (orderOf(a.name) - orderOf(b.name)))
+    // Regional classifications (GCC/Asian/African/Mediterranean) only apply to
+    // their member countries — hide zero boxes for everyone else (e.g. no GCC
+    // box on Algeria). Real medals are never hidden.
+    const applies = (n) => {
+      const list = CLASS_COUNTRY_CODES[n]
+      return !list || !country?.code || list.includes(country.code)
+    }
+    return Object.values(byName)
+      .filter((m) => m.total > 0 || applies(m.name))
+      .sort((a, b) => (b.total - a.total) || (orderOf(a.name) - orderOf(b.name)))
   })()
 
   return (
@@ -2275,15 +2284,21 @@ export default function CountryProfile() {
         <div className="pad-lg">
           <SectHead title="Medal Tally by Competition" />
           {(() => {
-            // Every classification is always clickable — zero-medal ones
-            // included — so each drill-down's country standings can be seen.
+            // Every applicable classification is always clickable — zero-medal
+            // ones included — so each drill-down's country standings can be
+            // seen. Regional classes (GCC/Asian/African/Mediterranean) only
+            // show on their member countries.
             const ALL_CLASSES = ['Olympic', 'World', 'Arab', 'National', 'Islamic',
               'GCC', 'Asian', 'African', 'Mediterranean', 'Other']
+            const applies = (n) => {
+              const list = CLASS_COUNTRY_CODES[n]
+              return !list || !country?.code || list.includes(country.code)
+            }
             const byName = {}
             medalBoxes.forEach((m) => { byName[m.name] = m })
             const boxes = [
-              ...medalBoxes,
-              ...ALL_CLASSES.filter((n) => !byName[n])
+              ...medalBoxes.filter((m) => m.total > 0 || applies(m.name)),
+              ...ALL_CLASSES.filter((n) => !byName[n] && applies(n))
                 .map((n) => ({ name: n, gold: 0, silver: 0, bronze: 0, total: 0 })),
             ]
             return (

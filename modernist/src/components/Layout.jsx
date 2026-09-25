@@ -137,27 +137,18 @@ function Header() {
           </button>
         </div>
       )}
-      {/* brand bar — deep navy with a blue wave glow, silver wordmark
-          (matches the ARABSWIM logo banner) */}
+      {/* brand bar — flat navy, same color as the footer */}
       <div
         className="rule-b"
         style={{
           display: 'flex', alignItems: 'center', gap: 24, padding: '14px 32px',
-          background: [
-            'radial-gradient(130% 220% at 88% -20%, rgba(43,110,208,.55) 0%, rgba(43,110,208,0) 45%)',
-            'radial-gradient(90% 160% at 8% 120%, rgba(28,120,220,.45) 0%, rgba(28,120,220,0) 40%)',
-            'linear-gradient(115deg, #060f26 0%, #0a1f44 55%, #0d2a5c 100%)',
-          ].join(', '),
+          background: 'var(--color-accent-800)',
         }}
       >
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto', textDecoration: 'none', color: 'inherit' }}>
           <img src="/logo.png" alt="ArabSwiM" style={{ width: 44, height: 44, objectFit: 'contain' }} />
-          <span style={{
-            fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, letterSpacing: '0.02em',
-            background: 'linear-gradient(180deg, #ffffff 0%, #d7dee9 55%, #9fadc4 100%)',
-            WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
-          }}>ARABSWIM</span>
-          <span className="micro hide-mobile" style={{ color: 'rgba(215,225,240,.75)' }}>Arab Swimming Database</span>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, letterSpacing: '0.02em', color: '#ffffff' }}>ARABSWIM</span>
+          <span className="micro hide-mobile" style={{ color: 'var(--color-accent-2-300)' }}>Arab Swimming Database</span>
         </Link>
         <div className="hide-mobile"><SearchBox /></div>
         <button

@@ -211,11 +211,11 @@ function MedalsPanel({ rows }) {
   return (
     <div className="live-fade-in">
       {/* podium cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+      <div className="live-podium" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 16 }}>
         {top3.map((r, i) => (
           <div key={r.swimmer__nationality__code || i} style={{
             border: '1px solid var(--color-neutral-200)', borderTop: `3px solid ${podiumMeta[i].ring}`,
-            borderRadius: 12, padding: '12px 14px', background: '#fff',
+            borderRadius: 12, padding: '12px 14px', background: '#fff', minWidth: 0,
             boxShadow: '0 1px 4px rgba(12,35,64,.05)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -285,6 +285,16 @@ function LiveHub({ meet }) {
   const [selectedDay, setSelectedDay] = useState(null)
   const [updatedAt, setUpdatedAt] = useState(null)
   const pollRef = useRef(null)
+  const chipsRef = useRef(null)
+
+  // keep the selected day chip in view (phones: today can be off-screen)
+  useEffect(() => {
+    if (tab !== 'schedule') return
+    const t = setTimeout(() => {
+      chipsRef.current?.querySelector('.active')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+    }, 60)
+    return () => clearTimeout(t)
+  }, [tab, selectedDay, program])
 
   const refresh = () => {
     getMeetLive(meet.id).then((r) => { setLive(r.data); setUpdatedAt(new Date()) }).catch(() => {})
@@ -383,7 +393,7 @@ function LiveHub({ meet }) {
           )}
         </div>
         {/* pill tabs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', overflowX: 'auto', background: '#fff', borderTop: '1px solid rgba(255,255,255,.1)' }}>
+        <div className="live-tabrow" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#fff', borderTop: '1px solid rgba(255,255,255,.1)' }}>
           {TABS.map(([key, label]) => {
             const active = tab === key
             return (
@@ -403,7 +413,7 @@ function LiveHub({ meet }) {
               </button>
             )
           })}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14, flex: 'none' }}>
+          <div className="live-tabmeta" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14, flex: 'none' }}>
             {updatedAt && (
               <span className="hide-mobile" style={{ fontSize: 11, color: 'var(--color-neutral-500)', fontWeight: 600 }}>
                 Updated {updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · auto-refreshes
@@ -428,7 +438,7 @@ function LiveHub({ meet }) {
           {tab === 'schedule' && (
             <div className="live-fade-in">
               {/* day chips */}
-              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '10px 2px 12px', marginBottom: 14 }}>
+              <div ref={chipsRef} style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '10px 2px 12px', marginBottom: 14 }}>
                 {days.map((d) => {
                   const active = d.day === (selectedDay ?? todayNum)
                   const isToday = d.day === todayNum
@@ -437,7 +447,7 @@ function LiveHub({ meet }) {
                     <button
                       key={d.day}
                       onClick={() => setSelectedDay(d.day)}
-                      className="live-daychip"
+                      className={`live-daychip${active ? ' active' : ''}`}
                       style={{
                         flex: 'none', minWidth: 84, padding: '10px 12px 9px', borderRadius: 12, cursor: 'pointer',
                         textAlign: 'center', position: 'relative',

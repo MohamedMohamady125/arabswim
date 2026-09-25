@@ -2496,6 +2496,16 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   const [selectedDay, setSelectedDay] = useState(null)
   const [showProgram, setShowProgram] = useState(false)
   const [program, setProgram] = useState(null)
+  const dayChipsRef = React.useRef(null)
+
+  // keep the selected day chip in view (phones: today can be off-screen)
+  useEffect(() => {
+    if (!selectedDay) return
+    const t = setTimeout(() => {
+      dayChipsRef.current?.querySelector('.active')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+    }, 60)
+    return () => clearTimeout(t)
+  }, [selectedDay])
   // deep link from the Live hub: ?event=&gender=&day=&session= auto-opens that event
   const [initParams] = useSearchParams()
   const deepLink = React.useRef({
@@ -2553,7 +2563,6 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
     return groups
   }, [dayProgram])
 
-  const fmtDay = (d) => d.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
   const sessionLabel = { HEATS: 'Morning', SEMIS: 'Semi-Finals', FINALS: 'Evening', OTHER: 'Events' }
   const sessionOrder = ['HEATS', 'SEMIS', 'FINALS', 'OTHER']
 
@@ -2605,32 +2614,47 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
         </div>
       )}
 
-      {/* Day selector */}
-      <div className="rule-b" style={{ padding: '16px 32px', overflowX: 'auto' }}>
-        <div style={{ display: 'inline-flex', gap: 8 }}>
-          {days.map((d) => (
+      {/* Day selector — app-style chips (matches the Live hub) */}
+      <div className="rule-b" ref={dayChipsRef} style={{ padding: '14px 16px 14px', overflowX: 'auto', display: 'flex', gap: 10 }}>
+        {days.map((d) => {
+          const active = selectedDay === d.num
+          return (
             <button key={d.num} type="button"
               onClick={() => setSelectedDay(d.num)}
+              className={`live-daychip${active ? ' active' : ''}`}
               style={{
-                cursor: 'pointer', border: 'none', padding: '14px 20px', textAlign: 'center',
-                background: selectedDay === d.num
-                  ? 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))'
-                  : d.isToday ? 'var(--color-accent-100)' : 'var(--color-surface)',
-                color: selectedDay === d.num ? '#fff' : 'var(--color-text)',
-                fontFamily: 'var(--font-heading)', fontWeight: 800, minWidth: 100,
-                borderBottom: d.isToday && selectedDay !== d.num ? '3px solid var(--asw-gold)' : '3px solid transparent',
-                transition: 'background 0.15s',
+                flex: 'none', minWidth: 84, padding: '10px 12px 9px', borderRadius: 12, cursor: 'pointer',
+                textAlign: 'center', position: 'relative', marginTop: 8,
+                background: active ? 'var(--color-accent-800)' : '#fff',
+                color: active ? '#fff' : 'inherit',
+                border: `1.5px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
+                boxShadow: active ? '0 4px 14px rgba(12,35,64,.22)' : 'none',
               }}>
-              <div style={{ fontSize: 20, lineHeight: 1 }}>Day {d.num}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 5, opacity: 0.75 }}>{fmtDay(d)}</div>
-              {d.isToday && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', marginTop: 4, color: selectedDay === d.num ? 'var(--asw-gold)' : 'var(--asw-fast)' }}>TODAY</div>}
+              {d.isToday && (
+                <span style={{
+                  position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+                  fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em', padding: '2px 8px',
+                  borderRadius: 999, background: '#c0392b', color: '#fff',
+                }}>
+                  TODAY
+                </span>
+              )}
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
+                {d.date.toLocaleDateString('en-GB', { weekday: 'short' })}
+              </div>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 800, marginTop: 2, lineHeight: 1 }}>
+                {d.date.getDate()}
+              </div>
+              <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.06em' }}>
+                DAY {d.num}
+              </div>
             </button>
-          ))}
-        </div>
+          )
+        })}
       </div>
 
       {/* Program + Results */}
-      <div style={{ padding: '20px 32px' }}>
+      <div className="live-day-body" style={{ padding: '20px 32px' }}>
         {dayProgram.length > 0 ? (
           sessionOrder.filter((s) => sessionGroups[s]).map((s) => {
             const g = sessionGroups[s]
@@ -2652,7 +2676,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                 </div>
 
                 {hasBothGenders ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div className="live-gender-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                     {/* Men column */}
                     <div>
                       <div style={{
@@ -2782,7 +2806,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
 
   const renderTable = (data, showMedals = true) => (
     <div style={{ overflowX: 'auto' }}>
-      <table className="table" style={{ fontSize: 12, minWidth: 360 }}>
+      <table className="table" style={{ fontSize: 12, width: '100%' }}>
         <thead>
           <tr>
             <th style={{ width: 32 }}>#</th>
@@ -2800,7 +2824,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
                 {r.is_hc ? <span className="tag tag-neutral">{r.hc_type || 'HC'}</span>
                   : showMedals && i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={18} style={{ display: 'block' }} /> : (r.original_rank || i + 1)}
               </td>
-              <td>
+              <td style={{ maxWidth: 0, width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
                   <span

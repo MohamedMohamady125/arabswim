@@ -659,4 +659,14 @@ a.live-row-link .live-row:hover .live-chevron { transform: translateX(3px); }
 @media (max-width: 640px) {
   .athlete-card-overlay { padding: 0 !important; align-items: flex-end !important; }
   .athlete-card-pop { align-self: flex-end; max-height: 88vh !important; border-radius: 18px 18px 0 0 !important; }
+  /* hub tab bar: pills fill the row, meta drops to its own line */
+  .live-tabrow { flex-wrap: wrap; }
+  .live-tabrow .live-tabpill { flex: 1 1 0; padding: 9px 0 !important; text-align: center; }
+  .live-tabmeta { margin-left: 0 !important; width: 100%; justify-content: flex-end; }
+  /* medal podium cards: compact so all three fit on 390px */
+  .live-podium { gap: 6px !important; }
+  .live-podium > div { padding: 9px 9px !important; }
+  /* live meet view: stack Men/Women columns, tighter gutters */
+  .live-gender-cols { grid-template-columns: 1fr !important; }
+  .live-day-body { padding: 16px !important; }
 }

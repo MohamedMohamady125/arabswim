@@ -882,7 +882,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       && !(bFinalNoMedals && r.round_type === 'Consolation')
     const swimmers = r.relay_swimmers || []
     const splits = withFinishSplit(r.splits || [], r.time_centiseconds)
-    const hasSub = (isRelay && swimmers.length > 0) || (!isRelay && splits.length > 0)
+    const hasSub = (isRelay && swimmers.length > 0) || (!isRelay && (splits.length > 0 || r.reaction_time))
     const isExpanded = expandedRow === r.id
     return (
       <React.Fragment key={r.id}>
@@ -939,7 +939,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                     color: isExpanded ? '#fff' : 'var(--color-accent-800)',
                   }}
                 >
-                  {isRelay ? 'TEAM' : 'SPLITS'} {isExpanded ? '▲' : '▼'}
+                  {isRelay ? 'TEAM' : splits.length > 0 ? 'SPLITS' : 'RT'} {isExpanded ? '▲' : '▼'}
                 </span>
               )}
             </div>
@@ -972,13 +972,19 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             </td>
           )}
         </tr>
-        {isExpanded && !isRelay && splits.length > 0 && (
+        {isExpanded && !isRelay && (splits.length > 0 || r.reaction_time) && (
           <tr style={{ background: 'var(--color-surface)' }}>
             <td colSpan={colCount} style={{ padding: '10px 12px' }}>
               {/* one continuous strip — stays on a single line and scrolls
                   sideways for long events instead of wrapping */}
               <div style={{ overflowX: 'auto' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--color-divider)', background: 'var(--color-bg)' }}>
+                  {r.reaction_time && (
+                    <div style={{ padding: '5px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: splits.length > 0 ? '1px solid var(--color-divider)' : 'none', background: 'var(--color-accent-100)' }}>
+                      <div className="micro" style={{ fontSize: 9, marginBottom: 2, color: 'var(--color-accent-800)' }}>RT</div>
+                      <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)' }}>{Number(r.reaction_time).toFixed(2)}</div>
+                    </div>
+                  )}
                   {splits.map((s, j) => (
                     <div key={j} style={{ padding: '5px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: j < splits.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
                       <div className="micro" style={{ fontSize: 9, marginBottom: 2 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</div>

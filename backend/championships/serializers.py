@@ -95,6 +95,7 @@ class ResultSerializer(serializers.ModelSerializer):
                   'nationality', 'nationality_detail',
                   'round_type', 'category', 'team', 'time_centiseconds', 'formatted_time', 'fina_points',
                   'age_at_competition', 'relay_swimmers', 'relay_swimmers_detail', 'splits',
+                  'reaction_time',
                   'is_hc', 'hc_type', 'is_manual', 'original_rank', 'created_at']
 
     def get_relay_swimmers_detail(self, obj):
@@ -183,5 +184,5 @@ class ResultCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Result
         fields = ['id', 'swimmer', 'championship', 'event', 'round_type', 'category', 'team', 'time_centiseconds',
-                  'fina_points', 'age_at_competition', 'relay_swimmers', 'splits', 'original_rank',
+                  'fina_points', 'age_at_competition', 'relay_swimmers', 'splits', 'reaction_time', 'original_rank',
                   'is_hc', 'hc_type', 'is_manual', 'nationality']

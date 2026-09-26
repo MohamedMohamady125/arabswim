@@ -112,6 +112,11 @@ function InlineResults({ meetId, meet, item }) {
               }}>
                 {r.swimmer_detail?.name}
               </span>
+              {r.reaction_time && (
+                <span className="asw-num hide-mobile" style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--color-neutral-500)', flex: 'none' }}>
+                  RT {Number(r.reaction_time).toFixed(2)}
+                </span>
+              )}
               <span className="asw-time" style={{ fontWeight: 800, fontSize: 13.5, flex: 'none' }}>
                 {r.formatted_time}
               </span>

@@ -1854,6 +1854,16 @@ class ExcelCellAccuracyTests(SimpleTestCase):
         self.assertIsNone(_cell_int('DSQ'))
         self.assertIsNone(_cell_int(None))
 
+    def test_reaction_time_cells(self):
+        from importer.parsers.detector import _cell_reaction_time
+        self.assertEqual(_cell_reaction_time('0.68'), '0.68')
+        self.assertEqual(_cell_reaction_time(0.71), '0.71')
+        self.assertEqual(_cell_reaction_time('+0.74'), '0.74')
+        self.assertEqual(_cell_reaction_time('0,77'), '0.77')
+        # blanks, dashes, false starts and implausible values are dropped
+        for bad in ('', '-', 'nan', None, '-0.12', 0.05, 3.2, 'abc'):
+            self.assertEqual(_cell_reaction_time(bad), '', repr(bad))
+
     def test_gender_cells(self):
         from importer.parsers.detector import _cell_gender
         for v in ('M', 'Male', 'Men', "Men's", 'Homme', 'Boys', 'garcons'):
@@ -1882,6 +1892,8 @@ class ExcelWorkbookTests(SimpleTestCase):
             'Swimmer Name': ['Omar KAMAL', 'Ali HASSAN', 'Sami NOUR', 'Zed DQED'],
             # a time-formatted cell, a text time, a numeric-seconds cell, a DQ
             'Time': [datetime.time(0, 25, 43), '26.10', 26.55, 'DQ'],
+            # text, numeric, comma-decimal-with-plus, and a dash (not measured)
+            'Reaction Time': ['0.68', 0.71, '+0,74', '-'],
             'Rank': ['1er', 2, 1, 'DSQ'],
             'YoB': [2008, 2008.0, '2001', 2000],
             'Nationality': ['EGY', 'EGY', 'EGY', 'EGY'],
@@ -1962,6 +1974,15 @@ class ExcelWorkbookTests(SimpleTestCase):
     def test_all_sheets_read(self):
         names = {r.swimmer_name for e in self.meet.events for r in e.results}
         self.assertIn('Nada FAWZY', names)  # from the second individual sheet
+
+    def test_reaction_times_read(self):
+        by_name = {r.swimmer_name: r for e in self.meet.events for r in e.results}
+        self.assertEqual(by_name['Omar KAMAL'].reaction_time, '0.68')
+        self.assertEqual(by_name['Ali HASSAN'].reaction_time, '0.71')   # numeric cell
+        self.assertEqual(by_name['Sami NOUR'].reaction_time, '0.74')    # "+0,74"
+        self.assertEqual(by_name['Zed DQED'].reaction_time, '')         # dash
+        # the RT column must never be mistaken for the swim time
+        self.assertEqual(by_name['Omar KAMAL'].time_text, '25.43')
 
     def test_relay_categories_separated_with_splits(self):
         relays = [e for e in self.meet.events if 'relay' in e.event_name.lower()]

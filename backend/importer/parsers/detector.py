@@ -869,6 +869,31 @@ def _cell_int(val, allow_float=True):
     return int(m.group(1)) if m else None
 
 
+def _cell_reaction_time(val):
+    """Read a start reaction-time cell ("0.68", 0.68, "+0.71", "0,74").
+
+    Returns a normalized "0.68"-style string, or '' when the cell is
+    empty, non-numeric, or outside the plausible 0.30–1.99s window
+    (false starts print negatives; blanks/dashes mean not measured).
+    """
+    import pandas as pd
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return ''
+    if isinstance(val, (int, float)):
+        num = float(val)
+    else:
+        s = str(val).strip().lstrip('+').replace(',', '.')
+        if not s or s.lower() in ('nan', '-', '–', '—'):
+            return ''
+        try:
+            num = float(s)
+        except ValueError:
+            return ''
+    if not (0.30 <= num < 2.0):
+        return ''
+    return f'{num:.2f}'
+
+
 _MEDAL_WORDS = {'gold': 1, 'silver': 2, 'bronze': 3, 'or': 1, 'argent': 2}
 
 _STATUS_ALIASES = {
@@ -1380,6 +1405,13 @@ def _parse_individual_sheet(df, meet, events_dict):
     distance_col = _find_column(cols, ['distance'])
     stroke_col = _find_column(cols, ['stroke', 'nage'])
     session_date_col = _find_column(cols, ['date', 'session date'])
+    # Reaction time ("Reaction Time", "RT", "R.T."). Found before guarding
+    # time_col: a sheet whose only time-ish header is "Reaction Time" must
+    # not read reaction times as swim times.
+    rt_col = _find_column(cols, ['reaction time', 'reaction', 'r.t.']) or cols.get('rt')
+    if rt_col is not None and time_col == rt_col:
+        non_rt = {k: v for k, v in cols.items() if v != rt_col}
+        time_col = _find_column(non_rt, ['time', 'temps', 'tps', 'finals time', 'result'])
     if not name_col or not time_col:
         return
 
@@ -1535,6 +1567,10 @@ def _parse_individual_sheet(df, meet, events_dict):
             pts = _cell_int(row[points_col])
             if pts and 0 < pts <= 1200:
                 result.fina_points = pts
+        if rt_col is not None and not relay:
+            rt = _cell_reaction_time(row[rt_col])
+            if rt:
+                result.reaction_time = rt
 
         # Collect the per-segment splits, in column order, as bare time
         # strings. confirm_import infers each segment's distance by dividing

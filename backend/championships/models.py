@@ -229,6 +229,8 @@ class Result(models.Model):
     relay_swimmers = models.JSONField(blank=True, null=True, help_text='List of {name, split_time} for relay results')
     splits = models.JSONField(blank=True, null=True, help_text='List of {distance, time} cumulative splits for individual results (when available in source PDF)')
     original_rank = models.PositiveIntegerField(blank=True, null=True, help_text='Rank/place from the source PDF. Medals are awarded from this rank so deleting other (e.g. non-Arab) results never promotes remaining swimmers onto the podium.')
+    reaction_time = models.DecimalField(max_digits=4, decimal_places=2, blank=True, null=True,
+                                        help_text='Start reaction time in seconds (e.g. 0.68), when the source provides it')
     is_hc = models.BooleanField(default=False, help_text='Hors concours – valid time that does not count in rankings')
     is_manual = models.BooleanField(default=False, help_text='Manually entered result – excluded from automatic medal awards')
     manually_edited = models.BooleanField(default=False, help_text='An admin hand-edited this result. Re-importing the same meet must NOT overwrite its time/rank/points — manual edits always win over the automatic pipeline.')

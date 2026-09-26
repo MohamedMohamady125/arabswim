@@ -23,6 +23,7 @@ class ParsedResult:
     nationality_code: str = ''
     club: str = ''
     fina_points: int = 0
+    reaction_time: str = ''  # start reaction time in seconds, e.g. "0.68"
     split_times: list = field(default_factory=list)
     relay_swimmers: list = field(default_factory=list)  # [{name, split_time}]
     round_type: str = ''  # Finals, Heats, Prelims

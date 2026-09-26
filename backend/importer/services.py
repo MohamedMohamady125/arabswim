@@ -713,6 +713,8 @@ def _build_preview(parsed_meet):
             }
             if r.split_times:
                 result_data['split_times'] = r.split_times
+            if getattr(r, 'reaction_time', ''):
+                result_data['reaction_time'] = r.reaction_time
             event_data['results'].append(result_data)
 
             # Track unique swimmers (skip relay team names)
@@ -1552,6 +1554,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     existing.fina_points = result_data.get('fina_points', 0) or existing.fina_points
                     existing.is_hc = (status != 'OK')
                     existing.hc_type = status if status != 'OK' else ''
+                    if result_data.get('reaction_time'):
+                        existing.reaction_time = result_data['reaction_time']
                     if team:
                         existing.team = team
                     existing.save()
@@ -1640,6 +1644,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     age_at_competition=age_at_comp or None,
                     relay_swimmers=relay_swimmers,
                     splits=splits,
+                    reaction_time=result_data.get('reaction_time') or None,
                     is_hc=(status != 'OK'),
                     hc_type=status if status != 'OK' else '',
                 )

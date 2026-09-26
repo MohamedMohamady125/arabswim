@@ -11,6 +11,7 @@ import api from '../api/client'
 import Flag from '../components/Flag'
 import { useAuth } from '../context/AuthContext'
 import { Loading, Empty, Seg, Modal } from '../components/ui'
+import MedalStandings from '../components/MedalStandings'
 import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
 import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
 
@@ -1615,38 +1616,21 @@ export default function TeamDetail() {
             Clubs of {team.country_detail?.name || 'the same country'} ranked by medals won
           </div>
           {ranking.length === 0 ? <Empty label="No ranking data" /> : (
-            <div className="table-scroll">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 40 }}>#</th>
-                    <th>Club</th>
-                    <th className="num">Gold</th>
-                    <th className="num">Silver</th>
-                    <th className="num">Bronze</th>
-                    <th className="num">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ranking.map((r) => (
-                    <tr key={r.team_id} style={r.is_current ? { background: 'var(--color-accent-100)', fontWeight: 600 } : undefined}>
-                      <td><span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: '#0b2948', color: '#fff', fontWeight: 800, fontSize: 12 }}>{r.rank}</span></td>
-                      <td>
-                        {r.team_id !== Number(id) ? (
-                          <Link to={`/teams/${r.team_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>{r.team_name}</Link>
-                        ) : (
-                          <span style={{ fontWeight: 700 }}>{r.team_name} <span className="tag tag-dark">This club</span></span>
-                        )}
-                      </td>
-                      <td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{r.gold}</td>
-                      <td className="num asw-num">{r.silver}</td>
-                      <td className="num asw-num">{r.bronze}</td>
-                      <td className="num asw-num" style={{ fontWeight: 800 }}>{r.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <MedalStandings
+              rows={ranking}
+              entityHeader="Club"
+              rowKey={(r) => r.team_id}
+              renderPodiumChip={(r) => (
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.team_name}</span>
+              )}
+              renderEntity={(r) => (
+                r.team_id !== Number(id) ? (
+                  <Link to={`/teams/${r.team_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>{r.team_name}</Link>
+                ) : (
+                  <span style={{ fontWeight: 700 }}>{r.team_name} <span className="tag tag-dark">This club</span></span>
+                )
+              )}
+            />
           )}
         </div>
       )}
@@ -1675,22 +1659,17 @@ export default function TeamDetail() {
           {/* Top medalists */}
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0b2948', margin: '8px 0 10px' }}>Top Medalists · {medalists.length}</div>
           {medalists.length === 0 ? <Empty label="No medals" /> : (
-            <div className="table-scroll" style={{ marginBottom: 26 }}>
-              <table className="table">
-                <thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead>
-                <tbody>
-                  {medalists.slice(0, 15).map((m, i) => (
-                    <tr key={m.id ?? i}>
-                      <td className="asw-num">{i + 1}</td>
-                      <td><SwimmerLink id={m.id} name={m.name} /></td>
-                      <td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{m.gold}</td>
-                      <td className="num asw-num">{m.silver}</td>
-                      <td className="num asw-num">{m.bronze}</td>
-                      <td className="num asw-num" style={{ fontWeight: 800 }}>{m.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ marginBottom: 26 }}>
+              <MedalStandings
+                rows={medalists}
+                maxRows={15}
+                entityHeader="Swimmer"
+                rowKey={(m, i) => m.id ?? i}
+                renderPodiumChip={(m) => (
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                )}
+                renderEntity={(m) => <SwimmerLink id={m.id} name={m.name} />}
+              />
             </div>
           )}
 

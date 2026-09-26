@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ClassificationCategory, Classification, SubClassification, Championship, ProgramItem, Result, LiveSession
+from .models import ClassificationCategory, Classification, SubClassification, Championship, ProgramItem, Result, LiveSession, MeetDocument
 from core.serializers import CountrySerializer, EventSerializer
 from swimmers.serializers import SwimmerListSerializer
 
@@ -64,6 +64,12 @@ class ChampionshipDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Championship
         fields = '__all__'
+
+
+class MeetDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MeetDocument
+        fields = ['id', 'kind', 'title', 'file', 'day', 'uploaded_at']
 
 
 class LiveSessionSerializer(serializers.ModelSerializer):

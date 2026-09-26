@@ -4,7 +4,8 @@ import { getChampionships, getClassifications } from '../api/championships'
 import { getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Seg, MedalIcon } from '../components/ui'
+import { PageHead, Loading, Empty, Seg } from '../components/ui'
+import MedalStandings from '../components/MedalStandings'
 import { mediaUrl } from '../utils'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -199,52 +200,51 @@ export default function Medals() {
       ) : rows.length === 0 ? (
         <Empty label="No medals recorded for this selection" />
       ) : (
-        <div className="pad table-scroll">
-          <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 34 }}>#</th>
-                <th>{scope === 'country' ? 'Country' : scope === 'club' ? 'Club' : 'Swimmer'}</th>
-                <th className="num"><MedalIcon type="GOLD" size={16} /></th>
-                <th className="num"><MedalIcon type="SILVER" size={16} /></th>
-                <th className="num"><MedalIcon type="BRONZE" size={16} /></th>
-                <th className="num">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={i}>
-                  <td className="asw-num">{i + 1}</td>
-                  <td>
-                    {scope === 'country' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
-                        {row.swimmer__nationality__name}
-                      </div>
-                    )}
-                    {scope === 'club' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <ClubLogo logo={row.team_logo} name={row.result__team} />
-                        {row.team_id
-                          ? <Link to={`/teams/${row.team_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{row.result__team || '—'}</Link>
-                          : (row.result__team || '—')}
-                      </div>
-                    )}
-                    {scope === 'swimmer' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
-                        <Link to={`/swimmers/${row.swimmer__id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{row.swimmer__name}</Link>
-                      </div>
-                    )}
-                  </td>
-                  <td className="num asw-num" style={{ fontWeight: 800 }}>{row.gold}</td>
-                  <td className="num asw-num">{row.silver}</td>
-                  <td className="num asw-num">{row.bronze}</td>
-                  <td className="num asw-num" style={{ fontWeight: 800 }}>{row.total ?? (row.gold || 0) + (row.silver || 0) + (row.bronze || 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="pad">
+          <MedalStandings
+            rows={rows}
+            entityHeader={scope === 'country' ? 'Country' : scope === 'club' ? 'Club' : 'Swimmer'}
+            rowKey={(row, i) => row.swimmer__nationality__code || row.team_id || row.swimmer__id || i}
+            renderPodiumChip={(row) => (
+              scope === 'club' ? (
+                <>
+                  <ClubLogo logo={row.team_logo} name={row.result__team} size={20} />
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.result__team || '—'}</span>
+                </>
+              ) : (
+                <>
+                  <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {scope === 'swimmer' ? row.swimmer__name : row.swimmer__nationality__code}
+                  </span>
+                </>
+              )
+            )}
+            renderEntity={(row) => (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                {scope === 'country' && (
+                  <>
+                    <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
+                    <span style={{ fontWeight: 700 }}>{row.swimmer__nationality__name}</span>
+                  </>
+                )}
+                {scope === 'club' && (
+                  <>
+                    <ClubLogo logo={row.team_logo} name={row.result__team} />
+                    {row.team_id
+                      ? <Link to={`/teams/${row.team_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>{row.result__team || '—'}</Link>
+                      : <span style={{ fontWeight: 700 }}>{row.result__team || '—'}</span>}
+                  </>
+                )}
+                {scope === 'swimmer' && (
+                  <>
+                    <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
+                    <Link to={`/swimmers/${row.swimmer__id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>{row.swimmer__name}</Link>
+                  </>
+                )}
+              </span>
+            )}
+          />
         </div>
       )}
     </div>

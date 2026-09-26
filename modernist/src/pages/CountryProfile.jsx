@@ -14,6 +14,7 @@ import { getMedals, getMedalSummary, getMedalSwimmerSummary } from '../api/medal
 import { getClassifications } from '../api/records'
 import Flag, { flagImage } from '../components/Flag'
 import FederationProgressionTab from '../components/FederationProgression'
+import MedalStandings from '../components/MedalStandings'
 import { Loading, Empty, SectHead, Seg, Pager } from '../components/ui'
 import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2 } from '../utils'
 
@@ -1066,23 +1067,23 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
 
       {!loading && sub === 'countries' && (
         standings.length === 0 ? <Empty label="No medals" /> : (
-          <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Country</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
-            {standings.map((c, i) => (
-              <tr key={c.swimmer__nationality__code || i}>
-                <td className="asw-num">{i + 1}</td>
-                <td>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-                    <Flag code={c.swimmer__nationality__code} name={c.swimmer__nationality__name} flagUrl={c.swimmer__nationality__flag_url} />
-                    {c.swimmer__nationality__name}
-                  </span>
-                </td>
-                <td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{c.gold}</td>
-                <td className="num asw-num">{c.silver}</td>
-                <td className="num asw-num">{c.bronze}</td>
-                <td className="num asw-num" style={{ fontWeight: 800 }}>{c.total}</td>
-              </tr>
-            ))}
-          </tbody></table></div>
+          <MedalStandings
+            rows={standings}
+            entityHeader="Country"
+            rowKey={(c, i) => c.swimmer__nationality__code || i}
+            renderPodiumChip={(c) => (
+              <>
+                <Flag code={c.swimmer__nationality__code} name={c.swimmer__nationality__name} flagUrl={c.swimmer__nationality__flag_url} />
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.swimmer__nationality__code}</span>
+              </>
+            )}
+            renderEntity={(c) => (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+                <Flag code={c.swimmer__nationality__code} name={c.swimmer__nationality__name} flagUrl={c.swimmer__nationality__flag_url} />
+                {c.swimmer__nationality__name}
+              </span>
+            )}
+          />
         )
       )}
 
@@ -1106,18 +1107,15 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
 
       {!loading && sub === 'medalists' && (
         medalists.length === 0 ? <Empty label="No medalists" /> : (
-          <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
-            {medalists.map((m, i) => (
-              <tr key={m.swimmer__id ?? i}>
-                <td className="asw-num">{i + 1}</td>
-                <td><SwimmerLink id={m.swimmer__id} name={m.swimmer__name} /></td>
-                <td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{m.gold}</td>
-                <td className="num asw-num">{m.silver}</td>
-                <td className="num asw-num">{m.bronze}</td>
-                <td className="num asw-num" style={{ fontWeight: 800 }}>{m.total}</td>
-              </tr>
-            ))}
-          </tbody></table></div>
+          <MedalStandings
+            rows={medalists}
+            entityHeader="Swimmer"
+            rowKey={(m, i) => m.swimmer__id ?? i}
+            renderPodiumChip={(m) => (
+              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.swimmer__name}</span>
+            )}
+            renderEntity={(m) => <SwimmerLink id={m.swimmer__id} name={m.swimmer__name} />}
+          />
         )
       )}
 

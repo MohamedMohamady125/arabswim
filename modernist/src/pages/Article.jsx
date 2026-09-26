@@ -85,8 +85,10 @@ export default function Article() {
         }}>
           {article.country_detail && (
             <>
-              <Flag code={article.country_detail.code} name={article.country_detail.name} />
-              <span style={{ fontWeight: 500 }}>{article.country_detail.name}</span>
+              <Link to={`/countries/${article.country_detail.id}?tab=news`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'inherit', textDecoration: 'none' }}>
+                <Flag code={article.country_detail.code} name={article.country_detail.name} />
+                <span style={{ fontWeight: 600 }}>{article.country_detail.name}</span>
+              </Link>
               <span style={{ color: '#ccc' }}>|</span>
             </>
           )}

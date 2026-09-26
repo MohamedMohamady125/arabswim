@@ -108,6 +108,27 @@ class Championship(models.Model):
         return f'{self.name} ({self.date.year})'
 
 
+class MeetDocument(models.Model):
+    """PDF documents attached to a meet's live hub: start lists and
+    session/result reports, uploaded by admins as the meet unfolds
+    (Asian Games app style)."""
+    KIND_CHOICES = [('STARTLIST', 'Start list'), ('REPORT', 'Report')]
+    championship = models.ForeignKey(Championship, on_delete=models.CASCADE, related_name='documents')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    title = models.CharField(max_length=200)
+    file = models.FileField(upload_to='championships/documents/')
+    day = models.PositiveSmallIntegerField(blank=True, null=True,
+                                           help_text='Optional 1-based meet day this document belongs to')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['kind', 'day', 'id']
+        indexes = [models.Index(fields=['championship', 'kind'])]
+
+    def __str__(self):
+        return f'{self.get_kind_display()}: {self.title} @ {self.championship.name}'
+
+
 class ProgramItem(models.Model):
     """One event scheduled on one day of a meet's program.
 

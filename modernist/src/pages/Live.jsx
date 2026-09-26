@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { getLiveMeets, getMeetProgram, getMeetLive, getChampionshipStats, getChampionshipResults } from '../api/championships'
+import { getLiveMeets, getMeetProgram, getMeetLive, getChampionshipStats, getChampionshipResults, getMeetDocuments, uploadMeetDocument, deleteMeetDocument } from '../api/championships'
+import { useAuth } from '../context/AuthContext'
 import { getMedalSummary } from '../api/medals'
-import { formatDateRange, formatNumber } from '../utils'
+import { formatDateRange, formatNumber, formatDate, mediaUrl } from '../utils'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, MedalIcon } from '../components/ui'
 import AthleteMeetCard from '../components/meets/AthleteMeetCard'
+import MedalStandings from '../components/MedalStandings'
 
 const GOLD = 'var(--asw-gold)'
 const SILVER = 'var(--asw-silver)'
@@ -284,90 +286,123 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
   )
 }
 
-/* Medal standings: top-3 podium cards + full table */
+/* Medal standings: shared Olympic-style component (podium cards + bands) */
 function MedalsPanel({ rows }) {
   if (!rows || rows.length === 0) {
     return <Empty label="Medals will appear here once finals are official." />
   }
-  const top3 = rows.slice(0, 3)
-  const podiumMeta = [
-    { ring: GOLD, label: '1st' },
-    { ring: SILVER, label: '2nd' },
-    { ring: BRONZE, label: '3rd' },
-  ]
-  const th = { fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '10px 12px', color: 'var(--color-neutral-600)' }
-  const td = { padding: '10px 12px', fontSize: 13.5, borderTop: '1px solid var(--color-neutral-200)' }
-  // Olympics-style vertical medal bands: saturated header cell, pale column body
-  const medalTh = (c, label, short) => (
-    <th style={{ ...th, textAlign: 'center', background: c, color: '#fff', width: 54 }}>
-      <span className="hide-mobile">{label}</span>
-      <span className="show-mobile-inline">{short}</span>
-    </th>
-  )
-  const band = (c) => `color-mix(in srgb, ${c} 14%, #fff)`
   return (
     <div className="live-fade-in">
-      {/* podium cards */}
-      <div className="live-podium" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 16 }}>
-        {top3.map((r, i) => (
-          <div key={r.swimmer__nationality__code || i} style={{
-            border: '1px solid var(--color-neutral-200)', borderTop: `3px solid ${podiumMeta[i].ring}`,
-            borderRadius: 12, padding: '12px 14px', background: '#fff', minWidth: 0,
-            boxShadow: '0 1px 4px rgba(12,35,64,.05)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-neutral-500)' }}>
-                {podiumMeta[i].label}
-              </span>
-              <Flag code={r.swimmer__nationality__code} />
-              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>{r.swimmer__nationality__code}</span>
+      <MedalStandings
+        rows={rows}
+        entityHeader="Country"
+        rowKey={(r, i) => r.swimmer__nationality__code || i}
+        renderPodiumChip={(r) => (
+          <>
+            <Flag code={r.swimmer__nationality__code} />
+            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>{r.swimmer__nationality__code}</span>
+          </>
+        )}
+        renderEntity={(r) => (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Flag code={r.swimmer__nationality__code} />
+            <span style={{ fontWeight: 800 }}>{r.swimmer__nationality__code}</span>
+            <span className="hide-mobile" style={{ color: 'var(--color-neutral-600)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
+          </span>
+        )}
+      />
+    </div>
+  )
+}
+
+/* Start lists / Reports: PDF documents uploaded during the meet.
+   Public sees download cards; admins can upload and delete. */
+function DocumentsPanel({ meetId, kind, docs, onChanged }) {
+  const { isAdmin } = useAuth()
+  const [file, setFile] = useState(null)
+  const [title, setTitle] = useState('')
+  const [day, setDay] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const label = kind === 'STARTLIST' ? 'start lists' : 'reports'
+  const rows = (docs || []).filter((d) => d.kind === kind)
+
+  const upload = async () => {
+    if (!file) return
+    setBusy(true); setErr('')
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('kind', kind)
+    if (title.trim()) fd.append('title', title.trim())
+    if (day) fd.append('day', day)
+    try {
+      await uploadMeetDocument(meetId, fd)
+      setFile(null); setTitle(''); setDay('')
+      onChanged()
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Upload failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="live-fade-in" style={{ display: 'grid', gap: 12 }}>
+      {rows.length === 0 && <Empty label={`No ${label} published yet.`} />}
+      {rows.length > 0 && (
+        <div style={{ border: '1px solid var(--color-neutral-200)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(12,35,64,.05)', background: '#fff' }}>
+          {rows.map((d, i) => (
+            <div key={d.id} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+              borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--color-neutral-200)',
+            }}>
+              <span style={{
+                width: 34, height: 34, borderRadius: 9, flex: 'none', display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800,
+                background: 'var(--color-accent-100)', color: 'var(--color-accent-800)',
+              }}>PDF</span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 800, fontFamily: 'var(--font-heading)', fontSize: 13.5, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {d.title}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-neutral-600)', fontWeight: 600, marginTop: 2 }}>
+                  {d.day ? `Day ${d.day} · ` : ''}{formatDate(d.uploaded_at)}
+                </div>
+              </div>
+              <a
+                href={mediaUrl(d.file)} target="_blank" rel="noreferrer"
+                style={{
+                  flex: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+                  padding: '7px 14px', borderRadius: 999, textDecoration: 'none',
+                  background: 'var(--color-accent-800)', color: '#fff',
+                }}
+              >
+                Open
+              </a>
+              {isAdmin && (
+                <button
+                  onClick={() => deleteMeetDocument(meetId, d.id).then(onChanged)}
+                  style={{ flex: 'none', border: '1px solid var(--color-neutral-300)', background: '#fff', color: 'var(--asw-slow)', borderRadius: 999, padding: '6px 12px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+                >
+                  Delete
+                </button>
+              )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1 }}>
-                {r.total}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--color-neutral-600)', fontWeight: 700, display: 'inline-flex', gap: 8 }}>
-                <span style={{ color: GOLD }}>{r.gold}G</span>
-                <span style={{ color: SILVER }}>{r.silver}S</span>
-                <span style={{ color: BRONZE }}>{r.bronze}B</span>
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-      {/* full table */}
-      <div style={{ border: '1px solid var(--color-neutral-200)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(12,35,64,.05)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
-          <thead style={{ background: 'var(--color-surface)' }}>
-            <tr>
-              <th style={{ ...th, textAlign: 'left', width: 40 }}>Rk</th>
-              <th style={{ ...th, textAlign: 'left' }}>Country</th>
-              {medalTh(GOLD, 'Gold', 'G')}
-              {medalTh(SILVER, 'Silver', 'S')}
-              {medalTh(BRONZE, 'Bronze', 'B')}
-              <th style={{ ...th, textAlign: 'center' }}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.swimmer__nationality__code || i} style={{ background: i < 3 ? 'color-mix(in srgb, var(--asw-gold) 6%, #fff)' : '#fff' }}>
-                <td className="asw-num" style={{ ...td, fontWeight: 800, color: i < 3 ? 'var(--color-accent-800)' : 'inherit' }}>{i + 1}</td>
-                <td style={td}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    <Flag code={r.swimmer__nationality__code} />
-                    <span style={{ fontWeight: 800 }}>{r.swimmer__nationality__code}</span>
-                    <span className="hide-mobile" style={{ color: 'var(--color-neutral-600)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
-                  </span>
-                </td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800, background: band(GOLD) }}>{r.gold}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 700, background: band(SILVER) }}>{r.silver}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 700, background: band(BRONZE) }}>{r.bronze}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800 }}>{r.total}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </div>
+      )}
+      {isAdmin && (
+        <div style={{ border: '1px dashed var(--color-neutral-300)', borderRadius: 14, padding: '12px 16px', background: 'var(--color-surface)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
+          <input className="input" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} style={{ flex: '1 1 140px', width: 'auto' }} />
+          <input className="input" placeholder="Day" type="number" min="1" value={day} onChange={(e) => setDay(e.target.value)} style={{ flex: '0 1 70px', width: 'auto' }} />
+          <button className="btn btn-primary" disabled={!file || busy} onClick={upload}>
+            {busy ? 'Uploading…' : `Upload ${kind === 'STARTLIST' ? 'start list' : 'report'}`}
+          </button>
+          {err && <span style={{ fontSize: 12, color: 'var(--asw-slow)', fontWeight: 700 }}>{err}</span>}
+        </div>
+      )}
     </div>
   )
 }
@@ -379,6 +414,7 @@ function LiveHub({ meet }) {
   const [live, setLive] = useState(null)
   const [stats, setStats] = useState(null)
   const [medals, setMedals] = useState(null)
+  const [docs, setDocs] = useState([])
   const [selectedDay, setSelectedDay] = useState(null)
   const [updatedAt, setUpdatedAt] = useState(null)
   const pollRef = useRef(null)
@@ -397,6 +433,7 @@ function LiveHub({ meet }) {
     getMeetLive(meet.id).then((r) => { setLive(r.data); setUpdatedAt(new Date()) }).catch(() => {})
     getChampionshipStats(meet.id).then((r) => setStats(r.data)).catch(() => {})
     getMedalSummary({ championship: meet.id }).then((r) => setMedals(r.data)).catch(() => setMedals([]))
+    getMeetDocuments(meet.id).then((r) => setDocs(Array.isArray(r.data) ? r.data : [])).catch(() => setDocs([]))
   }
 
   useEffect(() => {
@@ -436,7 +473,11 @@ function LiveHub({ meet }) {
     ['today', 'Today'],
     ['schedule', 'Schedule'],
     ['medals', 'Medals'],
+    ['startlist', 'Startlist'],
+    ['reports', 'Reports'],
   ]
+
+  const refreshDocs = () => getMeetDocuments(meet.id).then((r) => setDocs(Array.isArray(r.data) ? r.data : [])).catch(() => {})
 
   const weekday = (iso) => {
     const d = new Date(iso + 'T00:00:00')
@@ -516,12 +557,6 @@ function LiveHub({ meet }) {
                 Updated {updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · auto-refreshes
               </span>
             )}
-            <Link
-              to={`/meets/${meet.id}`}
-              style={{ whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 800, textDecoration: 'none', color: 'var(--color-accent)' }}
-            >
-              Full meet page ›
-            </Link>
           </div>
         </div>
       </div>
@@ -584,6 +619,10 @@ function LiveHub({ meet }) {
           )}
 
           {tab === 'medals' && <MedalsPanel rows={medals} />}
+
+          {tab === 'startlist' && <DocumentsPanel meetId={meet.id} kind="STARTLIST" docs={docs} onChanged={refreshDocs} />}
+
+          {tab === 'reports' && <DocumentsPanel meetId={meet.id} kind="REPORT" docs={docs} onChanged={refreshDocs} />}
         </>
       )}
     </div>

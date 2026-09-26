@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import Flag from './Flag'
 import { Empty } from './ui'
+import MedalStandings from './MedalStandings'
 import { formatNumber } from '../utils'
 
 const NAVY = 'var(--color-accent)'
@@ -317,34 +318,18 @@ export default function QuickStatsView({ data, busiest }) {
       <SectionBar n={2} title="Medals" />
       <div className="qs-cols-3">
         <Panel title="Medal Table – Top 5">
-          <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-neutral-600)' }}>
-                <th style={{ textAlign: 'left', paddingBottom: 6 }}>#</th>
-                <th style={{ textAlign: 'left', paddingBottom: 6 }}>Country</th>
-                {[GOLD, SILVER, BRONZE].map((c, i) => (
-                  <th key={i} style={{ paddingBottom: 6 }}><span style={{ display: 'inline-block', width: 11, height: 11, borderRadius: '50%', background: c }} /></th>
-                ))}
-                <th style={{ textAlign: 'right', paddingBottom: 6 }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {medals.table.slice(0, 5).map((r, i) => (
-                <tr key={r.code} className="hair-t">
-                  <td className="asw-num" style={{ padding: '7px 0', fontWeight: 700, color: 'var(--color-neutral-600)' }}>{i + 1}</td>
-                  <td style={{ padding: '7px 0' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 800 }}>
-                      <Flag code={r.code} name={r.name} /> {r.code}
-                    </span>
-                  </td>
-                  <td className="asw-num" style={{ textAlign: 'center', fontWeight: 700 }}>{r.gold}</td>
-                  <td className="asw-num" style={{ textAlign: 'center', fontWeight: 700 }}>{r.silver}</td>
-                  <td className="asw-num" style={{ textAlign: 'center', fontWeight: 700 }}>{r.bronze}</td>
-                  <td className="asw-num" style={{ textAlign: 'right', fontWeight: 800, color: NAVY_DARK }}>{r.total}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <MedalStandings
+            rows={medals.table}
+            maxRows={5}
+            showPodium={false}
+            entityHeader="Country"
+            rowKey={(r) => r.code}
+            renderEntity={(r) => (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 800 }}>
+                <Flag code={r.code} name={r.name} /> {r.code}
+              </span>
+            )}
+          />
           <div style={{ marginTop: 10, textAlign: 'center' }}>
             <Link to="/medals" style={{ fontSize: 12, fontWeight: 700 }}>View full medal table →</Link>
           </div>

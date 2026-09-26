@@ -361,6 +361,44 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         cleanup_orphan_teams()
         return response
 
+    @action(detail=True, methods=['get', 'post'], url_path='documents')
+    def documents(self, request, pk=None):
+        """Start lists and reports for the live hub. GET is public;
+        POST (admin) uploads a new document (file, kind, title, day?)."""
+        from .models import MeetDocument
+        from .serializers import MeetDocumentSerializer
+        championship = self.get_object()
+        if request.method == 'GET':
+            docs = championship.documents.all()
+            kind = request.query_params.get('kind')
+            if kind:
+                docs = docs.filter(kind=kind.upper())
+            return Response(MeetDocumentSerializer(docs, many=True, context={'request': request}).data)
+        f = request.FILES.get('file')
+        from core.uploads import validate_pdf
+        err = validate_pdf(f)
+        if err:
+            return Response({'error': err}, status=400)
+        kind = (request.data.get('kind') or '').upper()
+        if kind not in ('STARTLIST', 'REPORT'):
+            return Response({'error': 'kind must be STARTLIST or REPORT'}, status=400)
+        title = (request.data.get('title') or '').strip() or f.name
+        day = request.data.get('day') or None
+        doc = MeetDocument.objects.create(
+            championship=championship, kind=kind, title=title, file=f,
+            day=int(day) if day else None,
+        )
+        return Response(MeetDocumentSerializer(doc, context={'request': request}).data, status=201)
+
+    @action(detail=True, methods=['delete'], url_path='documents/(?P<doc_id>[0-9]+)')
+    def delete_document(self, request, pk=None, doc_id=None):
+        from .models import MeetDocument
+        championship = self.get_object()
+        deleted, _ = MeetDocument.objects.filter(championship=championship, id=doc_id).delete()
+        if not deleted:
+            return Response({'error': 'Document not found'}, status=404)
+        return Response(status=204)
+
     @action(detail=True, methods=['post'], url_path='upload-pdf')
     def upload_pdf(self, request, pk=None):
         championship = self.get_object()

@@ -24,7 +24,11 @@ class ArticleViewSet(viewsets.ModelViewSet):
         if status_param:
             qs = qs.filter(status=status_param)
         if country:
-            qs = qs.filter(country_id=country)
+            # Federation pages: an article belongs to a federation if it is
+            # tagged with the country directly OR written about one of that
+            # country's clubs.
+            from django.db.models import Q
+            qs = qs.filter(Q(country_id=country) | Q(team__country_id=country))
         team = self.request.query_params.get('team')
         if team:
             qs = qs.filter(team_id=team)

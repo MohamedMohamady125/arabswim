@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ClassificationCategory, Classification, SubClassification, Championship, Result
+from .models import ClassificationCategory, Classification, SubClassification, Championship, Result, MeetDocument
 
 admin.site.register(ClassificationCategory)
 admin.site.register(Classification)
@@ -10,6 +10,12 @@ class ChampionshipAdmin(admin.ModelAdmin):
     list_display = ['name', 'date', 'pool', 'country', 'location']
     list_filter = ['pool', 'country']
     search_fields = ['name']
+
+@admin.register(MeetDocument)
+class MeetDocumentAdmin(admin.ModelAdmin):
+    list_display = ['title', 'kind', 'championship', 'day', 'uploaded_at']
+    list_filter = ['kind']
+    search_fields = ['title', 'championship__name']
 
 @admin.register(Result)
 class ResultAdmin(admin.ModelAdmin):

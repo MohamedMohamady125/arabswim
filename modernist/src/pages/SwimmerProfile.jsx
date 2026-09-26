@@ -421,7 +421,9 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
   if (!selectedEvent) return <Empty label="Select an event to view full time history" />
   if (loadingHistory) return <Loading label="Loading history" />
 
-  const officialHistory = history.filter((x) => !x.is_hc)
+  // PB = fastest official swim; ignore HC rows and status rows (DNS/DQ/DNF
+  // are stored with time 0 — without the >0 guard they'd win the min()).
+  const officialHistory = history.filter((x) => !x.is_hc && x.time_centiseconds > 0)
   const bestCs = officialHistory.length ? Math.min(...officialHistory.map((x) => x.time_centiseconds)) : null
 
   return (
@@ -440,7 +442,6 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
             <tr>
               <th style={{ width: 30 }}>#</th>
               <th className="time">Time</th>
-              <th className="num">Age</th>
               <th className="hide-mobile">Round</th>
               <th className="hide-mobile">Team</th>
               <th>Meet</th>
@@ -450,7 +451,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
           </thead>
           <tbody>
             {history.map((h, i) => {
-              const isBest = h.time_centiseconds === bestCs
+              const isBest = bestCs != null && !h.is_hc && h.time_centiseconds === bestCs
               const splits = h.splits || []
               const showSplits = expandedSplits === h.id
               return (
@@ -484,11 +485,10 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                         )}
                         {!h.is_relay && isBest && <span className="tag tag-dark">PB</span>}
                         <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : 'inherit' }}>
-                          {h.is_relay && h.split_time ? h.split_time : h.time}
+                          {h.is_relay && h.split_time ? h.split_time : (h.time_centiseconds > 0 ? h.time : '—')}
                         </span>
                       </span>
                     </td>
-                    <td className="num asw-num">{h.age_at_competition || '—'}</td>
                     <td className="hide-mobile">
                       {h.round_type ? (
                         <span className={`tag ${h.round_type === 'Finals' ? 'tag-accent' : 'tag-neutral'}`}>{h.round_type}</span>
@@ -517,7 +517,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                     ) : null
                     return (
                       <tr>
-                        <td colSpan={8} style={{ background: 'var(--color-neutral-100)', padding: '14px 16px' }}>
+                        <td colSpan={7} style={{ background: 'var(--color-neutral-100)', padding: '14px 16px' }}>
                           <SplitsBreakdown splits={splits} eventName={selectedEvent.event_name}
                             roundType={h.round_type} totalCs={h.time_centiseconds}
                             compareSplits={sibling?.splits} compareRoundType={sibling?.round_type}

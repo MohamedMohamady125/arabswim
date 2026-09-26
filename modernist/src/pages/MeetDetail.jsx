@@ -18,6 +18,7 @@ import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
 import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 import { Loading, Empty, Seg, MedalIcon } from '../components/ui'
+import MedalStandings from '../components/MedalStandings'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES } from '../utils'
 import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakdown'
@@ -1352,56 +1353,54 @@ function MedalsTab({ meetId, isNational }) {
             {tallyRows.length === 0 ? (
               <Empty label="No medals recorded" />
             ) : (
-              <div className="table-scroll" style={{ marginBottom: 28 }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 30 }}>#</th>
-                      <th>{activeScope === 'country' ? 'Country' : activeScope === 'club' ? 'Club' : 'Swimmer'}</th>
-                      <th className="num">G</th>
-                      <th className="num">S</th>
-                      <th className="num">B</th>
-                      <th className="num">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tallyRows.map((row, i) => (
-                      <tr
-                        key={i}
-                        style={{ cursor: activeScope === 'swimmer' ? 'pointer' : 'default' }}
-                        onClick={() => activeScope === 'swimmer' && row.swimmer__id && navigate(`/swimmers/${row.swimmer__id}`)}
-                      >
-                        <td className="asw-num">{i + 1}</td>
-                        <td>
-                          {activeScope === 'country' && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
-                              {row.swimmer__nationality__name}
-                            </div>
-                          )}
-                          {activeScope === 'club' && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                              <ClubLogo logo={row.team_logo} name={row.result__team} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {row.result__team || '—'}
-                              </span>
-                            </div>
-                          )}
-                          {activeScope === 'swimmer' && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
-                              {row.swimmer__name}
-                            </div>
-                          )}
-                        </td>
-                        <td className="num asw-num" style={{ fontWeight: 800 }}>{row.gold || 0}</td>
-                        <td className="num asw-num">{row.silver || 0}</td>
-                        <td className="num asw-num">{row.bronze || 0}</td>
-                        <td className="num asw-num">{row.total ?? ((row.gold || 0) + (row.silver || 0) + (row.bronze || 0))}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ marginBottom: 28 }}>
+                <MedalStandings
+                  rows={tallyRows}
+                  entityHeader={activeScope === 'country' ? 'Country' : activeScope === 'club' ? 'Club' : 'Swimmer'}
+                  rowKey={(row, i) => row.swimmer__id || row.team_id || row.swimmer__nationality__code || i}
+                  onRowClick={activeScope === 'swimmer'
+                    ? (row) => row.swimmer__id && navigate(`/swimmers/${row.swimmer__id}`)
+                    : undefined}
+                  renderPodiumChip={(row) => (
+                    activeScope === 'club' ? (
+                      <>
+                        <ClubLogo logo={row.team_logo} name={row.result__team} size={20} />
+                        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.result__team || '—'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
+                        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {activeScope === 'swimmer' ? row.swimmer__name : row.swimmer__nationality__code}
+                        </span>
+                      </>
+                    )
+                  )}
+                  renderEntity={(row) => (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      {activeScope === 'country' && (
+                        <>
+                          <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
+                          <span style={{ fontWeight: 700 }}>{row.swimmer__nationality__name}</span>
+                        </>
+                      )}
+                      {activeScope === 'club' && (
+                        <>
+                          <ClubLogo logo={row.team_logo} name={row.result__team} />
+                          <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {row.result__team || '—'}
+                          </span>
+                        </>
+                      )}
+                      {activeScope === 'swimmer' && (
+                        <>
+                          <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
+                          <span style={{ fontWeight: 700 }}>{row.swimmer__name}</span>
+                        </>
+                      )}
+                    </span>
+                  )}
+                />
               </div>
             )}
           </>

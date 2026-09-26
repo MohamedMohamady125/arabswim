@@ -212,8 +212,8 @@ export default function News() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 28, alignItems: 'start' }}>
               {lead.cover_image && (
                 <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', height: 380, overflow: 'hidden', background: '#0b2948' }}>
-                  <img src={mediaUrl(lead.cover_image)} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(24px)', transform: 'scale(1.15)', opacity: 0.5 }} />
-                  <img src={mediaUrl(lead.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <img className="news-cover-blur" src={mediaUrl(lead.cover_image)} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(24px)', transform: 'scale(1.15)', opacity: 0.5 }} />
+                  <img className="news-cover-img" src={mediaUrl(lead.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
               )}
               <div>
@@ -259,8 +259,8 @@ export default function News() {
                   <Link key={a.id} to={`/news/${a.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
                     {a.cover_image ? (
                       <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', height: 180, overflow: 'hidden', background: '#0b2948' }}>
-                        <img src={mediaUrl(a.cover_image)} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(20px)', transform: 'scale(1.15)', opacity: 0.5 }} />
-                        <img src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
+                        <img className="news-cover-blur" src={mediaUrl(a.cover_image)} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(20px)', transform: 'scale(1.15)', opacity: 0.5 }} />
+                        <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
                       </div>
                     ) : (
                       <div style={{ width: '100%', height: 180, background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

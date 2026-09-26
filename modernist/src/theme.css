@@ -361,6 +361,11 @@ figure { margin: 0; }
 @media (max-width: 900px) {
   .hide-mobile { display: none !important; }
   .show-mobile-inline { display: inline !important; }
+  /* news covers: the desktop blur-letterbox (blurred backdrop + contained
+     photo) leaves ugly soft edges on narrow phone cards — fill the frame
+     with the photo itself instead */
+  .news-cover-blur { display: none !important; }
+  .news-cover-img { object-fit: cover !important; }
   /* generic grid collapses for inline-styled desktop grids */
   .m-col1 { grid-template-columns: 1fr !important; }
   .m-col2 { grid-template-columns: repeat(2, 1fr) !important; }

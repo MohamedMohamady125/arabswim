@@ -474,6 +474,7 @@ class CountryViewSet(viewsets.ModelViewSet):
         top100 = list(
             Result.objects.filter(
                 fina_points__isnull=False, swimmer__is_relay_team=False,
+                is_hc=False, time_centiseconds__gt=0,
                 swimmer__nationality__region__in=['ARAB', 'GCC'])
             .values('swimmer_id')
             .annotate(best=Max('fina_points'))
@@ -518,7 +519,8 @@ class CountryViewSet(viewsets.ModelViewSet):
         # Top swimmers by best FINA (best single swim each)
         top_swimmers = []
         seen = set()
-        fina_qs = (results_qs.filter(fina_points__isnull=False, swimmer__is_relay_team=False)
+        fina_qs = (results_qs.filter(fina_points__isnull=False, swimmer__is_relay_team=False,
+                                     is_hc=False, time_centiseconds__gt=0)
                    .select_related('swimmer', 'event', 'championship')
                    .order_by('-fina_points'))
         for r in fina_qs[:400]:
@@ -536,7 +538,8 @@ class CountryViewSet(viewsets.ModelViewSet):
                 break
 
         # National best time per event / sex / pool (individual events)
-        groups = (results_qs.filter(event__is_relay=False, time_centiseconds__gt=0)
+        groups = (results_qs.filter(event__is_relay=False, time_centiseconds__gt=0,
+                                    is_hc=False)
                   .values('event_id', 'swimmer__sex', 'championship__pool')
                   .annotate(best=Min('time_centiseconds')))
         best_lookup = {(g['event_id'], g['swimmer__sex'], g['championship__pool']): g['best']
@@ -705,6 +708,7 @@ class CountryViewSet(viewsets.ModelViewSet):
         cutoff = timezone.now().date() - timedelta(days=180)
         rank_base = Result.objects.filter(
             fina_points__isnull=False, swimmer__is_relay_team=False,
+            is_hc=False, time_centiseconds__gt=0,
             swimmer__nationality__region__in=['ARAB', 'GCC'],
             championship__date__isnull=False)
         now_rows = list(rank_base.values('swimmer_id')
@@ -731,25 +735,42 @@ class CountryViewSet(viewsets.ModelViewSet):
             elif best_new is None or -nr > best_new[0]:
                 best_new = (-nr, sid)
         pick = None
+        is_hot = False
         if best_mover and best_mover[0] > 0:
             pick, delta, is_new = best_mover[2], best_mover[0], False
         elif best_new:
             pick, delta, is_new = best_new[1], None, True
-        elif best_mover:  # nobody climbed and nobody is new — biggest drop
-            pick, delta, is_new = best_mover[2], best_mover[0], False
+        else:
+            # Nobody climbed and nobody is new: never present a dropper as
+            # "trending". Fall back to the federation's best performer of
+            # the last 6 months (highest-FINA recent swim).
+            hot = (rank_base.filter(
+                swimmer__nationality=country,
+                championship__date__gte=cutoff)
+                .order_by('-fina_points')
+                .values_list('swimmer_id', flat=True).first())
+            if hot and hot in now_rank:
+                pick, delta, is_new, is_hot = hot, None, False, True
         if pick:
             sw = Swimmer.objects.filter(id=pick).first()
-            recent = (Result.objects.filter(
+            # Best recent swim; fall back to the all-time best so the card
+            # never renders with empty event/time/points.
+            recent_base = Result.objects.filter(
                 swimmer_id=pick, fina_points__isnull=False,
-                championship__date__gte=cutoff)
-                .select_related('event', 'championship')
-                .order_by('-fina_points').first())
+                is_hc=False, time_centiseconds__gt=0)
+            recent = (recent_base.filter(championship__date__gte=cutoff)
+                      .select_related('event', 'championship')
+                      .order_by('-fina_points').first())
+            if recent is None:
+                recent = (recent_base
+                          .select_related('event', 'championship')
+                          .order_by('-fina_points').first())
             trending = {
                 'id': pick, 'name': sw.name, 'sex': sw.sex,
                 'photo': sw.photo.url if sw.photo else None,
                 'rank': now_rank[pick],
                 'prev_rank': prev_rank.get(pick),
-                'delta': delta, 'is_new': is_new,
+                'delta': delta, 'is_new': is_new, 'is_hot': is_hot,
                 'best_event': recent.event.name if recent else None,
                 'best_time': _fmt_cs(recent.time_centiseconds) if recent else None,
                 'fina': recent.fina_points if recent else None,

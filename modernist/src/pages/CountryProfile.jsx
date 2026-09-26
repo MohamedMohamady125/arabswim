@@ -1999,7 +1999,7 @@ export default function CountryProfile() {
                       </div>
                     )
                   }
-                  const up = t.is_new || (t.delta ?? 0) > 0
+                  const up = t.is_new || t.is_hot || (t.delta ?? 0) > 0
                   const col = up ? '#0d7a52' : '#a8402f'
                   return (
                     <div style={hCard}>
@@ -2011,13 +2011,13 @@ export default function CountryProfile() {
                       <div style={hBody}>
                         <div style={hTitle}>Trending<br />Swimmer</div>
                         <div style={{ ...hBig, color: col, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {t.is_new ? 'NEW' : `${t.delta > 0 ? '+' : ''}${t.delta}`}
-                          {!t.is_new && (
+                          {t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}
+                          {!t.is_new && !t.is_hot && (
                             <span style={{ fontSize: 17, lineHeight: 1 }}>{up ? '▲' : '▼'}</span>
                           )}
                         </div>
                         <div style={hSub}>
-                          Arab ranking #{t.rank}{t.is_new ? ' · new entry' : ` · was #${t.prev_rank}`}
+                          Arab ranking #{t.rank}{t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}
                         </div>
                         <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>
                           <SwimmerLink id={t.id} name={t.name} />

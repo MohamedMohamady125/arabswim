@@ -297,14 +297,14 @@ function MedalsPanel({ rows }) {
   ]
   const th = { fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '10px 12px', color: 'var(--color-neutral-600)' }
   const td = { padding: '10px 12px', fontSize: 13.5, borderTop: '1px solid var(--color-neutral-200)' }
-  const medalTh = (c, label) => (
-    <th style={{ ...th, textAlign: 'center' }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-        <span style={{ width: 9, height: 9, borderRadius: '50%', background: c, display: 'inline-block' }} />
-        <span className="hide-mobile">{label}</span>
-      </span>
+  // Olympics-style vertical medal bands: saturated header cell, pale column body
+  const medalTh = (c, label, short) => (
+    <th style={{ ...th, textAlign: 'center', background: c, color: '#fff', width: 54 }}>
+      <span className="hide-mobile">{label}</span>
+      <span className="show-mobile-inline">{short}</span>
     </th>
   )
+  const band = (c) => `color-mix(in srgb, ${c} 14%, #fff)`
   return (
     <div className="live-fade-in">
       {/* podium cards */}
@@ -342,9 +342,9 @@ function MedalsPanel({ rows }) {
             <tr>
               <th style={{ ...th, textAlign: 'left', width: 40 }}>Rk</th>
               <th style={{ ...th, textAlign: 'left' }}>Country</th>
-              {medalTh(GOLD, 'Gold')}
-              {medalTh(SILVER, 'Silver')}
-              {medalTh(BRONZE, 'Bronze')}
+              {medalTh(GOLD, 'Gold', 'G')}
+              {medalTh(SILVER, 'Silver', 'S')}
+              {medalTh(BRONZE, 'Bronze', 'B')}
               <th style={{ ...th, textAlign: 'center' }}>Total</th>
             </tr>
           </thead>
@@ -359,9 +359,9 @@ function MedalsPanel({ rows }) {
                     <span className="hide-mobile" style={{ color: 'var(--color-neutral-600)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
                   </span>
                 </td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800 }}>{r.gold}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center' }}>{r.silver}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center' }}>{r.bronze}</td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800, background: band(GOLD) }}>{r.gold}</td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 700, background: band(SILVER) }}>{r.silver}</td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 700, background: band(BRONZE) }}>{r.bronze}</td>
                 <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800 }}>{r.total}</td>
               </tr>
             ))}

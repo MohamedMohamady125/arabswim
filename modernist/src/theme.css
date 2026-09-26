@@ -355,9 +355,12 @@ figure { margin: 0; }
 .swimmer-photo { width: 148px; align-self: stretch; min-height: 148px; max-height: 210px; font-size: 42px; }
 .swimmer-head-info { min-width: 260px; }
 
+.show-mobile-inline { display: none; }
+
 /* — mobile — */
 @media (max-width: 900px) {
   .hide-mobile { display: none !important; }
+  .show-mobile-inline { display: inline !important; }
   /* generic grid collapses for inline-styled desktop grids */
   .m-col1 { grid-template-columns: 1fr !important; }
   .m-col2 { grid-template-columns: repeat(2, 1fr) !important; }

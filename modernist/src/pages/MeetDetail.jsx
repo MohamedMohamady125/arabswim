@@ -1195,23 +1195,28 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
 
 // Special card with photo for the top male and top female athlete of a
 // tab (PBs, Top performances, Most improved, Most decorated).
-function FeaturedCards({ picks }) {
+function FeaturedCards({ picks, sideBySide = false }) {
   const navigate = useNavigate()
   const shown = picks.filter(Boolean)
   if (shown.length === 0) return null
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, marginBottom: 22, maxWidth: 680 }}>
+    <div style={{
+      display: 'grid',
+      // sideBySide keeps the two cards on one row even on phone widths
+      gridTemplateColumns: sideBySide ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(250px, 1fr))',
+      gap: 12, marginBottom: 22, maxWidth: 680,
+    }}>
       {shown.map((p) => (
         <div
           key={p.tag}
           onClick={p.swimmer_id ? () => navigate(`/swimmers/${p.swimmer_id}`) : undefined}
           style={{
-            border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
+            border: '1px solid var(--color-divider)', background: sideBySide ? '#fff' : 'var(--color-surface)',
             borderTop: '3px solid var(--asw-gold)', display: 'flex', gap: 12,
             cursor: p.swimmer_id ? 'pointer' : 'default', overflow: 'hidden',
           }}
         >
-          <div className="grayscale" style={{ width: 84, alignSelf: 'stretch', minHeight: 96, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, overflow: 'hidden' }}>
+          <div className="grayscale" style={{ width: sideBySide ? 'clamp(52px, 18vw, 84px)' : 84, alignSelf: 'stretch', minHeight: 96, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, overflow: 'hidden' }}>
             {p.photo
               ? <img src={mediaUrl(p.photo)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : (p.name || '?').charAt(0)}
@@ -1576,7 +1581,7 @@ function TopPerformancesTab({ stats }) {
 
   return (
     <div className="pad">
-      <FeaturedCards picks={[perfPick('M', "Men's"), perfPick('F', "Women's")]} />
+      <FeaturedCards picks={[perfPick('M', "Men's"), perfPick('F', "Women's")]} sideBySide />
       {(
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>

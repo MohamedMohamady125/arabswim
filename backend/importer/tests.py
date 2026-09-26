@@ -3832,3 +3832,56 @@ class TieImportTests(TestCase):
             self.assertEqual(teams, {'Kazakhstan', 'Thailand'})
         finally:
             os.unlink(tmp.name)
+
+
+class OmegaStatusRowTests(SimpleTestCase):
+    """DNS/DSQ/DNF rows in Omega result books must parse.
+
+    They carry no time (or a struck-out one), so the anchor-based line
+    parser used to return None and the swimmers silently vanished from
+    imported meets (Tokyo 2021 Olympic book regression).
+    """
+
+    def _parse(self, line):
+        from importer.parsers.omega_parser import _parse_individual_line
+        return _parse_individual_line(line)
+
+    def test_dns_row_with_dob(self):
+        self.assertEqual(self._parse('2 5 ARAKJI Nada QAT 30 OCT 1994 DNS'),
+                         ('DNS', 0, 'ARAKJI Nada', 1994, 'QAT', ''))
+
+    def test_dsq_row_with_dob_maps_to_dq(self):
+        self.assertEqual(
+            self._parse('1 3 NDOYE-BROUARD Yohann FRA 29 NOV 2000 DSQ'),
+            ('DQ', 0, 'NDOYE-BROUARD Yohann', 2000, 'FRA', ''))
+
+    def test_status_row_without_dob_anchors_on_status_word(self):
+        self.assertEqual(self._parse('3 4 TOURE Mariama GUI DNS'),
+                         ('DNS', 0, 'TOURE Mariama', 0, 'GUI', ''))
+
+    def test_dnf_row(self):
+        self.assertEqual(self._parse('7 1 DOE John USA 01 JAN 2000 DNF'),
+                         ('DNF', 0, 'DOE John', 2000, 'USA', ''))
+
+    def test_timed_row_with_trailing_dsq_is_dq_with_no_time(self):
+        # Some books print the swum time struck out next to DSQ
+        self.assertEqual(
+            self._parse('3 5 QIN Haiyang CHN 17 JAN 1999 2:08.51 DSQ'),
+            ('DQ', 0, 'QIN Haiyang', 1999, 'CHN', ''))
+
+    def test_normal_timed_row_unaffected(self):
+        self.assertEqual(
+            self._parse('1 4 6 DRESSEL Caeleb USA 16 AUG 1996 21.32'),
+            ('OK', 1, 'DRESSEL Caeleb', 1996, 'USA', '21.32'))
+
+    def test_relay_status_lines(self):
+        from importer.parsers.omega_parser import RELAY_TEAM_STATUS, RELAY_TEAM
+        m = RELAY_TEAM_STATUS.match('1 1 POL - Poland DSQ')
+        self.assertIsNotNone(m)
+        self.assertEqual((m.group(1), m.group(2)), ('POL', 'DSQ'))
+        m2 = RELAY_TEAM_STATUS.match('2 8 HKG - Hong Kong, China DNS')
+        self.assertIsNotNone(m2)
+        self.assertEqual((m2.group(1), m2.group(2)), ('HKG', 'DNS'))
+        # timed relay rows must not be swallowed by the status regex
+        self.assertIsNone(RELAY_TEAM_STATUS.match('1 5 KUW - Kuwait 7:52.94'))
+        self.assertIsNotNone(RELAY_TEAM.match('1 5 KUW - Kuwait 7:52.94'))

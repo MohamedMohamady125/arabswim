@@ -88,6 +88,12 @@ _SUMMARY_INLINE = re.compile(r"(?:Men|Women|Mixed)'?s\s+\d")
 _LEADING_RANK = re.compile(r'^=?(\d{1,3})$')
 _HC_TOKEN = re.compile(r'^(?:H\.?C\.?|EXH)$', re.IGNORECASE)
 _TIMEISH = re.compile(r'^(?:\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})$')
+# Non-finisher markers: DNS/SCR/WDR (did not start), DSQ/DQ, DNF.  These
+# rows carry no time (or a struck-out one for DSQ) and were silently
+# dropped before, so DQ/DNS swimmers never reached the website.
+_STATUS_TOKEN = re.compile(r'^(?:DNS|DSQ|DQ|DNF|SCR|WDR)$')
+_STATUS_MAP = {'DSQ': 'DQ', 'DQ': 'DQ', 'DNF': 'DNF',
+               'DNS': 'DNS', 'SCR': 'DNS', 'WDR': 'DNS'}
 
 
 def _parse_individual_line(stripped):
@@ -136,7 +142,11 @@ def _parse_individual_line(stripped):
     if noc_idx is None:
         t_idx = next((j for j in range(i, len(toks)) if _TIMEISH.match(toks[j])), None)
         if t_idx is None:
-            return None
+            # No time on the row: DNS/DSQ/DNF rows anchor on the status word
+            t_idx = next((j for j in range(i + 1, len(toks))
+                          if _STATUS_TOKEN.match(toks[j])), None)
+            if t_idx is None:
+                return None
         noc_idx = next((j for j in range(t_idx - 1, i - 1, -1)
                         if re.fullmatch(r'[A-Z]{3}', toks[j])), None)
         after_start = t_idx
@@ -148,7 +158,12 @@ def _parse_individual_line(stripped):
     name_raw = ' '.join(toks[i:noc_idx]).strip()
     if not name_raw:
         return None
-    times = [t for t in toks[after_start:] if _TIMEISH.match(t)]
+    tail = toks[after_start:]
+    st = next((t for t in tail if _STATUS_TOKEN.match(t)), None)
+    if st:
+        # DNS/DSQ/DNF row — no valid time, rank 0 (detector convention)
+        return _STATUS_MAP[st], 0, name_raw, birth_year, noc, ''
+    times = [t for t in tail if _TIMEISH.match(t)]
     if not times:
         return None
     time_text = max(times, key=parse_time_to_centiseconds)
@@ -220,6 +235,14 @@ RELAY_TEAM = re.compile(
     r'([A-Z]{3})\s+'              # NOC code
     r"[\-–][A-Za-z '.]+\s+"      # "-CountryName" or "– Country"
     r'(\d{1,2}:?\d{2}\.\d{2})'   # time
+)
+# Relay team that never finished: "1 1 POL - Poland DSQ",
+# "2 8 HKG - Hong Kong, China DNS" — no time, status word at line end.
+RELAY_TEAM_STATUS = re.compile(
+    r'^\s*(?:\d{1,2}\s+){1,3}'     # rank/heat/lane numbers
+    r'([A-Z]{3})\s*'               # NOC code
+    r"[\-–][A-Za-z ',.]+\s+"      # "- Country, With Commas"
+    r'(DNS|DSQ|DQ|DNF|SCR|WDR)\s*$'
 )
 # HC relay team: "HC KUW -Kuwait 7:52.94"
 HC_RELAY_TEAM = re.compile(
@@ -592,11 +615,21 @@ def parse(text):
                 if hc_rm:
                     relay_status = 'HC'
                     rm = hc_rm
+            if not rm:
+                st_rm = RELAY_TEAM_STATUS.match(stripped)
+                if st_rm:
+                    relay_status = _STATUS_MAP[st_rm.group(2)]
+                    rm = st_rm
             if rm:
                 if relay_status == 'HC':
                     rank = 0
                     noc = rm.group(1)
                     time_text = rm.group(2)
+                elif relay_status != 'OK':
+                    # DNS/DSQ team — no time, rank 0
+                    rank = 0
+                    noc = rm.group(1)
+                    time_text = ''
                 else:
                     rank = int(rm.group(1))
                     noc = rm.group(2)

@@ -642,10 +642,11 @@ a.asw-partner-pill:hover {
 .live-row {
   transition: background .12s ease;
 }
-a.live-row-link { text-decoration: none; color: inherit; display: block; }
-a.live-row-link .live-row:hover { background: var(--color-accent-100); }
-a.live-row-link .live-row:hover .live-chevron { transform: translateX(3px); }
+.live-row-link { text-decoration: none; color: inherit; display: block; }
+.live-row-link .live-row:hover { background: var(--color-accent-100); }
 .live-chevron { transition: transform .12s ease; }
+.live-result-row { transition: background .12s ease; }
+.live-result-row:hover { background: var(--color-accent-100) !important; }
 .live-daychip {
   transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
 }

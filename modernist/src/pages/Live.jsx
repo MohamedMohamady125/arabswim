@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { getLiveMeets, getMeetProgram, getMeetLive, getChampionshipStats } from '../api/championships'
+import { getLiveMeets, getMeetProgram, getMeetLive, getChampionshipStats, getChampionshipResults } from '../api/championships'
 import { getMedalSummary } from '../api/medals'
 import { formatDateRange, formatNumber } from '../utils'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty } from '../components/ui'
+import { PageHead, Loading, Empty, MedalIcon } from '../components/ui'
+import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 
 const GOLD = 'var(--asw-gold)'
 const SILVER = 'var(--asw-silver)'
@@ -53,8 +54,89 @@ const GENDER_STYLE = {
   X: { label: 'Mixed', color: 'var(--color-neutral-700)', bg: 'var(--color-neutral-200)' },
 }
 
-/* One program entry — order no, event name, gender, chips */
-function ProgramRow({ item, meetId, hasResults, last }) {
+/* Inline result list inside an expanded program row — app style, no navigation */
+function InlineResults({ meetId, meet, item }) {
+  const [rows, setRows] = useState(null)
+  const [athlete, setAthlete] = useState(null)
+  const isFinal = item.session === 'FINALS'
+
+  useEffect(() => {
+    const params = { event: item.event, gender: item.gender }
+    if (item.session === 'HEATS') params.round_type = 'Prelims'
+    getChampionshipResults(meetId, params)
+      .then((res) => setRows(Array.isArray(res.data) ? res.data : res.data?.results || []))
+      .catch(() => setRows([]))
+  }, [meetId, item.event, item.gender, item.session])
+
+  if (rows === null) return <div style={{ padding: '6px 0' }}><Loading label="Loading results" /></div>
+  if (rows.length === 0) {
+    return <div style={{ padding: '12px 16px', fontSize: 12.5, color: 'var(--color-neutral-600)' }}>No results uploaded yet.</div>
+  }
+  return (
+    <div className="live-fade-in" style={{ background: 'var(--color-surface)', borderTop: '1px solid var(--color-neutral-200)' }}>
+      {athlete && (
+        <AthleteMeetCard swimmer={athlete} meet={{ id: meetId, name: meet?.name }} onClose={() => setAthlete(null)} />
+      )}
+      <div style={{ maxHeight: 430, overflowY: 'auto' }}>
+        {rows.map((r, i) => {
+          const clickable = r.swimmer_detail && !r.swimmer_detail.is_relay_team
+          return (
+            <div
+              key={r.id}
+              role={clickable ? 'button' : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              onClick={() => clickable && setAthlete(r.swimmer_detail)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && clickable) setAthlete(r.swimmer_detail) }}
+              className={clickable ? 'live-result-row' : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px',
+                borderBottom: '1px solid var(--color-neutral-200)', background: '#fff',
+                cursor: clickable ? 'pointer' : 'default',
+              }}
+            >
+              <span style={{ width: 24, flex: 'none', display: 'flex', justifyContent: 'center' }}>
+                {r.is_hc ? (
+                  <span style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
+                ) : isFinal && i <= 2 ? (
+                  <MedalIcon type={['GOLD', 'SILVER', 'BRONZE'][i]} size={18} style={{ display: 'block' }} />
+                ) : (
+                  <span className="asw-num" style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--color-neutral-500)' }}>
+                    {r.original_rank || i + 1}
+                  </span>
+                )}
+              </span>
+              <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
+              <span style={{
+                flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {r.swimmer_detail?.name}
+              </span>
+              <span className="asw-time" style={{ fontWeight: 800, fontSize: 13.5, flex: 'none' }}>
+                {r.formatted_time}
+              </span>
+              <span className="asw-num hide-mobile" style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-500)', width: 34, textAlign: 'right', flex: 'none' }}>
+                {r.fina_points || '—'}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px' }}>
+        <Link
+          to={`/meets/${meetId}?tab=results&event=${item.event}&gender=${item.gender}&day=${item.day}&session=${item.session}`}
+          style={{ fontSize: 11.5, fontWeight: 800, textDecoration: 'none', color: 'var(--color-accent)' }}
+        >
+          Heats, splits & more ›
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+/* One program entry — order no, event name, gender, chips. Official rows expand in place. */
+function ProgramRow({ item, meetId, meet, hasResults, last }) {
+  const [open, setOpen] = useState(false)
   const isFinal = item.session === 'FINALS'
   const g = GENDER_STYLE[item.gender] || GENDER_STYLE.X
   const inner = (
@@ -105,7 +187,8 @@ function ProgramRow({ item, meetId, hasResults, last }) {
           fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', padding: '4px 11px', borderRadius: 999,
           background: 'var(--asw-fast)', color: '#fff',
         }}>
-          OFFICIAL <span className="live-chevron">›</span>
+          OFFICIAL
+          <span className="live-chevron" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease' }}>›</span>
         </span>
       ) : (
         <span style={{
@@ -119,17 +202,24 @@ function ProgramRow({ item, meetId, hasResults, last }) {
   )
   if (!hasResults) return inner
   return (
-    <Link
-      className="live-row-link"
-      to={`/meets/${meetId}?tab=results&event=${item.event}&gender=${item.gender}&day=${item.day}&session=${item.session}`}
-    >
-      {inner}
-    </Link>
+    <div>
+      <div
+        className="live-row-link"
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => { if (e.key === 'Enter') setOpen((v) => !v) }}
+        style={{ cursor: 'pointer' }}
+      >
+        {inner}
+      </div>
+      {open && <InlineResults meetId={meetId} meet={meet} item={item} />}
+    </div>
   )
 }
 
 /* Program for one day, grouped Morning / Evening as session cards */
-function DayProgram({ day, meetId, resultKeys }) {
+function DayProgram({ day, meetId, meet, resultKeys }) {
   if (!day || (day.items || []).length === 0) {
     return <Empty label="No program published for this day yet." />
   }
@@ -178,6 +268,7 @@ function DayProgram({ day, meetId, resultKeys }) {
               key={item.id}
               item={item}
               meetId={meetId}
+              meet={meet}
               hasResults={resultKeys.has(`${item.event}|${item.gender}`)}
               last={i === items.length - 1}
             />
@@ -433,7 +524,7 @@ function LiveHub({ meet }) {
       {loading ? <Loading label="Loading live data" /> : (
         <>
           {tab === 'today' && (
-            <DayProgram day={todayDay} meetId={meet.id} resultKeys={resultKeys} />
+            <DayProgram day={todayDay} meetId={meet.id} meet={meet} resultKeys={resultKeys} />
           )}
 
           {tab === 'schedule' && (
@@ -483,7 +574,7 @@ function LiveHub({ meet }) {
                   )
                 })}
               </div>
-              <DayProgram day={scheduleDay} meetId={meet.id} resultKeys={resultKeys} />
+              <DayProgram day={scheduleDay} meetId={meet.id} meet={meet} resultKeys={resultKeys} />
             </div>
           )}
 

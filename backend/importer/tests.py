@@ -3714,3 +3714,121 @@ class InferredNationalityChangeTests(SimpleTestCase):
         result_data = {'nationality_code': 'HUN', 'nationality_inferred': True}
         self.assertFalse(
             _maybe_record_nationality_change(swimmer, result_data, champ))
+
+
+class TieImportTests(TestCase):
+    """Ties (two swimmers/teams sharing the exact same time and rank) must
+    never lose a row — neither on first import nor on a live re-import
+    where the tie appears in an updated file."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Country
+        Country.objects.create(name='Egypt', code='EGY')
+        Country.objects.create(name='Tunisia', code='TUN')
+        Country.objects.create(name='Kazakhstan', code='KAZ')
+        Country.objects.create(name='Thailand', code='THA')
+
+    def _individual_file(self, rows):
+        import tempfile
+        import pandas as pd
+        df = pd.DataFrame({
+            'Events': ['50 M Breaststroke'] * len(rows),
+            'Round': ['Final'] * len(rows),
+            'Ranking': [r[0] for r in rows],
+            'Swimmer Name': [r[1] for r in rows],
+            'Time': [r[2] for r in rows],
+            'Nationality': [r[3] for r in rows],
+            'Gender': ['Male'] * len(rows),
+            'Meet Name': ['Tie Games'] * len(rows),
+            'Date': ['26/09/2026'] * len(rows),
+        })
+        tmp = tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False)
+        with pd.ExcelWriter(tmp.name) as xl:
+            df.to_excel(xl, sheet_name='Men', index=False)
+        return tmp.name
+
+    def test_individual_tie_both_imported(self):
+        import os
+        from importer.services import parse_file, confirm_import
+        f = self._individual_file([
+            (1, 'Adam FIRST', '29.81', 'EGY'),
+            (1, 'Badr SECOND', '29.81', 'TUN'),
+            (3, 'Cid THIRD', '29.97', 'EGY'),
+        ])
+        try:
+            prev = parse_file(file_path=f)
+            if isinstance(prev, list):
+                prev = prev[0]
+            res = confirm_import(prev, {})
+            rows = Result.objects.filter(championship_id=res['championship_id'])
+            names = set(rows.values_list('swimmer__name', flat=True))
+            self.assertEqual(rows.count(), 3, names)
+            self.assertIn('Badr SECOND', names)
+        finally:
+            os.unlink(f)
+
+    def test_reimport_adds_newly_tied_swimmer(self):
+        """Live-results flow: v1 imported, then v2 where a NEW swimmer ties
+        an existing swimmer's exact time — the newcomer must be added."""
+        import os
+        from importer.services import parse_file, confirm_import
+        f1 = self._individual_file([
+            (1, 'Adam FIRST', '29.81', 'EGY'),
+        ])
+        f2 = self._individual_file([
+            (1, 'Adam FIRST', '29.81', 'EGY'),
+            (1, 'Badr SECOND', '29.81', 'TUN'),
+            (3, 'Cid THIRD', '29.97', 'EGY'),
+        ])
+        try:
+            prev1 = parse_file(file_path=f1)
+            if isinstance(prev1, list):
+                prev1 = prev1[0]
+            champ_id = confirm_import(prev1, {})['championship_id']
+            prev2 = parse_file(file_path=f2)
+            if isinstance(prev2, list):
+                prev2 = prev2[0]
+            confirm_import(prev2, {}, championship_id=champ_id)
+            rows = Result.objects.filter(championship_id=champ_id)
+            names = set(rows.values_list('swimmer__name', flat=True))
+            self.assertEqual(rows.count(), 3, names)
+            self.assertIn('Badr SECOND', names)
+        finally:
+            os.unlink(f1)
+            os.unlink(f2)
+
+    def test_relay_tie_both_teams_imported(self):
+        import os
+        import tempfile
+        import pandas as pd
+        from importer.services import parse_file, confirm_import
+        relay = pd.DataFrame({
+            'Events': ['4x100 M Medley Relay'] * 8,
+            'Relay': ['Mixed'] * 8,
+            'Round': ['Final'] * 8,
+            'Ranking': [4] * 8,
+            'Team Name': ['Kazakhstan'] * 4 + ['Thailand'] * 4,
+            'Team Time': ['3:49.19'] * 8,   # tie — same time both teams
+            'Swimmer Name': [f'Kaz {i} SWIMMER' for i in range(4)] +
+                            [f'Tha {i} SWIMMER' for i in range(4)],
+            'Split Time': ['57.00', '58.00', '57.10', '57.09'] * 2,
+            'Nationality': ['KAZ'] * 4 + ['THA'] * 4,
+            'Gender': ['Male', 'Male', 'Female', 'Female'] * 2,
+            'Meet Name': ['Tie Games'] * 8,
+            'Date': ['26/09/2026'] * 8,
+        })
+        tmp = tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False)
+        with pd.ExcelWriter(tmp.name) as xl:
+            relay.to_excel(xl, sheet_name='Relay', index=False)
+        try:
+            prev = parse_file(file_path=tmp.name)
+            if isinstance(prev, list):
+                prev = prev[0]
+            res = confirm_import(prev, {})
+            rows = Result.objects.filter(championship_id=res['championship_id'])
+            self.assertEqual(rows.count(), 2)
+            teams = set(rows.values_list('team', flat=True))
+            self.assertEqual(teams, {'Kazakhstan', 'Thailand'})
+        finally:
+            os.unlink(tmp.name)

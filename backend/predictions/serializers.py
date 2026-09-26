@@ -1,5 +1,16 @@
 from rest_framework import serializers
-from .models import PredictionAgeGroup, PredictionEntry
+from .models import PredictionAgeGroup, PredictionEntry, PredictionExclusion
+
+
+class PredictionExclusionSerializer(serializers.ModelSerializer):
+    swimmer_name = serializers.CharField(source='swimmer.name', read_only=True)
+    gender = serializers.CharField(source='swimmer.sex', read_only=True)
+    nationality_code = serializers.CharField(source='swimmer.nationality.code', read_only=True)
+
+    class Meta:
+        model = PredictionExclusion
+        fields = ['id', 'championship', 'swimmer', 'reason',
+                  'swimmer_name', 'gender', 'nationality_code']
 
 
 class PredictionAgeGroupSerializer(serializers.ModelSerializer):

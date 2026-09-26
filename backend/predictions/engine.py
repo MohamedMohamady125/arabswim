@@ -14,7 +14,7 @@ from django.conf import settings
 from django.db.models import Q
 
 from championships.models import Result
-from .models import PredictionAgeGroup, PredictionEntry
+from .models import PredictionAgeGroup, PredictionEntry, PredictionExclusion
 
 N_SIMS = 2000
 FIELD_CAP = 16
@@ -171,11 +171,17 @@ def compute_snapshot(championship):
     today = date.today()
     scope_q = _scope_filter(championship)
 
-    entries = list(
-        PredictionEntry.objects
+    excluded_ids = set(
+        PredictionExclusion.objects
+        .filter(championship=championship)
+        .values_list('swimmer_id', flat=True)
+    )
+    entries = [
+        e for e in PredictionEntry.objects
         .filter(championship=championship, withdrawn=False)
         .select_related('swimmer', 'event')
-    )
+        if e.swimmer_id not in excluded_ids
+    ]
     stage = 'OFFICIAL' if entries else 'EARLY'
     days_out = (championship.date - today).days
     if stage == 'OFFICIAL':
@@ -243,6 +249,8 @@ def compute_snapshot(championship):
     for (event, gender), allowed_ids in sorted(
             races.items(), key=lambda kv: (kv[0][0].sort_order or 0, kv[0][0].distance or 0, kv[0][1])):
         by_swimmer = _gather_event_rows(championship, event, gender, scope_q, today)
+        if excluded_ids:
+            by_swimmer = {sid: d for sid, d in by_swimmer.items() if sid not in excluded_ids}
         if allowed_ids is not None:
             by_swimmer = {sid: d for sid, d in by_swimmer.items() if sid in allowed_ids}
         else:

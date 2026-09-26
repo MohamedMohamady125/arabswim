@@ -25,6 +25,26 @@ class PredictionEntry(models.Model):
         return f'{self.swimmer.name} - {self.event.name} @ {self.championship.name}'
 
 
+class PredictionExclusion(models.Model):
+    """Swimmer manually excluded from one championship's prediction.
+
+    Admin knows the athlete won't attend (injury, retirement, not
+    selected…) — they are removed from every predicted field, both in
+    the automatic EARLY stage and the OFFICIAL entry-list stage."""
+    championship = models.ForeignKey(
+        'championships.Championship', on_delete=models.CASCADE, related_name='prediction_exclusions')
+    swimmer = models.ForeignKey(
+        'swimmers.Swimmer', on_delete=models.CASCADE, related_name='prediction_exclusions')
+    reason = models.CharField(max_length=120, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['championship', 'swimmer']
+
+    def __str__(self):
+        return f'{self.swimmer.name} excluded @ {self.championship.name}'
+
+
 class PredictionAgeGroup(models.Model):
     """Age category contested at an age-group / youth championship.
 

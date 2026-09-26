@@ -224,7 +224,7 @@ export default function News() {
                 <div dir={isRTLText(lead.title) ? 'rtl' : 'ltr'} style={{
                   fontFamily: isRTLText(lead.title) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'var(--font-heading)',
                   fontWeight: isRTLText(lead.title) ? 700 : 800,
-                  fontSize: 34,
+                  fontSize: 29,
                   lineHeight: isRTLText(lead.title) ? 1.7 : 1.06,
                   letterSpacing: isRTLText(lead.title) ? 0 : '-0.025em',
                   margin: '8px 0 12px', color: '#1a1a2e',

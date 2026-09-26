@@ -5,6 +5,7 @@ import {
   getPredictionEntries, addPredictionEntry, updatePredictionEntry,
   deletePredictionEntry, seedPredictionEntries,
   getPredictionAgeGroups, addPredictionAgeGroup, deletePredictionAgeGroup,
+  getPredictionExclusions, addPredictionExclusion, removePredictionExclusion,
 } from '../api/predictions'
 import { searchSwimmers } from '../api/swimmers'
 import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
@@ -145,8 +146,20 @@ function TallyTable({ table, isNational }) {
 }
 
 // Per-event field table with projected standards + gap to bronze
-function EventDetail({ ev }) {
+function EventDetail({ ev, champId, onChanged }) {
+  const { isAdmin } = useAuth()
+  const [busyId, setBusyId] = useState(null)
   if (!ev) return null
+  const canExclude = isAdmin && champId
+  const exclude = async (r) => {
+    if (!window.confirm(`Exclude ${r.name} from this meet's prediction? They will be removed from every event.`)) return
+    setBusyId(r.swimmer_id)
+    try {
+      await addPredictionExclusion(champId, { swimmer: r.swimmer_id })
+      onChanged?.()
+    } catch { /* already excluded or failed — the list below shows the truth */ }
+    setBusyId(null)
+  }
   return (
     <div>
       <div className="table-scroll">
@@ -161,6 +174,7 @@ function EventDetail({ ev }) {
               <th className="num">Bronze</th>
               <th>Medal chance</th>
               <th className="num">Gap to bronze</th>
+              {canExclude && <th />}
             </tr>
           </thead>
           <tbody>
@@ -181,6 +195,18 @@ function EventDetail({ ev }) {
                 <td className="num asw-num" style={{ color: r.gap_to_bronze > 0 ? 'var(--color-neutral-700)' : 'var(--color-accent-800)' }}>
                   {r.gap_to_bronze > 0 ? `+${r.gap_to_bronze.toFixed(2)}s` : `${r.gap_to_bronze.toFixed(2)}s`}
                 </td>
+                {canExclude && (
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busyId === r.swimmer_id}
+                      onClick={() => exclude(r)}
+                      title="Exclude from this meet's prediction"
+                    >
+                      {busyId === r.swimmer_id ? '…' : 'Exclude'}
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -265,6 +291,118 @@ function AgeGroupsAdmin({ champId, onChanged }) {
                 onClick={() => act(() => deletePredictionAgeGroup(champId, g.id), 'Category removed — prediction recomputed')}
                 style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)' }}
                 aria-label={`Remove ${g.label}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---- Admin: excluded-athletes manager ------------------------------------
+// Athletes the admin knows won't attend (injury, retirement, not selected…).
+// Excluded swimmers are dropped from every predicted field, in both the
+// automatic EARLY stage and the OFFICIAL entry-list stage.
+function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
+  const [exclusions, setExclusions] = useState([])
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [swimmer, setSwimmer] = useState(null)
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const load = () => {
+    getPredictionExclusions(champId).then((res) => setExclusions(res.data || [])).catch(() => setExclusions([]))
+  }
+  useEffect(load, [champId, refreshKey])
+
+  useEffect(() => {
+    if (!query || query.length < 2 || swimmer) { setResults([]); return }
+    const t = setTimeout(() => {
+      searchSwimmers(query)
+        .then((res) => setResults((Array.isArray(res.data) ? res.data : res.data?.results || []).slice(0, 8)))
+        .catch(() => setResults([]))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [query, swimmer])
+
+  const act = async (fn, okMsg) => {
+    setBusy(true); setMsg('')
+    try {
+      await fn()
+      load()
+      onChanged?.()
+      if (okMsg) setMsg(okMsg)
+    } catch (e) {
+      setMsg(e?.response?.data?.detail || 'Action failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const add = () => {
+    if (!swimmer) { setMsg('Pick a swimmer to exclude'); return }
+    act(() => addPredictionExclusion(champId, {
+      swimmer: swimmer.id, reason: reason.trim(),
+    }), 'Excluded — prediction recomputed').then(() => { setSwimmer(null); setQuery(''); setReason('') })
+  }
+
+  const inputStyle = { padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
+
+  return (
+    <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 18px' }}>
+      <SectHead title="Excluded Athletes (Admin)" />
+      <div className="micro" style={{ margin: '-4px 0 12px', textTransform: 'none', letterSpacing: 0 }}>
+        Athletes you know won't compete (injury, retirement, not selected…). They are removed from
+        every event of this meet's prediction. Adding or removing recomputes instantly.
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: exclusions.length ? 12 : 0 }}>
+        <div style={{ position: 'relative' }}>
+          <input
+            style={{ ...inputStyle, minWidth: 220 }}
+            placeholder="Search swimmer to exclude…"
+            value={swimmer ? swimmer.name : query}
+            onChange={(e) => { setSwimmer(null); setQuery(e.target.value) }}
+          />
+          {results.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: '#fff', border: '1px solid var(--color-neutral-300)', maxHeight: 220, overflowY: 'auto' }}>
+              {results.map((s) => (
+                <div
+                  key={s.id}
+                  onClick={() => { setSwimmer(s); setResults([]) }}
+                  style={{ padding: '7px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
+                >
+                  {s.name} {s.nationality_code ? `(${s.nationality_code})` : ''}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <input
+          style={{ ...inputStyle, width: 200 }}
+          placeholder="Reason (optional)"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+        <button className="btn btn-primary" disabled={busy} onClick={add}>Exclude athlete</button>
+        {msg && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{msg}</span>}
+      </div>
+      {exclusions.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {exclusions.map((x) => (
+            <span key={x.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-neutral-300)', background: '#fff', padding: '5px 10px', fontSize: 13 }}>
+              <b>{x.swimmer_name}</b>
+              {x.nationality_code && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{x.nationality_code}</span>}
+              {x.reason && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>— {x.reason}</span>}
+              <button
+                disabled={busy}
+                onClick={() => act(() => removePredictionExclusion(champId, x.id), 'Restored — prediction recomputed')}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)' }}
+                aria-label={`Restore ${x.swimmer_name}`}
               >
                 ×
               </button>
@@ -521,7 +659,7 @@ function CandidateCard({ c, rank }) {
   )
 }
 
-function OverviewTab({ snap, onOpenEvent }) {
+function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
   const champ = snap.championship || {}
   const table = snap.table || []
   const [countryKey, setCountryKey] = useState('')
@@ -769,7 +907,7 @@ function OverviewTab({ snap, onOpenEvent }) {
                         {open && (
                           <tr>
                             <td colSpan={5} style={{ background: 'var(--color-surface)', padding: '12px 12px 16px' }}>
-                              <EventDetail ev={ev} />
+                              <EventDetail ev={ev} champId={champId} onChanged={onChanged} />
                             </td>
                           </tr>
                         )}
@@ -1008,7 +1146,7 @@ export default function Predictions() {
                 />
               </div>
 
-              {view === 'overview' && <OverviewTab snap={snap} />}
+              {view === 'overview' && <OverviewTab snap={snap} champId={selectedId} onChanged={() => loadDetail(selectedId)} />}
 
               {view === 'original' && (
               <>
@@ -1040,7 +1178,7 @@ export default function Predictions() {
                     ))}
                   </select>
                 </div>
-                {selectedEvent ? <EventDetail ev={selectedEvent} /> : <Empty label="No events predicted for this selection" />}
+                {selectedEvent ? <EventDetail ev={selectedEvent} champId={selectedId} onChanged={() => loadDetail(selectedId)} /> : <Empty label="No events predicted for this selection" />}
               </div>
               </>
               )}
@@ -1052,6 +1190,7 @@ export default function Predictions() {
 
               {isAdmin && (
                 <>
+                  <ExclusionsAdmin champId={selectedId} onChanged={() => loadDetail(selectedId)} refreshKey={snap?.updated_at} />
                   <AgeGroupsAdmin champId={selectedId} onChanged={() => loadDetail(selectedId)} />
                   <EntriesAdmin
                     champId={selectedId}

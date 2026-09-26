@@ -7,8 +7,10 @@ from rest_framework.response import Response
 
 from championships.models import Championship
 from .engine import compute_snapshot, fill_rising
-from .models import PredictionAgeGroup, PredictionEntry, PredictionSnapshot
-from .serializers import PredictionAgeGroupSerializer, PredictionEntrySerializer
+from .models import (PredictionAgeGroup, PredictionEntry, PredictionExclusion,
+                     PredictionSnapshot)
+from .serializers import (PredictionAgeGroupSerializer, PredictionEntrySerializer,
+                          PredictionExclusionSerializer)
 
 PREDICTABLE_CLASSIFICATIONS = ['Arab', 'GCC', 'National']
 STALE_AFTER = timedelta(hours=24)
@@ -124,6 +126,43 @@ class PredictionViewSet(viewsets.ViewSet):
         except PredictionAgeGroup.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
         grp.delete()
+        try:
+            _get_or_compute(Championship.objects.get(pk=pk), force=True)
+        except Championship.DoesNotExist:
+            pass
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['get', 'post'])
+    def excluded(self, request, pk=None):
+        """Athletes manually removed from this meet's prediction."""
+        if request.method == 'GET':
+            qs = (PredictionExclusion.objects.filter(championship_id=pk)
+                  .select_related('swimmer', 'swimmer__nationality')
+                  .order_by('swimmer__name'))
+            return Response(PredictionExclusionSerializer(qs, many=True).data)
+        payload = dict(request.data)
+        payload['championship'] = pk
+        ser = PredictionExclusionSerializer(data=payload)
+        ser.is_valid(raise_exception=True)
+        try:
+            ser.save()
+        except Exception:
+            return Response({'detail': 'Already excluded'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            _get_or_compute(Championship.objects.get(pk=pk), force=True)
+        except Championship.DoesNotExist:
+            pass
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'],
+            url_path='excluded/(?P<exclusion_id>[0-9]+)')
+    def excluded_detail(self, request, pk=None, exclusion_id=None):
+        try:
+            excl = PredictionExclusion.objects.get(pk=exclusion_id, championship_id=pk)
+        except PredictionExclusion.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        excl.delete()
         try:
             _get_or_compute(Championship.objects.get(pk=pk), force=True)
         except Championship.DoesNotExist:

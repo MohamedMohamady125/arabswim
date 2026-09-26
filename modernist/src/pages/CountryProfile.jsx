@@ -180,8 +180,8 @@ function NewsTab({ countryId, countryName }) {
               <div style={{ position: 'relative', height: 175, overflow: 'hidden', background: 'linear-gradient(135deg, #0b2948, #1a56a0)', flex: 'none' }}>
                 {a.cover_image && (
                   <>
-                    <img src={a.cover_image} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(20px)', transform: 'scale(1.15)', opacity: 0.5 }} />
-                    <img src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <img className="news-cover-blur" src={a.cover_image} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(20px)', transform: 'scale(1.15)', opacity: 0.5 }} />
+                    <img className="news-cover-img" src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
                   </>
                 )}
               </div>
@@ -1862,8 +1862,8 @@ export default function CountryProfile() {
                         <div style={{ position: 'relative', margin: 10, height: 200, borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? '#0b2948' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>
                           {a?.cover_image ? (
                             <>
-                              <img src={a.cover_image} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(20px)', transform: 'scale(1.15)', opacity: 0.5 }} />
-                              <img src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
+                              <img className="news-cover-blur" src={a.cover_image} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(20px)', transform: 'scale(1.15)', opacity: 0.5 }} />
+                              <img className="news-cover-img" src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
                             </>
                           ) : '📷'}
                         </div>

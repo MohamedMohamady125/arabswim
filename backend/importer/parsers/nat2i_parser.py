@@ -147,6 +147,22 @@ _PDF_RESULT = re.compile(
     r'(?:\s+(\d+))?'                        # optional points
 )
 
+# Non-finisher row in PDF text: same shape as _PDF_RESULT but a status
+# word ("Frf n.d.", "Disqual.", "Dsq FD", "Abandon") replaces the time,
+# usually with an "N.C." (non classé) place instead of a rank.
+_PDF_STATUS_RESULT = re.compile(
+    r'^(?:N\.?C\.?|\d+\.)\s*'
+    r'(.+?)\s+'
+    r'([A-Z]{3})\s+'
+    r'(\d{4})\s+'
+    r'(\S+(?:\s+\S+)*?)\s+'
+    r'(Frf|Forfait|Disqual\.?|Dsq|Abandon|DNS|DSQ|DNF)\b',
+    re.IGNORECASE
+)
+_STATUS_WORDS = {'frf': 'DNS', 'forfait': 'DNS', 'dns': 'DNS',
+                 'disqual': 'DQ', 'disqual.': 'DQ', 'dsq': 'DQ',
+                 'abandon': 'DNF', 'dnf': 'DNF'}
+
 # Round header in PDF text: "Finale A" or "Séries"
 _PDF_ROUND = re.compile(r'^(Finale\s*[A-Z]?|Séries|Demi-Finales?)', re.IGNORECASE)
 
@@ -308,6 +324,17 @@ def parse_text(text):
                     ))
                     relay_legs = []
                 elif time_text == 'Disqual.':
+                    # keep the disqualified team so it shows with a DQ badge
+                    club = (rl.group(5) or '').strip()
+                    current_event.results.append(ParsedResult(
+                        rank=0,
+                        swimmer_name=club or nat_code,
+                        nationality_code=nat_code,
+                        time_text='',
+                        status='DQ',
+                        club=club,
+                        relay_swimmers=list(relay_legs),
+                    ))
                     relay_legs = []
                 continue
 
@@ -339,6 +366,22 @@ def parse_text(text):
                 fina_points=points,
                 split_times=split_times,
             ))
+            continue
+
+        sm = _PDF_STATUS_RESULT.match(line)
+        if sm and current_event and not is_relay_event:
+            name = _nat2i_normalize_name(sm.group(1).strip())
+            if name:
+                word = sm.group(5).lower().rstrip('.')
+                current_event.results.append(ParsedResult(
+                    rank=0,
+                    swimmer_name=name,
+                    nationality_code=sm.group(2),
+                    birth_year=int(sm.group(3)),
+                    club=sm.group(4).strip(),
+                    time_text='',
+                    status=_STATUS_WORDS.get(word, 'DQ'),
+                ))
 
     # Remove empty events
     meet.events = [e for e in meet.events if e.results]
@@ -684,9 +727,17 @@ def _parse_result_table(table, event):
             status = 'HC'
             rank = 0
 
-        # Check for DQ/forfeit in time
-        if 'frf' in time_text.lower() or 'disq' in time_text.lower() or 'dsq' in time_text.lower():
+        # Non-finisher word in the time cell: "Frf n.d." / "Frf dec."
+        # (forfait = did not start), "Disqual." / "Dsq", "Abandon" (DNF)
+        tl = time_text.lower()
+        if 'frf' in tl or 'forfait' in tl:
+            status = 'DNS'
+            time_text = ''
+        elif 'disq' in tl or 'dsq' in tl:
             status = 'DQ'
+            time_text = ''
+        elif 'abandon' in tl:
+            status = 'DNF'
             time_text = ''
 
         name = _nat2i_normalize_name(name_text)

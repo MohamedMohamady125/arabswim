@@ -174,7 +174,33 @@ def _parse_individual_row(rest, event):
 
     tm = TIME_RE.search(after)
     if not tm:
-        return None
+        # No time: DNS/DSQ/DNF rows print a status word instead — keep
+        # the swimmer (shows as a badge) instead of silently dropping.
+        st = re.search(r'\b(DNS|DSQ|DQ|DNF|SCR|WDR)\b', after)
+        if not st:
+            return None
+        status = {'DSQ': 'DQ', 'SCR': 'DNS', 'WDR': 'DNS'}.get(
+            st.group(1), st.group(1))
+        between = after[:st.start()].strip()
+        toks = between.split()
+        nat_code, club = '', between
+        if toks and toks[0] in IOC_CODES:
+            nat_code = toks[0]
+            club = ' '.join(toks[1:]).strip()
+        return ParsedResult(
+            swimmer_name=_format_name(name_raw,
+                                      western=nat_code in WESTERN_ORDER_NATS),
+            time_text='',
+            time_centiseconds=0,
+            event_name=event.event_name,
+            gender=event.gender,
+            round_type=event.round_type,
+            rank=0,
+            status=status,
+            nationality_code=nat_code,
+            birth_year=birth_year,
+            club=club,
+        )
     time_text = tm.group(1)
     between = after[:tm.start()].strip()
     tail = after[tm.end():]
@@ -379,7 +405,8 @@ def parse(text):
             else:
                 res = _parse_individual_row(rest, current_event)
                 if res:
-                    res.rank = int(rowm.group(1))
+                    if res.status == 'OK':
+                        res.rank = int(rowm.group(1))
                     current_event.results.append(res)
                     pending_club_result = res
             continue

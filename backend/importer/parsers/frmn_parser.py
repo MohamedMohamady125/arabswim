@@ -93,11 +93,15 @@ RELAY_RESULT_LINE = re.compile(
     r'(\d+)?'                       # points (optional)
 )
 
-# NC/DSQ line
+# NC line: non-finisher with the reason after the club.
+# Real books use "Dsq FD/VI/NI", "Disqual.", "Frf n.d." (forfait = did not
+# start) and "Abandon" (did not finish).
 NC_LINE = re.compile(
-    r'^NC\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(.+?)\s+(Dsq|Frf)',
+    r'^NC\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(.+?)\s+(Dsq|Disqual\.?|Frf|Abandon)',
     re.IGNORECASE
 )
+NC_STATUS = {'dsq': 'DQ', 'disqual': 'DQ', 'disqual.': 'DQ',
+             'frf': 'DNS', 'abandon': 'DNF'}
 
 # Category marker — the age classements a FRMN event is split into.
 CATEGORY = re.compile(
@@ -350,7 +354,7 @@ def parse(text):
                 nationality_code=nc_match.group(2),
                 birth_year=int(nc_match.group(3)),
                 club=nc_match.group(4),
-                status='DQ',
+                status=NC_STATUS.get(nc_match.group(5).lower(), 'DQ'),
                 gender=current_event.gender,
                 event_name=current_event.event_name,
                 event_distance=current_event.distance,
@@ -460,6 +464,9 @@ def _parse_result_line(line, event):
         prefix = line.lstrip().split('.')[0].upper().replace('.', '')
         if prefix in ('HC', 'EXH'):
             status = 'HC'
+        elif prefix == 'FRF':
+            # forfait swam nothing — the printed time is meaningless
+            status = 'DNS'
 
     return ParsedResult(
         swimmer_name=name,

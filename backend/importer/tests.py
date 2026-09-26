@@ -567,7 +567,9 @@ class MarocTangierFrmnTests(SanityMixin, SimpleTestCase):
     def test_counts(self):
         m = self.meet()
         self.assertEqual(m.total_events, 83)
-        self.assertEqual(m.total_results, 840)
+        # 840 finishers + 15 status rows ("Disqual."/"Abandon" NC lines,
+        # kept since the DNS/DQ/DNF fix)
+        self.assertEqual(m.total_results, 855)
 
     def test_overlapping_long_name_recovered(self):
         # regression: a long surname ("EL MOKRI EL MGHARI") overlaps the NAT
@@ -3885,3 +3887,71 @@ class OmegaStatusRowTests(SimpleTestCase):
         # timed relay rows must not be swallowed by the status regex
         self.assertIsNone(RELAY_TEAM_STATUS.match('1 5 KUW - Kuwait 7:52.94'))
         self.assertIsNotNone(RELAY_TEAM.match('1 5 KUW - Kuwait 7:52.94'))
+
+
+class StatusRowAllFormatsTests(SimpleTestCase):
+    """DNS/DQ/DNF rows must be kept (not dropped) across parser formats."""
+
+    def test_frmn_nc_line_vocabulary(self):
+        from importer.parsers.frmn_parser import NC_LINE, NC_STATUS
+        cases = [
+            ('NC.Bayane BOULAFRAH MAR 2011 USCM Dsq VI 0', 'DQ'),
+            ('NC.Mohammed Rayane ZIANI MAR 2012 IRT Disqual. 0', 'DQ'),
+            ('NC.Wydad ELOURAOUI MAR 2011 WJDN Frf n.d.', 'DNS'),
+            ('NC.Israe ALAOUI MAR 2010 IRT Abandon 0', 'DNF'),
+        ]
+        for line, expected in cases:
+            m = NC_LINE.match(line)
+            self.assertIsNotNone(m, line)
+            self.assertEqual(NC_STATUS.get(m.group(5).lower(), 'DQ'),
+                             expected, line)
+
+    def test_frmn_sample_emits_status_rows(self):
+        import os
+        path = '/Users/mohamedmohamady/arabswim/Maroc.Tangier.2026.pdf'
+        if not os.path.exists(path):
+            self.skipTest('sample file missing')
+        from importer.parsers import frmn_parser
+        import pdfplumber
+        with pdfplumber.open(path) as pdf:
+            text = '\n'.join((p.extract_text() or '') for p in pdf.pages)
+        meet = frmn_parser.parse(text)
+        statuses = collections.Counter(
+            r.status for e in meet.events for r in e.results)
+        self.assertGreater(statuses.get('DQ', 0), 0)
+        self.assertGreater(statuses.get('DNF', 0), 0)
+
+    def test_nat2i_html_status_mapping(self):
+        from importer.parsers import nat2i_parser
+        html = '''<html><body>
+        <p>100 m NAGE LIBRE Messieurs Classement</p>
+        <table>
+        <tr><td>Place</td><td>Nom</td><td>Nation</td><td>Naissance</td><td>Club</td><td>Temps</td><td>Points</td><td>Passage</td></tr>
+        <tr><td>1.</td><td>TRABELSI Youssef</td><td>TUN</td><td>2008</td><td>CNT</td><td>1:02.34</td><td>500</td><td></td></tr>
+        <tr><td>N.C.</td><td>ABSENT Amine</td><td>TUN</td><td>2009</td><td>ASM</td><td>Frf&nbsp;n.d.</td><td>0</td><td></td></tr>
+        <tr><td>N.C.</td><td>SORTI Karim</td><td>TUN</td><td>2009</td><td>ASM</td><td>Disqual.</td><td>0</td><td></td></tr>
+        <tr><td>N.C.</td><td>PARTI Sami</td><td>TUN</td><td>2007</td><td>EST</td><td>Abandon</td><td>0</td><td></td></tr>
+        </table></body></html>'''
+        meet = nat2i_parser.parse(html)
+        by_status = {r.status: r.swimmer_name
+                     for r in meet.events[0].results if r.status != 'OK'}
+        self.assertEqual(by_status,
+                         {'DNS': 'Amine ABSENT', 'DQ': 'Karim SORTI',
+                          'DNF': 'Sami PARTI'})
+
+    def test_nat2i_pdf_status_row(self):
+        from importer.parsers.nat2i_parser import (_PDF_STATUS_RESULT,
+                                                   _STATUS_WORDS)
+        m = _PDF_STATUS_RESULT.match('N.C. BEN SALAH Aziz TUN 2008 CNT Frf n.d.')
+        self.assertIsNotNone(m)
+        self.assertEqual(_STATUS_WORDS[m.group(5).lower().rstrip('.')], 'DNS')
+
+    def test_musz_status_row(self):
+        from importer.parsers.musz_parser import _parse_individual_row
+        from importer.parsers.base import ParsedEvent
+        ev = ParsedEvent(event_name='100 M Freestyle', distance=100,
+                         stroke='Freestyle', gender='M', round_type='Finals')
+        res = _parse_individual_row('KOVACS Bence 2001 HUN Ferencvaros DSQ', ev)
+        self.assertIsNotNone(res)
+        self.assertEqual(res.status, 'DQ')
+        self.assertEqual(res.time_centiseconds, 0)

@@ -8,6 +8,7 @@ import { getTeams } from '../api/teams'
 import { getAcademies } from '../api/academies'
 import { PageHead, SectHead, Loading, Empty, Seg } from '../components/ui'
 import { mediaUrl } from '../utils'
+import { CropUpload } from '../components/ImageCropper'
 
 function ClaimsQueue() {
   const [claims, setClaims] = useState(null)
@@ -393,9 +394,6 @@ function PartnersManager() {
       fd.append('sort_order', String((partners?.length || 0) + 1))
       await createSponsor(fd)
       setName(''); setWebsite(''); setFile(null)
-      // clear the file input
-      const input = document.getElementById('partner-logo-input')
-      if (input) input.value = ''
       load()
     } catch (err) {
       setError(err.response?.data?.detail || err.response?.data?.logo?.[0] || 'Could not add partner')
@@ -465,7 +463,7 @@ function PartnersManager() {
         </div>
         <div className="field" style={{ flex: '1 1 200px' }}>
           <label>Logo image</label>
-          <input id="partner-logo-input" className="input" type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          <CropUpload aspect="original" onChange={setFile} />
         </div>
         <button type="submit" className="btn btn-primary" disabled={saving} style={{ height: 40 }}>
           {saving ? 'Adding…' : 'Add partner'}

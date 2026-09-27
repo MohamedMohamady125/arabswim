@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext'
 import { Loading, Empty, Seg, Modal } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
+import { CropUpload } from '../components/ImageCropper'
 import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
 
 // Not yet in src/api/teams.js — defined locally
@@ -139,7 +140,7 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
             {(countries || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </Field>
-        <Field label="Logo"><input className="input" type="file" accept="image/jpeg,image/png,image/webp" style={{ width: '100%' }} onChange={(e) => setLogo(e.target.files?.[0] || null)} /></Field>
+        <Field label="Logo"><CropUpload aspect={1} accept="image/jpeg,image/png,image/webp" style={{ width: '100%' }} onChange={setLogo} /></Field>
       </div>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0 10px' }}>
         <input type="checkbox" checked={form.is_national_team}
@@ -225,7 +226,7 @@ function CoachModal({ coach, team, countries, onClose, onSaved }) {
         </Field>
         <Field label="Country"><CountrySelect value={form.nationality} onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} countries={countries} /></Field>
         <Field label="Years experience"><input className="input" style={{ width: '100%' }} type="number" value={form.years_experience} onChange={set('years_experience')} /></Field>
-        <Field label="Photo"><input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} /></Field>
+        <Field label="Photo"><CropUpload aspect={4 / 5} onChange={setPhoto} className="" /></Field>
         <Field label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Field>
         <Field label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Field>
       </div>
@@ -278,7 +279,7 @@ function BoardModal({ member, team, onClose, onSaved }) {
       <Field label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Role"><input className="input" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Field>
-        <Field label="Photo"><input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} /></Field>
+        <Field label="Photo"><CropUpload aspect={4 / 5} onChange={setPhoto} className="" /></Field>
         <Field label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Field>
         <Field label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Field>
       </div>
@@ -375,7 +376,7 @@ function ArticleModal({ team, onClose, onSaved }) {
     <Modal title="Add Club News" onClose={onClose}>
       <Field label="Title"><input className="input" style={{ width: '100%' }} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
       <Field label="Body"><textarea className="input" rows={7} style={{ width: '100%', resize: 'vertical' }} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
-      <Field label="Cover image"><input type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} /></Field>
+      <Field label="Cover image"><CropUpload aspect={16 / 9} onChange={setCover} className="" /></Field>
       {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>

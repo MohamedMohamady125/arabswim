@@ -117,7 +117,7 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
               <img
                 src={mediaUrl(swimmer.photo)}
                 alt=""
-                style={{ width: 62, height: 62, borderRadius: '50%', objectFit: 'cover', border: '2.5px solid rgba(255,255,255,.35)', flex: 'none' }}
+                style={{ width: 62, height: 62, borderRadius: '50%', objectFit: 'cover', objectPosition: '50% 25%', border: '2.5px solid rgba(255,255,255,.35)', flex: 'none' }}
               />
             ) : (
               <span style={{
@@ -154,9 +154,6 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
               ))}
             </div>
           )}
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginTop: 12 }}>
-            At {meet.name}
-          </div>
         </div>
 
         {/* ── swims ── */}

@@ -7,6 +7,7 @@ import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Pager, Seg, Modal } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import { CropUpload } from '../components/ImageCropper'
 
 const PAGE_SIZE = 13
 
@@ -96,7 +97,8 @@ function ArticleModal({ article, onClose, onSaved }) {
         </div>
         <div className="field">
           <label>Cover image</label>
-          <input className="input" type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} />
+          <CropUpload aspect={16 / 9} onChange={setCover} />
+          {cover && <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>Adjusted cover ready</div>}
         </div>
         <div className="field">
           <label>PDF attachment (optional)</label>

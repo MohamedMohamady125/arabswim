@@ -13,6 +13,7 @@ import Flag from '../components/Flag'
 import MeetProgramEditor from '../components/MeetProgramEditor'
 import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
+import { CropUpload } from '../components/ImageCropper'
 import { formatDate, formatDateRange, mediaUrl, MONTHS_FULL } from '../utils'
 
 const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
@@ -249,7 +250,7 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
         </div>
         <div className="field">
           <label>Meet photo{meet.meet_photo ? ' (uploaded, choose a file to replace)' : ''}</label>
-          <input className="input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setPhotoFile(e.target.files?.[0] || null)} />
+          <CropUpload aspect={16 / 9} accept="image/jpeg,image/png,image/webp" onChange={setPhotoFile} />
         </div>
         {error && <div style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

@@ -720,9 +720,36 @@ class CountryViewSet(viewsets.ModelViewSet):
                          .order_by('-best')[:300])
         now_rank = {r['swimmer_id']: i + 1 for i, r in enumerate(now_rows)}
         prev_rank = {r['swimmer_id']: i + 1 for i, r in enumerate(prev_rows)}
-        mine = set(Swimmer.objects.filter(
+        mine_names = dict(Swimmer.objects.filter(
             id__in=list(now_rank),
-            nationality=country).values_list('id', flat=True))
+            nationality=country).values_list('id', 'name'))
+        mine = set(mine_names)
+        # Diversity: the overview shows 4 highlight cards (best performance,
+        # most decorated, newest record, trending). Prefer a trending swimmer
+        # who is NOT already featured in the other three, mirroring the
+        # frontend's picks — one dominant star shouldn't fill every card.
+        import re as _re
+
+        def _nk(n):
+            return ' '.join(sorted(_re.findall(r'[a-z]+', (n or '').lower())))
+        featured = set()
+        if top_swimmers:
+            featured.add(_nk(top_swimmers[0]['name']))
+        _tm = next((m for m in top_medalists
+                    if _nk(m['name']) not in featured),
+                   top_medalists[0] if top_medalists else None)
+        if _tm:
+            featured.add(_nk(_tm['name']))
+        _recs = sorted([r for r in records if r['date']],
+                       key=lambda r: r['date'], reverse=True)
+        _nr = next((r for r in _recs if _nk(r['swimmer']) not in featured),
+                   _recs[0] if _recs else None)
+        if _nr:
+            featured.add(_nk(_nr['swimmer']))
+        preferred = {sid for sid in mine
+                     if _nk(mine_names[sid]) not in featured}
+        if preferred:
+            mine = preferred
         best_mover = None          # (delta, -now_rank, sid) for max()
         best_new = None            # (-now_rank, sid) best-ranked new entrant
         for sid in mine:
@@ -744,11 +771,15 @@ class CountryViewSet(viewsets.ModelViewSet):
             # Nobody climbed and nobody is new: never present a dropper as
             # "trending". Fall back to the federation's best performer of
             # the last 6 months (highest-FINA recent swim).
-            hot = (rank_base.filter(
+            _hot_qs = rank_base.filter(
                 swimmer__nationality=country,
-                championship__date__gte=cutoff)
-                .order_by('-fina_points')
-                .values_list('swimmer_id', flat=True).first())
+                championship__date__gte=cutoff).order_by('-fina_points')
+            _excl = [sid for sid, nm in mine_names.items()
+                     if _nk(nm) in featured]
+            hot = (_hot_qs.exclude(swimmer_id__in=_excl)
+                   .values_list('swimmer_id', flat=True).first())
+            if hot is None:
+                hot = _hot_qs.values_list('swimmer_id', flat=True).first()
             if hot and hot in now_rank:
                 pick, delta, is_new, is_hot = hot, None, False, True
         if pick:

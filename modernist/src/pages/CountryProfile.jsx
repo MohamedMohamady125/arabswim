@@ -1803,12 +1803,17 @@ export default function CountryProfile() {
 
       {/* ===== OVERVIEW ===== */}
       {tab === 'overview' && (() => {
+        const nameKey = (n) => (n || '').toLowerCase().replace(/\d+/g, '').trim().split(/\s+/).sort().join(' ')
+        // Highlight cards feature DIFFERENT swimmers where possible — a
+        // federation dominated by one star shouldn't show him in all 4 cards.
         const bestPerf = topSwimmers[0]
-        const topMedalist = topMedalists[0]
-        const newestRecord = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
+        const featured = new Set(bestPerf ? [nameKey(bestPerf.name)] : [])
+        const topMedalist = topMedalists.find((m) => !featured.has(nameKey(m.name))) || topMedalists[0]
+        if (topMedalist) featured.add(nameKey(topMedalist.name))
+        const recsByDate = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        const newestRecord = recsByDate.find((r) => !featured.has(nameKey(r.swimmer))) || recsByDate[0]
         // 5 distinct holders (dedupe duplicate DB swimmers by normalized name),
         // varied events, Long Course first — like the ISF reference.
-        const nameKey = (n) => (n || '').toLowerCase().replace(/\d+/g, '').trim().split(/\s+/).sort().join(' ')
         const seenHolders = new Set(); const seenEvents = new Set()
         const pickHolders = (requireNewEvent) => {
           const out = []

@@ -29,7 +29,9 @@ export default function Article() {
   if (loading) return <Loading label="Loading article" />
   if (!article || (article.status !== 'PUBLISHED' && !isAdmin)) return <Empty label="Article not found" />
 
-  const paragraphs = String(article.body || '').split(/\n\n+/).filter((p) => p.trim())
+  // Normalize CRLF from the editor, split paragraphs on blank lines; single
+  // newlines inside a paragraph are preserved via white-space: pre-line.
+  const paragraphs = String(article.body || '').replace(/\r\n?/g, '\n').split(/\n{2,}/).filter((p) => p.trim())
 
   const isRTL = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(
     (article.title || '') + (paragraphs[0] || '')
@@ -119,7 +121,8 @@ export default function Article() {
                 color: '#2c2c2c',
                 fontWeight: 400,
                 wordSpacing: isRTL ? '2px' : 'normal',
-              }}>{p}</p>
+                whiteSpace: 'pre-line',
+              }}>{p.trim()}</p>
             ))
           )}
         </div>

@@ -701,16 +701,15 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
   const topRecordman = recBySwimmer[0]
 
   const perfTiers = [
-    { label: 'World Class', range: '1000+', min: 1000, max: Infinity },
-    { label: 'Super Elite', range: '900-999', min: 900, max: 1000 },
-    { label: 'Elite', range: '700-799', min: 700, max: 900 },
-    { label: 'Excellence', range: '600-699', min: 600, max: 700 },
-    { label: 'Advanced', range: '500-599', min: 500, max: 600 },
-    { label: 'Competitive', range: '400-499', min: 400, max: 500 },
-    { label: 'Developing', range: '300-399', min: 300, max: 400 },
-    { label: 'Fondation', range: '200-299', min: 200, max: 300 },
-    { label: 'Novice', range: '100-199', min: 100, max: 200 },
-    { label: 'Initiation', range: '0-99', min: 0, max: 100 },
+    { label: 'World-Class', range: '900+', min: 900, max: Infinity },
+    { label: 'International Elite', range: '800-899', min: 800, max: 900 },
+    { label: 'High Performance', range: '700-799', min: 700, max: 800 },
+    { label: 'Advanced', range: '600-699', min: 600, max: 700 },
+    { label: 'Competitive', range: '500-599', min: 500, max: 600 },
+    { label: 'Developing', range: '400-499', min: 400, max: 500 },
+    { label: 'Foundation', range: '300-399', min: 300, max: 400 },
+    { label: 'Novice', range: '200-299', min: 200, max: 300 },
+    { label: 'Entry Level', range: '100-199', min: 100, max: 200 },
   ]
   const perfDist = perfTiers.map((t) => ({
     ...t, count: bestBySwimmer.filter((s) => (s.fina_points || 0) >= t.min && (s.fina_points || 0) < t.max).length,

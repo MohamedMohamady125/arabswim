@@ -665,9 +665,28 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
             else:
                 continue
             hits.append((row, cut, cut_qt))
+
+        # Collapse duplicate swimmer records (same person imported twice under
+        # different ids, sometimes with junk tokens like "B 3" prefixed) —
+        # keep only the fastest swim per normalized name/event/pool.
+        import re
+        def name_key(name):
+            tokens = re.findall(r'[a-z]+', (name or '').lower())
+            tokens = [t for t in tokens if len(t) > 1] or tokens
+            return tuple(sorted(tokens)) if tokens else (name or '').strip().lower()
+
+        dedup = {}
+        for row, cut, cut_qt in hits:
+            key = (name_key(row['swimmer__name']), row['swimmer__sex'],
+                   row['event_id'], row['championship__pool'])
+            if key not in dedup or row['best_cs'] < dedup[key][0]['best_cs']:
+                dedup[key] = (row, cut, cut_qt)
+        hits = list(dedup.values())
+
+        for row, cut, cut_qt in hits:
             swim_filter |= DQ(swimmer_id=row['swimmer_id'], event_id=row['event_id'],
                               championship__pool=row['championship__pool'],
-                              time_centiseconds=cs)
+                              time_centiseconds=row['best_cs'])
 
         # Where/when each qualifying swim happened
         swim_info = {}

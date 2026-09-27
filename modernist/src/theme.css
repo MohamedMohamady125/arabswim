@@ -6,7 +6,8 @@
 
 :root {
   --color-bg: #ffffff;
-  --color-surface: #f2f5f9;
+  /* Cards/widgets are clear white — no gray tint (2026-09 restyle) */
+  --color-surface: #ffffff;
   --color-text: #12253d;
   --color-accent: #1c4e86;
   --color-accent-2: #4a8fc0;
@@ -148,10 +149,19 @@ figure { margin: 0; }
 .seg-opt:not(.on):hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
 
 /* — cards — */
+/* White cards carry the Arab Swim navy accent bar on top (app-style) */
 .card {
   display: flex; flex-direction: column; gap: var(--space-2);
   padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-surface);
+  border: 1px solid var(--color-neutral-200);
+  border-top: 3px solid var(--color-accent-800);
+  box-shadow: var(--shadow-sm);
 }
+.qs-panel, .club-card, .swimmer-card, .record-cards > * {
+  border-top: 3px solid var(--color-accent-800) !important;
+}
+/* utility for inline-styled white cards */
+.navy-top { border-top: 3px solid var(--color-accent-800) !important; }
 .card-kicker { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent); }
 .card-title {
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);

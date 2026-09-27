@@ -533,7 +533,7 @@ function PredictionTab({ countryName }) {
   const mine = preds.filter((p) => p.country === countryName)
   const others = preds.filter((p) => p.country !== countryName)
   const card = (p, hosted) => (
-    <Link key={p.id} to="/predictions" style={{ background: '#fff', border: hosted ? '2px solid #1a56a0' : '1px solid #e2e8f0', borderRadius: 12, padding: '16px 18px', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 6, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+    <Link key={p.id} to="/predictions" style={{ background: '#fff', border: hosted ? '2px solid #1a56a0' : '1px solid #e2e8f0', borderTop: '3px solid var(--color-accent-800)', borderRadius: 12, padding: '16px 18px', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 6, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: CLASS_COLORS[p.classification] || '#1a56a0', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>{p.classification || 'Meet'}</span>
         {hosted && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#0d2d5e', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>Hosted here</span>}
@@ -1348,7 +1348,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
     </div>
   )
   const card = (children, extra = {}) => (
-    <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea', ...extra }}>{children}</div>
+    <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-accent-800)', ...extra }}>{children}</div>
   )
   const thStyle = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', paddingBottom: 6, borderBottom: '2px solid #e2e8f0' }
   const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f0f4f8', fontSize: 12.5, background: i % 2 === 1 ? '#fafbfd' : 'transparent' })
@@ -1823,7 +1823,7 @@ export default function CountryProfile() {
         }
         const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 12)
         const usDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
-        const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative' }
+        const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-accent-800)' }
         const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0 }
         const hBody = { padding: '12px 8px 10px 2px', flex: 1, display: 'flex', flexDirection: 'column' }
         const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 7, lineHeight: 1.3 }

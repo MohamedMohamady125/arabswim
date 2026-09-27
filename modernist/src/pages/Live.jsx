@@ -2,16 +2,14 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { getLiveMeets, getMeetProgram, getMeetLive, getChampionshipStats, getChampionshipResults, getMeetDocuments, uploadMeetDocument, deleteMeetDocument } from '../api/championships'
 import { useAuth } from '../context/AuthContext'
-import { getMedalSummary } from '../api/medals'
+import { getMedalSummary, getMedalClubSummary } from '../api/medals'
 import { formatDateRange, formatNumber, formatDate, mediaUrl } from '../utils'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, MedalIcon } from '../components/ui'
+import { PageHead, Loading, Empty, MedalIcon, Seg } from '../components/ui'
+import MeetProgramEditor from '../components/MeetProgramEditor'
 import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 import MedalStandings from '../components/MedalStandings'
 
-const GOLD = 'var(--asw-gold)'
-const SILVER = 'var(--asw-silver)'
-const BRONZE = 'var(--asw-bronze)'
 const LIVE_RED = 'var(--asw-slow)'
 const POLL_MS = 60000
 
@@ -38,13 +36,13 @@ function LivePill({ small = false }) {
   )
 }
 
-function MedalDots({ size = 8, gap = 3 }) {
-  const dot = (c) => (
-    <span style={{ width: size, height: size, borderRadius: '50%', background: c, display: 'inline-block' }} />
-  )
+/* Small medal trio — real medal icons instead of flat dots */
+function MedalDots({ size = 12, gap = 1 }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap }}>
-      {dot(GOLD)}{dot(SILVER)}{dot(BRONZE)}
+      <MedalIcon type="GOLD" size={size} />
+      <MedalIcon type="SILVER" size={size} />
+      <MedalIcon type="BRONZE" size={size} />
     </span>
   )
 }
@@ -142,7 +140,7 @@ function InlineResults({ meetId, meet, item }) {
 }
 
 /* One program entry — order no, event name, gender, chips. Official rows expand in place. */
-function ProgramRow({ item, meetId, meet, hasResults, last }) {
+function ProgramRow({ item, seq, meetId, meet, hasResults, last }) {
   const [open, setOpen] = useState(false)
   const isFinal = item.session === 'FINALS'
   const g = GENDER_STYLE[item.gender] || GENDER_STYLE.X
@@ -159,7 +157,7 @@ function ProgramRow({ item, meetId, meet, hasResults, last }) {
         color: isFinal ? '#fff' : 'var(--color-neutral-700)',
         border: isFinal ? 'none' : '1.5px solid var(--color-neutral-300)',
       }}>
-        {item.order || '–'}
+        {item.order || seq}
       </span>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -181,18 +179,18 @@ function ProgramRow({ item, meetId, meet, hasResults, last }) {
       {isFinal && (
         <span className="hide-mobile" style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 800,
-          letterSpacing: '0.04em', padding: '4px 10px', borderRadius: 999,
-          border: '1px solid color-mix(in srgb, var(--asw-gold) 40%, #fff)', color: 'var(--asw-gold)',
-          background: 'color-mix(in srgb, var(--asw-gold) 8%, #fff)', flex: 'none',
+          letterSpacing: '0.05em', padding: '4px 11px', borderRadius: 999,
+          border: '1px solid color-mix(in srgb, var(--asw-gold) 55%, #fff)', color: 'var(--color-accent-900)',
+          background: 'color-mix(in srgb, var(--asw-gold) 18%, #fff)', flex: 'none',
         }}>
-          <MedalDots size={7} /> MEDAL
+          <MedalDots size={13} /> MEDAL
         </span>
       )}
       {hasResults ? (
         <span style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, flex: 'none',
           fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', padding: '4px 11px', borderRadius: 999,
-          background: 'var(--asw-fast)', color: '#fff',
+          background: 'var(--color-accent-800)', color: '#fff',
         }}>
           OFFICIAL
           <span className="live-chevron" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease' }}>›</span>
@@ -230,10 +228,14 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
   if (!day || (day.items || []).length === 0) {
     return <Empty label="No program published for this day yet." />
   }
+  // Unnumbered items (order 0/null) go AFTER numbered ones — never a
+  // leading "–" row before event 1.
+  const bySchedule = (a, b) => (a.order || 9999) - (b.order || 9999) || (a.id || 0) - (b.id || 0)
+  const items = [...day.items].sort(bySchedule)
   const groups = []
-  const morning = day.items.filter((i) => i.time_of_day === 'MORNING')
-  const evening = day.items.filter((i) => i.time_of_day === 'EVENING')
-  const rest = day.items.filter((i) => i.time_of_day !== 'MORNING' && i.time_of_day !== 'EVENING')
+  const morning = items.filter((i) => i.time_of_day === 'MORNING')
+  const evening = items.filter((i) => i.time_of_day === 'EVENING')
+  const rest = items.filter((i) => i.time_of_day !== 'MORNING' && i.time_of_day !== 'EVENING')
   if (morning.length) groups.push(['Morning', 'Heats & semifinals', morning, false])
   if (evening.length) groups.push(['Evening', 'Finals session', evening, true])
   if (rest.length) {
@@ -262,7 +264,7 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
             <span style={{ fontSize: 11.5, fontWeight: 600, color: isFinals ? 'rgba(255,255,255,.65)' : 'var(--color-neutral-600)' }}>
               {sub}
             </span>
-            {isFinals && <span style={{ marginLeft: 'auto' }}><MedalDots size={7} /></span>}
+            {isFinals && <span style={{ marginLeft: 'auto' }}><MedalDots size={13} /></span>}
             <span style={{
               marginLeft: isFinals ? 10 : 'auto', fontSize: 11, fontWeight: 700,
               color: isFinals ? 'rgba(255,255,255,.65)' : 'var(--color-neutral-500)',
@@ -274,6 +276,7 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
             <ProgramRow
               key={item.id}
               item={item}
+              seq={i + 1}
               meetId={meetId}
               meet={meet}
               hasResults={resultKeys.has(`${item.event}|${item.gender}`)}
@@ -286,31 +289,93 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
   )
 }
 
-/* Medal standings: shared Olympic-style component (podium cards + bands) */
-function MedalsPanel({ rows }) {
-  if (!rows || rows.length === 0) {
+/* Small club logo / initials badge for club medal rows */
+function ClubBadge({ logo, name, size = 22 }) {
+  if (logo) {
+    return <img src={mediaUrl(logo)} alt="" style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', background: '#fff', border: '1px solid var(--color-neutral-200)' }} />
+  }
+  const initials = String(name || '?').split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+  return (
+    <span style={{
+      width: size, height: size, minWidth: size, borderRadius: '50%', display: 'inline-flex',
+      alignItems: 'center', justifyContent: 'center', fontSize: size * 0.38, fontWeight: 800,
+      background: 'var(--color-accent-100)', color: 'var(--color-accent-800)',
+    }}>{initials}</span>
+  )
+}
+
+/* Medal standings: shared Olympic-style component (podium cards + bands).
+   Meets with club results get a Countries / Clubs switch — national meets
+   default straight to the club table. */
+function MedalsPanel({ rows, clubRows }) {
+  const hasCountries = (rows || []).length > 0
+  const hasClubs = (clubRows || []).length > 0
+  // National meet: everyone has the same flag — clubs are the real standings
+  const [scope, setScope] = useState(hasClubs && (rows || []).length <= 1 ? 'club' : 'country')
+  const countryCount = (rows || []).length
+  useEffect(() => {
+    if (hasClubs && countryCount <= 1) setScope('club')
+  }, [hasClubs, countryCount])
+
+  if (!hasCountries && !hasClubs) {
     return <Empty label="Medals will appear here once finals are official." />
   }
+
+  const showClubs = scope === 'club' && hasClubs
+
   return (
     <div className="live-fade-in">
-      <MedalStandings
-        rows={rows}
-        entityHeader="Country"
-        rowKey={(r, i) => r.swimmer__nationality__code || i}
-        renderPodiumChip={(r) => (
-          <>
-            <Flag code={r.swimmer__nationality__code} />
-            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>{r.swimmer__nationality__code}</span>
-          </>
-        )}
-        renderEntity={(r) => (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <Flag code={r.swimmer__nationality__code} />
-            <span style={{ fontWeight: 800 }}>{r.swimmer__nationality__code}</span>
-            <span className="hide-mobile" style={{ color: 'var(--color-neutral-600)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
-          </span>
-        )}
-      />
+      {hasClubs && hasCountries && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <Seg
+            options={[{ value: 'country', label: 'Countries' }, { value: 'club', label: 'Clubs' }]}
+            value={scope}
+            onChange={setScope}
+          />
+        </div>
+      )}
+      {showClubs ? (
+        <MedalStandings
+          rows={clubRows}
+          entityHeader="Club"
+          rowKey={(r, i) => r.team_id || r.result__team || i}
+          renderPodiumChip={(r) => (
+            <>
+              <ClubBadge logo={r.team_logo} name={r.result__team} size={20} />
+              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.result__team || '—'}</span>
+            </>
+          )}
+          renderEntity={(r) => (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <ClubBadge logo={r.team_logo} name={r.result__team} />
+              {r.team_id ? (
+                <Link to={`/teams/${r.team_id}`} style={{ fontWeight: 800, color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.result__team}</Link>
+              ) : (
+                <span style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.result__team || '—'}</span>
+              )}
+            </span>
+          )}
+        />
+      ) : (
+        <MedalStandings
+          rows={rows}
+          entityHeader="Country"
+          rowKey={(r, i) => r.swimmer__nationality__code || i}
+          renderPodiumChip={(r) => (
+            <>
+              <Flag code={r.swimmer__nationality__code} />
+              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>{r.swimmer__nationality__code}</span>
+            </>
+          )}
+          renderEntity={(r) => (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <Flag code={r.swimmer__nationality__code} />
+              <span style={{ fontWeight: 800 }}>{r.swimmer__nationality__code}</span>
+              <span className="hide-mobile" style={{ color: 'var(--color-neutral-600)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
+            </span>
+          )}
+        />
+      )}
     </div>
   )
 }
@@ -409,11 +474,14 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
 
 /* Live hub for one selected meet: TODAY / SCHEDULE / MEDALS */
 function LiveHub({ meet }) {
+  const { isAdmin } = useAuth()
   const [tab, setTab] = useState('today') // 'today' | 'schedule' | 'medals'
   const [program, setProgram] = useState(null)
   const [live, setLive] = useState(null)
   const [stats, setStats] = useState(null)
   const [medals, setMedals] = useState(null)
+  const [clubMedals, setClubMedals] = useState(null)
+  const [editProgram, setEditProgram] = useState(false)
   const [docs, setDocs] = useState([])
   const [selectedDay, setSelectedDay] = useState(null)
   const [updatedAt, setUpdatedAt] = useState(null)
@@ -433,11 +501,12 @@ function LiveHub({ meet }) {
     getMeetLive(meet.id).then((r) => { setLive(r.data); setUpdatedAt(new Date()) }).catch(() => {})
     getChampionshipStats(meet.id).then((r) => setStats(r.data)).catch(() => {})
     getMedalSummary({ championship: meet.id }).then((r) => setMedals(r.data)).catch(() => setMedals([]))
+    getMedalClubSummary({ championship: meet.id }).then((r) => setClubMedals(r.data)).catch(() => setClubMedals([]))
     getMeetDocuments(meet.id).then((r) => setDocs(Array.isArray(r.data) ? r.data : [])).catch(() => setDocs([]))
   }
 
   useEffect(() => {
-    setProgram(null); setLive(null); setStats(null); setMedals(null); setSelectedDay(null); setTab('today')
+    setProgram(null); setLive(null); setStats(null); setMedals(null); setClubMedals(null); setSelectedDay(null); setTab('today'); setEditProgram(false)
     getMeetProgram(meet.id).then((r) => setProgram(r.data)).catch(() => setProgram({ days: [] }))
     refresh()
     pollRef.current = setInterval(refresh, POLL_MS)
@@ -569,6 +638,25 @@ function LiveHub({ meet }) {
 
           {tab === 'schedule' && (
             <div className="live-fade-in">
+              {/* admin: edit the program in place — add events to days, reorder, sessions */}
+              {isAdmin && (
+                <div style={{ marginBottom: 14 }}>
+                  <button
+                    className={editProgram ? 'btn btn-primary' : 'btn btn-secondary'}
+                    onClick={() => setEditProgram((v) => !v)}
+                  >
+                    {editProgram ? 'Close program editor' : 'Edit program'}
+                  </button>
+                  {editProgram && (
+                    <div style={{ marginTop: 12 }}>
+                      <MeetProgramEditor
+                        champId={meet.id}
+                        onSaved={() => getMeetProgram(meet.id).then((r) => setProgram(r.data)).catch(() => {})}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               {/* day chips */}
               <div ref={chipsRef} style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '10px 2px 12px', marginBottom: 14 }}>
                 {days.map((d) => {
@@ -607,8 +695,8 @@ function LiveHub({ meet }) {
                       <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.06em' }}>
                         DAY {d.day}
                       </div>
-                      <div style={{ marginTop: 5, height: 7 }}>
-                        {hasFinals && <MedalDots size={6} gap={2} />}
+                      <div style={{ marginTop: 4, height: 11 }}>
+                        {hasFinals && <MedalDots size={11} gap={0} />}
                       </div>
                     </button>
                   )
@@ -618,7 +706,7 @@ function LiveHub({ meet }) {
             </div>
           )}
 
-          {tab === 'medals' && <MedalsPanel rows={medals} />}
+          {tab === 'medals' && <MedalsPanel rows={medals} clubRows={clubMedals} />}
 
           {tab === 'startlist' && <DocumentsPanel meetId={meet.id} kind="STARTLIST" docs={docs} onChanged={refreshDocs} />}
 

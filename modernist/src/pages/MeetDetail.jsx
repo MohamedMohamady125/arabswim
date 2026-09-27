@@ -1212,7 +1212,7 @@ function FeaturedCards({ picks, sideBySide = false }) {
           onClick={p.swimmer_id ? () => navigate(`/swimmers/${p.swimmer_id}`) : undefined}
           style={{
             border: '1px solid var(--color-divider)', background: sideBySide ? '#fff' : 'var(--color-surface)',
-            borderTop: '3px solid var(--asw-gold)', display: 'flex', gap: 12,
+            borderTop: '3px solid var(--color-accent-800)', display: 'flex', gap: 12,
             cursor: p.swimmer_id ? 'pointer' : 'default', overflow: 'hidden',
           }}
         >

@@ -1033,6 +1033,7 @@ export default function TeamDetail() {
   const [loading, setLoading] = useState(true)
   const [teamSub, setTeamSub] = useState('coaches')
   const [modal, setModal] = useState(null) // {type, payload}
+  const [countryNews, setCountryNews] = useState([])
 
   const load = useCallback(async (alive = { current: true }) => {
     const [profRes, medalsRes, timesRes, recRes, statsRes, rankRes, coachRes, newsRes, albumRes, boardRes] = await Promise.allSettled([
@@ -1067,6 +1068,19 @@ export default function TeamDetail() {
     load(alive).finally(() => { if (alive.current) setLoading(false) })
     return () => { alive.current = false }
   }, [load])
+
+  // Country-level news covers: fallback imagery for the hero's photo half when
+  // the club itself has no swimmer photos, news or albums (same look as the
+  // federation header).
+  const teamCountry = profile?.team?.country || profile?.team?.country_detail?.id
+  useEffect(() => {
+    if (!teamCountry) return
+    let alive = true
+    getArticles({ country: teamCountry, status: 'PUBLISHED', ordering: '-published_at' })
+      .then((r) => alive && setCountryNews(list(r.data)))
+      .catch(() => alive && setCountryNews([]))
+    return () => { alive = false }
+  }, [teamCountry])
 
   const canManage = managesTeam(profile?.team)
 
@@ -1204,7 +1218,15 @@ export default function TeamDetail() {
             .fed-hero-flag { width: 108px !important; height: 108px !important; }
           }
         `}</style>
-        <FedHeroPhoto candidates={roster.map((s) => s.photo)} extras={articles.map((a) => a?.cover_image)} />
+        <FedHeroPhoto
+          candidates={roster.map((s) => s.photo)}
+          extras={(() => {
+            const own = [...articles.map((a) => a?.cover_image), ...albums.map((a) => a?.cover)].filter(Boolean)
+            // no club imagery at all → borrow the federation's news covers so
+            // the photo half never sits empty
+            return own.length || roster.some((s) => s.photo) ? own : countryNews.map((a) => a?.cover_image)
+          })()}
+        />
         <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
           <Link to="/teams" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: '#1a56a0' }}>← All clubs</Link>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>

@@ -3237,8 +3237,8 @@ export default function MeetDetail() {
                 { value: 'top', label: 'Top Performances' },
                 { value: 'improved', label: 'Most Improved' },
                 { value: 'program', label: 'Program' },
-                { value: 'gallery', label: 'Gallery' },
                 { value: 'compare', label: 'Compare' },
+                { value: 'gallery', label: 'Gallery' },
               ]}
               value={tab}
               onChange={(v) => { if (v === 'compare') setComparing(true); else setTab(v) }}

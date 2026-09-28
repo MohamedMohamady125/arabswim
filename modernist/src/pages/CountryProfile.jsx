@@ -1336,7 +1336,11 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   const maxPerf = Math.max(...perfDist.map((d) => d.count), 1)
 
   const partByClass = {}
-  participated.forEach((c) => { partByClass[c.classification || 'Other'] = (partByClass[c.classification || 'Other'] || 0) + 1 })
+  participated.forEach((c) => {
+    const cls = c.classification || 'Other'
+    if (/^(national|other)$/i.test(cls)) return
+    partByClass[cls] = (partByClass[cls] || 0) + 1
+  })
   const participationList = Object.entries(partByClass).sort((a, b) => b[1] - a[1])
   const maxPart = Math.max(...participationList.map(([, n]) => n), 1)
 
@@ -1526,7 +1530,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       {/* Row 2: Participation | Championships Hosted | Most Participated */}
       <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>
-          {cardHeader('Participation', 'Total Participations by Competition')}
+          {cardHeader('Participation', 'Total Participation by International Competition')}
           {participationList.length === 0 ? <Empty label="No data" /> : participationList.map(([cls, n]) => barRow(cls, n, maxPart))}
         </>)}
         {card(<>

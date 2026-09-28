@@ -109,11 +109,53 @@ function SessionModal({ session, teamId, academyId, onClose, onSaved }) {
   )
 }
 
+function DayWidget({ dateISO, sessions, canEdit, onClose, onEdit, onAdd }) {
+  const dayLabel = new Date(dateISO + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  return (
+    <Modal title={dayLabel} onClose={onClose} width={440}>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {sessions.map((s) => (
+          <div key={s.id} style={{
+            background: '#f2f7fc', border: '1px solid #dbe6f2', borderLeft: '4px solid var(--color-accent-800)',
+            borderRadius: 10, padding: '12px 14px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <span className="asw-num" style={{ fontWeight: 900, fontSize: 17, color: NAVY }}>
+                {fmtTime(s.start_time)}{s.end_time ? ` – ${fmtTime(s.end_time)}` : ''}
+              </span>
+              {canEdit && (
+                <button type="button" className="btn" style={{ marginLeft: 'auto', padding: '2px 12px', fontSize: 11.5 }}
+                  onClick={() => onEdit(s)}>Edit</button>
+              )}
+            </div>
+            {(s.group_name || s.age_group) && (
+              <div style={{ fontWeight: 800, fontSize: 14, color: NAVY, marginTop: 6 }}>
+                {s.group_name}{s.age_group ? ` (${s.age_group})` : ''}
+              </div>
+            )}
+            <div style={{ fontSize: 12.5, color: '#4a5b70', marginTop: 4, display: 'grid', gap: 2 }}>
+              {s.coach_name && <div>Coach: <span style={{ fontWeight: 700, color: NAVY }}>{s.coach_name}</span></div>}
+              {s.location && <div>Location: <span style={{ fontWeight: 700, color: NAVY }}>{s.location}</span></div>}
+              {s.notes && <div style={{ marginTop: 2 }}>{s.notes}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+      {canEdit && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+          <button type="button" className="btn btn-primary" onClick={onAdd}>+ Add session</button>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 export default function TrainingCalendar({ teamId, academyId, canEdit }) {
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null) // { session } | { session: null, date }
+  const [dayView, setDayView] = useState(null) // ISO date whose sessions are shown in the widget
   const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
@@ -173,30 +215,27 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
                 const dISO = iso(d)
                 const dSessions = byDate[dISO] || []
                 const isToday = dISO === todayISO
+                const hasPractice = dSessions.length > 0
                 return (
                   <div key={dISO}
-                    onClick={canEdit ? () => setModal({ session: null, date: dISO }) : undefined}
+                    onClick={hasPractice
+                      ? () => setDayView(dISO)
+                      : (canEdit ? () => setModal({ session: null, date: dISO }) : undefined)}
                     style={{
-                      background: '#fff', border: isToday ? '2px solid var(--color-accent)' : '1px solid #e2e9f2',
+                      background: hasPractice ? '#eaf3fb' : '#fff',
+                      border: isToday ? '2px solid var(--color-accent)' : (hasPractice ? '1px solid #c9ddf0' : '1px solid #e2e9f2'),
                       borderRadius: 8, minHeight: 84, padding: '5px 6px',
-                      cursor: canEdit ? 'pointer' : 'default',
+                      cursor: (hasPractice || canEdit) ? 'pointer' : 'default',
                     }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: isToday ? 'var(--color-accent)' : NAVY, marginBottom: 4 }}>{d}</div>
-                    {dSessions.map((s) => (
-                      <div key={s.id}
-                        onClick={canEdit ? (e) => { e.stopPropagation(); setModal({ session: s }) } : undefined}
-                        title={[fmtTime(s.start_time) + (s.end_time ? `–${fmtTime(s.end_time)}` : ''), s.group_name, s.age_group, s.coach_name, s.location].filter(Boolean).join(' · ')}
-                        style={{
-                          background: '#eaf1f9', borderLeft: '3px solid var(--color-accent-800)', borderRadius: 4,
-                          padding: '3px 5px', marginBottom: 3, fontSize: 10.5, lineHeight: 1.35, color: NAVY,
-                          overflow: 'hidden',
-                        }}>
-                        <span className="asw-num" style={{ fontWeight: 800 }}>{fmtTime(s.start_time)}</span>
-                        {(s.group_name || s.age_group) && (
-                          <span style={{ fontWeight: 600 }}> {s.group_name}{s.age_group ? ` (${s.age_group})` : ''}</span>
-                        )}
+                    {hasPractice && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 8 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-accent-800)', flexShrink: 0 }} />
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: NAVY }}>
+                          {dSessions.length === 1 ? 'Practice' : `${dSessions.length} sessions`}
+                        </span>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )
               })}
@@ -243,6 +282,16 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
         </>
       )}
 
+      {dayView && !modal && (
+        <DayWidget
+          dateISO={dayView}
+          sessions={byDate[dayView] || []}
+          canEdit={canEdit}
+          onClose={() => setDayView(null)}
+          onEdit={(s) => { setDayView(null); setModal({ session: s }) }}
+          onAdd={() => { const d = dayView; setDayView(null); setModal({ session: null, date: d }) }}
+        />
+      )}
       {modal && (
         <SessionModal
           session={modal.session || (modal.date ? { date: modal.date } : null)}

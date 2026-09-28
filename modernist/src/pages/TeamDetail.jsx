@@ -1185,7 +1185,19 @@ export default function TeamDetail() {
         </div>
         <div style={{ padding: '4px 14px 16px', display: 'flex', flexDirection: 'column', flex: 1, textAlign: 'left' }}>
           <div style={{ fontSize: 12, color: '#1a56a0', fontWeight: 600, marginBottom: 9 }}>{a ? usDate(a.published_at || a.created_at) : 'Coming soon'}</div>
-          <div style={{ fontSize: 14.5, color: '#0b2948', fontWeight: 700, lineHeight: 1.5 }}>{a ? a.title : 'Club news will appear here'}</div>
+          {(() => {
+            const rtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a?.title || '')
+            return (
+              <div dir={rtl ? 'rtl' : 'ltr'} style={{
+                fontFamily: rtl ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'var(--font-heading)',
+                fontWeight: rtl ? 700 : 800,
+                fontSize: rtl ? 17 : 16,
+                lineHeight: rtl ? 1.6 : 1.25,
+                letterSpacing: rtl ? 0 : '-0.015em',
+                color: '#0b2948',
+              }}>{a ? a.title : 'Club news will appear here'}</div>
+            )
+          })()}
           <div style={{ marginTop: 'auto', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 12.5, color: '#0b2948', fontWeight: 700 }}>Read more</span>
             <span style={{ color: '#1a56a0', fontWeight: 800 }}>→</span>

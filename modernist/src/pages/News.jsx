@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Trash2, Edit3 } from 'lucide-react'
 import { getArticles, createArticle, updateArticle, deleteArticle } from '../api/news'
 import { getCountries } from '../api/core'
+import { getTeams, getTeam } from '../api/teams'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Pager, Seg, Modal } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
@@ -30,16 +31,42 @@ function ArticleModal({ article, onClose, onSaved }) {
     body: article?.body || '',
     status: article?.status || 'DRAFT',
     country: article?.country || '',
+    team: article?.team || '',
   })
   const [cover, setCover] = useState(null)
   const [attachment, setAttachment] = useState(null)
   const [countries, setCountries] = useState([])
+  const [clubQuery, setClubQuery] = useState('')
+  const [clubOptions, setClubOptions] = useState([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     getCountries().then((res) => setCountries(Array.isArray(res.data) ? res.data : res.data?.results || [])).catch(() => {})
   }, [])
+
+  // Preload the linked club's name when editing
+  useEffect(() => {
+    if (article?.team) {
+      getTeam(article.team)
+        .then((res) => setClubOptions([{ id: res.data.id, name: res.data.name }]))
+        .catch(() => {})
+    }
+  }, [article?.team])
+
+  // Club search — narrowed by the selected federation when one is set
+  useEffect(() => {
+    if (!clubQuery.trim()) return
+    const t = setTimeout(() => {
+      getTeams({ search: clubQuery.trim(), country: form.country || undefined, page_size: 30, ordering: 'name' })
+        .then((res) => {
+          const list = Array.isArray(res.data) ? res.data : res.data?.results || []
+          setClubOptions(list.map((c) => ({ id: c.id, name: c.name })))
+        })
+        .catch(() => {})
+    }, 300)
+    return () => clearTimeout(t)
+  }, [clubQuery, form.country])
 
   const submit = async (e) => {
     e.preventDefault()
@@ -51,6 +78,9 @@ function ArticleModal({ article, onClose, onSaved }) {
       fd.append('body', form.body)
       fd.append('status', form.status)
       if (form.country) fd.append('country', form.country)
+      else if (article) fd.append('country', '')
+      if (form.team) fd.append('team', form.team)
+      else if (article) fd.append('team', '')
       if (cover) fd.append('cover_image', cover)
       if (attachment) fd.append('attachment', attachment)
       if (article) {
@@ -88,11 +118,24 @@ function ArticleModal({ article, onClose, onSaved }) {
             </select>
           </div>
           <div className="field">
-            <label>Country (optional)</label>
+            <label>Federation (optional)</label>
             <select className="select" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>
               <option value="">None</option>
               {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+          </div>
+        </div>
+        <div className="field">
+          <label>Club (optional)</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <input className="input" placeholder="Search clubs…" value={clubQuery} onChange={(e) => setClubQuery(e.target.value)} />
+            <select className="select" value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })}>
+              <option value="">None</option>
+              {clubOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+            Linked articles show on the club and federation pages.
           </div>
         </div>
         <div className="field">

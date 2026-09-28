@@ -1299,6 +1299,7 @@ function CompareTab({ profile, country }) {
 }
 
 function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, medalBoxes, hosted, participated }) {
+  const [statSeed] = useState(() => Math.floor(Math.random() * 2 ** 31))
   const maleTop = topSwimmers.filter((s) => s.sex === 'M').slice(0, 5)
   const femaleTop = topSwimmers.filter((s) => s.sex === 'F').slice(0, 5)
   const maleMedalists = topMedalists.filter((m) => m.sex === 'M').slice(0, 5)
@@ -1463,7 +1464,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
     </>
   )
 
-  const recCard4 = (rec, label, sub, isRecordman = false) => (
+  const recCard4 = ({ label, sub, photo, id, name, line, big, date, bigSize = 30 }) => (
     <div style={{ background: '#fff', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
       <div style={{ padding: '10px 12px 7px', borderBottom: '1px solid #f0f3f7' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1473,33 +1474,28 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         </div>
         <div style={{ fontSize: 9.5, color: '#7a8ca0', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
       </div>
-      {rec ? (
-        <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
-          {/* Photo panel */}
-          <div style={{ width: 100, background: 'linear-gradient(170deg, #0d2d5e 0%, #1a56a0 60%, #3b82c4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
-            {(isRecordman ? rec.photo : rec.swimmer_photo)
-              ? <img src={mediaUrl(isRecordman ? rec.photo : rec.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-              : '🏊'}
-          </div>
-          {/* Info */}
-          <div style={{ padding: '12px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-              <Flag code={country.code} />
-              <span style={{ fontWeight: 800, fontSize: 12.5, color: '#0b2948', lineHeight: 1.2 }}>
-                <SwimmerLink id={isRecordman ? rec.id : rec.swimmer_id} name={isRecordman ? rec.name : rec.swimmer} />
-              </span>
-            </div>
-            {!isRecordman && <div style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>{rec.event}</div>}
-            {isRecordman && <div style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>Total Records</div>}
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: isRecordman ? 40 : 30, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>
-              {isRecordman ? rec.count : rec.time}
-            </div>
-            {!isRecordman && rec.date && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 5 }}>{formatDate(rec.date)}</div>}
-          </div>
+      <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
+        {/* Photo panel */}
+        <div style={{ width: 100, background: 'linear-gradient(170deg, #0d2d5e 0%, #1a56a0 60%, #3b82c4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
+          {photo
+            ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+            : '🏊'}
         </div>
-      ) : (
-        <div style={{ padding: '30px', textAlign: 'center', color: '#bbb', fontSize: 13, minHeight: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>—</div>
-      )}
+        {/* Info */}
+        <div style={{ padding: '12px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+            <Flag code={country.code} />
+            <span style={{ fontWeight: 800, fontSize: 12.5, color: '#0b2948', lineHeight: 1.2 }}>
+              <SwimmerLink id={id} name={name} />
+            </span>
+          </div>
+          {line && <div style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>{line}</div>}
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: bigSize, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>
+            {big}
+          </div>
+          {date && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 5 }}>{formatDate(date)}</div>}
+        </div>
+      </div>
     </div>
   )
 
@@ -1595,12 +1591,32 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         {card(<>{cardHeader('Most Decorated · Women', `Top 5 ${country.name} Female Swimmers by Total Medals`)}{femaleMedalists.length ? decoratedTable(femaleMedalists) : <Empty label="No data" />}</>)}
       </div>
 
-      {/* Row 4: Last Male Record | Last Female Record | Most Male Recordan | Most Femal Recordan */}
+      {/* Row 4: shuffled highlight boxes — random 4 from a wider pool per visit */}
       <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {recCard4(lastMR, 'Last Male Record', `Most Recent ${country.name} Male Record`, false)}
-        {recCard4(lastFR, 'Last Female Record', `Most Recent ${country.name} Female Record`, false)}
-        {recCard4(topMaleRec, 'Most Male Recordman', `Top ${country.name} Male Swimmers by Records`, true)}
-        {recCard4(topFemaleRec, 'Most Female Recordman', `Top ${country.name} Female Swimmers by Records`, true)}
+        {(() => {
+          const photoFor = (sid) => records.find((r) => r.swimmer_id === sid && r.swimmer_photo)?.swimmer_photo
+          const goldMan = [...maleMedalists].sort((a, b) => (b.gold || 0) - (a.gold || 0))[0]
+          const goldWoman = [...femaleMedalists].sort((a, b) => (b.gold || 0) - (a.gold || 0))[0]
+          const oldestRec = records.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0]
+          const bestM = maleTop[0]
+          const bestF = femaleTop[0]
+          const topMedM = maleMedalists[0]
+          const topMedF = femaleMedalists[0]
+          const pool = [
+            { key: 'last-m-rec', person: lastMR?.swimmer_id, valid: !!lastMR, render: () => recCard4({ label: 'Last Male Record', sub: `Most Recent ${country.name} Male Record`, photo: lastMR.swimmer_photo, id: lastMR.swimmer_id, name: lastMR.swimmer, line: lastMR.event, big: lastMR.time, date: lastMR.date }) },
+            { key: 'last-f-rec', person: lastFR?.swimmer_id, valid: !!lastFR, render: () => recCard4({ label: 'Last Female Record', sub: `Most Recent ${country.name} Female Record`, photo: lastFR.swimmer_photo, id: lastFR.swimmer_id, name: lastFR.swimmer, line: lastFR.event, big: lastFR.time, date: lastFR.date }) },
+            { key: 'top-m-rec', person: topMaleRec?.id, valid: !!topMaleRec, render: () => recCard4({ label: 'Most Male Recordman', sub: `Top ${country.name} Male Swimmers by Records`, photo: photoFor(topMaleRec.id), id: topMaleRec.id, name: topMaleRec.name, line: 'Total Records', big: topMaleRec.count, bigSize: 40 }) },
+            { key: 'top-f-rec', person: topFemaleRec?.id, valid: !!topFemaleRec, render: () => recCard4({ label: 'Most Female Recordman', sub: `Top ${country.name} Female Swimmers by Records`, photo: photoFor(topFemaleRec.id), id: topFemaleRec.id, name: topFemaleRec.name, line: 'Total Records', big: topFemaleRec.count, bigSize: 40 }) },
+            { key: 'best-m-perf', person: bestM?.id, valid: !!bestM, render: () => recCard4({ label: 'Best Male Performance', sub: `Top ${country.name} Male Swim by FINA Points`, photo: bestM.photo, id: bestM.id, name: bestM.name, line: bestM.best_event, big: bestM.best_time }) },
+            { key: 'best-f-perf', person: bestF?.id, valid: !!bestF, render: () => recCard4({ label: 'Best Female Performance', sub: `Top ${country.name} Female Swim by FINA Points`, photo: bestF.photo, id: bestF.id, name: bestF.name, line: bestF.best_event, big: bestF.best_time }) },
+            { key: 'top-m-med', person: topMedM?.id, valid: !!topMedM, render: () => recCard4({ label: 'Most Decorated Man', sub: `Top ${country.name} Male Swimmer by Medals`, photo: topMedM.photo, id: topMedM.id, name: topMedM.name, line: 'Total Medals', big: topMedM.total, bigSize: 40 }) },
+            { key: 'top-f-med', person: topMedF?.id, valid: !!topMedF, render: () => recCard4({ label: 'Most Decorated Woman', sub: `Top ${country.name} Female Swimmer by Medals`, photo: topMedF.photo, id: topMedF.id, name: topMedF.name, line: 'Total Medals', big: topMedF.total, bigSize: 40 }) },
+            { key: 'gold-man', person: goldMan?.id, valid: !!(goldMan && goldMan.gold > 0), render: () => recCard4({ label: 'Golden Man', sub: `Most Golds by a ${country.name} Male Swimmer`, photo: goldMan.photo, id: goldMan.id, name: goldMan.name, line: 'Gold Medals', big: goldMan.gold, bigSize: 40 }) },
+            { key: 'gold-woman', person: goldWoman?.id, valid: !!(goldWoman && goldWoman.gold > 0), render: () => recCard4({ label: 'Golden Woman', sub: `Most Golds by a ${country.name} Female Swimmer`, photo: goldWoman.photo, id: goldWoman.id, name: goldWoman.name, line: 'Gold Medals', big: goldWoman.gold, bigSize: 40 }) },
+            { key: 'oldest-rec', person: oldestRec?.swimmer_id, valid: !!oldestRec, render: () => recCard4({ label: 'Longest-Standing Record', sub: `Oldest Unbroken ${country.name} Record`, photo: oldestRec.swimmer_photo, id: oldestRec.swimmer_id, name: oldestRec.swimmer, line: `${oldestRec.event} · since ${oldestRec.date.slice(0, 4)}`, big: oldestRec.time, date: oldestRec.date }) },
+          ]
+          return pickHighlights(pool, mulberry32(statSeed)).map((c) => <div key={c.key}>{c.render()}</div>)
+        })()}
       </div>
 
       {/* Row 5: Performance Index (dark bg) | Country Battle */}

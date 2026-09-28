@@ -666,6 +666,7 @@ function RecordsTab({ records, photoById, sexById }) {
 const PERF_BAR_COLORS = ['#e63946', '#f4845f', '#f7b731', '#f5d547', '#52c78a', '#27ae60', '#3b9dd6', '#2471a3', '#7d3c98', '#b0bec5']
 
 function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxes, photoById, sexById }) {
+  const [statSeed] = useState(() => Math.floor(Math.random() * 2 ** 31))
   // Best swim per swimmer (from the times payload, which carries swimmer_sex)
   const bestBySwimmer = useMemo(() => {
     const by = {}
@@ -871,16 +872,30 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
         {card(<>{cardHeader('Most Decorated · Women', `Top 5 ${team.name} Female Swimmers by Total Medals`)}{femaleMedalists.length ? decoratedTable(femaleMedalists) : <Empty label="No data" />}</>)}
       </div>
 
-      {/* Row 3: Latest Record | Top Recordman | Best FINA | Top Medalist */}
+      {/* Row 3: shuffled highlight boxes — random 4 from a wider pool per visit */}
       <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {recCard('Latest Record', `Most Recent ${team.name} Record`,
-          latestRecord ? recBody(photoById[latestRecord.swimmer_id], latestRecord.swimmer_name, latestRecord.swimmer_id, latestRecord.event_name, typeof latestRecord.time === 'number' ? formatTime(latestRecord.time) : latestRecord.time, formatDate(latestRecord.date)) : recEmpty)}
-        {recCard('Top Recordman', `${team.name} Swimmer Holding the Most Records`,
-          topRecordman ? recBody(photoById[topRecordman.id], topRecordman.name, topRecordman.id, 'Total Records', topRecordman.count, null) : recEmpty)}
-        {recCard('Highest FINA', `Best FINA Performance in ${team.name} History`,
-          stats?.best_fina ? recBody(photoById[stats.best_fina.swimmer_id], stats.best_fina.swimmer_name, stats.best_fina.swimmer_id, stats.best_fina.event_name, stats.best_fina.points, null) : recEmpty)}
-        {recCard('Top Medalist', `${team.name} Swimmer with the Most Medals`,
-          stats?.top_medalist ? recBody(photoById[stats.top_medalist.swimmer_id], stats.top_medalist.swimmer_name, stats.top_medalist.swimmer_id, 'Total Medals', stats.top_medalist.count, null) : recEmpty)}
+        {(() => {
+          const fmtT = (t) => (typeof t === 'number' ? formatTime(t) : t) || '—'
+          const goldTouch = medalists[0]
+          const bestM = maleTop[0]
+          const bestF = femaleTop[0]
+          const topMedM = maleMedalists.slice().sort((a, b) => b.total - a.total)[0]
+          const topMedF = femaleMedalists.slice().sort((a, b) => b.total - a.total)[0]
+          const oldestRec = records.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0]
+          const pool = [
+            { key: 'latest-rec', person: latestRecord?.swimmer_id, valid: !!latestRecord, render: () => recCard('Latest Record', `Most Recent ${team.name} Record`, recBody(photoById[latestRecord.swimmer_id], latestRecord.swimmer_name, latestRecord.swimmer_id, latestRecord.event_name, fmtT(latestRecord.time), formatDate(latestRecord.date))) },
+            { key: 'top-recordman', person: topRecordman?.id, valid: !!topRecordman, render: () => recCard('Top Recordman', `${team.name} Swimmer Holding the Most Records`, recBody(photoById[topRecordman.id], topRecordman.name, topRecordman.id, 'Total Records', topRecordman.count, null)) },
+            { key: 'best-fina', person: stats?.best_fina?.swimmer_id, valid: !!stats?.best_fina, render: () => recCard('Highest FINA', `Best FINA Performance in ${team.name} History`, recBody(photoById[stats.best_fina.swimmer_id], stats.best_fina.swimmer_name, stats.best_fina.swimmer_id, stats.best_fina.event_name, stats.best_fina.points, null)) },
+            { key: 'top-medalist', person: stats?.top_medalist?.swimmer_id, valid: !!stats?.top_medalist, render: () => recCard('Top Medalist', `${team.name} Swimmer with the Most Medals`, recBody(photoById[stats.top_medalist.swimmer_id], stats.top_medalist.swimmer_name, stats.top_medalist.swimmer_id, 'Total Medals', stats.top_medalist.count, null)) },
+            { key: 'gold-touch', person: goldTouch?.id, valid: !!(goldTouch && goldTouch.gold > 0), render: () => recCard('The Golden Touch', `Most Golds by a ${team.name} Swimmer`, recBody(photoById[goldTouch.id], goldTouch.name, goldTouch.id, 'Gold Medals', goldTouch.gold, null)) },
+            { key: 'best-m-perf', person: bestM?.swimmer_id, valid: !!bestM, render: () => recCard('Best Male Performance', `Top ${team.name} Male Swim by FINA Points`, recBody(photoById[bestM.swimmer_id], bestM.swimmer_name, bestM.swimmer_id, bestM.event_name, fmtT(bestM.time), null)) },
+            { key: 'best-f-perf', person: bestF?.swimmer_id, valid: !!bestF, render: () => recCard('Best Female Performance', `Top ${team.name} Female Swim by FINA Points`, recBody(photoById[bestF.swimmer_id], bestF.swimmer_name, bestF.swimmer_id, bestF.event_name, fmtT(bestF.time), null)) },
+            { key: 'top-m-med', person: topMedM?.id, valid: !!topMedM, render: () => recCard('Most Decorated Man', `Top ${team.name} Male Swimmer by Medals`, recBody(photoById[topMedM.id], topMedM.name, topMedM.id, 'Total Medals', topMedM.total, null)) },
+            { key: 'top-f-med', person: topMedF?.id, valid: !!topMedF, render: () => recCard('Most Decorated Woman', `Top ${team.name} Female Swimmer by Medals`, recBody(photoById[topMedF.id], topMedF.name, topMedF.id, 'Total Medals', topMedF.total, null)) },
+            { key: 'oldest-rec', person: oldestRec?.swimmer_id, valid: !!oldestRec, render: () => recCard('Longest-Standing Record', `Oldest Unbroken ${team.name} Record`, recBody(photoById[oldestRec.swimmer_id], oldestRec.swimmer_name, oldestRec.swimmer_id, `${oldestRec.event_name} · since ${oldestRec.date.slice(0, 4)}`, fmtT(oldestRec.time), formatDate(oldestRec.date))) },
+          ]
+          return pickHighlights(pool, mulberry32(statSeed)).map((c) => <div key={c.key}>{c.render()}</div>)
+        })()}
       </div>
 
       {/* Row 4: Performance Index | Club Battle */}

@@ -1309,7 +1309,6 @@ function CompareTab({ profile, country }) {
 }
 
 function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, medalBoxes, hosted, participated }) {
-  const [statSeed] = useState(() => Math.floor(Math.random() * 2 ** 31))
   const maleTop = topSwimmers.filter((s) => s.sex === 'M').slice(0, 5)
   const femaleTop = topSwimmers.filter((s) => s.sex === 'F').slice(0, 5)
   const maleMedalists = topMedalists.filter((m) => m.sex === 'M').slice(0, 5)
@@ -1616,27 +1615,17 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         })()}
       </div>
 
-      {/* Row 4: shuffled highlight boxes — random 4 from a wider pool per visit */}
+      {/* Row 4: fixed record highlight boxes */}
       <div className="m-col2 m-hl4" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {(() => {
           const photoFor = (sid) => records.find((r) => r.swimmer_id === sid && r.swimmer_photo)?.swimmer_photo
-          const oldestRec = records.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0]
-          const bestM = maleTop[0]
-          const bestF = femaleTop[0]
-          const topMedM = maleMedalists[0]
-          const topMedF = femaleMedalists[0]
-          const pool = [
-            { key: 'last-m-rec', person: lastMR?.swimmer_id, valid: !!lastMR, render: () => recCard4({ label: 'Last Record Broken · Men', sub: `Most Recent ${demonym(country.name)} Male Record`, photo: lastMR.swimmer_photo, id: lastMR.swimmer_id, name: lastMR.swimmer, line: lastMR.event, big: lastMR.time, date: lastMR.date }) },
-            { key: 'last-f-rec', person: lastFR?.swimmer_id, valid: !!lastFR, render: () => recCard4({ label: 'Last Record Broken · Women', sub: `Most Recent ${demonym(country.name)} Female Record`, photo: lastFR.swimmer_photo, id: lastFR.swimmer_id, name: lastFR.swimmer, line: lastFR.event, big: lastFR.time, date: lastFR.date }) },
-            { key: 'top-m-rec', person: topMaleRec?.id, valid: !!topMaleRec, render: () => recCard4({ label: 'Most Male Record Holder', sub: `Top ${demonym(country.name)} Male Swimmer by National Records`, photo: photoFor(topMaleRec.id), id: topMaleRec.id, name: topMaleRec.name, line: 'Total Records', big: topMaleRec.count, bigSize: 40 }) },
-            { key: 'top-f-rec', person: topFemaleRec?.id, valid: !!topFemaleRec, render: () => recCard4({ label: 'Most Female Record Holder', sub: `Top ${demonym(country.name)} Female Swimmer by National Records`, photo: photoFor(topFemaleRec.id), id: topFemaleRec.id, name: topFemaleRec.name, line: 'Total Records', big: topFemaleRec.count, bigSize: 40 }) },
-            { key: 'best-m-perf', person: bestM?.id, valid: !!bestM, render: () => recCard4({ label: 'Best Male Performance', sub: `Top ${country.name} Male Swim by FINA Points`, photo: bestM.photo, id: bestM.id, name: bestM.name, line: bestM.best_event, big: bestM.best_time }) },
-            { key: 'best-f-perf', person: bestF?.id, valid: !!bestF, render: () => recCard4({ label: 'Best Female Performance', sub: `Top ${country.name} Female Swim by FINA Points`, photo: bestF.photo, id: bestF.id, name: bestF.name, line: bestF.best_event, big: bestF.best_time }) },
-            { key: 'top-m-med', person: topMedM?.id, valid: !!topMedM, render: () => recCard4({ label: 'Most Decorated Man', sub: `Top ${country.name} Male Swimmer by Medals`, photo: topMedM.photo, id: topMedM.id, name: topMedM.name, line: 'Total Medals', big: topMedM.total, bigSize: 40 }) },
-            { key: 'top-f-med', person: topMedF?.id, valid: !!topMedF, render: () => recCard4({ label: 'Most Decorated Woman', sub: `Top ${country.name} Female Swimmer by Medals`, photo: topMedF.photo, id: topMedF.id, name: topMedF.name, line: 'Total Medals', big: topMedF.total, bigSize: 40 }) },
-            { key: 'oldest-rec', person: oldestRec?.swimmer_id, valid: !!oldestRec, render: () => recCard4({ label: 'Longest-Standing Record', sub: `Oldest Unbroken ${country.name} Record`, photo: oldestRec.swimmer_photo, id: oldestRec.swimmer_id, name: oldestRec.swimmer, line: `${oldestRec.event} · since ${oldestRec.date.slice(0, 4)}`, big: oldestRec.time, date: oldestRec.date }) },
+          const cards = [
+            { key: 'last-m-rec', valid: !!lastMR, render: () => recCard4({ label: 'Last Record Broken · Men', sub: `Most Recent ${demonym(country.name)} Male Record`, photo: lastMR.swimmer_photo, id: lastMR.swimmer_id, name: lastMR.swimmer, line: lastMR.event, big: lastMR.time, date: lastMR.date }) },
+            { key: 'last-f-rec', valid: !!lastFR, render: () => recCard4({ label: 'Last Record Broken · Women', sub: `Most Recent ${demonym(country.name)} Female Record`, photo: lastFR.swimmer_photo, id: lastFR.swimmer_id, name: lastFR.swimmer, line: lastFR.event, big: lastFR.time, date: lastFR.date }) },
+            { key: 'top-m-rec', valid: !!topMaleRec, render: () => recCard4({ label: 'Most Male Record Holder', sub: `Top ${demonym(country.name)} Male Swimmer by National Records`, photo: photoFor(topMaleRec.id), id: topMaleRec.id, name: topMaleRec.name, line: 'Total Records', big: topMaleRec.count, bigSize: 40 }) },
+            { key: 'top-f-rec', valid: !!topFemaleRec, render: () => recCard4({ label: 'Most Female Record Holder', sub: `Top ${demonym(country.name)} Female Swimmer by National Records`, photo: photoFor(topFemaleRec.id), id: topFemaleRec.id, name: topFemaleRec.name, line: 'Total Records', big: topFemaleRec.count, bigSize: 40 }) },
           ]
-          return pickHighlights(pool, mulberry32(statSeed)).map((c) => <div key={c.key}>{c.render()}</div>)
+          return cards.filter((c) => c.valid).map((c) => <div key={c.key}>{c.render()}</div>)
         })()}
       </div>
 

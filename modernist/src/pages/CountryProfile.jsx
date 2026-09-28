@@ -2327,6 +2327,9 @@ export default function CountryProfile() {
               <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: '#0b2948', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
                 <span>View Profile</span><span style={{ color: '#1a56a0' }}>→</span>
               </Link>
+              {isAdmin && (
+                <Link to={`/swimmers/${s.id}?edit=1`} className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8, display: 'inline-block', textDecoration: 'none' }}>Edit</Link>
+              )}
             </div>
           </div>
         )

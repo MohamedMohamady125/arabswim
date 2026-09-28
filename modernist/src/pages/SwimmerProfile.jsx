@@ -958,6 +958,16 @@ export default function SwimmerProfile() {
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
 
+  // ?edit=1 deep link (e.g. from a club roster) auto-opens the admin editor
+  useEffect(() => {
+    if (isAdmin && swimmer && searchParams.get('edit')) {
+      setAdminEditOpen(true)
+      searchParams.delete('edit')
+      setSearchParams(searchParams, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, swimmer])
+
   useEffect(() => {
     let alive = true
     setLoaded(false)

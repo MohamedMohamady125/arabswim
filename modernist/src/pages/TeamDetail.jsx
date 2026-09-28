@@ -1608,7 +1608,7 @@ export default function TeamDetail() {
                         <span>View Profile</span><span style={{ color: '#1a56a0' }}>→</span>
                       </Link>
                       {isAdmin && (
-                        <button className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8 }} onClick={() => setModal({ type: 'swimmer', payload: s })}>Edit</button>
+                        <Link to={`/swimmers/${s.id}?edit=1`} className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8, display: 'inline-block', textDecoration: 'none' }}>Edit</Link>
                       )}
                     </div>
                   </div>

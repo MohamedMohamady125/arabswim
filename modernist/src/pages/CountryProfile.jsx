@@ -1479,7 +1479,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
   const recCard4 = ({ label, sub, photo, id, name, line, big, date, bigSize = 30 }) => (
     <div style={{ background: '#fff', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
-      <div style={{ padding: '10px 12px 7px', borderBottom: '1px solid #f0f3f7' }}>
+      <div className="m-hl4-head" style={{ padding: '10px 12px 7px', borderBottom: '1px solid #f0f3f7' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 4, height: 14, background: 'linear-gradient(180deg, #1a56a0, #0b2948)', borderRadius: 2, flexShrink: 0 }} />
           <span className="m-hl4-label" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#0b2948' }}>{label}</span>

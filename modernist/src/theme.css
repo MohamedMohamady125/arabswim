@@ -403,6 +403,9 @@ figure { margin: 0; }
   .m-hl4 { grid-template-columns: 1fr !important; gap: 14px !important; }
   .m-hl4 .m-hl4-label { font-size: 15px !important; letter-spacing: 0.05em !important; white-space: nowrap; }
   .m-hl4 .m-hl4-va { display: none !important; }
+  /* headers wrap to different line counts — pin their height so every card's
+     body starts at the same offset */
+  .m-hl4 .m-hl4-head { min-height: 66px; box-sizing: border-box; }
   .m-hl4 .m-hl4-sub { font-size: 12.5px !important; }
   .m-hl4 .m-hl4-photo { width: 128px !important; font-size: 44px !important; min-height: 150px; }
   .m-hl4 .m-hl4-info { padding: 14px 16px !important; }

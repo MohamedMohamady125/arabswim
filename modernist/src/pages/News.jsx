@@ -102,12 +102,18 @@ export function ArticleModal({ article, onClose, onSaved }) {
         {error && <div className="error-box">{error}</div>}
         <div className="field">
           <label>Title *</label>
-          <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+          <input className="input" dir={isRTLText(form.title) ? 'rtl' : 'ltr'}
+            style={isRTLText(form.title) ? { fontFamily: "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif", textAlign: 'right' } : undefined}
+            value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         </div>
         <div className="field">
           <label>Body</label>
-          <textarea className="input" rows={10} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
-            style={{ resize: 'vertical', minHeight: 160 }} />
+          <textarea className="input" rows={10} dir={isRTLText(form.body) ? 'rtl' : 'ltr'}
+            value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
+            style={{
+              resize: 'vertical', minHeight: 160,
+              ...(isRTLText(form.body) ? { fontFamily: "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif", textAlign: 'right', lineHeight: 1.8 } : {}),
+            }} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">

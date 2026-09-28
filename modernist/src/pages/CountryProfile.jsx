@@ -193,7 +193,7 @@ function NewsTab({ countryId, countryName }) {
                     }}>{a.title}</div>
                   )
                 })()}
-                <div style={{ fontSize: 12.5, color: '#58687c', lineHeight: 1.5, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
+                <div dir={/[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.body || '') ? 'rtl' : 'ltr'} style={{ fontSize: 12.5, color: '#58687c', lineHeight: 1.6, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
                 <span style={{ marginTop: 'auto', color: '#1a56a0', fontWeight: 700, fontSize: 13 }}>Read more →</span>
               </div>
             </Link>

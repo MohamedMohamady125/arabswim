@@ -413,6 +413,8 @@ figure { margin: 0; }
   .m-hl4 .m-hl4-line { font-size: 13px !important; }
   .m-hl4 .m-hl4-big { font-size: 44px !important; }
   .m-hl4 .m-hl4-date { font-size: 12.5px !important; }
+  /* federation news cards: taller on phone (profile pages are zoomed to 0.75) */
+  .fed-news-card .fed-news-img { height: 230px !important; }
   /* flags read better slightly larger on small screens */
   .asw-flag, .fi.asw-flag { width: 27px; height: 20px; line-height: 20px; }
   .asw-flag-lg, .fi.asw-flag-lg { width: 40px; height: 30px; line-height: 30px; }

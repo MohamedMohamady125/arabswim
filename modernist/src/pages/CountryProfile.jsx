@@ -2474,8 +2474,8 @@ export default function CountryProfile() {
             // ones included — so each drill-down's country standings can be
             // seen. Regional classes (GCC/Asian/African/Mediterranean) only
             // show on their member countries.
-            const ALL_CLASSES = ['Olympic', 'World', 'Arab', 'National', 'Islamic',
-              'GCC', 'Asian', 'African', 'Mediterranean', 'Other']
+            const ALL_CLASSES = ['Olympic', 'World', 'Arab', 'Islamic',
+              'GCC', 'Asian', 'African', 'Mediterranean']
             const applies = (n) => {
               const list = CLASS_COUNTRY_CODES[n]
               return !list || !country?.code || list.includes(country.code)
@@ -2483,7 +2483,7 @@ export default function CountryProfile() {
             const byName = {}
             medalBoxes.forEach((m) => { byName[m.name] = m })
             const boxes = [
-              ...medalBoxes.filter((m) => m.total > 0 || applies(m.name)),
+              ...medalBoxes.filter((m) => m.name !== 'National' && m.name !== 'Other' && (m.total > 0 || applies(m.name))),
               ...ALL_CLASSES.filter((n) => !byName[n] && applies(n))
                 .map((n) => ({ name: n, gold: 0, silver: 0, bronze: 0, total: 0 })),
             ]

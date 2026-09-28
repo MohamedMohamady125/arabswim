@@ -23,6 +23,7 @@ const FEATURE_PATHS = {
   '/compare': 'compare',
   '/teams': 'teams',
   '/swimmers': 'swimmers',
+  '/academies': 'academies',
 }
 
 // Admins always see every section (so they can preview before launch)

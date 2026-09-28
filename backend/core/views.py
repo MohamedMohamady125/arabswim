@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -92,28 +94,36 @@ def create_org_account(request):
     return Response(data, status=201)
 
 
-# Site sections the admin can hide until they're ready to launch
+# Top-level site sections (kept for GET defaults so the frontend always sees them)
 FEATURE_KEYS = [
     'hall_of_fame', 'coaches', 'news', 'marketplace', 'media',
     'records', 'new_records', 'medals', 'rankings', 'qualifying_times',
     'predictions', 'calendar', 'live', 'compare', 'teams', 'swimmers',
+    'academies',
 ]
+
+# Subfeature keys use dot notation, e.g. 'fed.tab.board', 'club.tab.training',
+# 'swimmer.tab.gallery'. Any well-formed key is accepted; the frontend registry
+# (src/featureRegistry.js) is the source of truth for what exists.
+_FEATURE_KEY_RE = re.compile(r'^[a-z0-9_]+(\.[a-z0-9_]+)*$')
 
 
 @api_view(['GET', 'PATCH'])
 @permission_classes([permissions.AllowAny])
 def site_features(request):
-    """GET: public map of section toggles. PATCH (admin): update toggles."""
+    """GET: public map of visibility toggles (missing key = visible).
+    PATCH (admin): update any number of toggles, {key: bool}."""
     if request.method == 'PATCH':
         if not is_admin(request.user):
             return Response({'error': 'Admin only'}, status=403)
-        for key in FEATURE_KEYS:
-            if key in request.data:
+        for key, val in request.data.items():
+            if isinstance(key, str) and len(key) <= 40 and _FEATURE_KEY_RE.match(key):
                 SiteFeature.objects.update_or_create(
-                    key=key, defaults={'enabled': bool(request.data[key])}
+                    key=key, defaults={'enabled': bool(val)}
                 )
-    stored = dict(SiteFeature.objects.filter(key__in=FEATURE_KEYS).values_list('key', 'enabled'))
-    return Response({key: stored.get(key, True) for key in FEATURE_KEYS})
+    out = {key: True for key in FEATURE_KEYS}
+    out.update(dict(SiteFeature.objects.values_list('key', 'enabled')))
+    return Response(out)
 
 
 class ProfileClaimViewSet(viewsets.ModelViewSet):

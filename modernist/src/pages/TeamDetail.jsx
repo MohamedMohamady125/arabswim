@@ -10,6 +10,7 @@ import { getCountries } from '../api/core'
 import api from '../api/client'
 import Flag from '../components/Flag'
 import { useAuth } from '../context/AuthContext'
+import { useFeatures } from '../context/FeaturesContext'
 import { Loading, Empty, Seg, Modal } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
@@ -1016,8 +1017,13 @@ function CompareTab({ team, profile, stats, records }) {
 export default function TeamDetail() {
   const { id } = useParams()
   const { isAdmin, managesTeam } = useAuth()
+  const { flag } = useFeatures()
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab = searchParams.get('tab') || 'overview'
+  // Admin visibility toggles: hidden tabs vanish for visitors, stay (dimmed)
+  // for admins. Overview is always available and is the fallback.
+  const tabHidden = (v) => v !== 'overview' && !flag(`club.tab.${v}`)
+  const rawTab = searchParams.get('tab') || 'overview'
+  const tab = (isAdmin || !tabHidden(rawTab)) ? rawTab : 'overview'
   const setTab = (t) => setSearchParams({ tab: t }, { replace: true })
 
   const [profile, setProfile] = useState(null)
@@ -1284,12 +1290,14 @@ export default function TeamDetail() {
 
       {/* Tab bar */}
       <div className="rule-b" style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto' }}>
-        {TABS.filter((t) => t.value !== 'training' || !team?.is_national_team).map((t) => (
+        {TABS.filter((t) => (t.value !== 'training' || !team?.is_national_team) && (isAdmin || !tabHidden(t.value))).map((t) => (
           <button key={t.value} type="button" onClick={() => setTab(t.value)}
+            title={tabHidden(t.value) ? 'Hidden from visitors (admin visibility settings)' : undefined}
             style={{
               padding: '12px 16px', background: 'none', border: 'none', borderBottom: tab === t.value ? '3px solid var(--color-accent)' : '3px solid transparent',
               cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: tab === t.value ? 800 : 600,
               fontSize: 13, color: tab === t.value ? 'var(--color-accent)' : 'var(--color-text)', whiteSpace: 'nowrap',
+              opacity: tabHidden(t.value) ? 0.4 : 1,
             }}>
             {t.label}
           </button>

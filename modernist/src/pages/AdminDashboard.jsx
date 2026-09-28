@@ -4,6 +4,7 @@ import { getClaims, approveClaim, declineClaim, getPhotoRequests, approvePhotoRe
 import { createOrgAccount, getCountries, updateFeatures, getChangeLog, revertChange } from '../api/core'
 import { getSponsors, createSponsor, updateSponsor, deleteSponsor } from '../api/sponsors'
 import { useFeatures } from '../context/FeaturesContext'
+import { FEATURE_GROUPS } from '../featureRegistry'
 import { getTeams } from '../api/teams'
 import { getAcademies } from '../api/academies'
 import { PageHead, SectHead, Loading, Empty, Seg } from '../components/ui'
@@ -212,33 +213,14 @@ function OrgAccountForm() {
   )
 }
 
-const FEATURE_LABELS = [
-  ['records', 'Records'],
-  ['new_records', 'New Records'],
-  ['medals', 'Medals'],
-  ['rankings', 'Rankings'],
-  ['qualifying_times', 'Qualifying Times'],
-  ['predictions', 'Predictions'],
-  ['calendar', 'Calendar'],
-  ['live', 'Live Results'],
-  ['swimmers', 'Swimmers'],
-  ['teams', 'Clubs'],
-  ['compare', 'Compare'],
-  ['coaches', 'Coaches'],
-  ['hall_of_fame', 'Hall of Fame'],
-  ['news', 'News'],
-  ['media', 'Media'],
-  ['marketplace', 'Marketplace'],
-]
-
 function SiteFeatures() {
   const { features, refreshFeatures } = useFeatures()
-  const [busy, setBusy] = useState(null)
+  const [busy, setBusy] = useState(null) // key or group id being saved
 
-  const toggle = async (key) => {
-    setBusy(key)
+  const save = async (patch, busyKey) => {
+    setBusy(busyKey)
     try {
-      await updateFeatures({ [key]: !(features[key] !== false) })
+      await updateFeatures(patch)
       refreshFeatures()
     } catch {
       window.alert('Failed to update — try again')
@@ -246,35 +228,57 @@ function SiteFeatures() {
       setBusy(null)
     }
   }
+  const toggle = (key) => save({ [key]: !(features[key] !== false) }, key)
+  const setGroup = (group, enabled) =>
+    save(Object.fromEntries(group.items.map(([key]) => [key, enabled])), group.id)
 
   return (
     <div>
       <div className="micro" style={{ marginBottom: 14 }}>
-        Hidden sections disappear from the menus and pages for visitors. You (admin) always see everything so you can prepare content before launch.
+        Hidden items disappear from menus, pages and tab bars for visitors. You (admin) always see everything — hidden tabs show dimmed — so you can prepare content before launch.
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        {FEATURE_LABELS.map(([key, label]) => {
-          const on = features[key] !== false
-          return (
-            <div key={key} className="hair" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: '1px solid var(--color-divider)', minWidth: 210 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{label}</div>
-                <div className="micro" style={{ color: on ? 'var(--asw-fast, #0d7a52)' : 'var(--color-neutral-700)' }}>
-                  {on ? 'Visible on the website' : 'Hidden from visitors'}
-                </div>
-              </div>
-              <button
-                className={`btn ${on ? 'btn-secondary' : 'btn-primary'}`}
-                style={{ height: 30, fontSize: 12 }}
-                disabled={busy === key}
-                onClick={() => toggle(key)}
-              >
-                {busy === key ? '…' : on ? 'Hide' : 'Show'}
-              </button>
+      {FEATURE_GROUPS.map((group) => {
+        const hiddenCount = group.items.filter(([key]) => features[key] === false).length
+        return (
+          <div key={group.id} style={{ marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
+              <div className="kicker">{group.label}</div>
+              <span className="micro" style={{ color: hiddenCount ? 'var(--asw-slow)' : 'var(--color-neutral-700)' }}>
+                {hiddenCount ? `${hiddenCount} hidden` : 'all visible'}
+              </span>
+              <span style={{ flex: 1 }} />
+              <button className="btn btn-secondary" style={{ height: 26, fontSize: 11 }} disabled={busy === group.id}
+                onClick={() => setGroup(group, true)}>Show all</button>
+              <button className="btn btn-secondary" style={{ height: 26, fontSize: 11 }} disabled={busy === group.id}
+                onClick={() => setGroup(group, false)}>Hide all</button>
             </div>
-          )
-        })}
-      </div>
+            <div className="micro" style={{ marginBottom: 10, color: 'var(--color-neutral-700)' }}>{group.hint}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {group.items.map(([key, label]) => {
+                const on = features[key] !== false
+                return (
+                  <div key={key} className="hair" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', border: '1px solid var(--color-divider)', minWidth: 190, opacity: on ? 1 : 0.75 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5 }}>{label}</div>
+                      <div className="micro" style={{ color: on ? 'var(--asw-fast, #0d7a52)' : 'var(--color-neutral-700)' }}>
+                        {on ? 'Visible' : 'Hidden'}
+                      </div>
+                    </div>
+                    <button
+                      className={`btn ${on ? 'btn-secondary' : 'btn-primary'}`}
+                      style={{ height: 28, fontSize: 12 }}
+                      disabled={busy === key}
+                      onClick={() => toggle(key)}
+                    >
+                      {busy === key ? '…' : on ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

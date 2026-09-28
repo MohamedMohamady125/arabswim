@@ -18,6 +18,7 @@ import { mergeSwimmers } from '../api/importer'
 import { getCountries } from '../api/core'
 import { getHeldRecords } from '../api/records'
 import { useAuth } from '../context/AuthContext'
+import { useFeatures } from '../context/FeaturesContext'
 import Flag from '../components/Flag'
 import { Loading, Empty, Seg, Modal } from '../components/ui'
 import ImageCropper from '../components/ImageCropper'
@@ -940,6 +941,7 @@ export default function SwimmerProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isAdmin, isAuthed, mySwimmerId, refreshUser } = useAuth()
+  const { flag } = useFeatures()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') || 'overall'
   const setActiveTab = (tab) => setSearchParams({ tab }, { replace: true })
@@ -1020,8 +1022,16 @@ export default function SwimmerProfile() {
   // Non-Arab swimmers keep a normal profile but Records and Rankings are
   // Arab-only features (their scopes are national/Arab/GCC)
   const isNonArab = swimmer.nationality_detail?.region === 'OTHER'
-  const visibleTabs = isNonArab ? TABS.filter((t) => !['records', 'rankings'].includes(t.value)) : TABS
-  const effectiveTab = isNonArab && ['records', 'rankings'].includes(activeTab) ? 'times' : activeTab
+  // Admin visibility toggles: hidden tabs vanish for visitors, stay (dimmed)
+  // for admins. Overall is always available and is the fallback.
+  const tabHidden = (v) => v !== 'overall' && !flag(`swimmer.tab.${v}`)
+  const visibleTabs = TABS
+    .filter((t) => !isNonArab || !['records', 'rankings'].includes(t.value))
+    .filter((t) => isAdmin || !tabHidden(t.value))
+  const effectiveTab = (() => {
+    if (isNonArab && ['records', 'rankings'].includes(activeTab)) return 'times'
+    return visibleTabs.some((t) => t.value === activeTab) ? activeTab : 'overall'
+  })()
 
   const chip = (label, value) => (
     <span className="tag tag-neutral" style={{ gap: 6 }}>
@@ -1190,7 +1200,9 @@ export default function SwimmerProfile() {
       <div className="rule-b tabbar tabbar-sticky" style={{ padding: '14px 32px', overflowX: 'auto' }}>
         <Seg
           tabs
-          options={visibleTabs}
+          options={visibleTabs.map((t) => tabHidden(t.value)
+            ? { ...t, label: <span style={{ opacity: 0.4 }} title="Hidden from visitors (admin visibility settings)">{t.label}</span> }
+            : t)}
           value={effectiveTab}
           onChange={setActiveTab}
         />

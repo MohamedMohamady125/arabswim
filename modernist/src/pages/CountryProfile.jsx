@@ -9,6 +9,7 @@ import { getAlbums } from '../api/media'
 import { getBoardMembers, createBoardMember, updateBoardMember, deleteBoardMember, getTeams } from '../api/teams'
 import { CropUpload } from '../components/ImageCropper'
 import { useAuth } from '../context/AuthContext'
+import { useFeatures } from '../context/FeaturesContext'
 import { getCoaches } from '../api/coaches'
 import { getAcademies } from '../api/academies'
 import { getCalendarEvents } from '../api/calendar'
@@ -1736,7 +1737,14 @@ function FedBoardModal({ member, teamId, onClose, onSaved }) {
 export default function CountryProfile() {
   const { id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab = searchParams.get('tab') || 'overview'
+  const { isAdmin } = useAuth()
+  const { flag } = useFeatures()
+  // Admin visibility toggles: hidden tabs vanish for visitors, stay (dimmed)
+  // for admins. Overview is always available and is the fallback.
+  const tabHidden = (v) => v !== 'overview' && !flag(`fed.tab.${v}`)
+  const visibleTabs = TABS.filter((t) => isAdmin || !tabHidden(t.value))
+  const rawTab = searchParams.get('tab') || 'overview'
+  const tab = visibleTabs.some((t) => t.value === rawTab) ? rawTab : 'overview'
   const mclass = searchParams.get('mclass') || ''
   const setTab = (t) => setSearchParams({ tab: t }, { replace: true })
 
@@ -1754,7 +1762,6 @@ export default function CountryProfile() {
   const [calEvents, setCalEvents] = useState([])
   const [boardMembers, setBoardMembers] = useState([])
   const [countryCoaches, setCountryCoaches] = useState([])
-  const { isAdmin } = useAuth()
   const [fedModal, setFedModal] = useState(null) // 'info' | {type:'board', member}
   const [reloadKey, setReloadKey] = useState(0)
   const [boardKey, setBoardKey] = useState(0)
@@ -1949,12 +1956,14 @@ export default function CountryProfile() {
 
       {/* Tab bar */}
       <div className="rule-b" style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto' }}>
-        {TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <button key={t.value} type="button" onClick={() => setTab(t.value)}
+            title={tabHidden(t.value) ? 'Hidden from visitors (admin visibility settings)' : undefined}
             style={{
               padding: '12px 16px', background: 'none', border: 'none', borderBottom: tab === t.value ? '3px solid var(--color-accent)' : '3px solid transparent',
               cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: tab === t.value ? 800 : 600,
               fontSize: 13, color: tab === t.value ? 'var(--color-accent)' : 'var(--color-text)', whiteSpace: 'nowrap',
+              opacity: tabHidden(t.value) ? 0.4 : 1,
             }}>
             {t.label}
           </button>

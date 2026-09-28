@@ -1578,7 +1578,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       {/* Row 3: Medals | Most Male Decorated | Most Female Decorated */}
       <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>
-          {cardHeader('Medals', 'Total Medals by Competition')}
+          {cardHeader('Medals', 'Total Medals by International Competition')}
           {/* Legend */}
           <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11 }}>
             {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([lbl, c]) => (

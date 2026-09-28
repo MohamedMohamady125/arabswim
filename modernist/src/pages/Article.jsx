@@ -5,6 +5,8 @@ import Flag from '../components/Flag'
 import { Loading, Empty } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import { Edit3 } from 'lucide-react'
+import { ArticleModal } from './News'
 
 /* ── Al Jazeera typography — the real aljazeera.net stack ─────────── */
 const AJ_FONTS = "'Al-Jazeera', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
@@ -15,6 +17,8 @@ export default function Article() {
   const { isAdmin } = useAuth()
   const [article, setArticle] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -24,7 +28,7 @@ export default function Article() {
       .catch(() => alive && setArticle(null))
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [id])
+  }, [id, reloadKey])
 
   if (loading) return <Loading label="Loading article" />
   if (!article || (article.status !== 'PUBLISHED' && !isAdmin)) return <Empty label="Article not found" />
@@ -62,7 +66,18 @@ export default function Article() {
             color: 'var(--color-accent)', fontFamily: 'var(--font-heading)',
           }}>{isRTL ? 'أخبار' : 'News'}</span>
           {isAdmin && article.status !== 'PUBLISHED' && <span className="tag tag-neutral">Draft</span>}
+          {isAdmin && (
+            <button type="button" className="btn btn-secondary"
+              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, fontSize: 12 }}
+              onClick={() => setEditing(true)}>
+              <Edit3 size={13} /> Edit
+            </button>
+          )}
         </div>
+        {editing && (
+          <ArticleModal article={article} onClose={() => setEditing(false)}
+            onSaved={() => { setEditing(false); setReloadKey((k) => k + 1) }} />
+        )}
 
         {/* ── Title ── */}
         <div dir={textDir}>

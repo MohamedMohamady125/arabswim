@@ -25,7 +25,7 @@ function excerpt(body, n = 100) {
   return s.length > n ? `${s.slice(0, n)}…` : s
 }
 
-function ArticleModal({ article, onClose, onSaved }) {
+export function ArticleModal({ article, onClose, onSaved }) {
   const [form, setForm] = useState({
     title: article?.title || '',
     body: article?.body || '',

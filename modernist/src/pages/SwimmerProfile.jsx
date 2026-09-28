@@ -1095,7 +1095,7 @@ export default function SwimmerProfile() {
             !swimmer.is_verified && !swimmer.is_relay_team
           if (!isAdmin && !isMine && !canClaim && !pendingHere && !declinedHere) return null
           return (
-            <div style={{ position: 'absolute', top: 16, right: 24, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <div className="swimmer-hero-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
               {isAdmin && (
                 <>
                   <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setAdminEditOpen(true)}>

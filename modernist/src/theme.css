@@ -597,6 +597,12 @@ figure { margin: 0; }
   50% { opacity: 0.35; transform: scale(0.7); }
 }
 
+/* ── Swimmer profile hero action buttons ─────────────────────────────── */
+.swimmer-hero-actions { position: absolute; top: 16px; right: 24px; }
+@media (max-width: 760px) {
+  .swimmer-hero-actions { position: static; margin-top: 12px; justify-content: flex-start; }
+}
+
 /* ── Sticky tab bar (desktop + mobile) ───────────────────────────────── */
 .tabbar-sticky { position: sticky; top: 0; z-index: 20; background: var(--color-bg); }
 

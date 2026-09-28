@@ -398,6 +398,17 @@ figure { margin: 0; }
   .m-donut-legend > span { font-size: 15px !important; }
   .m-donut-legend .m-donut-dot { width: 14px !important; height: 14px !important; }
   .m-donut-legend .m-donut-pct { width: 46px !important; }
+  /* shuffled highlight boxes: scale writing up under the page zoom, stop clipping */
+  .m-hl4 { gap: 12px !important; }
+  .m-hl4 .m-hl4-label { font-size: 14px !important; letter-spacing: 0.04em !important; }
+  .m-hl4 .m-hl4-va { display: none !important; }
+  .m-hl4 .m-hl4-sub { font-size: 11.5px !important; }
+  .m-hl4 .m-hl4-photo { width: 74px !important; font-size: 30px !important; }
+  .m-hl4 .m-hl4-info { padding: 12px 10px !important; }
+  .m-hl4 .m-hl4-name { font-size: 13.5px !important; }
+  .m-hl4 .m-hl4-line { font-size: 12px !important; }
+  .m-hl4 .m-hl4-big { font-size: 34px !important; }
+  .m-hl4 .m-hl4-date { font-size: 11.5px !important; }
   /* flags read better slightly larger on small screens */
   .asw-flag, .fi.asw-flag { width: 27px; height: 20px; line-height: 20px; }
   .asw-flag-lg, .fi.asw-flag-lg { width: 40px; height: 30px; line-height: 30px; }

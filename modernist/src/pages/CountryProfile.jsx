@@ -1483,31 +1483,31 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       <div style={{ padding: '10px 12px 7px', borderBottom: '1px solid #f0f3f7' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 4, height: 14, background: 'linear-gradient(180deg, #1a56a0, #0b2948)', borderRadius: 2, flexShrink: 0 }} />
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#0b2948' }}>{label}</span>
-          <span style={{ fontSize: 9, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
+          <span className="m-hl4-label" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#0b2948' }}>{label}</span>
+          <span className="m-hl4-va" style={{ fontSize: 9, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', whiteSpace: 'nowrap' }}>View All</span>
         </div>
-        <div style={{ fontSize: 9.5, color: '#7a8ca0', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
+        <div className="m-hl4-sub" style={{ fontSize: 9.5, color: '#7a8ca0', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
         {/* Photo panel */}
-        <div style={{ width: 100, background: 'linear-gradient(170deg, #0d2d5e 0%, #1a56a0 60%, #3b82c4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
+        <div className="m-hl4-photo" style={{ width: 100, background: 'linear-gradient(170deg, #0d2d5e 0%, #1a56a0 60%, #3b82c4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
           {photo
             ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
             : '🏊'}
         </div>
         {/* Info */}
-        <div style={{ padding: '12px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div className="m-hl4-info" style={{ padding: '12px 12px', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
             <Flag code={country.code} />
-            <span style={{ fontWeight: 800, fontSize: 12.5, color: '#0b2948', lineHeight: 1.2 }}>
+            <span className="m-hl4-name" style={{ fontWeight: 800, fontSize: 12.5, color: '#0b2948', lineHeight: 1.2, overflowWrap: 'anywhere', minWidth: 0 }}>
               <SwimmerLink id={id} name={name} />
             </span>
           </div>
-          {line && <div style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>{line}</div>}
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: bigSize, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>
+          {line && <div className="m-hl4-line" style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>{line}</div>}
+          <div className="asw-num m-hl4-big" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: bigSize, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>
             {big}
           </div>
-          {date && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 5 }}>{formatDate(date)}</div>}
+          {date && <div className="m-hl4-date" style={{ fontSize: 10, color: '#9baab8', marginTop: 5 }}>{formatDate(date)}</div>}
         </div>
       </div>
     </div>
@@ -1617,27 +1617,23 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
 
       {/* Row 4: shuffled highlight boxes — random 4 from a wider pool per visit */}
-      <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col2 m-hl4" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {(() => {
           const photoFor = (sid) => records.find((r) => r.swimmer_id === sid && r.swimmer_photo)?.swimmer_photo
-          const goldMan = [...maleMedalists].sort((a, b) => (b.gold || 0) - (a.gold || 0))[0]
-          const goldWoman = [...femaleMedalists].sort((a, b) => (b.gold || 0) - (a.gold || 0))[0]
           const oldestRec = records.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0]
           const bestM = maleTop[0]
           const bestF = femaleTop[0]
           const topMedM = maleMedalists[0]
           const topMedF = femaleMedalists[0]
           const pool = [
-            { key: 'last-m-rec', person: lastMR?.swimmer_id, valid: !!lastMR, render: () => recCard4({ label: 'Last Male Record', sub: `Most Recent ${country.name} Male Record`, photo: lastMR.swimmer_photo, id: lastMR.swimmer_id, name: lastMR.swimmer, line: lastMR.event, big: lastMR.time, date: lastMR.date }) },
-            { key: 'last-f-rec', person: lastFR?.swimmer_id, valid: !!lastFR, render: () => recCard4({ label: 'Last Female Record', sub: `Most Recent ${country.name} Female Record`, photo: lastFR.swimmer_photo, id: lastFR.swimmer_id, name: lastFR.swimmer, line: lastFR.event, big: lastFR.time, date: lastFR.date }) },
+            { key: 'last-m-rec', person: lastMR?.swimmer_id, valid: !!lastMR, render: () => recCard4({ label: 'Last Record Broken · Men', sub: `Most Recent ${demonym(country.name)} Male Record`, photo: lastMR.swimmer_photo, id: lastMR.swimmer_id, name: lastMR.swimmer, line: lastMR.event, big: lastMR.time, date: lastMR.date }) },
+            { key: 'last-f-rec', person: lastFR?.swimmer_id, valid: !!lastFR, render: () => recCard4({ label: 'Last Record Broken · Women', sub: `Most Recent ${demonym(country.name)} Female Record`, photo: lastFR.swimmer_photo, id: lastFR.swimmer_id, name: lastFR.swimmer, line: lastFR.event, big: lastFR.time, date: lastFR.date }) },
             { key: 'top-m-rec', person: topMaleRec?.id, valid: !!topMaleRec, render: () => recCard4({ label: 'Most Male Record Holder', sub: `Top ${demonym(country.name)} Male Swimmer by National Records`, photo: photoFor(topMaleRec.id), id: topMaleRec.id, name: topMaleRec.name, line: 'Total Records', big: topMaleRec.count, bigSize: 40 }) },
             { key: 'top-f-rec', person: topFemaleRec?.id, valid: !!topFemaleRec, render: () => recCard4({ label: 'Most Female Record Holder', sub: `Top ${demonym(country.name)} Female Swimmer by National Records`, photo: photoFor(topFemaleRec.id), id: topFemaleRec.id, name: topFemaleRec.name, line: 'Total Records', big: topFemaleRec.count, bigSize: 40 }) },
             { key: 'best-m-perf', person: bestM?.id, valid: !!bestM, render: () => recCard4({ label: 'Best Male Performance', sub: `Top ${country.name} Male Swim by FINA Points`, photo: bestM.photo, id: bestM.id, name: bestM.name, line: bestM.best_event, big: bestM.best_time }) },
             { key: 'best-f-perf', person: bestF?.id, valid: !!bestF, render: () => recCard4({ label: 'Best Female Performance', sub: `Top ${country.name} Female Swim by FINA Points`, photo: bestF.photo, id: bestF.id, name: bestF.name, line: bestF.best_event, big: bestF.best_time }) },
             { key: 'top-m-med', person: topMedM?.id, valid: !!topMedM, render: () => recCard4({ label: 'Most Decorated Man', sub: `Top ${country.name} Male Swimmer by Medals`, photo: topMedM.photo, id: topMedM.id, name: topMedM.name, line: 'Total Medals', big: topMedM.total, bigSize: 40 }) },
             { key: 'top-f-med', person: topMedF?.id, valid: !!topMedF, render: () => recCard4({ label: 'Most Decorated Woman', sub: `Top ${country.name} Female Swimmer by Medals`, photo: topMedF.photo, id: topMedF.id, name: topMedF.name, line: 'Total Medals', big: topMedF.total, bigSize: 40 }) },
-            { key: 'gold-man', person: goldMan?.id, valid: !!(goldMan && goldMan.gold > 0), render: () => recCard4({ label: 'Golden Man', sub: `Most Golds by a ${country.name} Male Swimmer`, photo: goldMan.photo, id: goldMan.id, name: goldMan.name, line: 'Gold Medals', big: goldMan.gold, bigSize: 40 }) },
-            { key: 'gold-woman', person: goldWoman?.id, valid: !!(goldWoman && goldWoman.gold > 0), render: () => recCard4({ label: 'Golden Woman', sub: `Most Golds by a ${country.name} Female Swimmer`, photo: goldWoman.photo, id: goldWoman.id, name: goldWoman.name, line: 'Gold Medals', big: goldWoman.gold, bigSize: 40 }) },
             { key: 'oldest-rec', person: oldestRec?.swimmer_id, valid: !!oldestRec, render: () => recCard4({ label: 'Longest-Standing Record', sub: `Oldest Unbroken ${country.name} Record`, photo: oldestRec.swimmer_photo, id: oldestRec.swimmer_id, name: oldestRec.swimmer, line: `${oldestRec.event} · since ${oldestRec.date.slice(0, 4)}`, big: oldestRec.time, date: oldestRec.date }) },
           ]
           return pickHighlights(pool, mulberry32(statSeed)).map((c) => <div key={c.key}>{c.render()}</div>)

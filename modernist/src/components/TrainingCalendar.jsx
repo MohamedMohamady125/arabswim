@@ -149,7 +149,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
   const navBtn = { border: '1px solid #cdd9e6', background: '#fff', borderRadius: 8, width: 34, height: 34, cursor: 'pointer', fontWeight: 800, color: NAVY, fontSize: 15 }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-accent-800)', borderRadius: 12, padding: '18px 18px 20px', boxShadow: '0 1px 6px rgba(11,41,72,.06)' }}>
+    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, padding: '18px 18px 20px', boxShadow: '0 1px 6px rgba(11,41,72,.06)' }}>
       {/* Header: month nav + add */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         <button type="button" style={navBtn} onClick={() => shift(-1)} aria-label="Previous month">‹</button>

@@ -62,7 +62,7 @@ function Modal({ open, title, onClose, children }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-accent)' }}
+        style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-box-top)' }}
       >
         <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h4 style={{ margin: 0 }}>{title}</h4>

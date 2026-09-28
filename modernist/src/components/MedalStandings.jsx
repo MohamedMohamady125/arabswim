@@ -76,7 +76,7 @@ export default function MedalStandings({
         </div>
       )}
 
-      <div style={{ border: '1px solid var(--color-neutral-200)', borderTop: '3px solid var(--color-accent-800)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(12,35,64,.05)' }}>
+      <div style={{ border: '1px solid var(--color-neutral-200)', borderTop: '3px solid var(--color-box-top)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(12,35,64,.05)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
           <thead style={{ background: 'var(--color-surface)' }}>
             <tr>

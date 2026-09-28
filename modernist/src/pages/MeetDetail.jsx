@@ -234,7 +234,7 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(8, 24, 44, 0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px', overflowY: 'auto' }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-accent)' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h4 style={{ margin: 0 }}>{openWaterMode ? 'Add Open Water Result' : 'Add Result'}</h4>
           <button className="btn btn-ghost" onClick={onClose} aria-label="Close">×</button>
@@ -430,7 +430,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(8, 24, 44, 0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px', overflowY: 'auto' }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 560, maxWidth: '100%', borderTop: '4px solid var(--color-accent)' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 560, maxWidth: '100%', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h4 style={{ margin: 0 }}>Edit Result</h4>
           <button className="btn btn-ghost" onClick={onClose} aria-label="Close">×</button>
@@ -1212,7 +1212,7 @@ function FeaturedCards({ picks, sideBySide = false }) {
           onClick={p.swimmer_id ? () => navigate(`/swimmers/${p.swimmer_id}`) : undefined}
           style={{
             border: '1px solid var(--color-divider)', background: sideBySide ? '#fff' : 'var(--color-surface)',
-            borderTop: '3px solid var(--color-accent-800)', display: 'flex', gap: 12,
+            borderTop: '3px solid var(--color-box-top)', display: 'flex', gap: 12,
             cursor: p.swimmer_id ? 'pointer' : 'default', overflow: 'hidden',
           }}
         >
@@ -2371,7 +2371,7 @@ function CompareMeetsModal({ meet, onClose }) {
       style={{ position: 'fixed', inset: 0, background: 'rgba(8,24,44,0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4vh 16px', overflowY: 'auto' }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div style={{ width: 860, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-accent)' }}>
+      <div style={{ width: 860, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
           <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Compare meets</strong>
           <button type="button" onClick={onClose} aria-label="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer' }}>×</button>

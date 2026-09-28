@@ -729,7 +729,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
     </div>
   )
   const card = (children, extra = {}) => (
-    <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-accent-800)', ...extra }}>{children}</div>
+    <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', ...extra }}>{children}</div>
   )
   const thStyle = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', paddingBottom: 6, borderBottom: '2px solid #e2e8f0' }
   const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f0f4f8', fontSize: 12.5, background: i % 2 === 1 ? '#fafbfd' : 'transparent' })
@@ -1316,7 +1316,7 @@ export default function TeamDetail() {
           return out
         }
         const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 12)
-        const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-accent-800)' }
+        const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-box-top)' }
         const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0, overflow: 'hidden' }
         const hBody = { padding: '12px 8px 10px 2px', flex: 1, display: 'flex', flexDirection: 'column' }
         const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 7, lineHeight: 1.3 }
@@ -1675,7 +1675,7 @@ export default function TeamDetail() {
           {medalBoxes.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'center' }}>
               {medalBoxes.map((m) => (
-                <div key={m.name} style={{ background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid #0d2d5e', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: '#0b2948', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
+                <div key={m.name} style={{ background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: '#0b2948', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a8aa0' }}>{m.name}</div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: '#0d2d5e' }}>{formatNumber(m.total)}</div>
                   <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 800 }}>

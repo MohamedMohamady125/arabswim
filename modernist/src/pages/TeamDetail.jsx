@@ -1533,7 +1533,19 @@ export default function TeamDetail() {
                   </div>
                   <div style={{ padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <div className="micro" style={{ marginBottom: 6 }}>{formatDate(a.published_at || a.created_at)}</div>
-                    <div style={{ fontWeight: 800, fontSize: 15.5, lineHeight: 1.3, color: '#0b2948', marginBottom: 8 }}>{a.title}</div>
+                    {(() => {
+                      const rtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.title || '')
+                      return (
+                        <div dir={rtl ? 'rtl' : 'ltr'} style={{
+                          fontFamily: rtl ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'var(--font-heading)',
+                          fontWeight: rtl ? 700 : 800,
+                          fontSize: rtl ? 17 : 16,
+                          lineHeight: rtl ? 1.6 : 1.25,
+                          letterSpacing: rtl ? 0 : '-0.015em',
+                          color: '#0b2948', marginBottom: 8,
+                        }}>{a.title}</div>
+                      )
+                    })()}
                     <div style={{ fontSize: 12.5, color: '#58687c', lineHeight: 1.5, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
                     <span style={{ marginTop: 'auto', color: '#1a56a0', fontWeight: 700, fontSize: 13 }}>Read more →</span>
                   </div>

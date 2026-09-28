@@ -669,22 +669,33 @@ class CountryViewSet(viewsets.ModelViewSet):
             'date': rec.result_date, 'is_new': rec.is_new,
         } for rec in current]
 
-        top_medalists = list(
-            medals_qs.filter(swimmer__is_relay_team=False)
-            .values('swimmer_id', 'swimmer__name', 'swimmer__sex', 'swimmer__photo')
-            .annotate(gold=Count('id', filter=Q(medal_type='GOLD')),
-                      silver=Count('id', filter=Q(medal_type='SILVER')),
-                      bronze=Count('id', filter=Q(medal_type='BRONZE')),
-                      total=Count('id'))
-            .order_by('-gold', '-silver', '-bronze')[:20]
-        )
         from django.conf import settings as _settings
-        for m in top_medalists:
-            m['id'] = m.pop('swimmer_id')
-            m['name'] = m.pop('swimmer__name')
-            m['sex'] = m.pop('swimmer__sex')
-            _photo = m.pop('swimmer__photo')
-            m['photo'] = (_settings.MEDIA_URL + _photo) if _photo else None
+
+        def _medalist_list(qs, limit=20):
+            rows = list(
+                qs.filter(swimmer__is_relay_team=False)
+                .values('swimmer_id', 'swimmer__name', 'swimmer__sex', 'swimmer__photo')
+                .annotate(gold=Count('id', filter=Q(medal_type='GOLD')),
+                          silver=Count('id', filter=Q(medal_type='SILVER')),
+                          bronze=Count('id', filter=Q(medal_type='BRONZE')),
+                          total=Count('id'))
+                .order_by('-gold', '-silver', '-bronze')[:limit]
+            )
+            for m in rows:
+                m['id'] = m.pop('swimmer_id')
+                m['name'] = m.pop('swimmer__name')
+                m['sex'] = m.pop('swimmer__sex')
+                _photo = m.pop('swimmer__photo')
+                m['photo'] = (_settings.MEDIA_URL + _photo) if _photo else None
+            return rows
+
+        top_medalists = _medalist_list(medals_qs)
+        _national_q = Q(championship__classification__name__iexact='national')
+        top_medalists_international = _medalist_list(
+            medals_qs.exclude(_national_q)
+            .exclude(championship__classification__name__iexact='other')
+            .exclude(championship__classification__isnull=True))
+        top_medalists_national = _medalist_list(medals_qs.filter(_national_q))
 
         championships_hosted = [{
             'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,
@@ -868,6 +879,8 @@ class CountryViewSet(viewsets.ModelViewSet):
             'most_participated': most_participated,
             'top_swimmers': top_swimmers,
             'top_medalists': top_medalists,
+            'top_medalists_international': top_medalists_international,
+            'top_medalists_national': top_medalists_national,
             'best_times': best_times,
             'records': records,
             'championships_hosted': championships_hosted,

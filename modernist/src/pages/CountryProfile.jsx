@@ -1606,8 +1606,14 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
             ))
           })()}
         </>)}
-        {card(<>{cardHeader('Most Decorated · Men', `Top 5 ${country.name} Male Swimmers by Total Medals`)}{maleMedalists.length ? decoratedTable(maleMedalists) : <Empty label="No data" />}</>)}
-        {card(<>{cardHeader('Most Decorated · Women', `Top 5 ${country.name} Female Swimmers by Total Medals`)}{femaleMedalists.length ? decoratedTable(femaleMedalists) : <Empty label="No data" />}</>)}
+        {(() => {
+          const intlMed = (profile.top_medalists_international || []).slice(0, 5)
+          const natMed = (profile.top_medalists_national || []).slice(0, 5)
+          return (<>
+            {card(<>{cardHeader('Most Decorated · International', `Top 5 ${demonym(country.name)} Swimmers by International Medals`)}{intlMed.length ? decoratedTable(intlMed) : <Empty label="No data" />}</>)}
+            {card(<>{cardHeader('Most Decorated · National', `Top 5 ${demonym(country.name)} Swimmers by National Medals`)}{natMed.length ? decoratedTable(natMed) : <Empty label="No data" />}</>)}
+          </>)
+        })()}
       </div>
 
       {/* Row 4: shuffled highlight boxes — random 4 from a wider pool per visit */}

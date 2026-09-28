@@ -782,6 +782,16 @@ const S = {
 }
 const PERF_BAR_COLORS = ['#e63946', '#f4845f', '#f7b731', '#f5d547', '#52c78a', '#27ae60', '#3b9dd6', '#2471a3', '#7d3c98', '#b0bec5']
 
+const DEMONYMS = {
+  Algeria: 'Algerian', Bahrain: 'Bahraini', Comoros: 'Comorian', Djibouti: 'Djiboutian',
+  Egypt: 'Egyptian', Iraq: 'Iraqi', Jordan: 'Jordanian', Kuwait: 'Kuwaiti',
+  Lebanon: 'Lebanese', Libya: 'Libyan', Mauritania: 'Mauritanian', Morocco: 'Moroccan',
+  Oman: 'Omani', Palestine: 'Palestinian', Qatar: 'Qatari', 'Saudi Arabia': 'Saudi',
+  Somalia: 'Somali', Sudan: 'Sudanese', Syria: 'Syrian', Tunisia: 'Tunisian',
+  'United Arab Emirates': 'Emirati', UAE: 'Emirati', Yemen: 'Yemeni',
+}
+const demonym = (name) => DEMONYMS[name] || name
+
 function SCard({ icon, title, subtitle, viewAll, children, style: extra }) {
   return (
     <div style={{ ...S.card, ...extra }}>
@@ -1549,7 +1559,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           })()}
         </>)}
         {card(<>
-          {cardHeader('Most Participated Swimmer', `Top 5 ${country.name} Swimmers by International Participations`)}
+          {cardHeader('Most Participating Swimmer', `Top 5 ${demonym(country.name)} Swimmers by International Participations`)}
           <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
             <span style={{ width: 24 }}>#</span>
             <span style={{ flex: 1 }}>Swimmer</span>

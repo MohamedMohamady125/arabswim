@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Phone, Mail, Globe, AtSign, MapPin } from 'lucide-react'
-import { getAcademies } from '../api/academies'
+import { getAcademies, createAcademy, updateAcademy, deleteAcademy } from '../api/academies'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty } from '../components/ui'
+import { PageHead, Loading, Empty, Modal } from '../components/ui'
+import { CropUpload } from '../components/ImageCropper'
+import { useAuth } from '../context/AuthContext'
 import { mediaUrl } from '../utils'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -45,12 +47,91 @@ function ContactLink({ href, icon: Icon, label }) {
   )
 }
 
+function Fld({ label, children }) {
+  return (
+    <label style={{ display: 'block', marginBottom: 12 }}>
+      <div className="kicker" style={{ marginBottom: 4 }}>{label}</div>
+      {children}
+    </label>
+  )
+}
+
+function AcademyModal({ academy, countries, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    name: academy?.name || '',
+    country: academy?.country || academy?.country_detail?.id || '',
+    city: academy?.city || '',
+    description: academy?.description || '',
+    phone: academy?.phone || '',
+    email: academy?.email || '',
+    website: academy?.website || '',
+    instagram: academy?.instagram || '',
+    address: academy?.address || '',
+  })
+  const [logo, setLogo] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const save = async () => {
+    if (!form.name.trim() || !form.country) { setErr('Name and country are required'); return }
+    setBusy(true); setErr('')
+    try {
+      const fd = new FormData()
+      for (const [k, v] of Object.entries(form)) fd.append(k, k === 'name' ? v.trim() : v)
+      if (logo) fd.append('logo', logo)
+      if (academy) await updateAcademy(academy.id, fd)
+      else await createAcademy(fd)
+      onSaved()
+    } catch (e) {
+      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title={academy ? 'Edit academy' : 'Add academy'} onClose={onClose} width={520}>
+      <Fld label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Fld>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Fld label="Country">
+          <select className="select" style={{ width: '100%' }} value={form.country} onChange={set('country')}>
+            <option value="">Select country</option>
+            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Fld>
+        <Fld label="City"><input className="input" style={{ width: '100%' }} value={form.city} onChange={set('city')} /></Fld>
+        <Fld label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Fld>
+        <Fld label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Fld>
+        <Fld label="Website"><input className="input" style={{ width: '100%' }} value={form.website} onChange={set('website')} /></Fld>
+        <Fld label="Instagram"><input className="input" style={{ width: '100%' }} placeholder="@handle" value={form.instagram} onChange={set('instagram')} /></Fld>
+      </div>
+      <Fld label="Address"><input className="input" style={{ width: '100%' }} value={form.address} onChange={set('address')} /></Fld>
+      <Fld label="Description"><textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }} value={form.description} onChange={set('description')} /></Fld>
+      <Fld label="Logo (cropped square)"><CropUpload aspect={1} lockAspect onChange={setLogo} />{logo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Logo ready ✓</div>}</Fld>
+      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
+        {academy ? (
+          <button className="btn btn-secondary" disabled={busy} style={{ color: 'var(--asw-slow)' }}
+            onClick={async () => { if (window.confirm(`Delete ${academy.name}?`)) { await deleteAcademy(academy.id); onSaved() } }}>Delete</button>
+        ) : <span />}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function Academies() {
+  const { isAdmin } = useAuth()
   const [academies, setAcademies] = useState([])
   const [countries, setCountries] = useState([])
   const [search, setSearch] = useState('')
   const [country, setCountry] = useState('')
   const [loading, setLoading] = useState(true)
+  const [modal, setModal] = useState(null) // { academy } | null
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -68,12 +149,12 @@ export default function Academies() {
       })
       .catch(() => {})
     return () => { alive = false }
-  }, [])
+  }, [reloadKey])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return academies.filter((a) => {
-      if (a.is_active === false) return false
+      if (a.is_active === false && !isAdmin) return false
       if (q && !String(a.name || '').toLowerCase().includes(q)) return false
       if (country && String(a.country) !== String(country)) return false
       return true
@@ -106,6 +187,9 @@ export default function Academies() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
+        {isAdmin && (
+          <button className="btn btn-primary" style={{ flex: 'none', fontSize: 12 }} onClick={() => setModal({ academy: null })}>+ Add academy</button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -122,13 +206,19 @@ export default function Academies() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <AcademyLogo logo={a.logo} name={a.name} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14.5, color: '#0b2948', lineHeight: 1.3 }}>{a.name}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14.5, color: '#0b2948', lineHeight: 1.3 }}>
+                      {a.name}{a.is_active === false && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>Inactive</span>}
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, fontSize: 12, color: 'var(--color-neutral-800)' }}>
                       {a.country_detail && <Flag code={a.country_detail.code} name={a.country_detail.name} />}
                       <span>{a.country_detail?.name}{a.city ? ` · ${a.city}` : ''}</span>
                     </div>
                   </div>
+                  {isAdmin && (
+                    <button className="btn btn-secondary" style={{ flex: 'none', fontSize: 11 }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setModal({ academy: a }) }}>Edit</button>
+                  )}
                 </div>
                 {a.description && (
                   <div className="text-muted" style={{ fontSize: 13, lineHeight: 1.5 }}>{a.description}</div>
@@ -151,6 +241,11 @@ export default function Academies() {
             ))}
           </div>
         </div>
+      )}
+
+      {modal && (
+        <AcademyModal academy={modal.academy} countries={countries} onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); setReloadKey((k) => k + 1) }} />
       )}
     </div>
   )

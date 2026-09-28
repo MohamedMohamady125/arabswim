@@ -52,7 +52,7 @@ const ASPECTS = [
  *   onDone      — (croppedFile: File) => void
  *   onCancel    — () => void
  */
-export default function ImageCropper({ file, aspect = 1, lockAspect = false, onDone, onCancel }) {
+export default function ImageCropper({ file, aspect = 1, lockAspect = false, onDone, onCancel, title = 'Adjust photo', extraAction = null }) {
   const [imageSrc, setImageSrc] = useState(null)
   const [naturalAspect, setNaturalAspect] = useState(1)
   const [aspectKey, setAspectKey] = useState(aspect)
@@ -105,7 +105,7 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, onD
   })
 
   return (
-    <Modal title="Adjust photo" onClose={onCancel} width={520}>
+    <Modal title={title} onClose={onCancel} width={520}>
       <div style={{ position: 'relative', width: '100%', height: 340, background: '#111', borderRadius: 8, overflow: 'hidden' }}>
         <Cropper
           image={imageSrc}
@@ -154,6 +154,9 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, onD
 
       <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+        {extraAction && (
+          <button type="button" className="btn btn-secondary" onClick={extraAction.onClick}>{extraAction.label}</button>
+        )}
         <button type="button" className="btn btn-primary" onClick={handleDone} disabled={saving}>
           {saving ? 'Applying…' : 'Apply'}
         </button>
@@ -184,5 +187,33 @@ export function CropUpload({ onChange, aspect = 1, lockAspect = false, accept = 
         />
       )}
     </>
+  )
+}
+
+/**
+ * Sequential crop flow for multi-photo uploads (albums, meet galleries).
+ * Shows the crop modal for each picked photo in turn; the admin can crop,
+ * keep the original as-is, or cancel the whole batch.
+ * Props: files (File[]), aspect, onDone(files: File[]), onCancel()
+ */
+export function CropQueue({ files, aspect = 'original', onDone, onCancel }) {
+  const [idx, setIdx] = useState(0)
+  const [out, setOut] = useState([])
+  if (!files?.length) return null
+  const advance = (f) => {
+    const acc = [...out, f]
+    if (idx + 1 < files.length) { setOut(acc); setIdx(idx + 1) }
+    else onDone(acc)
+  }
+  return (
+    <ImageCropper
+      key={idx}
+      file={files[idx]}
+      aspect={aspect}
+      title={files.length > 1 ? `Adjust photo ${idx + 1} of ${files.length}` : 'Adjust photo'}
+      extraAction={{ label: 'Use original', onClick: () => advance(files[idx]) }}
+      onDone={advance}
+      onCancel={onCancel}
+    />
   )
 }

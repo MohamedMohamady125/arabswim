@@ -8,6 +8,7 @@ import {
 import { Loading, Empty } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import { CropQueue } from '../components/ImageCropper'
 
 // Instagram-style display crops, stored per item on the backend
 export const SIZE_OPTIONS = [
@@ -25,6 +26,7 @@ export default function Album() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [cropQueue, setCropQueue] = useState(null)
   const [videoUrl, setVideoUrl] = useState('')
   const [lightbox, setLightbox] = useState(null)
 
@@ -51,10 +53,14 @@ export default function Album() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const onFilesSelect = async (e) => {
+  const onFilesSelect = (e) => {
     const files = Array.from(e.target.files || [])
     e.target.value = ''
-    if (!files.length) return
+    if (files.length) setCropQueue(files)
+  }
+
+  const uploadCropped = async (files) => {
+    setCropQueue(null)
     setUploading(true)
     try {
       const fd = new FormData()
@@ -259,6 +265,10 @@ export default function Album() {
             </div>
           )}
         </div>
+      )}
+
+      {cropQueue && (
+        <CropQueue files={cropQueue} onDone={uploadCropped} onCancel={() => setCropQueue(null)} />
       )}
     </div>
   )

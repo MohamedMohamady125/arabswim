@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { MapPin, Briefcase, Award, Mail, Phone, AtSign, ExternalLink, FileText, ChevronDown } from 'lucide-react'
-import { getCoaches } from '../api/coaches'
+import { getCoaches, createCoach, updateCoach, deleteCoach } from '../api/coaches'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty } from '../components/ui'
+import { PageHead, Loading, Empty, Modal } from '../components/ui'
+import { CropUpload } from '../components/ImageCropper'
+import { useAuth } from '../context/AuthContext'
 import { mediaUrl } from '../utils'
 
 const LEVEL_LABELS = {
@@ -28,7 +30,123 @@ function initials(name) {
 const splitLines = (v) => (v ? String(v).split('\n').map((s) => s.trim()).filter(Boolean) : [])
 const splitComma = (v) => (v ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : [])
 
+function Fld({ label, children }) {
+  return (
+    <label style={{ display: 'block', marginBottom: 12 }}>
+      <div className="kicker" style={{ marginBottom: 4 }}>{label}</div>
+      {children}
+    </label>
+  )
+}
+
+function CoachModal({ coach, countries, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    name: coach?.name || '',
+    nationality: coach?.nationality || coach?.nationality_detail?.id || '',
+    level: coach?.level || '',
+    city: coach?.city || '',
+    current_club: coach?.current_club || '',
+    years_experience: coach?.years_experience || '',
+    specializations: coach?.specializations || '',
+    certifications: coach?.certifications || '',
+    achievements: coach?.achievements || '',
+    bio: coach?.bio || '',
+    email: coach?.email || '',
+    phone: coach?.phone || '',
+    instagram: coach?.instagram || '',
+    linkedin: coach?.linkedin || '',
+  })
+  const [flags, setFlags] = useState({
+    is_available: coach ? !!coach.is_available : false,
+    is_active: coach ? coach.is_active !== false : true,
+  })
+  const [photo, setPhoto] = useState(null)
+  const [cvFile, setCvFile] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const save = async () => {
+    if (!form.name.trim()) { setErr('Name is required'); return }
+    setBusy(true); setErr('')
+    try {
+      const fd = new FormData()
+      for (const [k, v] of Object.entries(form)) {
+        if (k === 'years_experience' && v === '') continue
+        fd.append(k, k === 'name' ? v.trim() : v)
+      }
+      fd.append('is_available', flags.is_available)
+      fd.append('is_active', flags.is_active)
+      if (photo) fd.append('photo', photo)
+      if (cvFile) fd.append('cv_file', cvFile)
+      if (coach) await updateCoach(coach.id, fd)
+      else await createCoach(fd)
+      onSaved()
+    } catch (e) {
+      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title={coach ? 'Edit coach' : 'Add coach'} onClose={onClose} width={560}>
+      <Fld label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Fld>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Fld label="Nationality">
+          <select className="select" style={{ width: '100%' }} value={form.nationality} onChange={set('nationality')}>
+            <option value="">Select country</option>
+            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Fld>
+        <Fld label="Level">
+          <select className="select" style={{ width: '100%' }} value={form.level} onChange={set('level')}>
+            <option value="">—</option>
+            {Object.entries(LEVEL_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </Fld>
+        <Fld label="City"><input className="input" style={{ width: '100%' }} value={form.city} onChange={set('city')} /></Fld>
+        <Fld label="Current club"><input className="input" style={{ width: '100%' }} value={form.current_club} onChange={set('current_club')} /></Fld>
+        <Fld label="Years of experience"><input className="input" style={{ width: '100%' }} type="number" value={form.years_experience} onChange={set('years_experience')} /></Fld>
+        <Fld label="Photo (cropped square)"><CropUpload aspect={1} lockAspect onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
+      </div>
+      <Fld label="Specializations (comma-separated)"><input className="input" style={{ width: '100%' }} placeholder="Sprints, Freestyle, Starts & turns" value={form.specializations} onChange={set('specializations')} /></Fld>
+      <Fld label="Certifications (one per line)"><textarea className="input" rows={2} style={{ width: '100%', resize: 'vertical' }} value={form.certifications} onChange={set('certifications')} /></Fld>
+      <Fld label="Achievements (one per line)"><textarea className="input" rows={2} style={{ width: '100%', resize: 'vertical' }} value={form.achievements} onChange={set('achievements')} /></Fld>
+      <Fld label="Bio"><textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }} value={form.bio} onChange={set('bio')} /></Fld>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Fld label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Fld>
+        <Fld label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Fld>
+        <Fld label="Instagram"><input className="input" style={{ width: '100%' }} placeholder="@handle" value={form.instagram} onChange={set('instagram')} /></Fld>
+        <Fld label="LinkedIn URL"><input className="input" style={{ width: '100%' }} value={form.linkedin} onChange={set('linkedin')} /></Fld>
+      </div>
+      <Fld label="CV (PDF)"><input className="input" type="file" accept=".pdf,application/pdf" onChange={(e) => setCvFile(e.target.files?.[0] || null)} /></Fld>
+      <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+          <input type="checkbox" checked={flags.is_available} onChange={(e) => setFlags((f) => ({ ...f, is_available: e.target.checked }))} /> Open to offers
+        </label>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+          <input type="checkbox" checked={flags.is_active} onChange={(e) => setFlags((f) => ({ ...f, is_active: e.target.checked }))} /> Active
+        </label>
+      </div>
+      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
+        {coach ? (
+          <button className="btn btn-secondary" disabled={busy} style={{ color: 'var(--asw-slow)' }}
+            onClick={async () => { if (window.confirm(`Delete coach ${coach.name}?`)) { await deleteCoach(coach.id); onSaved() } }}>Delete</button>
+        ) : <span />}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function Coaches() {
+  const { isAdmin } = useAuth()
+  const [modal, setModal] = useState(null) // { coach } | null
+  const [reloadKey, setReloadKey] = useState(0)
   const [rows, setRows] = useState([])
   const [countries, setCountries] = useState([])
   const [search, setSearch] = useState('')
@@ -76,7 +194,7 @@ export default function Coaches() {
       .catch(() => { if (alive) setRows([]) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [query, country, level])
+  }, [query, country, level, reloadKey])
 
   return (
     <div>
@@ -102,6 +220,9 @@ export default function Coaches() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
+        {isAdmin && (
+          <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ coach: null })}>+ Add coach</button>
+        )}
       </div>
 
       {/* level filter chips */}
@@ -191,6 +312,10 @@ export default function Coaches() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 'none', alignSelf: 'center' }}>
+                    {isAdmin && (
+                      <button className="btn btn-secondary" style={{ fontSize: 11 }}
+                        onClick={(e) => { e.stopPropagation(); setModal({ coach: c }) }}>Edit</button>
+                    )}
                     {c.cv_file && (
                       <a
                         href={mediaUrl(c.cv_file)}
@@ -285,6 +410,11 @@ export default function Coaches() {
             )
           })}
         </div>
+      )}
+
+      {modal && (
+        <CoachModal coach={modal.coach} countries={countries} onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); setReloadKey((k) => k + 1) }} />
       )}
     </div>
   )

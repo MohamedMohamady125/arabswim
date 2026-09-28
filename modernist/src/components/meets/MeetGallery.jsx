@@ -4,6 +4,7 @@ import {
   deleteMediaItem, updateMediaItem,
 } from '../../api/media'
 import { Loading, Empty } from '../ui'
+import { CropQueue } from '../ImageCropper'
 import { SIZE_OPTIONS, SIZE_RATIOS } from '../../pages/Album'
 
 // Gallery tab for a meet: public display always; admin can upload photos,
@@ -14,6 +15,7 @@ export default function MeetGallery({ meetId, isAdmin }) {
   const [uploading, setUploading] = useState(false)
   const [videoUrl, setVideoUrl] = useState('')
   const [lightbox, setLightbox] = useState(null)
+  const [cropQueue, setCropQueue] = useState(null)
 
   const load = () => {
     getOrCreateAlbumForChampionship(meetId)
@@ -30,10 +32,14 @@ export default function MeetGallery({ meetId, isAdmin }) {
 
   const items = album?.items || []
 
-  const handleUpload = async (e) => {
+  const handleUpload = (e) => {
     const files = Array.from(e.target.files || [])
     e.target.value = ''
-    if (!files.length || !album) return
+    if (files.length && album) setCropQueue(files)
+  }
+
+  const uploadCropped = async (files) => {
+    setCropQueue(null)
     setUploading(true)
     try {
       const fd = new FormData()
@@ -188,6 +194,10 @@ export default function MeetGallery({ meetId, isAdmin }) {
             </div>
           )}
         </div>
+      )}
+
+      {cropQueue && (
+        <CropQueue files={cropQueue} onDone={uploadCropped} onCancel={() => setCropQueue(null)} />
       )}
     </div>
   )

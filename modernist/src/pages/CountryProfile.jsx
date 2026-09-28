@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { getCountryProfile, getCountryProgression, getEvents, getCountries } from '../api/core'
+import { getCountryProfile, getCountryProgression, getEvents, getCountries, updateCountry } from '../api/core'
 import { getArticles } from '../api/news'
 import { getRankings } from '../api/rankings'
 import { getQualifyingStandards, getQualifyingStandard, getQualifiedSwimmers } from '../api/qualifyingTimes'
 import { getPredictions } from '../api/predictions'
 import { getAlbums } from '../api/media'
-import { getBoardMembers, getTeams } from '../api/teams'
+import { getBoardMembers, createBoardMember, updateBoardMember, deleteBoardMember, getTeams } from '../api/teams'
+import { CropUpload } from '../components/ImageCropper'
+import { useAuth } from '../context/AuthContext'
 import { getCoaches } from '../api/coaches'
 import { getAcademies } from '../api/academies'
 import { getCalendarEvents } from '../api/calendar'
@@ -15,7 +17,7 @@ import { getClassifications } from '../api/records'
 import Flag, { flagImage } from '../components/Flag'
 import FederationProgressionTab from '../components/FederationProgression'
 import MedalStandings from '../components/MedalStandings'
-import { Loading, Empty, SectHead, Seg, Pager } from '../components/ui'
+import { Loading, Empty, SectHead, Seg, Pager, Modal } from '../components/ui'
 import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2 } from '../utils'
 
 const CLASS_ORDER = ['Arab', 'GCC', 'African', 'Asian', 'Mediterranean', 'Islamic', 'World', 'Olympic']
@@ -1642,6 +1644,94 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   )
 }
 
+function Fld({ label, children }) {
+  return (
+    <label style={{ display: 'block', marginBottom: 12 }}>
+      <div className="kicker" style={{ marginBottom: 4 }}>{label}</div>
+      {children}
+    </label>
+  )
+}
+
+/* Admin: edit the curated federation contact card (hero). Statistics and other
+   computed sections stay read-only by design. */
+function FedInfoModal({ country, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    federation_tagline: country.federation_tagline || '',
+    federation_phone: country.federation_phone || '',
+    federation_email: country.federation_email || '',
+    federation_website: country.federation_website || '',
+    federation_address: country.federation_address || '',
+  })
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const save = async () => {
+    setBusy(true); setErr('')
+    try {
+      await updateCountry(country.id, form)
+      onSaved()
+    } catch (e) {
+      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setBusy(false)
+    }
+  }
+  return (
+    <Modal title="Edit federation info" onClose={onClose} width={480}>
+      <Fld label="Tagline"><input className="input" style={{ width: '100%' }} value={form.federation_tagline} onChange={set('federation_tagline')} placeholder="Excellence in Water, Unity in Sport" /></Fld>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Fld label="Phone"><input className="input" style={{ width: '100%' }} value={form.federation_phone} onChange={set('federation_phone')} /></Fld>
+        <Fld label="Email"><input className="input" style={{ width: '100%' }} value={form.federation_email} onChange={set('federation_email')} /></Fld>
+      </div>
+      <Fld label="Website"><input className="input" style={{ width: '100%' }} value={form.federation_website} onChange={set('federation_website')} placeholder="federation.example.com" /></Fld>
+      <Fld label="Address"><input className="input" style={{ width: '100%' }} value={form.federation_address} onChange={set('federation_address')} /></Fld>
+      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+        <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+      </div>
+    </Modal>
+  )
+}
+
+/* Admin: add/edit federation board members (stored on the national team). */
+function FedBoardModal({ member, teamId, onClose, onSaved }) {
+  const [form, setForm] = useState({ name: member?.name || '', role: member?.role || '' })
+  const [photo, setPhoto] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const save = async () => {
+    if (!form.name.trim()) { setErr('Name is required'); return }
+    setBusy(true); setErr('')
+    try {
+      const fd = new FormData()
+      fd.append('name', form.name.trim())
+      fd.append('role', form.role)
+      fd.append('team', teamId)
+      if (photo) fd.append('photo', photo)
+      if (member) await updateBoardMember(member.id, fd)
+      else await createBoardMember(fd)
+      onSaved()
+    } catch (e) {
+      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setBusy(false)
+    }
+  }
+  return (
+    <Modal title={member ? 'Edit board member' : 'Add board member'} onClose={onClose} width={440}>
+      <Fld label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Fld>
+      <Fld label="Role"><input className="input" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Fld>
+      <Fld label="Photo"><CropUpload aspect={4 / 5} onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
+      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+        <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+      </div>
+    </Modal>
+  )
+}
+
 export default function CountryProfile() {
   const { id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1663,6 +1753,10 @@ export default function CountryProfile() {
   const [calEvents, setCalEvents] = useState([])
   const [boardMembers, setBoardMembers] = useState([])
   const [countryCoaches, setCountryCoaches] = useState([])
+  const { isAdmin } = useAuth()
+  const [fedModal, setFedModal] = useState(null) // 'info' | {type:'board', member}
+  const [reloadKey, setReloadKey] = useState(0)
+  const [boardKey, setBoardKey] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -1681,7 +1775,7 @@ export default function CountryProfile() {
       .then((r) => alive && setBoardMembers(Array.isArray(r.data) ? r.data : r.data?.results || []))
       .catch(() => alive && setBoardMembers([]))
     return () => { alive = false }
-  }, [profile])
+  }, [profile, boardKey])
 
   useEffect(() => {
     let alive = true
@@ -1712,7 +1806,7 @@ export default function CountryProfile() {
       .catch(() => alive && setProfile(null))
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [id])
+  }, [id, reloadKey])
 
   useEffect(() => {
     if (!profile) return
@@ -1793,7 +1887,12 @@ export default function CountryProfile() {
                 falls back to high-res news action shots when swimmer photos are tiny */}
             <FedHeroPhoto candidates={photoCandidates} extras={ovNews.map((a) => a?.cover_image)} />
             <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
-              <Link to="/countries" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: '#1a56a0' }}>← All federations</Link>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <Link to="/countries" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: '#1a56a0' }}>← All federations</Link>
+                {isAdmin && (
+                  <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setFedModal('info')}>Edit info</button>
+                )}
+              </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
                 {/* Circular federation logo = country flag */}
                 <div className="fed-hero-flag" style={{
@@ -2147,14 +2246,23 @@ export default function CountryProfile() {
             The Board of Directors is responsible for the strategic direction, governance, and overall leadership of the {country.name} Swimming Federation.
           </p>
 
+          {isAdmin && (() => {
+            const nat = teams.find((t) => t.is_national_team)
+            return nat ? (
+              <div style={{ textAlign: 'center', marginBottom: 18 }}>
+                <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setFedModal({ type: 'board', member: null, teamId: nat.id })}>+ Add board member</button>
+              </div>
+            ) : null
+          })()}
+
           {/* Board member cards — real data when the national team has board
               members registered, ISF-style placeholders otherwise */}
           <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
             {(boardMembers.length
-              ? boardMembers.map((m) => ({ role: m.role || 'Member', name: m.name, photo: m.photo }))
+              ? boardMembers.map((m) => ({ role: m.role || 'Member', name: m.name, photo: m.photo, member: m }))
               : ['President', 'Vice President', 'Treasurer', 'Secretary General', 'Technical Director',
                  'Member', 'Member', 'Member', 'Member', 'Member'].map((role) => ({ role, name: '—', photo: null }))
-            ).map(({ role, name, photo }, i) => (
+            ).map(({ role, name, photo, member }, i) => (
               <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', borderTop: '3px solid var(--color-accent-800)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
                 <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: photo ? `url(${photo}) center/cover` : 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>{photo ? '' : '👤'}</div>
                 <div style={{ paddingTop: 16 }}>
@@ -2173,6 +2281,14 @@ export default function CountryProfile() {
                     </div>
                   </div>
                   <div style={{ fontSize: 12, color: '#0b2948', fontWeight: 600, marginTop: 8 }}>Listen to message</div>
+                  {isAdmin && member && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+                      <button className="btn btn-secondary" style={{ fontSize: 11 }}
+                        onClick={() => setFedModal({ type: 'board', member, teamId: member.team })}>Edit</button>
+                      <button className="btn btn-secondary" style={{ fontSize: 11 }}
+                        onClick={async () => { if (window.confirm(`Remove ${member.name} from the board?`)) { await deleteBoardMember(member.id); setBoardKey((k) => k + 1) } }}>Remove</button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -2416,6 +2532,16 @@ export default function CountryProfile() {
       {tab === 'prediction' && <PredictionTab countryName={country.name} />}
       {tab === 'multimedia' && <MultimediaTab champIds={new Set([...hosted, ...participated].map((c) => c.id))} champNames={[...hosted, ...participated].map((c) => c.name)} countryName={country.name} />}
       {tab === 'archives' && <ArchivesTab hosted={hosted} participated={participated} countryName={country.name} />}
+
+      {/* ===== ADMIN MODALS ===== */}
+      {fedModal === 'info' && (
+        <FedInfoModal country={country} onClose={() => setFedModal(null)}
+          onSaved={() => { setFedModal(null); setReloadKey((k) => k + 1) }} />
+      )}
+      {fedModal?.type === 'board' && (
+        <FedBoardModal member={fedModal.member} teamId={fedModal.teamId} onClose={() => setFedModal(null)}
+          onSaved={() => { setFedModal(null); setBoardKey((k) => k + 1) }} />
+      )}
     </div>
   )
 }

@@ -1382,8 +1382,8 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       return seg
     })
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <div style={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
+      <div className="m-donut" style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div className="m-donut-pie" style={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
           <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
             {segs.map((s) => s.count > 0 && (
               <circle key={s.label} cx="60" cy="60" r={r} fill="none" stroke={s.color} strokeWidth="22"
@@ -1395,13 +1395,13 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
             <span style={{ fontSize: 9, color: '#7a8ca0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{centerLabel}</span>
           </span>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 130 }}>
+        <div className="m-donut-legend" style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 130 }}>
           {segs.map((s) => (
             <span key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5 }}>
-              <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-              <span style={{ fontWeight: 600, color: '#374151', flex: 1 }}>{s.label}</span>
+              <span className="m-donut-dot" style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, color: '#374151', flex: 1, whiteSpace: 'nowrap' }}>{s.label}</span>
               <span className="asw-num" style={{ fontWeight: 800, color: '#0b2948' }}>{s.count}</span>
-              <span className="asw-num" style={{ color: '#8a9bb5', width: 34, textAlign: 'right' }}>{s.pct}%</span>
+              <span className="asw-num m-donut-pct" style={{ color: '#8a9bb5', width: 34, textAlign: 'right' }}>{s.pct}%</span>
             </span>
           ))}
         </div>

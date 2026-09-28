@@ -394,6 +394,15 @@ figure { margin: 0; }
   /* profile pages render zoomed-out on phone: everything scales down and
      the layout reflows at a wider effective width so tables/cards fit */
   .m-zoom { zoom: 0.75; }
+  /* demographics donuts: inside .m-zoom (0.75) the default 150px pie and
+     11.5px legend render too small on phone — scale the whole block up so
+     the writing stays readable */
+  .m-donut { gap: 22px !important; padding: 6px 0; }
+  .m-donut .m-donut-pie { width: 185px !important; height: 185px !important; }
+  .m-donut-legend { min-width: 185px !important; gap: 8px !important; }
+  .m-donut-legend > span { font-size: 15px !important; }
+  .m-donut-legend .m-donut-dot { width: 14px !important; height: 14px !important; }
+  .m-donut-legend .m-donut-pct { width: 46px !important; }
   /* flags read better slightly larger on small screens */
   .asw-flag, .fi.asw-flag { width: 27px; height: 20px; line-height: 20px; }
   .asw-flag-lg, .fi.asw-flag-lg { width: 40px; height: 30px; line-height: 30px; }

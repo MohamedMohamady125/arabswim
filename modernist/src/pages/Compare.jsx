@@ -310,13 +310,6 @@ export default function Compare() {
                     <div className={`vs-right asw-num ${b.best_fina != null && b.best_fina >= (a.best_fina ?? -1) ? 'vs-win' : ''}`}>{b.best_fina ?? '—'}</div>
                   </div>
                 )}
-                {(a.medals || b.medals) && (
-                  <div className="vs-row">
-                    <div className="vs-left asw-num">{a.medals ? `${a.medals.gold}·${a.medals.silver}·${a.medals.bronze}` : '—'}</div>
-                    <div className="vs-mid">Medals G·S·B</div>
-                    <div className="vs-right asw-num">{b.medals ? `${b.medals.gold}·${b.medals.silver}·${b.medals.bronze}` : '—'}</div>
-                  </div>
-                )}
                 {sharedRows.map((row) => {
                   const pa = row.times[a.id]
                   const pbb = row.times[b.id]
@@ -362,16 +355,6 @@ export default function Compare() {
                     <td className="micro">Best FINA</td>
                     {data.swimmers.map((sw) => (
                       <td key={sw.id} className="time asw-num">{sw.best_fina ?? '—'}</td>
-                    ))}
-                  </tr>
-                )}
-                {data.swimmers.some((sw) => sw.medals) && (
-                  <tr>
-                    <td className="micro">Medals G·S·B</td>
-                    {data.swimmers.map((sw) => (
-                      <td key={sw.id} className="time asw-num">
-                        {sw.medals ? `${sw.medals.gold}·${sw.medals.silver}·${sw.medals.bronze}` : '—'}
-                      </td>
                     ))}
                   </tr>
                 )}

@@ -1534,11 +1534,16 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           {participationList.length === 0 ? <Empty label="No data" /> : participationList.map(([cls, n]) => barRow(cls, n, maxPart))}
         </>)}
         {card(<>
-          {cardHeader('Championships Hosted', 'Number of Championships Hosted')}
+          {cardHeader('International Championships Hosted', 'Number of International Championships Hosted')}
           {hosted.length === 0 ? <Empty label="None" /> : (() => {
             const counts = {}
-            hosted.forEach((c) => { const k = c.classification || 'Other'; counts[k] = (counts[k] || 0) + 1 })
+            hosted.forEach((c) => {
+              const k = c.classification || 'Other'
+              if (/^(national|other)$/i.test(k)) return
+              counts[k] = (counts[k] || 0) + 1
+            })
             const list = Object.entries(counts).sort((a, b) => b[1] - a[1])
+            if (!list.length) return <Empty label="None" />
             const mx = Math.max(...list.map(([, n]) => n), 1)
             return list.map(([cls, n]) => barRow(cls, n, mx))
           })()}

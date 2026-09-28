@@ -692,8 +692,44 @@ def merge_swimmers(keep_swimmer, remove_swimmer):
     from medals.models import Medal
     from swimmers.models import SwimmerNickname
 
+    # Duplicate profiles usually hold IDENTICAL rows (same meet/event/round/
+    # time from a double import). Result has a unique constraint on
+    # (swimmer, championship, event, round_type, category, team,
+    # time_centiseconds), so blindly re-pointing them at the keeper raises
+    # IntegrityError (the 500 admins saw). Drop exact duplicates first, then
+    # transfer whatever is genuinely unique. Medals/records have no DB
+    # constraint but exact duplicates would double the tallies — same drill.
+    keep_result_keys = set(Result.objects.filter(swimmer=keep_swimmer).values_list(
+        'championship_id', 'event_id', 'round_type', 'category', 'team',
+        'time_centiseconds'))
+    dup_result_ids = [
+        rid for rid, *key in Result.objects.filter(swimmer=remove_swimmer).values_list(
+            'id', 'championship_id', 'event_id', 'round_type', 'category',
+            'team', 'time_centiseconds')
+        if tuple(key) in keep_result_keys
+    ]
+    Result.objects.filter(id__in=dup_result_ids).delete()
     Result.objects.filter(swimmer=remove_swimmer).update(swimmer=keep_swimmer)
+
+    keep_record_keys = set(Record.objects.filter(swimmer=keep_swimmer).values_list(
+        'record_type', 'event_id', 'pool', 'age_category', 'time_centiseconds'))
+    dup_record_ids = [
+        rid for rid, *key in Record.objects.filter(swimmer=remove_swimmer).values_list(
+            'id', 'record_type', 'event_id', 'pool', 'age_category',
+            'time_centiseconds')
+        if tuple(key) in keep_record_keys
+    ]
+    Record.objects.filter(id__in=dup_record_ids).delete()
     Record.objects.filter(swimmer=remove_swimmer).update(swimmer=keep_swimmer)
+
+    keep_medal_keys = set(Medal.objects.filter(swimmer=keep_swimmer).values_list(
+        'championship_id', 'event_id', 'medal_type', 'scope'))
+    dup_medal_ids = [
+        mid for mid, *key in Medal.objects.filter(swimmer=remove_swimmer).values_list(
+            'id', 'championship_id', 'event_id', 'medal_type', 'scope')
+        if tuple(key) in keep_medal_keys
+    ]
+    Medal.objects.filter(id__in=dup_medal_ids).delete()
     Medal.objects.filter(swimmer=remove_swimmer).update(swimmer=keep_swimmer)
 
     # Relay legs reference swimmers by NAME inside relay_swimmers JSON, and

@@ -465,14 +465,22 @@ class MergeSwimmersView(APIView):
         except Swimmer.DoesNotExist:
             return Response({'error': 'Swimmer not found'}, status=404)
 
+        from django.db import transaction
         merged_names = []
         for rid in remove_ids:
             try:
                 remove = Swimmer.objects.get(id=rid)
             except Swimmer.DoesNotExist:
                 return Response({'error': f'Swimmer {rid} not found', 'merged': merged_names}, status=404)
+            try:
+                with transaction.atomic():
+                    merge_swimmers(keep, remove)
+            except Exception as e:
+                return Response({
+                    'error': f'Merge of "{remove.name}" failed: {e}',
+                    'merged': merged_names,
+                }, status=400)
             merged_names.append(remove.name)
-            merge_swimmers(keep, remove)
 
         names = ', '.join(f'"{n}"' for n in merged_names)
         return Response({

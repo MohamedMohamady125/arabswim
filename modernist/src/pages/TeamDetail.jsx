@@ -902,12 +902,14 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
         <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea' }}>
           {cardHeader('Performance Index', `Distribution of ${team.name} Swimmers by Performance Level`)}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 180, marginTop: 10 }}>
+          <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
             {perfDist.map((d, i) => (
-              <div key={d.label} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: '#0b2948' }}>{d.count}</div>}
-                <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: '3px 3px 0 0' }} />
-                <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, color: '#5a6b80', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
+              <div key={d.label} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ height: 165, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                  {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: '#0b2948' }}>{d.count}</div>}
+                  <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: '3px 3px 0 0' }} />
+                </div>
+                <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, minHeight: 19, color: '#5a6b80', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
                 <div style={{ fontSize: 6.5, color: '#9baab8', marginTop: 1 }}>({d.range})</div>
               </div>
             ))}

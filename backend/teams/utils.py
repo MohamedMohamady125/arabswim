@@ -66,10 +66,14 @@ def strip_nt_suffix(name):
     return _NT_SUFFIX_RE.sub('', (name or '').strip()).strip()
 
 
-def national_team_country(name):
+def national_team_country(name, team_country=None):
     """Return the Country if this team name is a national-team variant
     ("Bahrain", "Bahrain Team A", "BRN Bahrain", "Bahrain National Team",
-    "Djibouti NT", "Bahrein NT" — including alias spellings)."""
+    "Djibouti NT", "Bahrein NT" — including alias spellings).
+
+    A name that is just a bare IOC code ("BRN") only counts when the
+    team's own country (if given) agrees — club abbreviations collide
+    with codes (EST = Espérance Sportive de Tunis, not Estonia)."""
     if not name:
         return None
     raw = str(name).strip()
@@ -80,7 +84,9 @@ def national_team_country(name):
     for c in Country.objects.all():
         ckey = normalize_team_key(c.name)
         code = c.code.casefold()
-        if key in {ckey, code, f'{code} {ckey}', f'{ckey} {code}'}:
+        if key in {ckey, f'{code} {ckey}', f'{ckey} {code}'}:
+            return c
+        if key == code and (team_country is None or team_country.id == c.id):
             return c
     # Alias spellings ("Bahrein NT", "Maroc NT") only when an explicit NT
     # marker was present — a bare club abbreviation ("EST") must never
@@ -271,15 +277,24 @@ def auto_create_teams():
     )
 
     skip_names = _get_skip_names()
+    # Bare IOC codes double as club abbreviations (EST = Espérance
+    # Sportive de Tunis, not Estonia). Collect them anyway and decide at
+    # creation time from the swimmers' actual nationalities.
+    code_countries = {c.code.casefold(): c.code for c in Country.objects.all()}
+
+    def bare_code(club):
+        return code_countries.get(club.strip().casefold())
 
     for swimmer in swimmers:
         club = swimmer.club.strip()
         nt_c = nt_suffix_country(club)
+        code = bare_code(club)
         if not nt_c:
-            if not club or club in skip_names or not is_valid_team_name(club):
+            if not club or not is_valid_team_name(club):
                 continue
-            # National-team variants never become club teams
-            if normalize_team_key(club) in skip_names:
+            # National-team variants never become club teams — except a
+            # bare code, which is judged later by its swimmers' nationality
+            if (club in skip_names or normalize_team_key(club) in skip_names) and not code:
                 continue
 
         # Dedupe club variants within this scan by normalized key
@@ -288,6 +303,8 @@ def auto_create_teams():
             club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}, 'nt_country': None}
         if nt_c:
             club_data[club_key]['nt_country'] = nt_c
+        if code:
+            club_data[club_key]['bare_code'] = code
         club_data[club_key]['count'] += 1
 
         nat_code = swimmer.nationality.code if swimmer.nationality else ''
@@ -313,16 +330,19 @@ def auto_create_teams():
             continue
         club = strip_squad_number((row['team'] or '')).strip()
         nt_c = nt_suffix_country(club)
+        code = bare_code(club)
         if not nt_c:
             if not club or club == 'LP' or not is_valid_team_name(club):
                 continue
-            if club in skip_names or normalize_team_key(club) in skip_names:
+            if (club in skip_names or normalize_team_key(club) in skip_names) and not code:
                 continue
         club_key = normalize_team_key(club)
         if club_key not in club_data:
             club_data[club_key] = {'name': club, 'count': 0, 'nationalities': {}, 'nt_country': None}
         if nt_c:
             club_data[club_key]['nt_country'] = nt_c
+        if code:
+            club_data[club_key]['bare_code'] = code
         club_data[club_key]['count'] += row['n']
         # Vote the meet's host country, but ONLY for National/Other meets
         # where every club genuinely belongs to that country.  At
@@ -356,12 +376,19 @@ def auto_create_teams():
 
         # Determine country from most common nationality
         country = None
+        top_code = None
         if data['nationalities']:
             top_code = max(data['nationalities'], key=data['nationalities'].get)
             try:
                 country = Country.objects.get(code=top_code)
             except Country.DoesNotExist:
                 pass
+
+        # A bare IOC code is a national-team placeholder only when its
+        # swimmers really are of that country; EST full of Tunisians is
+        # the club Espérance Sportive de Tunis, not Estonia.
+        if data.get('bare_code') and (not top_code or top_code == data['bare_code']):
+            continue
 
         if not country:
             country = Country.objects.first()
@@ -427,11 +454,15 @@ def ensure_team_exists(club_name, country=None):
     # (resolved from the name) and is flagged, never a host-country club.
     nt_country = nt_suffix_country(club_name)
     if not nt_country:
+        if not is_valid_team_name(club_name):
+            return None
         skip_names = _get_skip_names()
-        if club_name in skip_names or not is_valid_team_name(club_name):
-            return None
-        if normalize_team_key(club_name) in skip_names:
-            return None
+        if club_name in skip_names or normalize_team_key(club_name) in skip_names:
+            # A bare IOC code is allowed as a club when the caller's
+            # country disagrees with the code (EST club in Tunisia)
+            code_hit = Country.objects.filter(code__iexact=club_name).first()
+            if not (code_hit and country and country.id != code_hit.id):
+                return None
 
     club_key = normalize_team_key(club_name)
     for t in Team.objects.all():

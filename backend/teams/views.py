@@ -437,7 +437,7 @@ class TeamViewSet(viewsets.ModelViewSet):
         groups = {}
         nat_countries = {}
         for t in Team.objects.select_related('country'):
-            country = national_team_country(t.name)
+            country = national_team_country(t.name, t.country)
             if country:
                 key = f'__national__{country.code}'
                 nat_countries[key] = country

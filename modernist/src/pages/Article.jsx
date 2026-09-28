@@ -119,12 +119,8 @@ export default function Article() {
             overflow: 'hidden', borderRadius: 2, background: '#0b2948',
           }}>
             <img
-              src={mediaUrl(article.cover_image)} alt="" aria-hidden="true"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(24px)', transform: 'scale(1.15)', opacity: 0.5 }}
-            />
-            <img
               src={mediaUrl(article.cover_image)} alt=""
-              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           </div>
         )}

@@ -154,30 +154,19 @@ export function TabHeading({ title }) {
 /* ===== NEWS TAB ===== */
 function NewsTab({ countryId, countryName }) {
   const [articles, setArticles] = useState(null)
-  const [regionWide, setRegionWide] = useState(false)
   useEffect(() => {
     let alive = true
     const unwrap = (r) => (Array.isArray(r.data) ? r.data : r.data?.results || [])
+    // Only articles linked to this federation (directly or via its clubs)
     getArticles({ country: countryId, status: 'PUBLISHED', ordering: '-published_at' })
-      .then((r) => {
-        const mine = unwrap(r)
-        if (mine.length) { if (alive) { setArticles(mine); setRegionWide(false) }; return null }
-        // No country-tagged articles — fall back to Arab swimming news
-        return getArticles({ status: 'PUBLISHED', ordering: '-published_at' })
-          .then((r2) => { if (alive) { setArticles(unwrap(r2)); setRegionWide(true) } })
-      })
+      .then((r) => alive && setArticles(unwrap(r)))
       .catch(() => alive && setArticles([]))
     return () => { alive = false }
   }, [countryId])
   if (articles === null) return <Loading label="Loading news" />
   return (
     <div className="pad-lg">
-      <TabHeading title={regionWide ? 'Arab Swimming News' : `${countryName} News`} />
-      {regionWide && articles.length > 0 && (
-        <div style={{ textAlign: 'center', fontSize: 12.5, color: '#6b7d94', margin: '-8px 0 18px' }}>
-          No {countryName}-specific articles yet — showing the latest news from around the Arab swimming world.
-        </div>
-      )}
+      <TabHeading title={`${countryName} News`} />
       {articles.length === 0 ? <Empty label="No news articles yet" /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {articles.map((a) => (
@@ -1805,13 +1794,9 @@ export default function CountryProfile() {
   useEffect(() => {
     let alive = true
     const unwrap = (r) => (Array.isArray(r.data) ? r.data : r.data?.results || [])
+    // Only articles linked to this federation (directly or via its clubs)
     getArticles({ country: id, status: 'PUBLISHED', ordering: '-published_at' })
-      .then((r) => {
-        const mine = unwrap(r)
-        if (mine.length) { if (alive) setOvNews(mine.slice(0, 4)); return null }
-        return getArticles({ status: 'PUBLISHED', ordering: '-published_at' })
-          .then((r2) => alive && setOvNews(unwrap(r2).slice(0, 4)))
-      })
+      .then((r) => alive && setOvNews(unwrap(r).slice(0, 4)))
       .catch(() => alive && setOvNews([]))
     return () => { alive = false }
   }, [id])

@@ -99,10 +99,17 @@ export default function Article() {
 
         {/* ── Cover image ── */}
         {article.cover_image && (
-          <div style={{ margin: '0 0 28px' }}>
+          <div style={{
+            position: 'relative', margin: '0 0 28px', height: 'min(460px, 58vw)',
+            overflow: 'hidden', borderRadius: 2, background: '#0b2948',
+          }}>
+            <img
+              src={mediaUrl(article.cover_image)} alt="" aria-hidden="true"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(24px)', transform: 'scale(1.15)', opacity: 0.5 }}
+            />
             <img
               src={mediaUrl(article.cover_image)} alt=""
-              style={{ width: '100%', display: 'block', borderRadius: 2 }}
+              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
             />
           </div>
         )}

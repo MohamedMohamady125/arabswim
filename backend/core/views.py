@@ -516,6 +516,39 @@ class CountryViewSet(viewsets.ModelViewSet):
             ),
         }
 
+        # Demographics for the Statistics pies: age buckets and stroke mix
+        from datetime import date as _date
+        cur_year = _date.today().year
+        birth_years = list(
+            country.swimmers.filter(is_relay_team=False)
+            .filter(Q(date_of_birth__isnull=False) | Q(birth_year__isnull=False))
+            .values_list('date_of_birth__year', 'birth_year'))
+        age_buckets = {'U12': 0, '12-14': 0, '15-17': 0, '18-20': 0, '21-24': 0, '25+': 0}
+        for dob_year, by in birth_years:
+            y = dob_year or by
+            age = cur_year - y
+            if age < 12:
+                age_buckets['U12'] += 1
+            elif age <= 14:
+                age_buckets['12-14'] += 1
+            elif age <= 17:
+                age_buckets['15-17'] += 1
+            elif age <= 20:
+                age_buckets['18-20'] += 1
+            elif age <= 24:
+                age_buckets['21-24'] += 1
+            else:
+                age_buckets['25+'] += 1
+        stroke_rows = (results_qs.filter(swimmer__is_relay_team=False,
+                                         event__is_relay=False)
+                       .exclude(event__stroke='')
+                       .values('event__stroke').annotate(n=Count('id'))
+                       .order_by('-n'))
+        demographics = {
+            'ages': [{'label': k, 'count': v} for k, v in age_buckets.items() if v > 0],
+            'strokes': [{'label': r['event__stroke'], 'count': r['n']} for r in stroke_rows],
+        }
+
         # Top swimmers by best FINA (best single swim each)
         top_swimmers = []
         seen = set()
@@ -811,6 +844,7 @@ class CountryViewSet(viewsets.ModelViewSet):
         return Response({
             'country': CountrySerializer(country).data,
             'stats': stats,
+            'demographics': demographics,
             'trending': trending,
             'medals': medal_counts,
             'medals_by_classification': medals_by_classification,

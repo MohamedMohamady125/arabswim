@@ -16,8 +16,8 @@ const INK = '#12253d'
 const NAVY = '#1c4e86'
 const LIGHT_BLUE = '#4a8fc0'
 const GOLD = '#b98a1e'
-const GREEN = '#0d7a52'
-const RED = '#a8402f'
+const GREEN = '#16a34a'
+const RED = '#dc2626'
 const GRID = '#dde4ec'
 const AXIS = '#78879a'
 const FONT = '"Archivo", system-ui, sans-serif'
@@ -64,8 +64,8 @@ function cellBg(pct) {
   if (pct == null) return '#f6f8fa'
   if (pct === 0) return '#f6f8fa'
   const mag = Math.min(Math.abs(pct), 3) / 3 // saturate at ±3 %
-  const alpha = 0.12 + mag * 0.55
-  return pct > 0 ? `rgba(13, 122, 82, ${alpha})` : `rgba(168, 64, 47, ${alpha})`
+  const alpha = 0.1 + mag * 0.45
+  return pct > 0 ? `rgba(22, 163, 74, ${alpha})` : `rgba(220, 38, 38, ${alpha})`
 }
 
 function OverviewHeatmap({ data, onPickEvent }) {

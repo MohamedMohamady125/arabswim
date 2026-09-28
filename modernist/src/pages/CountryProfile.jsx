@@ -1363,6 +1363,57 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
     </div>
   )
 
+  // Donut pie with centred total + legend (same style as meet analysis)
+  const donut = (segments, centerLabel) => {
+    const total = segments.reduce((s, x) => s + x.count, 0)
+    if (!total) return <Empty label="No data" />
+    const r = 44
+    const C = 2 * Math.PI * r
+    let acc = 0
+    const segs = segments.map((s) => {
+      const frac = s.count / total
+      const seg = { ...s, dash: frac * C, offset: -acc * C, pct: Math.round(frac * 100) }
+      acc += frac
+      return seg
+    })
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
+          <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+            {segs.map((s) => s.count > 0 && (
+              <circle key={s.label} cx="60" cy="60" r={r} fill="none" stroke={s.color} strokeWidth="22"
+                strokeDasharray={`${s.dash} ${C}`} strokeDashoffset={s.offset} />
+            ))}
+          </svg>
+          <span style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1, color: '#0b2948' }}>{total}</span>
+            <span style={{ fontSize: 9, color: '#7a8ca0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{centerLabel}</span>
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 130 }}>
+          {segs.map((s) => (
+            <span key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5 }}>
+              <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, color: '#374151', flex: 1 }}>{s.label}</span>
+              <span className="asw-num" style={{ fontWeight: 800, color: '#0b2948' }}>{s.count}</span>
+              <span className="asw-num" style={{ color: '#8a9bb5', width: 34, textAlign: 'right' }}>{s.pct}%</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const AGE_COLORS = ['#0c2340', '#17416f', '#2f6cae', '#72a4cf', '#aecae4', '#d5e4f2']
+  const STROKE_COLORS = { Freestyle: '#1c4e86', Backstroke: '#4a8fc0', Breaststroke: '#0c2340', Butterfly: '#72a4cf', Medley: '#b98a1e', 'Open Water': '#7d8a99' }
+  const demo = profile.demographics || {}
+  const genderSegs = [
+    { label: 'Men', count: profile.stats?.swimmers_male || 0, color: '#1c4e86' },
+    { label: 'Women', count: profile.stats?.swimmers_female || 0, color: '#4a8fc0' },
+  ]
+  const ageSegs = (demo.ages || []).map((a, i) => ({ label: a.label, count: a.count, color: AGE_COLORS[i % AGE_COLORS.length] }))
+  const strokeSegs = (demo.strokes || []).map((s, i) => ({ label: s.label, count: s.count, color: STROKE_COLORS[s.label] || AGE_COLORS[i % AGE_COLORS.length] }))
+
   const topPerfTable = (list) => (
     <>
       <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
@@ -1463,6 +1514,13 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>{cardHeader('Top Performance · Men', `Best Performances by ${country.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}</>)}
         {card(<>{cardHeader('Top Performance · Women', `Best Performances by ${country.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No data" />}</>)}
+      </div>
+
+      {/* Row 1b: Demographics pies — gender, ages, strokes */}
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+        {card(<>{cardHeader('Male / Female', `Proportion of ${country.name} Swimmers by Sex`)}{donut(genderSegs, 'Swimmers')}</>)}
+        {card(<>{cardHeader('Age Groups', `Distribution of ${country.name} Swimmers by Age`)}{donut(ageSegs, 'Swimmers')}</>)}
+        {card(<>{cardHeader('Strokes', `Share of ${country.name} Swims by Stroke`)}{donut(strokeSegs, 'Swims')}</>)}
       </div>
 
       {/* Row 2: Participation | Championships Hosted | Most Participated */}

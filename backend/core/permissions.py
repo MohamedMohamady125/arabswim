@@ -74,6 +74,44 @@ class CanManageOwnAcademy(BasePermission):
                 and request.user.academy_id == obj.id)
 
 
+class CanManageTrainingSession(BasePermission):
+    """Reads for everyone. Writes for admins, CLUB/FEDERATION accounts on
+    their own team's sessions, and ACADEMY accounts on their academy's."""
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        if is_admin(user):
+            return True
+        if request.method == 'POST':
+            team_id = request.data.get('team')
+            academy_id = request.data.get('academy')
+            if team_id:
+                from teams.models import Team
+                return user_manages_team(user, Team.objects.filter(pk=team_id).first())
+            if academy_id:
+                return (getattr(user, 'role', None) == 'ACADEMY'
+                        and str(user.academy_id) == str(academy_id))
+            return False
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+        user = request.user
+        if is_admin(user):
+            return True
+        if obj.team_id:
+            return user_manages_team(user, obj.team)
+        if obj.academy_id:
+            return (getattr(user, 'role', None) == 'ACADEMY'
+                    and user.academy_id == obj.academy_id)
+        return False
+
+
 class CanManageTeamPortal(BasePermission):
     """Reads for everyone. Creates require a `team` the user manages.
     Object writes require managing the object's team (or the team itself)."""

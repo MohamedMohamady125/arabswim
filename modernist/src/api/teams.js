@@ -19,3 +19,7 @@ export const getBoardMembers = (params) => api.get('/board-members/', { params }
 export const createBoardMember = (data) => api.post('/board-members/', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const updateBoardMember = (id, data) => api.patch(`/board-members/${id}/`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const deleteBoardMember = (id) => api.delete(`/board-members/${id}/`)
+export const getTrainingSessions = (params) => api.get('/training-sessions/', { params })
+export const createTrainingSession = (data) => api.post('/training-sessions/', data)
+export const updateTrainingSession = (id, data) => api.patch(`/training-sessions/${id}/`, data)
+export const deleteTrainingSession = (id) => api.delete(`/training-sessions/${id}/`)

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getAcademy } from '../api/academies'
 import Flag from '../components/Flag'
+import TrainingCalendar from '../components/TrainingCalendar'
 import { Loading, Empty } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
 import { mediaUrl } from '../utils'
 
 function acronym(name) {
@@ -51,6 +53,7 @@ const infoValue = { fontSize: 14, fontWeight: 700, color: '#0b2948' }
 
 export default function AcademyProfile() {
   const { id } = useParams()
+  const { isAdmin, user } = useAuth()
   const [academy, setAcademy] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -179,6 +182,14 @@ export default function AcademyProfile() {
                 <span style={{ paddingTop: 5 }}>{a.address}</span>
               </div>
             )}
+          </div>
+
+          {/* Training calendar */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#0b2948', marginBottom: 10 }}>
+              Training Calendar
+            </div>
+            <TrainingCalendar academyId={Number(id)} canEdit={isAdmin || (user?.role === 'ACADEMY' && user?.academy === a.id)} />
           </div>
         </div>
       </div>

@@ -37,6 +37,32 @@ class Trophy(models.Model):
         return f'{self.name} ({self.year})'
 
 
+class TrainingSession(models.Model):
+    """A training slot on a club's or academy's monthly training calendar."""
+    team = models.ForeignKey(Team, on_delete=models.CASCADE,
+                             related_name='training_sessions', null=True, blank=True)
+    academy = models.ForeignKey('academies.Academy', on_delete=models.CASCADE,
+                                related_name='training_sessions', null=True, blank=True)
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField(blank=True, null=True)
+    location = models.CharField(max_length=200, blank=True, default='')
+    coach_name = models.CharField(max_length=200, blank=True, default='')
+    group_name = models.CharField(max_length=200, blank=True, default='',
+        help_text='Training group / squad name, e.g. First Team')
+    age_group = models.CharField(max_length=100, blank=True, default='',
+        help_text='e.g. U12, 13-14, Seniors')
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date', 'start_time']
+
+    def __str__(self):
+        owner = self.team or self.academy
+        return f'{owner} — {self.date} {self.start_time}'
+
+
 class BoardMember(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='board_members')
     name = models.CharField(max_length=200)

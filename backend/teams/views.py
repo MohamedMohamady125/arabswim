@@ -4,11 +4,38 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Count, Max, Q
 
-from .models import Team, Trophy, BoardMember
+from .models import Team, Trophy, BoardMember, TrainingSession
 from .serializers import (
     TeamListSerializer, TeamDetailSerializer, TeamCreateUpdateSerializer, TrophySerializer,
-    BoardMemberSerializer
+    BoardMemberSerializer, TrainingSessionSerializer
 )
+
+
+class TrainingSessionViewSet(viewsets.ModelViewSet):
+    """Monthly training calendar entries for clubs and academies."""
+    queryset = TrainingSession.objects.select_related('team', 'academy')
+    serializer_class = TrainingSessionSerializer
+    pagination_class = None
+
+    def get_permissions(self):
+        from core.permissions import CanManageTrainingSession
+        return [CanManageTrainingSession()]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        p = self.request.query_params
+        if p.get('team'):
+            qs = qs.filter(team_id=p['team'])
+        if p.get('academy'):
+            qs = qs.filter(academy_id=p['academy'])
+        month = p.get('month')  # YYYY-MM
+        if month:
+            try:
+                y, m = month.split('-')
+                qs = qs.filter(date__year=int(y), date__month=int(m))
+            except ValueError:
+                pass
+        return qs
 from swimmers.serializers import SwimmerListSerializer
 from swimmers.models import Swimmer
 from championships.models import Result

@@ -1,6 +1,20 @@
 from rest_framework import serializers
-from .models import Team, Trophy, BoardMember
+from .models import Team, Trophy, BoardMember, TrainingSession
 from core.serializers import CountrySerializer
+
+
+class TrainingSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainingSession
+        fields = ['id', 'team', 'academy', 'date', 'start_time', 'end_time',
+                  'location', 'coach_name', 'group_name', 'age_group', 'notes']
+
+    def validate(self, attrs):
+        team = attrs.get('team', getattr(self.instance, 'team', None))
+        academy = attrs.get('academy', getattr(self.instance, 'academy', None))
+        if not team and not academy:
+            raise serializers.ValidationError('A team or academy is required.')
+        return attrs
 
 
 class TrophySerializer(serializers.ModelSerializer):

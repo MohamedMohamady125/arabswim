@@ -14,6 +14,7 @@ import { Loading, Empty, Seg, Modal } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
 import { CropUpload } from '../components/ImageCropper'
+import TrainingCalendar from '../components/TrainingCalendar'
 import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
 
 // Not yet in src/api/teams.js — defined locally
@@ -61,6 +62,7 @@ const TABS = [
   { value: 'news', label: 'News' },
   { value: 'board', label: 'Board' },
   { value: 'team', label: 'Team' },
+  { value: 'training', label: 'Training' },
   { value: 'statistics', label: 'Statistics' },
   { value: 'progression', label: 'Progression' },
   { value: 'records', label: 'Records' },
@@ -1257,7 +1259,7 @@ export default function TeamDetail() {
 
       {/* Tab bar */}
       <div className="rule-b" style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto' }}>
-        {TABS.map((t) => (
+        {TABS.filter((t) => t.value !== 'training' || !team?.is_national_team).map((t) => (
           <button key={t.value} type="button" onClick={() => setTab(t.value)}
             style={{
               padding: '12px 16px', background: 'none', border: 'none', borderBottom: tab === t.value ? '3px solid var(--color-accent)' : '3px solid transparent',
@@ -1592,6 +1594,14 @@ export default function TeamDetail() {
               </div>
             )}
           </>)}
+        </div>
+      )}
+
+      {/* ===== TRAINING ===== */}
+      {tab === 'training' && !team?.is_national_team && (
+        <div className="m-pad" style={{ padding: '24px 32px 40px', background: '#eaf1f9' }}>
+          <TabHeading kicker="Monthly Schedule" title="Training Calendar" />
+          <TrainingCalendar teamId={Number(id)} canEdit={canManage} />
         </div>
       )}
 

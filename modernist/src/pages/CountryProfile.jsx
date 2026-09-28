@@ -1518,9 +1518,9 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
 
       {/* Row 1b: Demographics pies — gender, ages, strokes */}
       <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {card(<>{cardHeader('Male / Female', `Proportion of ${country.name} Swimmers by Sex`)}{donut(genderSegs, 'Swimmers')}</>)}
-        {card(<>{cardHeader('Age Groups', `Distribution of ${country.name} Swimmers by Age`)}{donut(ageSegs, 'Swimmers')}</>)}
-        {card(<>{cardHeader('Strokes', `Share of ${country.name} Swims by Stroke`)}{donut(strokeSegs, 'Swims')}</>)}
+        {card(<>{cardHeader('Swimmers by Gender', `Proportion of ${country.name} Swimmers by Sex`)}{donut(genderSegs, 'Swimmers')}</>)}
+        {card(<>{cardHeader('Swimmers by Age', `Distribution of ${country.name} Swimmers by Age`)}{donut(ageSegs, 'Swimmers')}</>)}
+        {card(<>{cardHeader('Swimmers by Stroke', `Share of ${country.name} Swims by Stroke`)}{donut(strokeSegs, 'Swims')}</>)}
       </div>
 
       {/* Row 2: Participation | Championships Hosted | Most Participated */}

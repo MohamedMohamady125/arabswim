@@ -566,12 +566,17 @@ class CountryViewSet(viewsets.ModelViewSet):
                                      is_hc=False, time_centiseconds__gt=0)
                    .select_related('swimmer', 'event', 'championship')
                    .order_by('-fina_points'))
-        for r in fina_qs[:400]:
+        sex_counts = {'M': 0, 'F': 0}
+        for r in fina_qs[:2000]:
             if r.swimmer_id in seen:
                 continue
+            sex = r.swimmer.sex
+            if sex_counts.get(sex, 6) >= 6:
+                continue
             seen.add(r.swimmer_id)
+            sex_counts[sex] = sex_counts.get(sex, 0) + 1
             top_swimmers.append({
-                'id': r.swimmer_id, 'name': r.swimmer.name, 'sex': r.swimmer.sex,
+                'id': r.swimmer_id, 'name': r.swimmer.name, 'sex': sex,
                 'photo': r.swimmer.photo.url if r.swimmer.photo else None,
                 'club': r.swimmer.club, 'best_fina': r.fina_points,
                 'best_event': r.event.name, 'best_time': _fmt_cs(r.time_centiseconds),
@@ -579,6 +584,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             })
             if len(top_swimmers) >= 12:
                 break
+        top_swimmers.sort(key=lambda s: -(s['best_fina'] or 0))
 
         # National best time per event / sex / pool (individual events)
         groups = (results_qs.filter(event__is_relay=False, time_centiseconds__gt=0,

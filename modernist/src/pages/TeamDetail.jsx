@@ -16,6 +16,7 @@ import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
 import { CropUpload } from '../components/ImageCropper'
 import TrainingCalendar from '../components/TrainingCalendar'
 import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
+import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
 
 // Not yet in src/api/teams.js — defined locally
 const getTeamRecords = (id) => api.get(`/teams/${id}/records/`)
@@ -1022,6 +1023,8 @@ export default function TeamDetail() {
   const [profile, setProfile] = useState(null)
   const [medals, setMedals] = useState([])
   const [times, setTimes] = useState([])
+  // New seed each page open → highlight cards shuffle per visit
+  const [hlSeed] = useState(() => Math.floor(Math.random() * 2 ** 31))
   const [records, setRecords] = useState([])
   const [stats, setStats] = useState(null)
   const [ranking, setRanking] = useState([])
@@ -1382,64 +1385,63 @@ export default function TeamDetail() {
                 )}
               </div>
 
-              {/* RIGHT: Highlight cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* Best Performance */}
-                <div style={hCard}>
-                  <div style={hPhoto}>
-                    {photoById[bestPerf?.swimmer_id] ? <img src={mediaUrl(photoById[bestPerf.swimmer_id])} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+              {/* RIGHT: Highlight cards — random 4 from a pool of ~11 ideas,
+                  reshuffled every visit, distinct swimmers within a set */}
+              {(() => {
+                const hl = ({ photo, emoji = '🏊', title, big, sub, name, extra, icon, badgeEl }) => (
+                  <div style={hCard}>
+                    <div style={hPhoto}>
+                      {photo ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : emoji}
+                    </div>
+                    <div style={hBody}>
+                      <div style={hTitle}>{title}</div>
+                      <div style={hBig}>{big}</div>
+                      {sub ? <div style={hSub}>{sub}</div> : null}
+                      {name ? <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{name}</div> : null}
+                      {extra ? <div style={{ ...hSub, color: '#5a6b80' }}>{extra}</div> : null}
+                    </div>
+                    {icon === undefined ? barsIcon : icon}
+                    {badgeEl}
                   </div>
-                  <div style={hBody}>
-                    <div style={hTitle}>Best<br />Performance</div>
-                    <div style={hBig}>{bestPerf?.time || '—'}</div>
-                    <div style={hSub}>{bestPerf?.event_name || ''}</div>
-                    <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{bestPerf?.swimmer_name || ''}</div>
-                    {bestPerf?.fina_points && <div style={{ ...hSub, color: '#5a6b80' }}>{bestPerf.fina_points} FINA pts</div>}
+                )
+                const fmtRec = (r) => (typeof r.time === 'number' ? formatTime(r.time) : r.time) || '—'
+                const decorated = [...medalists].sort((a, b) => b.total - a.total)[0]
+                const goldKing = medalists[0] // medalists are gold-sorted
+                const leadingWoman = (() => {
+                  let best = null
+                  times.forEach((t) => { if (sexById[t.swimmer_id] === 'F' && (!best || (t.fina_points || 0) > (best.fina_points || 0))) best = t })
+                  return best
+                })()
+                const recCount = {}
+                records.forEach((r) => {
+                  if (!r.swimmer_id) return
+                  recCount[r.swimmer_id] = recCount[r.swimmer_id] ? { n: recCount[r.swimmer_id].n + 1, rec: recCount[r.swimmer_id].rec } : { n: 1, rec: r }
+                })
+                const collector = Object.values(recCount).sort((a, b) => b.n - a.n)[0]
+                const oldestRecord = records.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0]
+                const g = stats?.medals?.gold || 0, s = stats?.medals?.silver || 0, b = stats?.medals?.bronze || 0
+                const youngest = [...roster].filter((r) => r.birth_year).sort((a, b) => b.birth_year - a.birth_year)[0]
+                const latestTrophy = [...trophies].sort((a, b) => (b.year || 0) - (a.year || 0))[0]
+                const pool = [
+                  { key: 'best-perf', person: bestPerf?.swimmer_id, valid: !!bestPerf, render: () => hl({ photo: photoById[bestPerf.swimmer_id], title: <>Best<br />Performance</>, big: bestPerf.time || '—', sub: bestPerf.event_name || '', name: bestPerf.swimmer_name, extra: bestPerf.fina_points ? `${bestPerf.fina_points} FINA pts` : null }) },
+                  { key: 'decorated', person: decorated?.id, valid: !!decorated, render: () => hl({ photo: photoById[decorated.id], title: <>Most Decorated<br />Swimmer</>, big: decorated.total || 0, sub: 'Total Medals', name: decorated.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🏆</span> }) },
+                  { key: 'new-record', person: newestRecord?.swimmer_id, valid: !!newestRecord, render: () => hl({ photo: photoById[newestRecord.swimmer_id], title: 'New Record', big: fmtRec(newestRecord), sub: newestRecord.event_name || '', name: newestRecord.swimmer_name, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: '#0d2d5e', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span> }) },
+                  { key: 'golden', person: goldKing?.id, valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: photoById[goldKing.id], title: <>The Golden<br />Touch</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🥇</span> }) },
+                  { key: 'leading-woman', person: leadingWoman?.swimmer_id, valid: !!leadingWoman, render: () => hl({ photo: photoById[leadingWoman.swimmer_id], title: <>Leading<br />Woman</>, big: leadingWoman.time || '—', sub: leadingWoman.event_name || '', name: leadingWoman.swimmer_name, extra: leadingWoman.fina_points ? `${leadingWoman.fina_points} FINA pts` : null }) },
+                  { key: 'collector', person: collector?.rec.swimmer_id, valid: !!(collector && collector.n > 1), render: () => hl({ photo: photoById[collector.rec.swimmer_id], title: <>Record<br />Collector</>, big: collector.n, sub: 'Club Records Held', name: collector.rec.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>⏱️</span> }) },
+                  { key: 'oldest-record', person: oldestRecord?.swimmer_id, valid: !!oldestRecord, render: () => hl({ photo: photoById[oldestRecord.swimmer_id], title: <>Longest-Standing<br />Record</>, big: fmtRec(oldestRecord), sub: `${oldestRecord.event_name || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>🏛️</span> }) },
+                  { key: 'podium', valid: g + s + b > 0, render: () => hl({ emoji: '🏅', title: <>Podium<br />Power</>, big: formatNumber(g + s + b), sub: 'Medals Across All Competitions', name: <span className="asw-num"><span style={{ color: 'var(--asw-gold)' }}>{g}G</span> · <span style={{ color: 'var(--asw-silver)' }}>{s}S</span> · <span style={{ color: 'var(--asw-bronze)' }}>{b}B</span></span> }) },
+                  { key: 'rising-star', person: youngest?.id, valid: !!youngest, render: () => hl({ photo: youngest.photo, title: <>Rising<br />Star</>, big: `b. ${youngest.birth_year}`, sub: 'Youngest Squad Member', name: youngest.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>🌟</span> }) },
+                  { key: 'trophies', valid: trophies.length > 0, render: () => hl({ emoji: '🏆', title: <>Trophy<br />Cabinet</>, big: trophies.length, sub: `Club Troph${trophies.length === 1 ? 'y' : 'ies'}`, name: latestTrophy?.name, extra: latestTrophy?.year ? `Latest · ${latestTrophy.year}` : null }) },
+                  { key: 'quick-stats', valid: true, render: () => hl({ title: 'Quick Stats', big: formatNumber(stats?.swimmers ?? roster.length), sub: 'Total Swimmers', name: `${formatNumber(stats?.medals?.total ?? medals.length)} Medals · ${formatNumber(records.length)} Records` }) },
+                ]
+                const picked = pickHighlights(pool, mulberry32(hlSeed))
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {picked.map((c) => <div key={c.key}>{c.render()}</div>)}
                   </div>
-                  {barsIcon}
-                </div>
-
-                {/* Most Decorated Swimmer */}
-                <div style={hCard}>
-                  <div style={hPhoto}>
-                    {photoById[topMedalist?.id] ? <img src={mediaUrl(photoById[topMedalist.id])} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
-                  </div>
-                  <div style={hBody}>
-                    <div style={hTitle}>Most Decorated<br />Swimmer</div>
-                    <div style={hBig}>{topMedalist?.total || 0}</div>
-                    <div style={hSub}>Total Medals</div>
-                    <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{topMedalist?.name || '—'}</div>
-                  </div>
-                  <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🏆</span>
-                </div>
-
-                {/* New Record */}
-                <div style={hCard}>
-                  <div style={hPhoto}>
-                    {photoById[newestRecord?.swimmer_id] ? <img src={mediaUrl(photoById[newestRecord.swimmer_id])} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
-                  </div>
-                  <div style={hBody}>
-                    <div style={hTitle}>New Record</div>
-                    <div style={hBig}>{newestRecord ? (typeof newestRecord.time === 'number' ? formatTime(newestRecord.time) : newestRecord.time) : '—'}</div>
-                    <div style={hSub}>{newestRecord?.event_name || ''}</div>
-                    <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{newestRecord?.swimmer_name || ''}</div>
-                    {newestRecord?.date && <div style={hSub}>{usDate(newestRecord.date)}</div>}
-                  </div>
-                  {newestRecord && <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: '#0d2d5e', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span>}
-                </div>
-
-                {/* Quick Stats */}
-                <div style={hCard}>
-                  <div style={hPhoto}>🏊</div>
-                  <div style={hBody}>
-                    <div style={hTitle}>Quick Stats</div>
-                    <div style={hBig}>{formatNumber(stats?.swimmers ?? roster.length)}</div>
-                    <div style={hSub}>Total Swimmers</div>
-                    <div style={{ ...hSub, marginTop: 6 }}>{formatNumber(stats?.medals?.total ?? medals.length)} Medals · {formatNumber(records.length)} Records</div>
-                  </div>
-                  {barsIcon}
-                </div>
-              </div>
+                )
+              })()}
             </div>
 
             {/* Record Holders ticker */}

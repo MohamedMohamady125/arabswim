@@ -19,6 +19,7 @@ import FederationProgressionTab from '../components/FederationProgression'
 import MedalStandings from '../components/MedalStandings'
 import { Loading, Empty, SectHead, Seg, Pager, Modal } from '../components/ui'
 import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2 } from '../utils'
+import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
 
 const CLASS_ORDER = ['Arab', 'GCC', 'African', 'Asian', 'Mediterranean', 'Islamic', 'World', 'Olympic']
 const COACH_LEVELS = {
@@ -1757,6 +1758,8 @@ export default function CountryProfile() {
   const [fedModal, setFedModal] = useState(null) // 'info' | {type:'board', member}
   const [reloadKey, setReloadKey] = useState(0)
   const [boardKey, setBoardKey] = useState(0)
+  // New seed each page open → highlight cards shuffle per visit
+  const [hlSeed] = useState(() => Math.floor(Math.random() * 2 ** 31))
 
   useEffect(() => {
     let alive = true
@@ -1961,14 +1964,13 @@ export default function CountryProfile() {
       {/* ===== OVERVIEW ===== */}
       {tab === 'overview' && (() => {
         const nameKey = (n) => (n || '').toLowerCase().replace(/\d+/g, '').trim().split(/\s+/).sort().join(' ')
-        // Highlight cards feature DIFFERENT swimmers where possible — a
-        // federation dominated by one star shouldn't show him in all 4 cards.
+        // Highlight cards: a big pool of ideas, 4 random ones per visit,
+        // never the same swimmer twice in one set (a federation dominated by
+        // one star shouldn't show him in every card).
         const bestPerf = topSwimmers[0]
-        const featured = new Set(bestPerf ? [nameKey(bestPerf.name)] : [])
-        const topMedalist = topMedalists.find((m) => !featured.has(nameKey(m.name))) || topMedalists[0]
-        if (topMedalist) featured.add(nameKey(topMedalist.name))
+        const topMedalist = topMedalists[0]
         const recsByDate = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-        const newestRecord = recsByDate.find((r) => !featured.has(nameKey(r.swimmer))) || recsByDate[0]
+        const newestRecord = recsByDate[0]
         // 5 distinct holders (dedupe duplicate DB swimmers by normalized name),
         // varied events, Long Course first — like the ISF reference.
         const seenHolders = new Set(); const seenEvents = new Set()
@@ -2099,101 +2101,58 @@ export default function CountryProfile() {
                 })()}
               </div>
 
-              {/* RIGHT: Highlight cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* Best Season Performance */}
-                <div style={hCard}>
-                  <div style={{ ...hPhoto, overflow: 'hidden' }}>
-                    {bestPerf?.photo ? <img src={mediaUrl(bestPerf.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
-                  </div>
-                  <div style={hBody}>
-                    <div style={hTitle}>Best Season<br />Performance</div>
-                    <div style={hBig}>{bestPerf?.best_time || '—'}</div>
-                    <div style={hSub}>{bestPerf?.best_event || ''}</div>
-                    <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{bestPerf?.name || ''}</div>
-                    {bestPerf?.championship && <div style={{ ...hSub, color: '#5a6b80' }}>{bestPerf.championship}</div>}
-                  </div>
-                  {barsIcon}
-                </div>
-
-                {/* Most Decorated Swimmer */}
-                <div style={hCard}>
-                  <div style={{ ...hPhoto, overflow: 'hidden' }}>
-                    {topMedalist?.photo ? <img src={mediaUrl(topMedalist.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
-                  </div>
-                  <div style={hBody}>
-                    <div style={hTitle}>Most Decorated<br />Swimmer</div>
-                    <div style={hBig}>{topMedalist?.total || 0}</div>
-                    <div style={hSub}>Total Medals</div>
-                    <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{topMedalist?.name || '—'}</div>
-                  </div>
-                  <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🏆</span>
-                </div>
-
-                {/* New Record */}
-                <div style={hCard}>
-                  <div style={{ ...hPhoto, overflow: 'hidden' }}>
-                    {newestRecord?.swimmer_photo ? <img src={mediaUrl(newestRecord.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
-                  </div>
-                  <div style={hBody}>
-                    <div style={hTitle}>New Record</div>
-                    <div style={hBig}>{newestRecord?.time || '—'}</div>
-                    <div style={hSub}>{newestRecord?.event || ''}</div>
-                    <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{newestRecord?.swimmer || ''}</div>
-                    {newestRecord?.date && <div style={hSub}>{usDate(newestRecord.date)}</div>}
-                  </div>
-                  {newestRecord && <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: '#0d2d5e', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span>}
-                </div>
-
-                {/* Trending Swimmer — biggest Arab-ranking climber (last 6 months) */}
-                {(() => {
-                  const t = profile.trending
-                  if (!t) {
-                    return (
-                      <div style={hCard}>
-                        <div style={hPhoto}>🏊</div>
-                        <div style={hBody}>
-                          <div style={hTitle}>Quick Stats</div>
-                          <div style={hBig}>{formatNumber(profile.stats?.swimmers)}</div>
-                          <div style={hSub}>Total Swimmers</div>
-                          <div style={{ ...hSub, marginTop: 6 }}>{formatNumber(profile.stats?.medals)} Medals · {formatNumber(profile.stats?.records)} Records</div>
-                        </div>
-                        {barsIcon}
-                      </div>
-                    )
-                  }
-                  const up = t.is_new || t.is_hot || (t.delta ?? 0) > 0
-                  const col = up ? '#0d7a52' : '#a8402f'
-                  return (
-                    <div style={hCard}>
-                      <div style={{ ...hPhoto, overflow: 'hidden' }}>
-                        {t.photo
-                          ? <img src={mediaUrl(t.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-                          : '🏊'}
-                      </div>
-                      <div style={hBody}>
-                        <div style={hTitle}>Trending<br />Swimmer</div>
-                        <div style={{ ...hBig, color: col, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}
-                          {!t.is_new && !t.is_hot && (
-                            <span style={{ fontSize: 17, lineHeight: 1 }}>{up ? '▲' : '▼'}</span>
-                          )}
-                        </div>
-                        <div style={hSub}>
-                          Arab ranking #{t.rank}{t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}
-                        </div>
-                        <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>
-                          <SwimmerLink id={t.id} name={t.name} />
-                        </div>
-                        {t.best_event && (
-                          <div style={hSub}>{t.best_event} · {t.best_time}{t.fina ? ` · ${t.fina} pts` : ''}</div>
-                        )}
-                      </div>
-                      <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{up ? '📈' : '📉'}</span>
+              {/* RIGHT: Highlight cards — random 4 from a pool of ~11 ideas,
+                  reshuffled every visit, distinct swimmers within a set */}
+              {(() => {
+                const hl = ({ photo, emoji = '🏊', title, big, sub, name, extra, icon, badgeEl }) => (
+                  <div style={hCard}>
+                    <div style={{ ...hPhoto, overflow: 'hidden' }}>
+                      {photo ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : emoji}
                     </div>
-                  )
-                })()}
-              </div>
+                    <div style={hBody}>
+                      <div style={hTitle}>{title}</div>
+                      <div style={hBig}>{big}</div>
+                      {sub ? <div style={hSub}>{sub}</div> : null}
+                      {name ? <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{name}</div> : null}
+                      {extra ? <div style={{ ...hSub, color: '#5a6b80' }}>{extra}</div> : null}
+                    </div>
+                    {icon === undefined ? barsIcon : icon}
+                    {badgeEl}
+                  </div>
+                )
+                const t = profile.trending
+                const trendUp = t && (t.is_new || t.is_hot || (t.delta ?? 0) > 0)
+                const goldKing = [...topMedalists].sort((a, b) => (b.gold || 0) - (a.gold || 0))[0]
+                const leadingWoman = topSwimmers.find((s) => s.sex === 'F')
+                const recCount = {}
+                for (const r of records) {
+                  const k = nameKey(r.swimmer)
+                  if (k) recCount[k] = recCount[k] ? { n: recCount[k].n + 1, rec: recCount[k].rec } : { n: 1, rec: r }
+                }
+                const collector = Object.values(recCount).sort((a, b) => b.n - a.n)[0]
+                const oldestRecord = records.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0]
+                const gsb = medalBoxes.reduce((acc, m) => ({ g: acc.g + (m.gold || 0), s: acc.s + (m.silver || 0), b: acc.b + (m.bronze || 0) }), { g: 0, s: 0, b: 0 })
+                const lastHosted = [...hosted].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
+                const pool = [
+                  { key: 'best-perf', person: bestPerf && nameKey(bestPerf.name), valid: !!bestPerf, render: () => hl({ photo: bestPerf.photo, title: <>Best Season<br />Performance</>, big: bestPerf.best_time || '—', sub: bestPerf.best_event || '', name: bestPerf.name, extra: bestPerf.championship }) },
+                  { key: 'decorated', person: topMedalist && nameKey(topMedalist.name), valid: !!topMedalist, render: () => hl({ photo: topMedalist.photo, title: <>Most Decorated<br />Swimmer</>, big: topMedalist.total || 0, sub: 'Total Medals', name: topMedalist.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🏆</span> }) },
+                  { key: 'new-record', person: newestRecord && nameKey(newestRecord.swimmer), valid: !!newestRecord, render: () => hl({ photo: newestRecord.swimmer_photo, title: 'New Record', big: newestRecord.time || '—', sub: newestRecord.event || '', name: newestRecord.swimmer, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: '#0d2d5e', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span> }) },
+                  { key: 'trending', person: t && nameKey(t.name), valid: !!t, render: () => hl({ photo: t.photo, title: <>Trending<br />Swimmer</>, big: (<span style={{ color: trendUp ? '#0d7a52' : '#a8402f', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}{!t.is_new && !t.is_hot && <span style={{ fontSize: 17, lineHeight: 1 }}>{trendUp ? '▲' : '▼'}</span>}</span>), sub: `Arab ranking #${t.rank}${t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}`, name: <SwimmerLink id={t.id} name={t.name} />, extra: t.best_event ? `${t.best_event} · ${t.best_time}${t.fina ? ` · ${t.fina} pts` : ''}` : null, icon: <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{trendUp ? '📈' : '📉'}</span> }) },
+                  { key: 'golden', person: goldKing && nameKey(goldKing.name), valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: goldKing.photo, title: <>The Golden<br />Touch</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🥇</span> }) },
+                  { key: 'leading-woman', person: leadingWoman && nameKey(leadingWoman.name), valid: !!leadingWoman, render: () => hl({ photo: leadingWoman.photo, title: <>Leading<br />Woman</>, big: leadingWoman.best_time || '—', sub: leadingWoman.best_event || '', name: leadingWoman.name, extra: leadingWoman.championship }) },
+                  { key: 'collector', person: collector && nameKey(collector.rec.swimmer), valid: !!(collector && collector.n > 1), render: () => hl({ photo: collector.rec.swimmer_photo, title: <>Record<br />Collector</>, big: collector.n, sub: 'National Records Held', name: collector.rec.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>⏱️</span> }) },
+                  { key: 'oldest-record', person: oldestRecord && nameKey(oldestRecord.swimmer), valid: !!oldestRecord, render: () => hl({ photo: oldestRecord.swimmer_photo, title: <>Longest-Standing<br />Record</>, big: oldestRecord.time || '—', sub: `${oldestRecord.event || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>🏛️</span> }) },
+                  { key: 'podium', valid: gsb.g + gsb.s + gsb.b > 0, render: () => hl({ emoji: '🏅', title: <>Podium<br />Power</>, big: formatNumber(gsb.g + gsb.s + gsb.b), sub: 'Medals Across All Competitions', name: <span className="asw-num"><span style={{ color: 'var(--asw-gold)' }}>{gsb.g}G</span> · <span style={{ color: 'var(--asw-silver)' }}>{gsb.s}S</span> · <span style={{ color: 'var(--asw-bronze)' }}>{gsb.b}B</span></span> }) },
+                  { key: 'host', valid: hosted.length > 0, render: () => hl({ emoji: '🏟️', title: <>Championship<br />Host</>, big: hosted.length, sub: `Championship${hosted.length === 1 ? '' : 's'} Hosted`, name: lastHosted?.name, extra: lastHosted?.date ? `Most recent · ${lastHosted.date.slice(0, 4)}` : null }) },
+                  { key: 'quick-stats', valid: !!profile.stats, render: () => hl({ title: 'Quick Stats', big: formatNumber(profile.stats?.swimmers), sub: 'Total Swimmers', name: `${formatNumber(profile.stats?.medals)} Medals · ${formatNumber(profile.stats?.records)} Records` }) },
+                ]
+                const picked = pickHighlights(pool, mulberry32(hlSeed))
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {picked.map((c) => <div key={c.key}>{c.render()}</div>)}
+                  </div>
+                )
+              })()}
             </div>
 
             {/* National Record Holders */}

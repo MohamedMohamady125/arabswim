@@ -19,8 +19,15 @@ class ArticleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        def _int(name):
+            raw = self.request.query_params.get(name)
+            try:
+                return int(raw) if raw else None
+            except (TypeError, ValueError):
+                return None  # ignore malformed numeric params instead of 500ing
+
         status_param = self.request.query_params.get('status')
-        country = self.request.query_params.get('country')
+        country = _int('country')
         if status_param:
             qs = qs.filter(status=status_param)
         if country:
@@ -29,7 +36,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
             # country's clubs.
             from django.db.models import Q
             qs = qs.filter(Q(country_id=country) | Q(team__country_id=country))
-        team = self.request.query_params.get('team')
+        team = _int('team')
         if team:
             qs = qs.filter(team_id=team)
         return qs

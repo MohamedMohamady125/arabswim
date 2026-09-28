@@ -16,16 +16,20 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
         month = self.request.query_params.get('month')
         year = self.request.query_params.get('year')
         if month and year:
-            qs = qs.filter(date__month=int(month), date__year=int(year))
+            try:
+                qs = qs.filter(date__month=int(month), date__year=int(year))
+            except (TypeError, ValueError):
+                pass  # ignore malformed params instead of 500ing
         return qs
 
     @action(detail=False, methods=['get'], url_path='month-summary')
     def month_summary(self, request):
         month = request.query_params.get('month')
         year = request.query_params.get('year')
-        if not month or not year:
-            return Response({'error': 'month and year required'}, status=400)
-        month, year = int(month), int(year)
+        try:
+            month, year = int(month), int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'month and year required (integers)'}, status=400)
         events = CalendarEvent.objects.filter(date__month=month, date__year=year)
         swimmers = Swimmer.objects.filter(date_of_birth__isnull=False, date_of_birth__month=month).select_related('nationality')
         birthdays = []

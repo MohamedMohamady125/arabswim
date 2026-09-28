@@ -405,13 +405,13 @@ class CountryViewSet(viewsets.ModelViewSet):
             club_counts = dict(
                 Country.objects.annotate(n=Count('teams')).values_list('id', 'n')
             )
-            # Medals won by each nation's swimmers at Arab championships
+            # Medals won by each nation's swimmers at Arab & GCC championships
             # (relay podiums counted once via the relay-team placeholder row)
             placeholder = Medal.objects.filter(
                 result=OuterRef('result'), swimmer__is_relay_team=True)
             medal_rows = (
                 Medal.objects
-                .filter(championship__classification__name='Arab')
+                .filter(championship__classification__name__in=['Arab', 'GCC'])
                 .exclude(Q(swimmer__is_relay_team=False) & Q(Exists(placeholder)))
                 .values('swimmer__nationality_id')
                 .annotate(

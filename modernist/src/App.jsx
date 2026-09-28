@@ -83,7 +83,9 @@ export default function App() {
         <Route path="/coaches" element={<RequireFeature flag="coaches"><Coaches /></RequireFeature>} />
         <Route path="/hall-of-fame" element={<RequireFeature flag="hall_of_fame"><HallOfFame /></RequireFeature>} />
         <Route path="/news" element={<RequireFeature flag="news"><News /></RequireFeature>} />
-        <Route path="/news/:id" element={<RequireFeature flag="news"><Article /></RequireFeature>} />
+        {/* Article reader stays reachable even when the /news index is toggled off:
+            federation & club pages link articles regardless of the news flag */}
+        <Route path="/news/:id" element={<Article />} />
         <Route path="/media" element={<RequireFeature flag="media"><Media /></RequireFeature>} />
         <Route path="/media/albums/:id" element={<RequireFeature flag="media"><Album /></RequireFeature>} />
         <Route path="/market" element={<RequireFeature flag="marketplace"><Market /></RequireFeature>} />

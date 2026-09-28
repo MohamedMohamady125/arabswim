@@ -477,7 +477,13 @@ export default function Calendar() {
     let alive = true
     Promise.allSettled([getCountries(), getCalendarEvents()]).then(([cRes, eRes]) => {
       if (!alive) return
-      if (cRes.status === 'fulfilled') setCountries(list(cRes.value.data))
+      if (cRes.status === 'fulfilled') {
+        // Arab/GCC federations first, rest after (matches Swimmers/Clubs filters)
+        const all = list(cRes.value.data)
+        const arab = all.filter((c) => c.region === 'ARAB' || c.region === 'GCC')
+        const rest = all.filter((c) => c.region !== 'ARAB' && c.region !== 'GCC')
+        setCountries([...arab, ...rest])
+      }
       if (eRes.status === 'fulfilled') setCalEvents(list(eRes.value.data))
       setLoading(false)
     })

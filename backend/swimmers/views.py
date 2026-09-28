@@ -120,11 +120,13 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def birthdays(self, request):
         month = request.query_params.get('month')
-        if not month:
-            return Response({'error': 'month parameter required'}, status=400)
+        try:
+            month = int(month)
+        except (TypeError, ValueError):
+            return Response({'error': 'month parameter required (1-12)'}, status=400)
         swimmers = Swimmer.objects.filter(
             date_of_birth__isnull=False,
-            date_of_birth__month=int(month)
+            date_of_birth__month=month
         ).exclude(is_relay_team=True).select_related('nationality')
         data = []
         for s in swimmers:

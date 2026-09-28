@@ -315,17 +315,24 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 distinct=True,
             ),
         )
+        def _int(name):
+            raw = self.request.query_params.get(name)
+            try:
+                return int(raw) if raw else None
+            except (TypeError, ValueError):
+                return None  # ignore malformed numeric params instead of 500ing
+
         pool = self.request.query_params.get('pool')
-        country = self.request.query_params.get('country')
-        year = self.request.query_params.get('year')
-        classification = self.request.query_params.get('classification')
-        sub_classification = self.request.query_params.get('sub_classification')
+        country = _int('country')
+        year = _int('year')
+        classification = _int('classification')
+        sub_classification = _int('sub_classification')
         if pool:
             qs = qs.filter(pool=pool)
         if country:
             qs = qs.filter(country_id=country)
         if year:
-            qs = qs.filter(date__year=int(year))
+            qs = qs.filter(date__year=year)
         if classification:
             qs = qs.filter(classification_id=classification)
         if sub_classification:
@@ -333,7 +340,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if self.request.query_params.get('upcoming'):
             from datetime import date as _date
             qs = qs.filter(date__gte=_date.today())
-        return qs
+        # annotate() adds GROUP BY, which makes Django drop Meta.ordering —
+        # restore newest-first explicitly so unpaginated/default calls stay stable
+        return qs.order_by('-date')
 
     def destroy(self, request, *args, **kwargs):
         championship = self.get_object()

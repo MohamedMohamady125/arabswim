@@ -97,9 +97,9 @@ export default function Countries() {
       ) : (
         <>
           <div className="pad">
-            {/* medal columns tally Arab-championship podiums only */}
+            {/* medal columns tally Arab & GCC championship podiums */}
             <div className="micro" style={{ marginBottom: 10 }}>
-              Medals won at Arab championships
+              Medals won at Arab &amp; GCC championships
             </div>
             {arab.length === 0 ? <Empty label="No federations match" /> : <CountryTable countries={arab} />}
           </div>

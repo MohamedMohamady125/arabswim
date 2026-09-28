@@ -137,6 +137,8 @@ export default function Medals() {
       gold: 0, silver: 0, bronze: 0, total: 0,
     })
     merged.sort((a, b) => (b.gold - a.gold) || (b.silver - a.silver) || (b.bronze - a.bronze))
+    // Nothing won for this selection → show the empty state, not an all-zero table
+    if (!merged.some((r) => (r.gold || 0) + (r.silver || 0) + (r.bronze || 0) > 0)) return []
     return merged
   }, [scope, summary, clubRows, swimmerRows, regionCountries])
 

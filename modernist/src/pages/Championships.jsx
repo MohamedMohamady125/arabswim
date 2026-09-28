@@ -38,7 +38,11 @@ export default function Championships() {
         const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
         const list = (d) => (Array.isArray(d) ? d : d?.results || [])
         setMeets(list(val(meetsRes)))
-        setCountries(list(val(countriesRes)))
+        // Arab/GCC federations first, rest after (matches Swimmers/Clubs filters)
+        const all = list(val(countriesRes))
+        const arab = all.filter((c) => c.region === 'ARAB' || c.region === 'GCC')
+        const rest = all.filter((c) => c.region !== 'ARAB' && c.region !== 'GCC')
+        setCountries([...arab, ...rest])
       } finally {
         if (alive) setLoading(false)
       }

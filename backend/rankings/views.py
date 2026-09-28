@@ -13,14 +13,21 @@ class RankingPagination(PageNumberPagination):
 
 class RankingView(APIView):
     def get(self, request):
+        def _int(name):
+            raw = request.query_params.get(name)
+            try:
+                return int(raw) if raw else None
+            except (TypeError, ValueError):
+                return None  # ignore malformed numeric params instead of 500ing
+
         scope = request.query_params.get('scope', 'arab')
-        country = request.query_params.get('country')
+        country = _int('country')
         gender = request.query_params.get('gender')
-        year = request.query_params.get('year')
+        year = _int('year')
         pool = request.query_params.get('pool')
-        event = request.query_params.get('event')
+        event = _int('event')
         age_group = request.query_params.get('age_group')
-        championship = request.query_params.get('championship')
+        championship = _int('championship')
 
         # Event is required for rankings to make sense
         if not event:
@@ -46,7 +53,7 @@ class RankingView(APIView):
         if gender:
             qs = qs.filter(swimmer__sex=gender)
         if year:
-            qs = qs.filter(championship__date__year=int(year))
+            qs = qs.filter(championship__date__year=year)
         if pool:
             qs = qs.filter(championship__pool=pool)
         if championship:

@@ -150,14 +150,16 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
             gender = item['gender'] or 'M'
             session = item['session'] or ''
+            time_of_day = item.get('time_of_day') or ''
             day = item['day']
             if day < 1 or day > 30:
                 continue
 
             _, was_created = ProgramItem.objects.get_or_create(
                 championship=champ, day=day, event=event,
-                gender=gender, session=session, age_category='',
-                defaults={'order': 0},
+                gender=gender, session=session, time_of_day=time_of_day,
+                age_category='',
+                defaults={'order': item.get('order') or 0},
             )
             if was_created:
                 created += 1

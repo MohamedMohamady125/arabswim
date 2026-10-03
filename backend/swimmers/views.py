@@ -157,7 +157,10 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'championship__pool',
         ).annotate(
             times_count=Count('id'),
-            best_time=Min('time_centiseconds'),
+            # DNS/DQ/DNF rows are stored with time 0; excluding them keeps a
+            # single status row from making Min() = 0 (which renders blank)
+            # even when the swimmer has valid times in that event.
+            best_time=Min('time_centiseconds', filter=Q(time_centiseconds__gt=0)),
         ).order_by('event__sort_order', 'event__distance', '-championship__pool')
 
         data = []
@@ -189,7 +192,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     existing['best_time_centiseconds'] = e['best_time']
         for key, row in merged.items():
             seen_keys.add(key)
-            row['best_time'] = format_centiseconds(row['best_time_centiseconds'])
+            row['best_time'] = format_centiseconds(row['best_time_centiseconds']) if row['best_time_centiseconds'] else ''
             data.append(row)
 
         # Relay events where this swimmer appears in relay_swimmers JSON.

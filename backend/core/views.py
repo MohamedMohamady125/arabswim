@@ -747,7 +747,12 @@ class CountryViewSet(viewsets.ModelViewSet):
         # to all meets for countries with only national results)
         part_qs = results_qs.filter(swimmer__is_relay_team=False)
         intl_qs = part_qs.exclude(championship__classification__name='National')
-        source_qs = intl_qs if intl_qs.exists() else part_qs
+        has_intl = intl_qs.exists()
+        source_qs = intl_qs if has_intl else part_qs
+        # When a country has no international meets in the DB we fall back to
+        # all meets — label the widget honestly so national participations
+        # aren't presented as "international".
+        most_participated_scope = 'international' if has_intl else 'all'
         from django.conf import settings as _mp_settings
         most_participated = [{
             'id': m['swimmer_id'], 'name': m['swimmer__name'],
@@ -877,6 +882,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             'medals_by_classification': medals_by_classification,
             'country_battle': country_battle,
             'most_participated': most_participated,
+            'most_participated_scope': most_participated_scope,
             'top_swimmers': top_swimmers,
             'top_medalists': top_medalists,
             'top_medalists_international': top_medalists_international,

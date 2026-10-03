@@ -1558,7 +1558,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           })()}
         </>)}
         {card(<>
-          {cardHeader('Most Participating Swimmer', `Top 5 ${demonym(country.name)} Swimmers by International Participations`)}
+          {cardHeader('Most Participating Swimmer', `Top 5 ${demonym(country.name)} Swimmers by ${profile.most_participated_scope === 'all' ? 'Competition' : 'International'} Participations`)}
           <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
             <span style={{ width: 24 }}>#</span>
             <span style={{ flex: 1 }}>Swimmer</span>

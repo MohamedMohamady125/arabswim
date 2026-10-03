@@ -1558,19 +1558,21 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           })()}
         </>)}
         {card(<>
-          {cardHeader('Most Participating Swimmer', `Top 5 ${demonym(country.name)} Swimmers by ${profile.most_participated_scope === 'all' ? 'Competition' : 'International'} Participations`)}
+          {cardHeader('Most Participating Swimmer', `Top 5 ${demonym(country.name)} Swimmers by International Participations`)}
+          {!profile.most_participated?.length ? <Empty label="No international participations yet" /> : (<>
           <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
             <span style={{ width: 24 }}>#</span>
             <span style={{ flex: 1 }}>Swimmer</span>
             <span style={{ width: 90, textAlign: 'right' }}>Participations</span>
           </div>
-          {(profile.most_participated?.length ? profile.most_participated : topSwimmers).slice(0, 5).map((s, i) => (
+          {profile.most_participated.slice(0, 5).map((s, i) => (
             <div key={s.id} style={rowStyle(i)}>
               <span style={badge}>{i + 1}</span>
               <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948', display: 'flex', alignItems: 'center', gap: 6 }}><Flag code={s.nationality_code || country.code} /><SwimmerLink id={s.id} name={s.name} /></span>
               <span className="asw-num" style={{ width: 90, textAlign: 'right', fontWeight: 900, fontSize: 14, color: '#0b2948' }}>{s.championships_count ?? '—'}</span>
             </div>
           ))}
+          </>)}
         </>)}
       </div>
 

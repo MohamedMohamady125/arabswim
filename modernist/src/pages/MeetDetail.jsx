@@ -1653,6 +1653,69 @@ function OverviewTab({ meetId, stats }) {
       {/* home-page style quick statistics + busiest swimmers widget */}
       <QuickStatsView data={qs} busiest={stats?.busiest_swimmers} />
 
+      {/* club standings — clubs ranked by swimmers entered */}
+      {stats?.clubs?.length > 0 && (() => {
+        const rows = stats.clubs.slice(0, 12)
+        const maxS = Math.max(...rows.map((c) => c.swimmers_count), 1)
+        return (
+          <div className="pad">
+            <div className="kicker" style={{ marginBottom: 4 }}>Club standings</div>
+            <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Clubs ranked by swimmers entered</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {rows.map((c, i) => (
+                <div key={c.team} onClick={() => c.team_id && navigate(`/clubs/${c.team_id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', cursor: c.team_id ? 'pointer' : 'default' }}>
+                  <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
+                  <ClubLogo logo={c.team_logo} name={c.team} size={24} />
+                  <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.team}</span>
+                  <div style={{ flex: 1, height: 16, background: 'var(--color-neutral-200)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-500)', borderRadius: 3, minWidth: 6 }} />
+                  </div>
+                  <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 12.5 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 500 }}> sw</span></span>
+                  <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-600)' }}>{c.results_count} res</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* age distribution of entered swimmers */}
+      {stats?.age_profile?.distribution?.length > 0 && (() => {
+        const ap = stats.age_profile
+        const maxC = Math.max(...ap.distribution.map((d) => d.count), 1)
+        return (
+          <div className="pad">
+            <div className="kicker" style={{ marginBottom: 4 }}>Age distribution</div>
+            <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Average age {ap.average} · {ap.known_count} swimmers with known age</div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 150, borderBottom: '1px solid var(--color-neutral-300)' }}>
+              {ap.distribution.map((d) => (
+                <div key={d.age} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
+                  <span className="asw-num" style={{ fontSize: 10, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 3 }}>{d.count}</span>
+                  <div style={{ width: '72%', maxWidth: 30, height: `${Math.max(3, (d.count / maxC) * 110)}px`, background: 'linear-gradient(180deg, var(--color-accent-400), var(--color-accent-700))', borderRadius: '2px 2px 0 0' }} />
+                  <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 5 }}>{d.age}</span>
+                </div>
+              ))}
+            </div>
+            {(ap.youngest?.length > 0 || ap.oldest?.length > 0) && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+                {[['Youngest', ap.youngest], ['Oldest', ap.oldest]].map(([lbl, arr]) => (
+                  <div key={lbl}>
+                    <div className="micro" style={{ marginBottom: 6 }}>{lbl}</div>
+                    {(arr || []).map((s) => (
+                      <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', fontSize: 12 }}>
+                        <Flag code={s.nationality_code} name={s.nationality} />
+                        <span style={{ flex: 1, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>{s.swimmer_name}</span>
+                        <span className="asw-num" style={{ fontWeight: 800, color: 'var(--color-accent)' }}>{s.age}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* comparison with previous editions */}
       {comparison.length > 1 && (
         <div className="pad">

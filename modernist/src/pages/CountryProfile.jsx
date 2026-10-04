@@ -1674,6 +1674,44 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           })()}
         </>)}
       </div>
+
+      {/* Row 6: National best times by event (men & women) */}
+      {(profile.best_times || []).length > 0 && (() => {
+        const byEvent = {}
+        profile.best_times.forEach((t) => {
+          const e = byEvent[t.event] || (byEvent[t.event] = { event: t.event })
+          const slot = t.sex === 'F' ? 'f' : 'm'
+          if (!e[slot] || (t.fina || 0) > (e[slot].fina || 0)) e[slot] = t
+        })
+        const rows = Object.values(byEvent)
+        const cell = (t) => t ? (
+          <div style={{ minWidth: 0 }}>
+            <div className="asw-time" style={{ fontWeight: 800, fontSize: 13, color: '#0b2948' }}>{t.time}</div>
+            <div style={{ fontSize: 10.5, color: '#6b7d94', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <SwimmerLink id={t.swimmer_id} name={t.swimmer} />{t.fina ? ` · ${t.fina}` : ''}
+            </div>
+          </div>
+        ) : <span style={{ color: '#c1ccda', fontSize: 12 }}>—</span>
+        return (
+          <div style={{ marginTop: 10 }}>
+            {card(<>
+              {cardHeader('National Best Times by Event', `Fastest ${demonym(country.name)} Performance in Each Event (Men & Women)`)}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 8, ...thStyle, padding: '0 0 6px' }}>
+                <span>Event</span><span>Men</span><span>Women</span>
+              </div>
+              <div style={{ maxHeight: 440, overflowY: 'auto' }}>
+                {rows.map((r, i) => (
+                  <div key={r.event} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 8, alignItems: 'center', padding: '7px 0', borderBottom: '1px solid #f0f4f8', background: i % 2 === 1 ? '#fafbfd' : 'transparent' }}>
+                    <span style={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase', color: '#374151' }}>{r.event}</span>
+                    {cell(r.m)}
+                    {cell(r.f)}
+                  </div>
+                ))}
+              </div>
+            </>)}
+          </div>
+        )
+      })()}
     </div>
   )
 }

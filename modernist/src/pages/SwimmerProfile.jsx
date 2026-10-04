@@ -638,6 +638,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
   const {
     medals, total_championships, total_records, best_fina,
     season_best_fina, best_event, top_personal_bests, records, fina_distribution,
+    championships, medals_by_level,
   } = stats
   const intlRecords = (records || []).filter((r) => r.record_type !== 'NATIONAL')
   // Held records not covered by the Record table (national/gcc/arab computed)
@@ -757,6 +758,63 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
           </div>
         </div>
       )}
+
+      {/* Career activity — meets entered per year */}
+      {championships?.length > 0 && (() => {
+        const byYear = {}
+        championships.forEach((c) => {
+          const y = c.date ? String(c.date).slice(0, 4) : null
+          if (y) byYear[y] = (byYear[y] || 0) + 1
+        })
+        const years = Object.keys(byYear).sort()
+        if (years.length < 2) return null
+        const maxY = Math.max(...years.map((y) => byYear[y]), 1)
+        const totalMeets = years.reduce((n, y) => n + byYear[y], 0)
+        return (
+          <div>
+            <div className="sect-head"><h4>Career Activity</h4><span className="micro">Meets entered per year · {totalMeets} total</span></div>
+            <div className="rule-t" style={{ paddingTop: 16, display: 'flex', alignItems: 'flex-end', gap: 6, height: 160 }}>
+              {years.map((y) => (
+                <div key={y} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
+                  <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 4 }}>{byYear[y]}</span>
+                  <div style={{ width: '70%', maxWidth: 36, height: `${Math.max(4, (byYear[y] / maxY) * 110)}px`, background: 'linear-gradient(180deg, var(--color-accent-500), var(--color-accent-800))', borderRadius: '3px 3px 0 0' }} />
+                  <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 6 }}>{y}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Medals by competition level */}
+      {medals_by_level?.some((m) => (m.gold + m.silver + m.bronze) > 0) && (() => {
+        const rows = medals_by_level.filter((m) => (m.gold + m.silver + m.bronze) > 0)
+          .sort((a, b) => (b.gold + b.silver + b.bronze) - (a.gold + a.silver + a.bronze))
+        const maxT = Math.max(...rows.map((m) => m.gold + m.silver + m.bronze), 1)
+        return (
+          <div>
+            <div className="sect-head"><h4>Medals by Level</h4><span className="micro">Gold · Silver · Bronze per competition level</span></div>
+            <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {rows.map((m) => {
+                const tot = m.gold + m.silver + m.bronze
+                return (
+                  <div key={m.category} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 110, flex: 'none', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-neutral-700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.category}</span>
+                    <div style={{ flex: 1, height: 22, display: 'flex', background: 'var(--color-neutral-200)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ width: `${(tot / maxT) * 100}%`, display: 'flex', minWidth: 20 }}>
+                        {[['gold', 'var(--asw-gold)'], ['silver', 'var(--asw-silver)'], ['bronze', 'var(--asw-bronze)']].map(([k, c]) => m[k] > 0 && (
+                          <div key={k} className="asw-num" style={{ flex: m[k], background: c, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, minWidth: 16 }}>{m[k]}</div>
+                        ))}
+                      </div>
+                    </div>
+                    <span className="asw-num" style={{ width: 28, textAlign: 'right', fontWeight: 900, fontSize: 14 }}>{tot}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Best rankings preview */}
       <RankingsPreview swimmerId={swimmerId} onViewAll={onViewRankings} />

@@ -41,6 +41,7 @@ SAMPLES = {
     'tangier': '../Maroc.Tangier.2026.pdf',
     'gcc': '../GCC  Final Version.xlsx',
     'musz': '../D20240409_FelnottOB_DunaArena_Overall_results_S4_20240410_1836 copy.pdf',
+    'maroc_mcjs': '../Maroc.05.2026.pdf',
 }
 SAMPLES = {k: os.path.normpath(os.path.join(BACKEND_DIR, p)) for k, p in SAMPLES.items()}
 
@@ -549,6 +550,49 @@ class Algeria2026SplashTests(SanityMixin, SimpleTestCase):
         self.assertTrue(long_events)
         with_splits = [r for ev in long_events for r in ev.results if r.split_times]
         self.assertTrue(with_splits, 'no long-race result has splits')
+
+
+@needs_sample('maroc_mcjs')
+class MarocMCJSFrmnTests(SanityMixin, SimpleTestCase):
+    """CHAMPIONNATS DU MAROC M C J S 2025 — day-3 pages print a reaction time
+    "(0.76)" between the time and the points. Those lines (individual AND
+    relay) used to fail RESULT_LINE and were dropped wholesale; relay forfeit
+    lines ("NC....Frf n.d.") leaked through as individual swimmers."""
+    KEY = 'maroc_mcjs'
+
+    def test_counts(self):
+        m = self.meet()
+        self.assertEqual(m.source_format, 'frmn')
+        # Exactly one parsed result per rank/TLD/NC/HC line in the source PDF
+        self.assertEqual(m.total_results, 1216)
+
+    def test_reaction_time_lines_parse(self):
+        # "1.Mohamed Amine DIDOUCH MAR 2003 ASS 2:27.34 (0.76) 443388"
+        rows = [r for ev in self.meet().events
+                for r in ev.results if r.swimmer_name == 'Mohamed Amine DIDOUCH'
+                and ev.distance == 200 and ev.stroke == 'Backstroke']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].time_text, '2:27.34')
+        self.assertEqual(rows[0].reaction_time, '0.76')
+        self.assertEqual(rows[0].fina_points, 438)
+
+    def test_medley_relay_teams_complete(self):
+        evs = [ev for ev in self.meet().events
+               if ev.event_name == '4x100 M Medley Relay Men'
+               and ev.age_group == 'Cadets']
+        self.assertEqual(len(evs), 1)
+        results = evs[0].results
+        # 6 ranked teams + the forfeited ASS team
+        self.assertEqual(len(results), 7)
+        self.assertEqual([r.swimmer_name for r in results],
+                         ['FUS', 'USF', 'CODM', 'RAJA NAT', 'WAC', 'TSC', 'ASS'])
+        # every team keeps its 4 leg swimmers
+        for r in results:
+            self.assertEqual(len(r.split_times), 4, r.swimmer_name)
+        nc = results[-1]
+        self.assertEqual(nc.status, 'DNS')
+        self.assertEqual(nc.rank, 0)
+        self.assertIn('Anas AIT BARGACH', nc.split_times)
 
 
 @needs_sample('tangier')

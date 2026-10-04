@@ -80,6 +80,7 @@ RESULT_LINE = re.compile(
     r'(\d{4})\s+'                # birth year (4 digits)
     r'(.+?)\s+'                  # club (any number of words)
     r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})'  # time
+    r'(?:\s+\((\d+\.\d{2})\))?'  # reaction time "(0.76)" (optional)
     r'(?:\s+(\d+))?'             # points (optional)
     r'(?:\s+\d+)?\s*$',          # trailing reaction/obs field (optional)
     re.IGNORECASE
@@ -330,6 +331,28 @@ def parse(text):
                 result.swimmer_name = team_name
                 current_event.results.append(result)
                 continue
+            # NC relay team (forfeit/DQ): "NC.Anas AIT BARGACH MAR 2009 ASS Frf n.d."
+            # The line names the leadoff swimmer but the result belongs to the
+            # club team; following detail lines attach as the other legs.
+            nc_relay = NC_LINE.match(stripped)
+            if nc_relay:
+                team_name = nc_relay.group(4).strip()
+                nc_result = ParsedResult(
+                    swimmer_name=team_name,
+                    time_text='',
+                    event_name=current_event.event_name,
+                    event_distance=current_event.distance,
+                    event_stroke=current_event.stroke,
+                    gender=current_event.gender,
+                    club=team_name,
+                    status=NC_STATUS.get(nc_relay.group(5).lower(), 'DQ'),
+                    age_group=current_event.age_group,
+                )
+                leadoff = _frmn_normalize_name(nc_relay.group(1))
+                if leadoff and leadoff != team_name:
+                    nc_result.split_times.append(leadoff)
+                current_event.results.append(nc_result)
+                continue
             # Try to capture relay swimmer detail lines (no rank, for split info)
             if current_event.results:
                 swimmer_detail = _parse_relay_swimmer_detail(stripped)
@@ -416,14 +439,15 @@ def _parse_result_line(line, event):
     # Check for TLD prefix first
     tld_match = re.match(
         r'^TLD\.\s*(.+?)\s+([A-Z]{3})\s+(\d{4})\s+(.+?)\s+'
-        r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*(\d+)?',
+        r'(\d{1,2}:\d{2}\.\d{2}|\d{1,2}\.\d{2})\s*'
+        r'(?:\((\d+\.\d{2})\)\s*)?(\d+)?',
         line
     )
     if tld_match:
         name = _frmn_normalize_name(tld_match.group(1))
         time_text = tld_match.group(5)
         time_cs = parse_time_to_centiseconds(time_text)
-        pts_raw = tld_match.group(6) or '0'
+        pts_raw = tld_match.group(7) or '0'
         pts = _fix_frmn_points(pts_raw)
 
         return ParsedResult(
@@ -441,6 +465,7 @@ def _parse_result_line(line, event):
             club=tld_match.group(4),
             fina_points=pts,
             age_group=event.age_group,
+            reaction_time=tld_match.group(6) or '',
         )
 
     match = RESULT_LINE.match(line)
@@ -453,7 +478,8 @@ def _parse_result_line(line, event):
     birth_year = int(match.group(4))
     club = match.group(5)
     time_text = match.group(6)
-    pts_raw = match.group(7) or '0'
+    reaction = match.group(7) or ''
+    pts_raw = match.group(8) or '0'
     pts = _fix_frmn_points(pts_raw)
 
     time_cs = parse_time_to_centiseconds(time_text)
@@ -483,6 +509,7 @@ def _parse_result_line(line, event):
         fina_points=pts,
         age_group=event.age_group,
         status=status,
+        reaction_time=reaction,
     )
 
 

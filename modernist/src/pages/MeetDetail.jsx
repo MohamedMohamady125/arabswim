@@ -749,9 +749,17 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         })
       }
     }
-    // HC results sink to the bottom of each category, times ascending otherwise
+    // HC results sink to the bottom of each category, and DNS/DQ/DNF status
+    // rows (stored with time 0) sink below everything — a swimmer who didn't
+    // finish must never appear above one who did. Times ascending otherwise.
+    const sinkTier = (r) => {
+      const t = r.hc_type || ''
+      if ((t && t !== 'HC' && t !== 'TLD') || !r.time_centiseconds) return 2 // DNS/DQ/DNF (zero-time safety net)
+      return r.is_hc ? 1 : 0
+    }
     const sorted = [...sel].sort((a, b) => {
-      if (a.is_hc !== b.is_hc) return a.is_hc ? 1 : -1
+      const d = sinkTier(a) - sinkTier(b)
+      if (d) return d
       return (a.time_centiseconds || 0) - (b.time_centiseconds || 0)
     })
     if (isOpenView) return sorted.length ? [['OPEN', sorted]] : []
@@ -2746,6 +2754,13 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   )
 }
 
+// DNS/DQ/DNF rows always render after everyone who swam (stable partition)
+const isStatusRow = (r) => {
+  const t = r.hc_type || ''
+  return (t && t !== 'HC' && t !== 'TLD') || !r.time_centiseconds
+}
+const sinkStatusRows = (arr) => [...arr.filter((r) => !isStatusRow(r)), ...arr.filter(isStatusRow)]
+
 function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, autoOpen }) {
   const [open, setOpen] = useState(false)
   const [athlete, setAthlete] = useState(null) // swimmer_detail → pop-over card
@@ -2761,7 +2776,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
     getChampionshipResults(meetId, { event: p.event, gender: p.gender })
       .then((res) => {
         const data = Array.isArray(res.data) ? res.data : res.data?.results || []
-        setResults(data)
+        setResults(sinkStatusRows(data))
       })
       .catch(() => setResults([]))
     // Check if heats exist
@@ -2804,13 +2819,13 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
     for (const r of heats) {
       const rank = r.original_rank || 0
       if (currentHeat.length > 0 && rank > 0 && rank <= lastRank && rank <= 3) {
-        groups.push(currentHeat)
+        groups.push(sinkStatusRows(currentHeat))
         currentHeat = []
       }
       currentHeat.push(r)
       if (rank > 0) lastRank = rank
     }
-    if (currentHeat.length > 0) groups.push(currentHeat)
+    if (currentHeat.length > 0) groups.push(sinkStatusRows(currentHeat))
     return groups
   }, [heats])
 

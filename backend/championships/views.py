@@ -1861,9 +1861,15 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         """All results for this championship, grouped by event+gender+round."""
         from importer.parsers.base import format_centiseconds
         championship = self.get_object()
+        from django.db.models import Case, When, Value, IntegerField
+        # DNS/DQ/DNF rows are stored with time 0 — push them after real swims
         results = championship.results.select_related(
             'swimmer', 'nationality', 'event'
-        ).order_by('event__sort_order', 'event__distance', 'swimmer__sex', 'round_type', 'time_centiseconds')
+        ).annotate(
+            status_last=Case(When(time_centiseconds__lte=0, then=Value(1)),
+                             default=Value(0), output_field=IntegerField())
+        ).order_by('event__sort_order', 'event__distance', 'swimmer__sex', 'round_type',
+                   'status_last', 'time_centiseconds')
         groups = {}
         for r in results:
             gender = r.swimmer.sex if r.swimmer else 'M'

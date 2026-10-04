@@ -2824,6 +2824,17 @@ const isStatusRow = (r) => {
 }
 const sinkStatusRows = (arr) => [...arr.filter((r) => !isStatusRow(r)), ...arr.filter(isStatusRow)]
 
+// Keep only rows that belong to this program item's age category (labels can
+// differ in case/spacing between the programme and the results import)
+const normCat = (s) => (s || '').toString().toLowerCase().replace(/[\s_-]+/g, '')
+const filterByCategory = (arr, ageCategory) => {
+  const want = normCat(ageCategory)
+  if (!want) return arr
+  const matched = arr.filter((r) => normCat(r.category) === want)
+  // If nothing matches (results stored without categories), fall back to all rows
+  return matched.length > 0 ? matched : arr
+}
+
 function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, autoOpen }) {
   const [open, setOpen] = useState(false)
   const [athlete, setAthlete] = useState(null) // swimmer_detail → pop-over card
@@ -2838,14 +2849,14 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
     setOpen(true)
     getChampionshipResults(meetId, { event: p.event, gender: p.gender })
       .then((res) => {
-        const data = Array.isArray(res.data) ? res.data : res.data?.results || []
+        const data = filterByCategory(Array.isArray(res.data) ? res.data : res.data?.results || [], p.age_category)
         setResults(sinkStatusRows(data))
       })
       .catch(() => setResults([]))
     // Check if heats exist
     getChampionshipResults(meetId, { event: p.event, gender: p.gender, round_type: 'Prelims' })
       .then((res) => {
-        const data = Array.isArray(res.data) ? res.data : res.data?.results || []
+        const data = filterByCategory(Array.isArray(res.data) ? res.data : res.data?.results || [], p.age_category)
         if (data.length > 0) { setHasHeats(true); setHeats(data) }
       })
       .catch(() => {})
@@ -2864,7 +2875,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
     setTab(t)
     if (t === 'heats' && !heats) {
       getChampionshipResults(meetId, { event: p.event, gender: p.gender, round_type: 'Prelims' })
-        .then((res) => setHeats(Array.isArray(res.data) ? res.data : res.data?.results || []))
+        .then((res) => setHeats(filterByCategory(Array.isArray(res.data) ? res.data : res.data?.results || [], p.age_category)))
         .catch(() => setHeats([]))
     }
   }

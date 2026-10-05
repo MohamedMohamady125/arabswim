@@ -179,7 +179,7 @@ function PerfCard({ title, value, unit, name, code, event, gold = false }) {
   return (
     <div style={{ background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))', color: '#fff', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 128 }}>
       <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>{title}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
         <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 800, color: gold ? GOLD : '#fff', lineHeight: 1 }}>{value}</span>
         {unit && <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{unit}</span>}
         {gold && <span style={{ fontSize: 16, marginLeft: 4, letterSpacing: '-2px' }}>{'🥇'.repeat(Math.min(value || 0, 15))}</span>}

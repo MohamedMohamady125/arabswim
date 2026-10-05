@@ -217,6 +217,11 @@ figure { margin: 0; }
 .rankings-table td.swimmer-cell { width: 100%; max-width: 0; }
 /* grid children default to min-width auto, which lets wide tables blow out the track */
 .grid-2 > *, .grid-3 > *, .two-col > * { min-width: 0; }
+/* same guard for the quick-stats grids — otherwise a chip/panel's min-content
+   width keeps the grid from shrinking and the page overflows on small phones */
+.container > *,
+.qs-cards-8 > *, .qs-cols-3 > *, .qs-perf-6 > *, .qs-perf-2 > *,
+.qs-main-2 > *, .qs-rec-counters > *, .qs-rec-charts > * { min-width: 0; }
 
 /* meet page title: fluid size, never more than 2 lines beside the logo */
 .meet-title { line-height: 1.12; overflow-wrap: anywhere; font-size: clamp(24px, 3.2vw + 8px, 42px); }

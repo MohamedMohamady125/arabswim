@@ -104,6 +104,10 @@ CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
         'LOCATION': 'django_cache',
+        # A single multi-meet Excel import stores one preview per meet (100+),
+        # and re-uploads stack up. The DatabaseCache default MAX_ENTRIES=300
+        # culls still-valid previews mid-session -> "Import session expired".
+        'OPTIONS': {'MAX_ENTRIES': 10000},
     }
 }
 

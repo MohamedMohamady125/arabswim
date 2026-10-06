@@ -131,6 +131,23 @@ export default function Import() {
   const setChampForm = (patch) =>
     updateMeet(active, { champForm: { ...meet.champForm, ...patch } })
 
+  // Copy the active meet's country + classification to every included meet, so
+  // a whole multi-meet file (e.g. one national season) can be filled in once.
+  const applyClassificationToAllIncluded = () => {
+    const src = meet?.champForm
+    if (!src) return
+    setMeets((prev) => prev.map((m) =>
+      (m.excluded || m.existingChampId) ? m : {
+        ...m,
+        champForm: {
+          ...m.champForm,
+          country: src.country,
+          classification: src.classification,
+          sub_classification: src.sub_classification,
+        },
+      }))
+  }
+
   useEffect(() => {
     getCountries().then((res) => setCountries(res.data)).catch(() => {})
     getClassifications().then((res) => setClassifications(res.data)).catch(() => {})
@@ -910,6 +927,20 @@ export default function Import() {
                             </select>
                           </div>
                         </div>
+                        {includedMeets.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={applyClassificationToAllIncluded}
+                            style={{
+                              marginTop: 12, padding: '8px 14px', cursor: 'pointer',
+                              border: '1px solid var(--asw-fast)', borderRadius: 8,
+                              background: 'transparent', color: 'var(--asw-fast)',
+                              fontSize: 13, fontWeight: 600,
+                            }}
+                          >
+                            Apply country + classification to all {includedMeets.length} included meets
+                          </button>
+                        )}
                       </div>
 
                       {/* Gender display + category mapping */}

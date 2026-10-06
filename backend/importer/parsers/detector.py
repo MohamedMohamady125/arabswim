@@ -3,6 +3,7 @@ Auto-detect file format and route to the correct parser.
 Supports: PDF, HTML, Excel files.
 Passes filename to parsers for pool detection.
 """
+import functools
 import os
 import re
 
@@ -1311,7 +1312,8 @@ def _collect_excel_meets(dfs, meet_name_candidates):
 
         return meets, resolver_name
 
-    # Gather the set of dates seen for each (canonical name, city).
+    # Gather the set of dates seen for each (canonical name, city). Iterate
+    # column arrays (not iterrows) so this stays fast on 100k+ row sheets.
     groups = OrderedDict()  # (canon, city_cf) -> set[date]
     for df in dfs:
         cols = {str(c).lower().strip(): c for c in df.columns}
@@ -1320,14 +1322,17 @@ def _collect_excel_meets(dfs, meet_name_candidates):
             continue
         city_col = _find_column(cols, _MEET_CITY_CANDS)
         date_col = _find_column(cols, _MEET_DATE_CANDS)
-        for _, row in df.iterrows():
-            raw = _safe_str(row[mn_col])
+        names = df[mn_col].tolist()
+        cities = df[city_col].tolist() if city_col else [None] * len(names)
+        dates = df[date_col].tolist() if date_col else [None] * len(names)
+        for raw_v, city_v, date_v in zip(names, cities, dates):
+            raw = _safe_str(raw_v)
             if not raw or raw.lower() == 'nan':
                 continue
             canon = name_map.get(raw, raw)
-            city_cf = _safe_str(row[city_col]).casefold() if city_col else ''
+            city_cf = _safe_str(city_v).casefold() if city_col else ''
             g = groups.setdefault((canon, city_cf), set())
-            d = _coerce_date(row[date_col]) if date_col else None
+            d = _coerce_date(date_v) if date_col else None
             if d is not None:
                 g.add(d)
 
@@ -1419,8 +1424,9 @@ def _extract_excel_meet_metadata(meet, df, filename):
         if not meet.date_text:
             # ISO / Excel date cells the text parser can't read (e.g.
             # "2026-07-23 00:00:00") — min date = start, max = end.
-            iso = sorted({d.isoformat() for _, r in df.iterrows()
-                          if (d := _coerce_date(r[date_col])) is not None})
+            iso = sorted({d.isoformat()
+                          for d in (_coerce_date(v) for v in df[date_col].tolist())
+                          if d is not None})
             if iso:
                 meet.date_text = iso[0]
                 if len(iso) > 1:
@@ -1446,18 +1452,18 @@ def _parse_excel_multi(individual_dfs, relay_dfs, meets_info, resolver,
     # Precompute each row's meet key once per sheet, so filtering every meet is
     # a cheap vectorised comparison rather than re-resolving per meet.
     def key_series(df):
+        import pandas as pd
         cols = {str(c).lower().strip(): c for c in df.columns}
         mn_col = _find_column(cols, meet_name_candidates)
         if not mn_col:
             return None
         city_col = _find_column(cols, _MEET_CITY_CANDS)
         date_col = _find_column(cols, _MEET_DATE_CANDS)
-        return df.apply(
-            lambda r: resolver(
-                r[mn_col],
-                r[city_col] if city_col else None,
-                r[date_col] if date_col else None),
-            axis=1)
+        names = df[mn_col].tolist()
+        cities = df[city_col].tolist() if city_col else [None] * len(names)
+        dates = df[date_col].tolist() if date_col else [None] * len(names)
+        keys = [resolver(n, c, d) for n, c, d in zip(names, cities, dates)]
+        return pd.Series(keys, index=df.index)
 
     ind_keyed = [(df, key_series(df)) for df in individual_dfs]
     relay_keyed = [(df, key_series(df)) for df in relay_dfs]
@@ -1853,11 +1859,14 @@ def _safe_str(val):
     return str(val).strip()
 
 
+@functools.lru_cache(maxsize=8192)
 def _coerce_date(val):
     """Best-effort parse of a date cell into a datetime.date (or None).
 
     Handles Excel date cells (pandas Timestamps), ISO strings and the
-    DD/MM/YYYY day-first strings common in these sheets.
+    DD/MM/YYYY day-first strings common in these sheets. Memoized because it's
+    called once per row over 100k+ row sheets but only sees a handful of
+    distinct dates — re-parsing each string is otherwise the parse's hotspot.
     """
     import datetime
     import pandas as pd

@@ -1120,13 +1120,16 @@ def _parse_excel(file_path, filename=''):
             f'Found columns: {list(first_df.columns)}'
         )
 
-    # ---- Check for multi-meet Excel (multiple unique meet names) ----
+    # ---- Check for multi-meet Excel (multiple distinct meets) ----
+    # A meet is identified by name + city + date-cluster, so the same
+    # championship name held in different cities (or months apart in the same
+    # city) is kept as separate meets instead of being merged into one.
     MEET_NAME_CANDIDATES = ['championships name', 'championship', 'meet name', 'meet', 'competition']
-    unique_meet_names, name_map = _collect_unique_meet_names(
+    meets_info, meet_resolver = _collect_excel_meets(
         individual_dfs + relay_dfs, MEET_NAME_CANDIDATES)
-    if len(unique_meet_names) > 1:
+    if len(meets_info) > 1:
         return _parse_excel_multi(
-            individual_dfs, relay_dfs, unique_meet_names, name_map,
+            individual_dfs, relay_dfs, meets_info, meet_resolver,
             MEET_NAME_CANDIDATES, filename)
 
     # ---- Single-meet path (original) ----
@@ -1269,6 +1272,104 @@ def _collect_unique_meet_names(dfs, meet_name_candidates):
     return canonical, name_map
 
 
+# city / date column candidates reused by the multi-meet splitter
+_MEET_CITY_CANDS = ['meet city', 'city', 'ville', 'location', 'lieu']
+_MEET_DATE_CANDS = ['date']
+
+
+def _collect_excel_meets(dfs, meet_name_candidates):
+    """Identify the distinct meets in a (possibly multi-meet) Excel.
+
+    A meet is keyed by (canonical name, city, date-cluster): the same
+    championship name in a different city — or in the same city but more than a
+    week apart — is a separate meet, while dates within a week collapse into one
+    meet so an ordinary prelims/finals championship stays whole. Falls back to
+    name-only grouping when the sheets carry no usable date column (preserves
+    the previous behaviour for those files).
+
+    Returns ``(meets, resolver)`` where ``meets`` is an ordered list of
+    ``{'key': hashable, 'name': display_name}`` and ``resolver(name, city,
+    date)`` maps a row to its meet key (or None).
+    """
+    import datetime
+    from collections import OrderedDict
+
+    canonical_names, name_map = _collect_unique_meet_names(dfs, meet_name_candidates)
+    if not canonical_names:
+        return [], (lambda *a, **k: None)
+
+    has_date = any(
+        _find_column({str(c).lower().strip(): c for c in df.columns}, _MEET_DATE_CANDS)
+        for df in dfs
+    )
+    if not has_date:
+        # No dates to split on — keep the legacy name-only grouping.
+        meets = [{'key': n, 'name': n} for n in canonical_names]
+
+        def resolver_name(name_raw, city_raw=None, date_val=None):
+            return name_map.get(_safe_str(name_raw), _safe_str(name_raw)) or None
+
+        return meets, resolver_name
+
+    # Gather the set of dates seen for each (canonical name, city).
+    groups = OrderedDict()  # (canon, city_cf) -> set[date]
+    for df in dfs:
+        cols = {str(c).lower().strip(): c for c in df.columns}
+        mn_col = _find_column(cols, meet_name_candidates)
+        if not mn_col:
+            continue
+        city_col = _find_column(cols, _MEET_CITY_CANDS)
+        date_col = _find_column(cols, _MEET_DATE_CANDS)
+        for _, row in df.iterrows():
+            raw = _safe_str(row[mn_col])
+            if not raw or raw.lower() == 'nan':
+                continue
+            canon = name_map.get(raw, raw)
+            city_cf = _safe_str(row[city_col]).casefold() if city_col else ''
+            g = groups.setdefault((canon, city_cf), set())
+            d = _coerce_date(row[date_col]) if date_col else None
+            if d is not None:
+                g.add(d)
+
+    GAP = datetime.timedelta(days=7)
+    date_key = {}      # (canon, city_cf, date) -> meet key
+    group_first = {}   # (canon, city_cf) -> first meet key (date-less rows)
+    meets = []
+    for (canon, city_cf), dates in groups.items():
+        if dates:
+            ordered = sorted(dates)
+            clusters = [[ordered[0]]]
+            for d in ordered[1:]:
+                if d - clusters[-1][-1] > GAP:
+                    clusters.append([d])
+                else:
+                    clusters[-1].append(d)
+        else:
+            clusters = [[]]
+        for ci, cluster in enumerate(clusters):
+            start = cluster[0] if cluster else None
+            key = (canon, city_cf, start.isoformat() if start else f'#{ci}')
+            meets.append({'key': key, 'name': canon})
+            group_first.setdefault((canon, city_cf), key)
+            for d in cluster:
+                date_key[(canon, city_cf, d)] = key
+
+    def resolver(name_raw, city_raw=None, date_val=None):
+        raw = _safe_str(name_raw)
+        if not raw or raw.lower() == 'nan':
+            return None
+        canon = name_map.get(raw, raw)
+        city_cf = _safe_str(city_raw).casefold() if city_raw is not None else ''
+        d = _coerce_date(date_val)
+        if d is not None:
+            k = date_key.get((canon, city_cf, d))
+            if k is not None:
+                return k
+        return group_first.get((canon, city_cf))
+
+    return meets, resolver
+
+
 def _extract_excel_meet_metadata(meet, df, filename):
     """Set meet-level metadata (date, pool, city, classification) from a DataFrame."""
     from .base import extract_date_and_location
@@ -1315,6 +1416,15 @@ def _extract_excel_meet_metadata(meet, df, filename):
                 meet.date_text = sorted_dates[0]
                 if len(sorted_dates) > 1:
                     meet.date_end = sorted_dates[-1]
+        if not meet.date_text:
+            # ISO / Excel date cells the text parser can't read (e.g.
+            # "2026-07-23 00:00:00") — min date = start, max = end.
+            iso = sorted({d.isoformat() for _, r in df.iterrows()
+                          if (d := _coerce_date(r[date_col])) is not None})
+            if iso:
+                meet.date_text = iso[0]
+                if len(iso) > 1:
+                    meet.date_end = iso[-1]
     if classification_col:
         meet._excel_classification = _safe_str(first_row[classification_col])
     if sub_classification_col:
@@ -1323,48 +1433,60 @@ def _extract_excel_meet_metadata(meet, df, filename):
         meet._excel_meet_country = _safe_str(first_row[meet_country_col])
 
 
-def _parse_excel_multi(individual_dfs, relay_dfs, meet_names, name_map,
+def _parse_excel_multi(individual_dfs, relay_dfs, meets_info, resolver,
                        meet_name_candidates, filename):
-    """Split a multi-meet Excel into separate ParsedMeet objects, one per meet name.
+    """Split a multi-meet Excel into separate ParsedMeet objects, one per meet.
 
-    ``name_map`` maps every raw cell value to its canonical meet name,
-    merging near-duplicates like 'Championships' vs 'Championship'.
+    ``meets_info`` is the ordered list of ``{'key', 'name'}`` from
+    :func:`_collect_excel_meets` and ``resolver(name, city, date)`` maps each
+    row to its meet key.
     """
     from .base import ParsedMeet
 
+    # Precompute each row's meet key once per sheet, so filtering every meet is
+    # a cheap vectorised comparison rather than re-resolving per meet.
+    def key_series(df):
+        cols = {str(c).lower().strip(): c for c in df.columns}
+        mn_col = _find_column(cols, meet_name_candidates)
+        if not mn_col:
+            return None
+        city_col = _find_column(cols, _MEET_CITY_CANDS)
+        date_col = _find_column(cols, _MEET_DATE_CANDS)
+        return df.apply(
+            lambda r: resolver(
+                r[mn_col],
+                r[city_col] if city_col else None,
+                r[date_col] if date_col else None),
+            axis=1)
+
+    ind_keyed = [(df, key_series(df)) for df in individual_dfs]
+    relay_keyed = [(df, key_series(df)) for df in relay_dfs]
+
     meets = []
-    for meet_name in meet_names:
+    for info in meets_info:
+        mk = info['key']
         meet = ParsedMeet(source_format='excel')
-        meet.meet_name = meet_name
+        meet.meet_name = info['name']
         events_dict = {}
         metadata_set = False
 
-        for ind_df in individual_dfs:
-            cols = {str(c).lower().strip(): c for c in ind_df.columns}
-            mn_col = _find_column(cols, meet_name_candidates)
-            if not mn_col:
+        for ind_df, ks in ind_keyed:
+            if ks is None:
                 continue
-            mask = ind_df[mn_col].apply(
-                lambda x, mn=meet_name: name_map.get(_safe_str(x), _safe_str(x)) == mn)
-            filtered = ind_df[mask].reset_index(drop=True)
+            filtered = ind_df[ks == mk].reset_index(drop=True)
             if filtered.empty:
                 continue
-
             if not metadata_set:
                 _extract_excel_meet_metadata(meet, filtered, filename)
                 metadata_set = True
-
             _parse_individual_sheet(filtered, meet, events_dict)
 
-        for relay_df in relay_dfs:
-            rcols = {str(c).lower().strip(): c for c in relay_df.columns}
-            mn_col = _find_column(rcols, meet_name_candidates)
-            if mn_col:
-                mask = relay_df[mn_col].apply(
-                    lambda x, mn=meet_name: name_map.get(_safe_str(x), _safe_str(x)) == mn)
-                filtered = relay_df[mask].reset_index(drop=True)
-                if not filtered.empty:
-                    _parse_relay_sheet(filtered, meet, cols_finder=_find_column)
+        for relay_df, ks in relay_keyed:
+            if ks is None:
+                continue
+            filtered = relay_df[ks == mk].reset_index(drop=True)
+            if not filtered.empty:
+                _parse_relay_sheet(filtered, meet, cols_finder=_find_column)
 
         _fill_ranks_by_time(meet)
         meets.append(meet)
@@ -1729,6 +1851,39 @@ def _safe_str(val):
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return ''
     return str(val).strip()
+
+
+def _coerce_date(val):
+    """Best-effort parse of a date cell into a datetime.date (or None).
+
+    Handles Excel date cells (pandas Timestamps), ISO strings and the
+    DD/MM/YYYY day-first strings common in these sheets.
+    """
+    import datetime
+    import pandas as pd
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return None
+    # Excel date cells arrive as datetime/Timestamp — use them directly (also
+    # avoids the dayfirst parse warning on ISO strings).
+    if isinstance(val, (datetime.datetime, datetime.date)):
+        return val.date() if isinstance(val, datetime.datetime) else val
+    if isinstance(val, pd.Timestamp):
+        return val.date()
+    s = str(val).strip()
+    if not s:
+        return None
+    # ISO "YYYY-MM-DD..." is unambiguous; anything else is treated day-first.
+    iso = bool(re.match(r'^\d{4}-\d{1,2}-\d{1,2}', s))
+    try:
+        ts = pd.to_datetime(s, errors='coerce', dayfirst=not iso)
+    except Exception:
+        return None
+    if ts is None or pd.isna(ts):
+        return None
+    try:
+        return ts.date()
+    except Exception:
+        return None
 
 
 def _find_column(cols_map, candidates):

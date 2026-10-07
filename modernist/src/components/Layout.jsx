@@ -24,6 +24,7 @@ const FEATURE_PATHS = {
   '/teams': 'teams',
   '/swimmers': 'swimmers',
   '/academies': 'academies',
+  '/lab': 'lab',
 }
 
 // Admins always see every section (so they can preview before launch)
@@ -78,6 +79,7 @@ const NAV = [
     label: 'Data',
     links: [
       ['Federations', '/countries'],
+      ['ArabSwim Lab', '/lab'],
       ['Reports', '/reports'],
     ],
   },

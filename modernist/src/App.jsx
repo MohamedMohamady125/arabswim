@@ -35,6 +35,7 @@ import Album from './pages/Album'
 import Market from './pages/Market'
 import Countries from './pages/Countries'
 import Reports from './pages/Reports'
+import Lab from './pages/Lab'
 import CountryProfile from './pages/CountryProfile'
 
 function RequireAdmin({ children }) {
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="/market" element={<RequireFeature flag="marketplace"><Market /></RequireFeature>} />
         <Route path="/countries" element={<Countries />} />
         <Route path="/reports" element={<RequireAdmin><Reports /></RequireAdmin>} />
+        <Route path="/lab" element={<RequireFeature flag="lab"><Lab /></RequireFeature>} />
         <Route path="/countries/:id" element={<CountryProfile />} />
         <Route path="*" element={<div className="empty">Page not found</div>} />
       </Route>

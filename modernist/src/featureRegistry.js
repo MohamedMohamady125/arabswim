@@ -27,6 +27,7 @@ export const FEATURE_GROUPS = [
       ['news', 'News'],
       ['media', 'Media'],
       ['marketplace', 'Marketplace'],
+      ['lab', 'ArabSwim Lab'],
     ],
   },
   {

@@ -2974,6 +2974,48 @@ class SameMeetMergeTests(TestCase):
         confirm_import(other, {})
         self.assertEqual(Result.objects.filter(championship=self.champ).count(), 2)
 
+    def test_excel_same_name_different_city_stays_separate(self):
+        """A multi-meet Excel splits meets by (name, city, date); two
+        same-named meets in different cities within the 45-day window must
+        NOT be fuzzy-merged (Saudi "Regional Championship" bug)."""
+        from datetime import date
+        from championships.models import Championship
+        from .services import confirm_import
+
+        def _excel_preview(city, date_str):
+            return {
+                'meet': {'name': 'Regional Championship', 'date': date_str,
+                         'pool': 'SCM', 'location': city, 'format': 'excel'},
+                'events': [{
+                    'event_name': '50 M Freestyle', 'distance': 50,
+                    'stroke': 'Freestyle', 'gender': 'M', 'round_type': 'Finals',
+                    'age_group': '', 'is_relay': False,
+                    'results': [{
+                        'swimmer_name': 'Asil FAHD', 'time_text': '36.38',
+                        'time_centiseconds': 3638, 'rank': 1, 'birth_year': 2008,
+                        'age': 18, 'nationality_code': '', 'club': 'X',
+                        'fina_points': 0, 'gender': 'M', 'is_relay': False,
+                        'category': '', 'status': 'OK',
+                    }],
+                }],
+                'swimmers': [],
+                'stats': {'total_events': 1, 'total_results': 1, 'total_swimmers': 1},
+            }
+
+        r1 = confirm_import(_excel_preview('Al-Ahsa', '2026-01-30'), {},
+                            championship_details={'name': 'Regional Championship',
+                                                  'date': '2026-01-30', 'pool': 'SCM',
+                                                  'location': 'Al-Ahsa',
+                                                  'country': self.country.id})
+        r2 = confirm_import(_excel_preview('Riyadh', '2026-02-10'), {},
+                            championship_details={'name': 'Regional Championship',
+                                                  'date': '2026-02-10', 'pool': 'SCM',
+                                                  'location': 'Riyadh',
+                                                  'country': self.country.id})
+        self.assertNotEqual(r1['championship_id'], r2['championship_id'])
+        self.assertEqual(
+            Championship.objects.filter(name='Regional Championship').count(), 2)
+
     def test_swimmer_club_updates_to_latest_meet(self):
         """A swimmer's club follows their most recent meet (one current
         club) — but an older meet's import never overwrites a newer club."""

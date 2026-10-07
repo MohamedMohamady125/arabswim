@@ -997,7 +997,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             championship.is_calendar_only = False
             championship.is_published = True
             championship.save(update_fields=['is_calendar_only', 'is_published'])
-    elif (existing := _find_same_meet(
+    elif (not is_excel_format) and (existing := _find_same_meet(
             (championship_details or {}).get('name') or meet_info.get('name', ''),
             _parse_date((championship_details or {}).get('date') or meet_info.get('date', '')),
             (championship_details or {}).get('pool') or meet_info.get('pool', 'LCM'),
@@ -1006,6 +1006,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         # (e.g. Tunisia: one per age category plus a "TC" overall version,
         # each stamped with a different session date). Attach to the
         # existing meet instead of creating a duplicate.
+        #
+        # NOT for Excel: a multi-meet Excel already splits every meet by
+        # (name, city, date-cluster), so each confirmed meet is distinct.
+        # Fuzzy name-merging there collapses separate same-named meets in
+        # different cities (Saudi "Regional Championship" in Al-Ahsa vs
+        # Riyadh) into one. Excel grouping is authoritative — never merge.
         championship = existing
         _extend_meet_dates(
             championship,

@@ -1247,6 +1247,16 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     decision = swimmer_decisions.get(parsed_name, swimmer_decisions.get(name_upper, {}))
                     action = decision.get('action', 'auto')
 
+                    # A multi-meet batch matches every meet's swimmers up front
+                    # — before any meet is imported — so a shared athlete is
+                    # auto-tagged "create" in each meet and, without re-matching
+                    # at write time, each meet spawns a duplicate (the 200k+
+                    # exact dupes admins saw). Route an *auto*-assigned "create"
+                    # back through the matcher so siblings already imported are
+                    # reused. A human's explicit "create" is still honored.
+                    if action == 'create' and decision.get('auto'):
+                        action = 'auto'
+
                     if action == 'skip':
                         swimmer_map[ind_key] = None
                         skipped_swimmers += 1

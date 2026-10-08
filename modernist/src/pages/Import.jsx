@@ -389,7 +389,13 @@ export default function Import() {
           if (m.match_type === 'exact' || (m.match_type === 'fuzzy' && m.confidence >= 92)) {
             auto[m.parsed_name] = { action: 'match', swimmer_id: m.matched_swimmer?.id }
           } else {
-            auto[m.parsed_name] = { action: 'create' }
+            // auto:true lets the backend re-match this at write time. In a
+            // multi-meet batch every meet is matched before any is imported,
+            // so a shared athlete is tagged "create" in each meet; the backend
+            // re-check reuses the profile a sibling meet already created
+            // instead of spawning a duplicate. A manual dropdown change drops
+            // this flag (see updateDecision) and forces a genuine new swimmer.
+            auto[m.parsed_name] = { action: 'create', auto: true }
           }
         }
         updated[i] = { ...updated[i], matches: res.data.matches, matchStats: res.data.stats, decisions: auto }

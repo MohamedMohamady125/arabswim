@@ -786,6 +786,10 @@ class _MeetFixtureMixin:
         # each test sees the countries created by its own fixture.
         import importer.matcher as matcher
         matcher._country_cache = None
+        # The normalized-name / Egyptian-variant indexes are module-level and
+        # persist across tests in a process; stale ids from a prior test's
+        # (rolled-back) swimmers would corrupt matching here. Clear them.
+        matcher.invalidate_norm_cache()
         # Write endpoints require authentication
         from django.contrib.auth import get_user_model
         user = get_user_model().objects.create_user(
@@ -847,6 +851,47 @@ class SameNameImportTests(_MeetFixtureMixin, TestCase):
         confirm_import(preview, {})
         self.assertEqual(
             Swimmer.objects.filter(name__iexact='Youssef TRABELSI').count(), 1)
+
+
+class BatchCreateDedupTests(_MeetFixtureMixin, TestCase):
+    """A multi-meet batch matches every meet before any is imported, so a
+    shared athlete gets auto-tagged "create" in each meet. An auto "create"
+    must re-match at write time (reuse the sibling-created profile); only a
+    human's explicit "create" forces a genuine new swimmer."""
+
+    def _preview(self, meet_name, time_cs):
+        return {
+            'meet': {'name': meet_name, 'date': '2026-06-01', 'pool': 'LCM'},
+            'events': [{
+                'event_name': '100 M Freestyle',
+                'distance': 100, 'stroke': 'Freestyle',
+                'gender': 'M', 'is_relay': False, 'round_type': 'Finals',
+                'results': [
+                    {'swimmer_name': 'Sami BOUZID', 'gender': 'M',
+                     'category': 'Seniors', 'time_centiseconds': time_cs,
+                     'birth_year': 2008, 'nationality_code': 'TUN',
+                     'club': 'CN Tunis'},
+                ],
+            }],
+        }
+
+    def test_auto_create_across_meets_reuses_one_swimmer(self):
+        from importer.services import confirm_import
+        dec = {'Sami BOUZID': {'action': 'create', 'auto': True}}
+        confirm_import(self._preview('Meet A', 5740), dec)
+        confirm_import(self._preview('Meet B', 5810), dec)
+        self.assertEqual(
+            Swimmer.objects.filter(name__iexact='Sami BOUZID').count(), 1)
+        self.assertEqual(
+            Result.objects.filter(swimmer__name__iexact='Sami BOUZID').count(), 2)
+
+    def test_explicit_create_still_forces_new_swimmer(self):
+        from importer.services import confirm_import
+        dec = {'Sami BOUZID': {'action': 'create'}}  # no auto flag = manual
+        confirm_import(self._preview('Meet A', 5740), dec)
+        confirm_import(self._preview('Meet B', 5810), dec)
+        self.assertEqual(
+            Swimmer.objects.filter(name__iexact='Sami BOUZID').count(), 2)
 
 
 class ManualEditSurvivesReimportTests(_MeetFixtureMixin, TestCase):

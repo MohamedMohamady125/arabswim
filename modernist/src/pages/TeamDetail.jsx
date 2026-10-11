@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
 import { Loading, Empty, Seg, Modal } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
+import { MiniHBars, MiniDonut, AgePyramid, MiniPanel, CHART_COLORS } from '../components/MiniCharts'
 import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
 import { CropUpload } from '../components/ImageCropper'
 import TrainingCalendar from '../components/TrainingCalendar'
@@ -931,6 +932,46 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
           })}
         </>)}
       </div>
+
+      {/* Row 5: Strongest Events | Squad by Gender (new analytics) */}
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginTop: 10 }}>
+        {card(<>
+          {cardHeader('Strongest Events', `Where ${team.name} races most — by number of recorded swims`)}
+          {(() => {
+            const byEvent = {}
+            times.forEach((t) => {
+              const ev = t.event_name
+              if (!ev) return
+              byEvent[ev] = (byEvent[ev] || 0) + 1
+            })
+            const rows = Object.entries(byEvent)
+              .map(([label, value]) => ({ label, value }))
+              .sort((a, b) => b.value - a.value)
+              .slice(0, 8)
+            return rows.length ? <MiniHBars rows={rows} labelWidth={150} /> : <Empty label="No data" />
+          })()}
+        </>)}
+        {card(<>
+          {cardHeader('Squad by Gender', `Male / female split of the ${team.name} roster`)}
+          {(() => {
+            const vals = Object.values(sexById)
+            const men = vals.filter((s) => s === 'M').length
+            const women = vals.filter((s) => s === 'F').length
+            const total = men + women
+            return total ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <MiniDonut
+                  segments={[{ label: 'Men', value: men, color: CHART_COLORS.NAVY }, { label: 'Women', value: women, color: CHART_COLORS.BLUE }]}
+                  centerTop={total} centerBot="SWIMMERS" />
+                <div style={{ display: 'grid', gap: 6, fontSize: 12 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: CHART_COLORS.NAVY }} />Men · {men} ({Math.round((men / total) * 100)}%)</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: CHART_COLORS.BLUE }} />Women · {women} ({Math.round((women / total) * 100)}%)</span>
+                </div>
+              </div>
+            ) : <Empty label="No roster data" />
+          })()}
+        </>)}
+      </div>
     </div>
   )
 }
@@ -1638,6 +1679,31 @@ export default function TeamDetail() {
               </div>
             )}
             {roster.length === 0 ? <Empty label="No swimmers on roster" /> : (
+              <>
+              {(() => {
+                const bands = [
+                  { label: '≤10', lo: 0, hi: 10 },
+                  { label: '11-12', lo: 11, hi: 12 },
+                  { label: '13-14', lo: 13, hi: 14 },
+                  { label: '15-16', lo: 15, hi: 16 },
+                  { label: '17-18', lo: 17, hi: 18 },
+                  { label: '19+', lo: 19, hi: 200 },
+                ]
+                const aged = roster.filter((s) => s.age != null)
+                if (aged.length < 3) return null
+                const pyramid = bands.map((b) => ({
+                  label: b.label,
+                  male: aged.filter((s) => s.sex === 'M' && s.age >= b.lo && s.age <= b.hi).length,
+                  female: aged.filter((s) => s.sex === 'F' && s.age >= b.lo && s.age <= b.hi).length,
+                })).filter((r) => r.male || r.female)
+                return (
+                  <div style={{ maxWidth: 560, margin: '0 auto 22px' }}>
+                    <MiniPanel title="Roster Age Profile" subtitle={`Age distribution of ${aged.length} swimmers with a known birth year`}>
+                      <AgePyramid rows={pyramid} />
+                    </MiniPanel>
+                  </div>
+                )
+              })()}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
                 {roster.map((s) => (
                   <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
@@ -1663,6 +1729,7 @@ export default function TeamDetail() {
                   </div>
                 ))}
               </div>
+              </>
             )}
           </>)}
         </div>

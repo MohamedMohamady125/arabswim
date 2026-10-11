@@ -33,6 +33,7 @@ import RecordsTab from '../components/swimmer/RecordsTab'
 import QualifyingTab from '../components/swimmer/QualifyingTab'
 import TransfersTab from '../components/swimmer/TransfersTab'
 import GalleryTab from '../components/swimmer/GalleryTab'
+import { MiniHBars, CHART_COLORS } from '../components/MiniCharts'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
@@ -781,6 +782,27 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                   <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 6 }}>{y}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Competition level mix — meets entered per classification level */}
+      {championships?.length > 0 && (() => {
+        const byLevel = {}
+        championships.forEach((c) => {
+          const lvl = c.classification || c.category || 'Other'
+          byLevel[lvl] = (byLevel[lvl] || 0) + 1
+        })
+        const rows = Object.entries(byLevel)
+          .map(([label, value]) => ({ label, value }))
+          .sort((a, b) => b.value - a.value)
+        if (rows.length < 2) return null
+        return (
+          <div>
+            <div className="sect-head"><h4>Competition Level Mix</h4><span className="micro">Meets entered per competition level</span></div>
+            <div className="rule-t" style={{ paddingTop: 14 }}>
+              <MiniHBars rows={rows} color={CHART_COLORS.NAVY} labelWidth={130} />
             </div>
           </div>
         )

@@ -1653,6 +1653,33 @@ function OverviewTab({ meetId, stats }) {
       {/* home-page style quick statistics + busiest swimmers widget */}
       <QuickStatsView data={qs} busiest={stats?.busiest_swimmers} />
 
+      {/* participating nations — countries ranked by swimmers entered
+          (only meaningful for international meets with ≥2 nations) */}
+      {stats?.countries?.length > 1 && (() => {
+        const rows = stats.countries.slice(0, 12)
+        const maxS = Math.max(...rows.map((c) => c.swimmers_count), 1)
+        return (
+          <div className="pad">
+            <div className="kicker" style={{ marginBottom: 4 }}>Participating nations</div>
+            <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>{stats.countries.length} countries · ranked by swimmers entered</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {rows.map((c, i) => (
+                <div key={c.nationality__code || i} onClick={() => c.nationality__id && navigate(`/countries/${c.nationality__id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', cursor: c.nationality__id ? 'pointer' : 'default' }}>
+                  <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
+                  <Flag code={c.nationality__code} name={c.nationality__name} />
+                  <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nationality__name}</span>
+                  <div style={{ flex: 1, height: 16, background: 'var(--color-neutral-200)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-2)', borderRadius: 3, minWidth: 6 }} />
+                  </div>
+                  <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 12.5 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 500 }}> sw</span></span>
+                  <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-600)' }}>{c.results_count} res</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* club standings — clubs ranked by swimmers entered */}
       {stats?.clubs?.length > 0 && (() => {
         const rows = stats.clubs.slice(0, 12)

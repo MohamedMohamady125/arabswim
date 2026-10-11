@@ -19,6 +19,7 @@ import Flag, { flagImage } from '../components/Flag'
 import FederationProgressionTab from '../components/FederationProgression'
 import MedalStandings from '../components/MedalStandings'
 import { Loading, Empty, SectHead, Seg, Pager, Modal } from '../components/ui'
+import { MiniBars, MiniHBars, CHART_COLORS } from '../components/MiniCharts'
 import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2 } from '../utils'
 import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
 
@@ -1708,6 +1709,37 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
                   </div>
                 ))}
               </div>
+            </>)}
+          </div>
+        )
+      })()}
+
+      {/* Row 7: International medal trend + biggest international campaigns */}
+      {(() => {
+        const intl = participated.filter((c) => c.classification && c.classification !== 'National')
+        const byYear = {}
+        intl.forEach((c) => {
+          const y = (c.date || '').slice(0, 4)
+          if (!y) return
+          byYear[y] = (byYear[y] || 0) + (c.medals?.total || 0)
+        })
+        const years = Object.keys(byYear).sort()
+        const trend = years.map((y) => ({ label: `'${y.slice(2)}`, value: byYear[y] }))
+        const campaigns = intl
+          .filter((c) => (c.swimmers_count || 0) > 0)
+          .sort((a, b) => (b.swimmers_count || 0) - (a.swimmers_count || 0))
+          .slice(0, 6)
+          .map((c) => ({ label: c.name, value: c.swimmers_count, sub: `${c.swimmers_count}` }))
+        if (!trend.length && !campaigns.length) return null
+        return (
+          <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+            {card(<>
+              {cardHeader('International Medal Trend', `${demonym(country.name)} Medals Won at International Meets by Year`)}
+              {trend.length ? <MiniBars data={trend} color={CHART_COLORS.NAVY} /> : <Empty label="No international medals yet" />}
+            </>)}
+            {card(<>
+              {cardHeader('Biggest International Campaigns', `Meets Where ${country.name} Sent the Most Swimmers`)}
+              {campaigns.length ? <MiniHBars rows={campaigns} color={CHART_COLORS.BLUE} labelWidth={150} /> : <Empty label="No data" />}
             </>)}
           </div>
         )

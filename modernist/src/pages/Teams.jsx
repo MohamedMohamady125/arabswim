@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { GitMerge, Sparkles, Trash2, X, ArrowLeftRight } from 'lucide-react'
 import { getTeams, deleteTeam, bulkDeleteTeams, mergeTeams, findDuplicateTeams, autoDedupeTeams } from '../api/teams'
-import { getCountries } from '../api/core'
 import { PageHead, Loading, Empty, Pager, Modal } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
@@ -360,7 +359,6 @@ function MergeTeamsModal({ onClose, onMerged }) {
 
 export default function Teams() {
   const [teams, setTeams] = useState([])
-  const [countries, setCountries] = useState([])
   const [search, setSearch] = useState('')
   const [country, setCountry] = useState('')
   const [page, setPage] = useState(1)
@@ -382,19 +380,20 @@ export default function Teams() {
   }
 
   useEffect(() => {
-    let alive = true
-    getCountries()
-      .then((res) => {
-        if (!alive) return
-        const all = Array.isArray(res.data) ? res.data : res.data?.results || []
-        const arab = all.filter((c) => c.region === 'ARAB' || c.region === 'GCC')
-        const rest = all.filter((c) => c.region !== 'ARAB' && c.region !== 'GCC')
-        setCountries([...arab, ...rest])
-      })
-      .catch(() => {})
     refresh()
-    return () => { alive = false }
   }, [])
+
+  // Dropdown lists only countries that actually have clubs (derived from the
+  // loaded teams), so every option returns results. Arab/GCC countries first.
+  const countries = useMemo(() => {
+    const uniq = [...new Map(teams
+      .filter((t) => t.country_detail)
+      .map((t) => [t.country_detail.id, t.country_detail])).values()]
+    const arab = uniq.filter((c) => c.region === 'ARAB' || c.region === 'GCC')
+    const rest = uniq.filter((c) => c.region !== 'ARAB' && c.region !== 'GCC')
+    const byName = (a, b) => a.name.localeCompare(b.name)
+    return [...arab.sort(byName), ...rest.sort(byName)]
+  }, [teams])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()

@@ -1291,7 +1291,7 @@ function CompareTab({ profile, country }) {
                     onClick={() => commonEvents.length > 1 && setBattleKey(commonEvents.filter((k) => k !== battleKey)[Math.floor(Math.random() * (commonEvents.length - 1))])}
                     style={{ background: '#1a56a0', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 14px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
-                    🎲 Another event
+                    Another event
                   </button>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'stretch' }}>

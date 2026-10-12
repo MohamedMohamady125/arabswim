@@ -426,6 +426,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
     def results(self, request, pk=None):
         championship = self.get_object()
         if request.method == 'GET':
+            from django.db.models import Q
             event_id = request.query_params.get('event')
             gender = request.query_params.get('gender')
             show_all_rounds = request.query_params.get('all_rounds')
@@ -444,16 +445,29 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     results = results.filter(round_type__in=['Heats', 'Prelims'])
                 else:
                     results = results.filter(round_type=round_type_filter)
-            # By default, show only the best round per swimmer per event
-            # If Finals exist for this event, show only Finals
-            # Otherwise show all (timed finals / single round)
+            # By default, show only the best round per swimmer per event.
+            # This is decided PER AGE CATEGORY: different categories in the same
+            # event can have different round structures (e.g. older groups swim
+            # prelims+finals while younger groups swim timed finals only), so a
+            # blanket event-wide filter would wipe out whole categories.
             elif not show_all_rounds and event_id:
                 rounds = set(results.values_list('round_type', flat=True))
                 if 'Finals' in rounds and len(rounds) > 1:
-                    results = results.filter(round_type='Finals')
+                    # Keep each category's Finals; categories that have no
+                    # Finals round keep all their rows (so they don't vanish).
+                    cats_with_finals = set(
+                        results.filter(round_type='Finals')
+                        .values_list('category', flat=True).distinct())
+                    results = results.filter(
+                        Q(round_type='Finals') | ~Q(category__in=cats_with_finals))
                 elif 'Prelims' in rounds and '' in rounds and len(rounds) > 1:
-                    # Has both prelims and unlabeled — keep unlabeled (likely timed finals)
-                    results = results.exclude(round_type='Prelims')
+                    # Drop prelims only for categories that also have an
+                    # unlabeled (timed-final) row; prelims-only categories stay.
+                    cats_blank = set(
+                        results.filter(round_type='')
+                        .values_list('category', flat=True).distinct())
+                    results = results.exclude(
+                        Q(round_type='Prelims') & Q(category__in=cats_blank))
             # Order by id so the frontend receives rows in import/file order;
             # category tab ordering derives from first-seen id per category.
             serializer = ResultSerializer(results.order_by('id'), many=True)

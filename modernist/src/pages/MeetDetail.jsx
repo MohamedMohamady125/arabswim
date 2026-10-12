@@ -2856,7 +2856,14 @@ const sinkStatusRows = (arr) => [...arr.filter((r) => !isStatusRow(r)), ...arr.f
 const normCat = (s) => (s || '').toString().toLowerCase().replace(/[\s_-]+/g, '')
 const filterByCategory = (arr, ageCategory) => {
   const want = normCat(ageCategory)
-  if (!want) return arr
+  if (!want) {
+    // Blank-category program row (e.g. a bulletin catch-all line). Show only
+    // the genuinely uncategorized rows so it doesn't dump every category's
+    // swimmers lumped together. If the event has no categorized rows at all
+    // (a simple single-category meet), show everything.
+    const hasCats = arr.some((r) => normCat(r.category))
+    return hasCats ? arr.filter((r) => !normCat(r.category)) : arr
+  }
   const matched = arr.filter((r) => normCat(r.category) === want)
   // If nothing matches (results stored without categories), fall back to all rows
   return matched.length > 0 ? matched : arr

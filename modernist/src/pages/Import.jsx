@@ -107,7 +107,8 @@ export default function Import() {
   // When several files are selected, combine them into ONE meet (e.g. one PDF
   // per day of the same championship) instead of one meet per file.
   const [combineFiles, setCombineFiles] = useState(true)
-  const [importMethod, setImportMethod] = useState(null) // null, 'pdf', 'excel', 'html'
+  const [importMethod, setImportMethod] = useState(null) // null, 'pdf', 'excel', 'html', 'special'
+  const [specialSearch, setSpecialSearch] = useState('') // filter in "Upload Special" match step
   const [step, setStep] = useState(0) // 0=method, 1=upload, 2=details+edit, 3=match, 4=done
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
@@ -385,7 +386,10 @@ export default function Import() {
         setLoadingMsg(included.length > 1 ? `Matching swimmers ${done} / ${included.length}…` : 'Matching swimmers…')
         const res = await matchSwimmers(updated[i].importId)
         const auto = {}
-        for (const m of res.data.matches) {
+        // "Upload Special": default EVERYONE to skip — the admin opts athletes
+        // in one by one, so leave decisions empty here (the backend treats an
+        // unlisted swimmer as skip when special=true).
+        for (const m of (special ? [] : res.data.matches)) {
           if (m.match_type === 'exact' || (m.match_type === 'fuzzy' && m.confidence >= 92)) {
             auto[m.parsed_name] = { action: 'match', swimmer_id: m.matched_swimmer?.id }
           } else {
@@ -427,6 +431,7 @@ export default function Import() {
         const payload = {
           import_id: m.importId,
           swimmer_decisions: m.decisions,
+          special,
         }
         if (m.existingChampId) {
           payload.championship_id = Number(m.existingChampId)
@@ -499,11 +504,28 @@ export default function Import() {
     })
   }
 
+  // "Upload Special": toggle whether a parsed athlete is kept. Checked uses
+  // the same match/create decision the normal flow would (so an existing
+  // profile is reused); unchecked drops the athlete from the decisions,
+  // leaving the backend to skip them.
+  const toggleKeep = (m, keep) => {
+    const next = { ...meet.decisions }
+    if (keep) {
+      next[m.parsed_name] = (m.match_type === 'exact' || (m.match_type === 'fuzzy' && m.confidence >= 92))
+        ? { action: 'match', swimmer_id: m.matched_swimmer?.id }
+        : { action: 'create', auto: true }
+    } else {
+      delete next[m.parsed_name]
+    }
+    updateMeet(active, { decisions: next })
+  }
+
   const resetAll = () => {
     setImportMethod(null)
     setStep(0)
     setMeets([])
     setActive(0)
+    setSpecialSearch('')
     setError('')
   }
 
@@ -516,6 +538,8 @@ export default function Import() {
 
   const acceptTypes = importMethod === 'pdf' ? '.pdf' : importMethod === 'excel' ? '.xlsx,.xls,.csv' : importMethod === 'html' ? '.html,.htm' : '.pdf,.html,.htm,.xlsx,.xls,.csv'
   const allowMultiple = true
+  // "Upload Special": import a file but keep ONLY hand-picked athletes.
+  const special = importMethod === 'special'
 
   // Tab bar for switching between uploaded meets (steps 2-4)
   const meetTabs = meets.length > 1 && (
@@ -611,11 +635,12 @@ export default function Import() {
           <>
             {/* Step 0: Method selection */}
             {step === 0 && (
-              <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+              <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                 {[
                   { key: 'pdf', title: 'Upload PDF', desc: 'Import from PDF files (Splash, HY-TEK, FRMN)' },
                   { key: 'excel', title: 'Upload Excel', desc: `Import from Excel or CSV files — up to ${MAX_FILES} files at once` },
                   { key: 'html', title: 'Upload HTML', desc: "Import from HTML files (Nat'2i Tunisia format)" },
+                  { key: 'special', title: 'Upload Special', desc: 'Any file (PDF/Excel/HTML) — keep only the specific athletes you pick' },
                 ].map((m) => (
                   <button
                     key={m.key}
@@ -640,16 +665,18 @@ export default function Import() {
             {step === 1 && (
               <div style={{ border: '1px solid var(--color-divider)', padding: '48px 32px', textAlign: 'center' }}>
                 <div className="kicker" style={{ marginBottom: 8 }}>
-                  {importMethod === 'pdf' ? 'PDF' : importMethod === 'html' ? 'HTML' : 'Excel / CSV'}
+                  {importMethod === 'pdf' ? 'PDF' : importMethod === 'html' ? 'HTML' : special ? 'Special' : 'Excel / CSV'}
                 </div>
                 <h3 style={{ marginBottom: 8 }}>
-                  Upload {importMethod === 'pdf' ? 'PDF' : importMethod === 'html' ? 'HTML' : 'Excel/CSV'} file{allowMultiple ? 's' : ''}
+                  Upload {importMethod === 'pdf' ? 'PDF' : importMethod === 'html' ? 'HTML' : special ? '' : 'Excel/CSV'} file{allowMultiple ? 's' : ''}
                 </h3>
                 <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 24 }}>
                   {importMethod === 'pdf'
                     ? `Supports Splash, HY-TEK, FRMN and other PDF formats — select up to ${MAX_FILES} files at once`
                     : importMethod === 'html'
                     ? `Supports Nat'2i HTML format (Tunisia) — select up to ${MAX_FILES} files at once`
+                    : special
+                    ? `PDF, HTML, Excel or CSV — after parsing you'll pick only the specific athletes to keep. Select up to ${MAX_FILES} files.`
                     : `Supports .xlsx, .xls, and .csv files — select up to ${MAX_FILES} files`}
                 </p>
 
@@ -1102,13 +1129,32 @@ export default function Import() {
 
                 <div style={{ border: '1px solid var(--color-divider)', padding: 20, marginBottom: 16 }}>
                   <div className="kicker" style={{ marginBottom: 14 }}>
-                    Swimmer matching{meets.length > 1 ? ` — ${meet.champForm.name || meet.fileName}` : ''}
+                    {special ? 'Pick athletes to keep' : 'Swimmer matching'}{meets.length > 1 ? ` — ${meet.champForm.name || meet.fileName}` : ''}
                   </div>
-                  <StatCells items={[
-                    [meet.matchStats.exact_matches || 0, 'Exact matches'],
-                    [meet.matchStats.fuzzy_matches || 0, 'Fuzzy matches'],
-                    [meet.matchStats.new_swimmers || 0, 'New swimmers'],
-                  ]} />
+                  {special ? (
+                    <>
+                      <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: -6, marginBottom: 14 }}>
+                        Only the athletes you tick are imported — everyone else (and all relay/team results) is left out. Search by name to find them.
+                      </p>
+                      <StatCells items={[
+                        [meet.matches.length, 'Athletes in file'],
+                        [Object.keys(meet.decisions || {}).length, 'Selected to keep'],
+                      ]} />
+                      <input
+                        className="input"
+                        placeholder="Search athletes by name…"
+                        value={specialSearch}
+                        onChange={(e) => setSpecialSearch(e.target.value)}
+                        style={{ marginTop: 14, width: '100%', maxWidth: 420 }}
+                      />
+                    </>
+                  ) : (
+                    <StatCells items={[
+                      [meet.matchStats.exact_matches || 0, 'Exact matches'],
+                      [meet.matchStats.fuzzy_matches || 0, 'Fuzzy matches'],
+                      [meet.matchStats.new_swimmers || 0, 'New swimmers'],
+                    ]} />
+                  )}
                 </div>
 
                 {/* Matches table */}
@@ -1117,15 +1163,28 @@ export default function Import() {
                     <table className="table">
                       <thead>
                         <tr>
+                          {special && <th style={{ width: 54 }}>Keep</th>}
                           <th>Parsed name</th>
                           <th>Match</th>
                           <th>Confidence</th>
-                          <th>Action</th>
+                          {!special && <th>Action</th>}
                         </tr>
                       </thead>
                       <tbody>
-                        {meet.matches.map((m, i) => (
+                        {meet.matches
+                          .filter((m) => !special || !specialSearch
+                            || m.parsed_name.toLowerCase().includes(specialSearch.toLowerCase()))
+                          .map((m, i) => (
                           <tr key={i}>
+                            {special && (
+                              <td style={{ textAlign: 'center' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!meet.decisions[m.parsed_name]}
+                                  onChange={(e) => toggleKeep(m, e.target.checked)}
+                                />
+                              </td>
+                            )}
                             <td>
                               <div style={{ fontWeight: 600 }}>{m.parsed_name}</div>
                               <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
@@ -1155,6 +1214,7 @@ export default function Import() {
                                 {m.confidence}%
                               </span>
                             </td>
+                            {!special && (
                             <td>
                               <select
                                 className="select"
@@ -1170,6 +1230,7 @@ export default function Import() {
                                 <option value="skip">Skip</option>
                               </select>
                             </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -1179,7 +1240,8 @@ export default function Import() {
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                   <button type="button" className="btn btn-secondary" onClick={() => setStep(2)}>Back</button>
-                  <button type="button" className="btn btn-primary" onClick={handleConfirm} disabled={loading}>
+                  <button type="button" className="btn btn-primary" onClick={handleConfirm}
+                    disabled={loading || (special && meets.reduce((n, m) => n + Object.keys(m.decisions || {}).length, 0) === 0)}>
                     {loading ? (loadingMsg || 'Importing…')
                       : meets.length > 1 ? `Confirm import (${meets.length} meets) ✓` : 'Confirm import ✓'}
                   </button>

@@ -929,7 +929,7 @@ def _extend_meet_dates(championship, new_date, new_end_date=None):
 
 @transaction.atomic
 def confirm_import(preview_data, swimmer_decisions, championship_id=None, championship_details=None,
-                   progress_cb=None):
+                   progress_cb=None, special=False):
     """
     Step 3: Confirm and save the imported data.
 
@@ -948,6 +948,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             import transaction — it must not write through this thread's
             DB connection (background jobs copy the text to a shared dict
             that a separate thread persists).
+        special: "Upload Special" mode. The meet is created normally but
+            ONLY the explicitly-selected athletes are kept — every swimmer
+            not named in swimmer_decisions defaults to 'skip' (instead of
+            'auto'), and relay results are dropped entirely (a relay is a
+            team, not a selectable individual athlete). Used for very old
+            meets where only a handful of Arab swimmers are worth keeping.
 
     Returns: Summary of what was saved.
     """
@@ -1196,6 +1202,11 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             # only to hold results and are hidden from the Swimmers section.
 
             if is_relay or result_data.get('is_relay', False):
+                # "Upload Special" keeps only hand-picked individual athletes;
+                # relay (team) results are never part of that selection.
+                if special:
+                    skipped_results += 1
+                    continue
                 # Guard: a relay "swimmer" is a team name. If parsing glitched
                 # and the name is a time/number, skip instead of creating a
                 # junk placeholder swimmer (which then becomes a junk Team).
@@ -1245,7 +1256,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     result_data.get('club', ''))
                 if ind_key not in swimmer_map:
                     decision = swimmer_decisions.get(parsed_name, swimmer_decisions.get(name_upper, {}))
-                    action = decision.get('action', 'auto')
+                    # "Upload Special": keep only explicitly-selected athletes
+                    # — anyone not named in the decisions is skipped.
+                    action = decision.get('action', 'skip' if special else 'auto')
 
                     # A multi-meet batch matches every meet's swimmers up front
                     # — before any meet is imported — so a shared athlete is

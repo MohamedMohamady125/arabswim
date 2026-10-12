@@ -384,7 +384,7 @@ export default function Import() {
         if (updated[i].excluded) continue
         done++
         setLoadingMsg(included.length > 1 ? `Matching swimmers ${done} / ${included.length}…` : 'Matching swimmers…')
-        const res = await matchSwimmers(updated[i].importId)
+        const res = await matchSwimmers(updated[i].importId, special)
         const auto = {}
         // "Upload Special": default EVERYONE to skip — the admin opts athletes
         // in one by one, so leave decisions empty here (the backend treats an

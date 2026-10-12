@@ -832,12 +832,15 @@ ARAB_COUNTRY_CODES = {
 }
 
 
-def match_swimmers_preview(preview_data):
+def match_swimmers_preview(preview_data, include_all=False):
     """
     Step 2: Match extracted swimmers against database.
     Returns enriched preview with match suggestions.
     Only shows Arab nationality swimmers for matching — other swimmers'
     results are kept but they don't need accounts created.
+
+    include_all: for "Upload Special", list EVERY parsed swimmer (including
+    non-Arab nationalities) so the admin can hand-pick any of them to keep.
     """
     swimmers = preview_data.get('swimmers', [])
     matched = []
@@ -847,7 +850,7 @@ def match_swimmers_preview(preview_data):
     for s in swimmers:
         # Skip non-Arab swimmers in matching (their results are still imported)
         nat_code = s.get('nationality_code', '').upper()
-        if nat_code and nat_code not in ARAB_COUNTRY_CODES:
+        if not include_all and nat_code and nat_code not in ARAB_COUNTRY_CODES:
             continue
         # Create a minimal ParsedResult for matching
         pr = ParsedResult(

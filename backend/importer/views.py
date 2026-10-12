@@ -149,7 +149,10 @@ class MatchSwimmersView(APIView):
             return Response({'error': 'Import session expired. Please upload again.'}, status=404)
 
         preview = json.loads(preview_json)
-        matches = match_swimmers_preview(preview)
+        # "Upload Special" lets the admin hand-pick ANY athlete to keep, so
+        # the pick-list must include non-Arab swimmers too (normally skipped).
+        include_all = bool(request.data.get('include_all'))
+        matches = match_swimmers_preview(preview, include_all=include_all)
 
         return Response({
             'import_id': import_id,

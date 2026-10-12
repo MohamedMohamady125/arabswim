@@ -75,8 +75,10 @@ def _clusters_for_group(members):
 
 
 def _keeper(cluster, result_counts):
-    """Richest profile: most results, then fullest name, then lowest id."""
+    """Keeper priority: a manually-edited profile wins (manual edits must
+    never be clobbered), then richest (most results), fullest name, lowest id."""
     return max(cluster, key=lambda s: (
+        1 if getattr(s, 'manually_edited', False) else 0,
         result_counts.get(s.id, 0), len(s.name or ''), -s.id))
 
 
@@ -101,7 +103,7 @@ class Command(BaseCommand):
             qs = qs.filter(nationality__code__iexact=code)
 
         members = list(qs.only('id', 'name', 'birth_year', 'date_of_birth',
-                               'nationality_id'))
+                               'nationality_id', 'manually_edited'))
         self.stdout.write(f'Swimmers in scope: {len(members)}'
                           + (f'  (country={code})' if code else ''))
 

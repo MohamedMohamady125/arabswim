@@ -2865,8 +2865,13 @@ const filterByCategory = (arr, ageCategory) => {
     return hasCats ? arr.filter((r) => !normCat(r.category)) : arr
   }
   const matched = arr.filter((r) => normCat(r.category) === want)
-  // If nothing matches (results stored without categories), fall back to all rows
-  return matched.length > 0 ? matched : arr
+  if (matched.length > 0) return matched
+  // Nothing matched this category. Only fall back to all rows when the data
+  // is genuinely category-less (results stored without categories). If the
+  // rows DO carry categories, this program item's category simply has no rows
+  // in this round (e.g. a group that swam finals but no separate prelims) —
+  // return empty so we never leak other categories' swimmers into it.
+  return arr.some((r) => normCat(r.category)) ? [] : arr
 }
 
 function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, autoOpen }) {

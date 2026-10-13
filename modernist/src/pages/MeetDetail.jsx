@@ -1074,6 +1074,10 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
               }).map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
+              {/* The uncategorized (blank) group in a meet that otherwise has
+                  age groups is the open/senior (18+) category — offer it so it
+                  isn't hidden, making 15-17 look like the oldest group. */}
+              {categories.includes('') && <option value="">Open</option>}
             </select>
           </div>
         )}
@@ -1183,9 +1187,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                       <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>TC — all categories, ranked by time</td>
                     </tr>
                   )}
-                  {selectedCategory === 'ALL' && hasCategories && cat && (
+                  {selectedCategory === 'ALL' && hasCategories && (
                     <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>{cat}</td>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>{cat || 'Open'}</td>
                     </tr>
                   )}
                   {catRows.map((r) => renderRow(r, fullByCat.get(cat) || catRows))}
@@ -2674,6 +2678,14 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
   const sessionLabel = { HEATS: 'Morning', SEMIS: 'Semi-Finals', FINALS: 'Evening', OTHER: 'Events' }
   const sessionOrder = ['HEATS', 'SEMIS', 'FINALS', 'OTHER']
 
+  // When a meet has real age groups, the uncategorized (blank) program lines
+  // are the open/senior (18+) group — label them "Open" instead of leaving
+  // them unlabeled, which looks like the oldest group is 15-17.
+  const programHasCategories = useMemo(() => {
+    if (!program?.days) return false
+    return program.days.some((d) => (d.items || []).some((it) => (it.age_category || '').trim()))
+  }, [program])
+
   return (
     <div>
       {/* Admin tools */}
@@ -2793,7 +2805,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                         marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
                       }}>Men</div>
                       {g.M.map((p, i) => (
-                        <EventRow key={`${p.event}-M-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact autoOpen={isDeepTarget(p)} />
+                        <EventRow key={`${p.event}-M-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact autoOpen={isDeepTarget(p)} openCat={programHasCategories} />
                       ))}
                     </div>
                     {/* Women column */}
@@ -2804,14 +2816,14 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                         marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
                       }}>Women</div>
                       {g.F.map((p, i) => (
-                        <EventRow key={`${p.event}-F-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact autoOpen={isDeepTarget(p)} />
+                        <EventRow key={`${p.event}-F-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact autoOpen={isDeepTarget(p)} openCat={programHasCategories} />
                       ))}
                     </div>
                   </div>
                 ) : (
                   /* Single gender or mixed — full width */
                   [...g.M, ...g.F, ...g.X].map((p, i) => (
-                    <EventRow key={`${p.event}-${p.gender}-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} autoOpen={isDeepTarget(p)} />
+                    <EventRow key={`${p.event}-${p.gender}-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} autoOpen={isDeepTarget(p)} openCat={programHasCategories} />
                   ))
                 )}
 
@@ -2824,7 +2836,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                       marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
                     }}>Mixed</div>
                     {g.X.map((p, i) => (
-                      <EventRow key={`${p.event}-X-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} autoOpen={isDeepTarget(p)} />
+                      <EventRow key={`${p.event}-X-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} autoOpen={isDeepTarget(p)} openCat={programHasCategories} />
                     ))}
                   </div>
                 )}
@@ -2874,7 +2886,7 @@ const filterByCategory = (arr, ageCategory) => {
   return arr.some((r) => normCat(r.category)) ? [] : arr
 }
 
-function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, autoOpen }) {
+function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, autoOpen, openCat }) {
   const [open, setOpen] = useState(false)
   const [athlete, setAthlete] = useState(null) // swimmer_detail → pop-over card
   const rowRef = React.useRef(null)
@@ -3011,12 +3023,12 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
             whiteSpace: 'nowrap', flex: 'none',
           }}>{roundBadge}</span>
         )}
-        {p.age_category && (
+        {(p.age_category || openCat) && (
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
             background: 'var(--color-accent-100)', color: 'var(--color-accent)',
             whiteSpace: 'nowrap', flex: 'none',
-          }}>{p.age_category}</span>
+          }}>{p.age_category || 'Open'}</span>
         )}
         <span style={{ fontWeight: 800, fontSize: 11, color: 'var(--color-accent)', flex: 'none', width: 14, textAlign: 'center' }}>{open ? '▲' : '▼'}</span>
       </div>

@@ -785,13 +785,18 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       if (cur === undefined || (r.id != null && r.id < cur)) minId.set(cat, r.id ?? Infinity)
     })
     order.sort((a, b) => (minId.get(a) ?? Infinity) - (minId.get(b) ?? Infinity))
-    // Boys/Girls view on age-category meets: show only age-category results —
-    // drop the uncategorized/open bucket. Guarded so a heats-pooled selection
-    // (everything pooled under '') or a selection with no named categories at
-    // all never blanks the table.
+    // Age-category meets: list the age groups first, then the uncategorized
+    // open/senior (18+) bucket as its own group at the end — so the open
+    // category is visible by default, not only when picked from the filter.
+    // Guarded so a heats-pooled selection (everything pooled under '') or a
+    // selection with no named categories at all never blanks the table.
     if (meetHasAgeCategories && !poolHeats) {
       const named = order.filter((c) => c !== '')
-      if (named.length > 0) return named.map((cat) => [cat, byCat.get(cat)])
+      if (named.length > 0) {
+        const groups = named.map((cat) => [cat, byCat.get(cat)])
+        if (order.includes('')) groups.push(['', byCat.get('')])
+        return groups
+      }
     }
     return order.map((cat) => [cat, byCat.get(cat)])
   }, [rows, selectedRound, selectedCategory, isOpenView, bFinalNoMedals, finalsCats, meetHasAgeCategories, poolHeats, isAllMode, ageView, categoryGenderMap])

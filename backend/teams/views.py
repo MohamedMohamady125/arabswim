@@ -340,6 +340,64 @@ class TeamViewSet(viewsets.ModelViewSet):
 
         return Response(lines)
 
+    @action(detail=True, methods=['get'])
+    def depth(self, request, pk=None):
+        """Squad depth per event: how many swimmers the club fields in each
+        event and its strongest few times. Shows where the roster is deep vs
+        thin. ?pool=LCM &gender=M|F filter the view."""
+        team = self.get_object()
+        from django.db.models import Min, Max
+
+        pool = request.query_params.get('pool', 'LCM')
+        gender = request.query_params.get('gender')
+
+        def _fmt_cs(cs):
+            minutes = cs // 6000
+            seconds = (cs % 6000) // 100
+            centis = cs % 100
+            if minutes:
+                return f'{minutes}:{seconds:02d}.{centis:02d}'
+            return f'{seconds}.{centis:02d}'
+
+        base = self._full_report_results(team).filter(
+            swimmer__is_relay_team=False, event__is_relay=False,
+            time_centiseconds__gt=0, championship__pool=pool,
+        )
+        if gender in ('M', 'F'):
+            base = base.filter(swimmer__sex=gender)
+
+        # One best time per swimmer per event.
+        best = (base.values(
+            'event_id', 'event__name', 'event__stroke', 'event__distance',
+            'event__sort_order', 'swimmer_id', 'swimmer__name')
+            .annotate(best_cs=Min('time_centiseconds'), best_fina=Max('fina_points')))
+
+        events = {}
+        for row in best:
+            eid = row['event_id']
+            ev = events.setdefault(eid, {
+                'event_id': eid, 'event_name': row['event__name'],
+                'stroke': row['event__stroke'], 'distance': row['event__distance'],
+                'sort_order': row['event__sort_order'] or 0, 'swimmers': [],
+            })
+            ev['swimmers'].append({
+                'swimmer_id': row['swimmer_id'], 'name': row['swimmer__name'],
+                'time': _fmt_cs(row['best_cs']), 'time_cs': row['best_cs'],
+                'fina_points': row['best_fina'],
+            })
+
+        out = []
+        for ev in events.values():
+            ev['swimmers'].sort(key=lambda s: s['time_cs'])
+            out.append({
+                'event_id': ev['event_id'], 'event_name': ev['event_name'],
+                'stroke': ev['stroke'], 'distance': ev['distance'],
+                'swimmer_count': len(ev['swimmers']),
+                'top': ev['swimmers'][:5],
+            })
+        out.sort(key=lambda e: (events[e['event_id']]['sort_order'], e['distance']))
+        return Response(out)
+
     @action(detail=True, methods=['post'], url_path='upload_logo')
     def upload_logo(self, request, pk=None):
         team = self.get_object()

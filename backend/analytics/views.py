@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db.models.functions import TruncDate, ExtractHour
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -177,6 +177,29 @@ def summary(request):
     )}
     hourly = [{'hour': h, 'views': hourly_raw.get(h, 0)} for h in range(24)]
 
+    # Engagement funnel: of all visitors, how many went deeper into the site.
+    # Stages are reach-based (a visitor counts for a stage if they hit any of
+    # its paths in the window), so the bars show progressive drop-off from a
+    # first visit to real content engagement.
+    LIST_ROOTS = ['/swimmers', '/meets', '/rankings', '/records', '/medals',
+                  '/clubs', '/teams', '/countries', '/championships',
+                  '/academies', '/coaches', '/calendar', '/news']
+    browse_q = Q()
+    for root in LIST_ROOTS:
+        browse_q |= Q(path=root) | Q(path=root + '/')
+    detail_q = Q(path__regex=r'^/(swimmers|meets|teams|clubs|countries|academies|coaches|articles)/[^/]+')
+    deep_q = Q(path__regex=r'^/(live|compare|reports|predictions|lab)(/|$)')
+
+    def reach(q):
+        return qs.filter(q).values('visitor').distinct().count()
+
+    funnel = [
+        {'stage': 'Visited site', 'visitors': visitors},
+        {'stage': 'Browsed a listing', 'visitors': reach(browse_q)},
+        {'stage': 'Opened a profile', 'visitors': reach(detail_q)},
+        {'stage': 'Deep engagement', 'visitors': reach(deep_q)},
+    ]
+
     return Response({
         'days': days,
         'totals': {
@@ -202,4 +225,5 @@ def summary(request):
         'browsers': browsers,
         'countries': countries,
         'hourly': hourly,
+        'funnel': funnel,
     })

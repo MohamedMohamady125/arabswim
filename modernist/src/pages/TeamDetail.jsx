@@ -26,6 +26,7 @@ const getTeamStats = (id) => api.get(`/teams/${id}/stats/`)
 const getTeamRanking = (id) => api.get(`/teams/${id}/ranking/`)
 const getTeamPrediction = (id, params) => api.get(`/teams/${id}/prediction/`, { params })
 const getTeamProgression = (id, params) => api.get(`/teams/${id}/progression/`, { params })
+const getTeamDepth = (id, params) => api.get(`/teams/${id}/depth/`, { params })
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
@@ -68,6 +69,7 @@ const TABS = [
   { value: 'training', label: 'Training' },
   { value: 'statistics', label: 'Statistics' },
   { value: 'progression', label: 'Progression' },
+  { value: 'depth', label: 'Squad Depth' },
   { value: 'records', label: 'Records' },
   { value: 'ranking', label: 'Ranking' },
   { value: 'medals', label: 'Medals' },
@@ -570,6 +572,66 @@ function ProgressionTab({ id }) {
         <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
       </div>
       {lines === null ? <Loading label="Loading progression" /> : <TeamProgressionChart lines={lines} />}
+    </div>
+  )
+}
+
+// ── Squad depth tab (how many swimmers per event + strongest few) ─
+
+function DepthTab({ id }) {
+  const [pool, setPool] = useState('LCM')
+  const [gender, setGender] = useState('')
+  const [rows, setRows] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    setRows(null)
+    getTeamDepth(id, { pool, ...(gender ? { gender } : {}) })
+      .then((r) => alive && setRows(Array.isArray(r.data) ? r.data : []))
+      .catch(() => alive && setRows([]))
+    return () => { alive = false }
+  }, [id, pool, gender])
+
+  const maxCount = rows && rows.length ? Math.max(...rows.map((e) => e.swimmer_count), 1) : 1
+
+  return (
+    <div className="pad-lg">
+      <TabHeading title="Squad Depth" />
+      <div style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--color-neutral-600)', margin: '-8px 0 18px' }}>
+        How many swimmers the club fields in each event, and its strongest times
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
+        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
+        <Seg options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={setGender} />
+      </div>
+      {rows === null ? <Loading label="Loading squad depth" />
+        : rows.length === 0 ? <Empty label="No times for this selection" />
+          : (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {rows.map((e) => (
+                <div key={e.event_id} style={{ border: '1px solid var(--color-divider)', borderRadius: 8, background: '#fff', padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)', flex: 1, minWidth: 0 }}>{e.event_name}</span>
+                    <div style={{ flex: '1 1 140px', maxWidth: 180, background: 'var(--color-neutral-100)' }}>
+                      <div style={{ width: `${Math.max((e.swimmer_count / maxCount) * 100, 4)}%`, height: 16, background: 'var(--color-accent)' }} />
+                    </div>
+                    <span className="asw-num" style={{ flex: 'none', fontSize: 12.5, fontWeight: 800, color: 'var(--color-accent-800)' }}>
+                      {e.swimmer_count} {e.swimmer_count === 1 ? 'swimmer' : 'swimmers'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
+                    {e.top.map((s, i) => (
+                      <span key={s.swimmer_id} style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--color-neutral-600)', marginRight: 4 }}>{i + 1}.</span>
+                        <SwimmerLink id={s.swimmer_id} name={s.name} />
+                        <span className="asw-num" style={{ fontWeight: 700, color: 'var(--color-accent-800)', marginLeft: 5 }}>{s.time}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
     </div>
   )
 }
@@ -1752,6 +1814,9 @@ export default function TeamDetail() {
 
       {/* ===== PROGRESSION ===== */}
       {tab === 'progression' && <ProgressionTab id={id} />}
+
+      {/* ===== SQUAD DEPTH ===== */}
+      {tab === 'depth' && <DepthTab id={id} />}
 
       {/* ===== RECORDS ===== */}
       {tab === 'records' && <RecordsTab records={records} photoById={photoById} sexById={sexById} />}

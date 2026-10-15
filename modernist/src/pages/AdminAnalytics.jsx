@@ -88,6 +88,33 @@ function Donut({ segments, size = 150, thickness = 26, centerTop, centerBot }) {
   )
 }
 
+function Funnel({ rows }) {
+  if (!rows || rows.length === 0) return <Empty label="No visitor data yet" />
+  const top = rows[0]?.visitors || 0
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      {rows.map((r, i) => {
+        const ofTop = top ? Math.round((r.visitors / top) * 100) : 0
+        const prev = i > 0 ? rows[i - 1].visitors : r.visitors
+        const ofPrev = prev ? Math.round((r.visitors / prev) * 100) : 100
+        return (
+          <div key={r.stage} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ width: 150, flex: 'none', fontSize: 11.5, fontWeight: 700 }}>{r.stage}</span>
+            <div style={{ flex: 1, background: 'var(--color-neutral-100)' }}>
+              <div style={{ width: `${Math.max(ofTop, 2)}%`, height: 20, background: NAVY, display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
+                <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>{formatNumber(r.visitors)}</span>
+              </div>
+            </div>
+            <span className="asw-num" style={{ width: 86, flex: 'none', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-600)' }}>
+              {ofTop}% of all{i > 0 ? ` · ${ofPrev}% kept` : ''}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function Panel({ title, children, style }) {
   return (
     <div className="qs-panel" style={style}>
@@ -191,6 +218,13 @@ export default function AdminAnalytics() {
           <LineChart color={GOLD} labelEvery={labelEvery}
             points={data.daily.map((d) => ({ label: shortDate(d.date), value: d.visitors }))} />
         </Panel>
+
+        {/* Engagement funnel */}
+        {data.funnel && (
+          <Panel title="Engagement Funnel — How Far Visitors Go">
+            <Funnel rows={data.funnel} />
+          </Panel>
+        )}
 
         {/* Pages + sources */}
         <div className="qs-perf-2">

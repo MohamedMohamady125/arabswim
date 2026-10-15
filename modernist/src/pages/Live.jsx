@@ -16,8 +16,15 @@ const POLL_MS = 60000
 // Days elapsed within the meet window (1-based), clamped to [1, total]
 function dayProgress(meet) {
   const start = new Date(meet.date?.split('/').reverse().join('-') || meet.date)
-  const end = new Date(meet.end_date ? meet.end_date.split('/').reverse().join('-') : start)
+  let end = new Date(meet.end_date ? meet.end_date.split('/').reverse().join('-') : start)
   if (Number.isNaN(start.getTime())) return null
+  // Guard against corrupt end dates (end before start, or an implausible
+  // span). Swim meets run a handful of days, never months — treat anything
+  // outside a sane window as a single-day meet rather than show "Day 126 of 178".
+  const spanDays = Math.round((end - start) / 86400000)
+  if (Number.isNaN(end.getTime()) || spanDays < 0 || spanDays > 31) {
+    end = start
+  }
   const total = Math.max(1, Math.round((end - start) / 86400000) + 1)
   const current = Math.min(total, Math.max(1, Math.floor((Date.now() - start.getTime()) / 86400000) + 1))
   return { current, total }

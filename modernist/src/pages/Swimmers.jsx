@@ -248,7 +248,7 @@ export default function Swimmers() {
   // countries once — Arab/GCC regions first
   useEffect(() => {
     let alive = true
-    getCountries()
+    getCountries({ has_swimmers: true })
       .then((res) => {
         if (!alive) return
         const list = Array.isArray(res.data) ? res.data : res.data?.results || []

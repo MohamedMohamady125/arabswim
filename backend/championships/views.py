@@ -1089,10 +1089,14 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if champ_id:
             champ = base.filter(pk=champ_id).first()
         else:
-            champ = (base.filter(is_published=True, is_calendar_only=False,
-                                 classification__name__in=['Arab', 'GCC'],
-                                 results__isnull=False)
-                     .order_by('-date').first())
+            published = base.filter(is_published=True, is_calendar_only=False,
+                                    results__isnull=False)
+            # Prefer a headline Arab/GCC meet; if none exist yet, fall back to
+            # the most recent published meet of any classification so the home
+            # page is never empty.
+            champ = (published.filter(classification__name__in=['Arab', 'GCC'])
+                     .order_by('-date').first()
+                     or published.order_by('-date').first())
         if not champ:
             return Response({'championship': None})
 

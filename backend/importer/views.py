@@ -6,6 +6,8 @@ from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.core.cache import cache
 
+from core.permissions import IsAdmin
+
 from .services import parse_file, match_swimmers_preview, confirm_import
 from .matcher import find_potential_duplicates, merge_swimmers
 from .models import ImportLog, ImportJob
@@ -41,6 +43,7 @@ class FileUploadView(APIView):
     Step 1: Upload a results file, parse it, and return a preview.
     POST /api/v1/import/upload/
     """
+    permission_classes = [IsAdmin]
     parser_classes = [MultiPartParser, FormParser]
 
     MAX_PDF_SIZE = MAX_PDF_SIZE
@@ -139,6 +142,8 @@ class MatchSwimmersView(APIView):
     POST /api/v1/import/match/
     Body: { import_id: "..." }
     """
+    permission_classes = [IsAdmin]
+
     def post(self, request):
         import_id = request.data.get('import_id')
         if not import_id:
@@ -313,6 +318,8 @@ class ConfirmImportView(APIView):
         }
     }
     """
+    permission_classes = [IsAdmin]
+
     def post(self, request):
         import_id = request.data.get('import_id')
         championship_id = request.data.get('championship_id')
@@ -406,6 +413,8 @@ class ImportJobStatusView(APIView):
     """Poll a background confirm-import job.
     GET /api/v1/import/confirm/<job_id>/
     """
+    permission_classes = [IsAdmin]
+
     def get(self, request, job_id):
         try:
             job = ImportJob.objects.get(id=job_id)
@@ -426,6 +435,8 @@ class DuplicateSwimmersView(APIView):
     Find potential duplicate swimmers in the database.
     GET /api/v1/import/duplicates/
     """
+    permission_classes = [IsAdmin]
+
     def get(self, request):
         duplicates = find_potential_duplicates()
         data = []
@@ -452,6 +463,8 @@ class MergeSwimmersView(APIView):
     POST /api/v1/import/merge/
     Body: { keep_id: int, remove_id: int } or { keep_id: int, remove_ids: [int, ...] }
     """
+    permission_classes = [IsAdmin]
+
     def post(self, request):
         keep_id = request.data.get('keep_id')
         remove_ids = request.data.get('remove_ids')
@@ -499,6 +512,8 @@ class ImportHistoryView(APIView):
     """
     GET /api/v1/import/history/
     """
+    permission_classes = [IsAdmin]
+
     def get(self, request):
         logs = ImportLog.objects.all()[:50]
         data = []
@@ -696,6 +711,7 @@ class ScrapeView(APIView):
     POST /api/v1/import/scrape/ {url}    — start a new scrape (async);
          optional ``name_pdfs`` files (heats PDFs) restore full names
     """
+    permission_classes = [IsAdmin]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
@@ -750,6 +766,7 @@ class ScrapeView(APIView):
 
 class ScrapeDownloadView(APIView):
     """GET /api/v1/import/scrape/{id}/download/ — the scraped data as .xlsx"""
+    permission_classes = [IsAdmin]
 
     def get(self, request, job_id):
         import io

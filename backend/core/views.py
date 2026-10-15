@@ -402,6 +402,15 @@ class CountryViewSet(viewsets.ModelViewSet):
     serializer_class = CountrySerializer
     pagination_class = None
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # ?has_swimmers=true → only countries with at least one real swimmer,
+        # so filter dropdowns list the ~dozen nations we actually have data
+        # for instead of all ~200 world nations.
+        if self.request.query_params.get('has_swimmers') == 'true':
+            qs = qs.filter(swimmers__is_relay_team=False).distinct()
+        return qs
+
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
         if request.query_params.get('with_stats'):

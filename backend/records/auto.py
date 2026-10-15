@@ -102,6 +102,11 @@ def check_and_update_records(result):
 
         rec_date = meet_date or __import__('datetime').date.today()
 
+        # This swim is the new standing record for the scope: demote the
+        # previous current record(s) so the "new records" list (is_new=True)
+        # shows only the latest, not every record ever broken here.
+        existing.filter(is_new=True).update(is_new=False)
+
         # New record! Create it
         Record.objects.create(
             swimmer=swimmer,

@@ -34,7 +34,7 @@ export default function Rankings() {
 
   useEffect(() => {
     let alive = true
-    Promise.allSettled([getCountries(), getEvents({ has_results: true })]).then(([cRes, eRes]) => {
+    Promise.allSettled([getCountries({ has_swimmers: true }), getEvents({ has_results: true })]).then(([cRes, eRes]) => {
       if (!alive) return
       const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
       const list = (d) => (Array.isArray(d) ? d : d?.results || [])

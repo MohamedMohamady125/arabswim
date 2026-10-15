@@ -41,6 +41,17 @@ def _limit(request, default=50, cap=500):
         return default
 
 
+def _int_param(p, key):
+    """Return an int query param, or None if absent/non-numeric."""
+    val = p.get(key)
+    if val in (None, ''):
+        return None
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return None
+
+
 def _filtered_results(request):
     p = request.query_params
     qs = Result.objects.filter(time_centiseconds__gt=0, is_hc=False)
@@ -48,28 +59,28 @@ def _filtered_results(request):
         qs = qs.filter(championship__date__gte=p['date_from'])
     if p.get('date_to'):
         qs = qs.filter(championship__date__lte=p['date_to'])
-    if p.get('championship'):
-        qs = qs.filter(championship_id=p['championship'])
-    if p.get('classification'):
-        qs = qs.filter(championship__classification_id=p['classification'])
-    if p.get('sub_classification'):
-        qs = qs.filter(championship__sub_classification_id=p['sub_classification'])
+    if _int_param(p, 'championship') is not None:
+        qs = qs.filter(championship_id=_int_param(p, 'championship'))
+    if _int_param(p, 'classification') is not None:
+        qs = qs.filter(championship__classification_id=_int_param(p, 'classification'))
+    if _int_param(p, 'sub_classification') is not None:
+        qs = qs.filter(championship__sub_classification_id=_int_param(p, 'sub_classification'))
     if p.get('country'):
         qs = qs.filter(nationality__code=p['country'].upper())
     if p.get('host_country'):
         qs = qs.filter(championship__country__code=p['host_country'].upper())
     if p.get('team'):
         qs = qs.filter(team__icontains=p['team'])
-    if p.get('event'):
-        qs = qs.filter(event_id=p['event'])
+    if _int_param(p, 'event') is not None:
+        qs = qs.filter(event_id=_int_param(p, 'event'))
     if p.get('pool'):
         qs = qs.filter(championship__pool=p['pool'])
     if p.get('gender'):
         qs = qs.filter(swimmer__sex=p['gender'])
-    if p.get('age_min'):
-        qs = qs.filter(age_at_competition__gte=p['age_min'])
-    if p.get('age_max'):
-        qs = qs.filter(age_at_competition__lte=p['age_max'])
+    if _int_param(p, 'age_min') is not None:
+        qs = qs.filter(age_at_competition__gte=_int_param(p, 'age_min'))
+    if _int_param(p, 'age_max') is not None:
+        qs = qs.filter(age_at_competition__lte=_int_param(p, 'age_max'))
     if p.get('round'):
         qs = qs.filter(round_type=p['round'])
     if p.get('meet_category'):
@@ -89,20 +100,20 @@ def _filtered_medals(request):
         qs = qs.filter(championship__date__gte=p['date_from'])
     if p.get('date_to'):
         qs = qs.filter(championship__date__lte=p['date_to'])
-    if p.get('championship'):
-        qs = qs.filter(championship_id=p['championship'])
-    if p.get('classification'):
-        qs = qs.filter(championship__classification_id=p['classification'])
-    if p.get('sub_classification'):
-        qs = qs.filter(championship__sub_classification_id=p['sub_classification'])
+    if _int_param(p, 'championship') is not None:
+        qs = qs.filter(championship_id=_int_param(p, 'championship'))
+    if _int_param(p, 'classification') is not None:
+        qs = qs.filter(championship__classification_id=_int_param(p, 'classification'))
+    if _int_param(p, 'sub_classification') is not None:
+        qs = qs.filter(championship__sub_classification_id=_int_param(p, 'sub_classification'))
     if p.get('country'):
         qs = qs.filter(nationality__code=p['country'].upper())
     if p.get('host_country'):
         qs = qs.filter(championship__country__code=p['host_country'].upper())
     if p.get('team'):
         qs = qs.filter(result__team__icontains=p['team'])
-    if p.get('event'):
-        qs = qs.filter(event_id=p['event'])
+    if _int_param(p, 'event') is not None:
+        qs = qs.filter(event_id=_int_param(p, 'event'))
     if p.get('pool'):
         qs = qs.filter(championship__pool=p['pool'])
     if p.get('gender'):

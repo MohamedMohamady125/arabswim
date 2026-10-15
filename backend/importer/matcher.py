@@ -398,12 +398,17 @@ def invalidate_norm_cache():
     _get_egy_cache pick up new rows incrementally."""
     global _norm_cache, _norm_cache_count, _norm_cache_max_id
     global _egy_cache, _egy_cache_count, _egy_cache_max_id
+    global _country_cache
     _norm_cache = None
     _norm_cache_count = None
     _norm_cache_max_id = None
     _egy_cache = None
     _egy_cache_count = None
     _egy_cache_max_id = None
+    # Country objects are cached by code/name for the life of the process;
+    # clear them too so a rebuilt set of Country rows isn't shadowed by
+    # stale (e.g. deleted/rolled-back) instances.
+    _country_cache = None
 
 
 # ── Egyptian name-variant matching ──────────────────────────────────────

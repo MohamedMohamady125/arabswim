@@ -159,7 +159,7 @@ export default function Records() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getCountries()
+    getCountries({ has_swimmers: true })
       .then((res) => {
         const list = Array.isArray(res.data) ? res.data : res.data?.results || []
         setCountries(list.filter((c) => c.region === 'ARAB' || c.region === 'GCC'))

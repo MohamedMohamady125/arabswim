@@ -63,7 +63,7 @@ export default function Medals() {
     getClassifications()
       .then((res) => setClassifications(list(res.data)))
       .catch(() => setClassifications([]))
-    getCountries()
+    getCountries({ has_swimmers: true })
       .then((res) => setCountries(list(res.data).filter((c) => c.region === 'ARAB' || c.region === 'GCC')))
       .catch(() => setCountries([]))
   }, [])

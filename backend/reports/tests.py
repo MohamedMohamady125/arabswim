@@ -83,6 +83,10 @@ class ReportsEndpointTests(TestCase):
         res = self.client.get('/api/v1/reports/top-times/')
         self.assertEqual(res.json()[0]['fina_points'], 800)
 
+    def test_top_times_non_numeric_event_is_ignored(self):
+        res = self.client.get('/api/v1/reports/top-times/?event=notanum')
+        self.assertEqual(res.status_code, 200)
+
     def test_participation_by_club(self):
         res = self.client.get('/api/v1/reports/participation/?group=club')
         rows = {r['name']: r for r in res.json()}

@@ -2814,6 +2814,14 @@ class SameMeetMergeTests(TestCase):
             pool='LCM', country=cls.country,
         )
 
+    def setUp(self):
+        super().setUp()
+        # The matcher keeps a process-global name index keyed on swimmer
+        # count; a prior test class can leave a stale index whose count
+        # collides with this transaction's. Reset it like sibling classes do.
+        from importer import matcher
+        matcher.invalidate_norm_cache()
+
     def test_near_date_same_name_reuses_meet(self):
         from datetime import date
         from .services import _find_same_meet

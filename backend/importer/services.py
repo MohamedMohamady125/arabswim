@@ -381,6 +381,13 @@ def normalize_name(text):
     # Convert to title case
     result = text.title()
     # Fix common patterns that title() breaks:
+    # Ordinals: "12Th" -> "12th", "1St" -> "1st", "3Rd" -> "3rd"
+    result = re.sub(r'(\d)(St|Nd|Rd|Th)\b',
+                    lambda m: m.group(1) + m.group(2).lower(), result)
+    # Acronyms title() lower-cases ("GCC" -> "Gcc"); restore the common
+    # swimming ones that appear in meet names.
+    for acro in ('GCC', 'UAE', 'KSA', 'FINA', 'MENA', 'CANA'):
+        result = re.sub(r'\b' + acro.title() + r'\b', acro, result)
     # Roman numerals
     for roman in ('Ii', 'Iii', 'Iv', 'Vi', 'Vii', 'Viii', 'Ix', 'Xi', 'Xii', 'Xiii', 'Xiv', 'Xv'):
         result = re.sub(r'\b' + roman + r'\b', roman.upper(), result)

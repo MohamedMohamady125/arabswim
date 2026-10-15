@@ -49,7 +49,7 @@ export default function SwimmersPage() {
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data.filter(c => c.region === 'ARAB' || c.region === 'GCC'))).catch(() => {})
+    getCountries({ has_swimmers: true }).then(res => setCountries(res.data.filter(c => c.region === 'ARAB' || c.region === 'GCC'))).catch(() => {})
   }, [])
 
   const fetchSwimmers = () => {

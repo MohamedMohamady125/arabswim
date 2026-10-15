@@ -18,7 +18,7 @@ export default function RankingsPage() {
   })
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data)).catch(() => {})
+    getCountries({ has_swimmers: true }).then(res => setCountries(res.data)).catch(() => {})
     getEvents({ has_results: true }).then(res => {
       setEvents(res.data)
       // Auto-select first non-relay event

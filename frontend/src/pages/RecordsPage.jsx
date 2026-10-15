@@ -31,7 +31,7 @@ export default function RecordsPage() {
   const isManualScope = !COMPUTED_SCOPES.includes(filters.scope)
 
   useEffect(() => {
-    getCountries().then(res => setCountries(res.data)).catch(() => {})
+    getCountries({ has_swimmers: true }).then(res => setCountries(res.data)).catch(() => {})
   }, [])
 
   const loadRecords = () => {

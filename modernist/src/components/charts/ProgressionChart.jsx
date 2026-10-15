@@ -4,7 +4,7 @@ import { Empty } from '../ui'
 /* ── Modernist chart palette (flat, no gradients) ─────────────────────── */
 export const CHART = {
   grid: '#dde4ec',          // neutral-300 gridlines
-  axisText: '#647388',      // neutral-600 tick labels
+  axisText: '#78879a',      // neutral-600 tick labels
   primary: '#1c4e86',       // navy accent
   series: ['#1c4e86', '#4a8fc0', '#b98a1e', '#0d7a52', '#a8402f', '#78879a'],
 }

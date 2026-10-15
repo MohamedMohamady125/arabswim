@@ -145,7 +145,7 @@ function Header() {
         className="rule-b"
         style={{
           display: 'flex', alignItems: 'center', gap: 24, padding: '14px 32px',
-          background: 'var(--color-accent-800)',
+          background: 'var(--color-box-top)',
         }}
       >
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto', textDecoration: 'none', color: 'inherit' }}>
@@ -201,7 +201,7 @@ function Footer() {
   const { isAdmin } = useAuth()
   const nav = useNav()
   return (
-    <footer className="rule-t" style={{ background: 'var(--color-accent-800)', color: '#ffffff', padding: '32px' }}>
+    <footer className="rule-t" style={{ background: 'var(--color-box-top)', color: '#ffffff', padding: '32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
         <img src="/logo.png" alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>ARABSWIM</span>

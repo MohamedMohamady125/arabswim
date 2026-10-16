@@ -142,7 +142,7 @@ export default function Rankings() {
             onChange={setGender}
           />
           <Seg
-            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }, { value: 'OW', label: 'Open Water' }]}
+            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
             value={pool}
             onChange={setPool}
           />

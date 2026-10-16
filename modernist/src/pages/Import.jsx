@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   uploadFile, matchSwimmers, confirmImport, getConfirmJob,
@@ -11,6 +11,7 @@ import {
   getChampionships, getChampionship, getClassifications, getSubClassifications,
   getResultsBySwimmer, bulkDeleteResults, setMeetProgram, applyTC,
 } from '../api/championships'
+import { searchSwimmers } from '../api/swimmers'
 import { POOL_TYPES, ARAB_COUNTRY_CODES, formatDate } from '../utils'
 import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
@@ -174,7 +175,7 @@ export default function Import() {
     setNamePdfs([])
     // Excel exports are one meet per file; PDFs/HTML are usually one meet split
     // over several daily files, so default to combining those.
-    setCombineFiles(method !== 'excel')
+    setCombineFiles(method !== 'excel' && method !== 'special_excel')
     setStep(1)
   }
 
@@ -385,12 +386,14 @@ export default function Import() {
         if (updated[i].excluded) continue
         done++
         setLoadingMsg(included.length > 1 ? `Matching swimmers ${done} / ${included.length}…` : 'Matching swimmers…')
-        const res = await matchSwimmers(updated[i].importId, special)
+        const res = await matchSwimmers(updated[i].importId, special || specialExcel)
         const auto = {}
         // "Upload Special": default EVERYONE to skip — the admin opts athletes
         // in one by one, so leave decisions empty here (the backend treats an
         // unlisted swimmer as skip when special=true).
-        for (const m of (special ? [] : res.data.matches)) {
+        // "Upload Special Excel": default everyone to the normal auto decision
+        // (match/create) — the per-athlete review lets the admin override.
+        for (const m of ((special && !specialExcel) ? [] : res.data.matches)) {
           if (m.match_type === 'exact' || (m.match_type === 'fuzzy' && m.confidence >= 92)) {
             auto[m.parsed_name] = { action: 'match', swimmer_id: m.matched_swimmer?.id }
           } else {
@@ -433,6 +436,7 @@ export default function Import() {
           import_id: m.importId,
           swimmer_decisions: m.decisions,
           special,
+          unpublished: specialExcel,
         }
         if (m.existingChampId) {
           payload.championship_id = Number(m.existingChampId)
@@ -505,6 +509,21 @@ export default function Import() {
     })
   }
 
+  // "Upload Special Excel": one athlete may appear in many of the uploaded
+  // meets, so a decision (merge/create/skip) must be written to EVERY included
+  // meet that lists that athlete. `decision` of null removes it (skip).
+  const setAthleteDecision = (name, decision) => {
+    setMeets((prev) => prev.map((m) => {
+      if (m.excluded) return m
+      const has = (m.matches || []).some((x) => (x.parsed_name || x.name_upper) === name)
+      if (!has) return m
+      const next = { ...(m.decisions || {}) }
+      if (decision) next[name] = decision
+      else delete next[name]
+      return { ...m, decisions: next }
+    }))
+  }
+
   // "Upload Special": toggle whether a parsed athlete is kept. Checked uses
   // the same match/create decision the normal flow would (so an existing
   // profile is reused); unchecked drops the athlete from the decisions,
@@ -537,10 +556,14 @@ export default function Import() {
 
   const stepLabels = ['Method', 'Upload file', 'Review & edit', 'Match swimmers', 'Done']
 
-  const acceptTypes = importMethod === 'pdf' ? '.pdf' : importMethod === 'excel' ? '.xlsx,.xls,.csv' : importMethod === 'html' ? '.html,.htm' : '.pdf,.html,.htm,.xlsx,.xls,.csv'
+  const acceptTypes = importMethod === 'pdf' ? '.pdf' : importMethod === 'excel' ? '.xlsx,.xls,.csv' : importMethod === 'html' ? '.html,.htm' : importMethod === 'special_excel' ? '.xlsx,.xls' : '.pdf,.html,.htm,.xlsx,.xls,.csv'
   const allowMultiple = true
   // "Upload Special": import a file but keep ONLY hand-picked athletes.
   const special = importMethod === 'special'
+  // "Upload Special Excel": import a swimmer-centric workbook of past swims
+  // across many meets; meets are created UNPUBLISHED (profile-only) and the
+  // review is per-athlete (merge/create) across every meet at once.
+  const specialExcel = importMethod === 'special_excel'
 
   // Tab bar for switching between uploaded meets (steps 2-4)
   const meetTabs = meets.length > 1 && (
@@ -642,6 +665,7 @@ export default function Import() {
                   { key: 'excel', title: 'Upload Excel', desc: `Import from Excel or CSV files — up to ${MAX_FILES} files at once` },
                   { key: 'html', title: 'Upload HTML', desc: "Import from HTML files (Nat'2i Tunisia format)" },
                   { key: 'special', title: 'Upload Special', desc: 'Any file (PDF/Excel/HTML) — keep only the specific athletes you pick' },
+                  { key: 'special_excel', title: 'Upload Special Excel', desc: 'Excel of past swims across many meets → onto swimmer profiles, without publishing the meets' },
                 ].map((m) => (
                   <button
                     key={m.key}
@@ -1126,8 +1150,16 @@ export default function Import() {
             {/* Step 3: Match & confirm */}
             {step === 3 && meet && (
               <div>
-                {meetTabs}
+                {!specialExcel && meetTabs}
 
+                {specialExcel && (
+                  <SpecialAthletesReview
+                    meets={meets}
+                    setAthleteDecision={setAthleteDecision}
+                  />
+                )}
+
+                {!specialExcel && <>
                 <div style={{ border: '1px solid var(--color-divider)', padding: 20, marginBottom: 16 }}>
                   <div className="kicker" style={{ marginBottom: 14 }}>
                     {special ? 'Pick athletes to keep' : 'Swimmer matching'}{meets.length > 1 ? ` — ${meet.champForm.name || meet.fileName}` : ''}
@@ -1238,12 +1270,16 @@ export default function Import() {
                     </table>
                   </div>
                 </div>
+                </>}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                   <button type="button" className="btn btn-secondary" onClick={() => setStep(2)}>Back</button>
                   <button type="button" className="btn btn-primary" onClick={handleConfirm}
-                    disabled={loading || (special && meets.reduce((n, m) => n + Object.keys(m.decisions || {}).length, 0) === 0)}>
+                    disabled={loading
+                      || (special && meets.reduce((n, m) => n + Object.keys(m.decisions || {}).length, 0) === 0)
+                      || (specialExcel && meets.reduce((n, m) => n + Object.keys(m.decisions || {}).length, 0) === 0)}>
                     {loading ? (loadingMsg || 'Importing…')
+                      : specialExcel ? 'Import onto profiles ✓'
                       : meets.length > 1 ? `Confirm import (${meets.length} meets) ✓` : 'Confirm import ✓'}
                   </button>
                 </div>
@@ -1258,6 +1294,250 @@ export default function Import() {
             )}
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+// "Upload Special Excel": review each athlete once, aggregated across every
+// uploaded meet. One decision (merge with existing / create new / skip) is
+// written to every meet that lists that athlete, so the imported swims all
+// land on the same profile.
+function SpecialAthletesReview({ meets, setAthleteDecision }) {
+  const [query, setQuery] = useState('')
+  const [expanded, setExpanded] = useState(null)
+  // per-athlete picked merge target chosen via search: { [name]: {id, name} }
+  const [pickedTargets, setPickedTargets] = useState({})
+  const [searchText, setSearchText] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
+
+  // Aggregate athletes across every INCLUDED meet, keyed by parsed name.
+  const athletes = useMemo(() => {
+    const byName = {}
+    meets.forEach((meet) => {
+      if (meet.excluded) return
+      const champName = meet.champForm?.name || meet.fileName || ''
+      const champDate = meet.champForm?.date || ''
+      ;(meet.matches || []).forEach((mt) => {
+        const key = mt.parsed_name || mt.name_upper
+        if (!key) return
+        if (!byName[key]) {
+          byName[key] = {
+            name: key,
+            birth_year: mt.birth_year,
+            nationality_code: mt.nationality_code,
+            gender: mt.gender,
+            clubs: new Set(),
+            matched_swimmer: mt.matched_swimmer || null,
+            match_type: mt.match_type,
+            confidence: mt.confidence,
+            decision: meet.decisions?.[key] || null,
+            swims: [],
+          }
+        }
+        const a = byName[key]
+        if (mt.club) a.clubs.add(mt.club)
+        if (!a.matched_swimmer && mt.matched_swimmer) {
+          a.matched_swimmer = mt.matched_swimmer
+          a.match_type = mt.match_type
+          a.confidence = mt.confidence
+        }
+        if (!a.decision && meet.decisions?.[key]) a.decision = meet.decisions[key]
+        ;(meet.editedPreview?.events || []).forEach((ev) => {
+          if (ev.is_relay) return
+          ;(ev.results || []).forEach((r) => {
+            if (r.swimmer_name === key) {
+              a.swims.push({
+                meet: champName,
+                date: champDate,
+                event: ev.event_name,
+                round: ev.round_type,
+                time: r.time_text,
+                category: r.category || '',
+              })
+            }
+          })
+        })
+      })
+    })
+    return Object.values(byName)
+      .map((a) => ({ ...a, clubs: Array.from(a.clubs) }))
+      .sort((a, b) => b.swims.length - a.swims.length)
+  }, [meets])
+
+  const kept = athletes.filter((a) => a.decision && a.decision.action !== 'skip').length
+  const filtered = query
+    ? athletes.filter((a) => a.name.toLowerCase().includes(query.toLowerCase()))
+    : athletes
+
+  // current action for an athlete's dropdown
+  const actionOf = (a) => a.decision?.action || 'create'
+
+  const setAction = (a, value) => {
+    if (value === 'skip') { setAthleteDecision(a.name, null); return }
+    if (value === 'match') {
+      const id = a.matched_swimmer?.id
+      if (id) setAthleteDecision(a.name, { action: 'match', swimmer_id: id })
+      return
+    }
+    if (value === 'match_picked') {
+      const t = pickedTargets[a.name]
+      if (t) setAthleteDecision(a.name, { action: 'match', swimmer_id: t.id })
+      return
+    }
+    setAthleteDecision(a.name, { action: 'create' })
+  }
+
+  const runSearch = async (text) => {
+    setSearchText(text)
+    if (!text || text.length < 2) { setSearchResults([]); return }
+    setSearching(true)
+    try {
+      const res = await searchSwimmers(text, { page_size: 8 })
+      const list = res.data?.results || res.data || []
+      setSearchResults(Array.isArray(list) ? list : [])
+    } catch {
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const pickTarget = (a, sw) => {
+    setPickedTargets((p) => ({ ...p, [a.name]: { id: sw.id, name: sw.name } }))
+    setAthleteDecision(a.name, { action: 'match', swimmer_id: sw.id })
+    setSearchText('')
+    setSearchResults([])
+  }
+
+  return (
+    <div>
+      <div style={{ border: '1px solid var(--color-divider)', padding: 20, marginBottom: 16 }}>
+        <div className="kicker" style={{ marginBottom: 6 }}>Review athletes</div>
+        <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: -2, marginBottom: 14 }}>
+          Every swim lands on a swimmer profile — the meets are imported unpublished, so
+          they show on the profile with full meet info but never appear in the results list.
+          For each athlete, merge with an existing profile or create a new one.
+        </p>
+        <StatCells items={[
+          [athletes.length, 'Athletes in file'],
+          [kept, 'Will be imported'],
+          [athletes.reduce((n, a) => n + a.swims.length, 0), 'Swims total'],
+        ]} />
+        <input
+          className="input"
+          placeholder="Search athletes by name…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ marginTop: 14, width: '100%', maxWidth: 420 }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+        {filtered.map((a) => {
+          const isOpen = expanded === a.name
+          const act = actionOf(a)
+          const skipped = act === 'skip' || !a.decision
+          const picked = pickedTargets[a.name]
+          return (
+            <div key={a.name} style={{
+              border: '1px solid var(--color-divider)',
+              opacity: skipped ? 0.6 : 1,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(isOpen ? null : a.name)}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', color: 'inherit', textAlign: 'left', flex: '1 1 220px' }}
+                >
+                  <div style={{ fontWeight: 700 }}>{a.name}</div>
+                  <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                    {a.nationality_code && <span style={{ marginRight: 8 }}>{a.nationality_code}</span>}
+                    {a.birth_year > 0 && <span style={{ marginRight: 8 }}>Born {a.birth_year}</span>}
+                    {a.gender && <span style={{ marginRight: 8 }}>{a.gender}</span>}
+                    <span>{a.swims.length} swim{a.swims.length === 1 ? '' : 's'}</span>
+                    {a.clubs.length > 0 && <span style={{ marginLeft: 8 }}>· {a.clubs.join(', ')}</span>}
+                  </div>
+                  {a.matched_swimmer && (
+                    <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--asw-fast)' }}>
+                      Suggested match: {a.matched_swimmer.name} ({a.confidence}%)
+                    </div>
+                  )}
+                </button>
+                <select
+                  className="select"
+                  style={{ width: 'auto', minHeight: 30, fontSize: 13 }}
+                  value={act === 'match' && picked && a.decision?.swimmer_id === picked.id ? 'match_picked' : act}
+                  onChange={(e) => setAction(a, e.target.value)}
+                >
+                  {a.matched_swimmer && <option value="match">Merge: {a.matched_swimmer.name}</option>}
+                  {picked && <option value="match_picked">Merge: {picked.name}</option>}
+                  <option value="create">Create new swimmer</option>
+                  <option value="skip">Skip</option>
+                </select>
+                <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }}
+                  onClick={() => setExpanded(isOpen ? null : a.name)}>
+                  {isOpen ? 'Hide' : 'Details'}
+                </button>
+              </div>
+
+              {isOpen && (
+                <div style={{ borderTop: '1px solid var(--color-divider)', padding: 14 }}>
+                  {/* Merge with a different existing swimmer */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Merge with a different existing swimmer</div>
+                    <input
+                      className="input"
+                      placeholder="Search existing swimmers…"
+                      value={expanded === a.name ? searchText : ''}
+                      onChange={(e) => runSearch(e.target.value)}
+                      style={{ width: '100%', maxWidth: 360 }}
+                    />
+                    {searching && <div className="micro" style={{ marginTop: 6 }}>Searching…</div>}
+                    {searchResults.length > 0 && (
+                      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+                        {searchResults.map((sw) => (
+                          <button key={sw.id} type="button" className="btn btn-ghost"
+                            style={{ fontSize: 13, textAlign: 'left', justifyContent: 'flex-start' }}
+                            onClick={() => pickTarget(a, sw)}>
+                            {sw.name} {sw.nationality ? `· ${sw.nationality}` : ''} {sw.date_of_birth ? `· ${sw.date_of_birth}` : ''}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Swim list */}
+                  <div className="table-scroll" style={{ maxHeight: 320, overflowY: 'auto' }}>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Meet</th>
+                          <th>Date</th>
+                          <th>Event</th>
+                          <th>Round</th>
+                          <th>Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {a.swims.map((s, i) => (
+                          <tr key={i}>
+                            <td>{s.meet}</td>
+                            <td className="asw-num">{s.date}</td>
+                            <td>{s.event}{s.category ? ` · ${s.category}` : ''}</td>
+                            <td>{s.round}</td>
+                            <td className="asw-num">{s.time}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

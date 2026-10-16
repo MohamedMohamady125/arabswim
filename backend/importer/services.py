@@ -939,7 +939,7 @@ def _extend_meet_dates(championship, new_date, new_end_date=None):
 
 @transaction.atomic
 def confirm_import(preview_data, swimmer_decisions, championship_id=None, championship_details=None,
-                   progress_cb=None, special=False):
+                   progress_cb=None, special=False, unpublished=False):
     """
     Step 3: Confirm and save the imported data.
 
@@ -964,6 +964,11 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             'auto'), and relay results are dropped entirely (a relay is a
             team, not a selectable individual athlete). Used for very old
             meets where only a handful of Arab swimmers are worth keeping.
+        unpublished: "Upload Special Excel" mode. Newly created meets are
+            saved with is_published=False, so their swims feed swimmer
+            profiles and stats but the meets stay out of the championships
+            list and calendar. Used to attach past swims to athletes without
+            publishing the meet itself.
 
     Returns: Summary of what was saved.
     """
@@ -1065,6 +1070,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         if cgm and isinstance(cgm, dict):
             champ_kwargs['category_gender_map'] = cgm
 
+        if unpublished:
+            champ_kwargs['is_published'] = False
+
         championship = Championship.objects.create(**champ_kwargs)
     else:
         championship_date = _parse_date(meet_info.get('date', ''))
@@ -1076,6 +1084,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             pool=pool,
             country=meet_country,
             location=normalize_name(meet_info.get('location', '')),
+            is_published=not unpublished,
         )
 
     # National meet nationality rule: when the meet is a national

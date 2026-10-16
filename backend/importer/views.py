@@ -248,7 +248,8 @@ def _record_live_session(result, preview, live_day, live_source, live_label):
 
 
 def _run_confirm_job(job_id, preview, swimmer_decisions, championship_id,
-                     championship_details, import_id, live=None, special=False):
+                     championship_details, import_id, live=None, special=False,
+                     unpublished=False):
     """Background worker: run confirm_import and store the outcome.
 
     confirm_import is one big transaction, so progress written through the
@@ -285,7 +286,8 @@ def _run_confirm_job(job_id, preview, swimmer_decisions, championship_id,
             shared['text'] = text
 
         result = confirm_import(preview, swimmer_decisions, championship_id,
-                                championship_details, progress_cb=cb, special=special)
+                                championship_details, progress_cb=cb, special=special,
+                                unpublished=unpublished)
         _finish_import_log(preview, result)
         if live and live.get('day') is not None:
             _record_live_session(result, preview, live['day'],
@@ -326,6 +328,7 @@ class ConfirmImportView(APIView):
         championship_details = request.data.get('championship_details')
         swimmer_decisions = request.data.get('swimmer_decisions', {})
         special = bool(request.data.get('special'))
+        unpublished = bool(request.data.get('unpublished'))
 
         if not import_id:
             return Response({'error': 'import_id required'}, status=400)
@@ -382,7 +385,7 @@ class ConfirmImportView(APIView):
                 target=_run_confirm_job,
                 args=(job.id, preview, swimmer_decisions, championship_id,
                       championship_details, import_id),
-                kwargs={'special': special, 'live': {
+                kwargs={'special': special, 'unpublished': unpublished, 'live': {
                     'day': request.data.get('live_day'),
                     'source': request.data.get('live_source'),
                     'label': request.data.get('live_label'),
@@ -393,7 +396,8 @@ class ConfirmImportView(APIView):
 
         try:
             result = confirm_import(preview, swimmer_decisions, championship_id,
-                                    championship_details, special=special)
+                                    championship_details, special=special,
+                                    unpublished=unpublished)
             _finish_import_log(preview, result)
             if request.data.get('live_day') is not None:
                 _record_live_session(result, preview, request.data.get('live_day'),

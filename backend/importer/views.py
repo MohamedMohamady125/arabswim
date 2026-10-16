@@ -716,7 +716,8 @@ class ScrapeView(APIView):
 
     def get(self, request):
         from .models import ScrapeJob
-        jobs = ScrapeJob.objects.all()[:30]
+        from .saudi_scraper import BASE as SAUDI_BASE
+        jobs = ScrapeJob.objects.exclude(url=SAUDI_BASE)[:30]
         return Response([{
             'id': j.id,
             'url': j.url,
@@ -792,4 +793,119 @@ class ScrapeDownloadView(APIView):
             content_type='application/vnd.openxmlformats-officedocument.'
                          'spreadsheetml.sheet')
         resp['Content-Disposition'] = f'attachment; filename="{slug}_results.xlsx"'
+        return resp
+
+
+def _run_saudi_scrape_job(job_id):
+    """Background worker: scrape all Saudi meets newer than the latest Saudi
+    national meet in the DB, into the standard Individual/Relay row format."""
+    from django.db import close_old_connections
+    from .models import ScrapeJob
+    from . import saudi_scraper as SS
+    close_old_connections()
+    job = ScrapeJob.objects.get(id=job_id)
+    job.status = 'running'
+    job.save(update_fields=['status'])
+    try:
+        cutoff = SS.latest_saudi_national_date()
+
+        def progress(msg):
+            ScrapeJob.objects.filter(id=job_id).update(progress=msg[:100])
+
+        comps = SS.find_new_comps(cutoff, progress_cb=progress)
+        ind_all, rel_all, meets = [], [], []
+        for i, comp in enumerate(comps, 1):
+            progress(f'{i}/{len(comps)}: {comp.get("lieu") or comp.get("competition")}')
+            ind, rel = SS.crawl_meet(comp)
+            ind_all += ind
+            rel_all += rel
+            meets.append({
+                'competition': comp.get('competition', ''),
+                'city': comp.get('lieu', ''),
+                'date': comp.get('date', ''),
+                'individual': len(ind),
+                'relay': len(rel),
+            })
+        job.rows = {'individual': ind_all, 'relay': rel_all, 'meets': meets,
+                    'cutoff': str(cutoff) if cutoff else ''}
+        job.total_results = len(ind_all) + len(rel_all)
+        job.total_events = len(comps)
+        since = f' since {cutoff}' if cutoff else ''
+        job.meet_name = f'{len(comps)} new Saudi meet(s){since}'[:255]
+        job.date_text = str(cutoff) if cutoff else ''
+        job.status = 'done' if comps else 'failed'
+        if not comps:
+            job.error = 'No new Saudi meets found after the latest one in the database'
+        job.progress = ''
+        job.save()
+    except Exception as e:
+        ScrapeJob.objects.filter(id=job_id).update(
+            status='failed', error=str(e)[:2000], progress='')
+    finally:
+        close_old_connections()
+
+
+class SaudiScrapeView(APIView):
+    """
+    Scrape recent Saudi Swimming Federation meets into standard Excel.
+    GET  /api/v1/import/saudi-scrape/   — list recent Saudi scrape jobs
+    POST /api/v1/import/saudi-scrape/   — start a new scrape (async)
+    """
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        from .models import ScrapeJob
+        from .saudi_scraper import BASE
+        jobs = ScrapeJob.objects.filter(url=BASE)[:30]
+        return Response([{
+            'id': j.id,
+            'meet_name': j.meet_name,
+            'date_text': j.date_text,
+            'status': j.status,
+            'progress': j.progress,
+            'error': j.error,
+            'total_events': j.total_events,
+            'total_results': j.total_results,
+            'created_at': j.created_at,
+        } for j in jobs])
+
+    def post(self, request):
+        import threading
+        from .models import ScrapeJob
+        from .saudi_scraper import BASE
+        job = ScrapeJob.objects.create(url=BASE)
+        threading.Thread(target=_run_saudi_scrape_job, args=(job.id,),
+                         daemon=True).start()
+        return Response({'id': job.id, 'status': 'pending'}, status=201)
+
+
+class SaudiScrapeDownloadView(APIView):
+    """GET /api/v1/import/saudi-scrape/{id}/download/ — the 2-sheet .xlsx"""
+    permission_classes = [IsAdmin]
+
+    def get(self, request, job_id):
+        import io
+        import pandas as pd
+        from django.http import HttpResponse
+        from .models import ScrapeJob
+        from .saudi_scraper import IND_COLS, REL_COLS
+        try:
+            job = ScrapeJob.objects.get(id=job_id)
+        except ScrapeJob.DoesNotExist:
+            return Response({'error': 'Scrape not found'}, status=404)
+        data = job.rows if isinstance(job.rows, dict) else {}
+        if job.status != 'done' or not data.get('individual') and not data.get('relay'):
+            return Response({'error': 'Scrape has no data yet'}, status=400)
+        ind_df = pd.DataFrame(data.get('individual', []), columns=IND_COLS)
+        rel_df = pd.DataFrame(data.get('relay', []), columns=REL_COLS)
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as xl:
+            ind_df.to_excel(xl, sheet_name='Individual', index=False)
+            rel_df.to_excel(xl, sheet_name='Relay', index=False)
+        buf.seek(0)
+        resp = HttpResponse(
+            buf.read(),
+            content_type='application/vnd.openxmlformats-officedocument.'
+                         'spreadsheetml.sheet')
+        resp['Content-Disposition'] = 'attachment; filename="saudi_new_meets.xlsx"'
         return resp

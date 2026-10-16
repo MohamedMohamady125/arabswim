@@ -23,3 +23,7 @@ export const startScrape = (url, pdfs = []) => {
 }
 export const downloadScrape = (jobId) =>
   api.get(`/import/scrape/${jobId}/download/`, { responseType: 'blob', timeout: 120000 })
+export const getSaudiScrapeJobs = () => api.get('/import/saudi-scrape/')
+export const startSaudiScrape = () => api.post('/import/saudi-scrape/')
+export const downloadSaudiScrape = (jobId) =>
+  api.get(`/import/saudi-scrape/${jobId}/download/`, { responseType: 'blob', timeout: 120000 })

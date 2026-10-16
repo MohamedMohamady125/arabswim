@@ -4,6 +4,7 @@ import {
   uploadFile, matchSwimmers, confirmImport, getConfirmJob,
   getDuplicates, mergeSwimmers, getImportHistory,
   getScrapeJobs, startScrape, downloadScrape,
+  getSaudiScrapeJobs, startSaudiScrape, downloadSaudiScrape,
 } from '../api/importer'
 import { getCountries } from '../api/core'
 import {
@@ -1627,6 +1628,129 @@ function DuplicatesTab() {
   )
 }
 
+function SaudiScrapePanel() {
+  const [jobs, setJobs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [starting, setStarting] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = () =>
+    getSaudiScrapeJobs().then((res) => setJobs(res.data || [])).catch(() => {})
+
+  useEffect(() => { load().finally(() => setLoading(false)) }, [])
+
+  useEffect(() => {
+    if (!jobs.some((j) => j.status === 'pending' || j.status === 'running')) return
+    const t = setInterval(load, 4000)
+    return () => clearInterval(t)
+  }, [jobs])
+
+  const handleStart = async () => {
+    setStarting(true)
+    setError('')
+    try {
+      await startSaudiScrape()
+      await load()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to start Saudi scrape')
+    }
+    setStarting(false)
+  }
+
+  const handleDownload = async (job) => {
+    setError('')
+    try {
+      const res = await downloadSaudiScrape(job.id)
+      const blobUrl = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = 'saudi_new_meets.xlsx'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(blobUrl)
+    } catch {
+      setError('Failed to download the file')
+    }
+  }
+
+  const running = jobs.some((j) => j.status === 'pending' || j.status === 'running')
+
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <div className="sect-head">
+        <h4>Scrape Saudi Federation (new meets)</h4>
+        <span className="micro">All SSF meets newer than our latest Saudi meet → standard Excel</span>
+      </div>
+      {error && <div style={errorBox}>{error}</div>}
+
+      <div style={{ border: '1px solid var(--color-divider)', padding: 20, marginBottom: 16 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 12 }}>
+          Finds the latest Saudi national meet already in the database and scrapes
+          every newer meet from the Saudi Swimming Federation site into one Excel
+          file (Individual + Relay sheets), ready to import via{' '}
+          <strong>Import File → Upload Excel</strong>.
+        </p>
+        <button type="button" className="btn btn-primary" onClick={handleStart}
+          disabled={starting || running}>
+          {starting || running ? 'Scraping…' : 'Scrape new Saudi meets'}
+        </button>
+      </div>
+
+      {loading ? (
+        <Loading label="Loading Saudi scrapes" />
+      ) : jobs.length === 0 ? null : (
+        <div className="table-scroll" style={{ marginBottom: 8 }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Summary</th>
+                <th className="num hide-mobile">Meets</th>
+                <th className="num">Rows</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.map((job) => (
+                <tr key={job.id}>
+                  <td className="asw-num" style={{ whiteSpace: 'nowrap' }}>{formatDate(job.created_at)}</td>
+                  <td style={{ fontWeight: 600, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={job.meet_name}>
+                    {job.meet_name || '—'}
+                  </td>
+                  <td className="num hide-mobile asw-num">{job.total_events || '—'}</td>
+                  <td className="num asw-num">{job.total_results || '—'}</td>
+                  <td>
+                    {job.status === 'done' && (
+                      <span className="tag" style={{ background: 'var(--asw-fast)', color: '#fff' }}>Done</span>
+                    )}
+                    {job.status === 'failed' && (
+                      <span className="tag" style={{ background: 'var(--color-accent)', color: '#fff' }} title={job.error}>Failed</span>
+                    )}
+                    {(job.status === 'pending' || job.status === 'running') && (
+                      <span className="tag tag-neutral">{job.progress || 'Scraping…'}</span>
+                    )}
+                  </td>
+                  <td className="num">
+                    {job.status === 'done' && job.total_results > 0 && (
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5 }}
+                        onClick={() => handleDownload(job)}>
+                        Download Excel
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ScrapeTab() {
   const [jobs, setJobs] = useState([])
   const [url, setUrl] = useState('')
@@ -1687,6 +1811,8 @@ function ScrapeTab() {
 
   return (
     <div>
+      <SaudiScrapePanel />
+
       <div className="sect-head">
         <h4>Scrape Federation Results</h4>
         <span className="micro">ESF Hy-Tek results pages → clean Excel</span>

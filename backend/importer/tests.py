@@ -4094,3 +4094,98 @@ class StatusRowAllFormatsTests(SimpleTestCase):
         self.assertIsNotNone(res)
         self.assertEqual(res.status, 'DQ')
         self.assertEqual(res.time_centiseconds, 0)
+
+
+# ---------------------------------------------------------------------------
+# Auto-merge (cross-meet swimmer dedup) — DB-backed
+# ---------------------------------------------------------------------------
+from django.test import TransactionTestCase  # noqa: E402
+
+
+def _result(name, birth_year, cs, nat='EGY', club='Cairo SC', gender='M', cat=''):
+    return {
+        'swimmer_name': name, 'time_text': '', 'time_centiseconds': cs,
+        'rank': 1, 'birth_year': birth_year, 'age': 0,
+        'src_birth_year': birth_year, 'src_age': 0, 'date_of_birth': '',
+        'nationality_code': nat, 'nationality_inferred': False,
+        'club': club, 'team_override': '', 'fina_points': 0,
+        'gender': gender, 'is_relay': False, 'category': cat, 'status': 'OK',
+    }
+
+
+def _event(event_name, distance, stroke, results, gender='M'):
+    return {
+        'event_name': event_name, 'distance': distance, 'stroke': stroke,
+        'gender': gender, 'round_type': 'Finals', 'is_relay': False,
+        'age_group': '', 'results': results,
+    }
+
+
+def _preview(events):
+    return {'meet': {'name': 'x', 'date': '', 'pool': 'LCM', 'format': 'excel',
+                     'location': ''}, 'events': events}
+
+
+def _auto(*names):
+    """Every parsed swimmer defaults to an auto-create decision — exactly what
+    the multi-meet Excel flow sends (create + auto:true)."""
+    d = {}
+    for n in names:
+        d[n] = {'action': 'create', 'auto': True}
+        d[n.upper()] = {'action': 'create', 'auto': True}
+    return d
+
+
+class AutoMergeTests(TransactionTestCase):
+    """The admin imports many meets at once (e.g. 140 Saudi meets). The same
+    athlete appears in several of them, each tagged auto-create. Confirm must
+    reuse the one profile across meets rather than spawn a duplicate."""
+
+    def setUp(self):
+        from core.models import Country
+        self.egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+
+    def _confirm(self, preview, decisions, name, date):
+        from importer.services import confirm_import
+        return confirm_import(
+            preview, decisions,
+            championship_details={'name': name, 'date': date, 'pool': 'LCM',
+                                  'country': self.egy.id})
+
+    def test_single_meet_same_swimmer_two_events(self):
+        from swimmers.models import Swimmer
+        from championships.models import Result
+        pv = _preview([
+            _event('50 M Freestyle', 50, 'Freestyle', [_result('John Smith', 2010, 3000)]),
+            _event('100 M Freestyle', 100, 'Freestyle', [_result('John Smith', 2010, 6500)]),
+        ])
+        self._confirm(pv, _auto('John Smith'), 'Meet A', '2024-01-01')
+        self.assertEqual(Swimmer.objects.filter(is_relay_team=False).count(), 1)
+        self.assertEqual(Result.objects.count(), 2)
+
+    def test_many_meets_same_swimmer_dedups(self):
+        from swimmers.models import Swimmer
+        from championships.models import Result, Championship
+        # 5 separate meets, each imported in its own confirm call (mirrors the
+        # frontend's sequential per-meet import of a 140-meet batch).
+        for i in range(5):
+            pv = _preview([
+                _event('50 M Freestyle', 50, 'Freestyle', [_result('John Smith', 2010, 3000 + i)]),
+            ])
+            self._confirm(pv, _auto('John Smith'), f'Meet {i}', f'2024-0{i+1}-01')
+        self.assertEqual(Championship.objects.count(), 5)
+        self.assertEqual(Swimmer.objects.filter(is_relay_team=False).count(), 1,
+                         'same swimmer across meets must collapse to ONE profile')
+        self.assertEqual(Result.objects.count(), 5)
+
+    def test_distinct_swimmers_not_merged(self):
+        from swimmers.models import Swimmer
+        # Different people (different birth years) sharing nothing must stay apart.
+        pv = _preview([
+            _event('50 M Freestyle', 50, 'Freestyle', [
+                _result('John Smith', 2010, 3000),
+                _result('Mona Ali', 2011, 3200, gender='F'),
+            ]),
+        ])
+        self._confirm(pv, _auto('John Smith', 'Mona Ali'), 'Meet A', '2024-01-01')
+        self.assertEqual(Swimmer.objects.filter(is_relay_team=False).count(), 2)

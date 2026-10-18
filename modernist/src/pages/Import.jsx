@@ -196,6 +196,10 @@ export default function Import() {
     const buildMeetEntry = (fileName, meetData) => {
       const m = meetData.meet
       const inferredCountry = countries.find((c) => c.code === m.inferred_country)
+      // Prefill the classification dropdown from the Excel "Classification"
+      // column (parsed as a name) by matching it to a known classification id.
+      const inferredClass = (classifications || []).find(
+        (c) => c.name?.toLowerCase() === (m.classification || '').toLowerCase())
       // Auto-fill start/end dates: parsed meet dates first (any format the
       // file used), then fall back to the detected day-by-day program dates.
       const startDates = _extractDatesForInput(m.date)
@@ -218,6 +222,7 @@ export default function Import() {
           pool: m.pool || 'LCM',
           country: inferredCountry?.id?.toString() || '',
           location: m.location || '',
+          classification: inferredClass?.id?.toString() || '',
         },
         arabOnly: false,
         excluded: false,

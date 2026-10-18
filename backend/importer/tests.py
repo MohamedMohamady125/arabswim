@@ -4189,3 +4189,89 @@ class AutoMergeTests(TransactionTestCase):
         ])
         self._confirm(pv, _auto('John Smith', 'Mona Ali'), 'Meet A', '2024-01-01')
         self.assertEqual(Swimmer.objects.filter(is_relay_team=False).count(), 2)
+
+
+class ExcelClassificationTests(TransactionTestCase):
+    """The Excel "Classification"/"Sub-Classification" columns must be applied
+    to the meet automatically when the admin leaves the form fields blank."""
+
+    def setUp(self):
+        from core.models import Country
+        self.ksa = Country.objects.create(name='Saudi Arabia', code='KSA', region='ARAB')
+
+    def _pv(self, classification='National', sub='Saudi Arabia'):
+        pv = _preview([
+            _event('50 M Freestyle', 50, 'Freestyle', [_result('John Smith', 2010, 3000)]),
+        ])
+        pv['meet']['classification'] = classification
+        pv['meet']['sub_classification'] = sub
+        return pv
+
+    def _confirm(self, pv, details):
+        from importer.services import confirm_import
+        base = {'name': 'Regional', 'date': '2024-01-01', 'pool': 'LCM',
+                'country': self.ksa.id}
+        base.update(details)
+        return confirm_import(pv, _auto('John Smith'), championship_details=base)
+
+    def test_excel_classification_applied_when_form_blank(self):
+        from championships.models import Championship, Classification, SubClassification
+        Classification.objects.create(name='National')
+        self._confirm(self._pv(), {})
+        c = Championship.objects.get()
+        self.assertEqual(c.classification.name, 'National')
+        self.assertEqual(c.sub_classification.name, 'Saudi Arabia')
+        # sub was auto-created under the matched classification
+        self.assertTrue(SubClassification.objects.filter(
+            classification__name='National', name='Saudi Arabia').exists())
+
+    def test_form_choice_overrides_excel(self):
+        from championships.models import Championship, Classification
+        nat = Classification.objects.create(name='National')
+        other = Classification.objects.create(name='Other')
+        self._confirm(self._pv(classification='National', sub=''),
+                      {'classification': other.id})
+        c = Championship.objects.get()
+        self.assertEqual(c.classification_id, other.id)
+
+    def test_unknown_excel_classification_is_created(self):
+        from championships.models import Championship, Classification
+        self._confirm(self._pv(classification='Regional League', sub=''), {})
+        self.assertTrue(Classification.objects.filter(name='Regional League').exists())
+        self.assertEqual(Championship.objects.get().classification.name, 'Regional League')
+
+
+class EmptyMeetDiscardTests(TransactionTestCase):
+    """A newly created meet that ends up with zero results (every row skipped,
+    or a placeholder group in a multi-meet Excel) must be discarded, not left
+    behind as an empty meet on the site."""
+
+    def setUp(self):
+        from core.models import Country
+        self.egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+
+    def test_all_skipped_meet_is_discarded(self):
+        from importer.services import confirm_import
+        from championships.models import Championship
+        pv = _preview([
+            _event('50 M Freestyle', 50, 'Freestyle', [_result('John Smith', 2010, 3000)]),
+        ])
+        # Explicitly skip the only swimmer -> no results created.
+        res = confirm_import(
+            pv, {'John Smith': {'action': 'skip'}, 'JOHN SMITH': {'action': 'skip'}},
+            championship_details={'name': 'Empty', 'date': '2024-01-01',
+                                  'pool': 'LCM', 'country': self.egy.id})
+        self.assertEqual(Championship.objects.count(), 0)
+        self.assertIsNone(res['championship_id'])
+        self.assertTrue(res.get('empty_meet_discarded'))
+
+    def test_meet_with_results_is_kept(self):
+        from championships.models import Championship
+        pv = _preview([
+            _event('50 M Freestyle', 50, 'Freestyle', [_result('John Smith', 2010, 3000)]),
+        ])
+        from importer.services import confirm_import
+        confirm_import(pv, _auto('John Smith'),
+                       championship_details={'name': 'Real', 'date': '2024-01-01',
+                                             'pool': 'LCM', 'country': self.egy.id})
+        self.assertEqual(Championship.objects.count(), 1)

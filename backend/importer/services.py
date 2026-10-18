@@ -1009,6 +1009,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     swimmer_fallback = None
 
     # Get or create championship
+    championship_created_now = False
     if championship_id:
         championship = Championship.objects.get(id=championship_id)
         if championship.is_calendar_only:
@@ -1057,11 +1058,34 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         end_date_str = championship_details.get('end_date', '')
         if end_date_str:
             champ_kwargs['end_date'] = _parse_date(end_date_str)
-        # Optional classification fields (2 levels only)
-        for field in ('classification', 'sub_classification'):
-            val = championship_details.get(field)
-            if val:
-                champ_kwargs[field + '_id'] = int(val)
+        # Optional classification fields (2 levels only). The admin's manual
+        # form choice (an id) wins; otherwise fall back to the value parsed
+        # from the Excel "Classification"/"Sub-Classification" columns (a
+        # name) so it's applied automatically without manual entry.
+        from championships.models import Classification, SubClassification
+        cls_obj = None
+        cls_id = championship_details.get('classification')
+        if cls_id:
+            champ_kwargs['classification_id'] = int(cls_id)
+            cls_obj = Classification.objects.filter(id=int(cls_id)).first()
+        elif meet_info.get('classification'):
+            cls_name = meet_info['classification'].strip()
+            if cls_name:
+                cls_obj = (Classification.objects.filter(name__iexact=cls_name).first()
+                           or Classification.objects.create(name=cls_name))
+                champ_kwargs['classification_id'] = cls_obj.id
+
+        sub_id = championship_details.get('sub_classification')
+        if sub_id:
+            champ_kwargs['sub_classification_id'] = int(sub_id)
+        elif meet_info.get('sub_classification') and cls_obj:
+            sub_name = meet_info['sub_classification'].strip()
+            if sub_name:
+                sub_obj = (SubClassification.objects.filter(
+                    classification=cls_obj, name__iexact=sub_name).first()
+                    or SubClassification.objects.create(
+                        classification=cls_obj, name=sub_name))
+                champ_kwargs['sub_classification_id'] = sub_obj.id
         # Gender display mode
         gd = championship_details.get('gender_display', '')
         if gd:
@@ -1074,6 +1098,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             champ_kwargs['is_published'] = False
 
         championship = Championship.objects.create(**champ_kwargs)
+        championship_created_now = True
     else:
         championship_date = _parse_date(meet_info.get('date', ''))
         pool = meet_info.get('pool', 'LCM')
@@ -1086,6 +1111,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             location=normalize_name(meet_info.get('location', '')),
             is_published=not unpublished,
         )
+        championship_created_now = True
 
     # National meet nationality rule: when the meet is a national
     # championship (classification = National/Other or a single-country meet)
@@ -1762,6 +1788,29 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     for r in championship.results.filter(id__in=claimed_results).select_related(
             'swimmer', 'swimmer__nationality', 'nationality', 'event', 'championship'):
         check_and_update_records(r)
+
+    # Don't leave an empty meet behind: if we created the championship this
+    # run but nothing landed on it (every row skipped, or a placeholder meet
+    # group in a multi-meet Excel with no importable results), delete it so it
+    # never shows up as an empty meet on the site.
+    if championship_created_now and not championship.results.exists():
+        deleted_id = championship.id
+        championship.delete()
+        return {
+            'championship_id': None,
+            'championship_name': championship.name,
+            'created_swimmers': created_swimmers,
+            'matched_swimmers': matched_swimmers,
+            'nationality_changes': nationality_changes,
+            'skipped_swimmers': skipped_swimmers,
+            'created_results': created_results,
+            'skipped_results': skipped_results,
+            'skipped_details': skipped_details,
+            'teams_created': teams_created,
+            'categories_inferred': categories_inferred,
+            'program_items_created': program_items_created,
+            'empty_meet_discarded': deleted_id,
+        }
 
     return {
         'championship_id': championship.id,

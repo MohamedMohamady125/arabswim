@@ -1119,10 +1119,27 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     # flag to ALL swimmers. Foreigners are detected by their club name
     # resolving as a different country — those keep the foreign nationality.
     is_international = meet_info.get('is_international', False)
-    if not is_international and championship.country:
-        cls_name = championship.classification.name if championship.classification_id else ''
-        if cls_name in ('National', 'Other', '') or not cls_name:
-            swimmer_fallback = championship.country
+    if not is_international:
+        # When the meet's classification scheme itself names a country (e.g.
+        # classification "National", sub-classification "Saudi Arabia"), that
+        # country is the AUTHORITATIVE nationality for every swimmer — the meet
+        # type declares who they represent. This beats host-country guessing.
+        classed_country = None
+        for nm in (
+            championship.sub_classification.name if championship.sub_classification_id else '',
+            championship.classification.name if championship.classification_id else '',
+        ):
+            if nm:
+                c = resolve_country(nm)
+                if c:
+                    classed_country = c
+                    break
+        if classed_country:
+            swimmer_fallback = classed_country
+        elif championship.country:
+            cls_name = championship.classification.name if championship.classification_id else ''
+            if cls_name in ('National', 'Other', '') or not cls_name:
+                swimmer_fallback = championship.country
 
     # The source published an open classification alongside age groups
     # (Egyptian Hy-Tek 'Event 1O' duplicates, dropped at parse time):

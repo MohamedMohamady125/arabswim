@@ -1425,13 +1425,73 @@ class NameMatchApplyView(APIView):
                              'swimmer_id': english.id, 'action': 'merged'})
 
         if new_name:
-            if any('\u0600' <= c <= '\u06FF' for c in new_name):
-                return Response({'error': 'New name must be in English (no Arabic script)'}, status=400)
+            from .name_match import is_arabic as _is_ar
+            if _is_ar(new_name):
+                return Response({'error': 'New name must be in English (no Arabic letters)'}, status=400)
+            # Build the English profile IN PLACE on the Arabic record so all of
+            # its results/medals/records stay attached. Fill in whatever extra
+            # info the admin provided.
+            old_nationality_id = arabic.nationality_id
             arabic.name = new_name
+
+            sex = request.data.get('sex')
+            if sex in ('M', 'F'):
+                arabic.sex = sex
+
+            dob = (request.data.get('date_of_birth') or '').strip()
+            if dob:
+                from datetime import date as _date
+                try:
+                    arabic.date_of_birth = _date.fromisoformat(dob)
+                    arabic.birth_year = arabic.date_of_birth.year
+                except ValueError:
+                    return Response({'error': 'date_of_birth must be YYYY-MM-DD'}, status=400)
+
+            by = (str(request.data.get('birth_year') or '')).strip()
+            if by:
+                try:
+                    arabic.birth_year = int(by)
+                except ValueError:
+                    return Response({'error': 'birth_year must be a number'}, status=400)
+
+            nat = request.data.get('nationality')
+            if nat:
+                arabic.nationality_id = int(nat)
+
+            if 'club' in request.data:
+                arabic.club = (request.data.get('club') or '').strip()
+
+            photo = request.FILES.get('photo')
+            if photo:
+                from core.uploads import validate_image
+                err = validate_image(photo)
+                if err:
+                    return Response({'error': err}, status=400)
+                arabic.photo = photo
+
             arabic.manually_edited = True
-            arabic.save(update_fields=['name', 'manually_edited'])
-            # Keep relay-leg name references in sync with the renamed profile.
-            return Response({'message': f'Renamed to "{new_name}"',
-                             'swimmer_id': arabic.id, 'action': 'renamed'})
+            arabic.save()
+
+            # If the nationality changed, restamp this swimmer's results/medals/
+            # records and recompute the affected meets' medals.
+            if arabic.nationality_id != old_nationality_id:
+                from championships.models import Result, Championship
+                from medals.models import Medal
+                from records.models import Record
+                from medals.utils import recompute_medals
+                Result.objects.filter(swimmer=arabic, nationality_id=old_nationality_id) \
+                    .update(nationality_id=arabic.nationality_id)
+                Medal.objects.filter(swimmer=arabic, nationality_id=old_nationality_id) \
+                    .update(nationality_id=arabic.nationality_id)
+                Record.objects.filter(swimmer=arabic, country_id=old_nationality_id) \
+                    .update(country_id=arabic.nationality_id)
+                for cid in set(Result.objects.filter(swimmer=arabic)
+                               .values_list('championship_id', flat=True)):
+                    recompute_medals(Championship.objects.get(id=cid))
+
+            return Response({'message': f'Created profile "{new_name}"',
+                             'swimmer_id': arabic.id,
+                             'photo': arabic.photo.url if arabic.photo else None,
+                             'action': 'created'})
 
         return Response({'error': 'Provide english_id or new_name'}, status=400)

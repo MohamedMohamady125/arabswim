@@ -32,12 +32,21 @@ _TRANSLIT = {
 }
 
 
+def _is_arabic_letter(o):
+    """True for an Arabic LETTER code point — excludes combining harakat
+    (diacritics), tatweel and digits, which can appear as stray artifacts on
+    otherwise-Latin names (e.g. a leading kasra on 'ِAbdullah')."""
+    if o == 0x0640:  # tatweel / kashida (elongation, not a letter)
+        return False
+    return (0x0621 <= o <= 0x063A) or (0x0641 <= o <= 0x064A) \
+        or (0x0671 <= o <= 0x06D3) or (0x06FA <= o <= 0x06FF)
+
+
 def is_arabic(name):
-    """True if the name contains any Arabic-script character."""
-    for ch in (name or ''):
-        if _ARABIC_RANGE[0] <= ord(ch) <= _ARABIC_RANGE[1]:
-            return True
-    return False
+    """True if the name contains at least one real Arabic letter. Diacritic-
+    only artifacts on Latin names do NOT count — those are treated as English
+    so they stay off the reconciliation list."""
+    return any(_is_arabic_letter(ord(ch)) for ch in (name or ''))
 
 
 def transliterate(name):

@@ -24,3 +24,5 @@ export const deleteNationalityChange = (id, changeId) => api.delete(`/swimmers/$
 export const getNameMatchCountries = () => api.get('/swimmers/name-match/countries/')
 export const getNameMatchList = (params) => api.get('/swimmers/name-match/', { params })
 export const applyNameMatch = (data) => api.post('/swimmers/name-match/apply/', data)
+// New-profile creation sends a cropped photo file, so post as multipart.
+export const createNameMatchProfile = (formData) => api.post('/swimmers/name-match/apply/', formData)

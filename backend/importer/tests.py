@@ -3153,6 +3153,23 @@ class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
         swimmer = Swimmer.objects.get(name__icontains='MABROUK')
         self.assertEqual(swimmer.nationality, self.egy)
 
+    def test_subclassification_country_wins_over_host(self):
+        # classification "National" + sub-classification "Saudi Arabia": the
+        # scheme declares the nationality, so a code-less swimmer becomes Saudi
+        # even though the meet's host country is set to a different country.
+        from importer.services import confirm_import
+        from championships.models import Classification, SubClassification
+        from core.models import Country
+        ksa = Country.objects.create(name='Saudi Arabia', code='KSA')
+        cls = Classification.objects.create(name='National')
+        sub = SubClassification.objects.create(classification=cls, name='Saudi Arabia')
+        confirm_import(self._preview(), {}, championship_details={
+            'name': 'KSA Nationals', 'date': '2026-06-01', 'pool': 'LCM',
+            'country': self.country.id,  # host set to the fixture country
+            'classification': str(cls.id), 'sub_classification': str(sub.id)})
+        swimmer = Swimmer.objects.get(name__icontains='MABROUK')
+        self.assertEqual(swimmer.nationality, ksa)
+
 
 class RelayLegNameTests(SimpleTestCase):
     """Relay leg lines mix birth years, signed/unsigned/glued reactions and

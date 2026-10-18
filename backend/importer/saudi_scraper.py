@@ -232,13 +232,14 @@ MEDAL = {1: 'Gold', 2: 'Silver', 3: 'Bronze'}
 STATUS_RE = re.compile(r'\b(DQ|DNS|DNF|DNQ|NT|WD|SCR)\b', re.I)
 
 IND_COLS = ['Events', 'Classification', 'Sub-Classification', 'Category',
-            'Round', 'Medal', 'Swimmer Name', 'Club', 'Time', 'YoB',
+            'Round', 'Medal', 'Swimmer Name', 'Club', 'Time', 'YoB', 'DoB',
             'Nationality', 'Gender', 'Pool', 'Championships Name',
             'Meet City', 'Meet Country', 'Date']
 REL_COLS = ['Events', 'Relay', 'Classification', 'Sub-Classification',
             'Category', 'Round', 'Medal', 'Team Time', 'Team Name',
-            'Swimmer Name', 'Split Time', 'YoB', 'Nationality', 'Gender',
-            'Pool', 'Championships Name', 'Meet City', 'Meet Country', 'Date']
+            'Swimmer Name', 'Split Time', 'YoB', 'DoB', 'Nationality',
+            'Gender', 'Pool', 'Championships Name', 'Meet City',
+            'Meet Country', 'Date']
 
 
 def nat(code):
@@ -375,6 +376,7 @@ def crawl_meet(comp, workers=8):
                     'Swimmer Name': None,
                     'Split Time': None,
                     'YoB': None,
+                    'DoB': None,
                     'Nationality': nat(detail.get('nationality')),
                     'Gender': gender_excel,
                     'Pool': pool_label(detail.get('pool')),
@@ -395,6 +397,7 @@ def crawl_meet(comp, workers=8):
                     'Club': detail.get('club_name', ''),
                     'Time': tval,
                     'YoB': yob,
+                    'DoB': dob,
                     'Nationality': nat(detail.get('nationality')),
                     'Gender': gender_excel,
                     'Pool': pool_label(detail.get('pool')),

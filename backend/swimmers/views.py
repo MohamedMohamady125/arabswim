@@ -1419,6 +1419,20 @@ class NameMatchApplyView(APIView):
                 with transaction.atomic():
                     # Keep the English profile (its name is the display name).
                     merge_swimmers(english, arabic)
+                    # A reconciliation is a manual act — flag the survivor so a
+                    # re-import never resurrects the Arabic/English split.
+                    if not english.manually_edited:
+                        english.manually_edited = True
+                        english.save(update_fields=['manually_edited'])
+                    # merge_swimmers re-points results/medals onto the keeper
+                    # but leaves the denormalised medal tallies untouched (dups
+                    # dropped, holders can shift). Rebuild medals for every meet
+                    # the kept profile now appears in so standings stay correct.
+                    from championships.models import Result, Championship
+                    from medals.utils import recompute_medals
+                    for cid in set(Result.objects.filter(swimmer=english)
+                                   .values_list('championship_id', flat=True)):
+                        recompute_medals(Championship.objects.get(id=cid))
             except Exception as e:  # noqa: BLE001
                 return Response({'error': f'Merge failed: {e}'}, status=400)
             return Response({'message': f'Merged into "{english.name}"',
@@ -1447,8 +1461,11 @@ class NameMatchApplyView(APIView):
                 except ValueError:
                     return Response({'error': 'date_of_birth must be YYYY-MM-DD'}, status=400)
 
+            # A full date of birth is authoritative for the year — only accept a
+            # standalone birth_year when no DOB was supplied, so the two never
+            # silently disagree.
             by = (str(request.data.get('birth_year') or '')).strip()
-            if by:
+            if by and not dob:
                 try:
                     arabic.birth_year = int(by)
                 except ValueError:

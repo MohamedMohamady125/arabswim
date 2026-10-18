@@ -1138,7 +1138,10 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             swimmer_fallback = classed_country
         elif championship.country:
             cls_name = championship.classification.name if championship.classification_id else ''
-            if cls_name in ('National', 'Other', '') or not cls_name:
+            # Classification names are free-form (created verbatim from the
+            # source file), so match case- and whitespace-insensitively.
+            cls_norm = (cls_name or '').strip().casefold()
+            if cls_norm in ('national', 'other', ''):
                 swimmer_fallback = championship.country
 
     # The source published an open classification alongside age groups
@@ -1339,7 +1342,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         swimmer_map[ind_key] = Swimmer.objects.get(id=decision['swimmer_id'])
                         matched_swimmers += 1
                         if _maybe_record_nationality_change(
-                                swimmer_map[ind_key], result_data, championship):
+                                swimmer_map[ind_key], result_data, championship,
+                                swimmer_fallback):
                             nationality_changes += 1
                     elif action == 'create':
                         swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback, is_excel_format)
@@ -1382,7 +1386,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             swimmer_map[ind_key] = swimmer
                             matched_swimmers += 1
                             if _maybe_record_nationality_change(
-                                    swimmer, result_data, championship):
+                                    swimmer, result_data, championship,
+                                    swimmer_fallback):
                                 nationality_changes += 1
                         else:
                             swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback, is_excel_format)
@@ -1845,7 +1850,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     }
 
 
-def _maybe_record_nationality_change(swimmer, result_data, championship):
+def _maybe_record_nationality_change(swimmer, result_data, championship,
+                                     fallback_country=None):
     """When a matched swimmer shows up under a new country, keep the same
     profile but switch their current nationality and record the transfer.
 
@@ -1853,13 +1859,26 @@ def _maybe_record_nationality_change(swimmer, result_data, championship):
     the meet-country fallback), and only when this meet is at least as
     recent as everything already known about the swimmer — importing an
     old historical meet must not revert a nationality.
+
+    When the file has NO explicit nationality, a national meet whose
+    classification scheme names a country (``fallback_country``) is
+    authoritative for everyone in it — so fill a *blank* profile with that
+    fallback. This mirrors the create path, which already stamps new
+    swimmers with the fallback, so existing code-less swimmers aren't left
+    nationality-less. Manual edits still win, and a known nationality is
+    never overwritten by a guess.
     """
     if swimmer is None or swimmer.is_relay_team or not championship.date:
         return False
-    if result_data.get('nationality_inferred'):
-        return False
+
     nat_code = (result_data.get('nationality_code') or '').strip()
-    if not nat_code:
+    has_explicit = bool(nat_code) and not result_data.get('nationality_inferred')
+    if not has_explicit:
+        if (fallback_country is not None and swimmer.nationality_id is None
+                and not swimmer.manually_edited):
+            swimmer.nationality = fallback_country
+            swimmer.save(update_fields=['nationality'])
+            return True
         return False
     new_country = resolve_or_stub_country(nat_code)
     if not new_country or new_country.id == swimmer.nationality_id:

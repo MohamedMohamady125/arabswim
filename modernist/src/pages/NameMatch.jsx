@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getNameMatchCountries, getNameMatchList, applyNameMatch, createNameMatchProfile } from '../api/swimmers'
 import { getCountries } from '../api/core'
 import { PageHead, SectHead, Loading, Empty, Pager } from '../components/ui'
@@ -168,6 +168,7 @@ export default function NameMatch() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const reqId = useRef(0)
 
   useEffect(() => {
     getNameMatchCountries()
@@ -180,11 +181,14 @@ export default function NameMatch() {
 
   const load = (c = country, p = page, query = q) => {
     if (!c) return
+    // Guard against out-of-order responses: a quick country switch or repeated
+    // search can resolve stale requests last and clobber the current results.
+    const id = ++reqId.current
     setLoading(true)
     getNameMatchList({ country: c, page: p, q: query })
-      .then((res) => setData(res.data))
-      .catch(() => setData({ results: [], total: 0 }))
-      .finally(() => setLoading(false))
+      .then((res) => { if (id === reqId.current) setData(res.data) })
+      .catch(() => { if (id === reqId.current) setData({ results: [], total: 0 }) })
+      .finally(() => { if (id === reqId.current) setLoading(false) })
   }
 
   const pickCountry = (c) => {
@@ -195,7 +199,11 @@ export default function NameMatch() {
   }
 
   const onDone = (id) => {
-    setData((d) => d && { ...d, results: d.results.filter((r) => r.id !== id) })
+    setData((d) => d && {
+      ...d,
+      results: d.results.filter((r) => r.id !== id),
+      total: Math.max(0, (d.total || 0) - 1),
+    })
   }
 
   if (!countries) return <Loading label="Loading countries" />

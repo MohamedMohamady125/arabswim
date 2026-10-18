@@ -3170,6 +3170,51 @@ class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
         swimmer = Swimmer.objects.get(name__icontains='MABROUK')
         self.assertEqual(swimmer.nationality, ksa)
 
+    def test_existing_blank_swimmer_gets_classification_country(self):
+        # The fallback must reach MATCHED (already-existing) code-less swimmers
+        # too, not only brand-new ones: a profile already in the DB with a blank
+        # nationality, swimming a code-less result in a "National/Saudi Arabia"
+        # meet, must be stamped Saudi on import.
+        from importer.services import confirm_import
+        from championships.models import Classification, SubClassification
+        from core.models import Country
+        ksa = Country.objects.create(name='Saudi Arabia', code='KSA')
+        cls = Classification.objects.create(name='National')
+        sub = SubClassification.objects.create(classification=cls, name='Saudi Arabia')
+        existing = Swimmer.objects.create(
+            name='Karim MABROUK', sex='M', birth_year=2008, nationality=None)
+        confirm_import(
+            self._preview(),
+            {'Karim MABROUK': {'action': 'match', 'swimmer_id': existing.id}},
+            championship_details={
+                'name': 'KSA Nationals', 'date': '2026-06-01', 'pool': 'LCM',
+                'country': self.country.id,
+                'classification': str(cls.id), 'sub_classification': str(sub.id)})
+        existing.refresh_from_db()
+        self.assertEqual(existing.nationality, ksa)
+
+    def test_classification_fallback_skips_manually_edited(self):
+        # A hand-curated profile is never overwritten by the fallback, even when
+        # its nationality is blank (manual edits always win).
+        from importer.services import confirm_import
+        from championships.models import Classification, SubClassification
+        from core.models import Country
+        Country.objects.create(name='Saudi Arabia', code='KSA')
+        cls = Classification.objects.create(name='National')
+        sub = SubClassification.objects.create(classification=cls, name='Saudi Arabia')
+        existing = Swimmer.objects.create(
+            name='Karim MABROUK', sex='M', birth_year=2008,
+            nationality=None, manually_edited=True)
+        confirm_import(
+            self._preview(),
+            {'Karim MABROUK': {'action': 'match', 'swimmer_id': existing.id}},
+            championship_details={
+                'name': 'KSA Nationals', 'date': '2026-06-01', 'pool': 'LCM',
+                'country': self.country.id,
+                'classification': str(cls.id), 'sub_classification': str(sub.id)})
+        existing.refresh_from_db()
+        self.assertIsNone(existing.nationality)
+
 
 class RelayLegNameTests(SimpleTestCase):
     """Relay leg lines mix birth years, signed/unsigned/glued reactions and

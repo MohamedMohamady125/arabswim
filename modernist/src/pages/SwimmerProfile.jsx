@@ -17,6 +17,7 @@ import { createClaim, getMyClaims, submitPhotoRequest } from '../api/claims'
 import { mergeSwimmers } from '../api/importer'
 import { getCountries } from '../api/core'
 import { getHeldRecords } from '../api/records'
+import { getSwimmerDna, getSwimmerChase } from '../api/lab'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
 import Flag from '../components/Flag'
@@ -541,6 +542,197 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
   )
 }
 
+/* ── Swimmer DNA radar (custom SVG, brand tokens only) ─────────────────── */
+
+function DnaRadar({ axes, size = 260 }) {
+  const R = size / 2 - 50
+  const cx = size / 2
+  const cy = size / 2
+  const n = axes.length
+  const pt = (i, r) => {
+    const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n
+    return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)]
+  }
+  const poly = axes.map((a, i) => pt(i, R * (Math.max(0, a.percentile) / 100)).join(',')).join(' ')
+  const rings = [0.25, 0.5, 0.75, 1]
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: '100%' }}>
+      {rings.map((f) => (
+        <polygon key={f} points={axes.map((_, i) => pt(i, R * f).join(',')).join(' ')}
+          fill="none" stroke="var(--color-neutral-200)" strokeWidth="1" />
+      ))}
+      {axes.map((_, i) => {
+        const [x, y] = pt(i, R)
+        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--color-neutral-200)" strokeWidth="1" />
+      })}
+      <polygon points={poly} fill="var(--color-accent)" fillOpacity="0.2" stroke="var(--color-accent)" strokeWidth="2" />
+      {axes.map((a, i) => {
+        const [x, y] = pt(i, R * (Math.max(0, a.percentile) / 100))
+        return <circle key={i} cx={x} cy={y} r="3.5" fill="var(--color-accent)" />
+      })}
+      {axes.map((a, i) => {
+        const [x, y] = pt(i, R + 20)
+        return (
+          <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle"
+            fontSize="10.5" fontWeight="700" fill="var(--color-text)">
+            {a.stroke.replace('Individual Medley', 'IM')}
+          </text>
+        )
+      })}
+    </svg>
+  )
+}
+
+function ChaseStat({ label, value, sub }) {
+  return (
+    <div style={{ border: '1px solid var(--color-divider)', padding: '12px 14px', flex: '1 1 120px' }}>
+      <div className="kicker">{label}</div>
+      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1.1 }}>{value}</div>
+      {sub && <div className="text-muted" style={{ fontSize: 11.5, marginTop: 2 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function DnaChaseSection({ swimmerId }) {
+  const [dna, setDna] = useState(null)
+  const [chase, setChase] = useState(null)
+  const [eventId, setEventId] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    setDna(null); setChase(null); setEventId('')
+    getSwimmerDna(swimmerId)
+      .then((r) => {
+        if (!alive) return
+        setDna(r.data)
+        const specialty = r.data.axes.find((a) => a.stroke === r.data.specialty && a.event_id)
+        const firstEv = specialty || r.data.axes.find((a) => a.event_id)
+        setEventId(firstEv ? String(firstEv.event_id) : '')
+      })
+      .catch(() => { if (alive) setDna(null) })
+    return () => { alive = false }
+  }, [swimmerId])
+
+  useEffect(() => {
+    if (!eventId) { setChase(null); return }
+    let alive = true
+    getSwimmerChase(swimmerId, { event: eventId })
+      .then((r) => { if (alive) setChase(r.data) })
+      .catch(() => { if (alive) setChase(null) })
+    return () => { alive = false }
+  }, [swimmerId, eventId])
+
+  const hasDna = dna && dna.axes.some((a) => a.event_id)
+  if (!hasDna) return null
+  const eventOptions = dna.axes.filter((a) => a.event_id)
+
+  return (
+    <>
+      {/* Swimmer DNA */}
+      <div>
+        <div className="sect-head">
+          <h4>Swimmer DNA</h4>
+          <span className="micro">Specialty {dna.specialty || '—'} · Versatility {dna.versatility}</span>
+        </div>
+        <div className="rule-t" style={{ paddingTop: 12, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+          <DnaRadar axes={dna.axes} />
+          <div style={{ flex: '1 1 240px' }}>
+            {dna.axes.map((a) => (
+              <div key={a.stroke} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', borderBottom: '1px solid var(--color-neutral-200)' }}>
+                <span style={{ flex: '0 0 130px', fontWeight: 600, fontSize: 13 }}>{a.stroke}</span>
+                <div style={{ flex: 1, height: 8, background: 'var(--color-neutral-200)' }}>
+                  <div style={{ width: `${Math.max(0, a.percentile)}%`, height: '100%', background: 'var(--color-accent)' }} />
+                </div>
+                <span className="asw-num" style={{ flex: '0 0 46px', textAlign: 'right', fontSize: 12 }}>
+                  {a.event_id ? `${a.percentile}%` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* The Chase */}
+      {chase && chase.my_rank && (
+        <div>
+          <div className="sect-head">
+            <h4>The Chase</h4>
+            {eventOptions.length > 1 && (
+              <select className="select" style={{ width: 'auto', fontSize: 12, height: 30 }}
+                value={eventId} onChange={(e) => setEventId(e.target.value)}>
+                {eventOptions.map((a) => <option key={a.event_id} value={a.event_id}>{a.event_name}</option>)}
+              </select>
+            )}
+          </div>
+          <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <ChaseStat label="Arab rank" value={`#${chase.my_rank}`} sub={`of ${chase.field_size}`} />
+              {chase.national_rank && (
+                <ChaseStat label="National rank" value={`#${chase.national_rank}`} sub={`of ${chase.national_field_size}`} />
+              )}
+              {chase.percentile != null && (
+                <ChaseStat label="Percentile" value={`${chase.percentile}%`} sub="vs Arab field" />
+              )}
+              <ChaseStat label="Best time" value={chase.my_time} />
+              {chase.leader && (
+                <ChaseStat label="Off the leader" value={`+${chase.gap_to_leader}`} sub={chase.leader.swimmer_name} />
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 280px' }}>
+                <div className="kicker" style={{ marginBottom: 6 }}>Next targets ahead</div>
+                {chase.next_targets.length === 0 ? <div className="text-muted" style={{ fontSize: 13 }}>Top of the field.</div> : (
+                  <table className="table"><tbody>
+                    {chase.next_targets.map((t) => (
+                      <tr key={t.swimmer_id}>
+                        <td className="asw-num" style={{ width: 34, fontWeight: 800 }}>#{t.rank}</td>
+                        <td><Link to={`/swimmers/${t.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{t.swimmer_name}</Link></td>
+                        <td className="asw-time">{t.time}</td>
+                        <td className="asw-num" style={{ color: 'var(--asw-slow)', textAlign: 'right' }}>-{t.gap}</td>
+                      </tr>
+                    ))}
+                  </tbody></table>
+                )}
+              </div>
+              <div style={{ flex: '1 1 280px' }}>
+                <div className="kicker" style={{ marginBottom: 6 }}>Who's chasing you</div>
+                {chase.chasing_you.length === 0 ? <div className="text-muted" style={{ fontSize: 13 }}>Nobody right behind.</div> : (
+                  <table className="table"><tbody>
+                    {chase.chasing_you.map((t) => (
+                      <tr key={t.swimmer_id}>
+                        <td className="asw-num" style={{ width: 34, fontWeight: 800 }}>#{t.rank}</td>
+                        <td><Link to={`/swimmers/${t.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{t.swimmer_name}</Link></td>
+                        <td className="asw-time">{t.time}</td>
+                        <td className="asw-num" style={{ color: 'var(--asw-fast)', textAlign: 'right' }}>+{t.gap}</td>
+                      </tr>
+                    ))}
+                  </tbody></table>
+                )}
+              </div>
+            </div>
+
+            {chase.unlock_history.length > 0 && (
+              <div>
+                <div className="kicker" style={{ marginBottom: 6 }}>Unlock history — time to reach each rank</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {chase.unlock_history.map((u) => (
+                    <div key={u.rank} style={{ border: '1px solid var(--color-divider)', padding: '8px 12px', minWidth: 96 }}>
+                      <div style={{ fontWeight: 800, fontFamily: 'var(--font-heading)' }}>Top {u.rank}</div>
+                      <div className="asw-time" style={{ fontSize: 13 }}>{u.time}</div>
+                      <div className="text-muted asw-num" style={{ fontSize: 11 }}>drop {u.drop}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 /* ── Overall tab ───────────────────────────────────────────────────────── */
 
 function RankingsPreview({ swimmerId, onViewAll }) {
@@ -660,6 +852,9 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {/* Swimmer DNA + The Chase — lead the Overall tab */}
+      <DnaChaseSection swimmerId={swimmerId} />
+
       {/* Stat cards — same gradient style as home page */}
       <div className="swimmer-stat-cards">
         <div style={cardStyle}>

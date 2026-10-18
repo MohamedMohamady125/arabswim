@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from .models import Swimmer
 from .serializers import SwimmerListSerializer, SwimmerDetailSerializer, SwimmerCreateUpdateSerializer
 
@@ -1298,3 +1299,139 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             swimmer.photo = None
             swimmer.save(update_fields=['photo'])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class NameMatchCountriesView(APIView):
+    """GET /api/v1/swimmers/name-match/countries/
+    Countries that have at least one Arabic-named swimmer to reconcile,
+    with that pending count."""
+    def get_permissions(self):
+        from core.permissions import IsAdmin
+        return [IsAdmin()]
+
+    def get(self, request):
+        from .name_match import is_arabic
+        from core.models import Country
+        counts = {}
+        rows = (Swimmer.objects
+                .filter(is_relay_team=False, nationality__isnull=False)
+                .values_list('nationality_id', 'name'))
+        for cid, name in rows:
+            if is_arabic(name):
+                counts[cid] = counts.get(cid, 0) + 1
+        if not counts:
+            return Response([])
+        countries = {c.id: c for c in Country.objects.filter(id__in=counts)}
+        data = [{
+            'id': cid,
+            'name': countries[cid].name if cid in countries else str(cid),
+            'code': getattr(countries.get(cid), 'code', '') or '',
+            'arabic_count': n,
+        } for cid, n in counts.items() if cid in countries]
+        data.sort(key=lambda d: -d['arabic_count'])
+        return Response(data)
+
+
+class NameMatchListView(APIView):
+    """GET /api/v1/swimmers/name-match/?country=<id>&page=<n>&q=<text>
+    Arabic-named swimmers for a country, each with ranked English candidates."""
+    PAGE_SIZE = 25
+
+    def get_permissions(self):
+        from core.permissions import IsAdmin
+        return [IsAdmin()]
+
+    def get(self, request):
+        from .name_match import is_arabic, candidates_for
+        country_id = request.query_params.get('country')
+        if not country_id:
+            return Response({'error': 'country required'}, status=400)
+        q = (request.query_params.get('q') or '').strip()
+        try:
+            page = max(1, int(request.query_params.get('page', 1)))
+        except (TypeError, ValueError):
+            page = 1
+
+        qs = (Swimmer.objects
+              .filter(nationality_id=country_id, is_relay_team=False)
+              .order_by('name'))
+        if q:
+            qs = qs.filter(name__icontains=q)
+        arabic = [s for s in qs.only('id', 'name', 'sex', 'club',
+                                     'birth_year', 'date_of_birth')
+                  if is_arabic(s.name)]
+        total = len(arabic)
+        start = (page - 1) * self.PAGE_SIZE
+        chunk = arabic[start:start + self.PAGE_SIZE]
+
+        items = []
+        for s in chunk:
+            items.append({
+                'id': s.id,
+                'name': s.name,
+                'sex': s.sex,
+                'club': s.club,
+                'birth_year': s.birth_year,
+                'date_of_birth': s.date_of_birth.isoformat() if s.date_of_birth else None,
+                'result_count': s.results.count(),
+                'candidates': candidates_for(s, int(country_id)),
+            })
+        return Response({
+            'results': items,
+            'page': page,
+            'page_size': self.PAGE_SIZE,
+            'total': total,
+            'has_next': start + self.PAGE_SIZE < total,
+        })
+
+
+class NameMatchApplyView(APIView):
+    """POST /api/v1/swimmers/name-match/apply/
+    Body either:
+      { arabic_id, english_id }  -> merge Arabic profile into the English one
+      { arabic_id, new_name }    -> rename the Arabic profile to a new English name
+    """
+    def get_permissions(self):
+        from core.permissions import IsAdmin
+        return [IsAdmin()]
+
+    def post(self, request):
+        from django.db import transaction
+        arabic_id = request.data.get('arabic_id')
+        english_id = request.data.get('english_id')
+        new_name = (request.data.get('new_name') or '').strip()
+        if not arabic_id:
+            return Response({'error': 'arabic_id required'}, status=400)
+        try:
+            arabic = Swimmer.objects.get(id=arabic_id)
+        except Swimmer.DoesNotExist:
+            return Response({'error': 'Arabic swimmer not found'}, status=404)
+
+        if english_id:
+            try:
+                english = Swimmer.objects.get(id=english_id)
+            except Swimmer.DoesNotExist:
+                return Response({'error': 'English swimmer not found'}, status=404)
+            if english.id == arabic.id:
+                return Response({'error': 'Cannot merge a swimmer into themselves'}, status=400)
+            from importer.matcher import merge_swimmers
+            try:
+                with transaction.atomic():
+                    # Keep the English profile (its name is the display name).
+                    merge_swimmers(english, arabic)
+            except Exception as e:  # noqa: BLE001
+                return Response({'error': f'Merge failed: {e}'}, status=400)
+            return Response({'message': f'Merged into "{english.name}"',
+                             'swimmer_id': english.id, 'action': 'merged'})
+
+        if new_name:
+            if any('\u0600' <= c <= '\u06FF' for c in new_name):
+                return Response({'error': 'New name must be in English (no Arabic script)'}, status=400)
+            arabic.name = new_name
+            arabic.manually_edited = True
+            arabic.save(update_fields=['name', 'manually_edited'])
+            # Keep relay-leg name references in sync with the renamed profile.
+            return Response({'message': f'Renamed to "{new_name}"',
+                             'swimmer_id': arabic.id, 'action': 'renamed'})
+
+        return Response({'error': 'Provide english_id or new_name'}, status=400)

@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminAnalytics from './pages/AdminAnalytics'
+import NameMatch from './pages/NameMatch'
 import Import from './pages/Import'
 import Home from './pages/Home'
 import Championships from './pages/Championships'
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
+        <Route path="/admin/name-match" element={<RequireAdmin><NameMatch /></RequireAdmin>} />
         <Route path="/import" element={<RequireAdmin><Import /></RequireAdmin>} />
         <Route path="/" element={<Home />} />
         <Route path="/championships" element={<Championships />} />

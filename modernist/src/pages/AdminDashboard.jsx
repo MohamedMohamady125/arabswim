@@ -611,6 +611,15 @@ export default function AdminDashboard() {
         </Link>
       </div>
       <div className="pad rule-b">
+        <SectHead title="Name Matching" />
+        <div className="micro" style={{ marginBottom: 12 }}>
+          Match Arabic-named swimmers to their English profiles — or give them a new one.
+        </div>
+        <Link to="/admin/name-match" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 18px', textDecoration: 'none' }}>
+          Open Name Matching →
+        </Link>
+      </div>
+      <div className="pad rule-b">
         <SectHead title="Recent Edits · Undo" />
         <EditHistory />
       </div>

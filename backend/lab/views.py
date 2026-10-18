@@ -196,6 +196,36 @@ def swimmer_chase(request, swimmer_id):
             'drop': format_centiseconds(drop) if drop > 0 else '0.00',
         })
 
+    # --- Field position + distance to the top -----------------------------
+    field_pct = engine.percentile(event_id, my_time, **kw)
+    leader_time = rows[0]['best_time']
+    gap_to_leader = my_time - leader_time
+    leader = None
+    if idx > 0:
+        lres = engine.fetch_results(
+            event_id, [(rows[0]['swimmer_id'], leader_time)], **kw)
+        lrow = lres.get(rows[0]['swimmer_id'])
+        if lrow:
+            leader = _swimmer_row(lrow, rank=1)
+            leader['gap_centiseconds'] = gap_to_leader
+            leader['gap'] = format_centiseconds(gap_to_leader) if gap_to_leader else '0.00'
+
+    # --- Rank within the swimmer's own country ----------------------------
+    national_rank = None
+    national_field_size = None
+    nat_id = swimmer.nationality_id
+    if nat_id:
+        nat_kw = dict(kw, scope='national', country=nat_id)
+        nat_rows = engine.best_rows(event_id, **nat_kw)
+        n_idx = next((i for i, r in enumerate(nat_rows)
+                      if r['swimmer_id'] == swimmer.id), None)
+        if n_idx is not None:
+            national_rank = n_idx + 1
+            national_field_size = len(nat_rows)
+
+    # Gap to the immediate next rank up — the smallest drop that moves you.
+    next_gap = next_targets[0]['gap_centiseconds'] if next_targets else 0
+
     return Response({
         'swimmer_id': swimmer.id,
         'swimmer_name': swimmer.name,
@@ -204,6 +234,14 @@ def swimmer_chase(request, swimmer_id):
         'my_time': format_centiseconds(my_time),
         'my_time_centiseconds': my_time,
         'field_size': len(rows),
+        'percentile': field_pct,
+        'gap_to_leader_centiseconds': gap_to_leader,
+        'gap_to_leader': format_centiseconds(gap_to_leader) if gap_to_leader else '0.00',
+        'leader': leader,
+        'national_rank': national_rank,
+        'national_field_size': national_field_size,
+        'next_rank_gap_centiseconds': next_gap,
+        'next_rank_gap': format_centiseconds(next_gap) if next_gap else '0.00',
         'next_targets': next_targets,
         'chasing_you': chasing_you,
         'unlock_history': unlock,

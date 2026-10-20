@@ -149,10 +149,12 @@ STORAGES = {
 # CORS — only the frontend (Vercel deploys + local dev) may call the API
 # from a browser. Extra origins can be added via CORS_ALLOWED_ORIGINS env
 # (comma-separated), e.g. a future custom domain.
+# `\.?$` — browsers treat "web.app." (FQDN trailing dot) as a distinct
+# origin; users do type it, and without this every API call CORS-fails.
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r'^https://arabswim.*\.vercel\.app$',
-    r'^https://arabswim.*\.web\.app$',
-    r'^https://arabswim.*\.firebaseapp\.com$',
+    r'^https://arabswim.*\.vercel\.app\.?$',
+    r'^https://arabswim.*\.web\.app\.?$',
+    r'^https://arabswim.*\.firebaseapp\.com\.?$',
 ]
 CORS_ALLOWED_ORIGINS = [
     o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()

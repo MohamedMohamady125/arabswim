@@ -428,7 +428,19 @@ export default function Import() {
         for (let c = 0; c < ids.length; c += CHUNK) {
           const chunk = ids.slice(c, c + CHUNK)
           setLoadingMsg(`Matching swimmers — ${Math.min(c + chunk.length, ids.length)} / ${ids.length} meets…`)
-          const res = await matchSwimmersBatch(chunk, true)
+          // A chunk that dies on a transient blip (backend restart/deploy,
+          // network hiccup) retries instead of failing the whole step.
+          let res
+          for (let attempt = 1; ; attempt++) {
+            try {
+              res = await matchSwimmersBatch(chunk, true)
+              break
+            } catch (e) {
+              if (attempt >= 3) throw e
+              setLoadingMsg(`Server busy — retrying (${attempt}/2)…`)
+              await new Promise((r) => setTimeout(r, 4000 * attempt))
+            }
+          }
           for (const [iid, data] of Object.entries(res.data.results || {})) {
             const i = idxById.get(iid)
             if (i === undefined) continue
@@ -450,7 +462,8 @@ export default function Import() {
       setActive(0)
       setStep(3)
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to match swimmers')
+      setError(err.response?.data?.error
+        || (err.response?.status ? `Failed to match swimmers (HTTP ${err.response.status})` : 'Failed to match swimmers — the server did not respond; try again'))
     } finally {
       setLoading(false)
       setLoadingMsg('')

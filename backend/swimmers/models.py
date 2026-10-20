@@ -83,6 +83,23 @@ class NationalityChange(models.Model):
         return f'{self.swimmer.name}: {self.to_country.name} (initial, {self.effective_date})'
 
 
+def sync_nationality_from_timeline(swimmer):
+    """STRICT rule: the swimmer's current nationality always follows the
+    change timeline — the latest NationalityChange already in effect
+    (effective_date <= today) wins. A future-dated change leaves the
+    current nationality alone until its date passes. Returns True when
+    the stored nationality was updated."""
+    import datetime
+    latest = (swimmer.nationality_changes
+              .filter(effective_date__lte=datetime.date.today())
+              .order_by('-effective_date', '-id').first())
+    if latest and swimmer.nationality_id != latest.to_country_id:
+        swimmer.nationality_id = latest.to_country_id
+        swimmer.save(update_fields=['nationality'])
+        return True
+    return False
+
+
 def restamp_result_nationalities(swimmer):
     """Rebuild per-result (and per-medal) nationality from the swimmer's
     NationalityChange timeline: each swim carries the country the swimmer

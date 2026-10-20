@@ -11,7 +11,6 @@ function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved 
   const [countries, setCountries] = useState([])
   const [country, setCountry] = useState('')
   const [fromCountry, setFromCountry] = useState(currentCountryId ? String(currentCountryId) : '')
-  const [recordOnly, setRecordOnly] = useState(false)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
@@ -37,7 +36,6 @@ function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved 
         from_country: fromCountry || null,
         effective_date: date,
         notes,
-        record_only: recordOnly,
       })
       onSaved()
     } catch (err) {
@@ -79,16 +77,11 @@ function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved 
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className="field">
-            <label>Is this the swimmer's current nationality?</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                <input type="radio" name="isCurrent" checked={!recordOnly} onChange={() => setRecordOnly(false)} />
-                <span><strong>Yes</strong> — set it as the current nationality (swims from the effective date onward count for it)</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                <input type="radio" name="isCurrent" checked={recordOnly} onChange={() => setRecordOnly(true)} />
-                <span><strong>No</strong> — past change, record it in history only (current nationality stays as is)</span>
-              </label>
+            <div style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', lineHeight: 1.5 }}>
+              The swimmer's current nationality always follows the latest change in effect:
+              if the effective date is today or in the past, the profile switches to the new
+              country immediately (swims before that date keep the old flag). A future-dated
+              change applies automatically once its date arrives.
             </div>
           </div>
           <div className="field">

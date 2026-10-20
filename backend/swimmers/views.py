@@ -153,15 +153,18 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
         # Individual events, split per pool (SCM and LCM times are not
         # comparable, so each gets its own entry and best time)
-        events = Result.objects.filter(swimmer=swimmer).values(
+        # DNS/DQ/DNF rows are stored with time 0. They stay visible in the
+        # meet's own results, but the profile only lists events with at
+        # least one real time — an event where every swim was DQ'd must not
+        # appear as a blank row, and times_count counts actual times only.
+        events = Result.objects.filter(
+            swimmer=swimmer, time_centiseconds__gt=0,
+        ).values(
             'event__id', 'event__name', 'event__distance', 'event__stroke',
             'championship__pool',
         ).annotate(
             times_count=Count('id'),
-            # DNS/DQ/DNF rows are stored with time 0; excluding them keeps a
-            # single status row from making Min() = 0 (which renders blank)
-            # even when the swimmer has valid times in that event.
-            best_time=Min('time_centiseconds', filter=Q(time_centiseconds__gt=0)),
+            best_time=Min('time_centiseconds'),
         ).order_by('event__sort_order', 'event__distance', '-championship__pool')
 
         data = []
@@ -204,6 +207,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         relay_results = Result.objects.filter(
             relay_swimmers__isnull=False,
             event__is_relay=True,
+            time_centiseconds__gt=0,  # DQ'd relays stay on the meet page only
         ).annotate(
             relay_swimmers_text=Cast('relay_swimmers', TextField()),
         ).filter(
@@ -386,6 +390,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             relay_results = Result.objects.filter(
                 event_id=event_id,
                 relay_swimmers__isnull=False,
+                time_centiseconds__gt=0,
             ).select_related('championship', 'championship__country', 'event', 'nationality').order_by('championship__date')
             # Open-water swims use the virtual 'OW' course; the event id is
             # already unique, so don't constrain by the meet's pool.
@@ -442,9 +447,10 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'represented': represented(r),
                 })
         else:
-            # Individual event
+            # Individual event. DQ/DNS/DNF rows (time 0) stay on the meet
+            # page but never in the profile's history/progression.
             results = Result.objects.filter(
-                swimmer=swimmer, event_id=event_id
+                swimmer=swimmer, event_id=event_id, time_centiseconds__gt=0,
             ).select_related('championship', 'championship__country', 'event', 'nationality').order_by('championship__date')
             if pool and event.stroke != 'Open Water':
                 results = results.filter(championship__pool=pool)
@@ -903,6 +909,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             Result.objects.filter(
                 swimmer=swimmer, swimmer__is_relay_team=False,
                 championship__pool=pool, event__is_relay=False,
+                time_centiseconds__gt=0,  # DQ/DNS rows never feed the profile
             )
             .values('event_id', 'event__name', 'event__stroke', 'event__sort_order')
             .annotate(count=Count('id'), best=Min('time_centiseconds'))
@@ -914,7 +921,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             results = (
                 Result.objects.filter(
                     swimmer=swimmer, event_id=es['event_id'],
-                    championship__pool=pool,
+                    championship__pool=pool, time_centiseconds__gt=0,
                 )
                 .select_related('championship')
                 .order_by('-championship__date')[:5]
@@ -969,14 +976,6 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         if from_country and from_country.id == country.id:
             return Response({'error': 'Old and new nationality are the same'}, status=400)
 
-        # record_only: log the change in history without touching the
-        # swimmer's current nationality (for past changes).
-        record_only = str(request.data.get('record_only', '')).lower() in ('1', 'true', 'yes')
-        # If the swimmer already has the target nationality, treat it as
-        # record-only (just log the history without changing current).
-        if not record_only and swimmer.nationality_id == country.id:
-            record_only = True
-
         raw_date = request.data.get('effective_date')
         if raw_date:
             try:
@@ -998,9 +997,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 effective_date=effective_date,
                 notes=request.data.get('notes', '') or '',
             )
-        if not record_only:
-            swimmer.nationality = country
-            swimmer.save(update_fields=['nationality'])
+        # STRICT: the current nationality always follows the change timeline
+        # — the latest change already in effect (effective_date <= today)
+        # wins, so the profile header can never disagree with the recorded
+        # history. A future-dated change applies once its date passes.
+        from .models import sync_nationality_from_timeline
+        sync_nationality_from_timeline(swimmer)
 
         # Re-stamp per-result nationality from the full change timeline: swims
         # at meets before the change keep the old country, later swims carry
@@ -1171,8 +1173,17 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Not found'}, status=404)
         swimmer = ch.swimmer
         ch.delete()
-        # Attribution may depend on the deleted entry — rebuild it.
-        from .models import restamp_result_nationalities
+        # Current nationality + attribution may depend on the deleted entry
+        # — re-derive both from the remaining timeline. When the deleted
+        # change was the only one and it set the current nationality, undo
+        # it (back to the change's from-country).
+        from .models import restamp_result_nationalities, sync_nationality_from_timeline
+        if not sync_nationality_from_timeline(swimmer):
+            if (not swimmer.nationality_changes.exists()
+                    and ch.from_country_id
+                    and swimmer.nationality_id == ch.to_country_id):
+                swimmer.nationality_id = ch.from_country_id
+                swimmer.save(update_fields=['nationality'])
         restamp_result_nationalities(swimmer)
         # Recompute medals for affected championships
         from championships.models import Result as _R, Championship as _C

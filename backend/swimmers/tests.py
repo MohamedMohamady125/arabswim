@@ -59,6 +59,62 @@ class ChangeNationalityTests(TestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(NationalityChange.objects.count(), 0)
 
+    def test_past_change_always_sets_current_nationality(self):
+        # STRICT: the current nationality follows the timeline — a change
+        # whose effective date has passed flips the profile even when the
+        # old record_only flag is sent (legacy clients).
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(self.url(), {
+            'country': self.qat.id,
+            'effective_date': '2026-04-01',
+            'record_only': True,
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.swimmer.refresh_from_db()
+        self.assertEqual(self.swimmer.nationality_id, self.qat.id)
+
+    def test_future_change_waits_for_its_date(self):
+        from datetime import timedelta
+        self.client.force_authenticate(self.admin)
+        future = (date.today() + timedelta(days=90)).isoformat()
+        resp = self.client.post(self.url(), {
+            'country': self.qat.id, 'effective_date': future})
+        self.assertEqual(resp.status_code, 200)
+        self.swimmer.refresh_from_db()
+        # Not effective yet — current nationality stays
+        self.assertEqual(self.swimmer.nationality_id, self.egy.id)
+        self.assertEqual(NationalityChange.objects.count(), 1)
+
+    def test_deleting_only_change_reverts_current(self):
+        self.client.force_authenticate(self.admin)
+        self.client.post(self.url(), {
+            'country': self.qat.id, 'effective_date': '2026-04-01'})
+        self.swimmer.refresh_from_db()
+        self.assertEqual(self.swimmer.nationality_id, self.qat.id)
+        ch = NationalityChange.objects.get(swimmer=self.swimmer)
+        resp = self.client.delete(
+            f'/api/v1/swimmers/{self.swimmer.id}/nationality-changes/{ch.id}/')
+        self.assertEqual(resp.status_code, 204)
+        self.swimmer.refresh_from_db()
+        self.assertEqual(self.swimmer.nationality_id, self.egy.id)
+
+    def test_latest_of_several_changes_wins(self):
+        self.client.force_authenticate(self.admin)
+        self.client.post(self.url(), {
+            'country': self.qat.id, 'effective_date': '2026-04-01'})
+        ksa = Country.objects.create(name='Saudi Arabia', code='KSA', region='GCC')
+        self.client.post(self.url(), {
+            'country': ksa.id, 'effective_date': '2026-09-01'})
+        self.swimmer.refresh_from_db()
+        self.assertEqual(self.swimmer.nationality_id, ksa.id)
+        # Deleting the latest change falls back to the previous one
+        latest = NationalityChange.objects.get(
+            swimmer=self.swimmer, to_country=ksa)
+        self.client.delete(
+            f'/api/v1/swimmers/{self.swimmer.id}/nationality-changes/{latest.id}/')
+        self.swimmer.refresh_from_db()
+        self.assertEqual(self.swimmer.nationality_id, self.qat.id)
+
 
 class ResultNationalityStampingTests(TestCase):
     """Per-swim nationality: results carry the country represented at the

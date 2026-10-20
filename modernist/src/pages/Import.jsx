@@ -459,7 +459,19 @@ export default function Import() {
           if (updated[i].excluded) continue
           done++
           setLoadingMsg(included.length > 1 ? `Matching swimmers ${done} / ${included.length}…` : 'Matching swimmers…')
-          const res = await matchSwimmers(updated[i].importId, special)
+          // Same retry armor as the batch path: a transient network drop or
+          // backend restart must not kill the whole match step.
+          let res
+          for (let attempt = 1; ; attempt++) {
+            try {
+              res = await matchSwimmers(updated[i].importId, special)
+              break
+            } catch (e) {
+              if (attempt >= 6) throw e
+              setLoadingMsg(`Server busy — retrying (${attempt}/5)…`)
+              await new Promise((r) => setTimeout(r, Math.min(8000 * attempt, 40000)))
+            }
+          }
           const auto = special ? {} : autoDecisions(res.data.matches)
           updated[i] = { ...updated[i], matches: res.data.matches, matchStats: res.data.stats, decisions: auto }
         }

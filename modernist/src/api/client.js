@@ -35,7 +35,10 @@ api.interceptors.response.use(
       // localStorage is cleared by hand. Drop the tokens and retry the
       // request anonymously; public pages work logged-out, and admin-only
       // calls surface their own errors.
-      if (localStorage.getItem('access_token') && !error.config._retryAnon) {
+      // Gate on the request's OWN header, not localStorage: a page load fires
+      // many requests at once and the first anonymous retry clears the
+      // tokens — the rest must still retry, not reject.
+      if (error.config.headers?.Authorization && !error.config._retryAnon) {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         error.config._retryAnon = true

@@ -463,15 +463,26 @@ class CountryViewSet(viewsets.ModelViewSet):
             total=Count('id'), male=Count('id', filter=Q(sex='M')),
             female=Count('id', filter=Q(sex='F')),
         )
-        results_qs = Result.objects.filter(swimmer__nationality=country)
-        medals_qs = Medal.objects.filter(swimmer__nationality=country)
+        # STRICT country attribution: a swim/medal/record belongs to the
+        # country the athlete REPRESENTED at that meet (Result/Medal/Record
+        # stamps), never the swimmer's current nationality — otherwise a
+        # nationality change drags their whole history to the new country.
+        # Unstamped legacy rows fall back to the swimmer's nationality.
+        results_qs = Result.objects.filter(
+            Q(nationality=country)
+            | Q(nationality__isnull=True, swimmer__nationality=country))
+        medals_qs = Medal.objects.filter(
+            Q(nationality=country)
+            | Q(nationality__isnull=True, swimmer__nationality=country))
         medal_counts = medals_qs.aggregate(
             gold=Count('id', filter=Q(medal_type='GOLD')),
             silver=Count('id', filter=Q(medal_type='SILVER')),
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
         )
-        records_qs = Record.objects.filter(swimmer__nationality=country)
+        records_qs = Record.objects.filter(
+            Q(country=country)
+            | Q(country__isnull=True, swimmer__nationality=country))
 
         # Medal tally per championship classification (Arab, National, ...)
         medals_by_classification = [
@@ -840,7 +851,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             # "trending". Fall back to the federation's best performer of
             # the last 6 months (highest-FINA recent swim).
             _hot_qs = rank_base.filter(
-                swimmer__nationality=country,
+                nationality=country,
                 championship__date__gte=cutoff).order_by('-fina_points')
             _excl = [sid for sid, nm in mine_names.items()
                      if _nk(nm) in featured]
@@ -914,7 +925,7 @@ class CountryViewSet(viewsets.ModelViewSet):
         # Find events for this stroke with best times by this country's swimmers
         event_stats = (
             Result.objects.filter(
-                swimmer__nationality=country, swimmer__is_relay_team=False,
+                nationality=country, swimmer__is_relay_team=False,
                 championship__pool=pool, event__is_relay=False,
                 event__stroke=stroke, time_centiseconds__gt=0,
             )
@@ -931,7 +942,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             # collapsed into a single point.)
             rows = (
                 Result.objects.filter(
-                    swimmer__nationality=country, swimmer__is_relay_team=False,
+                    nationality=country, swimmer__is_relay_team=False,
                     event_id=es['event_id'], championship__pool=pool,
                     event__is_relay=False, time_centiseconds__gt=0,
                 )
@@ -977,7 +988,7 @@ class CountryViewSet(viewsets.ModelViewSet):
         sex = params.get('sex', 'M')
         pool = params.get('pool', 'LCM')
         base = Result.objects.filter(
-            swimmer__nationality=country, swimmer__is_relay_team=False,
+            nationality=country, swimmer__is_relay_team=False,
             swimmer__sex=sex, championship__pool=pool,
             event__is_relay=False, time_centiseconds__gt=0,
             championship__date__isnull=False,

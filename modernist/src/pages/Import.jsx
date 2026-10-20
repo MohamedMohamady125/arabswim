@@ -504,7 +504,7 @@ export default function Import() {
         included.forEach((m) => Object.assign(decisions, m.decisions || {}))
         const items = included.map((m) => ({ import_id: m.importId, championship_details: m.champForm }))
         setLoadingMsg(`Starting batch import of ${items.length} meets…`)
-        const res = await confirmImportBatch({ items, swimmer_decisions: decisions, unpublished: true })
+        const res = await confirmImportBatch({ items, swimmer_decisions: decisions, special: true, unpublished: true })
         const jobId = res.data.job_id
         let jobData = null
         const MAX_POLLS = 2880 // ~2 hours at 2.5s intervals

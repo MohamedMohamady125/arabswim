@@ -1098,8 +1098,24 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         if unpublished:
             champ_kwargs['is_published'] = False
 
-        championship = Championship.objects.create(**champ_kwargs)
-        championship_created_now = True
+        # Re-importing the same special file must not duplicate its hidden
+        # meets: reuse the existing unpublished meet with the same identity
+        # (name+date+pool+location — distinct same-named meets differ by
+        # city, which the multi-meet splitter keeps in location).
+        existing_unpub = None
+        if unpublished:
+            existing_unpub = Championship.objects.filter(
+                name__iexact=champ_kwargs['name'],
+                date=champ_kwargs['date'],
+                pool=champ_kwargs['pool'],
+                location__iexact=champ_kwargs.get('location', '') or '',
+                is_published=False,
+            ).first()
+        if existing_unpub:
+            championship = existing_unpub
+        else:
+            championship = Championship.objects.create(**champ_kwargs)
+            championship_created_now = True
     else:
         championship_date = _parse_date(meet_info.get('date', ''))
         pool = meet_info.get('pool', 'LCM')
@@ -1191,6 +1207,14 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             # ALP'38" vs "GRENOBsLE ALP'38") must not split one athlete
             # into two identities.
             if club_norm and first_club and not clubs_equivalent(club_norm, first_club):
+                # A team that IS a country ("TUNISIE") is a representation
+                # label, not a club: the same athlete swims club events and
+                # national-team events in one meet — never split on it.
+                # (len > 3: short club abbreviations like "EST"/"COL"
+                # collide with country codes — same guard as elsewhere.)
+                if ((len(club_norm) > 3 and resolve_country(club_norm))
+                        or (len(first_club) > 3 and resolve_country(first_club))):
+                    return base
                 # Same name AND same birth year but different club — two
                 # different athletes (e.g. two "Mohamed Amine DRIDI"
                 # b.2010, clubs CA and OLYMPICA).

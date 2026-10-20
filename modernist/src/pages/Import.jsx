@@ -399,7 +399,7 @@ export default function Import() {
         // "Upload Special Excel": default everyone to the normal auto decision
         // (match/create) — the per-athlete review lets the admin override.
         for (const m of ((special && !specialExcel) ? [] : res.data.matches)) {
-          if (m.match_type === 'exact' || (m.match_type === 'fuzzy' && m.confidence >= 92)) {
+          if (m.match_type === 'exact' || m.match_type === 'variant' || (m.match_type === 'fuzzy' && m.confidence >= 92)) {
             auto[m.parsed_name] = { action: 'match', swimmer_id: m.matched_swimmer?.id }
           } else {
             // auto:true lets the backend re-match this at write time. In a
@@ -536,7 +536,7 @@ export default function Import() {
   const toggleKeep = (m, keep) => {
     const next = { ...meet.decisions }
     if (keep) {
-      next[m.parsed_name] = (m.match_type === 'exact' || (m.match_type === 'fuzzy' && m.confidence >= 92))
+      next[m.parsed_name] = (m.match_type === 'exact' || m.match_type === 'variant' || (m.match_type === 'fuzzy' && m.confidence >= 92))
         ? { action: 'match', swimmer_id: m.matched_swimmer?.id }
         : { action: 'create', auto: true }
     } else {

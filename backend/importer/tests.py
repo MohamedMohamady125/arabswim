@@ -3583,6 +3583,137 @@ class EgyptVariantMatcherTests(TestCase):
         self.assertIsNone(m)
 
 
+class ArabVariantMatcherTests(TestCase):
+    """find_matching_swimmer resolves general Arab name variants (dropped
+    middle names: federation Excel triple names vs Microplus given+family)
+    via the first+last-token-pinned subset rule, birth-year/club guarded."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Country
+        cls.ksa = Country.objects.create(name='Saudi Arabia', code='KSA')
+        cls.uae = Country.objects.create(name='United Arab Emirates', code='UAE')
+
+    def setUp(self):
+        import importer.matcher as matcher
+        matcher._country_cache = None
+        matcher.invalidate_norm_cache()
+
+    def _pr(self, name, birth_year=0, club='', code='KSA'):
+        from importer.parsers.base import ParsedResult
+        return ParsedResult(swimmer_name=name, time_text='',
+                            birth_year=birth_year, nationality_code=code,
+                            club=club)
+
+    def test_dropped_middle_name_matches_with_birth_year(self):
+        from importer.matcher import find_matching_swimmer
+        s = Swimmer.objects.create(
+            name='Zaid FAISAL ALSARRAJ', nationality=self.ksa,
+            club='Al-Shabab', birth_year=2008, sex='M')
+        m, conf, mtype = find_matching_swimmer(
+            self._pr('Zaid ALSARRAJ', birth_year=2008))
+        self.assertEqual(m, s)
+        self.assertEqual(mtype, 'variant')
+        s.refresh_from_db()
+        # Fullest spelling kept, short variant remembered as alias
+        self.assertEqual(s.name, 'Zaid FAISAL ALSARRAJ')
+        self.assertIn('Zaid ALSARRAJ',
+                      list(s.nicknames.values_list('nickname', flat=True)))
+
+    def test_longer_import_name_upgrades_profile(self):
+        from importer.matcher import find_matching_swimmer
+        s = Swimmer.objects.create(
+            name='Zaid ALSARRAJ', nationality=self.ksa,
+            club='Al-Shabab', birth_year=2008, sex='M')
+        m, _, mtype = find_matching_swimmer(
+            self._pr('Zaid FAISAL ALSARRAJ', birth_year=2008))
+        self.assertEqual(m, s)
+        self.assertEqual(mtype, 'variant')
+        s.refresh_from_db()
+        self.assertEqual(s.name, 'Zaid FAISAL ALSARRAJ')
+
+    def test_sibling_never_merges(self):
+        # Brothers: same father + family name + club + year, different given
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(
+            name='Qassan Jafar Alabdusalam', nationality=self.ksa,
+            club='Al-Hilal', birth_year=2015, sex='M')
+        m, _, mtype = find_matching_swimmer(
+            self._pr('Salman Jafar Alabdusalam', birth_year=2015, club='Al-Hilal'))
+        self.assertIsNone(m)
+        self.assertEqual(mtype, 'new')
+
+    def test_different_father_never_merges(self):
+        # Cousins: same given + family name, different middle (father)
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(
+            name='Zaid FAISAL ALSARRAJ', nationality=self.ksa,
+            club='Al-Shabab', birth_year=2008, sex='M')
+        m, _, _ = find_matching_swimmer(
+            self._pr('Zaid KHALED ALSARRAJ', birth_year=2008, club='Al-Shabab'))
+        self.assertIsNone(m)
+
+    def test_no_corroboration_creates_new(self):
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(
+            name='Zaid FAISAL ALSARRAJ', nationality=self.ksa,
+            club='Al-Shabab', sex='M')
+        m, _, mtype = find_matching_swimmer(self._pr('Zaid ALSARRAJ'))
+        self.assertIsNone(m)
+        self.assertEqual(mtype, 'new')
+
+    def test_requires_file_nationality(self):
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(
+            name='Zaid FAISAL ALSARRAJ', nationality=self.ksa,
+            club='Al-Shabab', birth_year=2008, sex='M')
+        m, _, _ = find_matching_swimmer(
+            self._pr('Zaid ALSARRAJ', birth_year=2008, code=''))
+        self.assertIsNone(m)
+
+    def test_other_nationality_never_matches(self):
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(
+            name='Zaid FAISAL ALSARRAJ', nationality=self.uae,
+            club='Al-Shabab', birth_year=2008, sex='M')
+        m, _, _ = find_matching_swimmer(
+            self._pr('Zaid ALSARRAJ', birth_year=2008, code='KSA'))
+        self.assertIsNone(m)
+
+    def test_ambiguous_variant_creates_new(self):
+        from importer.matcher import find_matching_swimmer
+        Swimmer.objects.create(name='Zaid FAISAL ALSARRAJ', nationality=self.ksa,
+                               club='Al-Shabab', birth_year=2008, sex='M')
+        Swimmer.objects.create(name='Zaid AHMED ALSARRAJ', nationality=self.ksa,
+                               club='Al-Shabab', birth_year=2008, sex='M')
+        m, _, _ = find_matching_swimmer(
+            self._pr('Zaid ALSARRAJ', birth_year=2008))
+        self.assertIsNone(m)
+
+    def test_alias_resolves_instantly_next_time(self):
+        from importer.matcher import find_matching_swimmer
+        s = Swimmer.objects.create(
+            name='Zaid FAISAL ALSARRAJ', nationality=self.ksa,
+            club='Al-Shabab', birth_year=2008, sex='M')
+        find_matching_swimmer(self._pr('Zaid ALSARRAJ', birth_year=2008))
+        m, _, mtype = find_matching_swimmer(self._pr('Zaid ALSARRAJ'))
+        self.assertEqual(m, s)
+        self.assertEqual(mtype, 'exact')
+
+    def test_newly_created_swimmer_matches_in_same_run(self):
+        # Multi-meet batch: meet #1 creates the full-name profile, meet #2's
+        # short variant must find it through the incrementally-extended cache.
+        from importer.matcher import find_matching_swimmer, _get_arab_cache
+        _get_arab_cache()  # prime the cache while the table is empty
+        s = Swimmer.objects.create(
+            name='Hamad SALEM ALMUTAIRI', nationality=self.ksa,
+            club='Al-Nassr', birth_year=2010, sex='M')
+        m, _, mtype = find_matching_swimmer(
+            self._pr('Hamad ALMUTAIRI', birth_year=2010))
+        self.assertEqual(m, s)
+        self.assertEqual(mtype, 'variant')
+
+
 class HytekEgyptExcelTests(SimpleTestCase):
     """Column mapping quirks of Egyptian Hy-Tek Excel exports."""
 

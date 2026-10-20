@@ -398,6 +398,7 @@ def invalidate_norm_cache():
     _get_egy_cache pick up new rows incrementally."""
     global _norm_cache, _norm_cache_count, _norm_cache_max_id
     global _egy_cache, _egy_cache_count, _egy_cache_max_id
+    global _arab_cache, _arab_cache_count, _arab_cache_max_id
     global _country_cache
     _norm_cache = None
     _norm_cache_count = None
@@ -405,6 +406,9 @@ def invalidate_norm_cache():
     _egy_cache = None
     _egy_cache_count = None
     _egy_cache_max_id = None
+    _arab_cache = None
+    _arab_cache_count = None
+    _arab_cache_max_id = None
     # Country objects are cached by code/name for the life of the process;
     # clear them too so a rebuilt set of Country rows isn't shadowed by
     # stale (e.g. deleted/rolled-back) instances.
@@ -494,8 +498,19 @@ def _egy_variant_match(parsed_result, category='', meet_date=None):
         return None
     hits = [sid for sid, sname in _get_egy_cache().get(toks[0], [])
             if names_equivalent(name, sname)]
+    return _corroborate_variant_hits(hits, parsed_result, category, meet_date)
+
+
+def _corroborate_variant_hits(hits, parsed_result, category='', meet_date=None):
+    """Shared guard for variant-name matches (EGY + general Arab).
+
+    A variant-spelling hit is only accepted with a corroborating signal —
+    birth year within ±1 or an equivalent club — and never when several
+    candidates remain equally plausible (ambiguous → no merge).
+    """
     if not hits:
         return None
+    name = parsed_result.swimmer_name
     birth_year = parsed_result.birth_year
     club = (getattr(parsed_result, 'club', '') or '').strip()
     band = category_band(category)
@@ -522,6 +537,100 @@ def _egy_variant_match(parsed_result, category='', meet_date=None):
     swimmer = ok[0][0]
     _record_name_variant(swimmer, name)
     return swimmer
+
+
+# ── General Arab name-variant matching ───────────────────────────────────
+#
+# Arab sources differ in how many name parts they print for one athlete:
+# federation Excels carry the full triple name ("Zaid FAISAL ALSARRAJ")
+# while Microplus/Splash international files print given + family only
+# ("Zaid ALSARRAJ"). The EGY rules above don't apply (they key on the
+# first TWO tokens — Egyptian given + father); the Arab rule instead pins
+# the FIRST token (given name) and the LAST token (family name) and lets
+# middle tokens drop. Siblings never merge (different given name), cousins
+# with a different father never merge (their extra token isn't a dropped
+# middle of the other), and every hit still needs the birth-year/club
+# corroboration in _corroborate_variant_hits.
+
+def _arab_names_equivalent(a, b):
+    """Same athlete's name with middle parts dropped? (first + last pinned)"""
+    ta = normalize_for_matching(a).split()
+    tb = normalize_for_matching(b).split()
+    if ta == tb:
+        return True
+    if len(ta) > len(tb):
+        ta, tb = tb, ta
+    if len(ta) < 2 or len(ta) == len(tb):
+        return False
+    if ta[0] != tb[0] or ta[-1] != tb[-1]:
+        return False
+    # middle tokens of the shorter must appear, in order, among the longer's
+    it = iter(tb[1:-1])
+    return all(tok in it for tok in ta[1:-1])
+
+
+_arab_cache = None      # {(nat_code, first_token): [(swimmer_id, name), ...]}
+_arab_cache_count = None
+_arab_cache_max_id = None
+
+
+def _arab_country_codes():
+    from .services import ARAB_COUNTRY_CODES
+    return ARAB_COUNTRY_CODES - {'EGY', 'UAR'}  # EGY has its own rules
+
+
+def _get_arab_cache():
+    """Arab-swimmer (nat, first-token) index; extended incrementally like
+    _get_norm_cache (full rebuilds were O(N²) during big imports)."""
+    global _arab_cache, _arab_cache_count, _arab_cache_max_id
+    qs = Swimmer.objects.filter(
+        is_relay_team=False, nationality__code__in=_arab_country_codes())
+    current = qs.count()
+    if _arab_cache is not None and _arab_cache_count == current:
+        return _arab_cache
+    if (_arab_cache is not None and _arab_cache_max_id is not None
+            and current > _arab_cache_count):
+        new_rows = list(qs.filter(id__gt=_arab_cache_max_id)
+                        .values_list('id', 'name', 'nationality__code'))
+        if len(new_rows) == current - _arab_cache_count:
+            for sid, sname, code in new_rows:
+                toks = normalize_for_matching(sname).split()
+                if toks:
+                    _arab_cache.setdefault((code, toks[0]), []).append((sid, sname))
+                if sid > _arab_cache_max_id:
+                    _arab_cache_max_id = sid
+            _arab_cache_count = current
+            return _arab_cache
+    index = {}
+    max_id = 0
+    for sid, sname, code in qs.values_list('id', 'name', 'nationality__code'):
+        toks = normalize_for_matching(sname).split()
+        if toks:
+            index.setdefault((code, toks[0]), []).append((sid, sname))
+        if sid > max_id:
+            max_id = sid
+    _arab_cache = index
+    _arab_cache_count = current
+    _arab_cache_max_id = max_id
+    return _arab_cache
+
+
+def _arab_variant_match(parsed_result, category='', meet_date=None):
+    """Match an Arab (non-EGY) name variant to an existing swimmer.
+
+    Only runs when the file states the swimmer's nationality — a variant
+    merge across spellings is too risky without knowing the country.
+    """
+    country = resolve_country(getattr(parsed_result, 'nationality_code', '') or '')
+    if not country or country.code not in _arab_country_codes():
+        return None
+    name = parsed_result.swimmer_name
+    toks = normalize_for_matching(name).split()
+    if len(toks) < 2:
+        return None
+    hits = [sid for sid, sname in _get_arab_cache().get((country.code, toks[0]), [])
+            if _arab_names_equivalent(name, sname)]
+    return _corroborate_variant_hits(hits, parsed_result, category, meet_date)
 
 
 def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=None):
@@ -581,8 +690,10 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
                       if c.nationality_id in (None, file_country.id)]
 
     if not candidates:
-        # Egyptian variant spelling of an existing swimmer?
-        swimmer = _egy_variant_match(parsed_result, category, meet_date)
+        # Variant spelling of an existing swimmer? (EGY truncation/subset
+        # rules, or the general Arab dropped-middle-name rule)
+        swimmer = (_egy_variant_match(parsed_result, category, meet_date)
+                   or _arab_variant_match(parsed_result, category, meet_date))
         if swimmer:
             return swimmer, 93, 'variant'
         return None, 0, 'new'

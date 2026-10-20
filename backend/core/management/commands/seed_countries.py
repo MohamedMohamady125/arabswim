@@ -79,7 +79,7 @@ WORLD_COUNTRIES = [
     ('Bosnia and Herzegovina', 'BIH'), ('Bulgaria', 'BUL'), ('Croatia', 'CRO'),
     ('Cyprus', 'CYP'), ('Czechia', 'CZE'), ('Denmark', 'DEN'), ('Estonia', 'EST'),
     ('Finland', 'FIN'), ('France', 'FRA'), ('Georgia', 'GEO'), ('Germany', 'GER'),
-    ('Great Britain', 'GBR'), ('Greece', 'GRE'), ('Hungary', 'HUN'), ('Iceland', 'ISL'),
+    ('Great Britain (United Kingdom)', 'GBR'), ('Greece', 'GRE'), ('Hungary', 'HUN'), ('Iceland', 'ISL'),
     ('Ireland', 'IRL'), ('Israel', 'ISR'), ('Italy', 'ITA'), ('Kosovo', 'KOS'),
     ('Latvia', 'LAT'), ('Liechtenstein', 'LIE'), ('Lithuania', 'LTU'),
     ('Luxembourg', 'LUX'), ('Malta', 'MLT'), ('Moldova', 'MDA'), ('Monaco', 'MON'),

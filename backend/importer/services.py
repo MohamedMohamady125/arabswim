@@ -1768,10 +1768,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     from championships.categories import infer_blank_categories
     categories_inferred = infer_blank_categories(championship)
 
-    # Re-award medals with Olympic tie rules
-    _progress('Awarding medals…')
-    from medals.utils import recompute_medals
-    recompute_medals(championship)
+    # Re-award medals with Olympic tie rules. Upload Special meets are
+    # profile-only data — they stay unpublished and must never mint medals
+    # (or anything else that surfaces outside the swimmer profile).
+    if not unpublished:
+        _progress('Awarding medals…')
+        from medals.utils import recompute_medals
+        recompute_medals(championship)
 
     # Rebuild the day-by-day program from the source (accurate multi-day when
     # the file carries session dates, Day-1 fallback otherwise).
@@ -1803,12 +1806,15 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
              for b in blanks],
             ['nationality'], batch_size=500)
 
-    # Auto-detect records from newly created results
-    _progress('Checking records…')
-    from records.auto import check_and_update_records
-    for r in championship.results.filter(id__in=claimed_results).select_related(
-            'swimmer', 'swimmer__nationality', 'nationality', 'event', 'championship'):
-        check_and_update_records(r)
+    # Auto-detect records from newly created results — but never from
+    # Upload Special (unpublished) meets: their swims live on swimmer
+    # profiles only and must not claim national/arab records.
+    if not unpublished:
+        _progress('Checking records…')
+        from records.auto import check_and_update_records
+        for r in championship.results.filter(id__in=claimed_results).select_related(
+                'swimmer', 'swimmer__nationality', 'nationality', 'event', 'championship'):
+            check_and_update_records(r)
 
     # Don't leave an empty meet behind: if we created the championship this
     # run but nothing landed on it (every row skipped, or a placeholder meet

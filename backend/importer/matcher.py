@@ -101,6 +101,8 @@ COUNTRY_NAME_ALIASES = {
     'IRAK': 'IRQ',
     'PALESTINE': 'PLE',
     'GREAT BRITAIN': 'GBR',
+    'UNITED KINGDOM': 'GBR', 'UK': 'GBR',
+    'GREAT BRITAIN (UNITED KINGDOM)': 'GBR',
     # British home nations — entered as "Team England" etc. at UK meets
     'ENGLAND': 'ENG', 'TEAM ENGLAND': 'ENG',
     'WALES': 'WAL', 'TEAM WALES': 'WAL',

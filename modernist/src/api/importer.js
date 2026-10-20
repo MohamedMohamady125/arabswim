@@ -5,7 +5,10 @@ export const uploadFile = (formData) => api.post('/import/upload/', formData, {
   timeout: 120000,
 })
 export const matchSwimmers = (importId, includeAll = false) => api.post('/import/match/', { import_id: importId, include_all: includeAll })
+export const matchSwimmersBatch = (importIds, includeAll = false) =>
+  api.post('/import/match/', { import_ids: importIds, include_all: includeAll }, { timeout: 300000 })
 export const confirmImport = (data) => api.post('/import/confirm/', data, { timeout: 120000 })
+export const confirmImportBatch = (data) => api.post('/import/confirm-batch/', data, { timeout: 120000 })
 export const getConfirmJob = (jobId) => api.get(`/import/confirm/${jobId}/`)
 export const getDuplicates = () => api.get('/import/duplicates/')
 export const mergeSwimmers = (keepId, removeIds) =>

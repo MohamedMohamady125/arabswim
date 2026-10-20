@@ -3094,8 +3094,10 @@ class SameMeetMergeTests(TestCase):
 
 
 class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
-    """No-nationality athletes inherit the meet's host country — except in
-    UAE meets, whose expat-heavy fields stay nationality-less."""
+    """STRICT: nationality comes ONLY from the file. A code-less swimmer
+    stays nationality-less — never stamped with the meet's host country.
+    The single exception: a meet whose classification scheme NAMES a
+    country (National / Saudi Arabia) declares everyone's nationality."""
 
     @classmethod
     def setUpTestData(cls):
@@ -3119,23 +3121,23 @@ class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
             }],
         }
 
-    def test_national_meet_assigns_host_country(self):
-        # National meet rule: code-less swimmers get the host country's
-        # nationality so every swimmer shows a flag.
+    def test_national_meet_never_assigns_host_country(self):
+        # STRICT: no nationality in the file → the swimmer stays blank,
+        # even in a national meet with a known host country.
         from importer.services import confirm_import
         confirm_import(self._preview(), {}, championship_details={
             'name': 'Tunisia Nationals', 'date': '2026-06-01',
             'pool': 'LCM', 'country': self.country.id})
         swimmer = Swimmer.objects.get(name__icontains='MABROUK')
-        self.assertEqual(swimmer.nationality, self.country)
+        self.assertIsNone(swimmer.nationality)
 
-    def test_uae_meet_assigns_host_country(self):
+    def test_uae_meet_never_assigns_host_country(self):
         from importer.services import confirm_import
         confirm_import(self._preview(), {}, championship_details={
             'name': 'Dubai Open', 'date': '2026-06-01',
             'pool': 'LCM', 'country': self.uae.id})
         swimmer = Swimmer.objects.get(name__icontains='MABROUK')
-        self.assertEqual(swimmer.nationality, self.uae)
+        self.assertIsNone(swimmer.nationality)
 
     def test_explicit_code_beats_fallback(self):
         from importer.services import confirm_import
@@ -3581,6 +3583,80 @@ class EgyptVariantMatcherTests(TestCase):
         m, _, _ = find_matching_swimmer(
             self._pr('Omar Mohamed Hassan', birth_year=2008, club='AHLY'))
         self.assertIsNone(m)
+
+
+class BatchImportApiTests(TestCase):
+    """Multi-meet special Excel: one request matches many cached previews,
+    and one background job confirms the whole batch (meets unpublished)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth import get_user_model
+        from core.models import Country
+        cls.admin = get_user_model().objects.create_superuser('boss', password='x')
+        cls.tun = Country.objects.create(name='Tunisia', code='TUN')
+
+    def _preview(self, meet_name, swimmer='Rami RAHMOUNI'):
+        return {
+            'meet': {'name': meet_name, 'date': '2026-06-01', 'pool': 'LCM',
+                     'format': 'excel'},
+            'swimmers': [{'name': swimmer, 'birth_year': 2009,
+                          'nationality_code': 'TUN', 'gender': 'M',
+                          'results_count': 1}],
+            'stats': {'total_results': 1},
+            'events': [{
+                'event_name': '100 M Freestyle',
+                'distance': 100, 'stroke': 'Freestyle',
+                'gender': 'M', 'is_relay': False, 'round_type': 'Finals',
+                'results': [
+                    {'swimmer_name': swimmer, 'gender': 'M', 'category': '',
+                     'time_centiseconds': 5500, 'time_text': '55.00',
+                     'birth_year': 2009, 'nationality_code': 'TUN'},
+                ],
+            }],
+        }
+
+    def test_batch_match_returns_results_and_expired(self):
+        import json as _json
+        from django.core.cache import cache
+        from rest_framework.test import APIClient
+        cache.set('import_aaa', _json.dumps(self._preview('Meet A')), 600)
+        client = APIClient()
+        client.force_authenticate(self.admin)
+        resp = client.post('/api/v1/import/match/', {
+            'import_ids': ['aaa', 'gone'], 'include_all': True}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('aaa', resp.data['results'])
+        self.assertEqual(resp.data['expired'], ['gone'])
+        self.assertEqual(resp.data['results']['aaa']['stats']['total'], 1)
+
+    def test_batch_confirm_job_imports_unpublished_meets(self):
+        import json as _json
+        from django.core.cache import cache
+        from importer.views import _run_batch_confirm_job
+        from importer.models import ImportJob
+        from championships.models import Championship
+        cache.set('import_m1', _json.dumps(self._preview('Meet One')), 600)
+        cache.set('import_m2', _json.dumps(self._preview('Meet Two')), 600)
+        job = ImportJob.objects.create(meet_name='batch', status='pending')
+        _run_batch_confirm_job(job.id, [
+            {'import_id': 'm1', 'championship_details': {
+                'name': 'Meet One', 'date': '2026-06-01', 'pool': 'LCM',
+                'country': self.tun.id}},
+            {'import_id': 'm2', 'championship_details': {
+                'name': 'Meet Two', 'date': '2026-07-01', 'pool': 'LCM',
+                'country': self.tun.id}},
+            {'import_id': 'missing', 'championship_details': {'name': 'Gone'}},
+        ], {}, special=False, unpublished=True)
+        job.refresh_from_db()
+        self.assertEqual(job.status, 'done')
+        self.assertEqual(job.result['meets_done'], 2)
+        self.assertEqual(job.result['meets_failed'], 1)
+        self.assertEqual(job.result['created_results'], 2)
+        # Meets created UNPUBLISHED, one swimmer profile reused across both
+        self.assertEqual(Championship.objects.filter(is_published=False).count(), 2)
+        self.assertEqual(
+            Swimmer.objects.filter(name__icontains='RAHMOUNI').count(), 1)
 
 
 class ExcelDateCellTests(SimpleTestCase):

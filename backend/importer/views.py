@@ -144,22 +144,14 @@ class MatchSwimmersView(APIView):
     """
     permission_classes = [IsAdmin]
 
-    def post(self, request):
-        import_id = request.data.get('import_id')
-        if not import_id:
-            return Response({'error': 'import_id required'}, status=400)
-
+    @staticmethod
+    def _match_one(import_id, include_all):
         preview_json = cache.get(f'import_{import_id}')
         if not preview_json:
-            return Response({'error': 'Import session expired. Please upload again.'}, status=404)
-
+            return None
         preview = json.loads(preview_json)
-        # "Upload Special" lets the admin hand-pick ANY athlete to keep, so
-        # the pick-list must include non-Arab swimmers too (normally skipped).
-        include_all = bool(request.data.get('include_all'))
         matches = match_swimmers_preview(preview, include_all=include_all)
-
-        return Response({
+        return {
             'import_id': import_id,
             'matches': matches,
             'stats': {
@@ -168,7 +160,35 @@ class MatchSwimmersView(APIView):
                 'fuzzy_matches': sum(1 for m in matches if m['match_type'] == 'fuzzy'),
                 'new_swimmers': sum(1 for m in matches if m['match_type'] == 'new'),
             }
-        })
+        }
+
+    def post(self, request):
+        # "Upload Special" lets the admin hand-pick ANY athlete to keep, so
+        # the pick-list must include non-Arab swimmers too (normally skipped).
+        include_all = bool(request.data.get('include_all'))
+
+        # Batch mode: a multi-meet special Excel produces hundreds/thousands
+        # of small meets — matching them one HTTP call at a time spends more
+        # time on round trips than on matching. One call matches many
+        # previews; expired ones are reported, not fatal.
+        import_ids = request.data.get('import_ids')
+        if isinstance(import_ids, list) and import_ids:
+            results, expired = {}, []
+            for iid in import_ids[:1000]:
+                one = self._match_one(iid, include_all)
+                if one is None:
+                    expired.append(iid)
+                else:
+                    results[iid] = one
+            return Response({'results': results, 'expired': expired})
+
+        import_id = request.data.get('import_id')
+        if not import_id:
+            return Response({'error': 'import_id required'}, status=400)
+        one = self._match_one(import_id, include_all)
+        if one is None:
+            return Response({'error': 'Import session expired. Please upload again.'}, status=404)
+        return Response(one)
 
 
 def _finish_import_log(preview, result):
@@ -302,6 +322,106 @@ def _run_confirm_job(job_id, preview, swimmer_decisions, championship_id,
         stop.set()
         mon.join()
         close_old_connections()
+
+
+def _run_batch_confirm_job(job_id, items, swimmer_decisions, special, unpublished):
+    """Background worker: confirm many small meets (special-Excel batches)
+    under ONE job. Per-meet failures are collected, never fatal — one bad
+    meet must not abort the other 2,000."""
+    import threading
+    from django.db import close_old_connections
+    close_old_connections()
+    ImportJob.objects.filter(id=job_id).update(status='running')
+
+    shared = {'text': 'Starting…'}
+    stop = threading.Event()
+
+    def monitor():
+        from django.db import close_old_connections as _coc
+        last = ''
+        while not stop.wait(2):
+            text = shared['text']
+            if text != last:
+                try:
+                    ImportJob.objects.filter(id=job_id).update(progress=text)
+                    last = text
+                except Exception:
+                    pass
+        _coc()
+
+    mon = threading.Thread(target=monitor, daemon=True)
+    mon.start()
+    totals = {'meets_done': 0, 'meets_failed': 0, 'created_results': 0,
+              'created_swimmers': 0, 'matched_swimmers': 0,
+              'skipped_results': 0, 'failures': []}
+    try:
+        for i, item in enumerate(items, 1):
+            iid = item.get('import_id')
+            details = item.get('championship_details')
+            name = (details or {}).get('name', '') or iid
+            shared['text'] = f'Meet {i:,} / {len(items):,} — {name}'
+            preview_json = cache.get(f'import_{iid}')
+            if not preview_json:
+                totals['meets_failed'] += 1
+                totals['failures'].append({'meet': name, 'error': 'preview expired'})
+                continue
+            try:
+                result = confirm_import(
+                    json.loads(preview_json), swimmer_decisions,
+                    item.get('championship_id'), details,
+                    special=special, unpublished=unpublished)
+                _finish_import_log(json.loads(preview_json), result)
+                cache.delete(f'import_{iid}')
+                totals['meets_done'] += 1
+                for k in ('created_results', 'created_swimmers',
+                          'matched_swimmers', 'skipped_results'):
+                    totals[k] += result.get(k, 0) or 0
+            except Exception as e:  # keep going — report at the end
+                totals['meets_failed'] += 1
+                if len(totals['failures']) < 50:
+                    totals['failures'].append({'meet': name, 'error': str(e)[:300]})
+        ImportJob.objects.filter(id=job_id).update(
+            status='done', progress='', result=totals)
+    except Exception as e:
+        ImportJob.objects.filter(id=job_id).update(
+            status='failed', progress='', error=str(e)[:2000])
+    finally:
+        stop.set()
+        mon.join()
+        close_old_connections()
+
+
+class ConfirmBatchView(APIView):
+    """Confirm MANY meets from one multi-meet file as a single background job.
+    POST /api/v1/import/confirm-batch/
+    Body: {
+        items: [{ import_id, championship_details, championship_id? }, ...],
+        swimmer_decisions: { "NAME": {action, swimmer_id?, auto?} },  # shared
+        special: bool, unpublished: bool,
+    }
+    Returns { job_id } — poll GET /import/confirm/<job_id>/.
+    """
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        import threading
+        items = request.data.get('items')
+        if not isinstance(items, list) or not items:
+            return Response({'error': 'items required'}, status=400)
+        if len(items) > 5000:
+            return Response({'error': 'too many items (max 5000)'}, status=400)
+        swimmer_decisions = request.data.get('swimmer_decisions', {}) or {}
+        special = bool(request.data.get('special'))
+        unpublished = bool(request.data.get('unpublished'))
+
+        job = ImportJob.objects.create(
+            meet_name=f'Batch import — {len(items)} meets', status='pending')
+        threading.Thread(
+            target=_run_batch_confirm_job,
+            args=(job.id, items, swimmer_decisions, special, unpublished),
+            daemon=True,
+        ).start()
+        return Response({'job_id': job.id, 'status': 'pending'})
 
 
 class ConfirmImportView(APIView):

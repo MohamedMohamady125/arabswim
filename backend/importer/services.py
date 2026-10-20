@@ -1113,17 +1113,14 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         )
         championship_created_now = True
 
-    # National meet nationality rule: when the meet is a national
-    # championship (classification = National/Other or a single-country meet)
-    # AND the file has no explicit nationality data, assign the host country's
-    # flag to ALL swimmers. Foreigners are detected by their club name
-    # resolving as a different country — those keep the foreign nationality.
+    # STRICT nationality rule for every meet: the ONLY fallback allowed is a
+    # meet whose classification scheme itself NAMES a country (classification
+    # "National" + sub-classification "Saudi Arabia") — the meet type declares
+    # who everyone represents. Otherwise a swimmer with no nationality in the
+    # file stays nationality-LESS: never guess from the meet's host country
+    # (expat-heavy fields made that stamp foreigners with the host's flag).
     is_international = meet_info.get('is_international', False)
     if not is_international:
-        # When the meet's classification scheme itself names a country (e.g.
-        # classification "National", sub-classification "Saudi Arabia"), that
-        # country is the AUTHORITATIVE nationality for every swimmer — the meet
-        # type declares who they represent. This beats host-country guessing.
         classed_country = None
         for nm in (
             championship.sub_classification.name if championship.sub_classification_id else '',
@@ -1136,13 +1133,6 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     break
         if classed_country:
             swimmer_fallback = classed_country
-        elif championship.country:
-            cls_name = championship.classification.name if championship.classification_id else ''
-            # Classification names are free-form (created verbatim from the
-            # source file), so match case- and whitespace-insensitively.
-            cls_norm = (cls_name or '').strip().casefold()
-            if cls_norm in ('national', 'other', ''):
-                swimmer_fallback = championship.country
 
     # The source published an open classification alongside age groups
     # (Egyptian Hy-Tek 'Event 1O' duplicates, dropped at parse time):

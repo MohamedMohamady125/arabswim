@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  uploadFile, matchSwimmers, confirmImport, getConfirmJob,
+  uploadFile, matchSwimmers, matchSwimmersBatch, confirmImport, confirmImportBatch, getConfirmJob,
   getDuplicates, mergeSwimmers, getImportHistory,
   getScrapeJobs, startScrape, downloadScrape,
   getSaudiScrapeJobs, startSaudiScrape, downloadSaudiScrape,
@@ -109,7 +109,8 @@ export default function Import() {
   // When several files are selected, combine them into ONE meet (e.g. one PDF
   // per day of the same championship) instead of one meet per file.
   const [combineFiles, setCombineFiles] = useState(true)
-  const [importMethod, setImportMethod] = useState(null) // null, 'pdf', 'excel', 'html', 'special'
+  const [importMethod, setImportMethod] = useState(null) // null, 'pdf', 'excel', 'html', 'special', 'special_excel'
+  const [batchResult, setBatchResult] = useState(null) // special-excel batch confirm summary
   const [specialSearch, setSpecialSearch] = useState('') // filter in "Upload Special" match step
   const [step, setStep] = useState(0) // 0=method, 1=upload, 2=details+edit, 3=match, 4=done
   const [loading, setLoading] = useState(false)
@@ -277,7 +278,14 @@ export default function Import() {
       : parsed
     setMeets(finalMeets)
     setActive(0)
-    setStep(2)
+    if (importMethod === 'special_excel') {
+      // Special Excel: meet details come straight from the file (meets are
+      // imported unpublished) — skip the per-meet forms and go straight to
+      // the aggregated athlete review.
+      await handleMatch(finalMeets)
+    } else {
+      setStep(2)
+    }
   }
 
   // Fold several single-file meet entries into one. Keeps the first file's meet
@@ -380,38 +388,63 @@ export default function Import() {
   const allFormsComplete = meets.every(formComplete)
   const includedMeets = meets.filter((m) => !m.excluded)
 
-  const handleMatch = async () => {
+  // Auto decision per matched athlete.
+  // "Upload Special": default EVERYONE to skip — the admin opts athletes
+  // in one by one, so leave decisions empty (the backend treats an
+  // unlisted swimmer as skip when special=true).
+  // Everything else (incl. "Upload Special Excel"): match/create defaults —
+  // auto:true lets the backend re-match a "create" at write time. In a
+  // multi-meet batch every meet is matched before any is imported, so a
+  // shared athlete is tagged "create" in each meet; the backend re-check
+  // reuses the profile a sibling meet already created instead of spawning
+  // a duplicate. A manual dropdown change drops this flag (see
+  // updateDecision) and forces a genuine new swimmer.
+  const autoDecisions = (matches) => {
+    const auto = {}
+    for (const m of matches) {
+      if (m.match_type === 'exact' || m.match_type === 'variant' || (m.match_type === 'fuzzy' && m.confidence >= 92)) {
+        auto[m.parsed_name] = { action: 'match', swimmer_id: m.matched_swimmer?.id }
+      } else {
+        auto[m.parsed_name] = { action: 'create', auto: true }
+      }
+    }
+    return auto
+  }
+
+  const handleMatch = async (meetsArg) => {
     setLoading(true)
     setError('')
     try {
-      const updated = [...meets]
+      const updated = [...(meetsArg || meets)]
       const included = updated.filter((m) => !m.excluded)
-      let done = 0
-      for (let i = 0; i < updated.length; i++) {
-        if (updated[i].excluded) continue
-        done++
-        setLoadingMsg(included.length > 1 ? `Matching swimmers ${done} / ${included.length}…` : 'Matching swimmers…')
-        const res = await matchSwimmers(updated[i].importId, special || specialExcel)
-        const auto = {}
-        // "Upload Special": default EVERYONE to skip — the admin opts athletes
-        // in one by one, so leave decisions empty here (the backend treats an
-        // unlisted swimmer as skip when special=true).
-        // "Upload Special Excel": default everyone to the normal auto decision
-        // (match/create) — the per-athlete review lets the admin override.
-        for (const m of ((special && !specialExcel) ? [] : res.data.matches)) {
-          if (m.match_type === 'exact' || m.match_type === 'variant' || (m.match_type === 'fuzzy' && m.confidence >= 92)) {
-            auto[m.parsed_name] = { action: 'match', swimmer_id: m.matched_swimmer?.id }
-          } else {
-            // auto:true lets the backend re-match this at write time. In a
-            // multi-meet batch every meet is matched before any is imported,
-            // so a shared athlete is tagged "create" in each meet; the backend
-            // re-check reuses the profile a sibling meet already created
-            // instead of spawning a duplicate. A manual dropdown change drops
-            // this flag (see updateDecision) and forces a genuine new swimmer.
-            auto[m.parsed_name] = { action: 'create', auto: true }
+      if (specialExcel) {
+        // One request matches hundreds of meets — a multi-meet special Excel
+        // (e.g. 2,000+ small meets) would otherwise spend most of its time
+        // on HTTP round trips.
+        const idxById = new Map()
+        updated.forEach((m, i) => { if (!m.excluded) idxById.set(m.importId, i) })
+        const ids = [...idxById.keys()]
+        const CHUNK = 300
+        for (let c = 0; c < ids.length; c += CHUNK) {
+          const chunk = ids.slice(c, c + CHUNK)
+          setLoadingMsg(`Matching swimmers — ${Math.min(c + chunk.length, ids.length)} / ${ids.length} meets…`)
+          const res = await matchSwimmersBatch(chunk, true)
+          for (const [iid, data] of Object.entries(res.data.results || {})) {
+            const i = idxById.get(iid)
+            if (i === undefined) continue
+            updated[i] = { ...updated[i], matches: data.matches, matchStats: data.stats, decisions: autoDecisions(data.matches) }
           }
         }
-        updated[i] = { ...updated[i], matches: res.data.matches, matchStats: res.data.stats, decisions: auto }
+      } else {
+        let done = 0
+        for (let i = 0; i < updated.length; i++) {
+          if (updated[i].excluded) continue
+          done++
+          setLoadingMsg(included.length > 1 ? `Matching swimmers ${done} / ${included.length}…` : 'Matching swimmers…')
+          const res = await matchSwimmers(updated[i].importId, special)
+          const auto = special ? {} : autoDecisions(res.data.matches)
+          updated[i] = { ...updated[i], matches: res.data.matches, matchStats: res.data.stats, decisions: auto }
+        }
       }
       setMeets(updated)
       setActive(0)
@@ -427,6 +460,45 @@ export default function Import() {
   const handleConfirm = async () => {
     setLoading(true)
     setError('')
+
+    if (specialExcel) {
+      // One background job imports the whole batch (meets created
+      // unpublished); the shared decision map applies to every meet.
+      try {
+        const included = meets.filter((m) => !m.excluded)
+        const decisions = {}
+        included.forEach((m) => Object.assign(decisions, m.decisions || {}))
+        const items = included.map((m) => ({ import_id: m.importId, championship_details: m.champForm }))
+        setLoadingMsg(`Starting batch import of ${items.length} meets…`)
+        const res = await confirmImportBatch({ items, swimmer_decisions: decisions, unpublished: true })
+        const jobId = res.data.job_id
+        let jobData = null
+        const MAX_POLLS = 2880 // ~2 hours at 2.5s intervals
+        for (let poll = 0; poll < MAX_POLLS; poll++) {
+          await new Promise((r) => setTimeout(r, 2500))
+          const jr = await getConfirmJob(jobId)
+          jobData = jr.data
+          if (jobData.status === 'done' || jobData.status === 'failed') break
+          setLoadingMsg(jobData.progress || 'Importing…')
+        }
+        setLoading(false)
+        setLoadingMsg('')
+        if (jobData?.status === 'done') {
+          setBatchResult(jobData.result)
+          setStep(4)
+        } else if (jobData?.status === 'failed') {
+          setError(jobData.error || 'Batch import failed')
+        } else {
+          setError('Batch import is still running on the server — check the import history later.')
+        }
+      } catch (err) {
+        setLoading(false)
+        setLoadingMsg('')
+        setError(err.response?.data?.error || 'Failed to start batch import')
+      }
+      return
+    }
+
     const updated = [...meets]
     const included = updated.filter((m) => !m.excluded)
     let anyOk = false
@@ -552,6 +624,7 @@ export default function Import() {
     setActive(0)
     setSpecialSearch('')
     setError('')
+    setBatchResult(null)
   }
 
   const switchTab = (t) => {
@@ -1278,7 +1351,8 @@ export default function Import() {
                 </>}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setStep(2)}>Back</button>
+                  <button type="button" className="btn btn-secondary"
+                    onClick={() => { if (specialExcel) { setStep(1); setMeets([]); setActive(0) } else { setStep(2) } }}>Back</button>
                   <button type="button" className="btn btn-primary" onClick={handleConfirm}
                     disabled={loading
                       || (special && meets.reduce((n, m) => n + Object.keys(m.decisions || {}).length, 0) === 0)
@@ -1291,8 +1365,42 @@ export default function Import() {
               </div>
             )}
 
-            {/* Step 4: Done */}
-            {step === 4 && (
+            {/* Step 4: Done — special-excel batches get one aggregate summary
+                (2,000+ per-meet tabs would be unusable) */}
+            {step === 4 && specialExcel && batchResult && (
+              <div style={{ border: '1px solid var(--color-divider)', padding: 24 }}>
+                <div className="kicker" style={{ marginBottom: 14 }}>Batch import complete</div>
+                <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', marginBottom: 16 }}>
+                  {[['Meets imported', batchResult.meets_done],
+                    ['Meets failed', batchResult.meets_failed],
+                    ['Results', batchResult.created_results],
+                    ['New swimmers', batchResult.created_swimmers],
+                    ['Matched swimmers', batchResult.matched_swimmers],
+                    ['Skipped results', batchResult.skipped_results]].map(([label, n]) => (
+                    <div key={label}>
+                      <div className="asw-num" style={{ fontSize: 22, fontWeight: 700 }}>{(n ?? 0).toLocaleString()}</div>
+                      <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 16 }}>
+                  Every swim landed on a swimmer profile; the meets were created unpublished,
+                  so they stay out of the championships list and calendar.
+                </p>
+                {(batchResult.failures || []).length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div className="kicker" style={{ marginBottom: 8 }}>Failures</div>
+                    {batchResult.failures.map((f, i) => (
+                      <div key={i} style={{ fontSize: 12.5, color: 'var(--asw-slow)', marginBottom: 4 }}>
+                        {f.meet}: {f.error}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button type="button" className="btn btn-primary" onClick={resetAll}>Import another file</button>
+              </div>
+            )}
+            {step === 4 && !(specialExcel && batchResult) && (
               <DoneStep meets={meets} active={active} meetTabs={meetTabs} resetAll={resetAll}
                 backToMeetId={presetLiveDay && presetChampId ? presetChampId : null}
                 existingMeets={existingMeets} countries={countries} classifications={classifications} />

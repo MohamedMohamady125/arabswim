@@ -1712,7 +1712,7 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
                           <tr key={i}>
                             <td>{s.meet}</td>
                             <td className="asw-num">{s.date}</td>
-                            <td>{s.event}{s.category && importMethod !== 'special_excel' ? ` · ${s.category}` : ''}</td>
+                            <td>{s.event}</td>
                             <td>{s.round}</td>
                             <td className="asw-num">{s.time}</td>
                           </tr>

@@ -1114,14 +1114,17 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         )
         championship_created_now = True
 
-    # STRICT nationality rule for every meet: the ONLY fallback allowed is a
-    # meet whose classification scheme itself NAMES a country (classification
-    # "National" + sub-classification "Saudi Arabia") — the meet type declares
-    # who everyone represents. Otherwise a swimmer with no nationality in the
-    # file stays nationality-LESS: never guess from the meet's host country
-    # (expat-heavy fields made that stamp foreigners with the host's flag).
+    # STRICT nationality rule: a swimmer's nationality comes from the file
+    # (explicit code, or a Team/club column that IS a country). The ONE
+    # fallback: a classification scheme that NAMES a country ("National" /
+    # "Saudi Arabia") declares everyone's nationality. NEVER for meets
+    # classified "Other" (2026-10-20): their sub-classification is just a
+    # label ("Other"/"France" on French club meets) — resolving it stamped
+    # the host country on code-less swimmers ("leave it empty mannnnn").
     is_international = meet_info.get('is_international', False)
-    if not is_international:
+    cls_label = (championship.classification.name
+                 if championship.classification_id else '').strip().lower()
+    if not is_international and cls_label and cls_label != 'other':
         classed_country = None
         for nm in (
             championship.sub_classification.name if championship.sub_classification_id else '',
@@ -1169,6 +1172,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     claimed_results = set()
     # Swimmers whose club field was already reconciled during this run
     club_synced = set()
+
+    # "Upload Special": the hand-picked athletes (merge or create decisions),
+    # uppercased — used to decide which relays deserve importing.
+    special_selected_names = {
+        n.strip().upper() for n, d in (swimmer_decisions or {}).items()
+        if isinstance(d, dict) and d.get('action') in ('match', 'create')
+    } if special else set()
 
     year_clubs = {}  # (NAME, 'Y', year) -> first club seen for that identity
 
@@ -1258,11 +1268,18 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             # only to hold results and are hidden from the Swimmers section.
 
             if is_relay or result_data.get('is_relay', False):
-                # "Upload Special" keeps only hand-picked individual athletes;
-                # relay (team) results are never part of that selection.
+                # "Upload Special": a relay is imported ONLY when one of the
+                # hand-picked athletes swam a leg — it then shows on their
+                # profile (first leg counts as an individual time). Relays
+                # with no selected athlete stay out.
                 if special:
-                    skipped_results += 1
-                    continue
+                    legs_probe = _parse_relay_legs(
+                        result_data.get('split_times', []) or [],
+                        is_excel=is_excel_format)
+                    if not any((leg.get('name') or '').strip().upper()
+                               in special_selected_names for leg in legs_probe):
+                        skipped_results += 1
+                        continue
                 # Guard: a relay "swimmer" is a team name. If parsing glitched
                 # and the name is a time/number, skip instead of creating a
                 # junk placeholder swimmer (which then becomes a junk Team).
@@ -1759,8 +1776,12 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
     # inside relay_swimmers JSON but have no individual results → no Swimmer
     # record. Without one they can't be clicked, have no profile page, and
     # relay medals aren't linked to them.
-    _progress('Creating relay-only swimmer profiles…')
-    relay_profiles_created = _create_relay_only_swimmers(championship)
+    # Upload Special meets never create relay-only profiles: the legs of an
+    # imported relay may include foreign teammates who must not get accounts.
+    relay_profiles_created = 0
+    if not unpublished:
+        _progress('Creating relay-only swimmer profiles…')
+        relay_profiles_created = _create_relay_only_swimmers(championship)
 
     # TC source files publish some events without age categories: infer them
     # from the meet's own categorized results before awarding medals, so

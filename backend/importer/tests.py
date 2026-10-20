@@ -3097,7 +3097,9 @@ class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
     """STRICT: nationality comes ONLY from the file. A code-less swimmer
     stays nationality-less — never stamped with the meet's host country.
     The single exception: a meet whose classification scheme NAMES a
-    country (National / Saudi Arabia) declares everyone's nationality."""
+    country (National / Saudi Arabia) declares everyone's nationality —
+    but NEVER when the classification is "Other" (2026-10-20): its
+    sub-classification ("France") is a label, not a nationality."""
 
     @classmethod
     def setUpTestData(cls):
@@ -3174,9 +3176,7 @@ class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
 
     def test_existing_blank_swimmer_gets_classification_country(self):
         # The fallback must reach MATCHED (already-existing) code-less swimmers
-        # too, not only brand-new ones: a profile already in the DB with a blank
-        # nationality, swimming a code-less result in a "National/Saudi Arabia"
-        # meet, must be stamped Saudi on import.
+        # too, not only brand-new ones.
         from importer.services import confirm_import
         from championships.models import Classification, SubClassification
         from core.models import Country
@@ -3194,6 +3194,23 @@ class NationalityFallbackTests(_MeetFixtureMixin, TestCase):
                 'classification': str(cls.id), 'sub_classification': str(sub.id)})
         existing.refresh_from_db()
         self.assertEqual(existing.nationality, ksa)
+
+    def test_other_classification_never_assigns_nationality(self):
+        # Classification "Other" + sub-classification "France" (the French
+        # special-excel meets): the sub-class is a LABEL, not a nationality —
+        # a code-less swimmer stays blank ("leave it empty mannnnn").
+        from importer.services import confirm_import
+        from championships.models import Classification, SubClassification
+        from core.models import Country
+        Country.objects.create(name='France', code='FRA')
+        cls = Classification.objects.create(name='Other')
+        sub = SubClassification.objects.create(classification=cls, name='France')
+        confirm_import(self._preview(), {}, championship_details={
+            'name': 'Interclubs Régionaux', 'date': '2026-06-01', 'pool': 'LCM',
+            'country': self.country.id,
+            'classification': str(cls.id), 'sub_classification': str(sub.id)})
+        swimmer = Swimmer.objects.get(name__icontains='MABROUK')
+        self.assertIsNone(swimmer.nationality)
 
     def test_classification_fallback_skips_manually_edited(self):
         # A hand-curated profile is never overwritten by the fallback, even when
@@ -3657,6 +3674,49 @@ class BatchImportApiTests(TestCase):
         self.assertEqual(Championship.objects.filter(is_published=False).count(), 2)
         self.assertEqual(
             Swimmer.objects.filter(name__icontains='RAHMOUNI').count(), 1)
+
+    def test_special_imports_relays_only_with_selected_leg(self):
+        """Upload Special: a relay imports iff a hand-picked athlete swam a
+        leg (shows on their profile via relay_swimmers); other relays and
+        relay-only foreign teammates stay out."""
+        import json as _json
+        from django.core.cache import cache
+        from importer.views import _run_batch_confirm_job
+        from importer.models import ImportJob
+        from championships.models import Result
+        preview = self._preview('Relay Meet')
+        preview['events'].append({
+            'event_name': '4×100 M Freestyle',
+            'distance': 400, 'stroke': 'Freestyle',
+            'gender': 'M', 'is_relay': True, 'round_type': 'Series',
+            'results': [
+                {'swimmer_name': 'RED STAR CLUB', 'gender': 'M', 'category': '',
+                 'time_centiseconds': 21000, 'time_text': '3:30.00',
+                 'is_relay': True, 'club': 'RED STAR CLUB',
+                 'split_times': ['Rami RAHMOUNI 52.10']},
+                {'swimmer_name': 'OTHER CLUB', 'gender': 'M', 'category': '',
+                 'time_centiseconds': 21500, 'time_text': '3:35.00',
+                 'is_relay': True, 'club': 'OTHER CLUB',
+                 'split_times': ['Jean DUPONT 53.00']},
+            ],
+        })
+        cache.set('import_r1', _json.dumps(preview), 600)
+        job = ImportJob.objects.create(meet_name='relay batch', status='pending')
+        _run_batch_confirm_job(job.id, [
+            {'import_id': 'r1', 'championship_details': {
+                'name': 'Relay Meet', 'date': '2026-06-01', 'pool': 'LCM',
+                'country': self.tun.id}},
+        ], {'Rami RAHMOUNI': {'action': 'create'}},
+            special=True, unpublished=True)
+        job.refresh_from_db()
+        self.assertEqual(job.status, 'done')
+        relays = Result.objects.filter(relay_swimmers__isnull=False)
+        self.assertEqual(relays.count(), 1)
+        self.assertEqual(relays[0].team, 'RED STAR CLUB')
+        self.assertIn('RAHMOUNI', str(relays[0].relay_swimmers))
+        # Foreign teammate never gets a profile; the other relay is skipped
+        self.assertFalse(Swimmer.objects.filter(name__icontains='DUPONT').exists())
+        self.assertFalse(Result.objects.filter(team='OTHER CLUB').exists())
 
 
 class ExcelDateCellTests(SimpleTestCase):

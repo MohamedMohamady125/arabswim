@@ -27,13 +27,20 @@ api.interceptors.response.use(
           localStorage.setItem('access_token', res.data.access)
           error.config.headers.Authorization = `Bearer ${res.data.access}`
           return api(error.config)
-        } catch {
-          localStorage.removeItem('access_token')
-          localStorage.removeItem('refresh_token')
-          if (window.location.pathname !== '/login') {
-            window.location.href = '/login'
-          }
-        }
+        } catch { /* fall through to the anonymous retry below */ }
+      }
+      // Refresh impossible (no/dead refresh token): the stored login is
+      // dead. Without this, the stale Bearer header 401s EVERY request —
+      // including public reads — and the whole site renders empty until
+      // localStorage is cleared by hand. Drop the tokens and retry the
+      // request anonymously; public pages work logged-out, and admin-only
+      // calls surface their own errors.
+      if (localStorage.getItem('access_token') && !error.config._retryAnon) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        error.config._retryAnon = true
+        delete error.config.headers.Authorization
+        return api(error.config)
       }
     }
     return Promise.reject(error)

@@ -436,10 +436,16 @@ export default function Import() {
               res = await matchSwimmersBatch(chunk, true)
               break
             } catch (e) {
-              if (attempt >= 3) throw e
-              setLoadingMsg(`Server busy — retrying (${attempt}/2)…`)
-              await new Promise((r) => setTimeout(r, 4000 * attempt))
+              if (attempt >= 6) throw e
+              setLoadingMsg(`Server busy — retrying (${attempt}/5)…`)
+              // Backoff long enough to ride out a backend redeploy (~2 min)
+              await new Promise((r) => setTimeout(r, Math.min(8000 * attempt, 40000)))
             }
+          }
+          if ((res.data.expired || []).length) {
+            throw Object.assign(new Error('expired'), {
+              response: { data: { error: `${res.data.expired.length} meets expired from the import cache — upload the file again` } },
+            })
           }
           for (const [iid, data] of Object.entries(res.data.results || {})) {
             const i = idxById.get(iid)

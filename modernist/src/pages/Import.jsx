@@ -415,7 +415,10 @@ export default function Import() {
     setLoading(true)
     setError('')
     try {
-      const updated = [...(meetsArg || meets)]
+      // meetsArg is only a meets array when called from handleUpload; from a
+      // button onClick it's the click event — spreading that throws and the
+      // catch below mislabels it as a server failure.
+      const updated = [...(Array.isArray(meetsArg) ? meetsArg : meets)]
       const included = updated.filter((m) => !m.excluded)
       if (specialExcel) {
         // One request matches hundreds of meets — a multi-meet special Excel

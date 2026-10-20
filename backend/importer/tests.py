@@ -3583,6 +3583,30 @@ class EgyptVariantMatcherTests(TestCase):
         self.assertIsNone(m)
 
 
+class ExcelDateCellTests(SimpleTestCase):
+    """Empty date cells arrive as pd.NaT, which SUBCLASSES datetime —
+    they must short-circuit to ''/None, never reach strftime()/.date()
+    ("NaTType does not support strftime", seen on ARABSWIMMER_FRANCE)."""
+
+    def test_cell_dob_handles_nat_and_nan(self):
+        import pandas as pd
+        from importer.parsers.detector import _cell_dob
+        self.assertEqual(_cell_dob(pd.NaT), '')
+        self.assertEqual(_cell_dob(float('nan')), '')
+        self.assertEqual(_cell_dob(None), '')
+        self.assertEqual(_cell_dob(pd.Timestamp('2010-03-05')), '2010-03-05')
+
+    def test_coerce_date_handles_nat_and_nan(self):
+        import datetime
+        import pandas as pd
+        from importer.parsers.detector import _coerce_date
+        self.assertIsNone(_coerce_date(pd.NaT))
+        self.assertIsNone(_coerce_date(float('nan')))
+        self.assertIsNone(_coerce_date(None))
+        self.assertEqual(_coerce_date(pd.Timestamp('2018-02-02')),
+                         datetime.date(2018, 2, 2))
+
+
 class ArabVariantMatcherTests(TestCase):
     """find_matching_swimmer resolves general Arab name variants (dropped
     middle names: federation Excel triple names vs Microplus given+family)

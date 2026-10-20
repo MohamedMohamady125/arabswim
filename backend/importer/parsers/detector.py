@@ -711,8 +711,16 @@ def _cell_dob(val):
     import datetime
     import pandas as pd
 
-    if val is None or (isinstance(val, float) and pd.isna(val)):
+    if val is None:
         return ''
+    try:
+        # pd.NaT subclasses datetime, so this must run BEFORE the datetime
+        # branch or an empty DoB cell crashes strftime ("NaTType does not
+        # support strftime"). Covers float NaN and NaT alike.
+        if pd.isna(val):
+            return ''
+    except (TypeError, ValueError):
+        pass  # list-like or odd cell value — fall through to string parsing
     if isinstance(val, (datetime.datetime, pd.Timestamp)):
         return val.strftime('%Y-%m-%d')
     if isinstance(val, datetime.date):
@@ -1870,8 +1878,13 @@ def _coerce_date(val):
     """
     import datetime
     import pandas as pd
-    if val is None or (isinstance(val, float) and pd.isna(val)):
+    if val is None:
         return None
+    try:
+        if pd.isna(val):  # float NaN or pd.NaT (NaT subclasses datetime!)
+            return None
+    except (TypeError, ValueError):
+        pass
     # Excel date cells arrive as datetime/Timestamp — use them directly (also
     # avoids the dayfirst parse warning on ISO strings).
     if isinstance(val, (datetime.datetime, datetime.date)):

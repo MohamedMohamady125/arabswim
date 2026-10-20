@@ -1752,6 +1752,7 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
     category_col = cols_finder(rcols, ['category'])
     rank_col = cols_finder(rcols, ['rank', 'place', 'medal', 'médaille'])
     relay_kind_col = rcols.get('relay') or rcols.get('type')  # "Men's" / "Women's" / "Mixed"
+    order_col = cols_finder(rcols, ['relay order', 'order', 'leg'])
     date_col = cols_finder(rcols, ['date', 'session date'])
 
     if not event_col:
@@ -1760,6 +1761,10 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
 
     # Group relay rows by event + team time (each team = 4 consecutive rows with same team time)
     events_dict = {}
+    # Legs per team, kept as (relay_order, file_order, "Name split") so the
+    # "Relay Order" column — the swimmer's leg number — decides the final
+    # order (first leg drives the first-leg-counts-as-individual rule).
+    team_legs = {}
 
     for _, row in relay_df.iterrows():
         event_name = _safe_str(row[event_col])
@@ -1817,6 +1822,10 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
                 round_type=round_type,
                 age_group=category,
                 date_text=row_date,
+                # Everything on a Relay sheet IS a relay, whatever the name
+                # ("10×50 M Freestyle", "3000 M Team") — without this flag
+                # the team rows get treated as individual swimmers.
+                is_relay=True,
             )
             events_dict[event_key] = {'event': parsed_event, 'teams': {}}
             meet.events.append(parsed_event)
@@ -1854,9 +1863,24 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
         split_time = _cell_time_str(row[split_col]) if split_col else ''
 
         if swimmer_name:
-            ev_data['teams'][team_key].split_times.append(
-                f'{swimmer_name} {split_time}' if split_time else swimmer_name
-            )
+            leg_order = 0
+            if order_col is not None:
+                try:
+                    if not pd.isna(row[order_col]):
+                        leg_order = int(float(row[order_col]))
+                except (TypeError, ValueError):
+                    leg_order = 0
+            legs = team_legs.setdefault((event_key, team_key), [])
+            legs.append((
+                leg_order or len(legs) + 1,
+                len(legs),
+                f'{swimmer_name} {split_time}' if split_time else swimmer_name,
+            ))
+
+    # Write each team's legs in true leg order (file order breaks ties)
+    for (ek, tk), legs in team_legs.items():
+        legs.sort(key=lambda leg: (leg[0], leg[1]))
+        events_dict[ek]['teams'][tk].split_times = [s for _, _, s in legs]
 
 
 def _safe_str(val):

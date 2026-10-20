@@ -620,7 +620,8 @@ def _build_preview(parsed_meet):
         meet_year = date.today().year
 
     for event in parsed_meet.events:
-        is_relay = 'relay' in event.event_name.lower() or '4x' in event.event_name.lower() or '4×' in event.event_name.lower()
+        from .parsers.base import is_relay_event
+        is_relay = getattr(event, 'is_relay', False) or is_relay_event(event.event_name)
 
         event_data = {
             'event_name': event.event_name,
@@ -1336,7 +1337,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                                 swimmer_fallback):
                             nationality_changes += 1
                     elif action == 'create':
-                        swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback, is_excel_format)
+                        swimmer_map[ind_key] = _create_swimmer(
+                            result_data, swimmer_fallback, is_excel_format,
+                            overrides=decision.get('overrides'))
                         created_swimmers += 1
                     else:
                         # Auto: try to match, create if new
@@ -1380,7 +1383,9 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                                     swimmer_fallback):
                                 nationality_changes += 1
                         else:
-                            swimmer_map[ind_key] = _create_swimmer(result_data, swimmer_fallback, is_excel_format)
+                            swimmer_map[ind_key] = _create_swimmer(
+                                result_data, swimmer_fallback, is_excel_format,
+                                overrides=decision.get('overrides'))
                             created_swimmers += 1
 
             lookup_key = relay_key if (is_relay or result_data.get('is_relay', False)) else ind_key
@@ -1492,6 +1497,10 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
 
             round_type = event_data.get('round_type', '') or ''
             category = result_data.get('category', '') or event_data.get('age_group', '') or ''
+            if special:
+                # Upload Special feeds swimmer profiles only — the source
+                # files' age bands ("14-18") must never tag the event.
+                category = ''
 
             if is_relay or result_data.get('is_relay', False):
                 # A club can enter several squads in one relay event
@@ -1972,8 +1981,31 @@ def _parse_relay_legs(raw_splits, is_excel=False):
     return legs
 
 
-def _create_swimmer(result_data, fallback_country=None, is_excel_format=False):
-    """Create a new swimmer from parsed result data."""
+def _create_swimmer(result_data, fallback_country=None, is_excel_format=False,
+                    overrides=None):
+    """Create a new swimmer from parsed result data.
+
+    overrides: admin-edited details from the import review UI
+    ({name, nationality_code, birth_year, gender, club}) — they replace the
+    parsed values and, being manual edits, mark the profile manually_edited.
+    """
+    if overrides:
+        result_data = dict(result_data)
+        if (overrides.get('name') or '').strip():
+            result_data['swimmer_name'] = overrides['name'].strip()
+        if (overrides.get('nationality_code') or '').strip():
+            result_data['nationality_code'] = overrides['nationality_code'].strip().upper()
+        if overrides.get('birth_year'):
+            try:
+                result_data['birth_year'] = int(overrides['birth_year'])
+                result_data['date_of_birth'] = ''
+            except (TypeError, ValueError):
+                pass
+        if overrides.get('gender') in ('M', 'F'):
+            result_data['gender'] = overrides['gender']
+        if (overrides.get('club') or '').strip():
+            result_data['club'] = overrides['club'].strip()
+            result_data['team_override'] = ''
     birth_year = result_data.get('birth_year', 0) or None
 
     gender = result_data.get('gender', 'M')
@@ -2033,6 +2065,9 @@ def _create_swimmer(result_data, fallback_country=None, is_excel_format=False):
         nationality=nationality,
         sex=gender,
         club=normalize_club_name(club),
+        # Admin-edited details are manual edits — they always win over
+        # future recomputes/re-imports.
+        manually_edited=bool(overrides),
     )
 
     return swimmer

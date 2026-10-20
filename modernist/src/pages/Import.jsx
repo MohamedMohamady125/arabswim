@@ -1502,6 +1502,21 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
     setAthleteDecision(a.name, { action: 'create' })
   }
 
+  // Admin-edited swimmer details ("all details editable"): stored on the
+  // decision and applied by the backend when the profile is created.
+  // Editing implies human review, so any auto flag is dropped.
+  const setOverride = (a, field, value) => {
+    const { auto, ...base } = (a.decision && a.decision.action !== 'skip')
+      ? a.decision : { action: 'create' }
+    const overrides = { ...(base.overrides || {}) }
+    if (value === '' || value == null) delete overrides[field]
+    else overrides[field] = value
+    setAthleteDecision(a.name, {
+      ...base,
+      overrides: Object.keys(overrides).length ? overrides : undefined,
+    })
+  }
+
   const runSearch = async (text) => {
     setSearchText(text)
     if (!text || text.length < 2) { setSearchResults([]); return }
@@ -1597,6 +1612,34 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
 
               {isOpen && (
                 <div style={{ borderTop: '1px solid var(--color-divider)', padding: 14 }}>
+                  {/* Editable swimmer details (applied when creating the profile) */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                      Swimmer details{act === 'match' ? ' (used only when creating a new profile)' : ''}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <input className="input" style={{ flex: '2 1 200px' }} placeholder="Name"
+                        value={a.decision?.overrides?.name ?? a.name}
+                        onChange={(e) => setOverride(a, 'name', e.target.value === a.name ? '' : e.target.value)} />
+                      <input className="input" style={{ flex: '0 1 110px' }} placeholder="Nat. code" maxLength={3}
+                        value={a.decision?.overrides?.nationality_code ?? (a.nationality_code || '')}
+                        onChange={(e) => setOverride(a, 'nationality_code', e.target.value.toUpperCase() === (a.nationality_code || '') ? '' : e.target.value.toUpperCase())} />
+                      <input className="input" style={{ flex: '0 1 110px' }} placeholder="Birth year" inputMode="numeric"
+                        value={a.decision?.overrides?.birth_year ?? (a.birth_year || '')}
+                        onChange={(e) => setOverride(a, 'birth_year', e.target.value.replace(/\D/g, '') === String(a.birth_year || '') ? '' : e.target.value.replace(/\D/g, ''))} />
+                      <select className="select" style={{ flex: '0 1 110px', width: 'auto' }}
+                        value={a.decision?.overrides?.gender ?? (a.gender || '')}
+                        onChange={(e) => setOverride(a, 'gender', e.target.value === (a.gender || '') ? '' : e.target.value)}>
+                        <option value="">Gender</option>
+                        <option value="M">M</option>
+                        <option value="F">F</option>
+                      </select>
+                      <input className="input" style={{ flex: '2 1 180px' }} placeholder="Club"
+                        value={a.decision?.overrides?.club ?? (a.clubs[0] || '')}
+                        onChange={(e) => setOverride(a, 'club', e.target.value === (a.clubs[0] || '') ? '' : e.target.value)} />
+                    </div>
+                  </div>
+
                   {/* Merge with a different existing swimmer */}
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Merge with a different existing swimmer</div>
@@ -1638,7 +1681,7 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
                           <tr key={i}>
                             <td>{s.meet}</td>
                             <td className="asw-num">{s.date}</td>
-                            <td>{s.event}{s.category ? ` · ${s.category}` : ''}</td>
+                            <td>{s.event}{s.category && importMethod !== 'special_excel' ? ` · ${s.category}` : ''}</td>
                             <td>{s.round}</td>
                             <td className="asw-num">{s.time}</td>
                           </tr>

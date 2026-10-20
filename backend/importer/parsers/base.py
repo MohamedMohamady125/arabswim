@@ -42,6 +42,10 @@ class ParsedEvent:
     age_group: str = ''
     date_text: str = ''  # session date (YYYY-MM-DD) when the source gives it
     day: int = 0  # 1-based meet day when the source gives a day number but no date
+    # Authoritative relay flag, set by parsers that KNOW (e.g. a dedicated
+    # Relay sheet). Name-based detection misses "10×50 M Freestyle" or
+    # "3000 M Team", and a missed relay turns club names into swimmers.
+    is_relay: bool = False
     results: list = field(default_factory=list)  # list of ParsedResult
 
 
@@ -393,7 +397,10 @@ def normalize_stroke(text):
 
 def is_relay_event(text):
     t = text.lower()
-    return any(kw in t for kw in RELAY_KEYWORDS)
+    if any(kw in t for kw in RELAY_KEYWORDS):
+        return True
+    # Any N×M legs pattern is a relay: 10×50, 6x100, 12 × 50 …
+    return bool(re.search(r'\d\s*[x×]\s*\d', t))
 
 
 def extract_distance(text):
@@ -406,7 +413,7 @@ def extract_distance(text):
     # ('50 LC Meter Freestyle') — drop them before matching
     text = re.sub(r'\b(?:LC|SC)\b\s*', '', text)
     # Check for relay pattern first: "4x200", "4×100", "4 x 50"
-    relay_m = re.search(r'(\d)\s*[x×X]\s*(\d+)', text)
+    relay_m = re.search(r'(\d{1,2})\s*[x×X]\s*(\d+)', text)
     if relay_m:
         return int(relay_m.group(1)) * int(relay_m.group(2))
     m = re.search(r'(\d+)\s*m(?:eter|etre|ètre)?s?\b', text, re.IGNORECASE)

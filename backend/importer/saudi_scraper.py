@@ -37,7 +37,23 @@ GENDER_LABEL = {"1": "Men", "2": "Women"}
 # --------------------------------------------------------------------------- #
 # Fetching (network only — the deployed filesystem is ephemeral)
 # --------------------------------------------------------------------------- #
+def _encode_url(url):
+    """Percent-encode non-ASCII in a URL (IRI → URI).
+
+    SSF hrefs carry raw Arabic/accented text in query strings (lieu=…);
+    http.client only accepts ASCII, so an unencoded URL crashes with
+    "'ascii' codec can't encode character" (the 2026-10-21 scrape failure).
+    '%' stays safe so already-encoded URLs are not double-encoded.
+    """
+    parts = urllib.parse.urlsplit(url)
+    path = urllib.parse.quote(parts.path, safe='/%')
+    query = urllib.parse.quote(parts.query, safe='=&/%+')
+    return urllib.parse.urlunsplit(
+        (parts.scheme, parts.netloc, path, query, parts.fragment))
+
+
 def fetch(url, retries=3, delay=0.2):
+    url = _encode_url(url)
     last = None
     for attempt in range(retries):
         try:
@@ -193,6 +209,12 @@ def parse_swimmer_detail(html):
         if val.startswith(label):
             val = val[len(label):]
         data[key] = val.strip()
+    # The English name field sometimes carries stray Arabic letters or
+    # diacritics typed in by mistake ("ٌRAMI …") — keep only the Latin part.
+    if data.get('name_en'):
+        cleaned = re.sub(r'[؀-ۿݐ-ݿࢠ-ࣿ]+', '',
+                         data['name_en'])
+        data['name_en'] = re.sub(r'\s+', ' ', cleaned).strip()
     return data
 
 
@@ -419,7 +441,9 @@ def latest_saudi_national_date():
     Falls back to the latest KSA meet of any classification, then None.
     """
     from championships.models import Championship
-    base = Championship.objects.filter(country__code='KSA')
+    # Only meets visible on the website count as "already have it" —
+    # hidden special-upload meets never move the cutoff.
+    base = Championship.objects.filter(country__code='KSA', is_published=True)
     national = base.filter(classification__name__iexact='National').order_by('-date').first()
     if national:
         return national.date

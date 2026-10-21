@@ -2209,17 +2209,24 @@ function SaudiScrapePanel() {
                       <span className="tag" style={{ background: 'var(--asw-fast)', color: '#fff' }}>Done</span>
                     )}
                     {job.status === 'failed' && (
-                      <span className="tag" style={{ background: 'var(--color-accent)', color: '#fff' }} title={job.error}>Failed</span>
+                      <>
+                        <span className="tag" style={{ background: 'var(--color-accent)', color: '#fff' }} title={job.error}>Failed</span>
+                        {job.error && (
+                          <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, marginTop: 4, maxWidth: 280, whiteSpace: 'normal' }}>
+                            {job.error}
+                          </div>
+                        )}
+                      </>
                     )}
                     {(job.status === 'pending' || job.status === 'running') && (
                       <span className="tag tag-neutral">{job.progress || 'Scraping…'}</span>
                     )}
                   </td>
                   <td className="num">
-                    {job.status === 'done' && job.total_results > 0 && (
+                    {(job.status === 'done' || job.status === 'failed') && job.total_results > 0 && (
                       <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5 }}
                         onClick={() => handleDownload(job)}>
-                        Download Excel
+                        Download{job.status === 'failed' ? ' partial' : ''} Excel
                       </button>
                     )}
                   </td>

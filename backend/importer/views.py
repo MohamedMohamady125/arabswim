@@ -950,6 +950,16 @@ def _run_saudi_scrape_job(job_id):
                 'individual': len(ind),
                 'relay': len(rel),
             })
+            # Persist after every meet: a backend restart mid-scrape (62
+            # meets take a while) keeps what was already scraped instead of
+            # losing the whole run.
+            ScrapeJob.objects.filter(id=job_id).update(
+                rows={'individual': ind_all, 'relay': rel_all, 'meets': meets,
+                      'cutoff': str(cutoff) if cutoff else ''},
+                total_results=len(ind_all) + len(rel_all),
+                total_events=i,
+            )
+        job.refresh_from_db()
         job.rows = {'individual': ind_all, 'relay': rel_all, 'meets': meets,
                     'cutoff': str(cutoff) if cutoff else ''}
         job.total_results = len(ind_all) + len(rel_all)
@@ -978,8 +988,18 @@ class SaudiScrapeView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
+        from datetime import timedelta
+        from django.utils import timezone
         from .models import ScrapeJob
         from .saudi_scraper import BASE
+        # A job still "running" hours later lost its thread to a server
+        # restart — surface it as failed so the Start button unlocks.
+        ScrapeJob.objects.filter(
+            url=BASE, status__in=('pending', 'running'),
+            created_at__lt=timezone.now() - timedelta(hours=6),
+        ).update(status='failed',
+                 error='Interrupted by a server restart — start a new scrape '
+                       '(already-scraped rows were kept)')
         jobs = ScrapeJob.objects.filter(url=BASE)[:30]
         return Response([{
             'id': j.id,
@@ -997,6 +1017,12 @@ class SaudiScrapeView(APIView):
         import threading
         from .models import ScrapeJob
         from .saudi_scraper import BASE
+        # Any leftover pending/running job belongs to a dead thread (one
+        # scrape runs at a time) — fail it so it can't block this run.
+        ScrapeJob.objects.filter(
+            url=BASE, status__in=('pending', 'running'),
+        ).update(status='failed',
+                 error='Superseded by a newer scrape')
         job = ScrapeJob.objects.create(url=BASE)
         threading.Thread(target=_run_saudi_scrape_job, args=(job.id,),
                          daemon=True).start()
@@ -1018,7 +1044,10 @@ class SaudiScrapeDownloadView(APIView):
         except ScrapeJob.DoesNotExist:
             return Response({'error': 'Scrape not found'}, status=404)
         data = job.rows if isinstance(job.rows, dict) else {}
-        if job.status != 'done' or not data.get('individual') and not data.get('relay'):
+        # Interrupted/failed runs keep their already-scraped rows (saved per
+        # meet) — those partial files are downloadable too.
+        if job.status in ('pending', 'running') \
+                or (not data.get('individual') and not data.get('relay')):
             return Response({'error': 'Scrape has no data yet'}, status=400)
         ind_df = pd.DataFrame(data.get('individual', []), columns=IND_COLS)
         rel_df = pd.DataFrame(data.get('relay', []), columns=REL_COLS)

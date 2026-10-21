@@ -26,6 +26,10 @@ class ParsedResult:
     reaction_time: str = ''  # start reaction time in seconds, e.g. "0.68"
     split_times: list = field(default_factory=list)
     relay_swimmers: list = field(default_factory=list)  # [{name, split_time}]
+    # True leg numbers (Relay Order column) parallel to split_times. Files
+    # that track only some athletes list partial legs — when the first
+    # stored leg isn't leg 1, its split must NOT count as an individual time.
+    relay_leg_orders: list = field(default_factory=list)
     round_type: str = ''  # Finals, Heats, Prelims
     age_group: str = ''  # e.g. "15-16", "U12", "OPEN"
     status: str = 'OK'  # OK, DQ, DNS, DNF, NS

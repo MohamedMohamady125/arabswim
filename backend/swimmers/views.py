@@ -1159,6 +1159,52 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'nationality_meet_counts': nationality_meet_counts,
         })
 
+    @action(detail=True, methods=['post'], url_path='rename-club')
+    def rename_club(self, request, pk=None):
+        """Admin: rename a club entry in THIS swimmer's representation
+        history. Updates every result of this swimmer filed under the old
+        club (matched by the same normalized key the Representations tab
+        merges with, so squad variants like "MC ALGER 2" follow along, each
+        keeping its squad number). Renamed results are marked manually
+        edited so re-imports never restore the old name.
+        """
+        from core.permissions import is_admin
+        if not is_admin(request.user):
+            return Response({'error': 'Admin only'}, status=403)
+        old_club = (request.data.get('old_club') or '').strip()
+        new_club = (request.data.get('new_club') or '').strip()
+        if not old_club or not new_club:
+            return Response({'error': 'old_club and new_club are required'}, status=400)
+        if old_club == new_club:
+            return Response({'error': 'The new club name is the same'}, status=400)
+
+        from championships.models import Result
+        from teams.utils import normalize_team_key, strip_squad_number
+        swimmer = self.get_object()
+        old_key = normalize_team_key(strip_squad_number(old_club)) or old_club.casefold()
+
+        updated = 0
+        for r in Result.objects.filter(swimmer=swimmer).exclude(team=''):
+            team = (r.team or '').strip()
+            base = strip_squad_number(team)
+            key = normalize_team_key(base) or base.casefold()
+            if key != old_key:
+                continue
+            suffix = team[len(base):]
+            r.team = (new_club + suffix).strip()
+            r.manually_edited = True
+            r.save(update_fields=['team', 'manually_edited'])
+            updated += 1
+
+        # The profile's current-club field follows when it named the old club
+        swimmer_base = strip_squad_number((swimmer.club or '').strip())
+        if swimmer_base and (normalize_team_key(swimmer_base) or swimmer_base.casefold()) == old_key:
+            swimmer.club = new_club
+            swimmer.manually_edited = True
+            swimmer.save(update_fields=['club', 'manually_edited'])
+
+        return Response({'updated_results': updated, 'new_club': new_club})
+
     @action(detail=True, methods=['delete'],
             url_path='nationality-changes/(?P<change_id>[0-9]+)')
     def delete_nationality_change(self, request, pk=None, change_id=None):

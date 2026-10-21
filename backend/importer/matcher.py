@@ -67,6 +67,34 @@ COUNTRY_CODE_ALIASES = {
     'ZMB': 'ZAM',               # ISO Zambia -> IOC (DB code)
     # Egypt
     'UAR': 'EGY',               # historic (United Arab Republic)
+    # Legacy / special Olympic codes
+    'SIN': 'SGP',               # old IOC Singapore
+    'ROT': 'EOR',               # Refugee Olympic Team (2016 code)
+    'IOA': 'AIN',               # Independent Olympic Athletes -> neutral
+    'FRO': 'FAR',               # ISO Faroe Islands -> World Aquatics code
+    # ISO 3166-1 alpha-3 codes that differ from the IOC codes stored in the
+    # DB. Result files mix both systems freely; every entry maps ISO -> DB.
+    # (Brunei's ISO 'BRN' is deliberately absent: in swim files BRN is the
+    # old IOC code for Bahrain, already aliased above.)
+    'DEU': 'GER', 'NLD': 'NED', 'PRT': 'POR', 'CHE': 'SUI', 'DNK': 'DEN',
+    'HRV': 'CRO', 'GRC': 'GRE', 'BGR': 'BUL', 'SVN': 'SLO', 'LVA': 'LAT',
+    'MCO': 'MON', 'XKX': 'KOS',
+    'IRN': 'IRI', 'IDN': 'INA', 'KHM': 'CAM', 'LKA': 'SRI', 'MYS': 'MAS',
+    'MMR': 'MYA', 'NPL': 'NEP', 'PHL': 'PHI', 'TWN': 'TPE', 'VNM': 'VIE',
+    'MNG': 'MGL', 'BGD': 'BAN', 'BTN': 'BHU',
+    'ZAF': 'RSA', 'NGA': 'NGR', 'NER': 'NIG', 'TZA': 'TAN', 'ZWE': 'ZIM',
+    'AGO': 'ANG', 'BWA': 'BOT', 'BFA': 'BUR', 'TCD': 'CHA', 'COG': 'CGO',
+    'GNQ': 'GEQ', 'GMB': 'GAM', 'GIN': 'GUI', 'GNB': 'GBS', 'LSO': 'LES',
+    'MDG': 'MAD', 'MUS': 'MRI', 'SYC': 'SEY', 'TGO': 'TOG',
+    # (Bahamas' ISO 'BHS' is absent too: the DB code BAH doubles as a legacy
+    # Bahrain code in ARAB_COUNTRY_CODES, and Bahamas files carry BAH.)
+    'ATG': 'ANT', 'ABW': 'ARU', 'BRB': 'BAR', 'BLZ': 'BIZ',
+    'BMU': 'BER', 'VGB': 'IVB', 'CYM': 'CAY', 'CHL': 'CHI', 'CRI': 'CRC',
+    'SLV': 'ESA', 'GRD': 'GRN', 'GTM': 'GUA', 'HTI': 'HAI', 'HND': 'HON',
+    'NIC': 'NCA', 'PRY': 'PAR', 'PRI': 'PUR', 'KNA': 'SKN', 'VCT': 'VIN',
+    'URY': 'URU', 'VIR': 'ISV',
+    'FJI': 'FIJ', 'WSM': 'SAM', 'SLB': 'SOL', 'TON': 'TGA', 'VUT': 'VAN',
+    'CUW': 'CUR', 'SXM': 'MAA', 'MNP': 'NMA', 'TCA': 'TCN',
 }
 
 # Variant country names (French, Arabic-English, informal) found in meet
@@ -112,7 +140,7 @@ COUNTRY_NAME_ALIASES = {
     # Asian HyTek team names
     'HONG KONG CHINA': 'HKG', 'HONG KONG': 'HKG',
     'CHINESE TAIPEI': 'TPE',
-    'SRI LANKA': 'LKA',
+    'SRI LANKA': 'SRI',
     'KINGDOM OF THAILAND': 'THA',
     'KOREA': 'KOR', 'SOUTH KOREA': 'KOR',
     'DPR KOREA': 'PRK', 'NORTH KOREA': 'PRK',
@@ -205,6 +233,34 @@ def resolve_country(code):
     return None
 
 
+_iso2_map = None
+
+
+def resolve_nationality_code(code):
+    """Resolve an *explicit* nationality code, accepting ISO 3166-1 alpha-2
+    ('FR', 'EG') on top of everything resolve_country knows.
+
+    Kept separate from resolve_country on purpose: club/team names also pass
+    through resolve_country, and a two-letter club abbreviation ("CA ...")
+    must never resolve as a country. Only call this with a value that the
+    source file presents as a nationality code.
+    """
+    hit = resolve_country(code)
+    if hit:
+        return hit
+    key = re.sub(r'[.\s]+', '', (code or '').strip().upper())
+    if len(key) != 2 or not key.isalpha():
+        return None
+    global _iso2_map
+    if _iso2_map is None:
+        # FLAGS maps DB code -> ISO alpha-2 (lowercase); invert it. Home
+        # nation flags like 'gb-eng' are longer than 2 and drop out.
+        from core.management.commands.seed_countries import FLAGS
+        _iso2_map = {v.upper(): k for k, v in FLAGS.items() if len(v) == 2}
+    db_code = _iso2_map.get(key)
+    return get_country_map().get(db_code) if db_code else None
+
+
 def resolve_or_stub_country(code):
     """Like resolve_country, but for an *explicit* nationality code that we
     can't resolve, create a placeholder Country carrying the raw code (no
@@ -216,15 +272,17 @@ def resolve_or_stub_country(code):
     them to the meet's host country. The bare, flag-less code then surfaces
     exactly which country codes are missing from the inventory.
 
-    Only genuine-looking codes (2-3 letters) get a stub; anything longer or
-    non-alphabetic is treated as junk and returns None (caller falls back to
-    its normal meet-country behaviour).
+    Only genuine-looking three-letter codes get a stub; two-letter codes are
+    ISO alpha-2 (resolved via resolve_nationality_code) and anything else is
+    treated as junk and returns None (caller falls back to its normal
+    meet-country behaviour). Unknown two-letter codes never stub — that is
+    how the DB once filled up with 'FR'/'EG'-style junk countries.
     """
-    hit = resolve_country(code)
+    hit = resolve_nationality_code(code)
     if hit:
         return hit
     key = re.sub(r'[.\s]+', '', (code or '').strip().upper())
-    if not (2 <= len(key) <= 3 and key.isalpha()):
+    if not (len(key) == 3 and key.isalpha()):
         return None
     country, _ = Country.objects.get_or_create(
         code=key,
@@ -623,7 +681,7 @@ def _arab_variant_match(parsed_result, category='', meet_date=None):
     Only runs when the file states the swimmer's nationality — a variant
     merge across spellings is too risky without knowing the country.
     """
-    country = resolve_country(getattr(parsed_result, 'nationality_code', '') or '')
+    country = resolve_nationality_code(getattr(parsed_result, 'nationality_code', '') or '')
     if not country or country.code not in _arab_country_codes():
         return None
     name = parsed_result.swimmer_name
@@ -686,7 +744,7 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
     # Great Britain the next). Keep only profiles that share the file's
     # nationality — or that have none yet, which the import then adopts. If that
     # removes every candidate, this is a new account under the file's country.
-    file_country = resolve_country(getattr(parsed_result, 'nationality_code', '') or '')
+    file_country = resolve_nationality_code(getattr(parsed_result, 'nationality_code', '') or '')
     if file_country and candidates:
         candidates = [c for c in candidates
                       if c.nationality_id in (None, file_country.id)]

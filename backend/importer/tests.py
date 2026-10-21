@@ -2096,17 +2096,10 @@ class CountryCodeAliasTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        from core.models import Country
-        codes = {
-            'KWT': 'Kuwait', 'BHR': 'Bahrain', 'KSA': 'Saudi Arabia',
-            'UAE': 'UAE', 'OMA': 'Oman', 'LBN': 'Lebanon', 'PLE': 'Palestine',
-            'LBY': 'Libya', 'ALG': 'Algeria', 'SUD': 'Sudan',
-            'MTN': 'Mauritania', 'MAR': 'Morocco', 'EGY': 'Egypt',
-            # Non-Arab targets that aliases resolve to (African-champs codes)
-            'MAW': 'Malawi', 'ZAM': 'Zambia',
-        }
-        for code, name in codes.items():
-            Country.objects.create(name=name, code=code)
+        # The real inventory: every alias target must exist in the seeded
+        # world list, so seeding here also guards seed/alias drift.
+        from django.core.management import call_command
+        call_command('seed_countries', verbosity=0)
 
     def setUp(self):
         from importer import matcher
@@ -3717,6 +3710,43 @@ class BatchImportApiTests(TestCase):
         # Foreign teammate never gets a profile; the other relay is skipped
         self.assertFalse(Swimmer.objects.filter(name__icontains='DUPONT').exists())
         self.assertFalse(Result.objects.filter(team='OTHER CLUB').exists())
+
+
+class StructuredRelayLegsTests(SimpleTestCase):
+    """Partial-legs files (special excel tracks only chosen athletes) store
+    the tracked swimmer's leg at index 0 even when they swam leg 3 — the
+    true Relay Order must flag a non-first stored leg so its flying-start
+    split never counts as an individual time."""
+
+    def test_first_stored_leg_is_true_first_leg(self):
+        from importer.services import _structured_relay_legs
+        legs = _structured_relay_legs({
+            'split_times': ['Samy BOUTOUIL 52.10', 'Jean DUPONT 53.00'],
+            'relay_leg_orders': [1, 2],
+        }, is_excel=True)
+        self.assertNotIn('first_leg', legs[0])
+        self.assertEqual(legs[0]['name'], 'Samy BOUTOUIL')
+        self.assertEqual(legs[0]['split_time'], '52.10')
+
+    def test_first_stored_leg_was_leg_three(self):
+        from importer.services import _structured_relay_legs
+        from championships.models import relay_first_leg_split_cs
+        legs = _structured_relay_legs({
+            'split_times': ['Samy BOUTOUIL 52.10'],
+            'relay_leg_orders': [3],
+        }, is_excel=True)
+        self.assertIs(legs[0].get('first_leg'), False)
+
+        class _R:
+            relay_swimmers = legs
+        self.assertIsNone(relay_first_leg_split_cs(_R(), 'Samy BOUTOUIL'))
+
+    def test_no_orders_keeps_legacy_behaviour(self):
+        from importer.services import _structured_relay_legs
+        legs = _structured_relay_legs({
+            'split_times': ['Samy BOUTOUIL 52.10'],
+        }, is_excel=True)
+        self.assertNotIn('first_leg', legs[0])
 
 
 class ExcelDateCellTests(SimpleTestCase):

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
-import { getSwimmerTransferHistory, changeSwimmerNationality, deleteNationalityChange } from '../../api/swimmers'
+import { X, Pencil, Check } from 'lucide-react'
+import { getSwimmerTransferHistory, changeSwimmerNationality, deleteNationalityChange, renameSwimmerClub } from '../../api/swimmers'
 import { getCountries } from '../../api/core'
 import { useAuth } from '../../context/AuthContext'
 import Flag from '../Flag'
@@ -111,7 +111,26 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
   const [data, setData] = useState(undefined)
   const [showChange, setShowChange] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  // club rename (admin): which club row is being edited + the draft name
+  const [editingClub, setEditingClub] = useState(null)
+  const [clubDraft, setClubDraft] = useState('')
+  const [savingClub, setSavingClub] = useState(false)
   const { isAdmin } = useAuth()
+
+  const saveClubRename = async (oldName) => {
+    const newName = clubDraft.trim()
+    if (!newName || newName === oldName) { setEditingClub(null); return }
+    setSavingClub(true)
+    try {
+      await renameSwimmerClub(swimmerId, oldName, newName)
+      setEditingClub(null)
+      setReloadKey((k) => k + 1)
+    } catch (err) {
+      window.alert(err.response?.data?.error || 'Failed to rename the club')
+    } finally {
+      setSavingClub(false)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -144,7 +163,43 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
             {[...data.clubs].reverse().map((club, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {club.country_code && <Flag code={club.country_code} name={club.country} flagUrl={club.country_flag} />}
-                <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{club.club}</span>
+                {editingClub === club.club ? (
+                  <span style={{ flex: 1, display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      className="input"
+                      style={{ flex: 1, minHeight: 32, fontSize: 13 }}
+                      value={clubDraft}
+                      autoFocus
+                      onChange={(e) => setClubDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); saveClubRename(club.club) }
+                        if (e.key === 'Escape') setEditingClub(null)
+                      }}
+                    />
+                    <button className="btn btn-primary btn-icon" disabled={savingClub}
+                      title="Save" aria-label="Save club name"
+                      onClick={() => saveClubRename(club.club)}>
+                      <Check size={13} />
+                    </button>
+                    <button className="btn btn-secondary btn-icon" disabled={savingClub}
+                      title="Cancel" aria-label="Cancel rename"
+                      onClick={() => setEditingClub(null)}>
+                      <X size={13} />
+                    </button>
+                  </span>
+                ) : (
+                  <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>
+                    {club.club}
+                    {isAdmin && (
+                      <button className="btn btn-secondary btn-icon" style={{ marginLeft: 8 }}
+                        title="Rename this club for this swimmer"
+                        aria-label="Rename club"
+                        onClick={() => { setEditingClub(club.club); setClubDraft(club.club) }}>
+                        <Pencil size={12} />
+                      </button>
+                    )}
+                  </span>
+                )}
                 <span className="asw-num" style={{ textAlign: 'right' }}>
                   <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>{club.meets}</span>
                   <span className="micro" style={{ marginLeft: 6 }}>meet{club.meets !== 1 ? 's' : ''}</span>

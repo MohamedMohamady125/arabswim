@@ -1880,7 +1880,11 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
     # Write each team's legs in true leg order (file order breaks ties)
     for (ek, tk), legs in team_legs.items():
         legs.sort(key=lambda leg: (leg[0], leg[1]))
-        events_dict[ek]['teams'][tk].split_times = [s for _, _, s in legs]
+        team = events_dict[ek]['teams'][tk]
+        team.split_times = [s for _, _, s in legs]
+        # Keep the true leg numbers: a partial-legs file may start at leg 3,
+        # whose flying-start split must not count as an individual time.
+        team.relay_leg_orders = [o for o, _, _ in legs]
 
 
 def _safe_str(val):

@@ -1473,6 +1473,7 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
           byName[key] = {
             name: key,
             birth_year: mt.birth_year,
+            date_of_birth: mt.date_of_birth || '',
             nationality_code: mt.nationality_code,
             gender: mt.gender,
             clubs: new Set(),
@@ -1484,6 +1485,8 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
           }
         }
         const a = byName[key]
+        if (!a.date_of_birth && mt.date_of_birth) a.date_of_birth = mt.date_of_birth
+        if (!a.birth_year && mt.birth_year) a.birth_year = mt.birth_year
         if (mt.club) a.clubs.add(mt.club)
         if (!a.matched_swimmer && mt.matched_swimmer) {
           a.matched_swimmer = mt.matched_swimmer
@@ -1616,7 +1619,9 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
                   <div style={{ fontWeight: 700 }}>{a.name}</div>
                   <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
                     {a.nationality_code && <span style={{ marginRight: 8 }}>{a.nationality_code}</span>}
-                    {a.birth_year > 0 && <span style={{ marginRight: 8 }}>Born {a.birth_year}</span>}
+                    {a.date_of_birth
+                      ? <span style={{ marginRight: 8 }}>DOB {a.date_of_birth}</span>
+                      : (a.birth_year > 0 && <span style={{ marginRight: 8 }}>Born {a.birth_year}</span>)}
                     {a.gender && <span style={{ marginRight: 8 }}>{a.gender}</span>}
                     <span>{a.swims.length} swim{a.swims.length === 1 ? '' : 's'}</span>
                     {a.clubs.length > 0 && <span style={{ marginLeft: 8 }}>· {a.clubs.join(', ')}</span>}
@@ -1650,6 +1655,13 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
                       Swimmer details{act === 'match' ? ' (used only when creating a new profile)' : ''}
+                    </div>
+                    <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, marginBottom: 6 }}>
+                      {a.date_of_birth
+                        ? `Date of birth: ${a.date_of_birth}`
+                        : a.birth_year > 0
+                          ? `Year of birth: ${a.birth_year} (no full DOB in file)`
+                          : 'No birth info in file'}
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <input className="input" style={{ flex: '2 1 200px' }} placeholder="Name"

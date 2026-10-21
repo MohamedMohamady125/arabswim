@@ -98,6 +98,14 @@ WORLD_COUNTRIES = [
     #     own World Aquatics codes (differ from IOC in some cases) ---
     ('Curaçao', 'CUR'), ('Faroe Islands', 'FAR'), ('Sint Maarten', 'MAA'),
     ('Northern Mariana Islands', 'NMA'), ('Turks and Caicos Islands', 'TCN'),
+    ('American Samoa', 'ASA'), ('Anguilla', 'AIA'), ('Gibraltar', 'GIB'),
+    ('Greenland', 'GRL'), ('Montserrat', 'MSR'),
+    # --- British home nations (compete separately at Commonwealth and
+    #     UK-level meets) ---
+    ('England', 'ENG'), ('Scotland', 'SCO'), ('Wales', 'WAL'),
+    ('Northern Ireland', 'NIR'),
+    # --- Remaining sovereign state without an IOC committee ---
+    ('Vatican City', 'VAT'),
 ]
 
 # Non-national World Aquatics entries — athletes competing under a neutral
@@ -106,6 +114,9 @@ WORLD_COUNTRIES = [
 NEUTRAL_TEAMS = [
     ('FINA Refugee Team', 'FRT'),
     ('Suspended Member Federation', 'SMF'),
+    ('Neutral Athletes', 'AIN'),
+    ('Refugee Olympic Team', 'EOR'),
+    ('Russian Olympic Committee', 'ROC'),
 ]
 
 
@@ -157,6 +168,10 @@ FLAGS = {
     'SOL': 'sb', 'TGA': 'to', 'TUV': 'tv', 'VAN': 'vu',
     # Dependent territories
     'CUR': 'cw', 'FAR': 'fo', 'MAA': 'sx', 'NMA': 'mp', 'TCN': 'tc',
+    'ASA': 'as', 'AIA': 'ai', 'GIB': 'gi', 'GRL': 'gl', 'MSR': 'ms',
+    # British home nations (flagcdn subdivision codes) + Vatican
+    'ENG': 'gb-eng', 'SCO': 'gb-sct', 'WAL': 'gb-wls', 'NIR': 'gb-nir',
+    'VAT': 'va',
 }
 
 
@@ -204,4 +219,31 @@ class Command(BaseCommand):
                     'flag_url': FLAGS.get(c['code'], ''),
                 }
             )
+
+        # Purge importer-made stub rows ('FR', 'EOR', ... shown verbatim with
+        # name == code) that pollute every country dropdown. A stub whose
+        # code is a known alias has its references moved to the real country;
+        # an unreferenced stub is deleted; anything still referenced and
+        # unmapped is kept (it still surfaces a missing code).
+        from importer.matcher import COUNTRY_CODE_ALIASES
+        seeded_codes = {c['code'] for c in rows}
+        rels = list(Country._meta.related_objects)
+        purged = 0
+        for stub in Country.objects.exclude(code__in=seeded_codes):
+            if stub.name.strip().upper() != stub.code.strip().upper():
+                continue
+            target_code = COUNTRY_CODE_ALIASES.get(stub.code.upper())
+            target = Country.objects.filter(code=target_code).first() if target_code else None
+            refs = sum(r.related_model.objects.filter(**{r.field.name: stub}).count()
+                       for r in rels)
+            if refs and target:
+                for r in rels:
+                    r.related_model.objects.filter(
+                        **{r.field.name: stub}).update(**{r.field.name: target})
+            elif refs:
+                continue
+            stub.delete()
+            purged += 1
+        if purged:
+            self.stdout.write(f'Purged {purged} stub countries')
         self.stdout.write(self.style.SUCCESS(f'Seeded {len(rows)} countries'))

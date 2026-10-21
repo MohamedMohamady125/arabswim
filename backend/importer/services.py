@@ -721,6 +721,8 @@ def _build_preview(parsed_meet):
             }
             if r.split_times:
                 result_data['split_times'] = r.split_times
+            if getattr(r, 'relay_leg_orders', None):
+                result_data['relay_leg_orders'] = r.relay_leg_orders
             if getattr(r, 'reaction_time', ''):
                 result_data['reaction_time'] = r.reaction_time
             event_data['results'].append(result_data)
@@ -732,12 +734,15 @@ def _build_preview(parsed_meet):
                     all_swimmers[key] = {
                         'name': r.swimmer_name,
                         'birth_year': birth_year,
+                        'date_of_birth': result_data['date_of_birth'],
                         'nationality_code': nat_code,
                         'gender': r.gender or event.gender,
                         'club': r.club,
                         'age': r.age,
                         'results_count': 0,
                     }
+                elif result_data['date_of_birth'] and not all_swimmers[key].get('date_of_birth'):
+                    all_swimmers[key]['date_of_birth'] = result_data['date_of_birth']
                 all_swimmers[key]['results_count'] += 1
 
         if event_data['results']:
@@ -874,6 +879,7 @@ def match_swimmers_preview(preview_data, include_all=False):
         match_info = {
             'parsed_name': s['name'],
             'birth_year': s.get('birth_year', 0),
+            'date_of_birth': s.get('date_of_birth', ''),
             'nationality_code': s.get('nationality_code', ''),
             'gender': s.get('gender', ''),
             'club': s.get('club', ''),
@@ -1580,8 +1586,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     # versions stored corrupted legs (merged names, stray
                     # "M13"/"W14" tokens from mixed relays) — a re-upload
                     # of the source file repairs them in place.
-                    new_legs = _parse_relay_legs(
-                        result_data.get('split_times', []) or [], is_excel=is_excel_format)
+                    new_legs = _structured_relay_legs(
+                        result_data, is_excel=is_excel_format)
                     if new_legs and existing.relay_swimmers != new_legs:
                         existing.relay_swimmers = new_legs
                         existing.save(update_fields=['relay_swimmers'])
@@ -1632,8 +1638,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     same_team.time_centiseconds = time_cs
                     same_team.original_rank = source_rank(result_data.get('rank'))
                     same_team.team = team  # normalize team name
-                    same_team.relay_swimmers = _parse_relay_legs(
-                        result_data.get('split_times', []) or [], is_excel=is_excel_format) or same_team.relay_swimmers
+                    same_team.relay_swimmers = _structured_relay_legs(
+                        result_data, is_excel=is_excel_format) or same_team.relay_swimmers
                     same_team.fina_points = calculate_points(
                         time_cs, event_data.get('event_name', db_event.name),
                         gender_code, championship.pool) or None
@@ -1754,8 +1760,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     if ev_dist and ev_dist <= 50:
                         splits = None
                 if is_relay or result_data.get('is_relay', False):
-                    relay_swimmers = _parse_relay_legs(
-                        result_data.get('split_times', []) or [], is_excel=is_excel_format) or None
+                    relay_swimmers = _structured_relay_legs(
+                        result_data, is_excel=is_excel_format) or None
 
                 # Always calculate FINA points from World Aquatics base times
                 from .points import calculate_points
@@ -2009,6 +2015,22 @@ def _create_relay_only_swimmers(championship):
             )
             created += 1
     return created
+
+
+def _structured_relay_legs(result_data, is_excel=False):
+    """Structured relay legs for Result.relay_swimmers, honouring the true
+    leg numbers when the parser kept them (relay_leg_orders parallel to
+    split_times). A file that tracks only some athletes stores partial legs:
+    when the first stored leg is not leg 1 of the relay, it is flagged
+    first_leg=False so its flying-start split never counts as an individual
+    time (relay_first_leg_split_cs checks this flag).
+    """
+    legs = _parse_relay_legs(
+        result_data.get('split_times', []) or [], is_excel=is_excel)
+    orders = result_data.get('relay_leg_orders') or []
+    if legs and orders and orders[0] != 1:
+        legs[0]['first_leg'] = False
+    return legs
 
 
 def _parse_relay_legs(raw_splits, is_excel=False):

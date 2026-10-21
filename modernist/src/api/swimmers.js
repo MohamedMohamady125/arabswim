@@ -19,6 +19,7 @@ export const getSwimmerRankings = (id) => api.get(`/swimmers/${id}/rankings/`)
 export const getSwimmerQualifyingGaps = (id, params) => api.get(`/swimmers/${id}/qualifying-gaps/`, { params })
 export const changeSwimmerNationality = (id, data) => api.post(`/swimmers/${id}/change-nationality/`, data)
 export const deleteNationalityChange = (id, changeId) => api.delete(`/swimmers/${id}/nationality-changes/${changeId}/`)
+export const renameSwimmerClub = (id, oldClub, newClub) => api.post(`/swimmers/${id}/rename-club/`, { old_club: oldClub, new_club: newClub })
 
 // Arabic↔English name-matching dashboard (admin)
 export const getNameMatchCountries = () => api.get('/swimmers/name-match/countries/')

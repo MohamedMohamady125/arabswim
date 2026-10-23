@@ -197,3 +197,56 @@ class ResultNationalityStampingTests(TestCase):
         by_meet = {row['championship_name']: row for row in resp.json()}
         self.assertEqual(by_meet['Old Meet']['represented']['code'], 'EGY')
         self.assertIsNone(by_meet['New Meet']['represented'])
+
+
+class SetClubCountryTests(TestCase):
+    """Admin fix for guest clubs filed under a meet's host country —
+    e.g. a French club at a Tunisian national meet auto-voted TUN."""
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = get_user_model().objects.create_superuser('boss2', password='x')
+        cls.viewer = get_user_model().objects.create_user('joe2', password='x')
+        cls.tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        cls.fra = Country.objects.create(name='France', code='FRA', region='OTHER')
+        cls.swimmer = Swimmer.objects.create(
+            name='Lea Blanc', nationality=cls.fra, sex='F', birth_year=2006,
+            club='CN MARSEILLE')
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def url(self):
+        return f'/api/v1/swimmers/{self.swimmer.id}/set-club-country/'
+
+    def test_admin_fixes_wrongly_voted_country(self):
+        from teams.models import Team
+        team = Team.objects.create(name='CN MARSEILLE', country=self.tun)
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(self.url(), {
+            'club': 'CN Marseille 2', 'country_code': 'FRA'})
+        self.assertEqual(resp.status_code, 200)
+        team.refresh_from_db()
+        self.assertEqual(team.country, self.fra)
+        self.assertFalse(resp.json()['created'])
+
+    def test_creates_team_when_club_has_none(self):
+        from teams.models import Team
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(self.url(), {
+            'club': 'CN MARSEILLE', 'country_code': 'FRA'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['created'])
+        self.assertEqual(
+            Team.objects.get(name='CN MARSEILLE').country, self.fra)
+
+    def test_non_admin_forbidden(self):
+        self.client.force_authenticate(self.viewer)
+        resp = self.client.post(self.url(), {
+            'club': 'CN MARSEILLE', 'country_code': 'FRA'})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_unknown_country_rejected(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(self.url(), {
+            'club': 'CN MARSEILLE', 'country_code': 'ZZZ'})
+        self.assertEqual(resp.status_code, 400)

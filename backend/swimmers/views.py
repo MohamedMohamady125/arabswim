@@ -1205,6 +1205,51 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
         return Response({'updated_results': updated, 'new_club': new_club})
 
+    @action(detail=True, methods=['post'], url_path='set-club-country')
+    def set_club_country(self, request, pk=None):
+        """Admin: correct the country of a club shown in the Representations
+        tab. Club countries are auto-voted from the host country of National
+        meets, so a foreign guest club (e.g. a French club swimming at a
+        Tunisian national meet) gets filed under the host's country. The
+        club's Team record is global, so the correction applies everywhere
+        the club appears; auto team creation never overwrites an existing
+        team, so the manual country sticks across re-imports.
+        """
+        from core.permissions import is_admin
+        if not is_admin(request.user):
+            return Response({'error': 'Admin only'}, status=403)
+        club = (request.data.get('club') or '').strip()
+        code = (request.data.get('country_code') or '').strip().upper()
+        if not club or not code:
+            return Response({'error': 'club and country_code are required'},
+                            status=400)
+        from core.models import Country
+        country = Country.objects.filter(code=code).first()
+        if not country:
+            return Response({'error': f'Unknown country code {code}'}, status=400)
+
+        from teams.models import Team
+        from teams.utils import normalize_team_key, strip_squad_number
+        base = strip_squad_number(club)
+        key = normalize_team_key(base) or base.casefold()
+        team = None
+        for t in Team.objects.all():
+            if (normalize_team_key(t.name) or t.name.casefold()) == key:
+                team = t
+                break
+        created = False
+        if team:
+            team.country = country
+            team.save(update_fields=['country'])
+        else:
+            team = Team.objects.create(name=base, country=country)
+            created = True
+        return Response({
+            'team_id': team.id, 'club': team.name, 'created': created,
+            'country': country.name, 'country_code': country.code,
+            'country_flag': country.flag_url,
+        })
+
     @action(detail=True, methods=['delete'],
             url_path='nationality-changes/(?P<change_id>[0-9]+)')
     def delete_nationality_change(self, request, pk=None, change_id=None):

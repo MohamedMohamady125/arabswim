@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X, Pencil, Check } from 'lucide-react'
-import { getSwimmerTransferHistory, changeSwimmerNationality, deleteNationalityChange, renameSwimmerClub } from '../../api/swimmers'
+import { getSwimmerTransferHistory, changeSwimmerNationality, deleteNationalityChange, renameSwimmerClub, setSwimmerClubCountry } from '../../api/swimmers'
 import { getCountries } from '../../api/core'
 import { useAuth } from '../../context/AuthContext'
 import Flag from '../Flag'
@@ -114,19 +114,39 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
   // club rename (admin): which club row is being edited + the draft name
   const [editingClub, setEditingClub] = useState(null)
   const [clubDraft, setClubDraft] = useState('')
+  const [clubCountryDraft, setClubCountryDraft] = useState('')
   const [savingClub, setSavingClub] = useState(false)
+  // Country options for the club-country fix, loaded once on first edit
+  const [countryOptions, setCountryOptions] = useState(null)
   const { isAdmin } = useAuth()
 
-  const saveClubRename = async (oldName) => {
+  const startClubEdit = (club) => {
+    setEditingClub(club.club)
+    setClubDraft(club.club)
+    setClubCountryDraft(club.country_code || '')
+    if (!countryOptions) {
+      getCountries({ page_size: 500 })
+        .then((res) => {
+          const d = res.data
+          setCountryOptions(Array.isArray(d) ? d : d?.results || [])
+        })
+        .catch(() => setCountryOptions([]))
+    }
+  }
+
+  const saveClubEdit = async (club) => {
     const newName = clubDraft.trim()
-    if (!newName || newName === oldName) { setEditingClub(null); return }
+    const nameChanged = newName && newName !== club.club
+    const countryChanged = clubCountryDraft && clubCountryDraft !== (club.country_code || '')
+    if (!nameChanged && !countryChanged) { setEditingClub(null); return }
     setSavingClub(true)
     try {
-      await renameSwimmerClub(swimmerId, oldName, newName)
+      if (nameChanged) await renameSwimmerClub(swimmerId, club.club, newName)
+      if (countryChanged) await setSwimmerClubCountry(swimmerId, nameChanged ? newName : club.club, clubCountryDraft)
       setEditingClub(null)
       setReloadKey((k) => k + 1)
     } catch (err) {
-      window.alert(err.response?.data?.error || 'Failed to rename the club')
+      window.alert(err.response?.data?.error || 'Failed to update the club')
     } finally {
       setSavingClub(false)
     }
@@ -164,25 +184,37 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {club.country_code && <Flag code={club.country_code} name={club.country} flagUrl={club.country_flag} />}
                 {editingClub === club.club ? (
-                  <span style={{ flex: 1, display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ flex: 1, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                     <input
                       className="input"
-                      style={{ flex: 1, minHeight: 32, fontSize: 13 }}
+                      style={{ flex: 1, minWidth: 140, minHeight: 32, fontSize: 13 }}
                       value={clubDraft}
                       autoFocus
                       onChange={(e) => setClubDraft(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); saveClubRename(club.club) }
+                        if (e.key === 'Enter') { e.preventDefault(); saveClubEdit(club) }
                         if (e.key === 'Escape') setEditingClub(null)
                       }}
                     />
+                    <select
+                      className="input"
+                      style={{ minHeight: 32, fontSize: 13, maxWidth: 170 }}
+                      value={clubCountryDraft}
+                      aria-label="Club country"
+                      title="The club's real country (guest clubs at national meets get the host country by mistake)"
+                      onChange={(e) => setClubCountryDraft(e.target.value)}>
+                      <option value="">Country…</option>
+                      {(countryOptions || []).map((c) => (
+                        <option key={c.code} value={c.code}>{c.name}</option>
+                      ))}
+                    </select>
                     <button className="btn btn-primary btn-icon" disabled={savingClub}
-                      title="Save" aria-label="Save club name"
-                      onClick={() => saveClubRename(club.club)}>
+                      title="Save" aria-label="Save club"
+                      onClick={() => saveClubEdit(club)}>
                       <Check size={13} />
                     </button>
                     <button className="btn btn-secondary btn-icon" disabled={savingClub}
-                      title="Cancel" aria-label="Cancel rename"
+                      title="Cancel" aria-label="Cancel edit"
                       onClick={() => setEditingClub(null)}>
                       <X size={13} />
                     </button>
@@ -192,9 +224,9 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
                     {club.club}
                     {isAdmin && (
                       <button className="btn btn-secondary btn-icon" style={{ marginLeft: 8 }}
-                        title="Rename this club for this swimmer"
-                        aria-label="Rename club"
-                        onClick={() => { setEditingClub(club.club); setClubDraft(club.club) }}>
+                        title="Edit this club's name or country"
+                        aria-label="Edit club"
+                        onClick={() => startClubEdit(club)}>
                         <Pencil size={12} />
                       </button>
                     )}

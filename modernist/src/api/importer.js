@@ -30,3 +30,4 @@ export const getSaudiScrapeJobs = () => api.get('/import/saudi-scrape/')
 export const startSaudiScrape = () => api.post('/import/saudi-scrape/')
 export const downloadSaudiScrape = (jobId) =>
   api.get(`/import/saudi-scrape/${jobId}/download/`, { responseType: 'blob', timeout: 120000 })
+export const deleteSaudiScrapeJob = (jobId) => api.delete(`/import/saudi-scrape/${jobId}/`)

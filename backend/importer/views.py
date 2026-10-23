@@ -1029,6 +1029,24 @@ class SaudiScrapeView(APIView):
         return Response({'id': job.id, 'status': 'pending'}, status=201)
 
 
+class SaudiScrapeJobView(APIView):
+    """DELETE /api/v1/import/saudi-scrape/{id}/ — remove an old scrape job
+    from the list (a running job must be superseded or finish first)."""
+    permission_classes = [IsAdmin]
+
+    def delete(self, request, job_id):
+        from .models import ScrapeJob
+        from .saudi_scraper import BASE
+        job = ScrapeJob.objects.filter(id=job_id, url=BASE).first()
+        if not job:
+            return Response({'error': 'Not found'}, status=404)
+        if job.status in ('pending', 'running'):
+            return Response(
+                {'error': 'This scrape is still running'}, status=400)
+        job.delete()
+        return Response(status=204)
+
+
 class SaudiScrapeDownloadView(APIView):
     """GET /api/v1/import/saudi-scrape/{id}/download/ — the 2-sheet .xlsx"""
     permission_classes = [IsAdmin]

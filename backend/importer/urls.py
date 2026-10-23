@@ -13,5 +13,6 @@ urlpatterns = [
     path('import/scrape/', views.ScrapeView.as_view(), name='import-scrape'),
     path('import/scrape/<int:job_id>/download/', views.ScrapeDownloadView.as_view(), name='import-scrape-download'),
     path('import/saudi-scrape/', views.SaudiScrapeView.as_view(), name='import-saudi-scrape'),
+    path('import/saudi-scrape/<int:job_id>/', views.SaudiScrapeJobView.as_view(), name='import-saudi-scrape-job'),
     path('import/saudi-scrape/<int:job_id>/download/', views.SaudiScrapeDownloadView.as_view(), name='import-saudi-scrape-download'),
 ]

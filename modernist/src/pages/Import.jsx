@@ -4,7 +4,7 @@ import {
   uploadFile, matchSwimmers, matchSwimmersBatch, confirmImport, confirmImportBatch, getConfirmJob,
   getDuplicates, mergeSwimmers, getImportHistory,
   getScrapeJobs, startScrape, downloadScrape,
-  getSaudiScrapeJobs, startSaudiScrape, downloadSaudiScrape,
+  getSaudiScrapeJobs, startSaudiScrape, downloadSaudiScrape, deleteSaudiScrapeJob,
 } from '../api/importer'
 import { getCountries } from '../api/core'
 import {
@@ -2141,6 +2141,17 @@ function SaudiScrapePanel() {
     setStarting(false)
   }
 
+  const handleDelete = async (job) => {
+    if (!window.confirm('Remove this scrape from the list?')) return
+    setError('')
+    try {
+      await deleteSaudiScrapeJob(job.id)
+      await load()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete the scrape')
+    }
+  }
+
   const handleDownload = async (job) => {
     setError('')
     try {
@@ -2224,11 +2235,18 @@ function SaudiScrapePanel() {
                       <span className="tag tag-neutral">{job.progress || 'Scraping…'}</span>
                     )}
                   </td>
-                  <td className="num">
+                  <td className="num" style={{ whiteSpace: 'nowrap' }}>
                     {(job.status === 'done' || job.status === 'failed') && job.total_results > 0 && (
                       <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5 }}
                         onClick={() => handleDownload(job)}>
                         Download{job.status === 'failed' ? ' partial' : ''} Excel
+                      </button>
+                    )}
+                    {(job.status === 'done' || job.status === 'failed') && (
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5, color: 'var(--color-accent)' }}
+                        title="Remove this scrape from the list"
+                        onClick={() => handleDelete(job)}>
+                        Delete
                       </button>
                     )}
                   </td>

@@ -731,7 +731,7 @@ export default function Import() {
           options={[
             { value: 'file', label: 'Import File' },
             { value: 'scrape', label: 'Scrape ESF' },
-            { value: 'saudi', label: 'Scrape Saudi Results' },
+            { value: 'saudi', label: 'Scrape SSF' },
             { value: 'manual', label: 'Manual Entry' },
             { value: 'duplicates', label: 'Duplicates' },
             { value: 'history', label: 'History' },
@@ -2174,7 +2174,7 @@ function SaudiScrapePanel() {
   return (
     <div style={{ marginBottom: 32 }}>
       <div className="sect-head">
-        <h4>Scrape Saudi Results</h4>
+        <h4>Scrape SSF</h4>
         <span className="micro">All SSF meets newer than our latest Saudi national meet → standard Excel</span>
       </div>
       {error && <div style={errorBox}>{error}</div>}
@@ -2188,7 +2188,7 @@ function SaudiScrapePanel() {
         </p>
         <button type="button" className="btn btn-primary" onClick={handleStart}
           disabled={starting || running}>
-          {starting || running ? 'Scraping…' : 'Scrape Saudi Results'}
+          {starting || running ? 'Scraping…' : 'Scrape SSF'}
         </button>
       </div>
 

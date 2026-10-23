@@ -2013,6 +2013,8 @@ export default function CountryProfile() {
                   ) : alpha2 ? (
                     <span className={`fi fi-${alpha2}`} role="img" aria-label={country.name}
                       style={{ width: '100%', height: '100%', display: 'block', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  ) : country.flag_url?.startsWith('http') ? (
+                    <img src={country.flag_url} alt={country.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, color: navy }}>{country.code}</span>
                   )}

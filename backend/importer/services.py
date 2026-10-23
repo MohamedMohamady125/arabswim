@@ -842,6 +842,7 @@ ARAB_COUNTRY_CODES = {
     'MTN', 'MRT', 'MAR', 'MOR', 'OMA', 'OMN', 'PLE', 'PAL', 'PSE',
     'QAT', 'KSA', 'SAU', 'SOM', 'SUD', 'SDN', 'SYR', 'TUN',
     'UAE', 'ARE', 'YEM',
+    'YAR', 'YMD',  # historical North/South Yemen (old-meet imports)
 }
 
 

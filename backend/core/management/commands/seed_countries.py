@@ -119,6 +119,33 @@ NEUTRAL_TEAMS = [
     ('Russian Olympic Committee', 'ROC'),
 ]
 
+# Historical countries by their IOC-era codes — needed when importing old
+# meets (results from the 1950s-1990s). Flags come from Wikimedia Commons
+# (full URLs in FLAGS; the Flag component falls back to the flag_url image
+# for codes outside the flag-icons set). Note: 'UAR' results still resolve
+# to Egypt at import time (COUNTRY_CODE_ALIASES) so UAR-era Egyptian
+# swimmers merge with their later EGY careers; this row exists for manual
+# assignment. North/South Yemen are Arab-region so they appear in the
+# Arab filter lists.
+HISTORICAL_COUNTRIES = [
+    {'name': 'Soviet Union', 'code': 'URS', 'region': 'OTHER'},
+    {'name': 'Yugoslavia', 'code': 'YUG', 'region': 'OTHER'},
+    {'name': 'Serbia and Montenegro', 'code': 'SCG', 'region': 'OTHER'},
+    {'name': 'Czechoslovakia', 'code': 'TCH', 'region': 'OTHER'},
+    {'name': 'East Germany', 'code': 'GDR', 'region': 'OTHER'},
+    {'name': 'West Germany', 'code': 'FRG', 'region': 'OTHER'},
+    {'name': 'United Arab Republic', 'code': 'UAR', 'region': 'ARAB'},
+    {'name': 'Rhodesia', 'code': 'RHO', 'region': 'OTHER'},
+    {'name': 'South Vietnam', 'code': 'VNM', 'region': 'OTHER'},
+    {'name': 'North Yemen', 'code': 'YAR', 'region': 'ARAB'},
+    {'name': 'South Yemen', 'code': 'YMD', 'region': 'ARAB'},
+    {'name': 'Netherlands Antilles', 'code': 'AHO', 'region': 'OTHER'},
+    {'name': 'West Indies Federation', 'code': 'WIN', 'region': 'OTHER'},
+    {'name': 'Saar', 'code': 'SAA', 'region': 'OTHER'},
+    {'name': 'Malaya', 'code': 'MAL', 'region': 'OTHER'},
+    {'name': 'Bohemia', 'code': 'BOH', 'region': 'OTHER'},
+]
+
 
 # IOC three-letter code → ISO 3166-1 alpha-2 code (used by flagcdn.com to
 # render the flag). Stored in Country.flag_url.
@@ -172,6 +199,25 @@ FLAGS = {
     # British home nations (flagcdn subdivision codes) + Vatican
     'ENG': 'gb-eng', 'SCO': 'gb-sct', 'WAL': 'gb-wls', 'NIR': 'gb-nir',
     'VAT': 'va',
+    # Historical countries — no flag-icons entry exists, so these are full
+    # Wikimedia Commons URLs; the Flag component renders flag_url images
+    # directly for codes it has no alpha-2 mapping for.
+    'URS': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_the_Soviet_Union.svg',
+    'YUG': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_SFR_Yugoslavia.svg',
+    'SCG': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Serbia_and_Montenegro.svg',
+    'TCH': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Czechoslovakia.svg',
+    'GDR': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_East_Germany.svg',
+    'FRG': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Germany.svg',
+    'UAR': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_the_United_Arab_Republic.svg',
+    'RHO': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Rhodesia.svg',
+    'VNM': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_South_Vietnam.svg',
+    'YAR': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_North_Yemen.svg',
+    'YMD': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_South_Yemen.svg',
+    'AHO': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_the_Netherlands_Antilles.svg',
+    'WIN': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_the_West_Indies_Federation.svg',
+    'SAA': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Saar_(1947%E2%80%931956).svg',
+    'MAL': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Malaya.svg',
+    'BOH': 'https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Bohemia.svg',
 }
 
 
@@ -209,6 +255,7 @@ class Command(BaseCommand):
         rows = list(ARAB_COUNTRIES)
         rows += [{'name': n, 'code': c, 'region': 'OTHER'} for n, c in WORLD_COUNTRIES]
         rows += [{'name': n, 'code': c, 'region': 'OTHER'} for n, c in NEUTRAL_TEAMS]
+        rows += HISTORICAL_COUNTRIES
 
         for c in rows:
             Country.objects.update_or_create(

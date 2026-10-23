@@ -80,7 +80,10 @@ COUNTRY_CODE_ALIASES = {
     'HRV': 'CRO', 'GRC': 'GRE', 'BGR': 'BUL', 'SVN': 'SLO', 'LVA': 'LAT',
     'MCO': 'MON', 'XKX': 'KOS',
     'IRN': 'IRI', 'IDN': 'INA', 'KHM': 'CAM', 'LKA': 'SRI', 'MYS': 'MAS',
-    'MMR': 'MYA', 'NPL': 'NEP', 'PHL': 'PHI', 'TWN': 'TPE', 'VNM': 'VIE',
+    'MMR': 'MYA', 'NPL': 'NEP', 'PHL': 'PHI', 'TWN': 'TPE',
+    # 'VNM' deliberately NOT aliased to VIE: it is the seeded historical
+    # country South Vietnam (IOC code until 1976); modern Vietnam files
+    # use VIE.
     'MNG': 'MGL', 'BGD': 'BAN', 'BTN': 'BHU',
     'ZAF': 'RSA', 'NGA': 'NGR', 'NER': 'NIG', 'TZA': 'TAN', 'ZWE': 'ZIM',
     'AGO': 'ANG', 'BWA': 'BOT', 'BFA': 'BUR', 'TCD': 'CHA', 'COG': 'CGO',

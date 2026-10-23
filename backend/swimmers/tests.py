@@ -251,3 +251,55 @@ class SetClubCountryTests(TestCase):
         resp = self.client.post(self.url(), {
             'club': 'CN MARSEILLE', 'country_code': 'ZZZ'})
         self.assertEqual(resp.status_code, 400)
+
+
+class RelayLegIdMatchTests(TestCase):
+    """Special-upload relay legs carry the matched profile's swimmer_id —
+    the profile must surface the relay (with leg order) even when the
+    file's leg name is spelled differently from the profile name."""
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Event
+        from championships.models import Championship, Result
+        cls.alg = Country.objects.create(name='Algeria', code='ALG', region='ARAB')
+        cls.swimmer = Swimmer.objects.create(
+            name='Samy BOUTOUIL', nationality=cls.alg, sex='M', birth_year=2000)
+        cls.relay_team = Swimmer.objects.create(
+            name='Algeria', nationality=cls.alg, sex='M', is_relay_team=True)
+        cls.event = Event.objects.create(
+            name='4x100 M Freestyle Relay', distance=400,
+            stroke='Freestyle', is_relay=True)
+        cls.champ = Championship.objects.create(
+            name='Arab Champs', date='2026-05-01', pool='LCM', country=cls.alg)
+        cls.result = Result.objects.create(
+            swimmer=cls.relay_team, championship=cls.champ, event=cls.event,
+            round_type='Finals', time_centiseconds=20000, team='Algeria',
+            relay_swimmers=[
+                {'name': 'BOUTOUIL SAMY', 'split_time': '52.10',
+                 'order': 2, 'swimmer_id': None},
+            ])
+        # Tag the leg with the real profile id (set here so the None above
+        # can't accidentally pass an is-None check)
+        cls.result.relay_swimmers[0]['swimmer_id'] = cls.swimmer.id
+        cls.result.save(update_fields=['relay_swimmers'])
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_events_list_includes_id_matched_relay(self):
+        resp = self.client.get(f'/api/v1/swimmers/{self.swimmer.id}/events/')
+        self.assertEqual(resp.status_code, 200)
+        relays = [e for e in resp.json() if e.get('is_relay')]
+        self.assertEqual(len(relays), 1)
+        self.assertEqual(relays[0]['split_time'], '52.10')
+        # Leg 2 is a flying start — never a first-leg individual time
+        self.assertFalse(relays[0]['is_first_leg'])
+
+    def test_history_includes_leg_order(self):
+        resp = self.client.get(
+            f'/api/v1/swimmers/{self.swimmer.id}/events/{self.event.id}/history/')
+        self.assertEqual(resp.status_code, 200)
+        rows = resp.json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['leg_order'], 2)
+        self.assertEqual(rows[0]['split_time'], '52.10')

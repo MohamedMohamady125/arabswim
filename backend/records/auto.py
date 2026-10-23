@@ -51,7 +51,7 @@ def check_and_update_records(result):
     # the individual event with the split time instead of the relay event.
     if event.is_relay and not swimmer.is_relay_team:
         from championships.models import relay_first_leg_split_cs
-        split_cs = relay_first_leg_split_cs(result, swimmer.name)
+        split_cs = relay_first_leg_split_cs(result, swimmer.name, swimmer.id)
         if split_cs:
             # Find the individual event (e.g. "100 M Freestyle" from "4x100 M Freestyle Relay")
             ind_distance = event.distance // 4 if event.distance else 0

@@ -731,6 +731,7 @@ export default function Import() {
           options={[
             { value: 'file', label: 'Import File' },
             { value: 'scrape', label: 'Scrape ESF' },
+            { value: 'saudi', label: 'Scrape Saudi Results' },
             { value: 'manual', label: 'Manual Entry' },
             { value: 'duplicates', label: 'Duplicates' },
             { value: 'history', label: 'History' },
@@ -766,6 +767,7 @@ export default function Import() {
         {tab === 'duplicates' && <DuplicatesTab />}
         {tab === 'history' && <HistoryTab />}
         {tab === 'scrape' && <ScrapeTab />}
+        {tab === 'saudi' && <SaudiScrapePanel />}
 
         {tab === 'file' && (
           <>
@@ -2161,8 +2163,8 @@ function SaudiScrapePanel() {
   return (
     <div style={{ marginBottom: 32 }}>
       <div className="sect-head">
-        <h4>Scrape Saudi Federation (new meets)</h4>
-        <span className="micro">All SSF meets newer than our latest Saudi meet → standard Excel</span>
+        <h4>Scrape Saudi Results</h4>
+        <span className="micro">All SSF meets newer than our latest Saudi national meet → standard Excel</span>
       </div>
       {error && <div style={errorBox}>{error}</div>}
 
@@ -2175,7 +2177,7 @@ function SaudiScrapePanel() {
         </p>
         <button type="button" className="btn btn-primary" onClick={handleStart}
           disabled={starting || running}>
-          {starting || running ? 'Scraping…' : 'Scrape new Saudi meets'}
+          {starting || running ? 'Scraping…' : 'Scrape Saudi Results'}
         </button>
       </div>
 
@@ -2300,8 +2302,6 @@ function ScrapeTab() {
 
   return (
     <div>
-      <SaudiScrapePanel />
-
       <div className="sect-head">
         <h4>Scrape Federation Results</h4>
         <span className="micro">ESF Hy-Tek results pages → clean Excel</span>

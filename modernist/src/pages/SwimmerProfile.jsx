@@ -456,6 +456,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
             {history.map((h, i) => {
               const isBest = bestCs != null && !h.is_hc && h.time_centiseconds === bestCs
               const splits = h.splits || []
+              const relayLegs = h.is_relay ? (h.relay_swimmers || []).filter((s) => s && typeof s === 'object') : []
               const showSplits = expandedSplits === h.id
               return (
                 <Fragment key={h.id}>
@@ -473,6 +474,20 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                             title="Show split times">
                             Splits {showSplits ? '−' : '+'}
                           </button>
+                        )}
+                        {relayLegs.length > 0 && (
+                          <button type="button"
+                            onClick={(e) => { e.stopPropagation(); setExpandedSplits(showSplits ? null : h.id) }}
+                            className={showSplits ? 'tag tag-dark' : 'tag tag-outline'}
+                            style={{ cursor: 'pointer', border: showSplits ? 0 : undefined, font: 'inherit', fontSize: 9, padding: '1px 6px' }}
+                            title="Show relay lineup">
+                            Lineup {showSplits ? '−' : '+'}
+                          </button>
+                        )}
+                        {h.is_relay && h.leg_order && (
+                          <span className="tag tag-accent" title={`Swam leg ${h.leg_order} of this relay`}>
+                            Leg {h.leg_order}
+                          </span>
                         )}
                         {h.represented && (
                           <span title={`Swum representing ${h.represented.name}`}
@@ -512,7 +527,32 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                       {h.fina_points || '—'}
                     </td>
                   </tr>
-                  {showSplits && (() => {
+                  {showSplits && relayLegs.length > 0 && (
+                    <tr>
+                      <td colSpan={7} style={{ background: 'var(--color-neutral-100)', padding: '12px 16px' }}>
+                        <div className="kicker" style={{ marginBottom: 8 }}>Relay lineup — {h.team}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {relayLegs.map((leg, li) => {
+                            const order = leg.order || li + 1
+                            const mine = h.leg_order && order === h.leg_order
+                            return (
+                              <div key={li} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: mine ? 700 : 400 }}>
+                                <span className="asw-num" style={{ width: 44, color: mine ? 'var(--color-accent)' : 'var(--color-neutral-600)' }}>Leg {order}</span>
+                                <span style={{ flex: 1, color: mine ? 'var(--color-accent)' : 'inherit' }}>{leg.name || '—'}</span>
+                                <span className="asw-time" style={{ fontSize: 13 }}>{leg.split_time || '—'}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {relayLegs.length < 4 && (
+                          <div className="micro text-muted" style={{ marginTop: 8 }}>
+                            Only the legs tracked in the source file are listed.
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  {showSplits && relayLegs.length === 0 && (() => {
                     // sibling round (prelims vs finals) from the same meet, if it has splits
                     const sibling = h.round_type ? history.find((x) =>
                       x.id !== h.id && x.championship_id === h.championship_id &&

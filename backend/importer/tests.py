@@ -3748,6 +3748,40 @@ class StructuredRelayLegsTests(SimpleTestCase):
         }, is_excel=True)
         self.assertNotIn('first_leg', legs[0])
 
+    def test_legs_carry_true_order_and_matched_swimmer_id(self):
+        from importer.services import _structured_relay_legs
+        legs = _structured_relay_legs({
+            'split_times': ['Samy BOUTOUIL 52.10', 'Jean DUPONT 53.00'],
+            'relay_leg_orders': [2, 4],
+        }, is_excel=True, leg_ids={'SAMY BOUTOUIL': 77})
+        self.assertEqual(legs[0]['order'], 2)
+        self.assertEqual(legs[1]['order'], 4)
+        self.assertEqual(legs[0]['swimmer_id'], 77)
+        self.assertNotIn('swimmer_id', legs[1])
+        self.assertIs(legs[0].get('first_leg'), False)
+
+    def test_first_leg_split_matches_by_swimmer_id(self):
+        from championships.models import relay_first_leg_split_cs
+
+        class _R:
+            relay_swimmers = [
+                {'name': 'FILE SPELLING', 'split_time': '52.10',
+                 'order': 1, 'swimmer_id': 77},
+            ]
+        # DB profile name differs from the file's leg name — id wins
+        self.assertEqual(
+            relay_first_leg_split_cs(_R(), 'Samy BOUTOUIL', 77), 5210)
+        self.assertIsNone(relay_first_leg_split_cs(_R(), 'Samy BOUTOUIL', 78))
+
+    def test_first_leg_split_rejects_non_first_order(self):
+        from championships.models import relay_first_leg_split_cs
+
+        class _R:
+            relay_swimmers = [
+                {'name': 'Samy BOUTOUIL', 'split_time': '52.10', 'order': 3},
+            ]
+        self.assertIsNone(relay_first_leg_split_cs(_R(), 'Samy BOUTOUIL'))
+
 
 class ExcelDateCellTests(SimpleTestCase):
     """Empty date cells arrive as pd.NaT, which SUBCLASSES datetime —

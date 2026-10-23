@@ -204,6 +204,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         # verify the exact name in Python (works on Postgres and sqlite).
         from django.db.models import TextField
         from django.db.models.functions import Cast
+        from django.db.models import Q as _Q
         relay_results = Result.objects.filter(
             relay_swimmers__isnull=False,
             event__is_relay=True,
@@ -211,16 +212,25 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         ).annotate(
             relay_swimmers_text=Cast('relay_swimmers', TextField()),
         ).filter(
-            relay_swimmers_text__icontains=swimmer.name,
+            # Special-upload legs carry the matched profile's id; the leg
+            # NAME is the file's verbatim spelling, which can differ.
+            _Q(relay_swimmers_text__icontains=swimmer.name)
+            | _Q(relay_swimmers_text__icontains=f'"swimmer_id": {swimmer.id}'),
         ).select_related('event', 'championship')
+
+        def _leg_is_swimmer(s):
+            if not isinstance(s, dict):
+                return isinstance(s, str) and s.upper() == swimmer.name.upper()
+            if s.get('swimmer_id') == swimmer.id:
+                return True
+            return (s.get('name', '') or '').upper() == swimmer.name.upper()
 
         matched_relays = {}
         for r in relay_results:
             if not r.relay_swimmers:
                 continue
             for s in r.relay_swimmers:
-                name = s.get('name', '') if isinstance(s, dict) else (s if isinstance(s, str) else '')
-                if name.upper() == swimmer.name.upper():
+                if _leg_is_swimmer(s):
                     key = (r.event_id, r.championship.pool or '')
                     if key not in matched_relays:
                         matched_relays[key] = {'results': [], 'event': r.event}
@@ -240,15 +250,14 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             best_split = None
             best_split_cs = None
             for r in info['results']:
-                st_cs = relay_first_leg_split_cs(r, swimmer.name)
+                st_cs = relay_first_leg_split_cs(r, swimmer.name, swimmer.id)
                 if st_cs and (best_split is None or st_cs < best_split):
                     best_split = st_cs
                 # Also find best leg split (any leg position)
                 for leg in (r.relay_swimmers or []):
-                    leg_name = leg.get('name', '') if isinstance(leg, dict) else ''
-                    if leg_name.upper() == swimmer.name.upper():
+                    if isinstance(leg, dict) and _leg_is_swimmer(leg):
                         from importer.parsers.base import parse_time_to_centiseconds
-                        leg_time = leg.get('split_time', '') if isinstance(leg, dict) else ''
+                        leg_time = leg.get('split_time', '')
                         if leg_time:
                             cs = parse_time_to_centiseconds(leg_time)
                             if cs > 0 and (best_split_cs is None or cs < best_split_cs):
@@ -400,16 +409,23 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             for r in relay_results:
                 if not r.relay_swimmers:
                     continue
-                # Find this swimmer in the relay
+                # Find this swimmer in the relay — by the tagged profile id
+                # (special uploads) or by exact name.
                 swimmer_split = None
+                leg_order = None
                 found = False
-                for s in r.relay_swimmers:
+                for idx, s in enumerate(r.relay_swimmers):
                     if isinstance(s, dict):
-                        if s.get('name', '').upper() == swimmer.name.upper():
+                        if (s.get('swimmer_id') == swimmer.id
+                                or (s.get('name', '') or '').upper() == swimmer.name.upper()):
                             swimmer_split = s.get('split_time', '')
+                            # True leg number when the file kept it; falls
+                            # back to the stored position for full lineups.
+                            leg_order = s.get('order') or (idx + 1)
                             found = True
                             break
                     elif isinstance(s, str) and s.upper() == swimmer.name.upper():
+                        leg_order = idx + 1
                         found = True
                         break
 
@@ -431,6 +447,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'time': format_centiseconds(r.time_centiseconds),
                     'time_centiseconds': r.time_centiseconds,
                     'split_time': swimmer_split or '',
+                    'leg_order': leg_order,
                     'round_type': r.round_type,
                     'fina_points': r.fina_points,
                     'team': r.swimmer.name,  # Team/club name
@@ -679,7 +696,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             # If this is a relay record but swimmer is individual, show individual event
             if r.event.is_relay and not swimmer.is_relay_team and r.result:
                 from championships.models import relay_first_leg_split_cs
-                if relay_first_leg_split_cs(r.result, swimmer.name):
+                if relay_first_leg_split_cs(r.result, swimmer.name, swimmer.id):
                     ind_dist = r.event.distance // 4 if r.event.distance else 0
                     if ind_dist:
                         event_name = f'{ind_dist} M {r.event.stroke}'

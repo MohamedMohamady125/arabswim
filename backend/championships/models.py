@@ -194,7 +194,7 @@ class LiveSession(models.Model):
         return f'Day {self.day} session @ {self.championship.name}'
 
 
-def relay_first_leg_split_cs(result, swimmer_name):
+def relay_first_leg_split_cs(result, swimmer_name, swimmer_id=None):
     """Return a swimmer's relay leg split in centiseconds ONLY if they swam
     the first leg of the relay, else None.
 
@@ -213,9 +213,16 @@ def relay_first_leg_split_cs(result, swimmer_name):
     if not legs or not isinstance(legs[0], dict):
         return None
     first = legs[0]
-    if (first.get('name') or '').upper() != (swimmer_name or '').upper():
+    # Special-upload legs are tagged with the matched profile's id — the
+    # file's leg name can be spelled differently from the profile name.
+    name_match = (first.get('name') or '').upper() == (swimmer_name or '').upper()
+    id_match = swimmer_id is not None and first.get('swimmer_id') == swimmer_id
+    if not (name_match or id_match):
         return None
     if first.get('first_leg') is False:
+        return None
+    # Defensive: a stored true leg number other than 1 is never a first leg
+    if first.get('order') not in (None, 1):
         return None
     st = first.get('split_time')
     if not st:

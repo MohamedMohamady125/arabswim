@@ -1202,6 +1202,16 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         n.strip().upper() for n, d in (swimmer_decisions or {}).items()
         if isinstance(d, dict) and d.get('action') in ('match', 'create')
     } if special else set()
+    # File name -> matched DB swimmer id. Relay legs keep the FILE's verbatim
+    # name, but a 'match' decision points at an existing profile whose name
+    # can differ — tagging each leg with the swimmer_id lets the profile
+    # surface the relay regardless of name spelling. 'create' athletes get a
+    # profile named exactly like the file, so name matching covers them.
+    special_leg_ids = {
+        n.strip().upper(): d['swimmer_id']
+        for n, d in (swimmer_decisions or {}).items()
+        if isinstance(d, dict) and d.get('action') == 'match' and d.get('swimmer_id')
+    } if special else {}
 
     year_clubs = {}  # (NAME, 'Y', year) -> first club seen for that identity
 
@@ -1523,7 +1533,11 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             # Keep swimmer's club current: set it when blank, and update it
             # when this meet is the swimmer's most recent one (athletes have
             # a single current club — the one they last competed for).
+            # team_override means the file's "club" was a country name
+            # (national team at an international meet) — it is recorded as
+            # the result's team but must never become the swimmer's club.
             if team and team != 'LP' and not (is_relay or result_data.get('is_relay', False)) \
+                    and not result_data.get('team_override') \
                     and swimmer.id not in club_synced and not swimmer.manually_edited:
                 from teams.utils import is_valid_team_name
                 if is_valid_team_name(team):
@@ -1588,7 +1602,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     # "M13"/"W14" tokens from mixed relays) — a re-upload
                     # of the source file repairs them in place.
                     new_legs = _structured_relay_legs(
-                        result_data, is_excel=is_excel_format)
+                        result_data, is_excel=is_excel_format,
+                        leg_ids=special_leg_ids)
                     if new_legs and existing.relay_swimmers != new_legs:
                         existing.relay_swimmers = new_legs
                         existing.save(update_fields=['relay_swimmers'])
@@ -1640,7 +1655,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     same_team.original_rank = source_rank(result_data.get('rank'))
                     same_team.team = team  # normalize team name
                     same_team.relay_swimmers = _structured_relay_legs(
-                        result_data, is_excel=is_excel_format) or same_team.relay_swimmers
+                        result_data, is_excel=is_excel_format,
+                        leg_ids=special_leg_ids) or same_team.relay_swimmers
                     same_team.fina_points = calculate_points(
                         time_cs, event_data.get('event_name', db_event.name),
                         gender_code, championship.pool) or None
@@ -1762,7 +1778,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         splits = None
                 if is_relay or result_data.get('is_relay', False):
                     relay_swimmers = _structured_relay_legs(
-                        result_data, is_excel=is_excel_format) or None
+                        result_data, is_excel=is_excel_format,
+                        leg_ids=special_leg_ids) or None
 
                 # Always calculate FINA points from World Aquatics base times
                 from .points import calculate_points
@@ -2022,17 +2039,29 @@ def _create_relay_only_swimmers(championship):
     return created
 
 
-def _structured_relay_legs(result_data, is_excel=False):
+def _structured_relay_legs(result_data, is_excel=False, leg_ids=None):
     """Structured relay legs for Result.relay_swimmers, honouring the true
     leg numbers when the parser kept them (relay_leg_orders parallel to
     split_times). A file that tracks only some athletes stores partial legs:
     when the first stored leg is not leg 1 of the relay, it is flagged
     first_leg=False so its flying-start split never counts as an individual
     time (relay_first_leg_split_cs checks this flag).
+
+    Each leg carries its true 'order' (leg number) when known, and
+    'swimmer_id' when the leg's file name was hand-matched to an existing
+    profile (leg_ids: NAME_UPPER -> swimmer id) — the profile looks relays
+    up by id first, so matched athletes see their relays even when their
+    profile name is spelled differently from the file.
     """
     legs = _parse_relay_legs(
         result_data.get('split_times', []) or [], is_excel=is_excel)
     orders = result_data.get('relay_leg_orders') or []
+    for i, leg in enumerate(legs):
+        if i < len(orders):
+            leg['order'] = orders[i]
+        sid = (leg_ids or {}).get((leg.get('name') or '').strip().upper())
+        if sid:
+            leg['swimmer_id'] = sid
     if legs and orders and orders[0] != 1:
         legs[0]['first_leg'] = False
     return legs

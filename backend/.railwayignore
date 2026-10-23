@@ -7,3 +7,6 @@ staticfiles/
 media/
 *.pdf
 .env
+*.dump
+*.json.gz
+*.xlsx

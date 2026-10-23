@@ -4692,3 +4692,28 @@ class EmptyMeetDiscardTests(TransactionTestCase):
                        championship_details={'name': 'Real', 'date': '2024-01-01',
                                              'pool': 'LCM', 'country': self.egy.id})
         self.assertEqual(Championship.objects.count(), 1)
+
+
+class SaudiNameFormatTests(SimpleTestCase):
+    """SSF prints Latin names ALL-CAPS; the site convention is Given SURNAME
+    ("Zied FAISAL ALSARRAJ") — first token mixed case, the rest uppercase."""
+
+    def test_all_caps_name_formatted(self):
+        from importer.saudi_scraper import format_latin_name
+        self.assertEqual(format_latin_name('ZIED FAISAL ALSARRAJ'),
+                         'Zied FAISAL ALSARRAJ')
+
+    def test_hyphenated_given_name(self):
+        from importer.saudi_scraper import format_latin_name
+        self.assertEqual(format_latin_name('ABDUL-AZIZ AL HARBI'),
+                         'Abdul-Aziz AL HARBI')
+
+    def test_mixed_case_name_untouched(self):
+        from importer.saudi_scraper import format_latin_name
+        self.assertEqual(format_latin_name('Zied FAISAL ALSARRAJ'),
+                         'Zied FAISAL ALSARRAJ')
+        self.assertEqual(format_latin_name('Jaouad Syoud'), 'Jaouad Syoud')
+
+    def test_single_token_untouched(self):
+        from importer.saudi_scraper import format_latin_name
+        self.assertEqual(format_latin_name('ZIED'), 'ZIED')

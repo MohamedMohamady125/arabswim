@@ -194,6 +194,18 @@ DETAIL_KEYS = OrderedDict([
 ])
 
 
+def format_latin_name(name):
+    """SSF prints English names ALL-CAPS ("ZIED FAISAL ALSARRAJ"); the site
+    convention is Given SURNAME ("Zied FAISAL ALSARRAJ") — first token in
+    mixed case, the rest (father + family names) kept uppercase. Names that
+    already carry case distinction are left untouched."""
+    words = (name or '').split()
+    alpha = [w for w in words if any(c.isalpha() for c in w)]
+    if len(words) < 2 or not alpha or not all(w.isupper() for w in alpha):
+        return name
+    return ' '.join([words[0].title()] + [w.upper() for w in words[1:]])
+
+
 def parse_swimmer_detail(html):
     soup = BeautifulSoup(html, "html.parser")
     data = {v: "" for v in DETAIL_KEYS.values()}
@@ -214,7 +226,8 @@ def parse_swimmer_detail(html):
     if data.get('name_en'):
         cleaned = re.sub(r'[؀-ۿݐ-ݿࢠ-ࣿ]+', '',
                          data['name_en'])
-        data['name_en'] = re.sub(r'\s+', ' ', cleaned).strip()
+        data['name_en'] = format_latin_name(
+            re.sub(r'\s+', ' ', cleaned).strip())
     return data
 
 

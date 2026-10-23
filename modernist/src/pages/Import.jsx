@@ -2242,13 +2242,13 @@ function SaudiScrapePanel() {
                         Download{job.status === 'failed' ? ' partial' : ''} Excel
                       </button>
                     )}
-                    {(job.status === 'done' || job.status === 'failed') && (
-                      <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5, color: 'var(--color-accent)' }}
-                        title="Remove this scrape from the list"
-                        onClick={() => handleDelete(job)}>
-                        Delete
-                      </button>
-                    )}
+                    <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5, color: 'var(--color-accent)' }}
+                      title={(job.status === 'pending' || job.status === 'running')
+                        ? 'Stop this scrape and remove it from the list'
+                        : 'Remove this scrape from the list'}
+                      onClick={() => handleDelete(job)}>
+                      {(job.status === 'pending' || job.status === 'running') ? 'Stop & delete' : 'Delete'}
+                    </button>
                   </td>
                 </tr>
               ))}

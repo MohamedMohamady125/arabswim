@@ -939,6 +939,11 @@ def _run_saudi_scrape_job(job_id):
         comps = SS.find_new_comps(cutoff, progress_cb=progress)
         ind_all, rel_all, meets = [], [], []
         for i, comp in enumerate(comps, 1):
+            # Deleted (cancelled) or superseded mid-run → stop quietly.
+            current = ScrapeJob.objects.filter(id=job_id).values_list(
+                'status', flat=True).first()
+            if current is None or current == 'failed':
+                return
             progress(f'{i}/{len(comps)}: {comp.get("lieu") or comp.get("competition")}')
             ind, rel = SS.crawl_meet(comp)
             ind_all += ind
@@ -1030,8 +1035,9 @@ class SaudiScrapeView(APIView):
 
 
 class SaudiScrapeJobView(APIView):
-    """DELETE /api/v1/import/saudi-scrape/{id}/ — remove an old scrape job
-    from the list (a running job must be superseded or finish first)."""
+    """DELETE /api/v1/import/saudi-scrape/{id}/ — stop (if running) and
+    remove a scrape job from the list. The worker checks for its row
+    between meets and stops quietly once it is gone."""
     permission_classes = [IsAdmin]
 
     def delete(self, request, job_id):
@@ -1040,9 +1046,6 @@ class SaudiScrapeJobView(APIView):
         job = ScrapeJob.objects.filter(id=job_id, url=BASE).first()
         if not job:
             return Response({'error': 'Not found'}, status=404)
-        if job.status in ('pending', 'running'):
-            return Response(
-                {'error': 'This scrape is still running'}, status=400)
         job.delete()
         return Response(status=204)
 

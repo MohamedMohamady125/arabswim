@@ -14,6 +14,8 @@ class Team(models.Model):
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=30, blank=True, default='')
     is_national_team = models.BooleanField(default=False)
+    # Admin set this club's country by hand — imports must never change it
+    country_manually_set = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

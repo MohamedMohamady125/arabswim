@@ -1240,9 +1240,11 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         created = False
         if team:
             team.country = country
-            team.save(update_fields=['country'])
+            team.country_manually_set = True
+            team.save(update_fields=['country', 'country_manually_set'])
         else:
-            team = Team.objects.create(name=base, country=country)
+            team = Team.objects.create(name=base, country=country,
+                                       country_manually_set=True)
             created = True
         return Response({
             'team_id': team.id, 'club': team.name, 'created': created,

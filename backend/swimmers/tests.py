@@ -227,6 +227,7 @@ class SetClubCountryTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         team.refresh_from_db()
         self.assertEqual(team.country, self.fra)
+        self.assertTrue(team.country_manually_set)
         self.assertFalse(resp.json()['created'])
 
     def test_creates_team_when_club_has_none(self):

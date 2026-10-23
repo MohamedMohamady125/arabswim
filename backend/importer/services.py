@@ -1795,9 +1795,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
 
     # Auto-create teams from club names found in this import
     _progress('Creating teams…')
-    from teams.utils import auto_create_teams, apply_subclassification_country
+    from teams.utils import (auto_create_teams, apply_subclassification_country,
+                             apply_national_meet_club_country)
     teams_created = auto_create_teams()
 
+    # STRICT: every club at a National meet belongs to the host country
+    # (manually-set club countries and genuine foreign guests exempt).
+    apply_national_meet_club_country(championship)
     # National/Other meets: sub-classification names the meet's country,
     # so every club in this meet belongs to that country.
     apply_subclassification_country(championship)

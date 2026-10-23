@@ -323,6 +323,73 @@ class ApplySubclassificationCountryTests(TestCase):
         self.assertEqual(team.country, self.belgium)
 
 
+class ApplyNationalMeetClubCountryTests(TestCase):
+    """STRICT rule: every club at a National meet gets the host country —
+    except manually-set countries (always win) and genuine foreign guests."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from championships.models import Classification
+        cls.tunisia = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        cls.france = Country.objects.create(name='France', code='FRA', region='EUR')
+        cls.event = Event.objects.create(name='100 M Freestyle', distance=100,
+                                         stroke='Freestyle', is_relay=False)
+        national = Classification.objects.create(name='National')
+        cls.champ = Championship.objects.create(
+            name='Tunisian Nationals', date='2026-06-01', pool='LCM',
+            country=cls.tunisia, classification=national)
+
+    def _result(self, club, swimmer_name, nationality=None):
+        s = Swimmer.objects.create(name=swimmer_name, sex='M',
+                                   nationality=nationality or self.tunisia)
+        return Result.objects.create(
+            swimmer=s, championship=self.champ, event=self.event,
+            round_type='Finals', time_centiseconds=5000, team=club)
+
+    def test_club_stamped_with_host_country(self):
+        from teams.utils import apply_national_meet_club_country
+        team = Team.objects.create(name='CN Marseille', country=self.france)
+        self._result('CN Marseille', 'A Guest')
+        self.assertEqual(apply_national_meet_club_country(self.champ), 1)
+        team.refresh_from_db()
+        self.assertEqual(team.country, self.tunisia)
+
+    def test_manually_set_country_never_touched(self):
+        from teams.utils import apply_national_meet_club_country
+        team = Team.objects.create(name='CN Marseille', country=self.france,
+                                   country_manually_set=True)
+        self._result('CN Marseille', 'B Guest')
+        self.assertEqual(apply_national_meet_club_country(self.champ), 0)
+        team.refresh_from_db()
+        self.assertEqual(team.country, self.france)
+
+    def test_foreign_guest_club_kept_on_own_country(self):
+        from teams.utils import apply_national_meet_club_country
+        team = Team.objects.create(name='CN Nice', country=self.france)
+        # 3 distinct French swimmers → genuine guest club, stays French
+        for i in range(3):
+            self._result('CN Nice', f'French Swimmer {i}', nationality=self.france)
+        apply_national_meet_club_country(self.champ)
+        team.refresh_from_db()
+        self.assertEqual(team.country, self.france)
+
+    def test_non_national_meet_ignored(self):
+        from championships.models import Classification
+        from teams.utils import apply_national_meet_club_country
+        arab = Classification.objects.create(name='Arab')
+        champ = Championship.objects.create(
+            name='Arab Champs', date='2026-07-01', pool='LCM',
+            country=self.tunisia, classification=arab)
+        team = Team.objects.create(name='CN Lyon', country=self.france)
+        s = Swimmer.objects.create(name='X', sex='M', nationality=self.tunisia)
+        Result.objects.create(swimmer=s, championship=champ, event=self.event,
+                              round_type='Finals', time_centiseconds=5000,
+                              team='CN Lyon')
+        self.assertEqual(apply_national_meet_club_country(champ), 0)
+        team.refresh_from_db()
+        self.assertEqual(team.country, self.france)
+
+
 class CleanupOrphanTeamsTests(TestCase):
     """Teams whose club has no remaining swimmers or results are removed —
     e.g. after non-Arab swimmers are deleted from an imported meet."""

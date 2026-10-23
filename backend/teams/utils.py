@@ -516,6 +516,74 @@ def foreign_guest_country(team_name, host_country):
     return Country.objects.filter(id=top_cid).first()
 
 
+def _force_meet_clubs_country(championship, country):
+    """STRICT rule: every club that swam in this meet belongs to `country`.
+    Forces the matching Team records onto it. Exemptions, in order:
+    - teams whose country an admin set by hand (country_manually_set) are
+      never touched — manual edits always win;
+    - genuine foreign guest clubs (foreign_guest_country: 3+ swimmers
+      dominantly of one foreign nationality) are kept on / moved to their
+      own country, never the host's.
+    Relay placeholder swimmers in the meet are stamped with the country
+    too. Returns count of teams + placeholders updated.
+    """
+    club_names = set(
+        championship.results.exclude(team='').values_list('team', flat=True))
+    club_names |= set(
+        championship.results.exclude(swimmer__club='')
+        .exclude(swimmer__club__isnull=True)
+        .values_list('swimmer__club', flat=True))
+    keys = {normalize_team_key(n) for n in club_names if n and n.strip()}
+    if not keys:
+        return 0
+
+    updated = 0
+    matched = [t for t in Team.objects.filter(is_national_team=False,
+                                              country_manually_set=False)
+               if normalize_team_key(t.name) in keys]
+    for team in matched:
+        # A genuine foreign guest club is put on / kept on its own country,
+        # never the host — this also un-does an earlier wrong host tag.
+        guest = foreign_guest_country(team.name, country)
+        if guest:
+            if team.country_id != guest.id:
+                team.country = guest
+                team.save(update_fields=['country'])
+                updated += 1
+            continue
+        if team.country_id == country.id:
+            continue
+        team.country = country
+        team.save(update_fields=['country'])
+        updated += 1
+
+    # Relay-team placeholder swimmers carry a nationality too (shown as the
+    # flag next to relay squads). Source PDFs sometimes tag them with a wrong
+    # code (e.g. extranat prints FRA), so force them onto the meet country.
+    from swimmers.models import Swimmer
+    relay_ids = (championship.results
+                 .filter(swimmer__is_relay_team=True)
+                 .values_list('swimmer_id', flat=True).distinct())
+    updated += (Swimmer.objects.filter(id__in=relay_ids)
+                .exclude(nationality=country)
+                .update(nationality=country))
+    return updated
+
+
+def apply_national_meet_club_country(championship):
+    """STRICT rule for National meets: every club at a National meet is a
+    club of the host country — stamp them all with championship.country.
+    Manually-set club countries and genuine foreign guest clubs are exempt
+    (see _force_meet_clubs_country). Returns count of teams updated.
+    """
+    classification = championship.classification
+    if not classification or classification.name != 'National':
+        return 0
+    if not championship.country:
+        return 0
+    return _force_meet_clubs_country(championship, championship.country)
+
+
 def apply_subclassification_country(championship):
     """
     For meets classified as National/Other the sub-classification names the
@@ -524,9 +592,9 @@ def apply_subclassification_country(championship):
     from that country, so force the matching Team records onto it.
 
     Fixes clubs whose country was mis-inferred from swimmer nationalities
-    (e.g. a French club tagged as Belgian). Genuine foreign guest clubs
-    (detected by foreign_guest_country) are exempt and kept on / moved to
-    their own country. Returns count of teams updated.
+    (e.g. a French club tagged as Belgian). Manually-set club countries and
+    genuine foreign guest clubs are exempt (see _force_meet_clubs_country).
+    Returns count of teams updated.
     """
     from importer.matcher import resolve_country
 
@@ -543,57 +611,7 @@ def apply_subclassification_country(championship):
     if not country:
         return 0
 
-    club_names = set(
-        championship.results.exclude(team='').values_list('team', flat=True))
-    club_names |= set(
-        championship.results.exclude(swimmer__club='')
-        .exclude(swimmer__club__isnull=True)
-        .values_list('swimmer__club', flat=True))
-    keys = {normalize_team_key(n) for n in club_names if n and n.strip()}
-    if not keys:
-        return 0
-
-    from championships.models import Result
-    updated = 0
-    matched = [t for t in Team.objects.filter(is_national_team=False)
-               if normalize_team_key(t.name) in keys]
-    for team in matched:
-        # A genuine foreign guest club is put on / kept on its own country,
-        # never the host — this also un-does an earlier wrong host tag.
-        guest = foreign_guest_country(team.name, country)
-        if guest:
-            if team.country_id != guest.id:
-                team.country = guest
-                team.save(update_fields=['country'])
-                updated += 1
-            continue
-        if team.country_id == country.id:
-            continue
-        # Only reassign if the team has more results in this country's
-        # meets than in other countries — avoids overwriting a Tunisian
-        # club (EST) to French just because it appeared in a French meet.
-        total = Result.objects.filter(team__iexact=team.name).count()
-        in_country = Result.objects.filter(
-            team__iexact=team.name,
-            championship__country=country,
-            championship__classification__name__in=['National', 'Other'],
-        ).count()
-        if total == 0 or in_country > total * 0.5:
-            team.country = country
-            team.save(update_fields=['country'])
-            updated += 1
-
-    # Relay-team placeholder swimmers carry a nationality too (shown as the
-    # flag next to relay squads). Source PDFs sometimes tag them with a wrong
-    # code (e.g. extranat prints FRA), so force them onto the meet country.
-    from swimmers.models import Swimmer
-    relay_ids = (championship.results
-                 .filter(swimmer__is_relay_team=True)
-                 .values_list('swimmer_id', flat=True).distinct())
-    updated += (Swimmer.objects.filter(id__in=relay_ids)
-                .exclude(nationality=country)
-                .update(nationality=country))
-    return updated
+    return _force_meet_clubs_country(championship, country)
 
 
 def _get_skip_names():

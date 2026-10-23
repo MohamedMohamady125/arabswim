@@ -78,6 +78,10 @@ class TeamViewSet(viewsets.ModelViewSet):
         # Renaming a club must carry its roster along: swimmers/results are
         # linked to clubs by name string, not FK.
         old_name = serializer.instance.name
+        # A country picked by hand locks it against import re-stamping —
+        # manual edits always win.
+        if 'country' in serializer.validated_data:
+            serializer.validated_data['country_manually_set'] = True
         team = serializer.save()
         if team.name != old_name:
             Result.objects.filter(team__iexact=old_name).update(team=team.name)

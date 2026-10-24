@@ -94,6 +94,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             # Non-Arab swimmers hold meet results but get no profile in
             # the Swimmers section; relay-team placeholders are not athletes
             qs = qs.exclude(nationality__region='OTHER').exclude(is_relay_team=True)
+            # Swimmers still missing a nationality sink to the end of the list
+            from django.db.models import Case, When, Value, IntegerField
+            qs = qs.order_by(
+                Case(When(nationality__isnull=True, then=Value(1)),
+                     default=Value(0), output_field=IntegerField()),
+                'name')
         nationality = self.request.query_params.get('nationality')
         sex = self.request.query_params.get('sex')
         if nationality:
@@ -1494,6 +1500,64 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             })
 
         return Response(data)
+
+    @action(detail=True, methods=['get'], url_path='ranking-history')
+    def ranking_history(self, request, pk=None):
+        """Season-by-season rank in one event: for each year the swimmer
+        raced it, their season best and where that season best ranked among
+        all same-gender swimmers' season bests (national + arab scopes)."""
+        from django.db.models import Min, Count
+        from championships.models import Result
+        from importer.parsers.base import format_centiseconds
+
+        swimmer = self.get_object()
+        if not swimmer.nationality_id:
+            return Response({'seasons': []})
+
+        event_id = request.query_params.get('event')
+        pool = request.query_params.get('pool') or 'LCM'
+        own = Result.objects.filter(
+            swimmer=swimmer, swimmer__is_relay_team=False,
+            is_hc=False, time_centiseconds__gt=0)
+        if not event_id:
+            # default: the event they swim most in that pool
+            top = (own.filter(championship__pool=pool)
+                   .values('event_id').annotate(n=Count('id'))
+                   .order_by('-n').first())
+            if not top:
+                return Response({'seasons': []})
+            event_id = top['event_id']
+
+        nat = swimmer.nationality
+        scopes = {'national': {'swimmer__nationality_id': nat.id}}
+        if nat.region in ('GCC', 'ARAB'):
+            scopes['arab'] = {'swimmer__nationality__region__in': ['ARAB', 'GCC']}
+
+        own_seasons = (own.filter(event_id=event_id, championship__pool=pool)
+                       .values('championship__date__year')
+                       .annotate(best=Min('time_centiseconds'))
+                       .order_by('championship__date__year'))
+        seasons = []
+        for row in own_seasons:
+            year = row['championship__date__year']
+            if not year:
+                continue
+            entry = {'year': year, 'time': format_centiseconds(row['best']),
+                     'time_centiseconds': row['best']}
+            for scope_name, scope_filter in scopes.items():
+                field = (Result.objects.filter(
+                    event_id=event_id, championship__pool=pool,
+                    championship__date__year=year,
+                    is_hc=False, time_centiseconds__gt=0,
+                    swimmer__is_relay_team=False, swimmer__sex=swimmer.sex,
+                    **scope_filter)
+                    .values('swimmer_id').annotate(sb=Min('time_centiseconds')))
+                better = field.filter(sb__lt=row['best']).count()
+                entry[scope_name] = {'rank': better + 1, 'total': field.count()}
+            seasons.append(entry)
+
+        return Response({'event_id': int(event_id), 'pool': pool,
+                         'seasons': seasons})
 
     @action(detail=True, methods=['post'])
     def upload_photo(self, request, pk=None):

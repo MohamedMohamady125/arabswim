@@ -633,7 +633,51 @@ function ChaseStat({ label, value, sub }) {
   )
 }
 
-function DnaChaseSection({ swimmerId }) {
+function DnaSection({ swimmerId }) {
+  const [dna, setDna] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    setDna(null)
+    getSwimmerDna(swimmerId)
+      .then((r) => { if (alive) setDna(r.data) })
+      .catch(() => { if (alive) setDna(null) })
+    return () => { alive = false }
+  }, [swimmerId])
+
+  const hasDna = dna && dna.axes.some((a) => a.event_id)
+  if (!hasDna) return null
+
+  return (
+    <>
+      {/* Swimmer DNA */}
+      <div>
+        <div className="sect-head">
+          <h4>Swimmer DNA</h4>
+          <span className="micro">Specialty {dna.specialty || '—'} · Versatility {dna.versatility}</span>
+        </div>
+        <div className="rule-t" style={{ paddingTop: 12, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+          <DnaRadar axes={dna.axes} />
+          <div style={{ flex: '1 1 240px' }}>
+            {dna.axes.map((a) => (
+              <div key={a.stroke} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', borderBottom: '1px solid var(--color-neutral-200)' }}>
+                <span style={{ flex: '0 0 130px', fontWeight: 600, fontSize: 13 }}>{a.stroke}</span>
+                <div style={{ flex: 1, height: 8, background: 'var(--color-neutral-200)' }}>
+                  <div style={{ width: `${Math.max(0, a.percentile)}%`, height: '100%', background: 'var(--color-accent)' }} />
+                </div>
+                <span className="asw-num" style={{ flex: '0 0 46px', textAlign: 'right', fontSize: 12 }}>
+                  {a.event_id ? `${a.percentile}%` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+export function ChaseSection({ swimmerId }) {
   const [dna, setDna] = useState(null)
   const [chase, setChase] = useState(null)
   const [eventId, setEventId] = useState('')
@@ -662,36 +706,10 @@ function DnaChaseSection({ swimmerId }) {
     return () => { alive = false }
   }, [swimmerId, eventId])
 
-  const hasDna = dna && dna.axes.some((a) => a.event_id)
-  if (!hasDna) return null
-  const eventOptions = dna.axes.filter((a) => a.event_id)
+  const eventOptions = (dna?.axes || []).filter((a) => a.event_id)
 
   return (
     <>
-      {/* Swimmer DNA */}
-      <div>
-        <div className="sect-head">
-          <h4>Swimmer DNA</h4>
-          <span className="micro">Specialty {dna.specialty || '—'} · Versatility {dna.versatility}</span>
-        </div>
-        <div className="rule-t" style={{ paddingTop: 12, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-          <DnaRadar axes={dna.axes} />
-          <div style={{ flex: '1 1 240px' }}>
-            {dna.axes.map((a) => (
-              <div key={a.stroke} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', borderBottom: '1px solid var(--color-neutral-200)' }}>
-                <span style={{ flex: '0 0 130px', fontWeight: 600, fontSize: 13 }}>{a.stroke}</span>
-                <div style={{ flex: 1, height: 8, background: 'var(--color-neutral-200)' }}>
-                  <div style={{ width: `${Math.max(0, a.percentile)}%`, height: '100%', background: 'var(--color-accent)' }} />
-                </div>
-                <span className="asw-num" style={{ flex: '0 0 46px', textAlign: 'right', fontSize: 12 }}>
-                  {a.event_id ? `${a.percentile}%` : '—'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* The Chase */}
       {chase && chase.my_rank && (
         <div>
@@ -1002,8 +1020,8 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         )
       })()}
 
-      {/* Swimmer DNA + The Chase */}
-      <DnaChaseSection swimmerId={swimmerId} />
+      {/* Swimmer DNA (The Chase lives in the Rankings tab) */}
+      <DnaSection swimmerId={swimmerId} />
 
       {/* Performance index */}
       {(best_fina?.points || 0) > 0 && (
@@ -1615,7 +1633,12 @@ export default function SwimmerProfile() {
         )}
         {effectiveTab === 'meets' && <MeetsTab stats={stats} />}
         {effectiveTab === 'medals' && <MedalsTab stats={stats} />}
-        {effectiveTab === 'rankings' && <RankingsTab swimmerId={id} swimmer={swimmer} />}
+        {effectiveTab === 'rankings' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+            <RankingsTab swimmerId={id} swimmer={swimmer} />
+            <ChaseSection swimmerId={id} />
+          </div>
+        )}
         {effectiveTab === 'records' && <RecordsTab swimmerId={id} />}
         {effectiveTab === 'qualifying' && <QualifyingTab swimmerId={id} />}
         {effectiveTab === 'progression' && <ProgressionTab swimmerId={id} />}

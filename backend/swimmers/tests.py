@@ -350,3 +350,60 @@ class CareerSummaryTests(TestCase):
         self.assertEqual(cs['improvement']['seconds'], 5.0)
         self.assertEqual(cs['improvement']['from_year'], 2020)
         self.assertEqual(cs['pb_age'], 18)
+
+
+class RankingHistoryTests(TestCase):
+    """ranking-history returns per-season rank among season bests."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Event
+        from championships.models import Championship, Result
+        cls.egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        cls.free = Event.objects.create(name='100 M Freestyle', distance=100,
+                                        stroke='Freestyle', is_relay=False)
+        cls.sw = Swimmer.objects.create(name='Omar Kamal', nationality=cls.egy,
+                                        sex='M', birth_year=2005)
+        rival = Swimmer.objects.create(name='Rival Guy', nationality=cls.egy,
+                                       sex='M', birth_year=2005)
+        c23 = Championship.objects.create(name='M23', date=date(2023, 6, 1),
+                                          pool='LCM', country=cls.egy)
+        c24 = Championship.objects.create(name='M24', date=date(2024, 6, 1),
+                                          pool='LCM', country=cls.egy)
+        mk = lambda s, c, t: Result.objects.create(
+            swimmer=s, championship=c, event=cls.free, round_type='Finals',
+            time_centiseconds=t)
+        mk(cls.sw, c23, 6000); mk(rival, c23, 5900)   # 2023: rival faster
+        mk(cls.sw, c24, 5500); mk(rival, c24, 5800)   # 2024: swimmer faster
+
+    def test_season_ranks(self):
+        resp = APIClient().get(
+            f'/api/v1/swimmers/{self.sw.id}/ranking-history/?event={self.free.id}&pool=LCM')
+        self.assertEqual(resp.status_code, 200)
+        seasons = resp.data['seasons']
+        self.assertEqual([s['year'] for s in seasons], [2023, 2024])
+        self.assertEqual(seasons[0]['national'], {'rank': 2, 'total': 2})
+        self.assertEqual(seasons[1]['national'], {'rank': 1, 'total': 2})
+        self.assertEqual(seasons[1]['arab'], {'rank': 1, 'total': 2})
+        self.assertEqual(seasons[1]['time'], '55.00')
+
+    def test_default_event_picked(self):
+        resp = APIClient().get(f'/api/v1/swimmers/{self.sw.id}/ranking-history/')
+        self.assertEqual(resp.data['event_id'], self.free.id)
+        self.assertEqual(len(resp.data['seasons']), 2)
+
+
+class SwimmerListOrderingTests(TestCase):
+    """Swimmers with no nationality always appear last in the list."""
+
+    @classmethod
+    def setUpTestData(cls):
+        egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        Swimmer.objects.create(name='Zein Known', nationality=egy, sex='M')
+        Swimmer.objects.create(name='Adam Unknown', nationality=None, sex='M')
+        Swimmer.objects.create(name='Aly Known', nationality=egy, sex='M')
+
+    def test_no_nationality_last(self):
+        resp = APIClient().get('/api/v1/swimmers/')
+        names = [s['name'] for s in resp.data['results']]
+        self.assertEqual(names, ['Aly Known', 'Zein Known', 'Adam Unknown'])

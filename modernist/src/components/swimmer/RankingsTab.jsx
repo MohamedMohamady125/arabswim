@@ -1,6 +1,95 @@
 import { useEffect, useState } from 'react'
-import { getSwimmerRankings, getSwimmerEvents } from '../../api/swimmers'
+import { getSwimmerRankings, getSwimmerEvents, getSwimmerRankingHistory } from '../../api/swimmers'
 import { Loading, Empty, Seg } from '../ui'
+
+/* Season-by-season rank in one event: where each year's season best placed
+   among that season's field (national/arab). Rank 1 = tallest column. */
+function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
+  const [histEvent, setHistEvent] = useState(null)
+  const [hist, setHist] = useState(null)
+
+  const options = rankings
+    .filter((r, i, arr) => arr.findIndex((x) => x.event_id === r.event_id && x.pool === r.pool) === i)
+  const sel = options.find((o) => histEvent && o.event_id === histEvent.event_id && o.pool === histEvent.pool)
+    || options[0]
+
+  useEffect(() => {
+    if (!sel) return
+    let alive = true
+    setHist(null)
+    getSwimmerRankingHistory(swimmerId, { event: sel.event_id, pool: sel.pool })
+      .then((r) => { if (alive) setHist(r.data) })
+      .catch(() => { if (alive) setHist({ seasons: [] }) })
+    return () => { alive = false }
+  }, [swimmerId, sel?.event_id, sel?.pool])
+
+  if (!sel) return null
+  const seasons = hist?.seasons || []
+  const scoped = seasons.filter((s) => s[scope])
+  const maxRank = Math.max(1, ...scoped.map((s) => s[scope].rank))
+
+  return (
+    <div>
+      <div className="sect-head">
+        <h4>Ranking History</h4>
+        <select className="select" style={{ width: 'auto', fontSize: 12, height: 30 }}
+          value={`${sel.event_id}|${sel.pool}`}
+          onChange={(e) => {
+            const [eid, pool] = e.target.value.split('|')
+            setHistEvent({ event_id: Number(eid), pool })
+          }}>
+          {options.map((o) => (
+            <option key={`${o.event_id}|${o.pool}`} value={`${o.event_id}|${o.pool}`}>
+              {eventName(o)} · {o.pool}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="rule-t" style={{ paddingTop: 12 }}>
+        {!hist ? <Loading label="Loading history" /> : scoped.length === 0 ? (
+          <div className="text-muted" style={{ fontSize: 13 }}>No season history for this event yet.</div>
+        ) : (
+          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            {/* rank-per-season columns: rank 1 = full height */}
+            <div style={{ flex: '1 1 300px', display: 'flex', alignItems: 'flex-end', gap: 14, height: 150, borderBottom: '2px solid var(--color-divider)' }}>
+              {scoped.map((s) => {
+                const rk = s[scope]
+                const h = Math.max(14, 140 * (1 - (rk.rank - 1) / Math.max(1, maxRank)))
+                return (
+                  <div key={s.year} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>
+                      {rk.rank}<span style={{ fontSize: 10 }}>{ordSuffix(rk.rank)}</span>
+                    </span>
+                    <div style={{ width: '100%', maxWidth: 46, height: h, background: rk.rank === 1 ? 'var(--asw-gold)' : 'var(--color-accent)' }} />
+                    <span className="micro asw-num">{s.year}</span>
+                  </div>
+                )
+              })}
+            </div>
+            {/* season table */}
+            <table className="table" style={{ flex: '1 1 300px', fontSize: 13 }}>
+              <thead>
+                <tr><th>Season</th><th>Best</th><th className="num">{scopeLabel[scope]} rank</th><th className="num">Field</th></tr>
+              </thead>
+              <tbody>
+                {[...scoped].reverse().map((s) => (
+                  <tr key={s.year}>
+                    <td className="asw-num" style={{ fontWeight: 700 }}>{s.year}</td>
+                    <td className="asw-time">{s.time}</td>
+                    <td className="num asw-num" style={{ fontWeight: 800, color: s[scope].rank === 1 ? 'var(--asw-gold)' : 'inherit' }}>
+                      {s[scope].rank}{ordSuffix(s[scope].rank)}
+                    </td>
+                    <td className="num asw-num text-muted">{s[scope].total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export const ordSuffix = (n) => {
   if (n % 100 >= 11 && n % 100 <= 13) return 'th'
@@ -111,6 +200,17 @@ export default function RankingsTab({ swimmerId, swimmer }) {
             </div>
           )
         })}
+      </div>
+
+      {/* Season-by-season ranking history for the chosen event */}
+      <div style={{ marginTop: 28 }}>
+        <RankingHistory
+          swimmerId={swimmerId}
+          rankings={rankings}
+          eventName={eventName}
+          scope={scope === 'gcc' ? 'arab' : scope}
+          scopeLabel={scopeLabel}
+        />
       </div>
     </div>
   )

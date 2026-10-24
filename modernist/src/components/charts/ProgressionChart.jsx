@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Empty } from '../ui'
+import { smoothPath } from './lineUtils'
 
 /* ── Modernist chart palette (flat, no gradients) ─────────────────────── */
 export const CHART = {
@@ -256,16 +257,18 @@ function Chart({ lines, title, showSwimmer = false }) {
           const pts = line.points
           if (pts.length === 0) return null
           const pathD = pts.length > 1
-            ? pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${pointX(p).toFixed(1)},${timeToY(p.time_cs).toFixed(1)}`).join(' ')
+            ? smoothPath(pts.map((p) => [pointX(p), timeToY(p.time_cs)]))
             : null
           return (
             <g key={line.event_id || line.event_name}>
-              {pathD && <path d={pathD} fill="none" stroke={color} strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />}
+              {pathD && <path key={pathD} d={pathD} pathLength="1" className="asw-draw" fill="none" stroke={color} strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />}
             </g>
           )
         })}
 
-        {/* Triangle markers — hover on desktop, tap-to-toggle on touch */}
+        {/* Triangle markers — hover on desktop, tap-to-toggle on touch;
+            fade in after the line finishes drawing */}
+        <g className="asw-chart-dots">
         {processedLines.map((line, li) => {
           const color = line.color || LINE_COLORS[li % LINE_COLORS.length]
           return line.points.map((p, i) => {
@@ -301,6 +304,7 @@ function Chart({ lines, title, showSwimmer = false }) {
             </g>
           )
         }))}
+        </g>
 
         {/* Tooltip — flat white card, square corners; flips above the point
             when there is no room below, and never leaves the canvas */}

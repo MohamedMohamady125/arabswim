@@ -6,6 +6,7 @@ import { getArticles, createArticle } from '../api/news'
 import { getAlbums, createAlbum } from '../api/media'
 import { getCoaches, createCoach, updateCoach, deleteCoach } from '../api/coaches'
 import { createSwimmer, updateSwimmer } from '../api/swimmers'
+import { smoothPath } from '../components/charts/lineUtils'
 import { getCountries } from '../api/core'
 import api from '../api/client'
 import Flag from '../components/Flag'
@@ -534,14 +535,16 @@ function TeamProgressionChart({ lines }) {
         {lines.map((line, li) => {
           const pts = (line.points || []).filter((p) => p.time_cs)
           if (pts.length < 2) return null
-          const d = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.date)},${y(p.time_cs)}`).join(' ')
-          return <path key={li} d={d} fill="none" stroke={LINE_HEX[li % LINE_HEX.length]} strokeWidth={2} />
+          const d = smoothPath(pts.map((p) => [x(p.date), y(p.time_cs)]))
+          return <path key={d} d={d} pathLength="1" className="asw-draw" fill="none" stroke={LINE_HEX[li % LINE_HEX.length]} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         })}
+        <g className="asw-chart-dots">
         {lines.map((line, li) => (line.points || []).filter((p) => p.time_cs).map((p, pi) => (
           <circle key={`${li}-${pi}`} cx={x(p.date)} cy={y(p.time_cs)} r={3} fill={LINE_HEX[li % LINE_HEX.length]}>
             <title>{line.event_name} · {p.time} · {p.swimmer} · {p.meet}</title>
           </circle>
         )))}
+        </g>
       </svg>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 8, justifyContent: 'center' }}>
         {lines.map((l, i) => <span key={i} style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 3, background: LINE_HEX[i % LINE_HEX.length], display: 'inline-block' }} />{l.event_name}</span>)}

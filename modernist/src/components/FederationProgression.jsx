@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getCountryProgression } from '../api/core'
 import { Loading, Empty, Seg } from './ui'
 import { formatCs } from './charts/ProgressionChart'
+import { smoothPath } from './charts/lineUtils'
 import { formatDate } from '../utils'
 
 /* ── Federation Progression tab ─────────────────────────────────────────
@@ -171,9 +172,9 @@ function SeasonChart({ seasons, benchmarks }) {
   const tickCount = mobile ? 6 : 8
   const yTicks = Array.from({ length: tickCount }, (_, i) => Math.round(padMin + (i / (tickCount - 1)) * (padMax - padMin)))
 
-  const bestPath = seasons.length > 1 ? seasons.map((s, i) => `${i ? 'L' : 'M'}${xOf(s.year).toFixed(1)},${yOf(s.best_cs).toFixed(1)}`).join(' ') : null
+  const bestPath = seasons.length > 1 ? smoothPath(seasons.map((s) => [xOf(s.year), yOf(s.best_cs)])) : null
   const depthPts = seasons.filter((s) => s.top8_avg_cs)
-  const depthPath = depthPts.length > 1 ? depthPts.map((s, i) => `${i ? 'L' : 'M'}${xOf(s.year).toFixed(1)},${yOf(s.top8_avg_cs).toFixed(1)}`).join(' ') : null
+  const depthPath = depthPts.length > 1 ? smoothPath(depthPts.map((s) => [xOf(s.year), yOf(s.top8_avg_cs)])) : null
 
   const legendY = mobile ? 26 : 36
   return (
@@ -240,7 +241,8 @@ function SeasonChart({ seasons, benchmarks }) {
         ))}
 
         {/* Depth line */}
-        {depthPath && <path d={depthPath} fill="none" stroke={LIGHT_BLUE} strokeWidth="2.4" strokeDasharray="6 5" strokeLinejoin="round" strokeLinecap="round" />}
+        {/* dashed line keeps its own dash pattern — fade instead of draw */}
+        {depthPath && <path d={depthPath} className="asw-chart-dots" fill="none" stroke={LIGHT_BLUE} strokeWidth="2.4" strokeDasharray="6 5" strokeLinejoin="round" strokeLinecap="round" />}
         {depthPts.map((s) => (
           <g key={`d${s.year}`}
             onMouseEnter={() => setTooltip({ key: `d${s.year}`, x: xOf(s.year), y: yOf(s.top8_avg_cs), rows: [`Top-8 average · ${s.year}`, `${formatCs(s.top8_avg_cs)} (${s.top8_count} swimmers)`] })}
@@ -253,7 +255,7 @@ function SeasonChart({ seasons, benchmarks }) {
         ))}
 
         {/* National best line */}
-        {bestPath && <path d={bestPath} fill="none" stroke={NAVY} strokeWidth="2.8" strokeLinejoin="round" strokeLinecap="round" />}
+        {bestPath && <path key={bestPath} d={bestPath} pathLength="1" className="asw-draw" fill="none" stroke={NAVY} strokeWidth="2.8" strokeLinejoin="round" strokeLinecap="round" />}
         {seasons.map((s) => {
           const tip = { key: `b${s.year}`, x: xOf(s.year), y: yOf(s.best_cs), rows: [`${s.year} national best`, `${s.best}${s.fina ? ` · ${s.fina} FINA` : ''}`, s.swimmer, (s.meet || '').substring(0, 36)] }
           return (
@@ -479,7 +481,7 @@ function StepChart({ timeline }) {
           )
         })}
         <rect x={plotL} y={plotT} width={pW} height={pH} fill="none" stroke={GRID} strokeWidth="1.4" />
-        <path d={d} fill="none" stroke={NAVY} strokeWidth="2.8" strokeLinejoin="round" />
+        <path key={d} d={d} pathLength="1" className="asw-draw" fill="none" stroke={NAVY} strokeWidth="2.8" strokeLinejoin="round" />
         {timeline.map((t, i) => {
           const x = xOf(new Date(t.date).getTime()); const y = yOf(t.time_cs)
           const surname = (t.swimmer || '').split(' ').filter((w) => w === w.toUpperCase() && w.length > 1)[0] || (t.swimmer || '').split(' ').pop()

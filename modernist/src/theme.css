@@ -51,6 +51,16 @@
   --asw-gold: #b98a1e;
   --asw-silver: #7d8a99;
   --asw-bronze: #a05f2c;
+  /* World Aquatics medal-table palette (sampled from worldaquatics.com
+     competition medals page — boss wants the exact same luxury look) */
+  --wa-ink: #1f2432;
+  --wa-line: #ebeef0;
+  --wa-gold-band: linear-gradient(113deg, rgba(254, 218, 118, 0.3), rgba(255, 184, 25, 0.3));
+  --wa-silver-band: linear-gradient(113deg, rgba(217, 217, 217, 0.3), rgba(201, 201, 201, 0.3));
+  --wa-bronze-band: linear-gradient(113deg, rgba(216, 193, 141, 0.3), rgba(165, 136, 68, 0.3));
+  --wa-gold-head: linear-gradient(113deg, #feda76, #ffb819);
+  --wa-silver-head: linear-gradient(113deg, #d9d9d9, #c9c9c9);
+  --wa-bronze-head: linear-gradient(113deg, #d8c18d, #a58844);
 
   --font-heading: "Archivo", system-ui, sans-serif;
   --font-heading-weight: 800;

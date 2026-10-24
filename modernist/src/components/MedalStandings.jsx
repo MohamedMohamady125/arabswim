@@ -9,15 +9,17 @@ const GOLD = 'var(--asw-gold)'
 const SILVER = 'var(--asw-silver)'
 const BRONZE = 'var(--asw-bronze)'
 
+/* Table frame mirrors the World Aquatics medals page: navy ink on white,
+   4px hairline under the header, G/S/B columns as pale 113° gradient bands
+   with saturated band tops, thin row dividers, roomy rows. */
 const th = {
-  fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase',
-  letterSpacing: '0.08em', padding: '10px 12px', color: 'var(--color-neutral-600)',
+  fontSize: 12, fontWeight: 700, padding: '12px 12px',
+  color: 'var(--wa-ink)', borderBottom: '4px solid var(--wa-line)',
 }
-const td = { padding: '10px 12px', fontSize: 13.5, borderTop: '1px solid var(--color-neutral-200)' }
-const band = (c) => `color-mix(in srgb, ${c} 14%, #fff)`
+const td = { padding: '15px 12px', fontSize: 13.5, borderTop: '1px solid var(--wa-line)', color: 'var(--wa-ink)' }
 
-const medalTh = (c, label, short) => (
-  <th style={{ ...th, textAlign: 'center', background: c, color: '#fff', width: 54 }}>
+const medalTh = (headGrad, label, short) => (
+  <th style={{ ...th, textAlign: 'center', background: headGrad, width: 54 }}>
     <span className="hide-mobile">{label}</span>
     <span className="show-mobile-inline">{short}</span>
   </th>
@@ -76,15 +78,15 @@ export default function MedalStandings({
         </div>
       )}
 
-      <div style={{ border: '1px solid var(--color-neutral-200)', borderTop: '3px solid var(--color-box-top)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(12,35,64,.05)' }}>
+      <div style={{ border: '1px solid var(--wa-line)', borderRadius: 14, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 4px rgba(12,35,64,.05)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
-          <thead style={{ background: 'var(--color-surface)' }}>
+          <thead style={{ background: '#fff' }}>
             <tr>
-              <th style={{ ...th, textAlign: 'left', width: 40 }}>Rk</th>
+              <th style={{ ...th, textAlign: 'left', width: 40 }}>Rank</th>
               <th style={{ ...th, textAlign: 'left' }}>{entityHeader}</th>
-              {medalTh(GOLD, 'Gold', 'G')}
-              {medalTh(SILVER, 'Silver', 'S')}
-              {medalTh(BRONZE, 'Bronze', 'B')}
+              {medalTh('var(--wa-gold-head)', 'Gold', 'G')}
+              {medalTh('var(--wa-silver-head)', 'Silver', 'S')}
+              {medalTh('var(--wa-bronze-head)', 'Bronze', 'B')}
               <th style={{ ...th, textAlign: 'center' }}>Total</th>
             </tr>
           </thead>
@@ -93,16 +95,13 @@ export default function MedalStandings({
               <tr
                 key={key(r, i)}
                 onClick={onRowClick ? () => onRowClick(r) : undefined}
-                style={{
-                  background: i < 3 ? 'color-mix(in srgb, var(--asw-gold) 6%, #fff)' : '#fff',
-                  cursor: onRowClick ? 'pointer' : 'default',
-                }}
+                style={{ background: '#fff', cursor: onRowClick ? 'pointer' : 'default' }}
               >
-                <td className="asw-num" style={{ ...td, fontWeight: 800, color: i < 3 ? 'var(--color-accent-800)' : 'inherit' }}>{i + 1}</td>
+                <td className="asw-num" style={{ ...td, fontWeight: 600 }}>{i + 1}</td>
                 <td style={td}>{renderEntity(r, i)}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800, background: band(GOLD) }}>{r.gold}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 700, background: band(SILVER) }}>{r.silver}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 700, background: band(BRONZE) }}>{r.bronze}</td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 600, background: 'var(--wa-gold-band)' }}>{r.gold}</td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 600, background: 'var(--wa-silver-band)' }}>{r.silver}</td>
+                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 600, background: 'var(--wa-bronze-band)' }}>{r.bronze}</td>
                 <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800 }}>
                   {r.total ?? (r.gold || 0) + (r.silver || 0) + (r.bronze || 0)}
                 </td>

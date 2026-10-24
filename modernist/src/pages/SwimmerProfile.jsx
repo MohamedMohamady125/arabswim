@@ -892,10 +892,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-      {/* Swimmer DNA + The Chase — lead the Overall tab */}
-      <DnaChaseSection swimmerId={swimmerId} />
-
-      {/* Stat cards — same gradient style as home page */}
+      {/* Stat cards lead the Overall tab — same gradient style as home page */}
       <div className="swimmer-stat-cards">
         <div style={cardStyle}>
           <span className="asw-num" style={cardNum}>{total_championships ?? 0}</span>
@@ -932,6 +929,9 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
           {bestEventPb && <span className="asw-time" style={{ fontSize: 13, color: '#fff' }}>{bestEventPb.time}</span>}
         </div>
       </div>
+
+      {/* Swimmer DNA + The Chase */}
+      <DnaChaseSection swimmerId={swimmerId} />
 
       {/* Performance index */}
       {(best_fina?.points || 0) > 0 && (

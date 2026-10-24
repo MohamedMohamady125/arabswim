@@ -105,13 +105,13 @@ function HBars({ rows, color = NAVY }) {
   )
 }
 
-function MedalStack({ rows }) {
+function MedalStack({ rows, wide = false }) {
   const max = Math.max(...rows.map((r) => r.total), 1)
   return (
     <div style={{ display: 'grid', gap: 7 }}>
       {rows.map((r) => (
-        <div key={r.code} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 34, flex: 'none', fontSize: 11, fontWeight: 800, color: NAVY_DARK }}>{r.code}</span>
+        <div key={r.code || r.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span title={r.name} style={{ width: wide ? 96 : 34, flex: 'none', fontSize: 11, fontWeight: 800, color: NAVY_DARK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.code || r.name}</span>
           <div style={{ flex: 1, display: 'flex', height: 15 }}>
             <div style={{ display: 'flex', width: `${(r.total / max) * 100}%`, minWidth: 8 }}>
               {[['gold', GOLD, '#3a2e07'], ['silver', SILVER, '#fff'], ['bronze', BRONZE, '#fff']].map(([k, bg, fg]) => (
@@ -209,9 +209,14 @@ export default function QuickStatsView({ data, busiest }) {
   const malePct = Math.round((participation.male / mf) * 1000) / 10
   const femalePct = Math.round(1000 - malePct * 10) / 10
 
-  // Medal share: top 4 countries + others
+  // National/Other meets rank medals by club; international by country
+  const medalsByClub = medals.scope === 'club'
+  const medalEntity = medalsByClub ? 'Club' : 'Country'
+  const shortLabel = (r) => r.code || ((r.name || '').length > 14 ? `${r.name.slice(0, 13)}…` : r.name)
+
+  // Medal share: top 4 entities + others
   const shareColors = [NAVY, BLUE, GOLD, 'var(--color-accent-400)']
-  const shareTop = medals.table.slice(0, 4).map((r, i) => ({ label: r.code, value: r.total, color: shareColors[i] }))
+  const shareTop = medals.table.slice(0, 4).map((r, i) => ({ label: shortLabel(r), value: r.total, color: shareColors[i] }))
   const othersTotal = medals.table.slice(4).reduce((s, r) => s + r.total, 0)
   const shareSegs = othersTotal > 0 ? [...shareTop, { label: 'Others', value: othersTotal, color: 'var(--color-neutral-300)' }] : shareTop
 
@@ -321,9 +326,11 @@ export default function QuickStatsView({ data, busiest }) {
             rows={medals.table}
             maxRows={5}
             showPodium={false}
-            entityHeader="Country"
-            rowKey={(r) => r.code}
-            renderEntity={(r) => (
+            entityHeader={medalEntity}
+            rowKey={(r) => r.code || r.name}
+            renderEntity={(r) => medalsByClub ? (
+              <span title={r.name} style={{ fontWeight: 800, display: 'inline-block', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'bottom' }}>{r.name}</span>
+            ) : (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 800 }}>
                 <Flag code={r.code} name={r.name} /> {r.code}
               </span>
@@ -333,15 +340,15 @@ export default function QuickStatsView({ data, busiest }) {
             <Link to="/medals" style={{ fontSize: 12, fontWeight: 700 }}>View full medal table →</Link>
           </div>
         </Panel>
-        <Panel title="Medals by Country (Top 10)">
+        <Panel title={`Medals by ${medalEntity} (Top 10)`}>
           <div style={{ display: 'flex', gap: 14, marginBottom: 10 }}>
             <LegendDot color={GOLD}>Gold</LegendDot>
             <LegendDot color={SILVER}>Silver</LegendDot>
             <LegendDot color={BRONZE}>Bronze</LegendDot>
           </div>
-          <MedalStack rows={medals.table.slice(0, 10)} />
+          <MedalStack rows={medals.table.slice(0, 10)} wide={medalsByClub} />
         </Panel>
-        <Panel title="Medal Share by Country">
+        <Panel title={`Medal Share by ${medalEntity}`}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Donut segments={shareSegs} centerTop={medals.total} centerBot="TOTAL MEDALS" />
             <div style={{ display: 'grid', gap: 7 }}>

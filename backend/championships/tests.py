@@ -349,3 +349,52 @@ class LiveResultsTests(TestCase):
                              preview={}, live_day='not-a-day',
                              live_source='PDF', live_label='')
         self.assertFalse(LiveSession.objects.exists())
+
+
+class QuickStatsMedalScopeTests(TestCase):
+    """Overview medals: National/Other meets rank medals by CLUB; any other
+    classification (international) keeps the by-country table."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from rest_framework.test import APIClient
+        cls.client_api = APIClient
+        cls.tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        cls.fra = Country.objects.create(name='France', code='FRA', region='OTHER')
+        cls.national = Classification.objects.create(name='National')
+        cls.arab = Classification.objects.create(name='Arab')
+        cls.free = Event.objects.create(name='50 M Freestyle', distance=50,
+                                        stroke='Freestyle', is_relay=False)
+        cls.champ = Championship.objects.create(
+            name='Nationaux', date='2026-07-01', pool='LCM',
+            country=cls.tun, classification=cls.national, is_published=True)
+        s1 = Swimmer.objects.create(name='A One', sex='M', nationality=cls.tun)
+        s2 = Swimmer.objects.create(name='B Two', sex='M', nationality=cls.tun)
+        r1 = Result.objects.create(swimmer=s1, championship=cls.champ, event=cls.free,
+                                   round_type='Finals', time_centiseconds=2500,
+                                   team='CN TUNIS', nationality=cls.tun)
+        r2 = Result.objects.create(swimmer=s2, championship=cls.champ, event=cls.free,
+                                   round_type='Finals', time_centiseconds=2600,
+                                   team='EST', nationality=cls.tun)
+        Medal.objects.create(swimmer=s1, championship=cls.champ, event=cls.free,
+                             medal_type='GOLD', result=r1, nationality=cls.tun)
+        Medal.objects.create(swimmer=s2, championship=cls.champ, event=cls.free,
+                             medal_type='SILVER', result=r2, nationality=cls.tun)
+
+    def _stats(self):
+        return self.client_api().get(
+            f'/api/v1/championships/quick-stats/?championship={self.champ.id}').data
+
+    def test_national_meet_medals_by_club(self):
+        medals = self._stats()['medals']
+        self.assertEqual(medals['scope'], 'club')
+        self.assertEqual([r['name'] for r in medals['table']], ['CN TUNIS', 'EST'])
+        self.assertEqual(medals['table'][0]['gold'], 1)
+        self.assertEqual(medals['total'], 2)
+
+    def test_international_meet_medals_by_country(self):
+        Championship.objects.filter(pk=self.champ.pk).update(classification=self.arab)
+        medals = self._stats()['medals']
+        self.assertEqual(medals['scope'], 'country')
+        self.assertEqual(medals['table'][0]['code'], 'TUN')
+        self.assertEqual(medals['table'][0]['total'], 2)

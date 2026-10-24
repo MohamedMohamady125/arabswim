@@ -108,3 +108,22 @@ class CountryProfileTests(TestCase):
         self.assertTrue(d['teams'][0]['is_national_team'])
         self.assertEqual(d['top_medalists'][0]['name'], 'Omar Kamal')
         self.assertEqual(d['top_medalists'][0]['gold'], 1)
+
+
+class CountryListOrderingTests(TestCase):
+    """Nationality lists/dropdowns always lead with Arab nations (incl. GCC),
+    each block alphabetical."""
+
+    @classmethod
+    def setUpTestData(cls):
+        Country.objects.create(name='Albania', code='ALB', region='OTHER')
+        Country.objects.create(name='Qatar', code='QAT', region='GCC')
+        Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        Country.objects.create(name='France', code='FRA', region='OTHER')
+
+    def test_arab_and_gcc_first_then_alphabetical(self):
+        resp = APIClient().get('/api/v1/countries/')
+        # migrations seed extra countries — assert relative order of ours
+        ours = [c['name'] for c in resp.data
+                if c['name'] in ('Egypt', 'Qatar', 'Albania', 'France')]
+        self.assertEqual(ours, ['Egypt', 'Qatar', 'Albania', 'France'])

@@ -1108,22 +1108,57 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         if champ.end_date and champ.end_date >= champ.date:
             n_days = min((champ.end_date - champ.date).days + 1, 30)
 
-        # ---------- medals (relay podium counted once per country) ----------
-        medal_qs = MedalViewSet._relay_counts_once(
-            Medal.objects.filter(championship=champ, nationality__isnull=False))
-        medal_rows = list(medal_qs.values(
-            'nationality__name', 'nationality__code', 'nationality__flag_url',
-        ).annotate(
-            gold=Count('id', filter=Q(medal_type='GOLD')),
-            silver=Count('id', filter=Q(medal_type='SILVER')),
-            bronze=Count('id', filter=Q(medal_type='BRONZE')),
-            total=Count('id'),
-        ).order_by('-gold', '-silver', '-bronze'))
-        medal_table = [{
-            'name': r['nationality__name'], 'code': r['nationality__code'],
-            'flag_url': r['nationality__flag_url'],
-            'gold': r['gold'], 'silver': r['silver'], 'bronze': r['bronze'], 'total': r['total'],
-        } for r in medal_rows]
+        # ---------- medals (relay podium counted once per entity) ----------
+        # National/Other meets: a one-nation podium table says nothing — rank
+        # medals by CLUB instead; international meets keep the country table.
+        cls_name = champ.classification.name if champ.classification else ''
+        medals_by_club = cls_name in ('National', 'Other')
+        if medals_by_club:
+            from teams.utils import normalize_team_key, strip_squad_number
+            club_qs = MedalViewSet._relay_counts_once(
+                Medal.objects.filter(championship=champ, result__isnull=False)
+                .exclude(result__team='').exclude(result__team__isnull=True))
+            club_rows = club_qs.values('result__team').annotate(
+                gold=Count('id', filter=Q(medal_type='GOLD')),
+                silver=Count('id', filter=Q(medal_type='SILVER')),
+                bronze=Count('id', filter=Q(medal_type='BRONZE')),
+                total=Count('id'),
+            ).order_by('-gold', '-silver', '-bronze')
+            # Merge club-name variants (same canonical key as medals club-summary)
+            merged = {}
+            for row in club_rows:
+                cname = strip_squad_number((row['result__team'] or '').strip())
+                key = normalize_team_key(cname) or cname.casefold()
+                entry = merged.get(key)
+                if entry:
+                    for k in ('gold', 'silver', 'bronze', 'total'):
+                        entry[k] += row[k]
+                else:
+                    merged[key] = {'name': cname, 'gold': row['gold'],
+                                   'silver': row['silver'], 'bronze': row['bronze'],
+                                   'total': row['total']}
+            medal_table = [{
+                'name': e['name'], 'code': '', 'flag_url': '',
+                'gold': e['gold'], 'silver': e['silver'],
+                'bronze': e['bronze'], 'total': e['total'],
+            } for e in sorted(merged.values(),
+                              key=lambda r: (-r['gold'], -r['silver'], -r['bronze']))]
+        else:
+            medal_qs = MedalViewSet._relay_counts_once(
+                Medal.objects.filter(championship=champ, nationality__isnull=False))
+            medal_rows = list(medal_qs.values(
+                'nationality__name', 'nationality__code', 'nationality__flag_url',
+            ).annotate(
+                gold=Count('id', filter=Q(medal_type='GOLD')),
+                silver=Count('id', filter=Q(medal_type='SILVER')),
+                bronze=Count('id', filter=Q(medal_type='BRONZE')),
+                total=Count('id'),
+            ).order_by('-gold', '-silver', '-bronze'))
+            medal_table = [{
+                'name': r['nationality__name'], 'code': r['nationality__code'],
+                'flag_url': r['nationality__flag_url'],
+                'gold': r['gold'], 'silver': r['silver'], 'bronze': r['bronze'], 'total': r['total'],
+            } for r in medal_rows]
         medals_total = sum(r['total'] for r in medal_table)
 
         # ---------- records ----------
@@ -1163,7 +1198,6 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         # National/Other meets: everyone shares one flag, so the useful
         # breakdown is swimmers per CLUB (Result.team), not per country.
         by_club = None
-        cls_name = champ.classification.name if champ.classification else ''
         if cls_name in ('National', 'Other'):
             by_club = [{
                 'name': r['team'], 'count': r['count'],
@@ -1333,7 +1367,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'by_country': by_country, 'by_club': by_club,
                 'male': male, 'female': female, 'age_groups': age_groups,
             },
-            'medals': {'table': medal_table, 'total': medals_total},
+            'medals': {'table': medal_table, 'total': medals_total,
+                       'scope': 'club' if medals_by_club else 'country'},
             'performance': {
                 'best_overall': best_overall, 'best_male': best_male, 'best_female': best_female,
                 'most_golds': most_golds, 'most_pbs': most_pbs,

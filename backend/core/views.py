@@ -409,7 +409,13 @@ class CountryViewSet(viewsets.ModelViewSet):
         # for instead of all ~200 world nations.
         if self.request.query_params.get('has_swimmers') == 'true':
             qs = qs.filter(swimmers__is_relay_team=False).distinct()
-        return qs
+        # Arab nations (incl. GCC) always lead every nationality list/dropdown,
+        # each block alphabetical.
+        from django.db.models import Case, When, Value, IntegerField
+        return qs.order_by(
+            Case(When(region__in=('ARAB', 'GCC'), then=Value(0)),
+                 default=Value(1), output_field=IntegerField()),
+            'name')
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)

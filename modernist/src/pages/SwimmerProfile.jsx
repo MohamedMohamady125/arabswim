@@ -191,7 +191,7 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
 
   useEffect(() => {
     getCountries({ page_size: 500 })
-      .then((res) => setCountries(list(res.data).sort((a, b) => a.name.localeCompare(b.name))))
+      .then((res) => setCountries(list(res.data))) // API order: Arab nations first
       .catch(() => setCountries([]))
   }, [])
 

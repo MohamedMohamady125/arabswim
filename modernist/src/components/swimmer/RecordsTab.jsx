@@ -229,79 +229,86 @@ export default function RecordsTab({ swimmerId }) {
     return d
   }
 
+  // Exactly one classification shown at a time — buttons act as filters,
+  // defaulting to the most prestigious scope the athlete holds.
+  const activeType = scopeFilter && sections.includes(scopeFilter) ? scopeFilter : sections[0]
+  const activeRows = byType[activeType] || []
+  const activeColor = SCOPE_COLORS[activeType] || 'var(--color-accent)'
+
   return (
     <div>
       {subTabs}
-      {/* Scope summary strip */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
+      {/* Classification filter buttons */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 22 }}>
         {sections.map((type) => {
           const c = SCOPE_COLORS[type] || 'var(--color-accent)'
-          const active = scopeFilter === type
-          const dimmed = scopeFilter && !active
+          const active = type === activeType
           return (
-            <button key={type} type="button" className="asw-fade-up"
-              onClick={() => setScopeFilter(active ? null : type)}
-              style={{ background: c, color: '#fff', padding: '10px 16px', minWidth: 100, border: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', opacity: dimmed ? 0.4 : 1, outline: active ? '3px solid var(--color-accent-2)' : 'none', outlineOffset: 2, transition: 'opacity 0.2s' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.75 }}>{type}</div>
-              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1.1 }}>{byType[type].length}</div>
+            <button key={type} type="button"
+              onClick={() => setScopeFilter(type)}
+              style={{
+                background: active ? c : 'var(--color-surface)',
+                color: active ? '#fff' : c,
+                border: `2px solid ${c}`,
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-heading)',
+                fontWeight: 800,
+                fontSize: 12,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                transition: 'background 0.2s, color 0.2s',
+              }}>
+              {type}
+              <span className="asw-num" style={{
+                background: active ? 'rgba(255,255,255,0.22)' : c,
+                color: '#fff',
+                fontSize: 11,
+                fontWeight: 800,
+                padding: '1px 7px',
+              }}>{byType[type].length}</span>
             </button>
           )
         })}
       </div>
 
-      {(scopeFilter ? sections.filter((t) => t === scopeFilter) : sections).map((type) => {
-        const rows = byType[type]
-        const c = SCOPE_COLORS[type] || 'var(--color-accent)'
-        return (
-          <div key={type} style={{ marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, paddingBottom: 6, borderBottom: `2px solid ${c}` }}>
-              <span className="tag" style={{ background: c, color: '#fff', border: 0 }}>{type} RECORDS</span>
-              <span className="micro asw-num">{rows.length} record{rows.length !== 1 ? 's' : ''}</span>
+      {/* Record cards — key on scope so the fade-up replays on filter change */}
+      <div key={activeType} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+        {activeRows.map((r, i) => (
+          <div key={i} className="card asw-fade-up"
+            style={{ borderTop: `3px solid ${activeColor}`, animationDelay: `${Math.min(i * 45, 450)}ms` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span className="card-kicker" style={{ color: activeColor }}>{activeType} RECORD</span>
+              <span className={`tag ${r.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{r.pool}</span>
             </div>
-            {rows.map((r, i) => (
-              <div key={i} className="hair-b asw-fade-up"
-                style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0 12px 12px', borderLeft: `4px solid ${c}`, animationDelay: `${Math.min(i * 50, 400)}ms` }}>
-                <div className="asw-num" style={{ width: 30, height: 30, flex: 'none', background: c, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13 }}>
-                  {i + 1}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                    {r.event_detail?.name || r.event_name}
-                  </div>
-                  {/* laptop: location · date · FINA — no meet name */}
-                  <div className="hide-mobile" style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
-                    {r.location && <span style={{ fontSize: 12, color: 'var(--color-accent)', fontWeight: 600 }}>{r.location}</span>}
-                    <span className="asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{fmtDate(r.result_date)}</span>
-                    {r.fina_points != null && (
-                      <span className="asw-num" style={{ fontSize: 11, fontWeight: 700, color: '#b98a1e', letterSpacing: '0.04em' }}>
-                        {r.fina_points} FINA
-                      </span>
-                    )}
-                  </div>
-                  {/* mobile keeps meet name + date */}
-                  <div className="show-mobile" style={{ fontSize: 12, color: 'var(--color-accent)', marginTop: 2 }}>{r.meet_name}</div>
-                  <div className="show-mobile asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{fmtDate(r.result_date)}</div>
-                  <div className="show-mobile-flex" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                    {compressCategories(r.categories).map((cat) => (
-                      <span key={cat} className="tag tag-neutral">{cat}</span>
-                    ))}
-                    <span className={`tag ${r.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{r.pool}</span>
-                  </div>
-                </div>
-                <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
-                  {compressCategories(r.categories).map((cat) => (
-                    <span key={cat} className="tag tag-neutral">{cat}</span>
-                  ))}
-                  <span className={`tag ${r.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{r.pool}</span>
-                </div>
-                <div className="asw-time" style={{ fontSize: 20, fontWeight: 700, flex: 'none', minWidth: 90, textAlign: 'right', color: c }}>
-                  {r.formatted_time}
-                </div>
+            <div className="card-title" style={{ textTransform: 'uppercase', fontSize: 15 }}>
+              {r.event_detail?.name || r.event_name}
+            </div>
+            <div className="asw-time" style={{ fontSize: 26, fontWeight: 800, color: activeColor, lineHeight: 1 }}>
+              {r.formatted_time}
+            </div>
+            <div className="card-meta asw-num">
+              <span>{fmtDate(r.result_date)}</span>
+              {r.fina_points != null && (
+                <span style={{ fontWeight: 700, color: '#b98a1e' }}>{r.fina_points} FINA</span>
+              )}
+            </div>
+            {(r.meet_name || r.location) && (
+              <div style={{ fontSize: 12, color: 'var(--color-accent)', fontWeight: 600 }}>
+                {r.meet_name}{r.meet_name && r.location ? ' — ' : ''}{r.location}
               </div>
-            ))}
+            )}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
+              {compressCategories(r.categories).map((cat) => (
+                <span key={cat} className="tag tag-neutral">{cat}</span>
+              ))}
+            </div>
           </div>
-        )
-      })}
+        ))}
+      </div>
     </div>
   )
 }

@@ -1189,12 +1189,12 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                 <React.Fragment key={`${cat || '_general'}-${gi}`}>
                   {isOpenView && gi === 0 && (
                     <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>TC — all categories, ranked by time</td>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '14px 8px' }}>TC — all categories, ranked by time</td>
                     </tr>
                   )}
                   {selectedCategory === 'ALL' && hasCategories && (
                     <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '8px 8px' }}>{cat || 'Open'}</td>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '14px 8px' }}>{cat || 'Open'}</td>
                     </tr>
                   )}
                   {catRows.map((r) => renderRow(r, fullByCat.get(cat) || catRows))}

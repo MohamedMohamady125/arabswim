@@ -3711,6 +3711,38 @@ class BatchImportApiTests(TestCase):
         self.assertFalse(Swimmer.objects.filter(name__icontains='DUPONT').exists())
         self.assertFalse(Result.objects.filter(team='OTHER CLUB').exists())
 
+    def test_special_imports_selected_foreign_swimmer(self):
+        """Upload Special / Special Excel: a hand-picked athlete gets a full
+        profile even with a non-Arab nationality; unselected foreigners
+        stay out."""
+        import json as _json
+        from django.core.cache import cache
+        from importer.views import _run_batch_confirm_job
+        from importer.models import ImportJob
+        preview = self._preview('Foreign Meet', swimmer='Leon MARCHAND')
+        preview['swimmers'][0]['nationality_code'] = 'FRA'
+        preview['events'][0]['results'][0]['nationality_code'] = 'FRA'
+        preview['swimmers'].append({'name': 'Jean DUPONT', 'birth_year': 2008,
+                                    'nationality_code': 'FRA', 'gender': 'M',
+                                    'results_count': 1})
+        preview['events'][0]['results'].append(
+            {'swimmer_name': 'Jean DUPONT', 'gender': 'M', 'category': '',
+             'time_centiseconds': 5600, 'time_text': '56.00',
+             'birth_year': 2008, 'nationality_code': 'FRA'})
+        cache.set('import_f1', _json.dumps(preview), 600)
+        job = ImportJob.objects.create(meet_name='foreign batch', status='pending')
+        _run_batch_confirm_job(job.id, [
+            {'import_id': 'f1', 'championship_details': {
+                'name': 'Foreign Meet', 'date': '2026-06-01', 'pool': 'LCM',
+                'country': self.tun.id}},
+        ], {'Leon MARCHAND': {'action': 'create'}},
+            special=True, unpublished=True)
+        job.refresh_from_db()
+        self.assertEqual(job.status, 'done')
+        sw = Swimmer.objects.get(name__icontains='MARCHAND')
+        self.assertEqual(sw.nationality.code, 'FRA')
+        self.assertFalse(Swimmer.objects.filter(name__icontains='DUPONT').exists())
+
 
 class StructuredRelayLegsTests(SimpleTestCase):
     """Partial-legs files (special excel tracks only chosen athletes) store

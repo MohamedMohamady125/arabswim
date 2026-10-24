@@ -112,26 +112,12 @@ export default function MedalsTab({ stats }) {
   // the athlete has any and they differ from the overall tally)
   const intlDonut = isAll && intl_medals && intl_medals.total > 0
     && intl_medals.total !== medals.total
-  const chartMax = Math.max(1, ...chartComps.flatMap((c) => {
-    const cc = compCounts[c]
-    return [cc.gold, cc.silver, cc.bronze]
-  }))
 
   const statCards = [
     { title: 'Gold', img: '/medal_gold.png', n: active.gold, color: GOLD },
     { title: 'Silver', img: '/medal_silver.png', n: active.silver, color: SILVER },
     { title: 'Bronze', img: '/medal_bronze.png', n: active.bronze, color: BRONZE },
   ]
-
-  const barRow = (label, n, color) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span className="micro" style={{ width: 52, flex: 'none' }}>{label}</span>
-      <div className="bar" style={{ flex: 1 }}>
-        <div style={{ width: `${(n / chartMax) * 100}%`, background: color }} />
-      </div>
-      <span className="asw-num" style={{ width: 26, textAlign: 'right', fontWeight: 700, fontSize: 13 }}>{n}</span>
-    </div>
-  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -187,55 +173,51 @@ export default function MedalsTab({ stats }) {
         </div>
 
         <div>
-          <div className="sect-head"><h4>By Competition</h4></div>
-          <table className="table" style={{ fontSize: 13 }}>
-            <thead>
-              <tr>
-                <th>Competition</th>
-                <th className="num" style={{ color: GOLD }}>G</th>
-                <th className="num" style={{ color: SILVER }}>S</th>
-                <th className="num" style={{ color: BRONZE }}>B</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chartComps.map((cls) => {
-                const cc = compCounts[cls]
-                const isSel = cls === cat
-                return (
-                  <tr key={cls} style={{ background: isSel ? 'var(--color-accent-100)' : undefined }}>
-                    <td style={{ fontWeight: isSel ? 800 : 600, textTransform: 'uppercase', fontSize: 12, letterSpacing: '0.04em' }}>{cls}</td>
-                    <td className="num asw-num" style={{ fontWeight: cc.gold ? 700 : 400 }}>{cc.gold}</td>
-                    <td className="num asw-num" style={{ fontWeight: cc.silver ? 700 : 400 }}>{cc.silver}</td>
-                    <td className="num asw-num" style={{ fontWeight: cc.bronze ? 700 : 400 }}>{cc.bronze}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Horizontal bar summary per competition */}
-      {isAll && chartComps.length > 0 && (
-        <div>
-          <div className="sect-head"><h4>Medal Summary</h4></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px 32px' }}>
+          <div className="sect-head">
+            <h4>By Level</h4>
+            <span className="micro">share of {medals.total} career medal{medals.total !== 1 ? 's' : ''}</span>
+          </div>
+          {/* One card per competition level this athlete has medals in —
+              prestige order (Olympic → World → continental → National).
+              Stacked G/S/B bar per level; click filters the whole tab. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {chartComps.map((cls) => {
               const cc = compCounts[cls]
+              const tot = cc.gold + cc.silver + cc.bronze
+              const share = Math.round((tot / medals.total) * 100)
+              const isSel = cls === cat
+              const seg = (n, grad, title) => n > 0 && (
+                <div key={title} title={`${title}: ${n}`} style={{ flex: n, background: grad, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 16, overflow: 'hidden' }}>
+                  <span className="asw-num" style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--wa-ink)' }}>{n}</span>
+                </div>
+              )
               return (
-                <div key={cls}>
-                  <div className="kicker" style={{ marginBottom: 6 }}>{cls}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {barRow('Gold', cc.gold, GOLD)}
-                    {barRow('Silver', cc.silver, SILVER)}
-                    {barRow('Bronze', cc.bronze, BRONZE)}
+                <div
+                  key={cls}
+                  onClick={() => setCat(isSel ? 'All' : cls)}
+                  style={{
+                    cursor: 'pointer', padding: '10px 12px',
+                    border: '1px solid var(--color-divider)',
+                    borderLeft: `3px solid ${isSel ? 'var(--color-accent)' : 'var(--color-divider)'}`,
+                    background: isSel ? 'var(--color-surface)' : '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 7, minWidth: 0 }}>
+                    <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{cls}</span>
+                    <span className="asw-num micro" style={{ whiteSpace: 'nowrap' }}>{tot} medal{tot !== 1 ? 's' : ''}</span>
+                    <span className="asw-num" style={{ marginLeft: 'auto', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15 }}>{share}%</span>
+                  </div>
+                  <div style={{ display: 'flex', height: 18, background: 'var(--color-neutral-200)' }}>
+                    {seg(cc.gold, 'var(--wa-gold-head)', 'Gold')}
+                    {seg(cc.silver, 'var(--wa-silver-head)', 'Silver')}
+                    {seg(cc.bronze, 'var(--wa-bronze-head)', 'Bronze')}
                   </div>
                 </div>
               )
             })}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Percentage rings — race-based rings only make sense across all meets */}
       <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: `repeat(${isAll ? 3 : 1}, 1fr)`, gap: 24 }}>

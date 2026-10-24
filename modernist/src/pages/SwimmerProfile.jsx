@@ -934,7 +934,9 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
           career-narrative facts no other section/tab shows */}
       {career_summary && (() => {
         const cs = career_summary
-        const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+        // parse date-only strings as local time ('2023-09-08' via new Date()
+        // is UTC midnight and renders as the previous day west of UTC)
+        const fmtDate = (d) => d ? new Date(`${d}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
         const tile = { border: '1px solid var(--color-divider)', background: '#fff', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }
         const tLabel = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-500)' }
         const tVal = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }

@@ -779,9 +779,103 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                     'pool': r.championship.pool,
                 })
 
+        # ---------- Career summary (Overall tab) — facts no other section
+        # shows: debut + age, span/seasons, distance raced, specialty,
+        # podium rate, most decorated meet, clubs/hosts, career time drop.
+        from django.db.models import Sum
+        career_summary = None
+        res_all = Result.objects.filter(swimmer=swimmer)
+        total_swims = res_all.count()
+        span = res_all.aggregate(first=Min('championship__date'),
+                                 last=Max('championship__date'))
+        if span['first'] and total_swims:
+            def _age_on(d):
+                if swimmer.date_of_birth:
+                    return (d.year - swimmer.date_of_birth.year
+                            - ((d.month, d.day) < (swimmer.date_of_birth.month,
+                                                   swimmer.date_of_birth.day)))
+                if swimmer.birth_year:
+                    return d.year - swimmer.birth_year
+                return None
+
+            seasons = {d.year for d in
+                       res_all.values_list('championship__date', flat=True) if d}
+            debut_c = (Championship.objects.filter(id__in=champ_ids)
+                       .order_by('date').first())
+            dist_m = (res_all.filter(event__is_relay=False)
+                      .aggregate(m=Sum('event__distance'))['m'] or 0)
+
+            ind = res_all.filter(event__is_relay=False)
+            stroke_rows = list(ind.values('event__stroke')
+                               .annotate(n=Count('id')).order_by('-n'))
+            top_stroke = stroke_rows[0]['event__stroke'] if stroke_rows else None
+            dist_rows = list(ind.values('event__distance').annotate(n=Count('id')))
+            sprint = sum(r['n'] for r in dist_rows if (r['event__distance'] or 0) <= 100)
+            middle = sum(r['n'] for r in dist_rows if 100 < (r['event__distance'] or 0) <= 400)
+            longd = sum(r['n'] for r in dist_rows if (r['event__distance'] or 0) > 400)
+            bucket = None
+            if sprint + middle + longd:
+                bucket = max((('Sprint', sprint), ('Middle-distance', middle),
+                              ('Distance', longd)), key=lambda x: x[1])[0]
+
+            top_meet = (medals_qs.values('championship__name', 'championship_id')
+                        .annotate(n=Count('id'))
+                        .order_by('-n', '-championship__date').first())
+
+            from teams.utils import normalize_team_key, strip_squad_number
+            club_keys = set()
+            for t in (res_all.exclude(team='').exclude(team__isnull=True)
+                      .values_list('team', flat=True).distinct()):
+                base = strip_squad_number((t or '').strip())
+                if base:
+                    club_keys.add(normalize_team_key(base) or base.casefold())
+            host_countries = (Championship.objects
+                              .filter(id__in=champ_ids, country__isnull=False)
+                              .values('country_id').distinct().count())
+
+            improvement = None
+            if best_event_agg:
+                ev_qs = ind.filter(event__name=best_event_agg['event__name'],
+                                   time_centiseconds__gt=0)
+                first_d = ev_qs.aggregate(d=Min('championship__date'))['d']
+                if first_d:
+                    first_best = (ev_qs.filter(championship__date__year=first_d.year)
+                                  .aggregate(b=Min('time_centiseconds'))['b'])
+                    all_best = ev_qs.aggregate(b=Min('time_centiseconds'))['b']
+                    if first_best and all_best and first_best > all_best:
+                        improvement = {
+                            'event_name': best_event_agg['event__name'],
+                            'seconds': round((first_best - all_best) / 100.0, 2),
+                            'percent': round((first_best - all_best) * 100.0 / first_best, 1),
+                            'from_time': format_centiseconds(first_best),
+                            'to_time': format_centiseconds(all_best),
+                            'from_year': first_d.year,
+                        }
+
+            career_summary = {
+                'debut': {'meet': debut_c.name, 'meet_id': debut_c.id,
+                          'date': debut_c.date, 'age': _age_on(debut_c.date)},
+                'first_date': span['first'], 'last_date': span['last'],
+                'years_active': span['last'].year - span['first'].year + 1,
+                'seasons': len(seasons),
+                'total_swims': total_swims,
+                'distance_km': round(dist_m / 1000.0, 1),
+                'specialty_stroke': top_stroke,
+                'specialty_range': bucket,
+                'podium_pct': min(100, round(100 * medal_counts['total'] / total_swims)),
+                'top_meet': ({'name': top_meet['championship__name'],
+                              'id': top_meet['championship_id'],
+                              'medals': top_meet['n']} if top_meet else None),
+                'clubs_count': len(club_keys),
+                'host_countries': host_countries,
+                'improvement': improvement,
+                'pb_age': (_age_on(best_fina_result.championship.date)
+                           if best_fina_result and best_fina_result.championship_id else None),
+            }
+
         return Response({
             'total_championships': len(champs_data),
-            'total_races': Result.objects.filter(swimmer=swimmer).count(),
+            'total_races': total_swims,
             'championships': champs_data,
             'medals': medal_counts,
             'intl_medals': intl_medal_counts,
@@ -794,6 +888,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'total_records': len(records),
             'fina_distribution': fina_distribution,
             'top_personal_bests': top_pbs,
+            'career_summary': career_summary,
         })
 
     @action(detail=False, methods=['get'])

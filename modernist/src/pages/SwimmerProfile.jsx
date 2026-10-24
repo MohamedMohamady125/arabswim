@@ -871,7 +871,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
   const {
     medals, total_championships, total_records, best_fina,
     season_best_fina, best_event, top_personal_bests, records, fina_distribution,
-    championships, medals_by_level,
+    championships, medals_by_level, career_summary,
   } = stats
   const intlRecords = (records || []).filter((r) => r.record_type !== 'NATIONAL')
   // Held records not covered by the Record table (national/gcc/arab computed)
@@ -929,6 +929,76 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
           {bestEventPb && <span className="asw-time" style={{ fontSize: 13, color: '#fff' }}>{bestEventPb.time}</span>}
         </div>
       </div>
+
+      {/* Career summary — debut, span, volume, specialty, podium rate:
+          career-narrative facts no other section/tab shows */}
+      {career_summary && (() => {
+        const cs = career_summary
+        const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+        const tile = { border: '1px solid var(--color-divider)', background: '#fff', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }
+        const tLabel = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-500)' }
+        const tVal = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }
+        const tSub = { fontSize: 11, color: 'var(--color-neutral-600)' }
+        return (
+          <div>
+            <div className="sect-head">
+              <h4>Career Summary</h4>
+              <span className="micro">{fmtDate(cs.first_date)} → {fmtDate(cs.last_date)}</span>
+            </div>
+            <div className="rule-t" style={{ paddingTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: 10 }}>
+              <div style={tile}>
+                <span style={tLabel}>Debut</span>
+                <span style={tVal}>{fmtDate(cs.debut?.date)}</span>
+                <span style={tSub}>{cs.debut?.meet}{cs.debut?.age != null ? ` · age ${cs.debut.age}` : ''}</span>
+              </div>
+              <div style={tile}>
+                <span style={tLabel}>Career Span</span>
+                <span className="asw-num" style={tVal}>{cs.years_active} yr{cs.years_active !== 1 ? 's' : ''}</span>
+                <span style={tSub}>{cs.seasons} season{cs.seasons !== 1 ? 's' : ''} active</span>
+              </div>
+              <div style={tile}>
+                <span style={tLabel}>Racing Volume</span>
+                <span className="asw-num" style={tVal}>{cs.total_swims} swims</span>
+                <span style={tSub}>{cs.distance_km} km raced in competition</span>
+              </div>
+              {cs.specialty_stroke && (
+                <div style={tile}>
+                  <span style={tLabel}>Specialty</span>
+                  <span style={tVal}>{cs.specialty_range} · {cs.specialty_stroke}</span>
+                  <span style={tSub}>most-raced distance &amp; stroke</span>
+                </div>
+              )}
+              <div style={tile}>
+                <span style={tLabel}>Podium Rate</span>
+                <span className="asw-num" style={tVal}>{cs.podium_pct}%</span>
+                <span style={tSub}>of swims end on the podium</span>
+              </div>
+              {cs.top_meet && (
+                <div style={tile}>
+                  <span style={tLabel}>Most Decorated Meet</span>
+                  <span style={{ ...tVal, fontSize: 14 }}>{cs.top_meet.name}</span>
+                  <span style={tSub}>{cs.top_meet.medals} medal{cs.top_meet.medals !== 1 ? 's' : ''} at one meet</span>
+                </div>
+              )}
+              <div style={tile}>
+                <span style={tLabel}>Represented</span>
+                <span className="asw-num" style={tVal}>{cs.clubs_count} club{cs.clubs_count !== 1 ? 's' : ''}</span>
+                <span style={tSub}>competed in {cs.host_countries} countr{cs.host_countries !== 1 ? 'ies' : 'y'}</span>
+              </div>
+              {cs.improvement && (
+                <div style={tile}>
+                  <span style={tLabel}>Career Drop · {cs.improvement.event_name}</span>
+                  <span className="asw-num" style={{ ...tVal, color: 'var(--asw-fast)' }}>−{cs.improvement.seconds}s</span>
+                  <span style={tSub}>
+                    {cs.improvement.from_time} ({cs.improvement.from_year}) → {cs.improvement.to_time} · {cs.improvement.percent}% faster
+                    {cs.pb_age != null ? ` · best form at age ${cs.pb_age}` : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Swimmer DNA + The Chase */}
       <DnaChaseSection swimmerId={swimmerId} />

@@ -303,3 +303,50 @@ class RelayLegIdMatchTests(TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]['leg_order'], 2)
         self.assertEqual(rows[0]['split_time'], '52.10')
+
+
+class CareerSummaryTests(TestCase):
+    """profile-stats returns the Overall tab's career_summary block."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Event
+        from championships.models import Championship, Result
+        from medals.models import Medal
+        cls.egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        cls.sw = Swimmer.objects.create(name='Omar Kamal', nationality=cls.egy,
+                                        sex='M', birth_year=2005)
+        free100 = Event.objects.create(name='100 M Freestyle', distance=100,
+                                       stroke='Freestyle', is_relay=False)
+        c1 = Championship.objects.create(name='Debut Cup', date=date(2020, 5, 1),
+                                         pool='LCM', country=cls.egy)
+        c2 = Championship.objects.create(name='Nationals', date=date(2023, 6, 1),
+                                         pool='LCM', country=cls.egy)
+        r1 = Result.objects.create(swimmer=cls.sw, championship=c1, event=free100,
+                                   round_type='Finals', time_centiseconds=6000,
+                                   fina_points=500, team='CN CAIRO')
+        r2 = Result.objects.create(swimmer=cls.sw, championship=c2, event=free100,
+                                   round_type='Finals', time_centiseconds=5500,
+                                   fina_points=650, team='AL AHLY')
+        Medal.objects.create(swimmer=cls.sw, championship=c2, event=free100,
+                             medal_type='GOLD', result=r2, nationality=cls.egy)
+
+    def test_career_summary_block(self):
+        resp = APIClient().get(f'/api/v1/swimmers/{self.sw.id}/profile-stats/')
+        self.assertEqual(resp.status_code, 200)
+        cs = resp.data['career_summary']
+        self.assertEqual(cs['debut']['meet'], 'Debut Cup')
+        self.assertEqual(cs['debut']['age'], 15)
+        self.assertEqual(cs['years_active'], 4)
+        self.assertEqual(cs['seasons'], 2)
+        self.assertEqual(cs['total_swims'], 2)
+        self.assertEqual(cs['distance_km'], 0.2)
+        self.assertEqual(cs['specialty_stroke'], 'Freestyle')
+        self.assertEqual(cs['specialty_range'], 'Sprint')
+        self.assertEqual(cs['podium_pct'], 50)
+        self.assertEqual(cs['top_meet']['name'], 'Nationals')
+        self.assertEqual(cs['clubs_count'], 2)
+        self.assertEqual(cs['host_countries'], 1)
+        self.assertEqual(cs['improvement']['seconds'], 5.0)
+        self.assertEqual(cs['improvement']['from_year'], 2020)
+        self.assertEqual(cs['pb_age'], 18)

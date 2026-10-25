@@ -830,8 +830,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'best_time': best,
             })
 
-        # Country breakdown
-        countries = athletes.values(
+        # Country breakdown (swimmers without a nationality would otherwise
+        # form a blank bucket that outranks every real country)
+        countries = athletes.exclude(nationality__isnull=True).values(
             'nationality__id',
             'nationality__name', 'nationality__code', 'nationality__flag_url'
         ).annotate(
@@ -1519,7 +1520,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             athletes = champ.results.filter(swimmer__is_relay_team=False)
             total_results = champ.results.count()
             total_swimmers = athletes.values('swimmer').distinct().count()
-            countries_count = athletes.values('nationality').distinct().count()
+            countries_count = athletes.exclude(nationality__isnull=True).values('nationality').distinct().count()
             total_events = champ.results.values('event').distinct().count()
 
             # Best FINA points at this championship
@@ -1560,7 +1561,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'flag_url': championship.country.flag_url if championship.country else '',
             'total_results': championship.results.count(),
             'total_swimmers': athletes.values('swimmer').distinct().count(),
-            'countries_count': athletes.values('nationality').distinct().count(),
+            'countries_count': athletes.exclude(nationality__isnull=True).values('nationality').distinct().count(),
             'total_events': championship.results.values('event').distinct().count(),
             'best_fina': best_fina,
             'is_current': True,

@@ -1679,7 +1679,7 @@ function OverviewTab({ meetId, stats }) {
           <div className="pad">
             <div className="kicker" style={{ marginBottom: 4 }}>Participating nations</div>
             <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>{stats.countries.length} countries · ranked by swimmers entered</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 880 }}>
               {rows.map((c, i) => (
                 <div key={c.nationality__code || i} onClick={() => c.nationality__id && navigate(`/countries/${c.nationality__id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', cursor: c.nationality__id ? 'pointer' : 'default' }}>
                   <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
@@ -1705,9 +1705,9 @@ function OverviewTab({ meetId, stats }) {
           <div className="pad">
             <div className="kicker" style={{ marginBottom: 4 }}>Club standings</div>
             <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Clubs ranked by swimmers entered</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 880 }}>
               {rows.map((c, i) => (
-                <div key={c.team} onClick={() => c.team_id && navigate(`/clubs/${c.team_id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', cursor: c.team_id ? 'pointer' : 'default' }}>
+                <div key={c.team} onClick={() => c.team_id && navigate(`/teams/${c.team_id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', cursor: c.team_id ? 'pointer' : 'default' }}>
                   <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
                   <ClubLogo logo={c.team_logo} name={c.team} size={24} />
                   <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.team}</span>

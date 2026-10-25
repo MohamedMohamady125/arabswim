@@ -426,7 +426,8 @@ export default function QuickStatsView({ data, busiest, pad = false }) {
             ))}
           </div>
           {(records.by_day || records.by_country.length > 0) && (
-            <div className="qs-rec-charts">
+            /* single chart → single column, no dead half */
+            <div className="qs-rec-charts" style={records.by_day && records.by_country.length > 0 ? undefined : { gridTemplateColumns: '1fr' }}>
               {records.by_day && (
                 <Panel title="Records by Day (Cumulative)">
                   <LineChart points={records.by_day.map((p) => ({ label: `Day ${p.day}`, value: p.cumulative }))} />

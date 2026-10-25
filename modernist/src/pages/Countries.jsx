@@ -7,7 +7,7 @@ import { formatNumber } from '../utils'
 
 function CountryTable({ countries }) {
   return (
-    <div className="table-scroll">
+    <div className="table-scroll" style={{ maxWidth: 880 }}>
       <table className="table">
         <thead>
           <tr>
@@ -23,7 +23,7 @@ function CountryTable({ countries }) {
             <tr key={c.id}>
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Flag code={c.code} name={c.name} large />
+                  <Flag code={c.code} name={c.name} flagUrl={c.flag_url} placeholder large />
                   <Link to={`/countries/${c.id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
                     {c.name}
                   </Link>

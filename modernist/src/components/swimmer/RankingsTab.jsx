@@ -10,6 +10,9 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
 
   const options = rankings
     .filter((r, i, arr) => arr.findIndex((x) => x.event_id === r.event_id && x.pool === r.pool) === i)
+    // best rank first, so the default selection is the swimmer's strongest
+    // event (matching the hero card above) instead of arbitrary API order
+    .sort((a, b) => (a.rankings?.[scope]?.rank ?? Infinity) - (b.rankings?.[scope]?.rank ?? Infinity))
   const sel = options.find((o) => histEvent && o.event_id === histEvent.event_id && o.pool === histEvent.pool)
     || options[0]
 

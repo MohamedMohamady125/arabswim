@@ -82,7 +82,8 @@ export default function MedalStandings({
         </div>
       )}
 
-      <div style={{ border: '1px solid var(--wa-line)', borderRadius: 14, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 4px rgba(12,35,64,.05)' }}>
+      {/* overflowX keeps Bronze/Total reachable on narrow screens instead of clipping them */}
+      <div style={{ border: '1px solid var(--wa-line)', borderRadius: 14, overflowX: 'auto', background: '#fff', boxShadow: '0 1px 4px rgba(12,35,64,.05)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
           <thead style={{ background: '#fff' }}>
             <tr>

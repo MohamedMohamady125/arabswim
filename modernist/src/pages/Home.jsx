@@ -89,7 +89,9 @@ export default function Home() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13 }}>
                       <Flag code={code} name={sw.nationality_detail?.name} />
-                      <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</Link>
+                      {sw.id
+                        ? <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</Link>
+                        : <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</span>}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--color-neutral-600)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.event_detail?.name}{r.pool ? ` · ${r.pool}` : ''}{r.result_date ? ` · ${formatDate(r.result_date)}` : ''}

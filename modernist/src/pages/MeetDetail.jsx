@@ -1245,7 +1245,7 @@ function FeaturedCards({ picks, sideBySide = false }) {
           <div style={{ flex: 1, minWidth: 0, padding: '10px 12px 10px 0', display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
             <div className="micro" style={{ color: 'var(--color-accent-800)', fontWeight: 700 }}>#1 · {p.tag}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <Flag code={p.nationality_code} name={p.name} />
+              <Flag code={p.nationality_code} name={p.name} placeholder />
               <span style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
             </div>
             {p.sub && <div className="micro" style={{ fontSize: 10, textTransform: 'none', letterSpacing: 0 }}>{p.sub}</div>}
@@ -1298,7 +1298,7 @@ function EntityAthleteMedals({ medals, isNational }) {
               onClick={isRelay ? undefined : () => navigate(`/swimmers/${sw?.id}`)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, cursor: isRelay ? 'default' : 'pointer', minWidth: 170 }}
             >
-              <Flag code={sw?.nationality_detail?.code} name={sw?.nationality_detail?.name} />
+              <Flag code={sw?.nationality_detail?.code} name={sw?.nationality_detail?.name} placeholder />
               {sw?.name}
               {isRelay && <span className="tag tag-neutral" style={{ flex: 'none' }}>{isNational ? 'Club' : 'Country'}</span>}
             </span>
@@ -1542,7 +1542,7 @@ function PersonalBestsTab({ stats }) {
                   <span className="asw-num" style={{ width: 26, height: 26, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12 }}>
                     {i + 1}
                   </span>
-                  <Flag code={s.nationality_code} name={s.swimmer_name} />
+                  <Flag code={s.nationality_code} name={s.swimmer_name} placeholder />
                   <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {s.swimmer_name}
                   </span>
@@ -1625,7 +1625,7 @@ function TopPerformancesTab({ stats }) {
                 <div key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
                   <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 15, marginBottom: 4 }}>
                     <span className="asw-num text-muted">{i + 1}</span>
-                    <Flag code={t.nationality_code} name={t.swimmer_name} />
+                    <Flag code={t.nationality_code} name={t.swimmer_name} placeholder />
                     <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.swimmer_name}</span>
                     <span className="text-muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.event_name}</span>
                     <span className="asw-num" style={{ fontWeight: 800, textAlign: 'right' }}>{t.fina_points}</span>
@@ -1668,7 +1668,7 @@ function OverviewTab({ meetId, stats }) {
   return (
     <div>
       {/* home-page style quick statistics + busiest swimmers widget */}
-      <QuickStatsView data={qs} busiest={stats?.busiest_swimmers} pad />
+      <QuickStatsView data={qs} busiest={stats?.busiest_swimmers} pad medalsLink={`/meets/${meetId}?tab=medals`} />
 
       {/* participating nations — countries ranked by swimmers entered
           (only meaningful for international meets with ≥2 nations) */}
@@ -1747,7 +1747,7 @@ function OverviewTab({ meetId, stats }) {
                     <div className="micro" style={{ marginBottom: 6 }}>{lbl}</div>
                     {(arr || []).map((s) => (
                       <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', fontSize: 12 }}>
-                        <Flag code={s.nationality_code} name={s.nationality} />
+                        <Flag code={s.nationality_code} name={s.nationality} placeholder />
                         <span style={{ flex: 1, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>{s.swimmer_name}</span>
                         <span className="asw-num" style={{ fontWeight: 800, color: 'var(--color-accent)' }}>{s.age}</span>
                       </div>
@@ -1792,7 +1792,7 @@ function OverviewTab({ meetId, stats }) {
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Flag code={ch.country_code} name={ch.country} />
+                        <Flag code={ch.country_code} name={ch.country} placeholder />
                         <span className="hide-mobile">{ch.country}</span>
                       </div>
                     </td>
@@ -1892,7 +1892,7 @@ function MostImprovedTab({ meetId }) {
                     }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Flag code={s.nationality_code} name={s.swimmer_name} />
+                        <Flag code={s.nationality_code} name={s.swimmer_name} placeholder />
                         <span style={{ fontWeight: 700, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.swimmer_name}</span>
                       </div>
                       <div className="micro" style={{ marginTop: 1, fontSize: 10 }}>{s.event_name}</div>
@@ -2011,7 +2011,7 @@ function RecordsBrokenTab({ meetId }) {
                 </div>
                 {/* Line 2 — swimmer / team */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                  <Flag code={r.nationality_code} name={r.swimmer_name} />
+                  <Flag code={r.nationality_code} name={r.swimmer_name} placeholder />
                   <span style={{ fontWeight: 700, fontSize: 14 }}>{r.swimmer_name}</span>
                 </div>
                 {/* Line 3 — previous record */}
@@ -2178,7 +2178,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
     setDeleting(true)
     try {
       await deleteChampionship(meet.id)
-      navigate('/meets')
+      navigate('/championships')
     } catch {
       window.alert('Failed to delete the championship')
       setDeleting(false)
@@ -2989,7 +2989,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
               </td>
               <td style={{ maxWidth: 0, width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                  <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
+                  <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} placeholder />
                   <span
                     role="button"
                     tabIndex={0}

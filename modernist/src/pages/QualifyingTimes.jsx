@@ -366,8 +366,12 @@ export default function QualifyingTimes() {
           else break
         }
         if (!alive) return
+        // Competitions read chronologically (Beijing 2026 → Budapest 2027 → LA 2028)
+        all.sort((a, b) => (a.year || 0) - (b.year || 0) || String(a.name).localeCompare(String(b.name)))
         setStandards(all)
-        if (all.length > 0) setSelectedId(all[0].id)
+        // Keep the current selection across reloads (admin edits); only
+        // fall back to the first standard when none is selected or it's gone.
+        if (all.length > 0) setSelectedId((cur) => (cur && all.some((s) => s.id === cur) ? cur : all[0].id))
       } catch {
         if (alive) setStandards([])
       } finally {

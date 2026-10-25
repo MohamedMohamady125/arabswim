@@ -12,6 +12,7 @@ import {
   getSwimmerProgression,
   getSwimmerRankings,
   getSwimmerTransferHistory,
+  searchSwimmers,
 } from '../api/swimmers'
 import { createClaim, getMyClaims, submitPhotoRequest } from '../api/claims'
 import { mergeSwimmers } from '../api/importer'
@@ -573,7 +574,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
               )
             })}
             {history.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }} className="text-muted">No times recorded</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24 }} className="text-muted">No times recorded</td></tr>
             )}
           </tbody>
         </table>
@@ -889,7 +890,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
   const {
     medals, total_championships, total_records, best_fina,
     season_best_fina, best_event, top_personal_bests, records, fina_distribution,
-    championships, medals_by_level, career_summary,
+    championships, medals_by_level, medals_hierarchy, career_summary,
   } = stats
   const intlRecords = (records || []).filter((r) => r.record_type !== 'NATIONAL')
   // Held records not covered by the Record table (national/gcc/arab computed)
@@ -1134,9 +1135,22 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
       })()}
 
       {/* Medals by competition level */}
-      {medals_by_level?.some((m) => (m.gold + m.silver + m.bronze) > 0) && (() => {
-        const rows = medals_by_level.filter((m) => (m.gold + m.silver + m.bronze) > 0)
+      {(() => {
+        // Group by classification name — the same source the Medals tab's
+        // "By Level" cards use. medals_by_level groups by classification
+        // category, which buckets uncategorised meets as "UNCATEGORIZED"
+        // while the Medals tab calls the very same medals "National".
+        const byCls = {}
+        ;(medals_hierarchy || []).forEach((c) => (c.classifications || []).forEach((cls) => {
+          if (!byCls[cls.name]) byCls[cls.name] = { category: cls.name, gold: 0, silver: 0, bronze: 0 }
+          byCls[cls.name].gold += cls.gold
+          byCls[cls.name].silver += cls.silver
+          byCls[cls.name].bronze += cls.bronze
+        }))
+        const source = Object.keys(byCls).length ? Object.values(byCls) : (medals_by_level || [])
+        const rows = source.filter((m) => (m.gold + m.silver + m.bronze) > 0)
           .sort((a, b) => (b.gold + b.silver + b.bronze) - (a.gold + a.silver + a.bronze))
+        if (rows.length === 0) return null
         const maxT = Math.max(...rows.map((m) => m.gold + m.silver + m.bronze), 1)
         return (
           <div>
@@ -1388,11 +1402,25 @@ export default function SwimmerProfile() {
     ]).then(([sRes, eRes, stRes, tRes]) => {
       if (!alive) return
       const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
+      const evts = list(val(eRes))
       setSwimmer(val(sRes))
-      setEvents(list(val(eRes)))
+      setEvents(evts)
       setStats(val(stRes))
       setClubHistory(val(tRes)?.clubs || [])
       setLoaded(true)
+      // Desktop: preselect the first event so the Times tab's history panel
+      // isn't a dead empty column on load. Phones (≤900px) keep the
+      // tap-to-open flow — history there renders under the tapped row.
+      if (evts.length > 0 && window.matchMedia('(min-width: 901px)').matches) {
+        const first = evts.find((e) => e.pool === 'LCM' && !e.is_relay)
+          || evts.find((e) => !e.is_relay) || evts[0]
+        setSelectedEvent(first)
+        setLoadingHistory(true)
+        getSwimmerEventHistory(id, first.event_id, first.pool)
+          .then((res) => { if (alive) setHistory(list(res.data)) })
+          .catch(() => { if (alive) setHistory([]) })
+          .finally(() => { if (alive) setLoadingHistory(false) })
+      }
     })
     return () => { alive = false }
   }, [id])

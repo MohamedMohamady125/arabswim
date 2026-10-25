@@ -1507,6 +1507,11 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         else:
             # No classification — can't compare
             return Response([])
+        # National/Other meets only compare within the same host country
+        # (international meets rotate hosts, so those stay country-agnostic)
+        cls_name = championship.classification.name if championship.classification_id else ''
+        if cls_name in ('National', 'Other') and championship.country_id:
+            filters['country_id'] = championship.country_id
 
         related = (
             Championship.objects

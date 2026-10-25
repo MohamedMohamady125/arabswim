@@ -426,15 +426,21 @@ function AlbumModal({ team, onClose, onSaved }) {
 function PredictionTab({ id }) {
   const [pool, setPool] = useState('LCM')
   const [data, setData] = useState(null)
+  // SCM-only clubs would land on an empty LCM default — fall back once
+  const [autoPool, setAutoPool] = useState(true)
 
   useEffect(() => {
     let alive = true
     setData(null)
     getTeamPrediction(id, { pool })
-      .then((res) => { if (alive) setData(res.data) })
+      .then((res) => {
+        if (!alive) return
+        if (autoPool && pool === 'LCM' && !(res.data?.items || []).length) { setAutoPool(false); setPool('SCM'); return }
+        setData(res.data)
+      })
       .catch(() => { if (alive) setData({ items: [] }) })
     return () => { alive = false }
-  }, [id, pool])
+  }, [id, pool]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const items = data?.items || []
   return (
@@ -444,7 +450,7 @@ function PredictionTab({ id }) {
         Linear trend over each swimmer's seasonal bests — a forecast, not a promise
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
+        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={(v) => { setAutoPool(false); setPool(v) }} />
       </div>
       {data === null ? (
         <Loading label="Crunching seasons" />
@@ -557,22 +563,29 @@ function ProgressionTab({ id }) {
   const [stroke, setStroke] = useState('Freestyle')
   const [pool, setPool] = useState('LCM')
   const [lines, setLines] = useState(null)
+  // SCM-only clubs would land on an empty LCM default — fall back once
+  const [autoPool, setAutoPool] = useState(true)
 
   useEffect(() => {
     let alive = true
     setLines(null)
     getTeamProgression(id, { stroke, pool })
-      .then((r) => alive && setLines(Array.isArray(r.data) ? r.data : []))
+      .then((r) => {
+        if (!alive) return
+        const rows = Array.isArray(r.data) ? r.data : []
+        if (autoPool && pool === 'LCM' && !rows.some((l) => (l.points || []).length)) { setAutoPool(false); setPool('SCM'); return }
+        setLines(rows)
+      })
       .catch(() => alive && setLines([]))
     return () => { alive = false }
-  }, [id, stroke, pool])
+  }, [id, stroke, pool]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="pad-lg">
       <TabHeading title="Time Progression" />
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
         <Seg options={STROKES} value={stroke} onChange={setStroke} />
-        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
+        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={(v) => { setAutoPool(false); setPool(v) }} />
       </div>
       {lines === null ? <Loading label="Loading progression" /> : <TeamProgressionChart lines={lines} />}
     </div>
@@ -585,15 +598,22 @@ function DepthTab({ id }) {
   const [pool, setPool] = useState('LCM')
   const [gender, setGender] = useState('')
   const [rows, setRows] = useState(null)
+  // SCM-only clubs would land on an empty LCM default — fall back once
+  const [autoPool, setAutoPool] = useState(true)
 
   useEffect(() => {
     let alive = true
     setRows(null)
     getTeamDepth(id, { pool, ...(gender ? { gender } : {}) })
-      .then((r) => alive && setRows(Array.isArray(r.data) ? r.data : []))
+      .then((r) => {
+        if (!alive) return
+        const data = Array.isArray(r.data) ? r.data : []
+        if (autoPool && pool === 'LCM' && data.length === 0) { setAutoPool(false); setPool('SCM'); return }
+        setRows(data)
+      })
       .catch(() => alive && setRows([]))
     return () => { alive = false }
-  }, [id, pool, gender])
+  }, [id, pool, gender]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const maxCount = rows && rows.length ? Math.max(...rows.map((e) => e.swimmer_count), 1) : 1
 
@@ -604,7 +624,7 @@ function DepthTab({ id }) {
         How many swimmers the club fields in each event, and its strongest times
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
-        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
+        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={(v) => { setAutoPool(false); setPool(v) }} />
         <Seg options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={setGender} />
       </div>
       {rows === null ? <Loading label="Loading squad depth" />
@@ -754,7 +774,9 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       const k = m.medal_type === 'GOLD' ? 'gold' : m.medal_type === 'SILVER' ? 'silver' : 'bronze'
       by[m.swimmer_id][k]++; by[m.swimmer_id].total++
     })
-    return Object.values(by).sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze)
+    // "Most Decorated" cards and the medalists podium headline the TOTAL,
+    // so rank by total first (gold as tiebreak), matching their captions
+    return Object.values(by).sort((a, b) => b.total - a.total || b.gold - a.gold || b.silver - a.silver)
   }, [medals])
   const maleMedalists = medalists.filter((m) => sexById[m.id] === 'M').slice(0, 5)
   const femaleMedalists = medalists.filter((m) => sexById[m.id] === 'F').slice(0, 5)
@@ -910,8 +932,11 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       </div>
 
       {/* Row 2: Medals by competition | Most Decorated Men | Women */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {card(<>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: medalBoxes.length ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        {/* classification breakdown can be empty while the club still has
+            medals (all from excluded classifications) — showing "No medals"
+            next to real tallies would lie, so drop the card instead */}
+        {medalBoxes.length > 0 && card(<>
           {cardHeader('Medals', 'Total Medals by Competition')}
           <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11 }}>
             {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([lbl, c]) => (
@@ -942,7 +967,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {(() => {
           const fmtT = (t) => (typeof t === 'number' ? formatTime(t) : t) || '—'
-          const goldTouch = medalists[0]
+          const goldTouch = [...medalists].sort((a, b) => b.gold - a.gold)[0]
           const bestM = maleTop[0]
           const bestF = femaleTop[0]
           const topMedM = maleMedalists.slice().sort((a, b) => b.total - a.total)[0]
@@ -952,7 +977,9 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
             { key: 'latest-rec', person: latestRecord?.swimmer_id, valid: !!latestRecord, render: () => recCard('Latest Record', `Most Recent ${team.name} Record`, recBody(photoById[latestRecord.swimmer_id], latestRecord.swimmer_name, latestRecord.swimmer_id, latestRecord.event_name, fmtT(latestRecord.time), formatDate(latestRecord.date))) },
             { key: 'top-recordman', person: topRecordman?.id, valid: !!topRecordman, render: () => recCard('Top Recordman', `${team.name} Swimmer Holding the Most Records`, recBody(photoById[topRecordman.id], topRecordman.name, topRecordman.id, 'Total Records', topRecordman.count, null)) },
             { key: 'best-fina', person: stats?.best_fina?.swimmer_id, valid: !!stats?.best_fina, render: () => recCard('Highest FINA', `Best FINA Performance in ${team.name} History`, recBody(photoById[stats.best_fina.swimmer_id], stats.best_fina.swimmer_name, stats.best_fina.swimmer_id, stats.best_fina.event_name, stats.best_fina.points, null)) },
-            { key: 'top-medalist', person: stats?.top_medalist?.swimmer_id, valid: !!stats?.top_medalist, render: () => recCard('Top Medalist', `${team.name} Swimmer with the Most Medals`, recBody(photoById[stats.top_medalist.swimmer_id], stats.top_medalist.swimmer_name, stats.top_medalist.swimmer_id, 'Total Medals', stats.top_medalist.count, null)) },
+            // from the club's own medal list — stats.top_medalist counts the
+            // swimmer's medals across ALL clubs and contradicts this page
+            { key: 'top-medalist', person: medalists[0]?.id, valid: !!medalists[0], render: () => recCard('Top Medalist', `${team.name} Swimmer with the Most Medals`, recBody(photoById[medalists[0].id], medalists[0].name, medalists[0].id, 'Total Medals', medalists[0].total, null)) },
             { key: 'gold-touch', person: goldTouch?.id, valid: !!(goldTouch && goldTouch.gold > 0), render: () => recCard('The Golden Touch', `Most Golds by a ${team.name} Swimmer`, recBody(photoById[goldTouch.id], goldTouch.name, goldTouch.id, 'Gold Medals', goldTouch.gold, null)) },
             { key: 'best-m-perf', person: bestM?.swimmer_id, valid: !!bestM, render: () => recCard('Best Male Performance', `Top ${team.name} Male Swim by FINA Points`, recBody(photoById[bestM.swimmer_id], bestM.swimmer_name, bestM.swimmer_id, bestM.event_name, fmtT(bestM.time), null)) },
             { key: 'best-f-perf', person: bestF?.swimmer_id, valid: !!bestF, render: () => recCard('Best Female Performance', `Top ${team.name} Female Swim by FINA Points`, recBody(photoById[bestF.swimmer_id], bestF.swimmer_name, bestF.swimmer_id, bestF.event_name, fmtT(bestF.time), null)) },
@@ -1247,8 +1274,16 @@ export default function TeamDetail() {
       const k = m.medal_type === 'GOLD' ? 'gold' : m.medal_type === 'SILVER' ? 'silver' : 'bronze'
       by[m.swimmer_id][k]++; by[m.swimmer_id].total++
     })
-    return Object.values(by).sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze)
+    // Total-first (gold tiebreak) — the Medals-tab podium headlines the total
+    return Object.values(by).sort((a, b) => b.total - a.total || b.gold - a.gold || b.silver - a.silver)
   }, [medals])
+  // Club ranking: drop clubs with no medals at all (they aren't "ranked by
+  // medals won" — keep this club itself so the page never hides its host),
+  // and order by total so the podium's headline numbers read 1st ≥ 2nd ≥ 3rd
+  const rankingRows = useMemo(() => ranking
+    .filter((r) => (r.total || 0) > 0 || r.team_id === Number(id))
+    .sort((a, b) => (b.total || 0) - (a.total || 0) || (b.gold || 0) - (a.gold || 0) || (b.silver || 0) - (a.silver || 0)),
+  [ranking, id])
 
   if (loading) return <Loading label="Loading club" />
   if (!team) return <Empty label="Club not found" />
@@ -1548,7 +1583,7 @@ export default function TeamDetail() {
                 )
                 const fmtRec = (r) => (typeof r.time === 'number' ? formatTime(r.time) : r.time) || '—'
                 const decorated = [...medalists].sort((a, b) => b.total - a.total)[0]
-                const goldKing = medalists[0] // medalists are gold-sorted
+                const goldKing = [...medalists].sort((a, b) => b.gold - a.gold)[0]
                 const leadingWoman = (() => {
                   let best = null
                   times.forEach((t) => { if (sexById[t.swimmer_id] === 'F' && (!best || (t.fina_points || 0) > (best.fina_points || 0))) best = t })
@@ -1811,7 +1846,7 @@ export default function TeamDetail() {
       {/* ===== STATISTICS ===== */}
       {tab === 'statistics' && <StatisticsTab
         team={team} times={times} medals={medals} records={records}
-        stats={stats} ranking={ranking} medalBoxes={medalBoxes}
+        stats={stats} ranking={rankingRows} medalBoxes={medalBoxes}
         photoById={photoById} sexById={sexById}
       />}
 
@@ -1831,9 +1866,9 @@ export default function TeamDetail() {
           <div style={{ textAlign: 'center', fontSize: 12.5, color: '#6b7d94', margin: '-8px 0 18px' }}>
             Clubs of {team.country_detail?.name || 'the same country'} ranked by medals won
           </div>
-          {ranking.length === 0 ? <Empty label="No ranking data" /> : (
+          {rankingRows.length === 0 ? <Empty label="No ranking data" /> : (
             <MedalStandings
-              rows={ranking}
+              rows={rankingRows}
               entityHeader="Club"
               rowKey={(r) => r.team_id}
               renderPodiumChip={(r) => (

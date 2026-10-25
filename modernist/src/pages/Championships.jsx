@@ -49,7 +49,7 @@ export default function Championships() {
     }
     load()
     return () => { alive = false }
-  }, [])
+  }, [isAdmin])
 
   const years = useMemo(() => {
     const ys = new Set()

@@ -19,7 +19,7 @@ const STROKE_ORDER = { Freestyle: 0, Backstroke: 1, Breaststroke: 2, Butterfly: 
 function statusStyle(status) {
   const s = String(status || '')
   if (s.includes('Favorite')) {
-    return { background: 'rgba(200,160,60,0.14)', color: '#7a5c14', border: '1px solid rgba(200,160,60,0.5)' }
+    return { background: 'color-mix(in srgb, var(--asw-gold) 14%, #fff)', color: 'var(--color-accent-900)', border: '1px solid color-mix(in srgb, var(--asw-gold) 50%, #fff)' }
   }
   if (s.includes('Strong') || s.includes('Contender')) {
     return { background: 'var(--color-accent)', color: '#fff', border: '1px solid var(--color-accent)' }
@@ -42,7 +42,7 @@ function StatusBadge({ status, pct }) {
 
 function Chip({ children, tone }) {
   const tones = {
-    warn: { background: 'rgba(200,160,60,0.14)', color: '#7a5c14', border: '1px solid rgba(200,160,60,0.5)' },
+    warn: { background: 'color-mix(in srgb, var(--asw-gold) 14%, #fff)', color: 'var(--color-accent-900)', border: '1px solid color-mix(in srgb, var(--asw-gold) 50%, #fff)' },
     navy: { background: 'var(--color-accent)', color: '#fff', border: '1px solid var(--color-accent)' },
     plain: { background: 'var(--color-bg)', color: 'var(--color-neutral-700)', border: '1px solid var(--color-neutral-300)' },
   }
@@ -569,11 +569,11 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
 
 const TIER_LEGEND = [
   { label: 'Gold Favorite', range: '\u2265 50% gold', color: 'var(--asw-gold)' },
-  { label: 'Medal Favorite', range: '80 – 100%', color: '#3f9d5a' },
-  { label: 'Strong Medal Chance', range: '65 – 79%', color: '#3b82c4' },
+  { label: 'Medal Favorite', range: '80 – 100%', color: 'var(--asw-fast)' },
+  { label: 'Strong Medal Chance', range: '65 – 79%', color: 'var(--color-accent-2)' },
   { label: 'Medal Contender', range: '45 – 64%', color: '#8b6cc9' },
   { label: 'Podium Challenger', range: '25 – 44%', color: '#e08b3c' },
-  { label: 'Outside Chance', range: '10 – 24%', color: '#d05252' },
+  { label: 'Outside Chance', range: '10 – 24%', color: 'var(--asw-slow)' },
 ]
 
 const STROKE_CHIPS = ['All', 'Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
@@ -785,8 +785,8 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                 accent="var(--color-accent)"
               />
               <StatCard label="Gold" value={selectedCountry.gold.toFixed(1)} accent="var(--asw-gold)" sub="Expected" />
-              <StatCard label="Silver" value={selectedCountry.silver.toFixed(1)} accent="#9aa5b1" sub="Expected" />
-              <StatCard label="Bronze" value={selectedCountry.bronze.toFixed(1)} accent="#b07a4a" sub="Expected" />
+              <StatCard label="Silver" value={selectedCountry.silver.toFixed(1)} accent="var(--asw-silver)" sub="Expected" />
+              <StatCard label="Bronze" value={selectedCountry.bronze.toFixed(1)} accent="var(--asw-bronze)" sub="Expected" />
             </div>
           ) : (
             <Empty label="No projection available yet" />
@@ -972,7 +972,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                   <Flag code={c.country_code} name={c.country_name} />
                   <Link to={`/swimmers/${c.swimmer_id}`} style={{ fontWeight: 600 }}>{c.name}</Link>
                   <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{shortEvent(c.event)}</span>
-                  <span className="asw-num" style={{ marginLeft: 'auto', color: '#3f9d5a', fontWeight: 700 }}>▲ +{c.delta} pts</span>
+                  <span className="asw-num" style={{ marginLeft: 'auto', color: 'var(--asw-fast)', fontWeight: 700 }}>▲ +{c.delta} pts</span>
                 </div>
               ))}
             </div>
@@ -1131,7 +1131,7 @@ export default function Predictions() {
               </>
               )}
               {snap.stage !== 'OFFICIAL' && (
-                <div className="micro" style={{ marginBottom: 16, color: '#7a5c14' }}>
+                <div className="micro" style={{ marginBottom: 16, color: 'var(--asw-gold)' }}>
                   Early prediction — the entry list has not been published yet. Fields are estimated from recent results and will update when entries are official.
                 </div>
               )}

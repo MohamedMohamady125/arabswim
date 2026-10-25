@@ -1580,19 +1580,21 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         {card(<>
           {cardHeader('Medals', 'Total Medals by International Competition')}
-          {/* Legend */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11 }}>
-            {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([lbl, c]) => (
-              <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 11, height: 11, borderRadius: '50%', background: c, display: 'inline-block' }} />{lbl}
-              </span>
-            ))}
-          </div>
           {(() => {
             // International tallies only — National and Other are noise here
             const intl = medalBoxes.filter((m) => m.name !== 'National' && m.name !== 'Other')
+            if (!intl.length) return <Empty label="No international medals yet" />
             const maxTotal = Math.max(...intl.map((m) => m.total), 1)
-            return intl.map((m) => (
+            return (<>
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11 }}>
+              {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([lbl, c]) => (
+                <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 11, height: 11, borderRadius: '50%', background: c, display: 'inline-block' }} />{lbl}
+                </span>
+              ))}
+            </div>
+            {intl.map((m) => (
               <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
                 <span style={{ width: 88, fontSize: 11.5, fontWeight: 700, flexShrink: 0, color: '#374151' }}>{m.name}</span>
                 <div style={{ flex: 1, height: 20, display: 'flex', background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
@@ -1604,7 +1606,8 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
                 </div>
                 <span className="asw-num" style={{ width: 26, textAlign: 'right', fontWeight: 900, color: '#0b2948', fontSize: 13, flexShrink: 0 }}>{m.total}</span>
               </div>
-            ))
+            ))}
+            </>)
           })()}
         </>)}
         {(() => {
@@ -1617,19 +1620,24 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         })()}
       </div>
 
-      {/* Row 4: fixed record highlight boxes */}
-      <div className="m-col2 m-hl4" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {(() => {
-          const photoFor = (sid) => records.find((r) => r.swimmer_id === sid && r.swimmer_photo)?.swimmer_photo
-          const cards = [
+      {/* Row 4: fixed record highlight boxes — columns match the cards that
+          actually exist, so a missing card never leaves a dead column */}
+      {(() => {
+        const photoFor = (sid) => records.find((r) => r.swimmer_id === sid && r.swimmer_photo)?.swimmer_photo
+        const cards = [
             { key: 'last-m-rec', valid: !!lastMR, render: () => recCard4({ label: 'Last Record Broken · Men', sub: `Most Recent ${demonym(country.name)} Male Record`, photo: lastMR.swimmer_photo, id: lastMR.swimmer_id, name: lastMR.swimmer, line: lastMR.event, big: lastMR.time, date: lastMR.date }) },
             { key: 'last-f-rec', valid: !!lastFR, render: () => recCard4({ label: 'Last Record Broken · Women', sub: `Most Recent ${demonym(country.name)} Female Record`, photo: lastFR.swimmer_photo, id: lastFR.swimmer_id, name: lastFR.swimmer, line: lastFR.event, big: lastFR.time, date: lastFR.date }) },
             { key: 'top-m-rec', valid: !!topMaleRec, render: () => recCard4({ label: 'Most Male Record Holder', sub: `Top ${demonym(country.name)} Male Swimmer by National Records`, photo: photoFor(topMaleRec.id), id: topMaleRec.id, name: topMaleRec.name, line: 'Total Records', big: topMaleRec.count, bigSize: 40 }) },
             { key: 'top-f-rec', valid: !!topFemaleRec, render: () => recCard4({ label: 'Most Female Record Holder', sub: `Top ${demonym(country.name)} Female Swimmer by National Records`, photo: photoFor(topFemaleRec.id), id: topFemaleRec.id, name: topFemaleRec.name, line: 'Total Records', big: topFemaleRec.count, bigSize: 40 }) },
-          ]
-          return cards.filter((c) => c.valid).map((c) => <div key={c.key}>{c.render()}</div>)
-        })()}
-      </div>
+        ]
+        const show = cards.filter((c) => c.valid)
+        if (!show.length) return null
+        return (
+          <div className="m-col2 m-hl4" style={{ display: 'grid', gridTemplateColumns: `repeat(${show.length}, 1fr)`, gap: 10, marginBottom: 10 }}>
+            {show.map((c) => <div key={c.key}>{c.render()}</div>)}
+          </div>
+        )
+      })()}
 
       {/* Row 5: Performance Index (dark bg) | Country Battle */}
       <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
@@ -2152,10 +2160,13 @@ export default function CountryProfile() {
                               }}>{a ? a.title : 'Federation news will appear here'}</div>
                             )
                           })()}
-                          <div style={{ marginTop: 'auto', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 12.5, color: '#0b2948', fontWeight: 700 }}>Read more</span>
-                            <span style={{ color: '#1a56a0', fontWeight: 800 }}>→</span>
-                          </div>
+                          {/* dead affordance on "Coming soon" placeholders — only real articles get it */}
+                          {a && (
+                            <div style={{ marginTop: 'auto', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 12.5, color: '#0b2948', fontWeight: 700 }}>Read more</span>
+                              <span style={{ color: '#1a56a0', fontWeight: 800 }}>→</span>
+                            </div>
+                          )}
                         </div>
                       </>
                     )
@@ -2274,7 +2285,8 @@ export default function CountryProfile() {
               })()}
             </div>
 
-            {/* National Record Holders */}
+            {/* National Record Holders — section only exists when there are records */}
+            {topRecords.length > 0 && (<>
             {secTitle('National Record Holders')}
             {/* Auto-scrolling ticker — track duplicated for a seamless loop, pauses on hover */}
             <div className="asw-ticker" style={{ overflow: 'hidden', padding: '4px 0 10px' }}>
@@ -2304,6 +2316,7 @@ export default function CountryProfile() {
               ))}
               </div>
             </div>
+            </>)}
           </div>
         )
       })()}
@@ -2587,7 +2600,7 @@ export default function CountryProfile() {
           })()}
           <SectHead title={`Top Medalists · ${topMedalists.length}`} />
           {topMedalists.length === 0 ? <Empty label="No medals" /> : (
-            <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
+            <div className="table-scroll" style={{ maxWidth: 880 }}><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
               {topMedalists.map((m, i) => (<tr key={m.id ?? i}><td className="asw-num">{i + 1}</td><td><SwimmerLink id={m.id} name={m.name} /></td><td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{m.gold}</td><td className="num asw-num">{m.silver}</td><td className="num asw-num">{m.bronze}</td><td className="num asw-num" style={{ fontWeight: 800 }}>{m.total}</td></tr>))}
             </tbody></table></div>
           )}

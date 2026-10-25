@@ -21,13 +21,13 @@ function AcademyLogo({ logo, name, size = 52 }) {
   return (
     <span style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
-      background: '#eef3f9', border: '1px solid #dbe4ef',
+      background: 'var(--color-accent-100)', border: '1px solid var(--color-neutral-300)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       {logo ? (
         <img src={mediaUrl(logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#1a56a0' }}>{acronym(name)}</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-box-top)' }}>{acronym(name)}</span>
       )}
     </span>
   )
@@ -159,7 +159,7 @@ export default function Academies() {
       if (country && String(a.country) !== String(country)) return false
       return true
     })
-  }, [academies, search, country])
+  }, [academies, search, country, isAdmin])
 
   if (loading) return <Loading label="Loading academies" />
 
@@ -199,15 +199,15 @@ export default function Academies() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
             {filtered.map((a) => (
               <Link key={a.id} to={`/academies/${a.id}`} style={{
-                background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
-                boxShadow: '0 1px 6px rgba(11,41,72,.06)', padding: '14px 16px',
+                background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12,
+                boxShadow: 'var(--shadow-sm)', padding: '14px 16px',
                 display: 'flex', flexDirection: 'column', gap: 12,
                 color: 'inherit', textDecoration: 'none',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <AcademyLogo logo={a.logo} name={a.name} />
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14.5, color: '#0b2948', lineHeight: 1.3 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>
                       {a.name}{a.is_active === false && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>Inactive</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, fontSize: 12, color: 'var(--color-neutral-800)' }}>
@@ -231,7 +231,7 @@ export default function Academies() {
                 <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                   <ContactLink href={a.phone ? `tel:${a.phone}` : ''} icon={Phone} label="Phone" />
                   <ContactLink href={a.email ? `mailto:${a.email}` : ''} icon={Mail} label="Email" />
-                  <ContactLink href={a.website || ''} icon={Globe} label="Website" />
+                  <ContactLink href={a.website ? (/^https?:\/\//i.test(a.website) ? a.website : `https://${a.website}`) : ''} icon={Globe} label="Website" />
                   <ContactLink
                     href={a.instagram ? `https://instagram.com/${String(a.instagram).replace(/^@/, '')}` : ''}
                     icon={AtSign} label="Instagram"

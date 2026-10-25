@@ -617,8 +617,11 @@ class TeamViewSet(viewsets.ModelViewSet):
             Q(club__iexact=team.name) | Q(results__team__iexact=team.name)
         ).exclude(is_relay_team=True).distinct()
         swimmer_ids = list(swimmers.values_list('id', flat=True))
-        results_qs = Result.objects.filter(swimmer_id__in=swimmer_ids)
-        medals_qs = Medal.objects.filter(swimmer_id__in=swimmer_ids)
+        # Same scope as the profile/medals endpoints, so the overview numbers
+        # match the Medals tab instead of counting roster swimmers' medals
+        # won at other clubs
+        results_qs = self._full_report_results(team)
+        medals_qs = self._full_report_medals(team)
         total_medals = medals_qs.aggregate(
             gold=Count('id', filter=Q(medal_type='GOLD')),
             silver=Count('id', filter=Q(medal_type='SILVER')),
@@ -666,6 +669,10 @@ class TeamViewSet(viewsets.ModelViewSet):
                 bronze=Count('id', filter=Q(medal_type='BRONZE')),
                 total=Count('id'),
             )
+            # Zero-medal clubs aren't rankable "by medal count"; keep the
+            # requested club itself so its row always appears
+            if not counts['total'] and t.id != team.id:
+                continue
             ranking.append({
                 'team_id': t.id,
                 'team_name': t.name,

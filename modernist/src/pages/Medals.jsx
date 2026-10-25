@@ -127,7 +127,9 @@ export default function Medals() {
 
   // For country scope: merge API results with full Arab country list so every country shows
   const rows = useMemo(() => {
-    if (scope !== 'country') return scope === 'club' ? clubRows : swimmerRows
+    // Blank buckets (medals with no club / no swimmer name) never rank as rows
+    if (scope === 'club') return clubRows.filter((r) => r.result__team || r.team_id)
+    if (scope === 'swimmer') return swimmerRows.filter((r) => r.swimmer__name)
     const byCode = {}
     for (const r of summary) byCode[r.swimmer__nationality__code] = r
     const merged = regionCountries.map((c) => byCode[c.code] || {
@@ -211,7 +213,9 @@ export default function Medals() {
           <MedalStandings
             rows={rows}
             entityHeader={scope === 'country' ? 'Country' : scope === 'club' ? 'Club' : 'Swimmer'}
-            rowKey={(row, i) => row.swimmer__nationality__code || row.team_id || row.swimmer__id || i}
+            rowKey={(row, i) => (scope === 'country'
+              ? row.swimmer__nationality__code
+              : scope === 'club' ? (row.team_id ?? row.result__team) : row.swimmer__id) ?? i}
             renderPodiumChip={(row) => (
               scope === 'club' ? (
                 <>

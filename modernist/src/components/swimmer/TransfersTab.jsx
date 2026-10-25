@@ -169,6 +169,13 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
     ? (data.nationality_changes || [])
     : (data.nationality_changes || []).filter((ch) => ch.from_country !== ch.to_country)
 
+  // "LP" (libre passage) marks results swum with no club while transferring —
+  // the Times tab already renders it as a status tag, not a club, so it has
+  // no place in the club history either. Blank names guard against bad data.
+  const clubs = (data.clubs || []).filter(
+    (c) => (c.club || '').trim() && (c.club || '').trim().toUpperCase() !== 'LP'
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       {/* Clubs */}
@@ -176,11 +183,11 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
         <div className="sect-head">
           <h4>Clubs</h4>
         </div>
-        {(data.clubs || []).length === 0 ? (
+        {clubs.length === 0 ? (
           <Empty label="No club history available" />
         ) : (
           <div className="cellgrid" style={{ gridTemplateColumns: '1fr' }}>
-            {[...data.clubs].reverse().map((club, i) => (
+            {[...clubs].reverse().map((club, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {club.country_code && <Flag code={club.country_code} name={club.country} flagUrl={club.country_flag} />}
                 {editingClub === club.club ? (

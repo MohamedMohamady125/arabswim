@@ -1147,9 +1147,10 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         # Club history derived from results
         all_results = Result.objects.filter(swimmer=swimmer, swimmer__is_relay_team=False)
 
-        # Named clubs
+        # Named clubs ("LP" = libre passage, i.e. no club — not a club name)
         club_history = (
             all_results.exclude(team='').exclude(team__isnull=True)
+            .exclude(team__iexact='LP')
             .values('team')
             .annotate(
                 first_meet_date=Min('championship__date'),

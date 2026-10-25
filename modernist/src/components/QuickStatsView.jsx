@@ -203,7 +203,7 @@ function ProgressRow({ icon: Icon, label, value }) {
 
 /* ── Shared Quick Statistics body (home page + meet Overview tab) ───── */
 
-export default function QuickStatsView({ data, busiest, pad = false }) {
+export default function QuickStatsView({ data, busiest, pad = false, medalsLink = '/medals' }) {
   const { counts, participation, medals, performance: perf, records, progress } = data
   const mf = participation.male + participation.female || 1
   const malePct = Math.round((participation.male / mf) * 1000) / 10
@@ -339,7 +339,7 @@ export default function QuickStatsView({ data, busiest, pad = false }) {
             )}
           />
           <div style={{ marginTop: 10, textAlign: 'center' }}>
-            <Link to="/medals" style={{ fontSize: 12, fontWeight: 700 }}>View full medal table →</Link>
+            <Link to={medalsLink} style={{ fontSize: 12, fontWeight: 700 }}>View full medal table →</Link>
           </div>
         </Panel>
         <Panel title={`Medals by ${medalEntity} (Top 10)`}>
@@ -401,7 +401,7 @@ export default function QuickStatsView({ data, busiest, pad = false }) {
           {perf.top5.length > 0 && (
             <Panel title="Top 5 Performances (by Points)">
               <HBars color="var(--color-accent-500)" rows={perf.top5.map((t) => ({
-                label: `${t.name} (${t.code}) – ${t.event}`, value: t.points,
+                label: `${t.name}${t.code ? ` (${t.code})` : ''} – ${t.event}`, value: t.points,
               }))} />
             </Panel>
           )}

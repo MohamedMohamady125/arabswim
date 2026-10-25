@@ -5,6 +5,8 @@
    podium chip are injected by the caller so countries, clubs and
    swimmers can all share the exact same frame. */
 
+import { Fragment, useState } from 'react'
+
 const GOLD = 'var(--asw-gold)'
 const SILVER = 'var(--asw-silver)'
 const BRONZE = 'var(--asw-bronze)'
@@ -40,7 +42,9 @@ export default function MedalStandings({
   maxRows,                // optionally cap the table (e.g. compact embeds)
   rowKey,                 // (row, i) => key
   onRowClick,             // optional (row) => void — row becomes clickable
+  expandContent,          // optional (row) => node — rows toggle a dropdown panel
 }) {
+  const [openKey, setOpenKey] = useState(null)
   if (!rows || rows.length === 0) return null
   const shown = maxRows ? rows.slice(0, maxRows) : rows
   const top3 = rows.slice(0, 3)
@@ -91,22 +95,43 @@ export default function MedalStandings({
             </tr>
           </thead>
           <tbody>
-            {shown.map((r, i) => (
-              <tr
-                key={key(r, i)}
-                onClick={onRowClick ? () => onRowClick(r) : undefined}
-                style={{ background: '#fff', cursor: onRowClick ? 'pointer' : 'default' }}
-              >
-                <td className="asw-num" style={{ ...td, fontWeight: 600 }}>{i + 1}</td>
-                <td style={td}>{renderEntity(r, i)}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 600, background: 'var(--wa-gold-band)' }}>{r.gold}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 600, background: 'var(--wa-silver-band)' }}>{r.silver}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 600, background: 'var(--wa-bronze-band)' }}>{r.bronze}</td>
-                <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800 }}>
-                  {r.total ?? (r.gold || 0) + (r.silver || 0) + (r.bronze || 0)}
-                </td>
-              </tr>
-            ))}
+            {shown.map((r, i) => {
+              const k = key(r, i)
+              const isOpen = !!expandContent && openKey === k
+              return (
+                <Fragment key={k}>
+                  <tr
+                    onClick={expandContent
+                      ? () => setOpenKey(isOpen ? null : k)
+                      : onRowClick ? () => onRowClick(r) : undefined}
+                    style={{ background: '#fff', cursor: (onRowClick || expandContent) ? 'pointer' : 'default' }}
+                  >
+                    <td className="asw-num" style={{ ...td, fontWeight: 600 }}>{i + 1}</td>
+                    <td style={td}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        {renderEntity(r, i)}
+                        {expandContent && (
+                          <span style={{ fontSize: 9, color: 'var(--color-neutral-500)' }}>{isOpen ? '▴' : '▾'}</span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 600, background: 'var(--wa-gold-band)' }}>{r.gold}</td>
+                    <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 600, background: 'var(--wa-silver-band)' }}>{r.silver}</td>
+                    <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 600, background: 'var(--wa-bronze-band)' }}>{r.bronze}</td>
+                    <td className="asw-num" style={{ ...td, textAlign: 'center', fontWeight: 800 }}>
+                      {r.total ?? (r.gold || 0) + (r.silver || 0) + (r.bronze || 0)}
+                    </td>
+                  </tr>
+                  {isOpen && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 0, borderTop: '1px solid var(--wa-line)', background: 'var(--color-bg)' }}>
+                        {expandContent(r)}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
           </tbody>
         </table>
       </div>

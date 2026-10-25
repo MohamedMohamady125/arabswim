@@ -1260,6 +1260,62 @@ function FeaturedCards({ picks, sideBySide = false }) {
 
 /* ─────────────────────────── Medals tab ─────────────────────────── */
 
+/* Dropdown body for a club/country tally row: every athlete's medals
+   from that entity at this meet. */
+function EntityAthleteMedals({ medals, isNational }) {
+  const navigate = useNavigate()
+  const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
+  const groups = []
+  const byId = new Map()
+  medals.forEach((m) => {
+    const sid = m.swimmer_detail?.id || m.swimmer
+    let g = byId.get(sid)
+    if (!g) { g = { swimmer: m.swimmer_detail, medals: [] }; byId.set(sid, g); groups.push(g) }
+    g.medals.push(m)
+  })
+  groups.forEach((g) => {
+    g.gold = g.medals.filter((m) => m.medal_type === 'GOLD').length
+    g.silver = g.medals.filter((m) => m.medal_type === 'SILVER').length
+    g.bronze = g.medals.filter((m) => m.medal_type === 'BRONZE').length
+    g.medals.sort((a, b) => (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3))
+  })
+  groups.sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze)
+  if (groups.length === 0) {
+    return <div className="micro" style={{ padding: '14px 18px' }}>No athlete medals recorded</div>
+  }
+  return (
+    <div style={{ padding: '4px 18px 12px' }}>
+      {groups.map((g, gi) => {
+        const sw = g.swimmer
+        const isRelay = sw?.is_relay_team
+        return (
+          <div key={sw?.id || gi} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 0', borderTop: gi > 0 ? '1px solid var(--wa-line)' : 'none', flexWrap: 'wrap' }}>
+            <span
+              onClick={isRelay ? undefined : () => navigate(`/swimmers/${sw?.id}`)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, cursor: isRelay ? 'default' : 'pointer', minWidth: 170 }}
+            >
+              <Flag code={sw?.nationality_detail?.code} name={sw?.nationality_detail?.name} />
+              {sw?.name}
+              {isRelay && <span className="tag tag-neutral" style={{ flex: 'none' }}>{isNational ? 'Club' : 'Country'}</span>}
+            </span>
+            <span className="micro asw-num" style={{ paddingTop: 3, flex: 'none' }}>
+              {g.gold}G · {g.silver}S · {g.bronze}B
+            </span>
+            <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1, minWidth: 200 }}>
+              {g.medals.map((m, mi) => (
+                <span key={m.id || mi} className="tag tag-neutral" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <MedalIcon type={m.medal_type} size={12} />
+                  {m.event_detail?.name}{m.scope === 'OPEN' ? ' · Open' : ''}
+                </span>
+              ))}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function MedalsTab({ meetId, isNational }) {
   const navigate = useNavigate()
   const [loaded, setLoaded] = useState(false)
@@ -1269,7 +1325,6 @@ function MedalsTab({ meetId, isNational }) {
   const [swimmer, setSwimmer] = useState([])
   const [scope, setScope] = useState(isNational ? 'club' : 'country')
   const [swimmerGender, setSwimmerGender] = useState('ALL')
-  const [medalFilter, setMedalFilter] = useState('ALL')
 
   useEffect(() => {
     let alive = true
@@ -1330,13 +1385,6 @@ function MedalsTab({ meetId, isNational }) {
     }
   }
 
-  const filteredMedals = medalFilter === 'ALL'
-    ? [...medals].sort((a, b) => {
-        const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
-        return (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3)
-      })
-    : medals.filter((m) => m.medal_type === medalFilter)
-
   return (
     <div>
       {/* medal counts strip */}
@@ -1379,10 +1427,19 @@ function MedalsTab({ meetId, isNational }) {
                 <MedalStandings
                   rows={tallyRows}
                   entityHeader={activeScope === 'country' ? 'Country' : activeScope === 'club' ? 'Club' : 'Swimmer'}
-                  rowKey={(row, i) => row.swimmer__id || row.team_id || row.swimmer__nationality__code || i}
+                  rowKey={(row, i) => row.swimmer__id || row.team_key || row.swimmer__nationality__code || i}
                   onRowClick={activeScope === 'swimmer'
                     ? (row) => row.swimmer__id && navigate(`/swimmers/${row.swimmer__id}`)
                     : undefined}
+                  // Club/nation rows drop down every athlete's medals for that entity
+                  expandContent={activeScope === 'swimmer' ? undefined : (row) => (
+                    <EntityAthleteMedals
+                      isNational={isNational}
+                      medals={activeScope === 'club'
+                        ? medals.filter((m) => m.team_key && m.team_key === row.team_key)
+                        : medals.filter((m) => m.nationality_code && m.nationality_code === row.swimmer__nationality__code)}
+                    />
+                  )}
                   renderPodiumChip={(row) => (
                     activeScope === 'club' ? (
                       <>
@@ -1428,59 +1485,6 @@ function MedalsTab({ meetId, isNational }) {
           </>
         )}
 
-        {/* all medals */}
-        {medals.length > 0 && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-              <div className="kicker">All medals ({filteredMedals.length})</div>
-              <Seg
-                options={[
-                  { value: 'ALL', label: `All (${medals.length})` },
-                  { value: 'GOLD', label: `Gold (${goldCount})` },
-                  { value: 'SILVER', label: `Silver (${silverCount})` },
-                  { value: 'BRONZE', label: `Bronze (${bronzeCount})` },
-                ]}
-                value={medalFilter}
-                onChange={setMedalFilter}
-              />
-            </div>
-            <div className="table-scroll">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 40 }}>Medal</th>
-                    <th>Swimmer</th>
-                    <th>Event</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMedals.map((m, i) => (
-                    // Relay-team placeholders are clubs, not swimmers — no profile to open
-                    <tr
-                      key={m.id || i}
-                      style={{ cursor: m.swimmer_detail?.is_relay_team ? 'default' : 'pointer' }}
-                      onClick={m.swimmer_detail?.is_relay_team ? undefined : () => navigate(`/swimmers/${m.swimmer_detail?.id || m.swimmer}`)}
-                    >
-                      <td><MedalIcon type={m.medal_type} size={18} style={{ display: 'block' }} /></td>
-                      <td style={{ paddingLeft: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                          <Flag code={m.swimmer_detail?.nationality_detail?.code} name={m.swimmer_detail?.nationality_detail?.name} />
-                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 'min(48vw, 340px)' }}>
-                            {m.swimmer_detail?.name}
-                          </span>
-                          {m.swimmer_detail?.is_relay_team && (
-                            <span className="tag tag-neutral" style={{ flex: 'none' }}>{isNational ? 'Club' : 'Country'}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td>{m.event_detail?.name}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -461,14 +461,16 @@ export default function Calendar() {
   const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
   const loadMeets = () => {
-    const params = { page_size: 500, ordering: 'date', include_calendar_only: 1 }
+    // calendar_linked: the calendar is independent — it only ever shows meets
+    // manually added here, never the imported-meets pool.
+    const params = { page_size: 500, ordering: 'date', include_calendar_only: 1, calendar_linked: 1 }
     if (filterYear) params.year = filterYear
     if (filterCountry) params.country = filterCountry
     getChampionships(params).then((res) => setMeets(list(res.data))).catch(() => {})
   }
 
   const loadFeatured = () => {
-    getChampionships({ upcoming: 1, ordering: 'date', page_size: 1, include_calendar_only: 1 })
+    getChampionships({ upcoming: 1, ordering: 'date', page_size: 1, include_calendar_only: 1, calendar_linked: 1 })
       .then((res) => setFeaturedMeet(list(res.data)[0] || null))
       .catch(() => {})
   }

@@ -305,6 +305,13 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         # stay out of the meets list unless explicitly requested.
         if not self.request.query_params.get('include_calendar_only'):
             qs = qs.filter(is_calendar_only=False)
+        # The Calendar page is independent of the imported-meets pool: with
+        # ?calendar_linked=1 only meets manually added on the calendar (those
+        # with a linked calendar event) are returned. Subquery, not a reverse
+        # join, so the Count annotations below aren't inflated.
+        if self.request.query_params.get('calendar_linked'):
+            from calendar_app.models import CalendarEvent
+            qs = qs.filter(pk__in=CalendarEvent.objects.exclude(championship=None).values('championship'))
         # Unpublished meets stay off the championships list and calendar;
         # admin tools (manual entry search) pass include_unpublished=1.
         if not self.request.query_params.get('include_unpublished'):

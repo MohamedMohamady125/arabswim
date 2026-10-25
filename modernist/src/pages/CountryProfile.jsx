@@ -848,7 +848,7 @@ function timeToCs(t) {
 }
 
 function RecordsTab({ records, country }) {
-  const [gender, setGender] = useState('')
+  const [gender, setGender] = useState('M')
   const [pool, setPool] = useState('')
   const [ageCat, setAgeCat] = useState('Open')
 
@@ -870,7 +870,7 @@ function RecordsTab({ records, country }) {
 
   const filtered = currentRecords.filter((r) => {
     if (r.record_type !== activeType) return false
-    if (gender && r.sex !== gender) return false
+    if (r.sex !== gender) return false
     if (pool && r.pool !== pool) return false
     const wanted = ageCat === 'Open' ? 'OPEN' : ageCat
     if (r.age_category && r.age_category !== wanted) return false
@@ -909,13 +909,12 @@ function RecordsTab({ records, country }) {
         </div>
       )}
 
-      {/* Filters: Gender + Pool dropdowns */}
-      <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 20 }}>
-        <select style={selStyle} value={gender} onChange={(e) => setGender(e.target.value)}>
-          <option value="">♂ Gender</option>
-          <option value="M">♂ Men's</option>
-          <option value="F">♀ Women's</option>
-        </select>
+      {/* Filters: Men's/Women's pills (Men's default) + Pool dropdown */}
+      <div style={{ display: 'flex', gap: 16, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" onClick={() => setGender('M')} style={gender === 'M' ? pillActive : pillInactive}>♂ Men's</button>
+          <button type="button" onClick={() => setGender('F')} style={gender === 'F' ? pillActive : pillInactive}>♀ Women's</button>
+        </div>
         <select style={selStyle} value={pool} onChange={(e) => setPool(e.target.value)}>
           <option value="">🏊 Pool</option>
           <option value="LCM">LCM (50m)</option>

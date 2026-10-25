@@ -398,3 +398,36 @@ class QuickStatsMedalScopeTests(TestCase):
         self.assertEqual(medals['scope'], 'country')
         self.assertEqual(medals['table'][0]['code'], 'TUN')
         self.assertEqual(medals['table'][0]['total'], 2)
+
+
+class CalendarLinkedFilterTests(TestCase):
+    """?calendar_linked=1 returns only meets manually added on the Calendar
+    page (those with a linked CalendarEvent) — the calendar is independent
+    of the imported-meets pool."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from calendar_app.models import CalendarEvent
+        cls.tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        cls.imported = Championship.objects.create(
+            name='Imported Nationals', date='2026-05-01', pool='LCM',
+            country=cls.tun, is_published=True)
+        cls.manual = Championship.objects.create(
+            name='Calendar Meet', date='2026-08-01', pool='LCM',
+            country=cls.tun, is_published=True, is_calendar_only=True)
+        CalendarEvent.objects.create(title='Calendar Meet', date='2026-08-01',
+                                     event_type='MEET', championship=cls.manual)
+        # Two events on one meet must not duplicate or inflate its row
+        CalendarEvent.objects.create(title='Calendar Meet day 2', date='2026-08-02',
+                                     event_type='MEET', championship=cls.manual)
+
+    def test_calendar_linked_returns_only_manual_meets(self):
+        res = self.client.get('/api/v1/championships/',
+                              {'calendar_linked': 1, 'include_calendar_only': 1, 'page_size': 100})
+        names = [c['name'] for c in res.data['results']]
+        self.assertEqual(names, ['Calendar Meet'])
+
+    def test_without_flag_imported_meets_still_listed(self):
+        res = self.client.get('/api/v1/championships/', {'page_size': 100})
+        names = [c['name'] for c in res.data['results']]
+        self.assertIn('Imported Nationals', names)

@@ -285,3 +285,34 @@ class BFinalNoMedalsTests(TestCase):
         self.assertIn(('A1', 'GOLD', 'OPEN'), medals)
         self.assertIn(('A2', 'SILVER', 'OPEN'), medals)
         self.assertFalse(any(name == 'B1' for name, _, _ in medals))
+
+
+class MedalEntityFieldsTests(TestCase):
+    """Medal list rows expose team/team_key/nationality_code so the meet
+    Medals tab can group athletes' medals under each club/country tally row;
+    club-summary rows expose the same canonical team_key."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        cls.free = Event.objects.create(name='50 M Freestyle', distance=50,
+                                        stroke='Freestyle', is_relay=False)
+        cls.champ = Championship.objects.create(name='Nationaux', date='2026-07-01',
+                                                pool='LCM', country=cls.tun, is_published=True)
+        s1 = Swimmer.objects.create(name='A One', sex='M', nationality=cls.tun)
+        # Squad number in the raw team name must canonicalize away
+        r1 = Result.objects.create(swimmer=s1, championship=cls.champ, event=cls.free,
+                                   round_type='Finals', time_centiseconds=2500,
+                                   team='MC ALGER 2', nationality=cls.tun)
+        Medal.objects.create(swimmer=s1, championship=cls.champ, event=cls.free,
+                             medal_type='GOLD', result=r1, nationality=cls.tun)
+
+    def test_medal_rows_carry_entity_keys(self):
+        res = self.client.get('/api/v1/medals/', {'championship': self.champ.id})
+        row = (res.data.get('results') or res.data)[0]
+        self.assertEqual(row['team'], 'MC ALGER')
+        self.assertEqual(row['nationality_code'], 'TUN')
+        clubs = self.client.get('/api/v1/medals/club-summary/',
+                                {'championship': self.champ.id}).data
+        self.assertEqual(clubs[0]['result__team'], 'MC ALGER')
+        self.assertEqual(row['team_key'], clubs[0]['team_key'])

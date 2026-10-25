@@ -15,7 +15,7 @@ class MedalPagination(PageNumberPagination):
 
 class MedalViewSet(viewsets.ModelViewSet):
     queryset = Medal.objects.select_related(
-        'swimmer', 'nationality', 'championship', 'championship__country', 'event'
+        'swimmer', 'nationality', 'championship', 'championship__country', 'event', 'result'
     )
     pagination_class = MedalPagination
 
@@ -180,6 +180,7 @@ class MedalViewSet(viewsets.ModelViewSet):
             else:
                 merged[key] = {
                     'result__team': name,
+                    'team_key': key,
                     'gold': row['gold'], 'silver': row['silver'],
                     'bronze': row['bronze'], 'total': row['total'],
                 }

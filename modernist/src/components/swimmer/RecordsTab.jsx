@@ -278,32 +278,33 @@ export default function RecordsTab({ swimmerId }) {
       {/* Record cards — key on scope so the fade-up replays on filter change */}
       <div key={activeType} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
         {activeRows.map((r, i) => (
+          /* Arab Swim navy cards (same gradient as the profile stat cards) */
           <div key={i} className="card asw-fade-up"
-            style={{ borderTop: `3px solid ${activeColor}`, animationDelay: `${Math.min(i * 45, 450)}ms` }}>
+            style={{ borderTop: `3px solid ${activeColor}`, background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))', color: '#fff', animationDelay: `${Math.min(i * 45, 450)}ms` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span className="card-kicker" style={{ color: activeColor }}>{activeType} RECORD</span>
-              <span className={`tag ${r.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{r.pool}</span>
+              <span className="card-kicker" style={{ color: 'rgba(255,255,255,0.75)' }}>{activeType} RECORD</span>
+              <span className="tag" style={{ background: 'rgba(255,255,255,0.14)', color: r.pool === 'SCM' ? 'var(--asw-gold)' : '#fff' }}>{r.pool}</span>
             </div>
-            <div className="card-title" style={{ textTransform: 'uppercase', fontSize: 15 }}>
+            <div className="card-title" style={{ textTransform: 'uppercase', fontSize: 15, color: '#fff' }}>
               {r.event_detail?.name || r.event_name}
             </div>
-            <div className="asw-time" style={{ fontSize: 26, fontWeight: 800, color: activeColor, lineHeight: 1 }}>
+            <div className="asw-time" style={{ fontSize: 26, fontWeight: 800, color: '#fff', lineHeight: 1 }}>
               {r.formatted_time}
             </div>
-            <div className="card-meta asw-num">
+            <div className="card-meta asw-num" style={{ color: 'rgba(255,255,255,0.8)' }}>
               <span>{fmtDate(r.result_date)}</span>
               {r.fina_points != null && (
-                <span style={{ fontWeight: 700, color: '#b98a1e' }}>{r.fina_points} FINA</span>
+                <span style={{ fontWeight: 700, color: 'var(--asw-gold)' }}>{r.fina_points} FINA</span>
               )}
             </div>
             {(r.meet_name || r.location) && (
-              <div style={{ fontSize: 12, color: 'var(--color-accent)', fontWeight: 600 }}>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>
                 {r.meet_name}{r.meet_name && r.location ? ' — ' : ''}{r.location}
               </div>
             )}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
               {compressCategories(r.categories).map((cat) => (
-                <span key={cat} className="tag tag-neutral">{cat}</span>
+                <span key={cat} className="tag" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.85)' }}>{cat}</span>
               ))}
             </div>
           </div>

@@ -949,8 +949,8 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         </div>
       </div>
 
-      {/* Career summary — debut, span, volume, specialty, podium rate:
-          career-narrative facts no other section/tab shows */}
+      {/* Career summary — only substantive career facts, each tile gated so
+          sparse profiles never show degenerate trivia (1 season, 0.3 km, …) */}
       {career_summary && (() => {
         const cs = career_summary
         // parse date-only strings as local time ('2023-09-08' via new Date()
@@ -960,11 +960,27 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         const tLabel = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-500)' }
         const tVal = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }
         const tSub = { fontSize: 11, color: 'var(--color-neutral-600)' }
+        // Biggest title: most prestigious classification with golds (else the
+        // best medal colour at the highest level), from the medal hierarchy
+        const PRESTIGE = ['OLYMPIC', 'WORLD', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ARAB', 'GCC', 'NATIONAL']
+        const rankOf = (n) => { const i = PRESTIGE.indexOf((n || '').toUpperCase()); return i === -1 ? PRESTIGE.length : i }
+        const flat = (medals_hierarchy || []).flatMap((cat) => cat.classifications || [])
+          .sort((a, b) => rankOf(a.name) - rankOf(b.name))
+        const golds = flat.find((c) => c.gold > 0)
+        const any = flat.find((c) => c.silver > 0 || c.bronze > 0)
+        const biggest = golds
+          ? { name: golds.name, medal: 'Gold', count: golds.gold, color: 'var(--asw-gold)' }
+          : any
+            ? (any.silver > 0
+              ? { name: any.name, medal: 'Silver', count: any.silver, color: 'var(--asw-silver)' }
+              : { name: any.name, medal: 'Bronze', count: any.bronze, color: 'var(--asw-bronze)' })
+            : null
+        const multiYear = cs.years_active >= 2
         return (
           <div>
             <div className="sect-head">
               <h4>Career Summary</h4>
-              <span className="micro">{fmtDate(cs.first_date)} → {fmtDate(cs.last_date)}</span>
+              {multiYear && <span className="micro">{fmtDate(cs.first_date)} → {fmtDate(cs.last_date)}</span>}
             </div>
             <div className="rule-t" style={{ paddingTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: 10 }}>
               <div style={tile}>
@@ -972,40 +988,34 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                 <span style={tVal}>{fmtDate(cs.debut?.date)}</span>
                 <span style={tSub}>{cs.debut?.meet}{cs.debut?.age != null ? ` · age ${cs.debut.age}` : ''}</span>
               </div>
-              <div style={tile}>
-                <span style={tLabel}>Career Span</span>
-                <span className="asw-num" style={tVal}>{cs.years_active} yr{cs.years_active !== 1 ? 's' : ''}</span>
-                <span style={tSub}>{cs.seasons} season{cs.seasons !== 1 ? 's' : ''} active</span>
-              </div>
-              <div style={tile}>
-                <span style={tLabel}>Racing Volume</span>
-                <span className="asw-num" style={tVal}>{cs.total_swims} swims</span>
-                <span style={tSub}>{cs.distance_km} km raced in competition</span>
-              </div>
-              {cs.specialty_stroke && (
+              {multiYear && (
+                <div style={tile}>
+                  <span style={tLabel}>Career Span</span>
+                  <span className="asw-num" style={tVal}>{cs.years_active} yrs</span>
+                  <span style={tSub}>{cs.seasons} season{cs.seasons !== 1 ? 's' : ''} active · {cs.total_swims} swims</span>
+                </div>
+              )}
+              {biggest && (
+                <div style={tile}>
+                  <span style={tLabel}>Biggest Title</span>
+                  <span style={tVal}>{biggest.name} <span style={{ color: biggest.color }}>{biggest.medal}</span></span>
+                  <span style={tSub}>won ×{biggest.count} · highest-level medal</span>
+                </div>
+              )}
+              {cs.specialty_stroke && cs.total_swims >= 10 && (
                 <div style={tile}>
                   <span style={tLabel}>Specialty</span>
                   <span style={tVal}>{cs.specialty_range} · {cs.specialty_stroke}</span>
                   <span style={tSub}>most-raced distance &amp; stroke</span>
                 </div>
               )}
-              <div style={tile}>
-                <span style={tLabel}>Podium Rate</span>
-                <span className="asw-num" style={tVal}>{cs.podium_pct}%</span>
-                <span style={tSub}>of swims end on the podium</span>
-              </div>
-              {cs.top_meet && (
+              {cs.top_meet && cs.top_meet.medals >= 3 && (
                 <div style={tile}>
                   <span style={tLabel}>Most Decorated Meet</span>
                   <span style={{ ...tVal, fontSize: 14 }}>{cs.top_meet.name}</span>
-                  <span style={tSub}>{cs.top_meet.medals} medal{cs.top_meet.medals !== 1 ? 's' : ''} at one meet</span>
+                  <span style={tSub}>{cs.top_meet.medals} medals at one meet</span>
                 </div>
               )}
-              <div style={tile}>
-                <span style={tLabel}>Represented</span>
-                <span className="asw-num" style={tVal}>{cs.clubs_count} club{cs.clubs_count !== 1 ? 's' : ''}</span>
-                <span style={tSub}>competed in {cs.host_countries} countr{cs.host_countries !== 1 ? 'ies' : 'y'}</span>
-              </div>
               {cs.improvement && (
                 <div style={tile}>
                   <span style={tLabel}>Career Drop · {cs.improvement.event_name}</span>

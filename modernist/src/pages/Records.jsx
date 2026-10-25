@@ -222,37 +222,42 @@ export default function Records() {
     <div className="records-page">
       <PageHead title="Records" />
 
-      {/* filter bar */}
-      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <select className="select" style={{ width: 150 }} value={scope} onChange={(e) => setScope(e.target.value)}>
-          {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        {needsCountry && (
-          <select className="select" style={{ width: 190 }} value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value="">Select country…</option>
-            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      {/* filter bar: two fixed lines — segments on top, dropdowns below
+          (same idiom as Rankings; keeps the phone bar from clipping) */}
+      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Seg
+            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }, { value: 'OW', label: 'Open Water' }]}
+            value={pool}
+            onChange={setPool}
+          />
+          <Seg
+            options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+            value={gender}
+            onChange={setGender}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select className="select" style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 180 }} value={scope} onChange={(e) => setScope(e.target.value)}>
+            {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-        )}
-        <Seg
-          options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }, { value: 'OW', label: 'Open Water' }]}
-          value={pool}
-          onChange={setPool}
-        />
-        <Seg
-          options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
-          value={gender}
-          onChange={setGender}
-        />
-        {isComputed && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>
-              Age category
-            </span>
-            <select className="select" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-              {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
+          {needsCountry && (
+            <select className="select" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+              <option value="">Select country…</option>
+              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-          </div>
-        )}
+          )}
+          {isComputed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <span className="hide-mobile" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
+                Age category
+              </span>
+              <select className="select" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+                {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
 
       {needsCountry && !country ? (

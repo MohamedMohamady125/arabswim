@@ -160,16 +160,16 @@ export default function Championships() {
           value={pool}
           onChange={(v) => setPool(pool === v ? 'ALL' : v)}
         />
-        <select className="select" style={{ width: 120 }} value={year} onChange={(e) => setYear(e.target.value)}>
+        <select className="select" style={{ width: 120, minWidth: 92 }} value={year} onChange={(e) => setYear(e.target.value)}>
           <option value="">All years</option>
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
-        <select className="select" style={{ width: 190 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+        <select className="select" style={{ width: 190, minWidth: 126 }} value={country} onChange={(e) => setCountry(e.target.value)}>
           <option value="">All countries</option>
           {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         {classifications.length > 0 && (
-          <select className="select" style={{ width: 190 }} value={classification} onChange={(e) => setClassification(e.target.value)}>
+          <select className="select" style={{ width: 190, minWidth: 150 }} value={classification} onChange={(e) => setClassification(e.target.value)}>
             <option value="">All classifications</option>
             {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>

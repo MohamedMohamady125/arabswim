@@ -158,7 +158,7 @@ export default function Medals() {
 
   const countrySelect = (
     <select
-      className="select" style={{ flex: '1 1 150px', width: 'auto' }} value={country}
+      className="select" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 280 }} value={country}
       onChange={(e) => { setCountry(e.target.value); setChampionship('') }}
     >
       <option value="">All countries</option>
@@ -175,26 +175,31 @@ export default function Medals() {
     <div>
       <PageHead title="Medal Tables" />
 
-      {/* Classification tab bar */}
-      <div className="rule-b tabbar">
+      {/* Classification tab bar — same 32px gutter as the rest of the page;
+          phone keeps the edge-to-edge swipe strip via the mobile .tabbar rule */}
+      <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>
         <Seg tabs options={classificationTabs} value={category} onChange={(v) => { setCategory(v); setCountry('') }} />
       </div>
 
-      {/* filter bar */}
-      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        {/* National → country picker comes straight after the category */}
-        {isNational && countrySelect}
-        <Seg options={scopeOptions} value={scope} onChange={setScope} />
-        <Seg
-          options={[{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
-          value={gender}
-          onChange={setGender}
-        />
-        {!isNational && countrySelect}
-        <select className="select" style={{ flex: '2 1 220px', width: 'auto' }} value={championship} onChange={(e) => setChampionship(e.target.value)}>
-          <option value="">All {category} championships</option>
-          {visibleMeets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
+      {/* filter bar: two fixed lines — segments on top, dropdowns below
+          (same idiom as Rankings; keeps the phone bar from clipping) */}
+      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Seg options={scopeOptions} value={scope} onChange={setScope} />
+          <Seg
+            options={[{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+            value={gender}
+            onChange={setGender}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* National → country picker leads, same slot either way */}
+          {countrySelect}
+          <select className="select" style={{ flex: '2 1 220px', width: 'auto', minWidth: 0, maxWidth: 440 }} value={championship} onChange={(e) => setChampionship(e.target.value)}>
+            <option value="">All {category} championships</option>
+            {visibleMeets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        </div>
       </div>
 
       {loading ? (

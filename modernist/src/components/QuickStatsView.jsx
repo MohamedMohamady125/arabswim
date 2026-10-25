@@ -203,7 +203,7 @@ function ProgressRow({ icon: Icon, label, value }) {
 
 /* ── Shared Quick Statistics body (home page + meet Overview tab) ───── */
 
-export default function QuickStatsView({ data, busiest }) {
+export default function QuickStatsView({ data, busiest, pad = false }) {
   const { counts, participation, medals, performance: perf, records, progress } = data
   const mf = participation.male + participation.female || 1
   const malePct = Math.round((participation.male / mf) * 1000) / 10
@@ -238,7 +238,9 @@ export default function QuickStatsView({ data, busiest }) {
   ]
 
   return (
-    <div className="container" style={{ display: 'grid', gap: 16, padding: '18px 16px 40px' }}>
+    // `pad` aligns the meet Overview tab with the other tabs' .pad gutters
+    // (24/32 desktop, 18/16 phone); the home page keeps its own 16px gutters
+    <div className={pad ? 'container pad' : 'container'} style={{ display: 'grid', gap: 16, ...(pad ? { paddingBottom: 40 } : { padding: '18px 16px 40px' }) }}>
       {/* ── Stat chips ── */}
       <div className="qs-cards-8">
         {chips.map(([Icon, value, label], i) => <StatChip key={label} icon={Icon} value={value} label={label} color={i % 2 ? GOLD : NAVY} />)}

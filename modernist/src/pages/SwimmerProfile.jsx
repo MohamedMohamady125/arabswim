@@ -387,7 +387,7 @@ function EventList({ events, selected, onSelect, detail }) {
               className="hair-b"
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                padding: '9px 6px', border: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left',
+                padding: '9px 10px', border: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left',
                 background: isSel ? 'var(--color-accent-100)' : 'transparent',
               }}>
               <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 13, color: isSel ? 'var(--color-accent)' : 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -902,7 +902,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
   const cardStyle = {
     background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))',
     color: '#fff', padding: '14px 12px', textAlign: 'center',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
   }
   const cardNum = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color: '#fff', lineHeight: 1.1 }
   const cardLabel = { fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }
@@ -1465,7 +1465,7 @@ export default function SwimmerProfile() {
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} flagUrl={swimmer.nationality_detail?.flag_url} />
             <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {swimmer.date_of_birth
               ? chip('Born', isAdmin ? formatDate(swimmer.date_of_birth) : swimmer.date_of_birth.split('-')[0])
               : swimmer.birth_year ? chip('Born', swimmer.birth_year) : null}

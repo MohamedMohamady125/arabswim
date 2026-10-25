@@ -1086,6 +1086,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             </select>
           </div>
         )}
+        {/* stretch wrapper: the segmented control matches the 38px outer
+            height of the adjacent selects instead of floating shorter */}
+        <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 38 }}>
         <Seg
           options={(() => {
             const has = (g) => events.some((e) => e.gender === g && (discipline === 'OW') === (e.stroke === 'Open Water'))
@@ -1113,6 +1116,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             else { setGenderFilter(v); setAgeView('men') }
           }}
         />
+        </div>
         {isAdmin && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <button
@@ -1664,7 +1668,7 @@ function OverviewTab({ meetId, stats }) {
   return (
     <div>
       {/* home-page style quick statistics + busiest swimmers widget */}
-      <QuickStatsView data={qs} busiest={stats?.busiest_swimmers} />
+      <QuickStatsView data={qs} busiest={stats?.busiest_swimmers} pad />
 
       {/* participating nations — countries ranked by swimmers entered
           (only meaningful for international meets with ≥2 nations) */}

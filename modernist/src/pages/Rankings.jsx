@@ -147,14 +147,14 @@ export default function Rankings() {
             onChange={setPool}
           />
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {scope === 'national' && (
-            <select className="select" style={{ flex: '2 1 140px', width: 'auto', minWidth: 0 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+            <select className="select" style={{ flex: '2 1 140px', width: 'auto', minWidth: 0, maxWidth: 260 }} value={country} onChange={(e) => setCountry(e.target.value)}>
               <option value="">Select country…</option>
               {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
-          <select className="select" style={{ flex: '3 1 170px', width: 'auto', minWidth: 0 }} value={event} onChange={(e) => setEvent(e.target.value)}>
+          <select className="select" style={{ flex: '3 1 170px', width: 'auto', minWidth: 0, maxWidth: 420 }} value={event} onChange={(e) => setEvent(e.target.value)}>
             <option value="">Select event…</option>
             {eventGroups.map((g) => (
               <optgroup key={g.stroke} label={g.stroke}>
@@ -162,11 +162,11 @@ export default function Rankings() {
               </optgroup>
             ))}
           </select>
-          <select className="select" style={{ flex: '1 1 90px', width: 'auto', minWidth: 0 }} value={year} onChange={(e) => setYear(e.target.value)}>
+          <select className="select" style={{ flex: '1 1 90px', width: 'auto', minWidth: 0, maxWidth: 160 }} value={year} onChange={(e) => setYear(e.target.value)}>
             <option value="">All-time</option>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-          <select className="select" style={{ flex: '1 1 84px', width: 'auto', minWidth: 0 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+          <select className="select" style={{ flex: '1 1 84px', width: 'auto', minWidth: 0, maxWidth: 150 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
             {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
           </select>
         </div>

@@ -183,7 +183,13 @@ export default function Compare() {
       <PageHead kicker="People" title="Compare Swimmers" sub={`Pick up to ${MAX} swimmers to compare personal bests side by side.`} />
 
       {/* picker */}
-      <div className="rule-b" style={{ padding: '18px 32px' }}>
+      {/* phone: match the 16px page gutter so the picker aligns with the face-off card below */}
+      <style>{`
+        @media (max-width: 900px) {
+          .cmp-picker { padding: 14px 16px !important; }
+        }
+      `}</style>
+      <div className="rule-b cmp-picker" style={{ padding: '18px 32px' }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div ref={boxRef} style={{ position: 'relative', flex: '1 1 260px', maxWidth: 380 }}>
           <input

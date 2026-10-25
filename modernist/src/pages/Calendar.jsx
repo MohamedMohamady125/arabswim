@@ -266,7 +266,7 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
 function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
   const showAny = c.live_results_url || c.meet_guide_pdf || c.registration_url || c.website || c.policy_pdf
   return (
-    <div style={{ padding: '14px 32px 20px', background: 'var(--color-surface)' }}>
+    <div className="cal-row" style={{ padding: '14px 32px 20px', background: 'var(--color-surface)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: showAny || isAdmin ? 16 : 0 }}>
         <div>
           <div className="micro" style={{ marginBottom: 3 }}>Country</div>
@@ -350,7 +350,7 @@ function BirthdaysTab() {
   return (
     <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 380px' }}>
       <div className="rule-r">
-        <div className="rule-b" style={{ padding: '24px 32px' }}>
+        <div className="rule-b pad">
           <SectHead title="Birthdays Today" />
           {today.length === 0 ? (
             <div className="text-muted" style={{ fontSize: 13 }}>No birthdays today.</div>
@@ -364,7 +364,7 @@ function BirthdaysTab() {
             </div>
           )}
         </div>
-        <div style={{ padding: '24px 32px' }}>
+        <div className="pad">
           <SectHead title="Next 7 Days" />
           {upcoming.length === 0 ? (
             <div className="text-muted" style={{ fontSize: 13 }}>No birthdays in the coming week.</div>
@@ -380,7 +380,7 @@ function BirthdaysTab() {
           )}
         </div>
       </div>
-      <div style={{ padding: '24px 28px' }}>
+      <div className="pad">
         <SectHead title={`All Birthdays · ${MONTHS_FULL[now.getMonth()]}`} />
         {thisMonth.length === 0 ? (
           <div className="text-muted" style={{ fontSize: 13 }}>No birthdays this month.</div>
@@ -639,6 +639,13 @@ export default function Calendar() {
 
   return (
     <div>
+      {/* phone: let the filter row wrap instead of clipping, and match the 16px page gutter on list rows */}
+      <style>{`
+        @media (max-width: 900px) {
+          .records-filters.cal-filters { flex-wrap: wrap !important; overflow-x: visible; }
+          .cal-row { padding-left: 16px !important; padding-right: 16px !important; }
+        }
+      `}</style>
       <PageHead title="Calendar">
         {isAdmin && (
           <div style={{ marginTop: 14 }}>
@@ -688,7 +695,7 @@ export default function Calendar() {
       )}
 
       {/* tabs + filters */}
-      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="rule-b records-filters cal-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Seg
           options={[
             { value: 'meets', label: 'Meets' },
@@ -735,6 +742,7 @@ export default function Calendar() {
                   return (
                     <div key={`m-${c.id}`} className={i < g.items.length - 1 || isExpanded ? 'hair-b' : ''}>
                       <div
+                        className="cal-row"
                         onClick={() => setExpandedMeetId(isExpanded ? null : c.id)}
                         style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px', cursor: 'pointer', background: isExpanded ? 'var(--color-surface)' : undefined }}
                       >
@@ -765,7 +773,7 @@ export default function Calendar() {
                 return (
                   <div
                     key={`ev-${ev.id}`}
-                    className={i < g.items.length - 1 ? 'hair-b' : ''}
+                    className={`cal-row ${i < g.items.length - 1 ? 'hair-b' : ''}`}
                     style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px', cursor: ev.championship ? 'pointer' : 'default' }}
                     onClick={() => { if (ev.championship) navigate(`/meets/${ev.championship}`) }}
                   >
@@ -808,7 +816,7 @@ export default function Calendar() {
           {otherEvents.map(({ ev, d }, i) => (
             <div
               key={ev.id}
-              className={i < otherEvents.length - 1 ? 'hair-b' : ''}
+              className={`cal-row ${i < otherEvents.length - 1 ? 'hair-b' : ''}`}
               style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 32px' }}
             >
               <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>

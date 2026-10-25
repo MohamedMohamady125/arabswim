@@ -378,7 +378,7 @@ export default function Swimmers() {
                   })()}</div>
                   <div className="swimmer-card-meta">
                     <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
-                    <span>{s.nationality_detail?.name || '—'}</span>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.nationality_detail?.name || '—'}</span>
                     {(s.birth_year || s.sex) && (
                       <span className="tag tag-accent-2" style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 6px', whiteSpace: 'nowrap' }}>
                         {s.birth_year || ''}{s.birth_year && s.sex ? ' · ' : ''}{s.sex === 'M' ? '♂' : s.sex === 'F' ? '♀' : ''}

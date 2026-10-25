@@ -457,7 +457,7 @@ export default function Teams() {
       <PageHead title="Clubs" />
 
       {/* filter bar: one line, scrolls sideways on phone */}
-      <div className="rule-b records-filters" style={{ padding: '12px 32px', display: 'flex', gap: 10, flexWrap: 'nowrap', alignItems: 'center' }}>
+      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, flexWrap: 'nowrap', alignItems: 'center' }}>
         <input
           className="input"
           style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}

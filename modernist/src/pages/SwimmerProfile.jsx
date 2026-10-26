@@ -502,7 +502,12 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                             {h.hc_type || 'HC'}
                           </span>
                         )}
-                        {!h.is_relay && isBest && <span className="tag tag-dark">PB</span>}
+                        {!h.is_relay && isBest && (
+                          <span className="tag tag-dark" title="Personal best"
+                            style={{ justifyContent: 'center', lineHeight: 1, minWidth: 30, padding: '4px 8px', fontSize: 10, fontWeight: 800, letterSpacing: '0.08em' }}>
+                            PB
+                          </span>
+                        )}
                         <span className="asw-time" style={{ color: isBest ? 'var(--asw-fast)' : 'inherit' }}>
                           {h.is_relay && h.split_time ? h.split_time : (h.time_centiseconds > 0 ? h.time : '—')}
                         </span>

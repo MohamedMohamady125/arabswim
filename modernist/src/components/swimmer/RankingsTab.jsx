@@ -160,14 +160,21 @@ export default function RankingsTab({ swimmerId, swimmer }) {
             <div key={pool}>
               {/* Header bar */}
               <div style={{ background: '#1c4e86', color: '#fff', padding: '8px 12px', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center' }}>
-                {genderLabel} {eventName(selected)} · {pool}
+                {scopeLabel[scope]} · {genderLabel} {eventName(selected)} · {pool}
               </div>
 
               {/* Hero rank + time */}
               <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '20px 0' }}>
-                <div style={{ background: 'var(--color-accent)', color: '#fff', padding: '10px 16px', display: 'flex', alignItems: 'flex-start' }}>
-                  <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 52, lineHeight: 1 }}>{sel.rank}</span>
-                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, marginLeft: 2, marginTop: 4 }}>{ordSuffix(sel.rank)}</span>
+                <div style={{ background: 'var(--color-accent)', color: '#fff', padding: '10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <span style={{ display: 'flex', alignItems: 'flex-start' }}>
+                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 52, lineHeight: 1 }}>{sel.rank}</span>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, marginLeft: 2, marginTop: 4 }}>{ordSuffix(sel.rank)}</span>
+                  </span>
+                  {sel.total ? (
+                    <span className="asw-num" style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
+                      of {sel.total} {scopeLabel[scope]}
+                    </span>
+                  ) : null}
                 </div>
                 <span className="asw-time" style={{ fontSize: 52, lineHeight: 1, color: 'var(--color-accent)' }}>{selected.best_time}</span>
               </div>

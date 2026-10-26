@@ -67,6 +67,44 @@ function MedalDonut({ counts, label, size = 160 }) {
   )
 }
 
+/* Uniform distribution widget: every classification (and the career total)
+   gets the exact same card — donut chart + G/S/B legend with counts & %. */
+function DistCard({ title, counts, shareOfCareer }) {
+  const tot = counts.total
+  return (
+    <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+        <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: '0.05em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+        {shareOfCareer != null && (
+          <span className="asw-num" title={`${shareOfCareer}% of all career medals`}
+            style={{ marginLeft: 'auto', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, flex: 'none' }}>
+            {shareOfCareer}%
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <MedalDonut counts={counts} size={120} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {[
+            { label: 'Gold', n: counts.gold, color: GOLD },
+            { label: 'Silver', n: counts.silver, color: SILVER },
+            { label: 'Bronze', n: counts.bronze, color: BRONZE },
+          ].map((row) => (
+            <div key={row.label} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+              <span style={{ width: 10, height: 10, background: row.color, flex: 'none' }} />
+              <span style={{ fontSize: 12, fontWeight: 700, flex: 1 }}>{row.label}</span>
+              <span className="asw-num" style={{ fontWeight: 800, fontSize: 13 }}>{row.n}</span>
+              <span className="asw-num micro" style={{ width: 38, textAlign: 'right' }}>
+                {tot > 0 ? Math.round((row.n / tot) * 100) : 0}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function MedalsTab({ stats }) {
   if (!stats) return null
   const { medals, medals_hierarchy, total_races, intl_medals } = stats
@@ -93,7 +131,6 @@ export default function MedalsTab({ stats }) {
     ...Object.keys(compCounts).filter((c) => !CLASSIFICATIONS.includes(c) && hasMedals(c)),
   ]
 
-  const pctOf = (n) => (medals.total > 0 ? ((n / medals.total) * 100).toFixed(1) : '0.0')
   const races = total_races || 0
   const medalRacePct = races > 0 ? Math.min(100, Math.round((medals.total / races) * 100)) : 0
   const goldRacePct = races > 0 ? Math.min(100, Math.round((medals.gold / races) * 100)) : 0
@@ -127,76 +164,27 @@ export default function MedalsTab({ stats }) {
         ))}
       </div>
 
-      {/* Career-wide distribution donut + legend */}
+      {/* Medal distribution — one identical widget per classification,
+          career total first, prestige order, single aligned grid */}
       <div>
-        <div className="sect-head"><h4>Medal Distribution</h4></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 16, flex: 'none' }}>
-            <MedalDonut counts={medals} label="All medals" size={intlDonut ? 140 : 160} />
-            {intlDonut && (
-              <MedalDonut counts={intl_medals} label="International" size={140} />
-            )}
-          </div>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            {[
-              { label: 'Gold', n: medals.gold, color: GOLD },
-              { label: 'Silver', n: medals.silver, color: SILVER },
-              { label: 'Bronze', n: medals.bronze, color: BRONZE },
-            ].map((row) => (
-              <div key={row.label} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-                <span style={{ width: 14, height: 14, background: row.color, flex: 'none' }} />
-                <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{row.label}</span>
-                <span className="asw-num" style={{ fontWeight: 700, fontSize: 15 }}>{row.n}</span>
-                <span className="asw-num" style={{ width: 60, textAlign: 'right', color: row.color, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17 }}>
-                  {pctOf(row.n)}%
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="sect-head">
+          <h4>Medal Distribution</h4>
+          <span className="micro">by classification · {medals.total} career medal{medals.total !== 1 ? 's' : ''}</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
+          {/* career card only when there are 2+ widgets, else it duplicates the single classification */}
+          {(chartComps.length + (intlDonut ? 1 : 0)) >= 2 && <DistCard title="All Medals" counts={medals} />}
+          {intlDonut && <DistCard title="International" counts={intl_medals} />}
+          {chartComps.map((cls) => {
+            const cc = compCounts[cls]
+            const tot = cc.gold + cc.silver + cc.bronze
+            return (
+              <DistCard key={cls} title={cls} counts={{ ...cc, total: tot }}
+                shareOfCareer={Math.round((tot / medals.total) * 100)} />
+            )
+          })}
         </div>
       </div>
-
-      {/* One distribution widget per classification — all on screen, prestige order */}
-      {chartComps.length > 0 && (
-        <div>
-          <div className="sect-head">
-            <h4>Distribution by Classification</h4>
-            <span className="micro">share of {medals.total} career medal{medals.total !== 1 ? 's' : ''}</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
-            {chartComps.map((cls) => {
-              const cc = compCounts[cls]
-              const tot = cc.gold + cc.silver + cc.bronze
-              const share = Math.round((tot / medals.total) * 100)
-              return (
-                <div key={cls} className="card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <MedalDonut counts={{ ...cc, total: tot }} size={92} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6, minWidth: 0 }}>
-                      <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: '0.05em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cls}</span>
-                      <span className="asw-num" title={`${share}% of all career medals`} style={{ marginLeft: 'auto', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, flex: 'none' }}>{share}%</span>
-                    </div>
-                    {[
-                      { label: 'Gold', n: cc.gold, color: GOLD },
-                      { label: 'Silver', n: cc.silver, color: SILVER },
-                      { label: 'Bronze', n: cc.bronze, color: BRONZE },
-                    ].map((row) => (
-                      <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-                        <span style={{ width: 10, height: 10, background: row.color, flex: 'none' }} />
-                        <span style={{ fontSize: 12, fontWeight: 700, flex: 1 }}>{row.label}</span>
-                        <span className="asw-num" style={{ fontWeight: 800, fontSize: 13 }}>{row.n}</span>
-                        <span className="asw-num micro" style={{ width: 38, textAlign: 'right' }}>
-                          {tot > 0 ? Math.round((row.n / tot) * 100) : 0}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Percentage rings — career-wide */}
       <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>

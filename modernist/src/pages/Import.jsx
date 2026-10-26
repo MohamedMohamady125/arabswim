@@ -1513,9 +1513,10 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
         })
       })
     })
+    // Keep source-file order (first appearance across the uploaded meets) —
+    // the review list must mirror the imported material, not swim counts.
     return Object.values(byName)
       .map((a) => ({ ...a, clubs: Array.from(a.clubs) }))
-      .sort((a, b) => b.swims.length - a.swims.length)
   }, [meets])
 
   const kept = athletes.filter((a) => a.decision && a.decision.action !== 'skip').length

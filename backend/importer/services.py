@@ -901,8 +901,11 @@ def match_swimmers_preview(preview_data, include_all=False):
 
         matched.append(match_info)
 
-    # Sort: new swimmers first, then by confidence ascending (least confident matches need review)
-    matched.sort(key=lambda x: (x['match_type'] != 'new', x['confidence']))
+    # Sort: new swimmers first, then by confidence ascending (least confident
+    # matches need review). "Upload Special" (include_all) keeps the source
+    # file's order instead, so the pick-list mirrors the imported material.
+    if not include_all:
+        matched.sort(key=lambda x: (x['match_type'] != 'new', x['confidence']))
 
     return matched
 

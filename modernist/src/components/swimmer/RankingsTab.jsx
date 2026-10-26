@@ -29,7 +29,9 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
   if (!sel) return null
   const seasons = hist?.seasons || []
   const scoped = seasons.filter((s) => s[scope])
-  const maxRank = Math.max(1, ...scoped.map((s) => s[scope].rank))
+  // scale bars against the swimmer's best season, not rank 1 — otherwise a
+  // 400th-of-2000 career renders as slivers at the bottom of an empty chart
+  const bestRank = Math.min(Infinity, ...scoped.map((s) => s[scope].rank))
 
   return (
     <div>
@@ -57,7 +59,7 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
             <div style={{ flex: '1 1 300px', display: 'flex', alignItems: 'flex-end', gap: 14, height: 150, borderBottom: '2px solid var(--color-divider)' }}>
               {scoped.map((s) => {
                 const rk = s[scope]
-                const h = Math.max(14, 140 * (1 - (rk.rank - 1) / Math.max(1, maxRank)))
+                const h = Math.max(22, 140 * (bestRank / Math.max(1, rk.rank)))
                 return (
                   <div key={s.year} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                     <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>

@@ -9,7 +9,11 @@ import { useAuth } from '../context/AuthContext'
 const PAGE_SIZE = 25
 
 function acronym(name) {
-  const words = String(name || '').split(/\s+/).filter(Boolean)
+  // drop the "Al-" article and treat hyphens as spaces, otherwise every
+  // Saudi club badge reads "AL-" ("Al-Hilal" → HIL, "Al-Ahli Club" → AC)
+  const cleaned = String(name || '').replace(/^al-?\s*/i, '').replace(/-/g, ' ')
+  const words = cleaned.split(/\s+/).filter(Boolean)
+  if (words.length === 0) return String(name || '').slice(0, 3).toUpperCase()
   if (words.length === 1) return words[0].slice(0, 3).toUpperCase()
   return words.slice(0, 3).map((w) => w[0]).join('').toUpperCase()
 }

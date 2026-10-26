@@ -953,8 +953,13 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             pb_keys = set()
             for pb in pb_candidates:
                 key = (pb['swimmer_id'], pb['event_id'])
-                if all_time_lookup.get(key) == pb['meet_best']:
-                    pb_keys.add(key)
+                if all_time_lookup.get(key) != pb['meet_best']:
+                    continue
+                # equalling a previous time is not a NEW personal best
+                prev = prev_lookup.get(key)
+                if prev is not None and prev <= pb['meet_best']:
+                    continue
+                pb_keys.add(key)
             if pb_keys:
                 # Fetch the actual result rows for PBs
                 pb_results = athletes.filter(
@@ -1283,6 +1288,10 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             for p in pb_candidates:
                 key = (p['swimmer_id'], p['event_id'])
                 if all_time.get(key) == p['meet_best']:
+                    # equalling a previous time is not a NEW personal best
+                    pv0 = prev.get(key)
+                    if pv0 is not None and pv0 <= p['meet_best']:
+                        continue
                     pb_total += 1
                     pb_by_swimmer[p['swimmer_id']] = pb_by_swimmer.get(p['swimmer_id'], 0) + 1
                     pv = prev.get(key)

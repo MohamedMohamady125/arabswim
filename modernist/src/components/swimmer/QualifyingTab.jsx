@@ -72,8 +72,10 @@ export default function QualifyingTab({ swimmerId }) {
       ) : (
         <div className="rule-t">
           {filteredGaps.map((g) => {
-            const maxGap = Math.max(...filteredGaps.map((x) => Math.abs(x.gap_cs)))
-            const barPct = maxGap > 0 ? (Math.abs(g.gap_cs) / maxGap) * 100 : 0
+            // compare events by RELATIVE gap — raw centiseconds make a 27% gap
+            // in the 400 look smaller than a 29% gap in a 50
+            const maxGap = Math.max(...filteredGaps.map((x) => Math.abs(parseFloat(x.gap_pct) || 0)))
+            const barPct = maxGap > 0 ? (Math.abs(parseFloat(g.gap_pct) || 0) / maxGap) * 100 : 0
             return (
               <div key={g.event_id} className="hair-b" style={{ padding: '14px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -85,7 +87,7 @@ export default function QualifyingTab({ swimmerId }) {
                   {g.qualified ? (
                     <span className="tag tag-dark">QUALIFIED</span>
                   ) : (
-                    <span className="asw-num" style={{ fontWeight: 700, fontSize: 13 }}>+{g.gap_pct}%</span>
+                    <span className="asw-num" style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', flex: 'none' }}>+{g.gap_pct}%</span>
                   )}
                 </div>
                 <GapBar done={g.qualified} barPct={barPct} leftLabel="Your best" rightLabel="Qualifying" />

@@ -1096,14 +1096,14 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
               const opts = []
               if (has('M')) opts.push({ value: 'M_MEN', label: "Men's" })
               if (has('F')) opts.push({ value: 'F_WOMEN', label: "Women's" })
-              if (has('M')) opts.push({ value: 'M_BOYS', label: "Boy's" })
-              if (has('F')) opts.push({ value: 'F_GIRLS', label: "Girl's" })
+              if (has('M')) opts.push({ value: 'M_BOYS', label: 'Boys' })
+              if (has('F')) opts.push({ value: 'F_GIRLS', label: 'Girls' })
               if (has('X')) opts.push({ value: 'X', label: 'Mixed' })
               return opts
             }
             return [
-              { value: 'M', label: showingBoys ? "Boy's" : "Men's" },
-              { value: 'F', label: showingBoys ? "Girl's" : "Women's" },
+              { value: 'M', label: showingBoys ? 'Boys' : "Men's" },
+              { value: 'F', label: showingBoys ? 'Girls' : "Women's" },
               { value: 'X', label: 'Mixed' },
             ].filter((o) => has(o.value))
           })()}
@@ -1223,9 +1223,10 @@ function FeaturedCards({ picks, sideBySide = false }) {
   return (
     <div style={{
       display: 'grid',
-      // sideBySide keeps the two cards on one row even on phone widths
-      gridTemplateColumns: sideBySide ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(250px, 1fr))',
-      gap: 12, marginBottom: 22, maxWidth: 680,
+      // sideBySide keeps the two cards on one row even on phone widths;
+      // a single pick never reserves an empty second column and caps narrower
+      gridTemplateColumns: sideBySide && shown.length > 1 ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(250px, 1fr))',
+      gap: 12, marginBottom: 22, maxWidth: shown.length === 1 ? 420 : 680,
     }}>
       {shown.map((p) => (
         <div
@@ -1608,14 +1609,16 @@ function TopPerformancesTab({ stats }) {
     <div className="pad">
       <FeaturedCards picks={[perfPick('M', "Men's"), perfPick('F', "Women's")]} sideBySide />
       {(
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 28, maxWidth: 760 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
             <div className="kicker">Top performances — highest FINA points</div>
-            <Seg
-              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
-              value={perfGender}
-              onChange={setPerfGender}
-            />
+            {all.some((t) => t.gender === 'M') && all.some((t) => t.gender === 'F') && (
+              <Seg
+                options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+                value={perfGender}
+                onChange={setPerfGender}
+              />
+            )}
           </div>
           {performers.length === 0 ? (
             <Empty label="No performances for this filter" />
@@ -1743,12 +1746,12 @@ function OverviewTab({ meetId, stats }) {
             {(ap.youngest?.length > 0 || ap.oldest?.length > 0) && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
                 {[['Youngest', ap.youngest], ['Oldest', ap.oldest]].map(([lbl, arr]) => (
-                  <div key={lbl}>
+                  <div key={lbl} style={{ minWidth: 0 }}>
                     <div className="micro" style={{ marginBottom: 6 }}>{lbl}</div>
                     {(arr || []).map((s) => (
-                      <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', fontSize: 12 }}>
+                      <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', fontSize: 12, minWidth: 0 }}>
                         <Flag code={s.nationality_code} name={s.nationality} placeholder />
-                        <span style={{ flex: 1, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>{s.swimmer_name}</span>
+                        <span style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>{s.swimmer_name}</span>
                         <span className="asw-num" style={{ fontWeight: 800, color: 'var(--color-accent)' }}>{s.age}</span>
                       </div>
                     ))}
@@ -1845,7 +1848,7 @@ function MostImprovedTab({ meetId }) {
       nationality_code: s.nationality_code,
       photo: s.photo,
       sub: s.event_name,
-      value: `−${s.improvement}s`,
+      value: `−${s.improvement}${String(s.improvement).includes(':') ? '' : 's'}`,
       valueLabel: `${s.previous_best} → ${s.current_time}`,
     }
   }
@@ -1858,28 +1861,31 @@ function MostImprovedTab({ meetId }) {
           <div className="kicker">Most improved swimmers</div>
           <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, fontSize: 12, marginTop: 4 }}>Biggest time drops vs previous personal best</div>
         </div>
-        <Seg
-          options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
-          value={gender}
-          onChange={setGender}
-        />
+        {improvements.some((s) => s.gender === 'M') && improvements.some((s) => s.gender === 'F') && (
+          <Seg
+            options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+            value={gender}
+            onChange={setGender}
+          />
+        )}
       </div>
       {filtered.length === 0 ? (
         <Empty label="No improvements recorded for this meet" />
       ) : (() => {
         const maxDrop = Math.max(0.01, ...filtered.map((s) => parseFloat(s.improvement) || 0))
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
             {filtered.map((s, i) => {
               const drop = parseFloat(s.improvement) || 0
-              const top3 = i < 3
+              // podium colours per rank: gold, silver, bronze — navy after
+              const rankColor = i === 0 ? 'var(--asw-gold)' : i === 1 ? 'var(--asw-silver)' : i === 2 ? 'var(--asw-bronze)' : 'var(--color-accent-800)'
               return (
                 <div
                   key={i}
                   onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}
                   style={{
                     border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
-                    borderTop: `3px solid ${top3 ? 'var(--asw-gold)' : 'var(--color-accent-800)'}`,
+                    borderTop: `3px solid ${rankColor}`,
                     padding: '10px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 7,
                   }}
                 >
@@ -1888,7 +1894,7 @@ function MostImprovedTab({ meetId }) {
                     <span className="asw-num" style={{
                       width: 22, height: 22, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11,
-                      background: top3 ? 'var(--asw-gold)' : 'var(--color-accent-800)', color: '#fff',
+                      background: rankColor, color: '#fff',
                     }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1898,7 +1904,7 @@ function MostImprovedTab({ meetId }) {
                       <div className="micro" style={{ marginTop: 1, fontSize: 10 }}>{s.event_name}</div>
                     </div>
                     <span className="asw-num" style={{ flex: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1, color: 'var(--asw-fast)' }}>
-                      −{s.improvement}s
+                      −{s.improvement}{String(s.improvement).includes(':') ? '' : 's'}
                     </span>
                   </div>
 
@@ -2078,7 +2084,7 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
   return (
     <div className="pad-lg">
       {hasItems ? (
-        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', marginBottom: isAdmin ? 26 : 0 }}>
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', maxWidth: days.length === 1 ? 680 : undefined, marginBottom: isAdmin ? 26 : 0 }}>
           {days.map((d) => (
             <div key={d.day} style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)' }}>
               <div style={{ padding: '10px 14px', borderBottom: '2px solid var(--asw-gold)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -2387,7 +2393,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
             <option value="">Auto-detect</option>
             <option value="men_women">Men / Women</option>
             <option value="boys_girls">Boys / Girls</option>
-            <option value="all">Men's / Women's / Boy's / Girl's</option>
+            <option value="all">Men's / Women's / Boys / Girls</option>
           </select>
         </div>
         {form.gender_display === 'all' && (() => {
@@ -3229,6 +3235,10 @@ export default function MeetDetail() {
   const tab = ['results', 'program', 'medals', 'records', 'pbs', 'top', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'statistics'
   const setTab = (t) => setSearchParams({ tab: t }, { replace: true })
 
+  // ?tab=compare opens the edition-compare modal (it is a modal, not a tab),
+  // so deep links land on the comparison instead of silently showing Overview
+  useEffect(() => { if (rawTab === 'compare') setComparing(true) }, [rawTab])
+
   const refreshStats = () => {
     getChampionshipStats(id).then((res) => setStats(res.data)).catch(() => {})
   }
@@ -3355,7 +3365,7 @@ export default function MeetDetail() {
         </div>
       </div>
 
-      {comparing && <CompareMeetsModal meet={meet} onClose={() => setComparing(false)} />}
+      {comparing && <CompareMeetsModal meet={meet} onClose={() => { setComparing(false); if (rawTab === 'compare') setTab('statistics') }} />}
 
       {isAdmin && (meet.is_live || isWithinLiveWindow(meet)) && (
         <LivePanel meet={meet} onFinished={() => {

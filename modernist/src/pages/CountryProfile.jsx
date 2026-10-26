@@ -272,17 +272,19 @@ function RankingTab({ countryId }) {
       </div>
       {loading ? <Loading label="Loading ranking" /> : rows.length === 0 ? <Empty label="No results for this event" /> : (
         <>
-        <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 40 }}>#</th><th>Swimmer</th><th className="num">Age</th><th className="time">Time</th><th className="num">FINA</th><th>Championship</th><th>Location</th><th>Date</th></tr></thead><tbody>
+        {/* phone: 8 columns can't share 390px — drop FINA/Championship/Location
+            there (the essentials stay) instead of wrapping every cell to 3 lines */}
+        <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 40 }}>#</th><th>Swimmer</th><th className="num">Age</th><th className="time">Time</th><th className="num hide-mobile">FINA</th><th className="hide-mobile">Championship</th><th className="hide-mobile">Location</th><th>Date</th></tr></thead><tbody>
           {rows.map((r) => (
             <tr key={r.result_id}>
               <td><span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: '#0b2948', color: '#fff', fontWeight: 800, fontSize: 12 }}>{r.rank}</span></td>
               <td><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} /></td>
               <td className="num asw-num">{r.age_at_competition || '—'}</td>
               <td className="time asw-time" style={{ fontWeight: 800 }}>{r.time}</td>
-              <td className="num asw-num">{r.fina_points ?? '—'}</td>
-              <td className="text-muted">{r.championship_name}</td>
-              <td className="text-muted">{r.championship_country || (r.championship_location || '').split(',').pop().trim() || '—'}</td>
-              <td className="text-muted">{formatDate(r.date)}</td>
+              <td className="num asw-num hide-mobile">{r.fina_points ?? '—'}</td>
+              <td className="text-muted hide-mobile">{r.championship_name}</td>
+              <td className="text-muted hide-mobile">{r.championship_country || (r.championship_location || '').split(',').pop().trim() || '—'}</td>
+              <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
             </tr>
           ))}
         </tbody></table></div>
@@ -2132,7 +2134,6 @@ export default function CountryProfile() {
             <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
               {/* LEFT: Latest News */}
               <div>
-                <div style={{ textAlign: 'center', marginBottom: 2 }}><span style={{ fontSize: 22, color: '#123a7d' }}>🏊</span></div>
                 {secTitle('Latest News')}
                 <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
                   {newsItems.map((a, i) => {
@@ -2288,10 +2289,14 @@ export default function CountryProfile() {
             {/* National Record Holders — section only exists when there are records */}
             {topRecords.length > 0 && (<>
             {secTitle('National Record Holders')}
-            {/* Auto-scrolling ticker — track duplicated for a seamless loop, pauses on hover */}
+            {/* Auto-scrolling ticker — track duplicated for a seamless loop, pauses on hover.
+                1-3 records render as a static centred row (a loop just shows duplicates). */}
             <div className="asw-ticker" style={{ overflow: 'hidden', padding: '4px 0 10px' }}>
-              <div className="asw-ticker-track" style={{ display: 'flex', width: 'max-content', animationDuration: `${Math.max(topRecords.length * 5, 25)}s` }}>
-              {[...topRecords, ...topRecords].map((r, i) => (
+              <div className={topRecords.length >= 4 ? 'asw-ticker-track' : undefined}
+                style={topRecords.length >= 4
+                  ? { display: 'flex', width: 'max-content', animationDuration: `${Math.max(topRecords.length * 5, 25)}s` }
+                  : { display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {(topRecords.length >= 4 ? [...topRecords, ...topRecords] : topRecords).map((r, i) => (
                 <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
                   {/* Circular photo with navy ring */}
                   <div style={{ padding: '24px 0 8px' }}>

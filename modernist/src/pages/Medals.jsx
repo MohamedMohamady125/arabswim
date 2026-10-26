@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getChampionships, getClassifications } from '../api/championships'
 import { getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
@@ -48,6 +48,7 @@ const CATEGORY_COUNTRIES = {
 export default function Medals() {
   const [classifications, setClassifications] = useState([])
   const [category, setCategory] = useState('Arab')
+  const touched = useRef(false) // true once the user picks a category themselves
   const [meets, setMeets] = useState([])
   const [championship, setChampionship] = useState('')
   const [gender, setGender] = useState('')
@@ -94,7 +95,13 @@ export default function Medals() {
   useEffect(() => {
     if (!classificationId) { setMeets([]); return }
     getChampionships({ page_size: 300, classification: classificationId })
-      .then((res) => setMeets(list(res.data)))
+      .then((res) => {
+        const ms = list(res.data)
+        setMeets(ms)
+        // don't open the page on an empty default: when Arab has no meets
+        // yet, land on National (where the data lives) instead
+        if (ms.length === 0 && category === 'Arab' && !touched.current) setCategory('National')
+      })
       .catch(() => setMeets([]))
   }, [classificationId])
 
@@ -180,7 +187,7 @@ export default function Medals() {
       {/* Classification tab bar — same 32px gutter as the rest of the page;
           phone keeps the edge-to-edge swipe strip via the mobile .tabbar rule */}
       <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>
-        <Seg tabs options={classificationTabs} value={category} onChange={(v) => { setCategory(v); setCountry('') }} />
+        <Seg tabs options={classificationTabs} value={category} onChange={(v) => { touched.current = true; setCategory(v); setCountry('') }} />
       </div>
 
       {/* filter bar: two fixed lines — segments on top, dropdowns below

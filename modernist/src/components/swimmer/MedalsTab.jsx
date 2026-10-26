@@ -22,7 +22,8 @@ function PercentRing({ pct, color, title, desc }) {
             strokeDasharray={`${(pct / 100) * C} ${C}`} />
         </svg>
         <span className="asw-num" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800 }}>
-          <span style={{ fontSize: 30 }}>{pct}</span><span style={{ fontSize: 15 }}>%</span>
+          {/* decimal values ("86.2") are wider than the ring's hole — shrink them */}
+          <span style={{ fontSize: String(pct).length > 2 ? 22 : 30 }}>{pct}</span><span style={{ fontSize: String(pct).length > 2 ? 12 : 15 }}>%</span>
         </span>
       </div>
       <div className="micro" style={{ textAlign: 'center', maxWidth: 200 }}>{desc}</div>
@@ -171,7 +172,12 @@ export default function MedalsTab({ stats }) {
           <h4>Medal Distribution</h4>
           <span className="micro">by classification · {medals.total} career medal{medals.total !== 1 ? 's' : ''}</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
+        <div style={{
+          display: 'grid', gap: 14,
+          // a lone classification card keeps a sensible width instead of a third of the row
+          gridTemplateColumns: (chartComps.length + (intlDonut ? 1 : 0)) === 1
+            ? 'minmax(300px, 460px)' : 'repeat(auto-fill, minmax(300px, 1fr))',
+        }}>
           {/* career card only when there are 2+ widgets, else it duplicates the single classification */}
           {(chartComps.length + (intlDonut ? 1 : 0)) >= 2 && <DistCard title="All Medals" counts={medals} />}
           {intlDonut && <DistCard title="International" counts={intl_medals} />}

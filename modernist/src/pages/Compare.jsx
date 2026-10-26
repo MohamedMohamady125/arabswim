@@ -348,7 +348,8 @@ export default function Compare() {
                     <th key={sw.id} className="time">
                       <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                         <Flag code={sw.nationality_code} name={sw.nationality} />
-                        {sw.name}
+                        {/* the wrapper scrolls horizontally — never break a name mid-word */}
+                        <span style={{ whiteSpace: 'nowrap' }}>{sw.name}</span>
                       </Link>
                     </th>
                   ))}

@@ -260,24 +260,36 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
           </Panel>
         )}
         <Panel title="Male vs Female">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <div style={{ textAlign: 'right' }}>
-              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: NAVY }}>{malePct}%</div>
-              <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-600)' }}>{participation.male}</div>
+          {participation.male === 0 || participation.female === 0 ? (
+            /* single-sex meet: a 100%/0% donut says nothing — state it plainly */
+            <div style={{ textAlign: 'center', padding: '26px 0' }}>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40, lineHeight: 1, color: NAVY }}>{counts.swimmers}</div>
+              <div className="micro" style={{ marginTop: 8 }}>
+                {participation.female === 0 ? 'Men only' : 'Women only'} · all swimmers {participation.female === 0 ? 'male' : 'female'}
+              </div>
             </div>
-            <Donut segments={[
-              { label: 'Male', value: participation.male, color: NAVY },
-              { label: 'Female', value: participation.female, color: GOLD },
-            ]} centerTop={counts.swimmers} centerBot="SWIMMERS" />
-            <div>
-              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: GOLD }}>{femalePct}%</div>
-              <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-600)' }}>{participation.female}</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 10 }}>
-            <LegendDot color={NAVY}>Male ({participation.male})</LegendDot>
-            <LegendDot color={GOLD}>Female ({participation.female})</LegendDot>
-          </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: NAVY }}>{malePct}%</div>
+                  <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-600)' }}>{participation.male}</div>
+                </div>
+                <Donut segments={[
+                  { label: 'Male', value: participation.male, color: NAVY },
+                  { label: 'Female', value: participation.female, color: GOLD },
+                ]} centerTop={counts.swimmers} centerBot="SWIMMERS" />
+                <div>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: GOLD }}>{femalePct}%</div>
+                  <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-600)' }}>{participation.female}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 10 }}>
+                <LegendDot color={NAVY}>Male ({participation.male})</LegendDot>
+                <LegendDot color={GOLD}>Female ({participation.female})</LegendDot>
+              </div>
+            </>
+          )}
         </Panel>
         <Panel title="Entries by Age Group">
           {participation.age_groups
@@ -390,11 +402,17 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
           <PerfCard title="Most Personal Bests" value={perf.most_pbs.count} unit="PBs"
             name={perf.most_pbs.name} code={perf.most_pbs.code} />
         )}
-        {perf.biggest_improvement && (
-          <PerfCard title="Biggest Improvement" value={`−${perf.biggest_improvement.seconds}`} unit="Seconds"
-            name={perf.biggest_improvement.name} code={perf.biggest_improvement.code}
-            event={perf.biggest_improvement.event} />
-        )}
+        {perf.biggest_improvement && (() => {
+          // drops of a minute or more read as m:ss.cc, matching the Most Improved tab
+          const sec = parseFloat(perf.biggest_improvement.seconds)
+          const asTime = isFinite(sec) && sec >= 60
+          const shown = asTime ? `${Math.floor(sec / 60)}:${(sec % 60).toFixed(2).padStart(5, '0')}` : perf.biggest_improvement.seconds
+          return (
+            <PerfCard title="Biggest Improvement" value={`−${shown}`} unit={asTime ? 'min:sec' : 'Seconds'}
+              name={perf.biggest_improvement.name} code={perf.biggest_improvement.code}
+              event={perf.biggest_improvement.event} />
+          )
+        })()}
       </div>
       {(perf.top5.length > 0 || perf.points_by_day) && (
         <div className="qs-perf-2">

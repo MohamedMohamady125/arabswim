@@ -1519,7 +1519,6 @@ export default function TeamDetail() {
             <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
               {/* LEFT: Latest News + About/Info */}
               <div>
-                <div style={{ textAlign: 'center', marginBottom: 2 }}><span style={{ fontSize: 22, color: '#123a7d' }}>🏊</span></div>
                 {secTitle('Latest News')}
                 <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
                   {newsItems.map(newsCard)}
@@ -1624,9 +1623,14 @@ export default function TeamDetail() {
             {/* Record Holders ticker */}
             {topRecords.length > 0 && (<>
               {secTitle('Record Holders')}
+              {/* 1-3 records: a looping marquee just shows visible duplicates
+                  sliding — render them as a static centred row instead */}
               <div className="asw-ticker" style={{ overflow: 'hidden', padding: '4px 0 10px' }}>
-                <div className="asw-ticker-track" style={{ display: 'flex', width: 'max-content', animationDuration: `${Math.max(topRecords.length * 5, 25)}s` }}>
-                {[...topRecords, ...topRecords].map((r, i) => (
+                <div className={topRecords.length >= 4 ? 'asw-ticker-track' : undefined}
+                  style={topRecords.length >= 4
+                    ? { display: 'flex', width: 'max-content', animationDuration: `${Math.max(topRecords.length * 5, 25)}s` }
+                    : { display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
+                {(topRecords.length >= 4 ? [...topRecords, ...topRecords] : topRecords).map((r, i) => (
                   <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '24px 0 8px' }}>
                       <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '4px solid #0d2d5e', boxShadow: '0 3px 10px rgba(0,0,0,.12)', overflow: 'hidden' }}>

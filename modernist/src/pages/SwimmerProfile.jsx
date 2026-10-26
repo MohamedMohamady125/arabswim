@@ -1063,7 +1063,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                   <span style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: reached ? 1 : 0.5 }}>{t.label}</span>
                   {isCurrent && <span className="tag" style={{ background: 'var(--asw-gold)', color: '#fff', border: 0 }}>CAREER BEST</span>}
                   {isSeason && <span className="tag tag-accent">THIS SEASON</span>}
-                  {count > 0 && <span className="asw-num micro" style={{ opacity: isCurrent ? 0.8 : 0.6 }}>{count} PB{count !== 1 ? 's' : ''}</span>}
+                  {count > 0 && <span className="asw-num micro" style={{ opacity: isCurrent ? 1 : 0.6, color: isCurrent ? 'rgba(255,255,255,0.9)' : undefined }}>{count} PB{count !== 1 ? 's' : ''}</span>}
                 </div>
               )
             })}

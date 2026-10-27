@@ -743,6 +743,14 @@ def _build_preview(parsed_meet):
                     }
                 elif result_data['date_of_birth'] and not all_swimmers[key].get('date_of_birth'):
                     all_swimmers[key]['date_of_birth'] = result_data['date_of_birth']
+                # First row the swimmer appears on in the SOURCE FILE (global
+                # across a multi-meet Excel) — lets the special pick-list
+                # mirror the file's order after the per-meet split.
+                so = getattr(r, 'source_order', None)
+                if so is not None:
+                    cur = all_swimmers[key].get('source_order')
+                    if cur is None or so < cur:
+                        all_swimmers[key]['source_order'] = so
                 all_swimmers[key]['results_count'] += 1
 
         if event_data['results']:
@@ -885,6 +893,7 @@ def match_swimmers_preview(preview_data, include_all=False):
             'gender': s.get('gender', ''),
             'club': s.get('club', ''),
             'results_count': s.get('results_count', 0),
+            'source_order': s.get('source_order'),
             'match_type': match_type,
             'confidence': confidence,
             'matched_swimmer': None,
@@ -902,9 +911,12 @@ def match_swimmers_preview(preview_data, include_all=False):
         matched.append(match_info)
 
     # Sort: new swimmers first, then by confidence ascending (least confident
-    # matches need review). "Upload Special" (include_all) keeps the source
-    # file's order instead, so the pick-list mirrors the imported material.
-    if not include_all:
+    # matches need review). "Upload Special" (include_all) mirrors the source
+    # file instead: by first row each swimmer appears on when the parser
+    # recorded it, falling back to parse (first-appearance) order.
+    if include_all:
+        matched.sort(key=lambda x: x['source_order'] if x.get('source_order') is not None else float('inf'))
+    else:
         matched.sort(key=lambda x: (x['match_type'] != 'new', x['confidence']))
 
     return matched

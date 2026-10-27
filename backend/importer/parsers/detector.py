@@ -1106,10 +1106,17 @@ def _parse_excel(file_path, filename=''):
     # ---- Classify every sheet by its columns ----
     individual_dfs = []
     relay_dfs = []
+    source_row = 0  # global row position across the whole workbook
     for sheet_name, sheet_df in all_sheets.items():
         if sheet_df.empty:
             continue
         sheet_df = _fix_header(sheet_df)
+        # Tag every row with its position in the source file, so the special
+        # review pick-list can mirror the file's order even after a multi-meet
+        # split. Inserted at column 0 so the positional "Split…end" slice in
+        # _parse_individual_sheet never picks it up.
+        sheet_df.insert(0, '__source_row', range(source_row, source_row + len(sheet_df)))
+        source_row += len(sheet_df)
         scols = {str(c).lower().strip(): c for c in sheet_df.columns}
         has_name = _find_column(scols, NAME_CANDIDATES)
         has_team_time = _find_column(scols, ['team time'])
@@ -1670,6 +1677,8 @@ def _parse_individual_sheet(df, meet, events_dict):
             age_group=category,
             status=status,
         )
+        if '__source_row' in df.columns:
+            result.source_order = int(row['__source_row'])
 
         # Optional cells, each read tolerantly
         if age_col:

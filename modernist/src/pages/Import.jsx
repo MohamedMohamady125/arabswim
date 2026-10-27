@@ -1483,10 +1483,14 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
             match_type: mt.match_type,
             confidence: mt.confidence,
             decision: meet.decisions?.[key] || null,
+            source_order: mt.source_order ?? null,
             swims: [],
           }
         }
         const a = byName[key]
+        if (mt.source_order != null && (a.source_order == null || mt.source_order < a.source_order)) {
+          a.source_order = mt.source_order
+        }
         if (!a.date_of_birth && mt.date_of_birth) a.date_of_birth = mt.date_of_birth
         if (!a.birth_year && mt.birth_year) a.birth_year = mt.birth_year
         if (mt.club) a.clubs.add(mt.club)
@@ -1513,10 +1517,13 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
         })
       })
     })
-    // Keep source-file order (first appearance across the uploaded meets) —
-    // the review list must mirror the imported material, not swim counts.
+    // Mirror the SOURCE FILE's order: sort by the global row index the parser
+    // recorded (min across meets — a multi-meet Excel splits athletes across
+    // many per-meet lists). Stable sort keeps first-appearance order for old
+    // parses that carry no source_order.
     return Object.values(byName)
       .map((a) => ({ ...a, clubs: Array.from(a.clubs) }))
+      .sort((x, y) => (x.source_order ?? Infinity) - (y.source_order ?? Infinity))
   }, [meets])
 
   const kept = athletes.filter((a) => a.decision && a.decision.action !== 'skip').length

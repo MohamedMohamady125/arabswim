@@ -953,6 +953,11 @@ def _excel_round(raw):
         return 'Finals'
     if 'prelim' in rl or 'heat' in rl or 'serie' in rl or 'série' in rl or 'qual' in rl:
         return 'Prelims'
+    # Hy-Tek raw dumps abbreviate the round to a single letter
+    if rl == 'f':
+        return 'Finals'
+    if rl == 'p':
+        return 'Prelims'
     return _safe_str(raw)
 
 
@@ -1140,7 +1145,7 @@ def _parse_excel(file_path, filename=''):
     # A meet is identified by name + city + date-cluster, so the same
     # championship name held in different cities (or months apart in the same
     # city) is kept as separate meets instead of being merged into one.
-    MEET_NAME_CANDIDATES = ['championships name', 'championship', 'meet name', 'meet', 'competition']
+    MEET_NAME_CANDIDATES = ['championships name', 'championship', 'meet name', 'meet_name', 'meet', 'competition']
     meets_info, meet_resolver = _collect_excel_meets(
         individual_dfs + relay_dfs, MEET_NAME_CANDIDATES)
     if len(meets_info) > 1:
@@ -1158,7 +1163,7 @@ def _parse_excel(file_path, filename=''):
     # ---- Map columns ----
     name_col = _find_column(cols, ['swimmer name', 'name', 'nom', 'swimmer', 'nageur', 'athlete'])
     time_col = _find_column(cols, ['time', 'temps', 'tps', 'finals time', 'result'])
-    event_col = _find_column(cols, ['event', 'epreuve', 'race', 'épreuve'])
+    event_col = _find_column(cols, ['event_header', 'event', 'epreuve', 'race', 'épreuve'])
     age_col = _find_column(cols, ['age', 'âge'])
     year_col = _find_column(cols, ['yob', 'year of birth', 'year', 'an', 'lic'])
     dob_col = _find_column(cols, ['date of birth', 'dob', 'birth', 'naissance', 'date de naissance'])
@@ -1168,7 +1173,7 @@ def _parse_excel(file_path, filename=''):
     rank_col = _find_column(cols, ['rank', 'place', 'rg', 'rang', 'pos'])
     points_col = _find_column(cols, ['points', 'pts', 'fina', 'len'])
     round_col = _find_column(cols, ['round', 'tour', 'phase'])
-    category_col = _find_column(cols, ['category', 'catégorie', 'cat', 'age group'])
+    category_col = _find_column(cols, ['category', 'catégorie', 'cat', 'age group', 'age_group'])
     medal_col = _find_column(cols, ['medal', 'médaille'])
     pool_col = _find_column(cols, ['pool', 'bassin', 'course'])
     meet_name_col = _find_column(cols, MEET_NAME_CANDIDATES)
@@ -1534,7 +1539,7 @@ def _parse_individual_sheet(df, meet, events_dict):
     cols = {str(c).lower().strip(): c for c in df.columns}
     name_col = _find_column(cols, NAME_CANDIDATES)
     time_col = _find_column(cols, ['time', 'temps', 'tps', 'finals time', 'result'])
-    event_col = _find_column(cols, ['event', 'epreuve', 'race', 'épreuve'])
+    event_col = _find_column(cols, ['event_header', 'event', 'epreuve', 'race', 'épreuve'])
     age_col = _find_column(cols, ['age', 'âge'])
     year_col = _find_column(cols, ['yob', 'year of birth', 'year', 'an', 'lic'])
     dob_col = _find_column(cols, ['date of birth', 'dob', 'birth', 'naissance', 'date de naissance'])
@@ -1544,7 +1549,7 @@ def _parse_individual_sheet(df, meet, events_dict):
     rank_col = _find_column(cols, ['rank', 'place', 'rg', 'rang', 'pos'])
     points_col = _find_column(cols, ['points', 'pts', 'fina', 'len'])
     round_col = _find_column(cols, ['round', 'tour', 'phase'])
-    category_col = _find_column(cols, ['category', 'catégorie', 'cat', 'age group'])
+    category_col = _find_column(cols, ['category', 'catégorie', 'cat', 'age group', 'age_group'])
     distance_col = _find_column(cols, ['distance'])
     stroke_col = _find_column(cols, ['stroke', 'nage'])
     session_date_col = _find_column(cols, ['date', 'session date'])

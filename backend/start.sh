@@ -31,4 +31,4 @@ else:
     print('Admin user exists')
 "
 
-gunicorn arabswim.wsgi --bind 0.0.0.0:$PORT --timeout 300 --workers 3
+gunicorn arabswim.wsgi --bind 0.0.0.0:$PORT --timeout 900 --workers 3

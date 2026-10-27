@@ -1,12 +1,13 @@
 import api from './client'
 
+// 15 min: giant multi-meet files (190 MB raw CSV dumps) upload + parse in one request
 export const uploadFile = (formData) => api.post('/import/upload/', formData, {
   headers: { 'Content-Type': 'multipart/form-data' },
-  timeout: 120000,
+  timeout: 900000,
 })
-export const matchSwimmers = (importId, includeAll = false) => api.post('/import/match/', { import_id: importId, include_all: includeAll }, { timeout: 300000 })
+export const matchSwimmers = (importId, includeAll = false) => api.post('/import/match/', { import_id: importId, include_all: includeAll }, { timeout: 900000 })
 export const matchSwimmersBatch = (importIds, includeAll = false) =>
-  api.post('/import/match/', { import_ids: importIds, include_all: includeAll }, { timeout: 300000 })
+  api.post('/import/match/', { import_ids: importIds, include_all: includeAll }, { timeout: 900000 })
 export const confirmImport = (data) => api.post('/import/confirm/', data, { timeout: 120000 })
 export const confirmImportBatch = (data) => api.post('/import/confirm-batch/', data, { timeout: 120000 })
 export const getConfirmJob = (jobId) => api.get(`/import/confirm/${jobId}/`)

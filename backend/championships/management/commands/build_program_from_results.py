@@ -40,7 +40,9 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         from importer.parsers.base import is_relay_event
 
-        qs = Championship.objects.all().order_by('id')
+        # Saudi meets deliberately carry NO program (admin rule: the source
+        # data has none) — never synthesize one for them on deploy.
+        qs = Championship.objects.exclude(country__code='KSA').order_by('id')
         if opts['champ']:
             qs = qs.filter(id=opts['champ'])
 

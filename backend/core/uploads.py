@@ -59,5 +59,5 @@ def validate_import_file(uploaded_file):
     if _extension(uploaded_file.name) not in IMPORT_EXTENSIONS:
         return 'Only PDF, Excel (.xlsx/.xls), CSV or HTML result files are allowed'
     if uploaded_file.size > MAX_IMPORT_SIZE:
-        return 'File is too large (max 50 MB)'
+        return 'File is too large (max 120 MB)'
     return None

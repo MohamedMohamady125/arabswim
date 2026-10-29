@@ -72,7 +72,8 @@ function withFinishSplit(splits, totalCs) {
 }
 
 // Long names ellipsize instead of stretching the column
-const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+// near-black names (boss: "much blacker", same font) — token mixed toward black
+const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'color-mix(in srgb, var(--color-text) 40%, #000)' }
 
 function SwimmerLink({ swimmerId, detail, resultNationality, isNational = true }) {
   // Relay teams are clubs at national meets but COUNTRIES at international

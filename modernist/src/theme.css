@@ -11,10 +11,10 @@
   /* ONE standard blue site-wide: the header navy (user rule 2026-10-29).
      Text, accents and box-tops all resolve to it; tint scales stay for
      backgrounds, accent-2 stays as the women's color. */
-  --color-text: #0c2340;
-  --color-accent: #0c2340;
+  --color-text: #102e56;
+  --color-accent: #102e56;
   --color-accent-2: #4a8fc0;
-  --color-divider: color-mix(in srgb, #0c2340 28%, transparent);
+  --color-divider: color-mix(in srgb, #102e56 28%, transparent);
 
   --color-accent-100: #edf3fa;
   --color-accent-200: #d5e4f2;
@@ -23,11 +23,12 @@
   --color-accent-500: #2f6cae;
   --color-accent-600: #17416f;
   --color-accent-700: #113356;
-  --color-accent-800: #0c2340;
+  /* the site-wide standard blue — lightened a notch on user request 2026-10-29 */
+  --color-accent-800: #102e56;
   --color-accent-900: #08182c;
 
   /* box top-borders use the standard header blue too (user rule 2026-10-29) */
-  --color-box-top: #0c2340;
+  --color-box-top: #102e56;
 
   --color-accent-2-100: #eef5fb;
   --color-accent-2-200: #d7e8f4;

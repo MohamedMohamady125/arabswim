@@ -225,6 +225,8 @@ figure { margin: 0; }
 .records-page .table { font-size: 16px; }
 .records-page .table th { font-size: 12px; }
 .records-page .table td { padding: 12px var(--space-2); }
+/* reports: no divider lines under the rows (user request 2026-10-29) */
+.reports-page .table td { border-bottom: 0; }
 .records-page .asw-time { font-size: 17px; }
 .records-page .kicker { font-size: 14px; }
 /* meet results: the swimmer column absorbs all leftover width and long

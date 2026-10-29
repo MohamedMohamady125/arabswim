@@ -348,7 +348,7 @@ function MedalsReport({ countries }) {
     setLoading(true)
     getReportMedalTable({
       group, classification: classification || undefined, sub_classification: subClass || undefined,
-      country: country || undefined, gender: gender || undefined, pool: pool || undefined, ...yearRange(year), limit: 100,
+      country: country || undefined, gender: gender || undefined, pool: pool || undefined, ...yearRange(year), limit: 20,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
       .catch(() => { if (alive) setRows([]) })
@@ -588,7 +588,7 @@ function ParticipationsReport({ countries, championships }) {
     setLoading(true)
     getReportParticipation({
       group, country: country || undefined, gender: gender || undefined,
-      pool: pool || undefined, ...yearRange(year), championship: champ || undefined, limit: 100,
+      pool: pool || undefined, ...yearRange(year), championship: champ || undefined, limit: 20,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
       .catch(() => { if (alive) setRows([]) })
@@ -685,7 +685,7 @@ function AgeReport({ countries, championships }) {
   useEffect(() => {
     let alive = true
     setLoading(true)
-    getReportAge({ country: country || undefined, gender: gender || undefined, pool: pool || undefined, championship: champ || undefined, limit: 200 })
+    getReportAge({ country: country || undefined, gender: gender || undefined, pool: pool || undefined, championship: champ || undefined, limit: 20 })
       .then((res) => { if (alive) setData(res.data) })
       .catch(() => { if (alive) setData(null) })
       .finally(() => { if (alive) setLoading(false) })
@@ -768,7 +768,7 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
     setLoading(true)
     getReportHighPerformance({
       group, event: event || undefined, pool: pool || undefined, gender: gender || undefined,
-      ...yearRange(year), championship: champ || undefined, fina_min: finaMin || 700, limit: 100,
+      ...yearRange(year), championship: champ || undefined, fina_min: finaMin || 700, limit: 20,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
       .catch(() => { if (alive) setRows([]) })
@@ -872,7 +872,7 @@ function ImprovementReport({ countries, eventGroups }) {
     getReportImprovement({
       year_from: yearFrom, year_to: yearTo, event: event || undefined,
       country: country || undefined, gender: gender || undefined, pool: pool || undefined,
-      age_max: ageMax, limit: 100,
+      age_max: ageMax, limit: 20,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
       .catch(() => { if (alive) setRows([]) })
@@ -979,7 +979,7 @@ export default function Reports() {
   const ref = { countries, eventGroups, championships }
 
   return (
-    <div>
+    <div className="reports-page">
       <PageHead
         title="Reports"
         kicker="Analytics"

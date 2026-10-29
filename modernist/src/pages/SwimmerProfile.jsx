@@ -895,7 +895,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
   const {
     medals, total_championships, total_records, best_fina,
     season_best_fina, best_event, top_personal_bests, records, fina_distribution,
-    championships, medals_by_level, medals_hierarchy, career_summary,
+    championships, medals_hierarchy, career_summary,
   } = stats
   const intlRecords = (records || []).filter((r) => r.record_type !== 'NATIONAL')
   // Held records not covered by the Record table (national/gcc/arab computed)
@@ -1144,49 +1144,6 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
             <div className="sect-head"><h4>Competition Level Mix</h4><span className="micro">Meets entered per competition level</span></div>
             <div className="rule-t" style={{ paddingTop: 14 }}>
               <MiniHBars rows={rows} color={CHART_COLORS.NAVY} labelWidth={130} />
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Medals by competition level */}
-      {(() => {
-        // Group by classification name — the same source the Medals tab's
-        // "By Level" cards use. medals_by_level groups by classification
-        // category, which buckets uncategorised meets as "UNCATEGORIZED"
-        // while the Medals tab calls the very same medals "National".
-        const byCls = {}
-        ;(medals_hierarchy || []).forEach((c) => (c.classifications || []).forEach((cls) => {
-          if (!byCls[cls.name]) byCls[cls.name] = { category: cls.name, gold: 0, silver: 0, bronze: 0 }
-          byCls[cls.name].gold += cls.gold
-          byCls[cls.name].silver += cls.silver
-          byCls[cls.name].bronze += cls.bronze
-        }))
-        const source = Object.keys(byCls).length ? Object.values(byCls) : (medals_by_level || [])
-        const rows = source.filter((m) => (m.gold + m.silver + m.bronze) > 0)
-          .sort((a, b) => (b.gold + b.silver + b.bronze) - (a.gold + a.silver + a.bronze))
-        if (rows.length === 0) return null
-        const maxT = Math.max(...rows.map((m) => m.gold + m.silver + m.bronze), 1)
-        return (
-          <div>
-            <div className="sect-head"><h4>Medals by Level</h4><span className="micro">Gold · Silver · Bronze per competition level</span></div>
-            <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {rows.map((m) => {
-                const tot = m.gold + m.silver + m.bronze
-                return (
-                  <div key={m.category} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ width: 110, flex: 'none', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-neutral-700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.category}</span>
-                    <div style={{ flex: 1, height: 22, display: 'flex', background: 'var(--color-neutral-200)', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ width: `${(tot / maxT) * 100}%`, display: 'flex', minWidth: 20 }}>
-                        {[['gold', 'var(--asw-gold)'], ['silver', 'var(--asw-silver)'], ['bronze', 'var(--asw-bronze)']].map(([k, c]) => m[k] > 0 && (
-                          <div key={k} className="asw-num" style={{ flex: m[k], background: c, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, minWidth: 16 }}>{m[k]}</div>
-                        ))}
-                      </div>
-                    </div>
-                    <span className="asw-num" style={{ width: 28, textAlign: 'right', fontWeight: 900, fontSize: 14 }}>{tot}</span>
-                  </div>
-                )
-              })}
             </div>
           </div>
         )

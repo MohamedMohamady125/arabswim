@@ -262,7 +262,7 @@ export default function News() {
           <Link to={`/news/${lead.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 28, alignItems: 'start' }}>
               {lead.cover_image && (
-                <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', height: 380, overflow: 'hidden', background: '#0b2948' }}>
+                <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', height: 380, overflow: 'hidden', background: 'var(--color-accent-800)' }}>
                   <img className="news-cover-img" src={mediaUrl(lead.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               )}
@@ -277,14 +277,14 @@ export default function News() {
                   fontSize: 29,
                   lineHeight: isRTLText(lead.title) ? 1.7 : 1.06,
                   letterSpacing: isRTLText(lead.title) ? 0 : '-0.025em',
-                  margin: '8px 0 12px', color: '#1a1a2e',
+                  margin: '8px 0 12px', color: 'var(--color-accent-800)',
                 }}>
                   {lead.title}
                 </div>
                 <p dir={isRTLText(lead.body) ? 'rtl' : 'ltr'} style={{
                   fontSize: isRTLText(lead.body) ? 18 : 15,
                   lineHeight: isRTLText(lead.body) ? 1.8 : 1.55,
-                  color: '#2c2c2c', margin: '0 0 14px',
+                  color: 'var(--color-accent-800)', margin: '0 0 14px',
                   fontFamily: isRTLText(lead.body) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'inherit',
                   textAlign: isRTLText(lead.body) ? 'justify' : 'left',
                 }}>
@@ -308,7 +308,7 @@ export default function News() {
                 {rest.map((a) => (
                   <Link key={a.id} to={`/news/${a.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
                     {a.cover_image ? (
-                      <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', height: 180, overflow: 'hidden', background: '#0b2948' }}>
+                      <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', height: 180, overflow: 'hidden', background: 'var(--color-accent-800)' }}>
                         <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                     ) : (
@@ -323,7 +323,7 @@ export default function News() {
                       fontSize: isRTLText(a.title) ? 20 : 18,
                       lineHeight: isRTLText(a.title) ? 1.6 : 1.18,
                       letterSpacing: isRTLText(a.title) ? 0 : '-0.015em',
-                      margin: '10px 0 6px', color: '#1a1a2e',
+                      margin: '10px 0 6px', color: 'var(--color-accent-800)',
                     }}>
                       {a.title}
                     </div>
@@ -331,7 +331,7 @@ export default function News() {
                       <p dir={isRTLText(a.body) ? 'rtl' : 'ltr'} style={{
                         fontSize: isRTLText(a.body) ? 16 : 13,
                         lineHeight: isRTLText(a.body) ? 1.8 : 1.5,
-                        color: '#2c2c2c', margin: '0 0 8px',
+                        color: 'var(--color-accent-800)', margin: '0 0 8px',
                         fontFamily: isRTLText(a.body) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'inherit',
                       }}>
                         {excerpt(a.body)}

@@ -6,6 +6,7 @@ import {
 } from '../api/reports'
 import { getRankings } from '../api/rankings'
 import { getComputedRecords } from '../api/records'
+import { RecordTable, Section, sortByEvent, normalizeComputed } from './Records'
 import { getChampionships, getClassifications, getSubClassifications } from '../api/championships'
 import { getCountries, getEvents } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
@@ -70,12 +71,39 @@ function downloadCsv(filename, headers, rows) {
 }
 
 // ── Reusable filter controls ─────────────────────────────────────────────────
-function CountrySelect({ countries, value, onChange, label = 'All countries' }) {
+// byId: rankings + computed-records endpoints key countries by id, the
+// report endpoints by code — pass the shape each endpoint expects.
+function CountrySelect({ countries, value, onChange, label = 'All countries', byId = false }) {
   return (
     <select className="select" style={CTRL} value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{label}</option>
-      {countries.map((c) => <option key={c.id} value={c.code}>{c.name}</option>)}
+      {countries.map((c) => <option key={c.id} value={byId ? c.id : c.code}>{c.name}</option>)}
     </select>
+  )
+}
+
+// Classification + sub-classification filter pair (every report tab)
+function ClassificationSelects({ classification, setClassification, subClass, setSubClass }) {
+  const [classifications, setClassifications] = useState([])
+  const [subClasses, setSubClasses] = useState([])
+  useEffect(() => {
+    getClassifications().then((res) => setClassifications(list(res.data))).catch(() => setClassifications([]))
+  }, [])
+  useEffect(() => {
+    if (!classification) { setSubClasses([]); return }
+    getSubClassifications(classification).then((res) => setSubClasses(list(res.data))).catch(() => setSubClasses([]))
+  }, [classification])
+  return (
+    <>
+      <select className="select" style={CTRL} value={classification} onChange={(e) => { setClassification(e.target.value); setSubClass('') }}>
+        <option value="">All classifications</option>
+        {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+      <select className="select" style={CTRL} value={subClass} onChange={(e) => setSubClass(e.target.value)} disabled={!subClasses.length}>
+        <option value="">All sub-classifications</option>
+        {subClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+    </>
   )
 }
 
@@ -426,6 +454,8 @@ function RankingReport({ countries, eventGroups, championships }) {
   const [year, setYear] = useState('')
   const [champ, setChamp] = useState('')
   const [event, setEvent] = useState('')
+  const [classification, setClassification] = useState('')
+  const [subClass, setSubClass] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -437,12 +467,13 @@ function RankingReport({ countries, eventGroups, championships }) {
       scope, country: scope === 'national' ? (country || undefined) : undefined,
       event, gender: gender || undefined, pool: pool || undefined,
       age_group: ageGroup, year: year || undefined, championship: champ || undefined, limit,
+      classification: classification || undefined, sub_classification: subClass || undefined,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
       .catch(() => { if (alive) setRows([]) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [scope, country, event, gender, pool, ageGroup, year, champ, limit])
+  }, [scope, country, event, gender, pool, ageGroup, year, champ, limit, classification, subClass])
 
   const exportCsv = () => downloadCsv('ranking.csv',
     ['Rank', 'Swimmer', 'Country', 'Time', 'FINA', 'Age', 'Meet', 'Date'],
@@ -455,12 +486,13 @@ function RankingReport({ countries, eventGroups, championships }) {
           {LIMITS.map((n) => <option key={n} value={n}>Top {n}</option>)}
         </select>
         <Seg options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }, { value: 'national', label: 'National' }]} value={scope} onChange={setScope} />
-        {scope === 'national' && <CountrySelect countries={countries} value={country} onChange={setCountry} label="Pick a country" />}
+        {scope === 'national' && <CountrySelect byId countries={countries} value={country} onChange={setCountry} label="Pick a country" />}
         <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
         <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
         <YearSelect value={year} onChange={setYear} />
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
+        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
         <EventSelect eventGroups={eventGroups} value={event} onChange={setEvent} label="Pick an event *" />
       </div>
       {!event ? <Empty label="Pick an event to see the ranking" />
@@ -506,6 +538,8 @@ function RecordsReport({ countries, championships }) {
   const [pool, setPool] = useState('LCM')
   const [year, setYear] = useState('')
   const [champ, setChamp] = useState('')
+  const [classification, setClassification] = useState('')
+  const [subClass, setSubClass] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -514,59 +548,61 @@ function RecordsReport({ countries, championships }) {
     let alive = true
     setLoading(true)
     getComputedRecords({
+      // computed-records keys country by ID (the old code sent the code — national scope never matched)
       scope, country: country || undefined, pool, gender: gender || undefined,
       age_group: ageGroup, year: year || undefined, championship: champ || undefined,
+      classification: classification || undefined, sub_classification: subClass || undefined,
     })
-      .then((res) => { if (alive) setRows(list(res.data)) })
+      .then((res) => { if (alive) setRows(list(res.data).map(normalizeComputed)) })
       .catch(() => { if (alive) setRows([]) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [scope, country, pool, gender, ageGroup, year, champ])
+  }, [scope, country, pool, gender, ageGroup, year, champ, classification, subClass])
 
   const exportCsv = () => downloadCsv('records.csv',
     ['Event', 'Gender', 'Holder', 'Country', 'Time', 'FINA', 'Meet', 'Date'],
-    rows.map((r) => [r.event_name, r.gender, r.swimmer_name, r.nationality_code || '', r.time, r.fina_points ?? '', r.championship_name, r.date]))
+    rows.map((r) => [r.eventName, r.gender, r.swimmerName, r.natCode || '', r.time, r.fina ?? '', r.meet, r.date]))
+
+  // Same grouping as the main Records page
+  const sections = useMemo(() => {
+    const sorted = [...rows].sort(sortByEvent)
+    const secs = []
+    const showMen = !gender || gender === 'M'
+    const showWomen = !gender || gender === 'F'
+    const menInd = sorted.filter((r) => r.gender === 'M' && !r.isRelay)
+    const menRelay = sorted.filter((r) => r.gender === 'M' && r.isRelay)
+    const womenInd = sorted.filter((r) => r.gender === 'F' && !r.isRelay)
+    const womenRelay = sorted.filter((r) => r.gender === 'F' && r.isRelay)
+    const mixedRelay = sorted.filter((r) => r.isRelay && r.gender !== 'M' && r.gender !== 'F')
+    if (showMen && menInd.length) secs.push({ label: 'Men · Individual Records', rows: menInd })
+    if (showMen && menRelay.length) secs.push({ label: 'Men · Relay Records', rows: menRelay })
+    if (showWomen && womenInd.length) secs.push({ label: 'Women · Individual Records', rows: womenInd })
+    if (showWomen && womenRelay.length) secs.push({ label: 'Women · Relay Records', rows: womenRelay })
+    if (mixedRelay.length) secs.push({ label: 'Mixed Relay Records', rows: mixedRelay })
+    return secs
+  }, [rows, gender])
 
   return (
-    <div>
+    <div className="records-page">
       <div className="rule-b" style={barStyle}>
         <Seg options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }, { value: 'national', label: 'National' }]} value={scope} onChange={setScope} />
-        {scope === 'national' && <CountrySelect countries={countries} value={country} onChange={setCountry} label="Pick a country" />}
+        {scope === 'national' && <CountrySelect byId countries={countries} value={country} onChange={setCountry} label="Pick a country" />}
         <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
         <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
         <YearSelect value={year} onChange={setYear} />
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
+        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
       </div>
       {scope === 'national' && !country ? <Empty label="Pick a country to see its records" />
         : loading ? <Loading label="Computing records" />
           : rows.length === 0 ? <Empty label="No records for this selection" /> : (
-            <div className="pad">
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
-              <div className="table-scroll">
-                <table className="table">
-                  <thead><tr><th>Event</th><th className="hide-mobile">Gender</th><th>Holder</th><th className="time">Time</th><th className="num">FINA</th><th className="hide-mobile">Meet</th><th className="hide-mobile">Date</th></tr></thead>
-                  <tbody>
-                    {rows.map((r) => (
-                      <tr key={r.result_id}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{r.event_name}</td>
-                        <td className="text-muted hide-mobile">{r.gender}</td>
-                        <td className="swimmer-cell">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                            <Flag code={r.nationality_code} name={r.nationality} />
-                            {r.is_relay_team ? r.swimmer_name : <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>}
-                          </div>
-                        </td>
-                        <td className="time asw-time">{r.time}</td>
-                        <td className="num asw-num">{r.fina_points ?? '—'}</td>
-                        <td className="text-muted hide-mobile">{r.championship_name}</td>
-                        <td className="hide-mobile" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 32px 0' }}><ExportButton onClick={exportCsv} /></div>
+              {sections.map((s, i) => (
+                <Section key={s.label} label={s.label} pool={pool} rows={s.rows} last={i === sections.length - 1} />
+              ))}
+            </>
           )}
     </div>
   )
@@ -580,6 +616,8 @@ function ParticipationsReport({ countries, championships }) {
   const [pool, setPool] = useState('')
   const [year, setYear] = useState('')
   const [champ, setChamp] = useState('')
+  const [classification, setClassification] = useState('')
+  const [subClass, setSubClass] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -589,12 +627,13 @@ function ParticipationsReport({ countries, championships }) {
     getReportParticipation({
       group, country: country || undefined, gender: gender || undefined,
       pool: pool || undefined, ...yearRange(year), championship: champ || undefined, limit: 20,
+      classification: classification || undefined, sub_classification: subClass || undefined,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
       .catch(() => { if (alive) setRows([]) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [group, country, gender, pool, year, champ])
+  }, [group, country, gender, pool, year, champ, classification, subClass])
 
   const exportCsv = () => {
     if (group === 'swimmer') {
@@ -617,6 +656,7 @@ function ParticipationsReport({ countries, championships }) {
         <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
         <YearSelect value={year} onChange={setYear} />
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
+        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
       </div>
       {loading ? <Loading label="Counting participation" /> : rows.length === 0 ? <Empty label="No data for this selection" /> : (
         <div className="pad">
@@ -679,18 +719,24 @@ function AgeReport({ countries, championships }) {
   const [gender, setGender] = useState('')
   const [pool, setPool] = useState('')
   const [champ, setChamp] = useState('')
+  const [classification, setClassification] = useState('')
+  const [subClass, setSubClass] = useState('')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let alive = true
     setLoading(true)
-    getReportAge({ country: country || undefined, gender: gender || undefined, pool: pool || undefined, championship: champ || undefined, limit: 20 })
+    getReportAge({
+      country: country || undefined, gender: gender || undefined, pool: pool || undefined,
+      championship: champ || undefined, limit: 20,
+      classification: classification || undefined, sub_classification: subClass || undefined,
+    })
       .then((res) => { if (alive) setData(res.data) })
       .catch(() => { if (alive) setData(null) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [country, gender, pool, champ])
+  }, [country, gender, pool, champ, classification, subClass])
 
   const exportCsv = () => data && downloadCsv('age-roster.csv',
     ['Swimmer', 'Country', 'Gender', 'Age', 'Swims'],
@@ -705,6 +751,7 @@ function AgeReport({ countries, championships }) {
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
         <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
+        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
       </div>
       {loading ? <Loading label="Grouping by age" /> : !data || data.distribution.length === 0 ? <Empty label="No aged swimmers for this selection" /> : (
         <div className="pad">
@@ -717,7 +764,7 @@ function AgeReport({ countries, championships }) {
               <div key={d.age} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span className="asw-num" style={{ width: 40, textAlign: 'right', fontWeight: 700 }}>{d.age}</span>
                 <div style={{ flex: 1, background: 'var(--color-neutral-100, #f1f1f1)', borderRadius: 4, height: 20, position: 'relative' }}>
-                  <div style={{ width: `${(d.swimmers / maxSwimmers) * 100}%`, background: 'var(--color-primary, #1f6feb)', height: '100%', borderRadius: 4, minWidth: 2 }} />
+                  <div style={{ width: `${(d.swimmers / maxSwimmers) * 100}%`, background: 'var(--color-primary, var(--color-accent-800))', height: '100%', borderRadius: 4, minWidth: 2 }} />
                 </div>
                 <span className="asw-num text-muted" style={{ width: 90, fontSize: 13 }}>{d.swimmers} swimmers</span>
               </div>
@@ -760,6 +807,8 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
   const [year, setYear] = useState('')
   const [champ, setChamp] = useState('')
   const [finaMin, setFinaMin] = useState(700)
+  const [classification, setClassification] = useState('')
+  const [subClass, setSubClass] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -769,12 +818,13 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
     getReportHighPerformance({
       group, event: event || undefined, pool: pool || undefined, gender: gender || undefined,
       ...yearRange(year), championship: champ || undefined, fina_min: finaMin || 700, limit: 20,
+      classification: classification || undefined, sub_classification: subClass || undefined,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
       .catch(() => { if (alive) setRows([]) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [group, event, pool, gender, year, champ, finaMin])
+  }, [group, event, pool, gender, year, champ, finaMin, classification, subClass])
 
   const exportCsv = () => {
     if (group === 'swimmer') {
@@ -795,6 +845,7 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
         <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
         <YearSelect value={year} onChange={setYear} />
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
+        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
         <input className="input" type="number" min="0" max="1200" style={{ ...CTRL, flex: '0 1 110px' }} placeholder="Min FINA" value={finaMin} onChange={(e) => setFinaMin(e.target.value)} />
       </div>
       {loading ? <Loading label="Finding top swims" /> : rows.length === 0 ? <Empty label="No swims above this FINA threshold" /> : (
@@ -861,6 +912,8 @@ function ImprovementReport({ countries, eventGroups }) {
   const [gender, setGender] = useState('')
   const [pool, setPool] = useState('')
   const [ageGroup, setAgeGroup] = useState('OPEN')
+  const [classification, setClassification] = useState('')
+  const [subClass, setSubClass] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -873,12 +926,13 @@ function ImprovementReport({ countries, eventGroups }) {
       year_from: yearFrom, year_to: yearTo, event: event || undefined,
       country: country || undefined, gender: gender || undefined, pool: pool || undefined,
       age_max: ageMax, limit: 20,
+      classification: classification || undefined, sub_classification: subClass || undefined,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
       .catch(() => { if (alive) setRows([]) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [yearFrom, yearTo, event, country, gender, pool, ageGroup])
+  }, [yearFrom, yearTo, event, country, gender, pool, ageGroup, classification, subClass])
 
   const exportCsv = () => downloadCsv('best-improvement.csv',
     ['Rank', 'Swimmer', 'Country', 'Event', 'From', 'To', 'Drop', 'Drop %'],
@@ -898,6 +952,7 @@ function ImprovementReport({ countries, eventGroups }) {
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
         <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
         <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
+        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
       </div>
       {loading ? <Loading label="Finding biggest time drops" /> : rows.length === 0 ? <Empty label="No improvements between these years" /> : (
         <div className="pad">

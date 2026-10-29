@@ -536,11 +536,11 @@ export default function Teams() {
                   {t.logo ? (
                     <img src={mediaUrl(t.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#1a56a0' }}>{acronym(t.name)}</span>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)' }}>{acronym(t.name)}</span>
                   )}
                 </span>
                 <span style={{ minWidth: 0 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14.5, color: '#0b2948', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
+                  <span style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--color-accent-800)', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
                   <span className="text-muted" style={{ fontSize: 12 }}>
                     {[t.country_detail?.name, t.swimmers_count > 0 ? `${t.swimmers_count} swimmer${t.swimmers_count === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
                   </span>

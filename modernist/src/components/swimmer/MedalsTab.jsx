@@ -7,7 +7,7 @@ const BRONZE = 'var(--asw-bronze)'
 const GOLD_HEX = '#b98a1e'
 const SILVER_HEX = '#7d8a99'
 const BRONZE_HEX = '#a05f2c'
-const NAVY = '#1c4e86'
+const NAVY = 'var(--color-accent-800)'
 
 function PercentRing({ pct, color, title, desc }) {
   const r = 46

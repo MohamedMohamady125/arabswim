@@ -88,7 +88,7 @@ function hexRgba(hex, a) {
 
 // Series colors: Finals = solid navy w/ round markers,
 // Prelims = dashed light navy w/ square markers
-const FINALS_COLOR = '#1c4e86'
+const FINALS_COLOR = 'var(--color-accent-800)'
 const PRELIMS_COLOR = '#4a8fc0'
 const GRID = '#dde4ec'
 const AXIS_TEXT = '#78879a'

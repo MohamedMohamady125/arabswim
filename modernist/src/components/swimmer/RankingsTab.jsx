@@ -161,7 +161,7 @@ export default function RankingsTab({ swimmerId, swimmer }) {
           return (
             <div key={pool}>
               {/* Header bar */}
-              <div style={{ background: '#1c4e86', color: '#fff', padding: '8px 12px', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center' }}>
+              <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '8px 12px', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center' }}>
                 {scopeLabel[scope]} · {genderLabel} {eventName(selected)} · {pool}
               </div>
 

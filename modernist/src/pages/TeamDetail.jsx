@@ -47,7 +47,7 @@ const COACH_LEVELS = {
 }
 
 const CLASS_COLORS = {
-  Arab: '#1c4e86', GCC: '#7d8a99', African: '#a8402f', Asian: '#a05f2c',
+  Arab: 'var(--color-accent-800)', GCC: '#7d8a99', African: '#a8402f', Asian: '#a05f2c',
   Mediterranean: '#4a8fc0', Islamic: '#0d7a52', World: '#b98a1e', Olympic: '#0c2340',
   National: '#2e6b4f', University: '#6b4f8a', Other: '#5a6572',
 }
@@ -58,7 +58,7 @@ const REC_TYPE_LABELS = {
 }
 const REC_TYPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
 const REC_TYPE_COLORS = {
-  NATIONAL: '#1a56a0', ARAB: '#b98a1e', GCC: '#0d7a52', AFRICAN: '#a8402f',
+  NATIONAL: 'var(--color-accent-800)', ARAB: '#b98a1e', GCC: '#0d7a52', AFRICAN: '#a8402f',
   ASIAN: '#a05f2c', MEDITERRANEAN: '#4a8fc0', ISLAMIC: '#0d7a52', WORLD: '#0c2340',
 }
 
@@ -505,7 +505,7 @@ const STROKES = [
   { value: 'Butterfly', label: 'Fly' },
   { value: 'Individual Medley', label: 'IM' },
 ]
-const LINE_HEX = ['#1c4e86', '#4a8fc0', '#0c2340', '#72a4cf', '#2f6cae', '#12253d', '#aecae4', '#17416f']
+const LINE_HEX = ['var(--color-accent-800)', '#4a8fc0', '#0c2340', '#72a4cf', 'var(--color-accent-800)', 'var(--color-accent-800)', '#aecae4', 'var(--color-accent-800)']
 
 function TeamProgressionChart({ lines }) {
   const allPoints = lines.flatMap((l) => l.points || [])
@@ -676,17 +676,17 @@ function RecordsTab({ records, photoById, sexById }) {
     return true
   })
 
-  const selStyle = { padding: '10px 20px', border: '1px solid #c0cad8', borderRadius: 6, fontSize: 14, fontWeight: 600, color: '#0b2948', background: '#fff', cursor: 'pointer', minWidth: 180, appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%230b2948\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }
-  const pillBase = { padding: '8px 18px', border: '2px solid #1a56a0', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }
+  const selStyle = { padding: '10px 20px', border: '1px solid #c0cad8', borderRadius: 6, fontSize: 14, fontWeight: 600, color: 'var(--color-accent-800)', background: '#fff', cursor: 'pointer', minWidth: 180, appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%230b2948\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }
+  const pillBase = { padding: '8px 18px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }
 
   return (
     <div className="m-pad" style={{ padding: '28px 28px', background: '#fff' }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ fontSize: 28, marginBottom: 4 }}>🏅</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-          <div style={{ width: 60, height: 2, background: '#1a56a0' }} />
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0b2948', margin: 0 }}>Records</h2>
-          <div style={{ width: 60, height: 2, background: '#1a56a0' }} />
+          <div style={{ width: 60, height: 2, background: 'var(--color-accent-800)' }} />
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Records</h2>
+          <div style={{ width: 60, height: 2, background: 'var(--color-accent-800)' }} />
         </div>
       </div>
 
@@ -728,11 +728,11 @@ function RecordsTab({ records, photoById, sexById }) {
                   {photo ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
                 </div>
                 <div style={{ paddingTop: 16 }}>
-                  <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}>
+                  <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}>
                     <SwimmerLink id={r.swimmer_id} name={r.swimmer_name} />
                   </div>
-                  <div style={{ fontSize: 13.5, color: '#1a56a0', fontWeight: 600, marginTop: 6 }}>{r.event_name} | {r.pool}</div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#0d2d5e', letterSpacing: '-0.02em', marginTop: 6 }}>{typeof r.time === 'number' ? formatTime(r.time) : r.time}</div>
+                  <div style={{ fontSize: 13.5, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{r.event_name} | {r.pool}</div>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', marginTop: 6 }}>{typeof r.time === 'number' ? formatTime(r.time) : r.time}</div>
                 </div>
                 <div style={{ paddingTop: 8 }}>
                   <div style={{ fontSize: 12, fontWeight: 800, color: '#5b6b82' }}>{sex ? (sex === 'F' ? "Women's" : "Men's") : ''}{r.date ? `${sex ? ' · ' : ''}${formatDate(r.date)}` : ''}</div>
@@ -749,7 +749,7 @@ function RecordsTab({ records, photoById, sexById }) {
 
 // ── Statistics tab (fed blue dashboard, computed client-side) ─
 
-const PERF_BAR_COLORS = ['#7d3c98', '#2471a3', '#3b9dd6', '#27ae60', '#52c78a', '#f5d547', '#f7b731', '#f4845f', '#e63946', '#b0bec5']
+const PERF_BAR_COLORS = ['#7d3c98', 'var(--color-accent-800)', '#3b9dd6', '#27ae60', '#52c78a', '#f5d547', '#f7b731', '#f4845f', '#e63946', '#b0bec5']
 
 function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxes, photoById, sexById }) {
   const [statSeed] = useState(() => Math.floor(Math.random() * 2 ** 31))
@@ -814,7 +814,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
         <span style={{ width: 4, height: 17, background: 'linear-gradient(180deg, #1a56a0, #0b2948)', borderRadius: 2, flexShrink: 0 }} />
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0b2948' }}>{title}</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{title}</span>
       </div>
       <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
     </div>
@@ -824,7 +824,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
   )
   const thStyle = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', paddingBottom: 6, borderBottom: '2px solid #e2e8f0' }
   const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f0f4f8', fontSize: 12.5, background: i % 2 === 1 ? '#fafbfd' : 'transparent' })
-  const badge = { width: 24, height: 24, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }
+  const badge = { width: 24, height: 24, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }
   const mc = (color) => ({ width: 26, height: 26, borderRadius: '50%', background: color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 })
 
   const topPerfTable = (rows) => (
@@ -839,10 +839,10 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       {rows.map((t, i) => (
         <div key={t.swimmer_id} style={rowStyle(i)}>
           <span style={badge}>{i + 1}</span>
-          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948' }}><SwimmerLink id={t.swimmer_id} name={t.swimmer_name} /></span>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: 'var(--color-accent-800)' }}><SwimmerLink id={t.swimmer_id} name={t.swimmer_name} /></span>
           <span style={{ width: 120, color: '#6b7d94', fontSize: 11 }}>{t.event_name}</span>
-          <span className="asw-num" style={{ width: 60, textAlign: 'right', fontWeight: 800, color: '#0b2948', fontSize: 12.5 }}>{t.time}</span>
-          <span className="asw-num" style={{ width: 36, textAlign: 'right', fontWeight: 900, color: '#1a56a0', fontSize: 13 }}>{t.fina_points ?? '—'}</span>
+          <span className="asw-num" style={{ width: 60, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 12.5 }}>{t.time}</span>
+          <span className="asw-num" style={{ width: 36, textAlign: 'right', fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 13 }}>{t.fina_points ?? '—'}</span>
         </div>
       ))}
     </>
@@ -861,11 +861,11 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       {rows.map((m, i) => (
         <div key={m.id ?? i} style={rowStyle(i)}>
           <span style={badge}>{i + 1}</span>
-          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: '#0b2948' }}><SwimmerLink id={m.id} name={m.name} /></span>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: 'var(--color-accent-800)' }}><SwimmerLink id={m.id} name={m.name} /></span>
           <span style={mc('#d4af37')}>{m.gold}</span>
           <span style={mc('#a8a9ad')}>{m.silver}</span>
           <span style={mc('#cd7f32')}>{m.bronze}</span>
-          <span className="asw-num" style={{ width: 40, textAlign: 'center', fontWeight: 900, fontSize: 14, color: '#0b2948' }}>{m.total}</span>
+          <span className="asw-num" style={{ width: 40, textAlign: 'center', fontWeight: 900, fontSize: 14, color: 'var(--color-accent-800)' }}>{m.total}</span>
         </div>
       ))}
     </>
@@ -876,7 +876,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       <div style={{ padding: '10px 12px 7px', borderBottom: '1px solid #f0f3f7' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 4, height: 14, background: 'linear-gradient(180deg, #1a56a0, #0b2948)', borderRadius: 2, flexShrink: 0 }} />
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#0b2948' }}>{label}</span>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{label}</span>
         </div>
         <div style={{ fontSize: 9.5, color: '#7a8ca0', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
       </div>
@@ -889,11 +889,11 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
         {photo ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
       </div>
       <div style={{ padding: '12px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <div style={{ fontWeight: 800, fontSize: 12.5, color: '#0b2948', lineHeight: 1.2, marginBottom: 4 }}>
+        <div style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--color-accent-800)', lineHeight: 1.2, marginBottom: 4 }}>
           <SwimmerLink id={id} name={name} />
         </div>
         <div style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>{subLabel}</div>
-        <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1 }}>{bigValue}</div>
+        <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1 }}>{bigValue}</div>
         {dateStr && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 5 }}>{dateStr}</div>}
       </div>
     </div>
@@ -908,15 +908,15 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
     <div className="m-pad" style={{ background: '#f8fafc', padding: '28px 24px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 2, background: '#1a56a0' }} />
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0b2948' }}>Statistics</span>
-          <div style={{ width: 40, height: 2, background: '#1a56a0' }} />
+          <div style={{ width: 40, height: 2, background: 'var(--color-accent-800)' }} />
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>Statistics</span>
+          <div style={{ width: 40, height: 2, background: 'var(--color-accent-800)' }} />
         </div>
       </div>
 
       {/* Row 0: headline numbers */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 10 }}>
-        {[['Swimmers', stats?.swimmers, '#0b2948'], ['Race Swims', stats?.results, '#0b2948'], ['Championships', stats?.championships, '#0b2948'],
+        {[['Swimmers', stats?.swimmers, 'var(--color-accent-800)'], ['Race Swims', stats?.results, 'var(--color-accent-800)'], ['Championships', stats?.championships, 'var(--color-accent-800)'],
           ['Gold', stats?.medals?.gold, '#d4af37'], ['Silver', stats?.medals?.silver, '#a8a9ad'], ['Bronze', stats?.medals?.bronze, '#cd7f32']].map(([label, v, color]) => (
           <div key={label} style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,.07)', padding: '14px 12px', textAlign: 'center' }}>
             <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, color }}>{formatNumber(v)}</div>
@@ -955,7 +955,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
                   )}
                 </div>
               </div>
-              <span className="asw-num" style={{ width: 26, textAlign: 'right', fontWeight: 900, color: '#0b2948', fontSize: 13, flexShrink: 0 }}>{m.total}</span>
+              <span className="asw-num" style={{ width: 26, textAlign: 'right', fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{m.total}</span>
             </div>
           ))}
         </>)}
@@ -999,7 +999,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
             {perfDist.map((d, i) => (
               <div key={d.label} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ height: 165, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                  {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: '#0b2948' }}>{d.count}</div>}
+                  {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: 'var(--color-accent-800)' }}>{d.count}</div>}
                   <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: '3px 3px 0 0' }} />
                 </div>
                 <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, minHeight: 19, color: '#5a6b80', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
@@ -1014,11 +1014,11 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
             const mine = r.is_current
             return (
               <div key={r.team_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
-                <span style={{ width: 110, fontSize: 11.5, fontWeight: mine ? 900 : 600, flexShrink: 0, color: mine ? '#1a56a0' : '#374151', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{r.team_name}</span>
+                <span style={{ width: 110, fontSize: 11.5, fontWeight: mine ? 900 : 600, flexShrink: 0, color: mine ? 'var(--color-accent-800)' : '#374151', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{r.team_name}</span>
                 <div style={{ flex: 1, height: 18, background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ width: `${(r.total / maxBattle) * 100}%`, height: '100%', background: mine ? '#1a56a0' : '#9db8d6', borderRadius: 3, minWidth: r.total > 0 ? 8 : 0 }} />
+                  <div style={{ width: `${(r.total / maxBattle) * 100}%`, height: '100%', background: mine ? 'var(--color-accent-800)' : '#9db8d6', borderRadius: 3, minWidth: r.total > 0 ? 8 : 0 }} />
                 </div>
-                <span className="asw-num" style={{ width: 28, textAlign: 'right', fontWeight: 800, color: '#0b2948', fontSize: 13, flexShrink: 0 }}>{r.total}</span>
+                <span className="asw-num" style={{ width: 28, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{r.total}</span>
               </div>
             )
           })}
@@ -1120,7 +1120,7 @@ function CompareTab({ team, profile, stats, records }) {
       <span style={{ width: 26, height: 26, borderRadius: '50%', background: '#fff', overflow: 'hidden', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         {t?.logo
           ? <img src={mediaUrl(t.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <span style={{ fontSize: 9, fontWeight: 900, color: '#0b2948' }}>{acronym(t?.name)}</span>}
+          : <span style={{ fontSize: 9, fontWeight: 900, color: 'var(--color-accent-800)' }}>{acronym(t?.name)}</span>}
       </span>
       {t?.name}
     </span>
@@ -1130,9 +1130,9 @@ function CompareTab({ team, profile, stats, records }) {
     <div className="pad-lg">
       <TabHeading title="Club Comparison" />
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, margin: '18px 0 26px', flexWrap: 'wrap' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: '#0b2948' }}>{team.name}</span>
-        <span style={{ fontWeight: 900, color: '#1a56a0', fontSize: 15 }}>VS</span>
-        <select value={otherId} onChange={(e) => setOtherId(e.target.value)} style={{ padding: '9px 14px', border: '2px solid #1a56a0', borderRadius: 6, fontSize: 13.5, fontWeight: 700, color: '#0b2948', background: '#fff', fontFamily: 'inherit' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: 'var(--color-accent-800)' }}>{team.name}</span>
+        <span style={{ fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 15 }}>VS</span>
+        <select value={otherId} onChange={(e) => setOtherId(e.target.value)} style={{ padding: '9px 14px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', background: '#fff', fontFamily: 'inherit' }}>
           <option value="">Choose a club…</option>
           {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -1141,13 +1141,13 @@ function CompareTab({ team, profile, stats, records }) {
       {!loadingOther && !other && <Empty label="Pick a club to compare against" />}
       {!loadingOther && other && (
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#0b2948', color: '#fff', borderRadius: '8px 8px 0 0', fontWeight: 800, fontSize: 14, gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-accent-800)', color: '#fff', borderRadius: '8px 8px 0 0', fontWeight: 800, fontSize: 14, gap: 10 }}>
             {clubBadge(team)}
             {clubBadge(other.profile?.team)}
           </div>
           {rows.map(([label, a, b], i) => {
             const winA = a > b; const winB = b > a
-            const numStyle = (win) => ({ width: 110, fontWeight: 900, fontSize: 16, color: win ? '#1a56a0' : '#6b7a90' })
+            const numStyle = (win) => ({ width: 110, fontWeight: 900, fontSize: 16, color: win ? 'var(--color-accent-800)' : '#6b7a90' })
             return (
               <div key={label} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', background: i % 2 ? '#f4f8fc' : '#fff', borderBottom: '1px solid #e3ecf5' }}>
                 <span className="asw-num" style={{ ...numStyle(winA), textAlign: 'left' }}>{formatNumber(a)}</span>
@@ -1293,7 +1293,7 @@ export default function TeamDetail() {
   const usDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
 
   const heroIcon = (d) => (
-    <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#1a56a0', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+    <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
     </span>
   )
@@ -1309,7 +1309,7 @@ export default function TeamDetail() {
     return (
       <div className="m-sectitle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, margin: '26px 0 22px' }}>
         <div style={taperL} />
-        <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '0.02em', textTransform: 'uppercase', color: '#123a7d', margin: 0, whiteSpace: 'nowrap' }}>{text}</h3>
+        <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0, whiteSpace: 'nowrap' }}>{text}</h3>
         <div style={taperR} />
       </div>
     )
@@ -1327,7 +1327,7 @@ export default function TeamDetail() {
           ) : '📷'}
         </div>
         <div style={{ padding: '4px 14px 16px', display: 'flex', flexDirection: 'column', flex: 1, textAlign: 'left' }}>
-          <div style={{ fontSize: 12, color: '#1a56a0', fontWeight: 600, marginBottom: 9 }}>{a ? usDate(a.published_at || a.created_at) : 'Coming soon'}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 600, marginBottom: 9 }}>{a ? usDate(a.published_at || a.created_at) : 'Coming soon'}</div>
           {(() => {
             const rtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a?.title || '')
             return (
@@ -1337,13 +1337,13 @@ export default function TeamDetail() {
                 fontSize: rtl ? 17 : 16,
                 lineHeight: rtl ? 1.6 : 1.25,
                 letterSpacing: rtl ? 0 : '-0.015em',
-                color: '#0b2948',
+                color: 'var(--color-accent-800)',
               }}>{a ? a.title : 'Club news will appear here'}</div>
             )
           })()}
           <div style={{ marginTop: 'auto', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12.5, color: '#0b2948', fontWeight: 700 }}>Read more</span>
-            <span style={{ color: '#1a56a0', fontWeight: 800 }}>→</span>
+            <span style={{ fontSize: 12.5, color: 'var(--color-accent-800)', fontWeight: 700 }}>Read more</span>
+            <span style={{ color: 'var(--color-accent-800)', fontWeight: 800 }}>→</span>
           </div>
         </div>
       </>
@@ -1360,21 +1360,21 @@ export default function TeamDetail() {
     <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
       <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: photo ? `url(${mediaUrl(photo)}) center/cover` : 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>{photo ? '' : '👤'}</div>
       <div style={{ paddingTop: 16 }}>
-        <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}>{name}</div>
-        <div style={{ fontSize: 13.5, color: '#1a56a0', fontWeight: 600, marginTop: 6 }}>{role}</div>
+        <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}>{name}</div>
+        <div style={{ fontSize: 13.5, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{role}</div>
       </div>
       <div style={{ marginTop: 'auto', paddingTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0d2d5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
             <div style={{ width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '10px solid #fff', marginLeft: 3 }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 20 }}>
             {waveHeights.map((h, k) => (
-              <span key={k} style={{ width: 2, height: h, background: '#0d2d5e', borderRadius: 2, display: 'inline-block' }} />
+              <span key={k} style={{ width: 2, height: h, background: 'var(--color-accent-800)', borderRadius: 2, display: 'inline-block' }} />
             ))}
           </div>
         </div>
-        <div style={{ fontSize: 12, color: '#0b2948', fontWeight: 600, marginTop: 8 }}>Listen to message</div>
+        <div style={{ fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 8 }}>Listen to message</div>
         {actions && <div style={{ display: 'flex', gap: 6, marginTop: 10, justifyContent: 'center' }}>{actions}</div>}
       </div>
     </div>
@@ -1406,7 +1406,7 @@ export default function TeamDetail() {
           })()}
         />
         <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
-          <Link to="/teams" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: '#1a56a0' }}>← All clubs</Link>
+          <Link to="/teams" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: 'var(--color-accent-800)' }}>← All clubs</Link>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
             {/* Circular club logo */}
             <div className="fed-hero-flag" style={{
@@ -1428,7 +1428,7 @@ export default function TeamDetail() {
               }}>
                 {team.name}
               </h1>
-              <div style={{ marginTop: 6, fontSize: 15, fontWeight: 700, color: '#1a56a0', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ marginTop: 6, fontSize: 15, fontWeight: 700, color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <Flag code={team.country_detail?.code} name={team.country_detail?.name} />
                 <span>{kickerText}{team.country_detail?.name ? ` · ${team.country_detail.name}` : ''}{team.founded_year ? ` · Est. ${team.founded_year}` : ''}</span>
               </div>
@@ -1499,18 +1499,18 @@ export default function TeamDetail() {
         const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-box-top)' }
         const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0, overflow: 'hidden' }
         const hBody = { padding: '12px 8px 10px 2px', flex: 1, display: 'flex', flexDirection: 'column' }
-        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: '#0b2948', marginBottom: 7, lineHeight: 1.3 }
-        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 29, color: '#1a56a0', letterSpacing: '-0.02em', lineHeight: 1.1 }
+        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 7, lineHeight: 1.3 }
+        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 29, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1.1 }
         const hSub = { fontSize: 12.5, color: '#33415c', marginTop: 4 }
         const barsIcon = (
           <span style={{ position: 'absolute', right: 16, bottom: 14, display: 'inline-flex', alignItems: 'flex-end', gap: 2.5 }}>
-            {[7, 12, 17, 22].map((h, k) => <span key={k} style={{ width: 4.5, height: h, background: '#1a56a0', borderRadius: 1.5, display: 'inline-block' }} />)}
+            {[7, 12, 17, 22].map((h, k) => <span key={k} style={{ width: 4.5, height: h, background: 'var(--color-accent-800)', borderRadius: 1.5, display: 'inline-block' }} />)}
           </span>
         )
         const infoCell = (label, value) => (
           <div key={label}>
             <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a8ca0' }}>{label}</div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0b2948', marginTop: 3, overflowWrap: 'anywhere' }}>{value || '—'}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', marginTop: 3, overflowWrap: 'anywhere' }}>{value || '—'}</div>
           </div>
         )
         const newsItems = articles.length > 0 ? articles.slice(0, 4) : [null, null, null, null]
@@ -1527,13 +1527,13 @@ export default function TeamDetail() {
                 {/* About + Club Information — fills the gap below the news cards */}
                 <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
                   <div style={{ borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px' }}>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#123a7d', marginBottom: 8 }}>About the Club</div>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 8 }}>About the Club</div>
                     {team.description
                       ? <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7, color: '#33415c', whiteSpace: 'pre-line' }}>{team.description}</p>
                       : <div style={{ fontSize: 13, color: '#8a9bb5' }}>No description yet.</div>}
                   </div>
                   <div style={{ borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px' }}>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#123a7d', marginBottom: 12 }}>Club Information</div>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 12 }}>Club Information</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       {infoCell('Founded', team.founded_year)}
                       {infoCell('Country', team.country_detail?.name)}
@@ -1548,11 +1548,11 @@ export default function TeamDetail() {
                 {/* Trophies */}
                 {trophies.length > 0 && (
                   <div style={{ borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px', marginTop: 14 }}>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#123a7d', marginBottom: 12 }}>Trophies · {trophies.length}</div>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 12 }}>Trophies · {trophies.length}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                       {trophies.map((t, i) => (
                         <div key={t.id ?? i} style={{ border: '1px solid #e2e9f2', borderLeft: '4px solid var(--asw-gold)', borderRadius: 8, padding: '12px 14px', background: '#fff' }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: '#0b2948' }}>🏆 {t.name}</div>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-accent-800)' }}>🏆 {t.name}</div>
                           <div className="asw-num" style={{ fontWeight: 800, fontSize: 13, marginTop: 4, color: '#5a6b80' }}>{t.year}</div>
                         </div>
                       ))}
@@ -1573,7 +1573,7 @@ export default function TeamDetail() {
                       <div style={hTitle}>{title}</div>
                       <div style={hBig}>{big}</div>
                       {sub ? <div style={hSub}>{sub}</div> : null}
-                      {name ? <div style={{ ...hSub, fontWeight: 700, color: '#0b2948' }}>{name}</div> : null}
+                      {name ? <div style={{ ...hSub, fontWeight: 700, color: 'var(--color-accent-800)' }}>{name}</div> : null}
                       {extra ? <div style={{ ...hSub, color: '#5a6b80' }}>{extra}</div> : null}
                     </div>
                     {icon === undefined ? barsIcon : icon}
@@ -1601,7 +1601,7 @@ export default function TeamDetail() {
                 const pool = [
                   { key: 'best-perf', person: bestPerf?.swimmer_id, valid: !!bestPerf, render: () => hl({ photo: photoById[bestPerf.swimmer_id], title: <>Best<br />Performance</>, big: bestPerf.time || '—', sub: bestPerf.event_name || '', name: bestPerf.swimmer_name, extra: bestPerf.fina_points ? `${bestPerf.fina_points} FINA pts` : null }) },
                   { key: 'decorated', person: decorated?.id, valid: !!decorated, render: () => hl({ photo: photoById[decorated.id], title: <>Most Decorated<br />Swimmer</>, big: decorated.total || 0, sub: 'Total Medals', name: decorated.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🏆</span> }) },
-                  { key: 'new-record', person: newestRecord?.swimmer_id, valid: !!newestRecord, render: () => hl({ photo: photoById[newestRecord.swimmer_id], title: 'New Record', big: fmtRec(newestRecord), sub: newestRecord.event_name || '', name: newestRecord.swimmer_name, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: '#0d2d5e', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span> }) },
+                  { key: 'new-record', person: newestRecord?.swimmer_id, valid: !!newestRecord, render: () => hl({ photo: photoById[newestRecord.swimmer_id], title: 'New Record', big: fmtRec(newestRecord), sub: newestRecord.event_name || '', name: newestRecord.swimmer_name, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span> }) },
                   { key: 'golden', person: goldKing?.id, valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: photoById[goldKing.id], title: <>The Golden<br />Touch</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🥇</span> }) },
                   { key: 'leading-woman', person: leadingWoman?.swimmer_id, valid: !!leadingWoman, render: () => hl({ photo: photoById[leadingWoman.swimmer_id], title: <>Leading<br />Woman</>, big: leadingWoman.time || '—', sub: leadingWoman.event_name || '', name: leadingWoman.swimmer_name, extra: leadingWoman.fina_points ? `${leadingWoman.fina_points} FINA pts` : null }) },
                   { key: 'collector', person: collector?.rec.swimmer_id, valid: !!(collector && collector.n > 1), render: () => hl({ photo: photoById[collector.rec.swimmer_id], title: <>Record<br />Collector</>, big: collector.n, sub: 'Club Records Held', name: collector.rec.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>⏱️</span> }) },
@@ -1638,14 +1638,14 @@ export default function TeamDetail() {
                       </div>
                     </div>
                     <div style={{ padding: '12px 12px 0' }}>
-                      <div style={{ fontWeight: 800, fontSize: 17, color: '#0b2948' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} /></div>
+                      <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} /></div>
                       <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <span>{String(r.event_name || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
                         <span style={{ color: '#c6d4e2' }}>|</span>
                         <span>{r.pool === 'SCM' ? 'SCM' : 'LCM'}</span>
                       </div>
                     </div>
-                    <div style={{ background: '#123a7d', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 8 }}>
+                    <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 8 }}>
                       <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '-0.01em' }}>{typeof r.time === 'number' ? formatTime(r.time) : r.time}</div>
                       <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 3, opacity: 0.92 }}>{REC_TYPE_LABELS[r.record_type] || r.record_type} Record</div>
                     </div>
@@ -1689,12 +1689,12 @@ export default function TeamDetail() {
                           fontSize: rtl ? 17 : 16,
                           lineHeight: rtl ? 1.6 : 1.25,
                           letterSpacing: rtl ? 0 : '-0.015em',
-                          color: '#0b2948', marginBottom: 8,
+                          color: 'var(--color-accent-800)', marginBottom: 8,
                         }}>{a.title}</div>
                       )
                     })()}
                     <div dir={/[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.body || '') ? 'rtl' : 'ltr'} style={{ fontSize: 12.5, color: '#58687c', lineHeight: 1.6, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
-                    <span style={{ marginTop: 'auto', color: '#1a56a0', fontWeight: 700, fontSize: 13 }}>Read more →</span>
+                    <span style={{ marginTop: 'auto', color: 'var(--color-accent-800)', fontWeight: 700, fontSize: 13 }}>Read more →</span>
                   </div>
                 </Link>
               ))}
@@ -1710,9 +1710,9 @@ export default function TeamDetail() {
             <span style={{ fontSize: 24 }}>👥</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
-            <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 24, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0 }}>Board of Directors</h2>
-            <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+            <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 24, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Board of Directors</h2>
+            <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
           </div>
           <p style={{ textAlign: 'center', fontSize: 13, color: '#6b7d94', maxWidth: 500, margin: '0 auto 18px', lineHeight: 1.5 }}>
             The Board of Directors is responsible for the strategic direction, governance, and overall leadership of {team.name}.
@@ -1745,10 +1745,10 @@ export default function TeamDetail() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '10px 0 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 22 }}>👤</span>
-                <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+                <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
               </div>
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0 }}>Coaches</h3>
-              <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Coaches</h3>
+              <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
             </div>
             {canManage && (
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
@@ -1772,10 +1772,10 @@ export default function TeamDetail() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '10px 0 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 22 }}>🏊</span>
-                <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+                <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
               </div>
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0 }}>Swimmers</h3>
-              <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Swimmers</h3>
+              <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
             </div>
             {isAdmin && (
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
@@ -1815,7 +1815,7 @@ export default function TeamDetail() {
                       {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
                     </div>
                     <div style={{ padding: '10px 2px 0' }}>
-                      <div style={{ fontWeight: 800, fontSize: 14.5, color: '#0b2948', marginBottom: 5, lineHeight: 1.25 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
                         <SwimmerLink id={s.id} name={s.name} />
                       </div>
                       <div style={{ fontSize: 11.5, color: '#33415c', fontWeight: 500, lineHeight: 1.5 }}>
@@ -1823,8 +1823,8 @@ export default function TeamDetail() {
                       </div>
                     </div>
                     <div style={{ marginTop: 'auto', paddingTop: 9, borderTop: '1px solid #eef2f7' }}>
-                      <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: '#0b2948', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
-                        <span>View Profile</span><span style={{ color: '#1a56a0' }}>→</span>
+                      <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
+                        <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
                       </Link>
                       {isAdmin && (
                         <Link to={`/swimmers/${s.id}?edit=1`} className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8, display: 'inline-block', textDecoration: 'none' }}>Edit</Link>
@@ -1898,9 +1898,9 @@ export default function TeamDetail() {
           {medalBoxes.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'center' }}>
               {medalBoxes.map((m) => (
-                <div key={m.name} style={{ background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: '#0b2948', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
+                <div key={m.name} style={{ background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'var(--color-accent-800)', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a8aa0' }}>{m.name}</div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: '#0d2d5e' }}>{formatNumber(m.total)}</div>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: 'var(--color-accent-800)' }}>{formatNumber(m.total)}</div>
                   <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 800 }}>
                     <span style={{ color: '#b98a1e' }}>{m.gold}G</span>
                     <span style={{ color: '#8a97a8' }}>{m.silver}S</span>
@@ -1912,7 +1912,7 @@ export default function TeamDetail() {
           )}
 
           {/* Top medalists */}
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0b2948', margin: '8px 0 10px' }}>Top Medalists · {medalists.length}</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: '8px 0 10px' }}>Top Medalists · {medalists.length}</div>
           {medalists.length === 0 ? <Empty label="No medals" /> : (
             <div style={{ marginBottom: 26 }}>
               <MedalStandings
@@ -1929,7 +1929,7 @@ export default function TeamDetail() {
           )}
 
           {/* All medals */}
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0b2948', margin: '8px 0 10px' }}>All Medals · {medals.length}</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: '8px 0 10px' }}>All Medals · {medals.length}</div>
           {medals.length === 0 ? <Empty label="No medals" /> : (
             <div className="table-scroll">
               <table className="table">
@@ -1974,7 +1974,7 @@ export default function TeamDetail() {
                     <span style={{ background: 'rgba(13,45,94,.85)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: '0 8px 0 0' }} className="asw-num">{a.items_count || 0} items</span>
                   </div>
                   <div style={{ padding: '12px 14px' }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: '#0b2948', lineHeight: 1.3 }}>{a.title}</div>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>{a.title}</div>
                     <div className="micro" style={{ marginTop: 4 }}>{formatDate(a.created_at)}</div>
                   </div>
                 </Link>

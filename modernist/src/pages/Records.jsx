@@ -20,11 +20,11 @@ const SCOPE_OPTIONS = [
   { value: 'WORLD', label: 'World' },
 ]
 
-const sortByEvent = (a, b) =>
+export const sortByEvent = (a, b) =>
   (a.isRelay - b.isRelay) || (a.sortOrder - b.sortOrder) || (a.distance - b.distance)
 
 // Normalize computed + manual record rows into one shape.
-function normalizeComputed(r) {
+export function normalizeComputed(r) {
   return {
     key: `${r.event_id}-${r.gender}-${r.swimmer_id}-${r.time_centiseconds}`,
     // deep link to the exact swim (row expanded with splits) in the meet
@@ -68,7 +68,7 @@ function normalizeManual(r) {
   }
 }
 
-function RecordTable({ rows }) {
+export function RecordTable({ rows }) {
   const navigate = useNavigate()
   return (
     <>
@@ -135,7 +135,7 @@ function RecordTable({ rows }) {
   )
 }
 
-function Section({ label, pool, rows, last }) {
+export function Section({ label, pool, rows, last }) {
   return (
     <div className={last ? 'pad' : 'rule-b pad'}>
       <div className="kicker" style={{ marginBottom: 12 }}>{label} · {pool}</div>

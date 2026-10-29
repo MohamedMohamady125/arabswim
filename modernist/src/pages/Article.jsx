@@ -88,7 +88,7 @@ export default function Article() {
             fontWeight: isRTL ? 700 : 800,
             lineHeight: isRTL ? 1.7 : 1.12,
             letterSpacing: isRTL ? 0 : '-0.03em',
-            color: '#1a1a2e',
+            color: 'var(--color-accent-800)',
           }}>{article.title}</h1>
         </div>
 
@@ -116,7 +116,7 @@ export default function Article() {
         {article.cover_image && (
           <div style={{
             position: 'relative', margin: '0 0 28px', height: 'min(460px, 58vw)',
-            overflow: 'hidden', borderRadius: 2, background: '#0b2948',
+            overflow: 'hidden', borderRadius: 2, background: 'var(--color-accent-800)',
           }}>
             <img
               src={mediaUrl(article.cover_image)} alt=""
@@ -136,7 +136,7 @@ export default function Article() {
                 lineHeight: isRTL ? 1.8 : 1.7,
                 margin: '0 0 24px',
                 textAlign: isRTL ? 'justify' : 'left',
-                color: '#2c2c2c',
+                color: 'var(--color-accent-800)',
                 fontWeight: 400,
                 wordSpacing: isRTL ? '2px' : 'normal',
                 whiteSpace: 'pre-line',
@@ -154,7 +154,7 @@ export default function Article() {
                 display: 'inline-flex', alignItems: 'center', gap: 10,
                 padding: '12px 18px', textDecoration: 'none',
                 background: '#f7f7f7', border: '1px solid #e0e0e0', borderRadius: 6,
-                color: '#1a1a2e', fontWeight: 600, fontSize: 15,
+                color: 'var(--color-accent-800)', fontWeight: 600, fontSize: 15,
                 fontFamily: isRTL ? AJ_FONTS : 'var(--font-body)',
               }}
             >

@@ -72,8 +72,8 @@ function withFinishSplit(splits, totalCs) {
 }
 
 // Long names ellipsize instead of stretching the column
-// pure black names (boss request), same font
-const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#000' }
+// names in the standard header blue (site-wide blue rule, 2026-10-29), same font
+const NAME_ELLIPSIS = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--color-accent-800)' }
 
 function SwimmerLink({ swimmerId, detail, resultNationality, isNational = true }) {
   // Relay teams are clubs at national meets but COUNTRIES at international
@@ -1931,7 +1931,7 @@ function MostImprovedTab({ meetId }) {
 /* ───────────────────────── Broken records tab ───────────────────────── */
 
 const BROKEN_SCOPE_LABEL = { arab: 'Arab records', gcc: 'GCC records', national: 'National records' }
-const BROKEN_SCOPE_COLOR = { arab: '#1c4e86', gcc: '#7d8a99', national: 'var(--color-accent-800)' }
+const BROKEN_SCOPE_COLOR = { arab: 'var(--color-accent-800)', gcc: '#7d8a99', national: 'var(--color-accent-800)' }
 
 function RecordsBrokenTab({ meetId }) {
   const navigate = useNavigate()

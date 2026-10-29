@@ -8,7 +8,7 @@ import {
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 const pad = (n) => String(n).padStart(2, '0')
 const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`
-const NAVY = '#0b2948'
+const NAVY = 'var(--color-accent-800)'
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function fmtTime(t) {

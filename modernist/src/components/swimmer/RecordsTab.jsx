@@ -39,7 +39,7 @@ export const SCOPE_COLORS = {
   ISLAMIC: '#0d7a52',
   MEDITERRANEAN: '#4a8fc0',
   AFRICAN: '#a8402f',
-  ARAB: '#1c4e86',
+  ARAB: 'var(--color-accent-800)',
   GCC: '#7d8a99',
   NATIONAL: 'var(--color-accent-800)',
 }

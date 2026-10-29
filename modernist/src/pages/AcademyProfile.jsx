@@ -15,13 +15,13 @@ function acronym(name) {
 
 const heroIcon = {
   width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-  background: '#1a56a0', color: '#fff',
+  background: 'var(--color-accent-800)', color: '#fff',
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 }
 
 function HeroContact({ icon, children, href }) {
   const body = (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: '#0b2948' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--color-accent-800)' }}>
       <span style={heroIcon}>{icon}</span>
       <span style={{ wordBreak: 'break-word' }}>{children}</span>
     </span>
@@ -49,7 +49,7 @@ const infoCell = {
   padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4,
 }
 const infoLabel = { fontSize: 10.5, fontWeight: 800, letterSpacing: '.09em', textTransform: 'uppercase', color: '#7a8aa0' }
-const infoValue = { fontSize: 14, fontWeight: 700, color: '#0b2948' }
+const infoValue = { fontSize: 14, fontWeight: 700, color: 'var(--color-accent-800)' }
 
 export default function AcademyProfile() {
   const { id } = useParams()
@@ -80,7 +80,7 @@ export default function AcademyProfile() {
         background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)',
         padding: '30px 32px 28px',
       }}>
-        <Link to="/academies" style={{ fontSize: 12.5, fontWeight: 700, color: '#1a56a0', textDecoration: 'none' }}>
+        <Link to="/academies" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', textDecoration: 'none' }}>
           ← All academies
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
@@ -93,7 +93,7 @@ export default function AcademyProfile() {
             {a.logo ? (
               <img src={mediaUrl(a.logo)} alt="" style={{ width: '84%', height: '84%', objectFit: 'contain' }} />
             ) : (
-              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40, color: '#1a56a0' }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40, color: 'var(--color-accent-800)' }}>
                 {acronym(a.name)}
               </span>
             )}
@@ -102,7 +102,7 @@ export default function AcademyProfile() {
             <h1 style={{
               margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 800,
               fontSize: 'clamp(24px, 4vw, 40px)', lineHeight: 1.1,
-              textTransform: 'uppercase', letterSpacing: '.01em', color: '#0b2948',
+              textTransform: 'uppercase', letterSpacing: '.01em', color: 'var(--color-accent-800)',
             }}>
               {a.name}
             </h1>
@@ -132,7 +132,7 @@ export default function AcademyProfile() {
               background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
               boxShadow: '0 1px 6px rgba(11,41,72,.06)', padding: '18px 20px', marginBottom: 16,
             }}>
-              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#0b2948', marginBottom: 8 }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', marginBottom: 8 }}>
                 About the Academy
               </div>
               <div className="text-muted" style={{ fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-line' }}>
@@ -145,7 +145,7 @@ export default function AcademyProfile() {
             background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
             boxShadow: '0 1px 6px rgba(11,41,72,.06)', padding: '18px 20px',
           }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#0b2948', marginBottom: 12 }}>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', marginBottom: 12 }}>
               Academy Information
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
@@ -186,7 +186,7 @@ export default function AcademyProfile() {
 
           {/* Training calendar */}
           <div style={{ marginTop: 16 }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#0b2948', marginBottom: 10 }}>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', marginBottom: 10 }}>
               Training Calendar
             </div>
             <TrainingCalendar academyId={Number(id)} canEdit={isAdmin || (user?.role === 'ACADEMY' && user?.academy === a.id)} />

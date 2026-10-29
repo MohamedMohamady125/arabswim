@@ -28,6 +28,8 @@ class RankingView(APIView):
         event = _int('event')
         age_group = request.query_params.get('age_group')
         championship = _int('championship')
+        classification = _int('classification')
+        sub_classification = _int('sub_classification')
 
         # Event is required for rankings to make sense
         if not event:
@@ -58,6 +60,10 @@ class RankingView(APIView):
             qs = qs.filter(championship__pool=pool)
         if championship:
             qs = qs.filter(championship_id=championship)
+        if classification:
+            qs = qs.filter(championship__classification_id=classification)
+        if sub_classification:
+            qs = qs.filter(championship__sub_classification_id=sub_classification)
 
         # Age group filter
         # OPEN = best times regardless of age (no filter)

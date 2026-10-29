@@ -13,8 +13,8 @@ import { formatDate } from '../utils'
    · By Event — yearly national best + top-8 depth average + benchmarks
    · Records  — chronological national-best (record) timeline            */
 
-const INK = '#12253d'
-const NAVY = '#1c4e86'
+const INK = 'var(--color-accent-800)'
+const NAVY = 'var(--color-accent-800)'
 const LIGHT_BLUE = '#4a8fc0'
 const GOLD = '#b98a1e'
 const GREEN = '#16a34a'
@@ -40,12 +40,12 @@ function Triangle({ x, y, color }) {
 }
 
 function SubTabs({ options, value, onChange }) {
-  const base = { padding: '8px 22px', border: '2px solid #1a56a0', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }
+  const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }
   return (
     <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', margin: '18px 0 24px' }}>
       {options.map(([val, label]) => (
         <button key={val} type="button" onClick={() => onChange(val)}
-          style={value === val ? { ...base, background: '#1a56a0', color: '#fff' } : { ...base, background: '#fff', color: '#1a56a0' }}>
+          style={value === val ? { ...base, background: 'var(--color-accent-800)', color: '#fff' } : { ...base, background: '#fff', color: 'var(--color-accent-800)' }}>
           {label}
         </button>
       ))}
@@ -617,9 +617,9 @@ export default function FederationProgressionTab({ countryId }) {
   return (
     <div className="pad-lg">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '4px 0 8px' }}>
-        <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0b2948', margin: 0, textAlign: 'center' }}>Progression</h2>
-        <div style={{ width: 50, height: 2, background: '#1a56a0' }} />
+        <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+        <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0, textAlign: 'center' }}>Progression</h2>
+        <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
       </div>
       <div style={{ textAlign: 'center', fontSize: 12.5, color: '#6b7d94', marginBottom: 4 }}>
         Season-best analysis — how the federation moves year over year

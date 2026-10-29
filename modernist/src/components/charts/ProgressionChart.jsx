@@ -6,11 +6,11 @@ import { smoothPath } from './lineUtils'
 export const CHART = {
   grid: '#dde4ec',          // neutral-300 gridlines
   axisText: '#78879a',      // neutral-600 tick labels
-  primary: '#1c4e86',       // navy accent
-  series: ['#1c4e86', '#4a8fc0', '#b98a1e', '#0d7a52', '#a8402f', '#78879a'],
+  primary: 'var(--color-accent-800)',       // navy accent
+  series: ['var(--color-accent-800)', '#4a8fc0', '#b98a1e', '#0d7a52', '#a8402f', '#78879a'],
 }
 
-const INK = '#12253d'
+const INK = 'var(--color-accent-800)'
 const FONT_STACK = '"Archivo", system-ui, sans-serif'
 
 /** Format centiseconds → "M:SS.hh" / "SS.hh" for axis/tooltips. */
@@ -331,7 +331,7 @@ function Chart({ lines, title, showSwimmer = false }) {
               <rect x={tx} y={ty} width={tw} height={th} fill="#ffffff" stroke={INK} strokeWidth="1.5" />
               {rows.map((r, i) => (
                 <text key={i} x={tcx} y={ty + 17 + i * (mobile ? 17 : 16)} textAnchor="middle"
-                  fill={i === 0 ? INK : i === 1 ? '#12253d' : '#58687c'}
+                  fill={i === 0 ? INK : i === 1 ? 'var(--color-accent-800)' : '#58687c'}
                   fontSize={i === 0 ? f1 : f2} fontWeight={i <= 1 ? 'bold' : 'normal'}
                   style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {r}

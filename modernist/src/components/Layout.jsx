@@ -201,7 +201,7 @@ function Footer() {
   const { isAdmin } = useAuth()
   const nav = useNav()
   return (
-    <footer className="rule-t" style={{ background: 'var(--color-accent-800)', color: '#ffffff', padding: '32px' }}>
+    <footer className="rule-t" style={{ background: 'linear-gradient(135deg, var(--color-accent-800), var(--color-accent-900))', color: '#ffffff', padding: '32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
         <img src="/logo.png" alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>ARABSWIM</span>

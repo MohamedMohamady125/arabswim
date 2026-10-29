@@ -49,7 +49,8 @@ export default function Home() {
       )}
 
       {/* ── Header band ── */}
-      <header style={{ background: 'linear-gradient(135deg, var(--color-accent-800), var(--color-accent-900))', color: '#fff', padding: '34px 0 26px', textAlign: 'center' }}>
+      {/* flat standard blue — user: no light-to-dark gradient, top and bottom identical */}
+      <header style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '34px 0 26px', textAlign: 'center' }}>
         <div className="container" style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: GOLD }}>Arab Swim</div>
           <h1 style={{ margin: 0, fontSize: 'clamp(28px, 5vw, 42px)', letterSpacing: '0.02em', textTransform: 'uppercase', color: '#fff' }}>Quick Statistics</h1>

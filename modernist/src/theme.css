@@ -232,8 +232,8 @@ figure { margin: 0; }
 .results-table .rank-col { width: 44px; }
 .results-table td.swimmer-cell { width: 100%; max-width: 0; }
 /* meet results rows: compact height (boss asked to shrink the tall rows, 2026-10-28) */
-.results-table th { padding-top: 10px; padding-bottom: 10px; }
-.results-table td { padding-top: 9px; padding-bottom: 9px; }
+.results-table th { padding-top: 8px; padding-bottom: 8px; }
+.results-table td { padding-top: 5px; padding-bottom: 5px; }
 /* rankings: swimmer column absorbs the leftover width; names ellipsize on one line */
 .rankings-table td.swimmer-cell { width: 100%; max-width: 0; }
 /* grid children default to min-width auto, which lets wide tables blow out the track */
@@ -555,8 +555,8 @@ figure { margin: 0; }
   .results-table th:first-child, .results-table td:first-child { padding-right: 0; }
   .results-table td.swimmer-cell, .results-table th:nth-child(2) { padding-left: 8px; }
   /* compact rows on phones too (boss asked to shrink the tall rows, 2026-10-28) */
-  .results-table th { padding-top: 9px; padding-bottom: 9px; }
-  .results-table td { padding-top: 9px; padding-bottom: 9px; }
+  .results-table th { padding-top: 8px; padding-bottom: 8px; }
+  .results-table td { padding-top: 5px; padding-bottom: 5px; }
   /* rankings on phone: one compact line per row — name truncates, no wrapping */
   .rankings-table th:first-child { width: 24px !important; }
   .rankings-table td.swimmer-cell, .rankings-table th:nth-child(2) { padding-left: 4px; }

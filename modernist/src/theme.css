@@ -426,6 +426,8 @@ figure { margin: 0; }
   /* generic grid collapses for inline-styled desktop grids */
   .m-col1 { grid-template-columns: 1fr !important; }
   .m-col2 { grid-template-columns: repeat(2, 1fr) !important; }
+  /* phone: desktop row/column placements collapse to DOM order */
+  .m-col1 > * { grid-column: auto !important; grid-row: auto !important; }
   .m-pad { padding-left: 16px !important; padding-right: 16px !important; }
   /* let grid items shrink below their content (images, wide tables) */
   .m-col1 > *, .m-col2 > * { min-width: 0; }

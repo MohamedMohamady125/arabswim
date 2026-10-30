@@ -1036,22 +1036,34 @@ class SwimmerViewSet(viewsets.ModelViewSet):
 
         lines = []
         for es in event_stats:
-            results = (
+            # ONE point per meet — the fastest swim there (heats + finals of
+            # the same meet otherwise plot as two noisy points).
+            best_per_meet = list(
                 Result.objects.filter(
                     swimmer=swimmer, event_id=es['event_id'],
                     championship__pool=pool, time_centiseconds__gt=0,
                 )
-                .select_related('championship')
+                .values('championship_id', 'championship__name', 'championship__date')
+                .annotate(best=Min('time_centiseconds'))
                 .order_by('-championship__date')[:5]
             )
+            # FINA points of each meet's fastest swim
+            finas = {
+                (f['championship_id'], f['time_centiseconds']): f['fina_points']
+                for f in Result.objects.filter(
+                    swimmer=swimmer, event_id=es['event_id'],
+                    championship_id__in=[b['championship_id'] for b in best_per_meet],
+                    time_centiseconds__gt=0,
+                ).values('championship_id', 'time_centiseconds', 'fina_points')
+            }
             points = []
-            for r in reversed(list(results)):
+            for r in reversed(best_per_meet):
                 points.append({
-                    'date': r.championship.date.isoformat(),
-                    'time': format_centiseconds(r.time_centiseconds),
-                    'time_cs': r.time_centiseconds,
-                    'meet': r.championship.name,
-                    'fina': r.fina_points,
+                    'date': r['championship__date'].isoformat(),
+                    'time': format_centiseconds(r['best']),
+                    'time_cs': r['best'],
+                    'meet': r['championship__name'],
+                    'fina': finas.get((r['championship_id'], r['best'])),
                 })
             lines.append({
                 'event_id': es['event_id'],

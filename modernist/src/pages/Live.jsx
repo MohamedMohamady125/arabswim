@@ -568,7 +568,7 @@ function LiveHub({ meet }) {
         boxShadow: '0 4px 18px rgba(12,35,64,.14)',
       }}>
         <div style={{
-          background: 'linear-gradient(140deg, var(--color-accent-700), var(--color-accent-900))',
+          background: 'var(--color-accent-800)',
           color: '#fff', padding: '20px 22px 18px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

@@ -98,7 +98,7 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
       >
         {/* ── header ── */}
         <div style={{
-          background: 'linear-gradient(140deg, var(--color-accent-700), var(--color-accent-900))',
+          background: 'var(--color-accent-800)',
           color: '#fff', padding: '18px 20px 16px', position: 'relative', flex: 'none',
         }}>
           <button

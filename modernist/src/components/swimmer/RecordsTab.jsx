@@ -103,6 +103,7 @@ export default function RecordsTab({ swimmerId }) {
           formatted_time: r.time,
           meet_name: r.championship_name,
           location: r.championship_location,
+          meet_country: r.championship_country,
           fina_points: r.fina_points,
           result_date: r.date,
           categories: [cat],
@@ -280,32 +281,27 @@ export default function RecordsTab({ swimmerId }) {
         {activeRows.map((r, i) => (
           /* Arab Swim navy cards (same gradient as the profile stat cards) */
           <div key={i} className="card asw-fade-up"
-            style={{ borderTop: `3px solid ${activeColor}`, background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))', color: '#fff', animationDelay: `${Math.min(i * 45, 450)}ms` }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            style={{ borderTop: `3px solid ${activeColor}`, background: 'var(--color-accent-800)', color: '#fff', animationDelay: `${Math.min(i * 45, 450)}ms` }}>
+            {/* kicker row: classification + age category beside it */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span className="card-kicker" style={{ color: 'rgba(255,255,255,0.75)' }}>{activeType} RECORD</span>
-              <span className="tag" style={{ background: 'rgba(255,255,255,0.14)', color: r.pool === 'SCM' ? 'var(--asw-gold)' : '#fff' }}>{r.pool}</span>
+              {compressCategories(r.categories).map((cat) => (
+                <span key={cat} className="tag" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.85)' }}>{cat}</span>
+              ))}
             </div>
-            <div className="card-title" style={{ textTransform: 'uppercase', fontSize: 15, color: '#fff' }}>
-              {r.event_detail?.name || r.event_name}
+            {/* event name with the pool badge right beside it */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="card-title" style={{ textTransform: 'uppercase', fontSize: 15, color: '#fff' }}>
+                {r.event_detail?.name || r.event_name}
+              </span>
+              <span className="tag" style={{ background: 'rgba(255,255,255,0.14)', color: r.pool === 'SCM' ? 'var(--asw-gold)' : '#fff', flex: 'none' }}>{r.pool}</span>
             </div>
             <div className="asw-time" style={{ fontSize: 26, fontWeight: 800, color: '#fff', lineHeight: 1 }}>
               {r.formatted_time}
             </div>
-            <div className="card-meta asw-num" style={{ color: 'rgba(255,255,255,0.8)' }}>
-              <span>{fmtDate(r.result_date)}</span>
-              {r.fina_points != null && (
-                <span style={{ fontWeight: 700, color: 'var(--asw-gold)' }}>{r.fina_points} FINA</span>
-              )}
-            </div>
-            {(r.meet_name || r.location) && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>
-                {r.meet_name}{r.meet_name && r.location ? ' — ' : ''}{r.location}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
-              {compressCategories(r.categories).map((cat) => (
-                <span key={cat} className="tag" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.85)' }}>{cat}</span>
-              ))}
+            {/* date | meet country (no FINA, no meet name) */}
+            <div className="card-meta asw-num" style={{ color: 'rgba(255,255,255,0.8)', marginTop: 'auto' }}>
+              <span>{fmtDate(r.result_date)}{r.meet_country ? ` | ${r.meet_country}` : ''}</span>
             </div>
           </div>
         ))}

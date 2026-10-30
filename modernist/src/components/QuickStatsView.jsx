@@ -155,7 +155,7 @@ function SectionBar({ n, title }) {
 function StatChip({ icon: Icon, value, label }) {
   return (
     <div style={{
-      background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))',
+      background: 'var(--color-accent-800)',
       color: '#fff', padding: '14px 8px', textAlign: 'center',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
     }}>
@@ -177,7 +177,7 @@ function LegendDot({ color, children }) {
 
 function PerfCard({ title, value, unit, name, code, event, gold = false }) {
   return (
-    <div style={{ background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))', color: '#fff', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 128 }}>
+    <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 128 }}>
       <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>{title}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
         <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 800, color: gold ? GOLD : '#fff', lineHeight: 1 }}>{value}</span>

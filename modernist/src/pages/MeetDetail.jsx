@@ -1739,7 +1739,7 @@ function OverviewTab({ meetId, stats }) {
               {ap.distribution.map((d) => (
                 <div key={d.age} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
                   <span className="asw-num" style={{ fontSize: 10, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 3 }}>{d.count}</span>
-                  <div style={{ width: '72%', maxWidth: 30, height: `${Math.max(3, (d.count / maxC) * 110)}px`, background: 'linear-gradient(180deg, var(--color-accent-400), var(--color-accent-700))', borderRadius: '2px 2px 0 0' }} />
+                  <div style={{ width: '72%', maxWidth: 30, height: `${Math.max(3, (d.count / maxC) * 110)}px`, background: 'var(--color-accent-800)', borderRadius: '2px 2px 0 0' }} />
                   <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 5 }}>{d.age}</span>
                 </div>
               ))}

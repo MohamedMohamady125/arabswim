@@ -172,7 +172,7 @@ function NewsTab({ countryId, countryName }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {articles.map((a) => (
             <Link key={a.id} className="fed-news-card" to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div className="fed-news-img" style={{ position: 'relative', height: 175, overflow: 'hidden', background: 'linear-gradient(135deg, #0b2948, #1a56a0)', flex: 'none' }}>
+              <div className="fed-news-img" style={{ position: 'relative', height: 175, overflow: 'hidden', background: 'var(--color-accent-800)', flex: 'none' }}>
                 {a.cover_image && (
                   <>
                     <img className="news-cover-img" src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -593,7 +593,7 @@ function MultimediaTab({ champIds, champNames, countryName }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
           {mine.map((a) => (
             <Link key={a.id} to={`/media/albums/${a.id}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div style={{ height: 160, background: a.cover ? `url(${a.cover}) center/cover` : 'linear-gradient(135deg, #0b2948, #1a56a0)', display: 'flex', alignItems: 'flex-end' }}>
+              <div style={{ height: 160, background: a.cover ? `url(${a.cover}) center/cover` : 'var(--color-accent-800)', display: 'flex', alignItems: 'flex-end' }}>
                 <span style={{ background: 'rgba(13,45,94,.85)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: '0 8px 0 0' }} className="asw-num">{a.items_count} items</span>
               </div>
               <div style={{ padding: '12px 14px' }}>
@@ -1359,7 +1359,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   const cardHeader = (title, sub) => (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-        <span style={{ width: 4, height: 17, background: 'linear-gradient(180deg, #1a56a0, #0b2948)', borderRadius: 2, flexShrink: 0 }} />
+        <span style={{ width: 4, height: 17, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{title}</span>
         <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer' }}>View All</span>
       </div>
@@ -1483,7 +1483,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
     <div style={{ background: '#fff', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
       <div className="m-hl4-head" style={{ padding: '10px 12px 7px', borderBottom: '1px solid #f0f3f7' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 4, height: 14, background: 'linear-gradient(180deg, #1a56a0, #0b2948)', borderRadius: 2, flexShrink: 0 }} />
+          <span style={{ width: 4, height: 14, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
           <span className="m-hl4-label" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{label}</span>
           <span className="m-hl4-va" style={{ fontSize: 9, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', whiteSpace: 'nowrap' }}>View All</span>
         </div>
@@ -1491,7 +1491,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
       <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
         {/* Photo panel */}
-        <div className="m-hl4-photo" style={{ width: 100, background: 'linear-gradient(170deg, #0d2d5e 0%, #1a56a0 60%, #3b82c4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
+        <div className="m-hl4-photo" style={{ width: 100, background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
           {photo
             ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
             : '🏊'}
@@ -2118,8 +2118,8 @@ export default function CountryProfile() {
             {[7, 12, 17, 22].map((h, k) => <span key={k} style={{ width: 4.5, height: h, background: 'var(--color-accent-800)', borderRadius: 1.5, display: 'inline-block' }} />)}
           </span>
         )
-        const taperL = { width: 130, height: 3, background: 'linear-gradient(to left, #0d2d5e, rgba(13,45,94,0))', transform: 'skewX(-30deg)' }
-        const taperR = { width: 130, height: 3, background: 'linear-gradient(to right, #0d2d5e, rgba(13,45,94,0))', transform: 'skewX(-30deg)' }
+        const taperL = { width: 130, height: 3, background: 'linear-gradient(to left, var(--color-accent-800), rgba(16,46,86,0))', transform: 'skewX(-30deg)' }
+        const taperR = { width: 130, height: 3, background: 'linear-gradient(to right, var(--color-accent-800), rgba(16,46,86,0))', transform: 'skewX(-30deg)' }
         const secTitle = (text) => (
           <div className="m-sectitle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, margin: '26px 0 22px' }}>
             <div style={taperL} />
@@ -2139,7 +2139,7 @@ export default function CountryProfile() {
                   {newsItems.map((a, i) => {
                     const inner = (
                       <>
-                        <div style={{ position: 'relative', margin: 10, height: 200, borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? '#0b2948' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>
+                        <div style={{ position: 'relative', margin: 10, height: 200, borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>
                           {a?.cover_image ? (
                             <>
                               <img className="news-cover-img" src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -2300,7 +2300,7 @@ export default function CountryProfile() {
                 <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
                   {/* Circular photo with navy ring */}
                   <div style={{ padding: '24px 0 8px' }}>
-                    <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '4px solid #0d2d5e', boxShadow: '0 3px 10px rgba(0,0,0,.12)', overflow: 'hidden' }}>
+                    <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '4px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(0,0,0,.12)', overflow: 'hidden' }}>
                       {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
                     </div>
                   </div>
@@ -2407,7 +2407,7 @@ export default function CountryProfile() {
         const swimmerCard = (s) => (
           <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', borderTop: '3px solid var(--color-box-top)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
             {/* Circular photo with navy ring */}
-            <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', border: '3px solid #0d2d5e', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
+            <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', border: '3px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
               {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
             </div>
             {/* Info */}

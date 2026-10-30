@@ -107,6 +107,7 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
                 'swimmer_id', 'nationality_id', 'nationality__region',
                 'age_at_competition', 'time_centiseconds',
                 'championship__name', 'championship__date', 'championship__location',
+                'championship__country__name',
                 'fina_points',
             ))
             if not rows:
@@ -151,6 +152,7 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
                     'time': time_str, 'time_centiseconds': cs,
                     'championship_name': r['championship__name'],
                     'championship_location': r['championship__location'],
+                    'championship_country': r['championship__country__name'] or '',
                     'fina_points': r['fina_points'],
                     'date': r['championship__date'].isoformat() if r['championship__date'] else '',
                     'categories': [],

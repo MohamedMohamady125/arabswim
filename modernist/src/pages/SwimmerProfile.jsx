@@ -906,7 +906,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
   const bestEventPb = (top_personal_bests || []).find((pb) => pb.event_name === best_event)
 
   const cardStyle = {
-    background: 'linear-gradient(150deg, var(--color-accent-600), var(--color-accent-900))',
+    background: 'var(--color-accent-800)',
     color: '#fff', padding: '14px 12px', textAlign: 'center',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
   }
@@ -1461,16 +1461,22 @@ export default function SwimmerProfile() {
             )}
             {swimmer.is_retired && <span className="tag tag-dark">Retired</span>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
+          {/* All swimmer details on ONE line (phone especially): country · born · age · sex */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap', fontSize: 13, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} flagUrl={swimmer.nationality_detail?.flag_url} />
-            <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            {swimmer.date_of_birth
-              ? chip('Born', isAdmin ? formatDate(swimmer.date_of_birth) : swimmer.date_of_birth.split('-')[0])
-              : swimmer.birth_year ? chip('Born', swimmer.birth_year) : null}
-            {swimmer.age != null && chip('Age', swimmer.age)}
-            {swimmer.sex && chip('', swimmer.sex === 'M' ? 'Male' : 'Female')}
+            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
+            {[
+              swimmer.date_of_birth
+                ? `Born ${isAdmin ? formatDate(swimmer.date_of_birth) : swimmer.date_of_birth.split('-')[0]}`
+                : swimmer.birth_year ? `Born ${swimmer.birth_year}` : null,
+              swimmer.age != null ? `Age ${swimmer.age}` : null,
+              swimmer.sex ? (swimmer.sex === 'M' ? 'Male' : 'Female') : null,
+            ].filter(Boolean).map((part) => (
+              <span key={part} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--color-neutral-400)' }}>·</span>
+                <span className="asw-num" style={{ fontWeight: 600 }}>{part}</span>
+              </span>
+            ))}
             {swimmer.instagram_url && (
               <a href={swimmer.instagram_url} target="_blank" rel="noopener noreferrer" title="Instagram" aria-label="Instagram"
                 className="btn btn-secondary btn-icon" style={{ width: 30, height: 30 }}>

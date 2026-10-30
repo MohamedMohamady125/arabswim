@@ -2130,11 +2130,14 @@ export default function CountryProfile() {
         const newsItems = ovNews.length > 0 ? ovNews : [null, null, null, null]
         return (
           <div className="m-pad" style={{ padding: '0 28px 32px', background: '#eaf1f9' }}>
-            {/* Full-width rows: news → events → highlight strip. Everything
-                aligns by construction — no cross-column row matching. */}
-            <div style={{ paddingTop: 18 }}>
+            {/* News + events left, highlights sidebar right. Both columns
+                stretch to the same height: the sidebar distributes its cards
+                (space-between) and the left balance widgets grow, so the two
+                columns start and end level. */}
+            <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'stretch', paddingTop: 18 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               {secTitle('Latest News')}
-              <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+              <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
                   {newsItems.map((a, i) => {
                     const inner = (
                       <>
@@ -2232,6 +2235,44 @@ export default function CountryProfile() {
                   )
                 })()}
 
+                {/* Balance widgets: grow to keep the left column's bottom
+                    level with the sidebar's last card */}
+                {(() => {
+                  const panel = { borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '18px 20px', display: 'flex', flexDirection: 'column', minHeight: 150 }
+                  const kick = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 8 }
+                  const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '7px 0', fontSize: 13.5, borderBottom: '1px solid #eef3f9' }
+                  const tally = (medalBoxes || []).filter((m) => (m.total || 0) > 0).slice(0, 6)
+                  const deco = [...(topMedalists || [])]
+                    .sort((a, b) => (b.total ?? 0) - (a.total ?? 0)).slice(0, 6)
+                  return (
+                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14, flex: 1 }}>
+                      <div style={panel}>
+                        <div style={kick}>Medal Tally by Competition</div>
+                        {tally.length === 0 ? <div style={hSub}>Medals will appear here</div> : tally.map((m) => (
+                          <div key={m.name} style={row}>
+                            <span style={{ fontWeight: 700, color: 'var(--color-accent-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                            <span className="asw-num" style={{ display: 'flex', gap: 9, fontWeight: 700, flex: 'none' }}>
+                              <span style={{ color: 'var(--asw-gold)' }}>{m.gold}G</span>
+                              <span style={{ color: 'var(--asw-silver)' }}>{m.silver}S</span>
+                              <span style={{ color: 'var(--asw-bronze)' }}>{m.bronze}B</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={panel}>
+                        <div style={kick}>Most Decorated Swimmers</div>
+                        {deco.length === 0 ? <div style={hSub}>Swimmers will appear here</div> : deco.map((s, i) => (
+                          <div key={`${s.name}-${i}`} style={row}>
+                            <span style={{ fontWeight: 700, color: 'var(--color-accent-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{s.name}</span>
+                            <span className="asw-num" style={{ fontWeight: 800, flex: 'none' }}>{s.total ?? ((s.gold || 0) + (s.silver || 0) + (s.bronze || 0))} 🏅</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+
               {/* RIGHT: Highlight cards — random 4 from a pool of ~11 ideas,
                   reshuffled every visit, distinct swimmers within a set */}
               {(() => {
@@ -2277,14 +2318,16 @@ export default function CountryProfile() {
                   { key: 'host', valid: hosted.length > 0, render: () => hl({ emoji: '🏟️', title: <>Championship<br />Host</>, big: hosted.length, sub: `Championship${hosted.length === 1 ? '' : 's'} Hosted`, name: lastHosted?.name, extra: lastHosted?.date ? `Most recent · ${lastHosted.date.slice(0, 4)}` : null }) },
                   { key: 'quick-stats', valid: !!profile.stats, render: () => hl({ title: 'Quick Stats', big: formatNumber(profile.stats?.swimmers), sub: 'Total Swimmers', name: `${formatNumber(profile.stats?.medals)} Medals · ${formatNumber(profile.stats?.records)} Records` }) },
                 ]
-                const picked = pickHighlights(pool, mulberry32(hlSeed))
+                // 5 cards: the sidebar roughly matches the left column's
+                // height, so space-between gaps stay small
+                const picked = pickHighlights(pool, mulberry32(hlSeed), 5)
                 return (
-                  <>
-                    {secTitle('Federation Highlights')}
-                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16, alignItems: 'stretch' }}>
-                      {picked.map((c) => <div key={c.key} style={{ minWidth: 0 }}>{c.render()}</div>)}
-                    </div>
-                  </>
+                  // space-between: when the left column runs taller, the
+                  // card gaps grow evenly so first/last cards stay pinned to
+                  // the column's top and bottom edges
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, justifyContent: 'space-between', minWidth: 0 }}>
+                    {picked.map((c) => <div key={c.key} style={{ minWidth: 0 }}>{c.render()}</div>)}
+                  </div>
                 )
               })()}
             </div>

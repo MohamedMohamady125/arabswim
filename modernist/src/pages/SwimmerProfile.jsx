@@ -967,7 +967,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         const tSub = { fontSize: 11, color: 'var(--color-neutral-600)' }
         // Biggest title: most prestigious classification with golds (else the
         // best medal colour at the highest level), from the medal hierarchy
-        const PRESTIGE = ['OLYMPIC', 'WORLD', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ARAB', 'GCC', 'NATIONAL']
+        const PRESTIGE = ['OLYMPIC', 'WORLD', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'ARAB', 'GCC', 'UNIVERSITY', 'SCHOOL', 'NATIONAL', 'OTHER']
         const rankOf = (n) => { const i = PRESTIGE.indexOf((n || '').toUpperCase()); return i === -1 ? PRESTIGE.length : i }
         const flat = (medals_hierarchy || []).flatMap((cat) => cat.classifications || [])
           .sort((a, b) => rankOf(a.name) - rankOf(b.name))

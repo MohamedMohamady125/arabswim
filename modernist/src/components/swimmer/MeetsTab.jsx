@@ -4,8 +4,8 @@ import { Empty } from '../ui'
 import { formatDate } from '../../utils'
 
 export const CLASSIFICATIONS = [
-  'Olympic', 'World', 'Arab', 'Asian', 'African', 'GCC',
-  'Mediterranean', 'Islamic', 'School', 'University', 'National', 'Other',
+  'Olympic', 'World', 'African', 'Asian', 'Mediterranean', 'Islamic',
+  'Arab', 'GCC', 'University', 'School', 'National', 'Other',
 ]
 
 export default function MeetsTab({ stats }) {

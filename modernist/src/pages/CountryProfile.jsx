@@ -2106,8 +2106,8 @@ export default function CountryProfile() {
         }
         const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 12)
         const usDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
-        const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-box-top)' }
-        const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0 }
+        const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-box-top)', height: '100%', boxSizing: 'border-box' }
+        const hPhoto = { width: 'clamp(92px, 34%, 150px)', height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0 }
         const hBody = { padding: '12px 8px 10px 2px', flex: 1, display: 'flex', flexDirection: 'column' }
         const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 7, lineHeight: 1.3 }
         const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 29, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1.1 }
@@ -2130,13 +2130,11 @@ export default function CountryProfile() {
         const newsItems = ovNews.length > 0 ? ovNews : [null, null, null, null]
         return (
           <div className="m-pad" style={{ padding: '0 28px 32px', background: '#eaf1f9' }}>
-            {/* Main layout: News left + Highlights right */}
-            <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
-              {/* LEFT column, row-aligned with the highlight cards:
-                  r1 title (beside card 1) · r2 news (top == card 2 top) ·
-                  r3 events (bottom == card 3 bottom); card 4 hangs below */}
-              <div style={{ gridColumn: 1, gridRow: 1, alignSelf: 'center' }}>{secTitle('Latest News')}</div>
-              <div className="m-col2" style={{ gridColumn: 1, gridRow: 2, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            {/* Full-width rows: news → events → highlight strip. Everything
+                aligns by construction — no cross-column row matching. */}
+            <div style={{ paddingTop: 18 }}>
+              {secTitle('Latest News')}
+              <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
                   {newsItems.map((a, i) => {
                     const inner = (
                       <>
@@ -2197,7 +2195,7 @@ export default function CountryProfile() {
                     <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 11, fontWeight: 800, background: bg, color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.05em' }}>{text}</span>
                   )
                   return (
-                    <div className="m-col1" style={{ gridColumn: 1, gridRow: 3, alignSelf: 'stretch', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr', gap: 14 }}>
+                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
                       <div style={evCard}>
                         <div style={evKick}>Current Event</div>
                         {current ? (
@@ -2282,12 +2280,10 @@ export default function CountryProfile() {
                 const picked = pickHighlights(pool, mulberry32(hlSeed))
                 return (
                   <>
-                    {picked.map((c, i) => (
-                      // r1 card hugs down to the news top; r3 card tops the
-                      // events row (events stretch so bottoms meet); r4 card
-                      // sits below the left column entirely
-                      <div key={c.key} style={{ gridColumn: 2, gridRow: i + 1, alignSelf: i === 0 ? 'end' : 'start' }}>{c.render()}</div>
-                    ))}
+                    {secTitle('Federation Highlights')}
+                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16, alignItems: 'stretch' }}>
+                      {picked.map((c) => <div key={c.key} style={{ minWidth: 0 }}>{c.render()}</div>)}
+                    </div>
                   </>
                 )
               })()}

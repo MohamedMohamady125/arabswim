@@ -2106,12 +2106,13 @@ export default function CountryProfile() {
         }
         const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 12)
         const usDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
-        const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-box-top)', height: '100%', boxSizing: 'border-box' }
-        const hPhoto = { width: 'clamp(92px, 34%, 150px)', height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0 }
-        const hBody = { padding: '12px 8px 10px 2px', flex: 1, display: 'flex', flexDirection: 'column' }
-        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 7, lineHeight: 1.3 }
-        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 29, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1.1 }
-        const hSub = { fontSize: 12.5, color: '#33415c', marginTop: 4 }
+        // compact sidebar cards: small square photo, tight text — no stretching
+        const hCard = { background: '#fff', borderRadius: 12, display: 'flex', gap: 12, padding: 10, alignItems: 'center', boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-box-top)' }
+        const hPhoto = { width: 96, height: 96, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, color: '#8a9bb5', flexShrink: 0 }
+        const hBody = { padding: '4px 6px 4px 0', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }
+        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12.5, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 4, lineHeight: 1.25 }
+        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 24, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1.1 }
+        const hSub = { fontSize: 12, color: '#33415c', marginTop: 3 }
         // small blue bar-chart icon like the reference
         const barsIcon = (
           <span style={{ position: 'absolute', right: 16, bottom: 14, display: 'inline-flex', alignItems: 'flex-end', gap: 2.5 }}>
@@ -2130,52 +2131,48 @@ export default function CountryProfile() {
         const newsItems = ovNews.length > 0 ? ovNews : [null, null, null, null]
         return (
           <div className="m-pad" style={{ padding: '0 28px 32px', background: '#eaf1f9' }}>
-            {/* News + events left, highlights sidebar right. Both columns
-                stretch to the same height: the sidebar distributes its cards
-                (space-between) and the left balance widgets grow, so the two
-                columns start and end level. */}
-            <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'stretch', paddingTop: 18 }}>
+            {/* News + events left, compact highlights sidebar right. Natural
+                heights, fixed gaps — no stretching or cross-column matching. */}
+            <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
               <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               {secTitle('Latest News')}
-              <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {newsItems.map((a, i) => {
                     const inner = (
                       <>
-                        <div style={{ position: 'relative', margin: 10, height: 200, borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>
-                          {a?.cover_image ? (
-                            <>
-                              <img className="news-cover-img" src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
-                            </>
-                          ) : '📷'}
+                        <div style={{ width: 128, height: 86, borderRadius: 8, overflow: 'hidden', flex: 'none', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, color: '#8a9bb5' }}>
+                          {a?.cover_image
+                            ? <img className="news-cover-img" src={a.cover_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : '📷'}
                         </div>
-                        <div style={{ padding: '4px 14px 16px', display: 'flex', flexDirection: 'column', flex: 1, textAlign: 'left' }}>
-                          <div style={{ fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 600, marginBottom: 9 }}>{a ? usDate(a.published_at || a.created_at) : 'Coming soon'}</div>
+                        <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, textAlign: 'left' }}>
+                          <div style={{ fontSize: 11.5, color: '#5a6b80', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{a ? usDate(a.published_at || a.created_at) : 'Coming soon'}</div>
                           {(() => {
                             const rtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a?.title || '')
                             return (
                               <div dir={rtl ? 'rtl' : 'ltr'} style={{
                                 fontFamily: rtl ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'var(--font-heading)',
                                 fontWeight: rtl ? 700 : 800,
-                                fontSize: rtl ? 17 : 16,
-                                lineHeight: rtl ? 1.6 : 1.25,
-                                letterSpacing: rtl ? 0 : '-0.015em',
+                                fontSize: rtl ? 16 : 15,
+                                lineHeight: rtl ? 1.55 : 1.3,
+                                letterSpacing: rtl ? 0 : '-0.01em',
                                 color: 'var(--color-accent-800)',
+                                overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                               }}>{a ? a.title : 'Federation news will appear here'}</div>
                             )
                           })()}
                           {/* dead affordance on "Coming soon" placeholders — only real articles get it */}
                           {a && (
-                            <div style={{ marginTop: 'auto', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 12.5, color: 'var(--color-accent-800)', fontWeight: 700 }}>Read more</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 700 }}>Read more</span>
                               <span style={{ color: 'var(--color-accent-800)', fontWeight: 800 }}>→</span>
                             </div>
                           )}
                         </div>
                       </>
                     )
-                    // no fixed minHeight: cards end right under their text (grid
-                    // stretch keeps the row aligned to the tallest card)
-                    const cardStyle = { borderRadius: 12, overflow: 'hidden', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column', textDecoration: 'none' }
+                    // compact horizontal news row: thumbnail + headline
+                    const cardStyle = { display: 'flex', gap: 14, alignItems: 'center', padding: 10, borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', textDecoration: 'none' }
                     return a
                       ? <Link key={a.id} to={`/news/${a.id}`} style={cardStyle}>{inner}</Link>
                       : <div key={`ph-${i}`} style={cardStyle}>{inner}</div>
@@ -2235,17 +2232,16 @@ export default function CountryProfile() {
                   )
                 })()}
 
-                {/* Balance widgets: grow to keep the left column's bottom
-                    level with the sidebar's last card */}
+                {/* Compact data widgets under the events */}
                 {(() => {
-                  const panel = { borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '18px 20px', display: 'flex', flexDirection: 'column', minHeight: 150 }
+                  const panel = { borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '18px 20px', display: 'flex', flexDirection: 'column' }
                   const kick = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 8 }
                   const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '7px 0', fontSize: 13.5, borderBottom: '1px solid #eef3f9' }
                   const tally = (medalBoxes || []).filter((m) => (m.total || 0) > 0).slice(0, 6)
                   const deco = [...(topMedalists || [])]
                     .sort((a, b) => (b.total ?? 0) - (a.total ?? 0)).slice(0, 6)
                   return (
-                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14, flex: 1 }}>
+                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
                       <div style={panel}>
                         <div style={kick}>Medal Tally by Competition</div>
                         {tally.length === 0 ? <div style={hSub}>Medals will appear here</div> : tally.map((m) => (
@@ -2318,14 +2314,9 @@ export default function CountryProfile() {
                   { key: 'host', valid: hosted.length > 0, render: () => hl({ emoji: '🏟️', title: <>Championship<br />Host</>, big: hosted.length, sub: `Championship${hosted.length === 1 ? '' : 's'} Hosted`, name: lastHosted?.name, extra: lastHosted?.date ? `Most recent · ${lastHosted.date.slice(0, 4)}` : null }) },
                   { key: 'quick-stats', valid: !!profile.stats, render: () => hl({ title: 'Quick Stats', big: formatNumber(profile.stats?.swimmers), sub: 'Total Swimmers', name: `${formatNumber(profile.stats?.medals)} Medals · ${formatNumber(profile.stats?.records)} Records` }) },
                 ]
-                // 5 cards: the sidebar roughly matches the left column's
-                // height, so space-between gaps stay small
                 const picked = pickHighlights(pool, mulberry32(hlSeed), 5)
                 return (
-                  // space-between: when the left column runs taller, the
-                  // card gaps grow evenly so first/last cards stay pinned to
-                  // the column's top and bottom edges
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, justifyContent: 'space-between', minWidth: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
                     {picked.map((c) => <div key={c.key} style={{ minWidth: 0 }}>{c.render()}</div>)}
                   </div>
                 )

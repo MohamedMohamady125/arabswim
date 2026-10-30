@@ -48,7 +48,8 @@ const GENDER_OPTS = [{ value: '', label: 'All' }, { value: 'M', label: "Men's" }
 const POOL_OPTS = [{ value: '', label: 'All pools' }, { value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]
 
 const CTRL = { flex: '0 1 auto', width: 'auto', minWidth: 0, height: 36 }
-const statCard = { border: '1px solid var(--color-neutral-200)', borderRadius: 8, padding: '14px 16px' }
+// standard navy box (same as the swimmer Overall tiles — site-wide box rule)
+const statCard = { background: 'var(--color-accent-800)', color: '#fff', borderRadius: 8, padding: '14px 16px' }
 const barStyle = { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '14px 32px' }
 
 function list(d) { return Array.isArray(d) ? d : d?.results || [] }
@@ -337,8 +338,8 @@ function SwimmerStats({ stats }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
         {items.map(([label, value]) => (
           <div key={label} style={statCard}>
-            <div className="kicker" style={{ marginBottom: 4 }}>{label}</div>
-            <div className="asw-num" style={{ fontSize: 26, fontWeight: 800, fontFamily: 'var(--font-heading)' }}>
+            <div className="kicker" style={{ marginBottom: 4, color: 'rgba(255,255,255,0.7)' }}>{label}</div>
+            <div className="asw-num" style={{ fontSize: 26, fontWeight: 800, fontFamily: 'var(--font-heading)', color: '#fff' }}>
               {value === null || value === undefined ? '—' : Number(value).toLocaleString('en-US')}
             </div>
           </div>

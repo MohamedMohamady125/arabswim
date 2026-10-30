@@ -3,9 +3,10 @@ import Flag from '../Flag'
 import { Empty } from '../ui'
 import { formatDate } from '../../utils'
 
+// Prestige order, most to least important (user-specified 2026-10-29)
 export const CLASSIFICATIONS = [
-  'Olympic', 'World', 'Arab', 'Asian', 'African', 'GCC',
-  'Mediterranean', 'Islamic', 'School', 'University', 'National', 'Other',
+  'Olympic', 'World', 'African', 'Asian', 'Mediterranean', 'Islamic',
+  'Arab', 'GCC', 'University', 'School', 'National', 'Other',
 ]
 
 export default function MeetsTab({ stats }) {

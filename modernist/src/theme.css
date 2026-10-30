@@ -168,14 +168,28 @@ figure { margin: 0; }
 .seg-opt:not(.on):hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
 
 /* — cards — */
-/* White cards carry the Arab Swim navy accent bar on top (app-style) */
+/* Cards are the standard navy box (same style as the swimmer Overall stat
+   tiles — user rule 2026-10-30: every box uses that blue, none white). Dark
+   text tokens are remapped inside so inline var() colors stay readable. */
 .card {
   display: flex; flex-direction: column; gap: var(--space-2);
-  padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-surface);
-  border: 1px solid var(--color-neutral-200);
-  border-top: 3px solid var(--color-box-top);
+  padding: var(--space-3); border-radius: var(--radius-md);
+  /* literal hex: the in-card remap below would make var(--color-accent-800)
+     self-resolve to #fff here. Keep in sync with --color-accent-800. */
+  background: #102e56;
+  color: #fff;
+  border: 0;
   box-shadow: var(--shadow-sm);
+  --color-text: #fff;
+  --color-accent: #fff;
+  --color-accent-800: #fff;
+  --color-neutral-500: rgba(255,255,255,0.6);
+  --color-neutral-600: rgba(255,255,255,0.68);
+  --color-neutral-700: rgba(255,255,255,0.78);
+  --color-neutral-800: rgba(255,255,255,0.88);
+  --color-divider: rgba(255,255,255,0.25);
 }
+.card .text-muted { color: rgba(255,255,255,0.72); }
 .qs-panel, .club-card, .swimmer-card, .record-cards > * {
   border-top: 3px solid var(--color-box-top) !important;
 }
@@ -229,8 +243,11 @@ figure { margin: 0; }
 .records-page .table { font-size: 16px; }
 .records-page .table th { font-size: 12px; }
 .records-page .table td { padding: 12px var(--space-2); }
-/* reports: no divider lines under the rows (user request 2026-10-29) */
-.reports-page .table td { border-bottom: 0; }
+/* reports: NO lines under athlete names anywhere — row borders, hairlines,
+   link underlines (user request 2026-10-29/30) */
+.reports-page .table td { border-bottom: 0 !important; }
+.reports-page .hair-b { border-bottom: 0 !important; }
+.reports-page a { text-decoration: none !important; }
 .records-page .asw-time { font-size: 17px; }
 .records-page .kicker { font-size: 14px; }
 /* meet results: the swimmer column absorbs all leftover width and long

@@ -2171,7 +2171,9 @@ export default function CountryProfile() {
                         </div>
                       </>
                     )
-                    const cardStyle = { borderRadius: 12, overflow: 'hidden', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column', minHeight: 425, textDecoration: 'none' }
+                    // no fixed minHeight: cards end right under their text (grid
+                    // stretch keeps the row aligned to the tallest card)
+                    const cardStyle = { borderRadius: 12, overflow: 'hidden', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column', textDecoration: 'none' }
                     return a
                       ? <Link key={a.id} to={`/news/${a.id}`} style={cardStyle}>{inner}</Link>
                       : <div key={`ph-${i}`} style={cardStyle}>{inner}</div>

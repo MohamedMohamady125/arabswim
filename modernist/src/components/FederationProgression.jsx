@@ -507,6 +507,7 @@ const MEET_LEVELS = [
   ['Arab', 'Arab'], ['GCC', 'GCC'], ['African', 'African'], ['Asian', 'Asian'],
   ['Mediterranean', 'Mediterranean'], ['Islamic', 'Islamic'],
   ['World', 'World'], ['Olympic', 'Olympic'],
+  ['University', 'University'], ['School', 'School'],
 ]
 
 export default function FederationProgressionTab({ countryId }) {

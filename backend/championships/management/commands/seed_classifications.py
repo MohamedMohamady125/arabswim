@@ -74,6 +74,10 @@ CLASSIFICATIONS = {
         'World School Games',
         'World University Games',
     ],
+    'School': [
+        'School Games',
+        'School Championships',
+    ],
     'Other': [
         'Afghanistan',
         'Albania',

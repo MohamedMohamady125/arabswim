@@ -154,6 +154,33 @@ function ExportButton({ onClick }) {
   )
 }
 
+/* ── Pagination: every report shows 20 per page with prev/next ─────────────── */
+const PAGE_SIZE = 20
+
+// Client-side pager over an already-fetched row list (reports fetch up to 500)
+function usePager(rows) {
+  const [page, setPage] = useState(1)
+  useEffect(() => { setPage(1) }, [rows])
+  const pages = Math.max(1, Math.ceil((rows?.length || 0) / PAGE_SIZE))
+  const cur = Math.min(page, pages)
+  return {
+    pageRows: (rows || []).slice((cur - 1) * PAGE_SIZE, cur * PAGE_SIZE),
+    start: (cur - 1) * PAGE_SIZE, // global index offset for rank columns
+    page: cur, pages, setPage,
+  }
+}
+
+function Pager({ page, pages, onPage }) {
+  if (pages <= 1) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '18px 0 4px' }}>
+      <button className="btn btn-secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>← Prev</button>
+      <span className="asw-num" style={{ fontWeight: 700, fontSize: 13 }}>Page {page} of {pages}</span>
+      <button className="btn btn-secondary" disabled={page >= pages} onClick={() => onPage(page + 1)}>Next →</button>
+    </div>
+  )
+}
+
 function SwimmerSearch({ country, gender, onPick }) {
   const [q, setQ] = useState('')
   const [results, setResults] = useState([])
@@ -377,7 +404,7 @@ function MedalsReport({ countries }) {
     setLoading(true)
     getReportMedalTable({
       group, classification: classification || undefined, sub_classification: subClass || undefined,
-      country: country || undefined, gender: gender || undefined, pool: pool || undefined, ...yearRange(year), limit: 20,
+      country: country || undefined, gender: gender || undefined, pool: pool || undefined, ...yearRange(year), limit: 500,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
       .catch(() => { if (alive) setRows([]) })
@@ -388,6 +415,7 @@ function MedalsReport({ countries }) {
   const exportCsv = () => downloadCsv(`medals-${group}.csv`,
     ['Rank', 'Name', 'Gold', 'Silver', 'Bronze', 'Total'],
     rows.map((r, i) => [i + 1, r.name, r.gold, r.silver, r.bronze, r.total]))
+  const pager = usePager(rows)
 
   const label = group === 'swimmer' ? 'Swimmer' : group === 'championship' ? 'Championship' : 'Country'
 
@@ -415,9 +443,9 @@ function MedalsReport({ countries }) {
             <table className="table">
               <thead><tr><th style={{ width: 34 }}>#</th><th>{label}</th>{group === 'championship' && <th className="hide-mobile">Date</th>}<th className="num">🥇</th><th className="num">🥈</th><th className="num">🥉</th><th className="num">Total</th></tr></thead>
               <tbody>
-                {rows.map((r, i) => (
+                {pager.pageRows.map((r, i) => (
                   <tr key={`${r.name}-${i}`}>
-                    <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+                    <td className="asw-num" style={{ fontWeight: 800 }}>{pager.start + i + 1}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                         {r.country_code && <Flag code={r.country_code} name={r.country_name || r.name} />}
@@ -438,6 +466,7 @@ function MedalsReport({ countries }) {
               </tbody>
             </table>
           </div>
+          <Pager page={pager.page} pages={pager.pages} onPage={pager.setPage} />
         </div>
       )}
     </div>
@@ -446,7 +475,9 @@ function MedalsReport({ countries }) {
 
 // ── Category: Ranking ────────────────────────────────────────────────────────
 function RankingReport({ countries, eventGroups, championships }) {
-  const [limit, setLimit] = useState(20)
+  // server-side pagination: 20 per page, page/count from the rankings endpoint
+  const [page, setPage] = useState(1)
+  const [count, setCount] = useState(0)
   const [scope, setScope] = useState('arab')
   const [country, setCountry] = useState('')
   const [ageGroup, setAgeGroup] = useState('OPEN')
@@ -460,21 +491,29 @@ function RankingReport({ countries, eventGroups, championships }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
 
+  // any filter change restarts from page 1
+  useEffect(() => { setPage(1) }, [scope, country, event, gender, pool, ageGroup, year, champ, classification, subClass])
+
   useEffect(() => {
-    if (!event) { setRows([]); return }
+    if (!event) { setRows([]); setCount(0); return }
     let alive = true
     setLoading(true)
     getRankings({
       scope, country: scope === 'national' ? (country || undefined) : undefined,
       event, gender: gender || undefined, pool: pool || undefined,
-      age_group: ageGroup, year: year || undefined, championship: champ || undefined, limit,
+      age_group: ageGroup, year: year || undefined, championship: champ || undefined,
+      limit: PAGE_SIZE, page,
       classification: classification || undefined, sub_classification: subClass || undefined,
     })
-      .then((res) => { if (alive) setRows(list(res.data)) })
-      .catch(() => { if (alive) setRows([]) })
+      .then((res) => {
+        if (!alive) return
+        setRows(list(res.data))
+        setCount(res.data?.count ?? list(res.data).length)
+      })
+      .catch(() => { if (alive) { setRows([]); setCount(0) } })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [scope, country, event, gender, pool, ageGroup, year, champ, limit, classification, subClass])
+  }, [scope, country, event, gender, pool, ageGroup, year, champ, page, classification, subClass])
 
   const exportCsv = () => downloadCsv('ranking.csv',
     ['Rank', 'Swimmer', 'Country', 'Time', 'FINA', 'Age', 'Meet', 'Date'],
@@ -483,9 +522,6 @@ function RankingReport({ countries, eventGroups, championships }) {
   return (
     <div>
       <div className="rule-b" style={barStyle}>
-        <select className="select" style={CTRL} value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
-          {LIMITS.map((n) => <option key={n} value={n}>Top {n}</option>)}
-        </select>
         <Seg options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }, { value: 'national', label: 'National' }]} value={scope} onChange={setScope} />
         {scope === 'national' && <CountrySelect byId countries={countries} value={country} onChange={setCountry} label="Pick a country" />}
         <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
@@ -524,6 +560,7 @@ function RankingReport({ countries, eventGroups, championships }) {
                   </tbody>
                 </table>
               </div>
+              <Pager page={page} pages={Math.max(1, Math.ceil(count / PAGE_SIZE))} onPage={setPage} />
             </div>
           )}
     </div>
@@ -627,7 +664,7 @@ function ParticipationsReport({ countries, championships }) {
     setLoading(true)
     getReportParticipation({
       group, country: country || undefined, gender: gender || undefined,
-      pool: pool || undefined, ...yearRange(year), championship: champ || undefined, limit: 20,
+      pool: pool || undefined, ...yearRange(year), championship: champ || undefined, limit: 500,
       classification: classification || undefined, sub_classification: subClass || undefined,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
@@ -645,6 +682,7 @@ function ParticipationsReport({ countries, championships }) {
         rows.map((r, i) => [i + 1, r.name, r.swimmers, r.results, r.clubs, r.best_fina ?? '']))
     }
   }
+  const pager = usePager(rows)
 
   const label = { meet: 'Meet', club: 'Club', country: 'Country', event: 'Event', swimmer: 'Swimmer' }[group]
 
@@ -667,9 +705,9 @@ function ParticipationsReport({ countries, championships }) {
               <table className="table">
                 <thead><tr><th style={{ width: 34 }}>#</th><th>Swimmer</th><th className="num">Swims</th><th className="num">Meets</th><th className="num">Events</th><th className="num hide-mobile">Best FINA</th></tr></thead>
                 <tbody>
-                  {rows.map((r, i) => (
+                  {pager.pageRows.map((r, i) => (
                     <tr key={`${r.swimmer_id}-${i}`}>
-                      <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+                      <td className="asw-num" style={{ fontWeight: 800 }}>{pager.start + i + 1}</td>
                       <td className="swimmer-cell">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           <Flag code={r.country_code} name={r.name} />
@@ -688,9 +726,9 @@ function ParticipationsReport({ countries, championships }) {
               <table className="table">
                 <thead><tr><th style={{ width: 34 }}>#</th><th>{label}</th>{group === 'meet' && <th className="hide-mobile">Date</th>}<th className="num">Swimmers</th><th className="num">Results</th>{group !== 'club' && <th className="num hide-mobile">Clubs</th>}<th className="num hide-mobile">Best FINA</th></tr></thead>
                 <tbody>
-                  {rows.map((r, i) => (
+                  {pager.pageRows.map((r, i) => (
                     <tr key={`${r.name}-${i}`}>
-                      <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+                      <td className="asw-num" style={{ fontWeight: 800 }}>{pager.start + i + 1}</td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           {r.country_code && <Flag code={r.country_code} name={r.name} />}
@@ -708,6 +746,7 @@ function ParticipationsReport({ countries, championships }) {
               </table>
             )}
           </div>
+          <Pager page={pager.page} pages={pager.pages} onPage={pager.setPage} />
         </div>
       )}
     </div>
@@ -730,7 +769,7 @@ function AgeReport({ countries, championships }) {
     setLoading(true)
     getReportAge({
       country: country || undefined, gender: gender || undefined, pool: pool || undefined,
-      championship: champ || undefined, limit: 20,
+      championship: champ || undefined, limit: 500,
       classification: classification || undefined, sub_classification: subClass || undefined,
     })
       .then((res) => { if (alive) setData(res.data) })
@@ -744,6 +783,8 @@ function AgeReport({ countries, championships }) {
     data.roster.map((r) => [r.name, r.country_code || '', r.gender, r.age, r.results]))
 
   const maxSwimmers = useMemo(() => data ? Math.max(1, ...data.distribution.map((d) => d.swimmers)) : 1, [data])
+  const roster = useMemo(() => data?.roster || [], [data])
+  const pager = usePager(roster)
 
   return (
     <div>
@@ -776,9 +817,9 @@ function AgeReport({ countries, championships }) {
             <table className="table">
               <thead><tr><th style={{ width: 34 }}>#</th><th>Swimmer</th><th className="num">Age</th><th className="hide-mobile">Gender</th><th className="num hide-mobile">Swims</th></tr></thead>
               <tbody>
-                {data.roster.map((r, i) => (
+                {pager.pageRows.map((r, i) => (
                   <tr key={`${r.swimmer_id}-${i}`}>
-                    <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+                    <td className="asw-num" style={{ fontWeight: 800 }}>{pager.start + i + 1}</td>
                     <td className="swimmer-cell">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                         {r.country_code && <Flag code={r.country_code} name={r.name} />}
@@ -793,6 +834,7 @@ function AgeReport({ countries, championships }) {
               </tbody>
             </table>
           </div>
+          <Pager page={pager.page} pages={pager.pages} onPage={pager.setPage} />
         </div>
       )}
     </div>
@@ -818,7 +860,7 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
     setLoading(true)
     getReportHighPerformance({
       group, event: event || undefined, pool: pool || undefined, gender: gender || undefined,
-      ...yearRange(year), championship: champ || undefined, fina_min: finaMin || 700, limit: 20,
+      ...yearRange(year), championship: champ || undefined, fina_min: finaMin || 700, limit: 500,
       classification: classification || undefined, sub_classification: subClass || undefined,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
@@ -836,6 +878,7 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
         rows.map((r, i) => [i + 1, r.name, r.swims, r.swimmers, r.best_fina ?? '']))
     }
   }
+  const pager = usePager(rows)
 
   return (
     <div>
@@ -857,9 +900,9 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
               <table className="table">
                 <thead><tr><th style={{ width: 34 }}>#</th><th>Swimmer</th><th>Event</th><th className="time">Time</th><th className="num">FINA</th><th className="hide-mobile">Meet</th><th className="hide-mobile">Date</th></tr></thead>
                 <tbody>
-                  {rows.map((r, i) => (
+                  {pager.pageRows.map((r, i) => (
                     <tr key={`${r.swimmer_id}-${i}`}>
-                      <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+                      <td className="asw-num" style={{ fontWeight: 800 }}>{pager.start + i + 1}</td>
                       <td className="swimmer-cell">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           <Flag code={r.country_code} name={r.country_name} />
@@ -879,9 +922,9 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
               <table className="table">
                 <thead><tr><th style={{ width: 34 }}>#</th><th>{group === 'club' ? 'Club' : 'Country'}</th><th className="num">Swims</th><th className="num">Swimmers</th><th className="num">Best FINA</th></tr></thead>
                 <tbody>
-                  {rows.map((r, i) => (
+                  {pager.pageRows.map((r, i) => (
                     <tr key={`${r.name}-${i}`}>
-                      <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+                      <td className="asw-num" style={{ fontWeight: 800 }}>{pager.start + i + 1}</td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           {r.country_code && <Flag code={r.country_code} name={r.name} />}
@@ -897,6 +940,7 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
               </table>
             )}
           </div>
+          <Pager page={pager.page} pages={pager.pages} onPage={pager.setPage} />
         </div>
       )}
     </div>
@@ -926,7 +970,7 @@ function ImprovementReport({ countries, eventGroups }) {
     getReportImprovement({
       year_from: yearFrom, year_to: yearTo, event: event || undefined,
       country: country || undefined, gender: gender || undefined, pool: pool || undefined,
-      age_max: ageMax, limit: 20,
+      age_max: ageMax, limit: 500,
       classification: classification || undefined, sub_classification: subClass || undefined,
     })
       .then((res) => { if (alive) setRows(list(res.data)) })
@@ -938,6 +982,7 @@ function ImprovementReport({ countries, eventGroups }) {
   const exportCsv = () => downloadCsv('best-improvement.csv',
     ['Rank', 'Swimmer', 'Country', 'Event', 'From', 'To', 'Drop', 'Drop %'],
     rows.map((r, i) => [i + 1, r.swimmer_name, r.country_code || '', r.event_name, r.from_time, r.to_time, (r.drop_cs / 100).toFixed(2), r.drop_pct]))
+  const pager = usePager(rows)
 
   return (
     <div>
@@ -962,9 +1007,9 @@ function ImprovementReport({ countries, eventGroups }) {
             <table className="table">
               <thead><tr><th style={{ width: 34 }}>#</th><th>Swimmer</th><th>Event</th><th className="time hide-mobile">{yearFrom}</th><th className="time hide-mobile">{yearTo}</th><th className="time">Drop</th><th className="num">%</th></tr></thead>
               <tbody>
-                {rows.map((r, i) => (
+                {pager.pageRows.map((r, i) => (
                   <tr key={`${r.swimmer_id}-${r.event_id}-${i}`}>
-                    <td className="asw-num" style={{ fontWeight: 800 }}>{i + 1}</td>
+                    <td className="asw-num" style={{ fontWeight: 800 }}>{pager.start + i + 1}</td>
                     <td className="swimmer-cell">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                         <Flag code={r.country_code} name={r.swimmer_name} />
@@ -981,6 +1026,7 @@ function ImprovementReport({ countries, eventGroups }) {
               </tbody>
             </table>
           </div>
+          <Pager page={pager.page} pages={pager.pages} onPage={pager.setPage} />
         </div>
       )}
     </div>

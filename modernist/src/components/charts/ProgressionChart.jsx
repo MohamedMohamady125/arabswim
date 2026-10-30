@@ -85,14 +85,24 @@ function Chart({ lines, title, showSwimmer = false }) {
     if (p.time_cs > globalMax) globalMax = p.time_cs
   }))
 
-  const range = globalMax - globalMin || 100
-  const paddedMin = globalMin - range * 0.08
-  const paddedMax = globalMax + range * 0.08
+  // Keep slopes honest: the y-domain never spans less than ~6% of the event
+  // time (or 3s), so a few tenths of improvement reads as a gentle trend —
+  // not a cliff — matching how swim-ranking sites scale progression charts.
+  let range = globalMax - globalMin || 100
+  const minSpan = Math.max(((globalMin + globalMax) / 2) * 0.06, 300)
+  if (range < minSpan) {
+    const extra = (minSpan - range) / 2
+    globalMin -= extra
+    globalMax += extra
+    range = minSpan
+  }
+  const paddedMin = globalMin - range * 0.12
+  const paddedMax = globalMax + range * 0.12
 
   // Phone-native canvas: narrower viewBox so text renders proportionally larger.
   const legendRows = mobile && processedLines.length > 1 ? Math.ceil(processedLines.length / 2) : 0
   const W = mobile ? 460 : 1280
-  const H = mobile ? 560 + legendRows * 24 : 700
+  const H = mobile ? 430 + legendRows * 24 : 480
   const pL = mobile ? 76 : 110
   const pR = mobile ? 20 : 60
   const pT = mobile ? (title ? 74 : 30) + legendRows * 24 : (title ? 104 : 50)
@@ -257,7 +267,7 @@ function Chart({ lines, title, showSwimmer = false }) {
           const pts = line.points
           if (pts.length === 0) return null
           const pathD = pts.length > 1
-            ? smoothPath(pts.map((p) => [pointX(p), timeToY(p.time_cs)]))
+            ? smoothPath(pts.map((p) => [pointX(p), timeToY(p.time_cs)]), 0.5)
             : null
           return (
             <g key={line.event_id || line.event_name}>

@@ -253,6 +253,10 @@ figure { margin: 0; }
 /* meet results: the swimmer column absorbs all leftover width and long
    names ellipsize instead of squeezing the time/points columns */
 .results-table .rank-col { width: 44px; }
+/* DQ/DNS/TLD pills sit in an 18px box (the medal's width) so they can't
+   stretch the rank column — meets with HC rows had every flag pushed right */
+.results-table .rank-hcbox { width: 18px; display: flex; justify-content: center; }
+.results-table .rank-hcbox .tag { flex: none; font-size: 8px; font-weight: 800; letter-spacing: 0; padding: 2px 3px; }
 .results-table td.swimmer-cell { width: 100%; max-width: 0; }
 /* meet results rows: compact height (boss asked to shrink the tall rows, 2026-10-28) */
 .results-table th { padding-top: 8px; padding-bottom: 8px; }

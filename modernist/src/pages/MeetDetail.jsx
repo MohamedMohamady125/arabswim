@@ -917,13 +917,17 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         >
           <td className="asw-num">
             {r.is_hc ? (
-              <span
-                className="tag tag-neutral"
-                title={{
-                  TLD: 'Time limit exceeded', DQ: 'Disqualified',
-                  DNS: 'Did not start', DNF: 'Did not finish',
-                }[r.hc_type] || 'Hors concours'}
-              >{r.hc_type || 'HC'}</span>
+              /* boxed to the medal's 18px: the pill must never widen the rank
+                 column, or every flag in the meet shifts right vs other meets */
+              <div className="rank-hcbox">
+                <span
+                  className="tag tag-neutral"
+                  title={{
+                    TLD: 'Time limit exceeded', DQ: 'Disqualified',
+                    DNS: 'Did not start', DNF: 'Did not finish',
+                  }[r.hc_type] || 'Hors concours'}
+                >{r.hc_type || 'HC'}</span>
+              </div>
             ) : medalOnRow ? (
               /* block display kills the inline baseline gap so the medal sits
                  on the exact vertical center of the row, level with the flag */

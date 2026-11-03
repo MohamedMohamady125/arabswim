@@ -32,6 +32,7 @@ export function ArticleModal({ article, onClose, onSaved }) {
     // new articles default to Published — created news should show up on the
     // site (and its federation page) immediately unless Draft is chosen
     status: article?.status || 'PUBLISHED',
+    published_at: article?.published_at || '',
     country: article?.country || '',
     team: article?.team || '',
   })
@@ -79,6 +80,9 @@ export function ArticleModal({ article, onClose, onSaved }) {
       fd.append('title', form.title)
       fd.append('body', form.body)
       fd.append('status', form.status)
+      // only send a real date — an empty value would fail DRF date parsing;
+      // left blank, the backend stamps today on publish
+      if (form.published_at) fd.append('published_at', form.published_at)
       if (form.country) fd.append('country', form.country)
       else if (article) fd.append('country', '')
       if (form.team) fd.append('team', form.team)
@@ -126,12 +130,23 @@ export function ArticleModal({ article, onClose, onSaved }) {
             </select>
           </div>
           <div className="field">
-            <label>Federation (optional)</label>
-            <select className="select" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>
-              <option value="">None</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <label>Publish date (optional)</label>
+            <input
+              className="input" type="date" value={form.published_at}
+              max="2100-12-31"
+              onChange={(e) => setForm({ ...form, published_at: e.target.value })}
+            />
+            <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+              Pick a past date for old news — articles are shown and sorted by this date. Empty = today.
+            </div>
           </div>
+        </div>
+        <div className="field">
+          <label>Federation (optional)</label>
+          <select className="select" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>
+            <option value="">None</option>
+            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
         </div>
         <div className="field">
           <label>Club (optional)</label>

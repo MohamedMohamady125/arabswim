@@ -635,6 +635,23 @@ export default function Import() {
     }))
   }
 
+  // Bulk variant: apply/clear decisions for MANY athletes in one state pass
+  // (per-athlete calls would re-map every meet once per athlete — too slow
+  // for multi-thousand-row special Excels).
+  const setAthleteDecisions = (entries) => {
+    setMeets((prev) => prev.map((m) => {
+      if (m.excluded) return m
+      let changed = false
+      const next = { ...(m.decisions || {}) }
+      for (const [name, decision] of Object.entries(entries)) {
+        if (!(m.matches || []).some((x) => (x.parsed_name || x.name_upper) === name)) continue
+        if (decision) { next[name] = decision; changed = true }
+        else if (name in next) { delete next[name]; changed = true }
+      }
+      return changed ? { ...m, decisions: next } : m
+    }))
+  }
+
   // "Upload Special": toggle whether a parsed athlete is kept. Checked uses
   // the same match/create decision the normal flow would (so an existing
   // profile is reused); unchecked drops the athlete from the decisions,
@@ -1270,6 +1287,7 @@ export default function Import() {
                   <SpecialAthletesReview
                     meets={meets}
                     setAthleteDecision={setAthleteDecision}
+                    setAthleteDecisions={setAthleteDecisions}
                   />
                 )}
 
@@ -1452,7 +1470,7 @@ export default function Import() {
 // uploaded meet. One decision (merge with existing / create new / skip) is
 // written to every meet that lists that athlete, so the imported swims all
 // land on the same profile.
-function SpecialAthletesReview({ meets, setAthleteDecision }) {
+function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions }) {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState(null)
   // per-athlete picked merge target chosen via search: { [name]: {id, name} }
@@ -1534,6 +1552,21 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
   // current action for an athlete's dropdown
   const actionOf = (a) => a.decision?.action || 'create'
 
+  // The decision an athlete gets by default (same rule as autoDecisions):
+  // merge when the match is trustworthy, otherwise create a new profile.
+  const defaultDecision = (a) =>
+    (a.matched_swimmer && (a.match_type === 'exact' || a.match_type === 'variant' || (a.match_type === 'fuzzy' && a.confidence >= 92)))
+      ? { action: 'match', swimmer_id: a.matched_swimmer.id }
+      : { action: 'create', auto: true }
+
+  // Bulk keep/skip over the athletes currently shown (all, or the search
+  // subset) — lets the admin import just one swimmer from a big file:
+  // Skip all, search the name, Keep shown (or set their dropdown).
+  const keepShown = () => setAthleteDecisions(Object.fromEntries(
+    filtered.map((a) => [a.name, a.decision && a.decision.action !== 'skip' ? a.decision : defaultDecision(a)])
+  ))
+  const skipShown = () => setAthleteDecisions(Object.fromEntries(filtered.map((a) => [a.name, null])))
+
   const setAction = (a, value) => {
     if (value === 'skip') { setAthleteDecision(a.name, null); return }
     if (value === 'match') {
@@ -1607,6 +1640,17 @@ function SpecialAthletesReview({ meets, setAthleteDecision }) {
           onChange={(e) => setQuery(e.target.value)}
           style={{ marginTop: 14, width: '100%', maxWidth: 420 }}
         />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={keepShown}>
+            Keep {query ? `shown (${filtered.length})` : `all (${athletes.length})`}
+          </button>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={skipShown}>
+            Skip {query ? `shown (${filtered.length})` : `all (${athletes.length})`}
+          </button>
+          <span className="micro" style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--color-neutral-700)' }}>
+            To import one swimmer only: Skip all, then search their name and press Keep shown.
+          </span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>

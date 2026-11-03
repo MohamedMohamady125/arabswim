@@ -20,5 +20,13 @@ class Article(models.Model):
     class Meta:
         ordering = ['-published_at', '-created_at']
 
+    def save(self, *args, **kwargs):
+        # A published article must carry a date: federation news sections
+        # filter on PUBLISHED and order by -published_at
+        if self.status == 'PUBLISHED' and self.published_at is None:
+            from django.utils import timezone
+            self.published_at = timezone.localdate()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.title

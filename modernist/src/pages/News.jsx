@@ -29,7 +29,9 @@ export function ArticleModal({ article, onClose, onSaved }) {
   const [form, setForm] = useState({
     title: article?.title || '',
     body: article?.body || '',
-    status: article?.status || 'DRAFT',
+    // new articles default to Published — created news should show up on the
+    // site (and its federation page) immediately unless Draft is chosen
+    status: article?.status || 'PUBLISHED',
     country: article?.country || '',
     team: article?.team || '',
   })

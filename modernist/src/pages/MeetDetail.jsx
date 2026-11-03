@@ -916,10 +916,12 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           }}
         >
           <td className="asw-num">
-            {r.is_hc ? (
-              /* boxed to the medal's 18px: the pill must never widen the rank
-                 column, or every flag in the meet shifts right vs other meets */
-              <div className="rank-hcbox">
+            {/* the whole rank cell lives in an 18px box (the medal's width) so
+                no content — DQ pill, 3-digit rank, fallback font — can widen
+                the column; the medal→flag gap stays identical on every meet
+                and every phone */}
+            <div className="rank-box">
+              {r.is_hc ? (
                 <span
                   className="tag tag-neutral"
                   title={{
@@ -927,14 +929,12 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                     DNS: 'Did not start', DNF: 'Did not finish',
                   }[r.hc_type] || 'Hors concours'}
                 >{r.hc_type || 'HC'}</span>
-              </div>
-            ) : medalOnRow ? (
-              /* block display kills the inline baseline gap so the medal sits
-                 on the exact vertical center of the row, level with the flag */
-              <MedalIcon type={mRank === 1 ? 'GOLD' : mRank === 2 ? 'SILVER' : 'BRONZE'} size={18} style={{ display: 'block' }} />
-            ) : (
-              rank || '—'
-            )}
+              ) : medalOnRow ? (
+                <MedalIcon type={mRank === 1 ? 'GOLD' : mRank === 2 ? 'SILVER' : 'BRONZE'} size={18} style={{ display: 'block' }} />
+              ) : (
+                rank || '—'
+              )}
+            </div>
           </td>
           <td className="swimmer-cell">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>

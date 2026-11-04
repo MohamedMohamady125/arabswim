@@ -1261,6 +1261,17 @@ function FeaturedCards({ picks, sideBySide = false }) {
                 {p.valueLabel && <span className="micro" style={{ fontSize: 10 }}>{p.valueLabel}</span>}
               </div>
             )}
+            {/* medal tally as icons (not G/S/B letters) */}
+            {p.medals && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {[['GOLD', p.medals.gold], ['SILVER', p.medals.silver], ['BRONZE', p.medals.bronze]].map(([t, n]) => (
+                  <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    <MedalIcon type={t} size={15} />
+                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, lineHeight: 1 }}>{n}</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ))}
@@ -1391,7 +1402,7 @@ function MedalsTab({ meetId, isNational }) {
       nationality_code: r.swimmer__nationality__code,
       photo: r.swimmer__photo,
       sub: 'Most decorated',
-      value: `${r.gold || 0}G · ${r.silver || 0}S · ${r.bronze || 0}B`,
+      medals: { gold: r.gold || 0, silver: r.silver || 0, bronze: r.bronze || 0 },
     }
   }
 
@@ -1416,7 +1427,8 @@ function MedalsTab({ meetId, isNational }) {
       )}
 
       <div className="pad">
-        <FeaturedCards picks={[decoratedPick('M', "Men's"), decoratedPick('F', "Women's")]} />
+        {/* sideBySide: both #1 cards (men + women) stay visible in one row on phone */}
+        <FeaturedCards sideBySide picks={[decoratedPick('M', "Men's"), decoratedPick('F', "Women's")]} />
         {/* tally */}
         {scopeOptions.length > 0 && (
           <>
@@ -1470,7 +1482,7 @@ function MedalsTab({ meetId, isNational }) {
                       {activeScope === 'country' && (
                         <>
                           <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
-                          <span style={{ fontWeight: 700 }}>{row.swimmer__nationality__name}</span>
+                          <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.swimmer__nationality__name}</span>
                         </>
                       )}
                       {activeScope === 'club' && (
@@ -1484,7 +1496,7 @@ function MedalsTab({ meetId, isNational }) {
                       {activeScope === 'swimmer' && (
                         <>
                           <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
-                          <span style={{ fontWeight: 700 }}>{row.swimmer__name}</span>
+                          <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.swimmer__name}</span>
                         </>
                       )}
                     </span>

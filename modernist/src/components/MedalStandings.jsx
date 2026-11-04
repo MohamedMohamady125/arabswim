@@ -6,6 +6,7 @@
    swimmers can all share the exact same frame. */
 
 import { Fragment, useState } from 'react'
+import { MedalIcon } from './ui'
 
 const GOLD = 'var(--asw-gold)'
 const SILVER = 'var(--asw-silver)'
@@ -20,10 +21,11 @@ const th = {
 }
 const td = { padding: '15px 12px', fontSize: 13.5, borderTop: '1px solid var(--wa-line)', color: 'var(--wa-ink)' }
 
-const medalTh = (headGrad, label, short) => (
-  <th style={{ ...th, textAlign: 'center', background: headGrad, width: 54 }}>
+const medalTh = (headGrad, label, type) => (
+  <th className="medal-col" style={{ ...th, textAlign: 'center', background: headGrad, width: 54 }}>
     <span className="hide-mobile">{label}</span>
-    <span className="show-mobile-inline">{short}</span>
+    {/* phone: the medal itself instead of a G/S/B letter */}
+    <span className="show-mobile-inline" style={{ lineHeight: 0 }}><MedalIcon type={type} size={15} style={{ verticalAlign: 'middle' }} /></span>
   </th>
 )
 
@@ -57,24 +59,27 @@ export default function MedalStandings({
         <div className="live-podium" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 16 }}>
           {top3.map((r, i) => (
             <div key={key(r, i)} style={{
+              /* standard site navy box (same blue as every other box) */
               border: '1px solid var(--color-neutral-200)', borderTop: `3px solid ${PODIUM_META[i].ring}`,
-              borderRadius: 12, padding: '12px 14px', background: '#fff', minWidth: 0,
+              borderRadius: 12, padding: '12px 14px', background: 'var(--color-box-top)', color: '#fff', minWidth: 0,
               boxShadow: '0 1px 4px rgba(12,35,64,.05)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, minWidth: 0, overflow: 'hidden' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-neutral-500)' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.65)' }}>
                   {PODIUM_META[i].label}
                 </span>
                 {chip(r, i)}
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1 }}>
                   {r.total ?? (r.gold || 0) + (r.silver || 0) + (r.bronze || 0)}
                 </span>
-                <span style={{ fontSize: 11, color: 'var(--color-neutral-600)', fontWeight: 700, display: 'inline-flex', gap: 8 }}>
-                  <span style={{ color: GOLD }}>{r.gold}G</span>
-                  <span style={{ color: SILVER }}>{r.silver}S</span>
-                  <span style={{ color: BRONZE }}>{r.bronze}B</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+                  {[['GOLD', r.gold], ['SILVER', r.silver], ['BRONZE', r.bronze]].map(([t, n]) => (
+                    <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      <MedalIcon type={t} size={13} /><span className="asw-num">{n || 0}</span>
+                    </span>
+                  ))}
                 </span>
               </div>
             </div>
@@ -84,15 +89,15 @@ export default function MedalStandings({
 
       {/* overflowX keeps Bronze/Total reachable on narrow screens instead of clipping them */}
       <div style={{ border: '1px solid var(--wa-line)', borderRadius: 14, overflowX: 'auto', background: '#fff', boxShadow: '0 1px 4px rgba(12,35,64,.05)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
+        <table className="medals-table" style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
           <thead style={{ background: '#fff' }}>
             <tr>
-              <th style={{ ...th, textAlign: 'left', width: 40 }}>Rank</th>
+              <th style={{ ...th, textAlign: 'left', width: 32, paddingRight: 4 }}><span className="hide-mobile">Rank</span><span className="show-mobile-inline">#</span></th>
               <th style={{ ...th, textAlign: 'left' }}>{entityHeader}</th>
-              {medalTh('var(--wa-gold-head)', 'Gold', 'G')}
-              {medalTh('var(--wa-silver-head)', 'Silver', 'S')}
-              {medalTh('var(--wa-bronze-head)', 'Bronze', 'B')}
-              <th style={{ ...th, textAlign: 'center' }}>Total</th>
+              {medalTh('var(--wa-gold-head)', 'Gold', 'GOLD')}
+              {medalTh('var(--wa-silver-head)', 'Silver', 'SILVER')}
+              {medalTh('var(--wa-bronze-head)', 'Bronze', 'BRONZE')}
+              <th style={{ ...th, textAlign: 'center' }}><span className="hide-mobile">Total</span><span className="show-mobile-inline">T</span></th>
             </tr>
           </thead>
           <tbody>
@@ -107,12 +112,17 @@ export default function MedalStandings({
                       : onRowClick ? () => onRowClick(r) : undefined}
                     style={{ background: '#fff', cursor: (onRowClick || expandContent) ? 'pointer' : 'default' }}
                   >
-                    <td className="asw-num" style={{ ...td, fontWeight: 600 }}>{i + 1}</td>
-                    <td style={td}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                        {renderEntity(r, i)}
+                    <td className="asw-num" style={{ ...td, fontWeight: 600, paddingRight: 4 }}>{i + 1}</td>
+                    {/* entity absorbs the leftover width; long names ellipsize
+                        instead of forcing a horizontal scroll (same trick as
+                        the results table's swimmer cell) */}
+                    <td style={{ ...td, width: '100%', maxWidth: 0 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {renderEntity(r, i)}
+                        </span>
                         {expandContent && (
-                          <span style={{ fontSize: 9, color: 'var(--color-neutral-500)' }}>{isOpen ? '▴' : '▾'}</span>
+                          <span style={{ fontSize: 9, color: 'var(--color-neutral-500)', flex: 'none' }}>{isOpen ? '▴' : '▾'}</span>
                         )}
                       </span>
                     </td>

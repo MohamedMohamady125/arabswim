@@ -281,7 +281,10 @@ export default function RecordsTab({ swimmerId }) {
         {activeRows.map((r, i) => (
           /* Arab Swim navy cards (same gradient as the profile stat cards) */
           <div key={i} className="card asw-fade-up"
-            style={{ borderTop: `3px solid ${activeColor}`, background: 'var(--color-accent-800)', color: '#fff', animationDelay: `${Math.min(i * 45, 450)}ms` }}>
+            /* no inline background: .card remaps --color-accent-800 to #fff
+               inside itself, so that var here resolves white-on-white; the
+               class already paints the standard navy */
+            style={{ borderTop: `3px solid ${activeColor}`, color: '#fff', animationDelay: `${Math.min(i * 45, 450)}ms` }}>
             {/* kicker row: classification + age category beside it */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span className="card-kicker" style={{ color: 'rgba(255,255,255,0.75)' }}>{activeType} RECORD</span>

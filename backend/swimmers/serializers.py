@@ -34,6 +34,7 @@ class SwimmerDetailSerializer(serializers.ModelSerializer):
         model = Swimmer
         fields = ['id', 'name', 'date_of_birth', 'birth_year', 'nationality', 'nationality_detail',
                   'sex', 'club', 'photo', 'email', 'phone', 'instagram_url', 'facebook_url',
+                  'youtube_url', 'tiktok_url', 'x_url',
                   'age', 'nicknames', 'is_relay_team', 'is_retired', 'is_verified',
                   'created_at', 'updated_at']
 
@@ -48,6 +49,7 @@ class SwimmerCreateUpdateSerializer(serializers.ModelSerializer):
         model = Swimmer
         fields = ['id', 'name', 'date_of_birth', 'birth_year', 'nationality', 'sex',
                   'club', 'photo', 'email', 'phone', 'instagram_url', 'facebook_url',
+                  'youtube_url', 'tiktok_url', 'x_url',
                   'nicknames', 'is_retired', 'is_relay_team']
 
     def create(self, validated_data):

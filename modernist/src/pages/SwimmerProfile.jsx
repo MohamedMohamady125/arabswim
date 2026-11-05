@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef, Fragment } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { AtSign, ExternalLink, X, BadgeCheck } from 'lucide-react'
+import { X, BadgeCheck } from 'lucide-react'
+import { IconInstagram, IconFacebook, IconYoutube, IconTiktok, IconX } from '../components/SocialIcons'
 import {
   getSwimmer,
   updateSwimmer,
@@ -96,6 +97,9 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
     phone: swimmer.phone || '',
     instagram_url: swimmer.instagram_url || '',
     facebook_url: swimmer.facebook_url || '',
+    youtube_url: swimmer.youtube_url || '',
+    tiktok_url: swimmer.tiktok_url || '',
+    x_url: swimmer.x_url || '',
   })
   const [photo, setPhoto] = useState(null)
   const [cropFile, setCropFile] = useState(null)
@@ -161,6 +165,9 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
         {field('Phone', 'phone')}
         {field('Instagram URL', 'instagram_url', 'url')}
         {field('Facebook URL', 'facebook_url', 'url')}
+        {field('YouTube URL', 'youtube_url', 'url')}
+        {field('TikTok URL', 'tiktok_url', 'url')}
+        {field('X (Twitter) URL', 'x_url', 'url')}
         <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 40 }}>
           {loading ? 'Saving…' : 'Save changes'}
         </button>
@@ -181,6 +188,9 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
     phone: swimmer.phone || '',
     instagram_url: swimmer.instagram_url || '',
     facebook_url: swimmer.facebook_url || '',
+    youtube_url: swimmer.youtube_url || '',
+    tiktok_url: swimmer.tiktok_url || '',
+    x_url: swimmer.x_url || '',
     nicknames: (swimmer.nicknames || []).map((n) => n.nickname).join(', '),
     is_retired: !!swimmer.is_retired,
   })
@@ -212,6 +222,9 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
         phone: form.phone.trim(),
         instagram_url: form.instagram_url.trim(),
         facebook_url: form.facebook_url.trim(),
+        youtube_url: form.youtube_url.trim(),
+        tiktok_url: form.tiktok_url.trim(),
+        x_url: form.x_url.trim(),
         nicknames: form.nicknames.split(',').map((s) => s.trim()).filter(Boolean),
         is_retired: form.is_retired,
       }
@@ -281,6 +294,11 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
           {field('Instagram URL', 'instagram_url', 'url')}
           {field('Facebook URL', 'facebook_url', 'url')}
         </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {field('YouTube URL', 'youtube_url', 'url')}
+          {field('TikTok URL', 'tiktok_url', 'url')}
+        </div>
+        {field('X (Twitter) URL', 'x_url', 'url')}
         {field('Nicknames (comma-separated)', 'nicknames', 'text', { placeholder: 'e.g. Hamada, Mido' })}
         <label style={{ display: 'block' }}>
           <div className="card-kicker" style={{ marginBottom: 4 }}>Profile photo</div>
@@ -1477,18 +1495,19 @@ export default function SwimmerProfile() {
                 <span className="asw-num" style={{ fontWeight: 600 }}>{part}</span>
               </span>
             ))}
-            {swimmer.instagram_url && (
-              <a href={swimmer.instagram_url} target="_blank" rel="noopener noreferrer" title="Instagram" aria-label="Instagram"
-                className="btn btn-secondary btn-icon" style={{ width: 30, height: 30 }}>
-                <AtSign size={15} />
+            {[
+              ['Instagram', swimmer.instagram_url, IconInstagram],
+              ['Facebook', swimmer.facebook_url, IconFacebook],
+              ['YouTube', swimmer.youtube_url, IconYoutube],
+              ['TikTok', swimmer.tiktok_url, IconTiktok],
+              ['X', swimmer.x_url, IconX],
+            ].filter(([, href]) => href).map(([label, href, icon]) => (
+              <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                title={label} aria-label={`${swimmer.name} on ${label}`}
+                className="asw-social asw-social-light">
+                {icon}
               </a>
-            )}
-            {swimmer.facebook_url && (
-              <a href={swimmer.facebook_url} target="_blank" rel="noopener noreferrer" title="Facebook" aria-label="Facebook"
-                className="btn btn-secondary btn-icon" style={{ width: 30, height: 30 }}>
-                <ExternalLink size={15} />
-              </a>
-            )}
+            ))}
           </div>
           {swimmer.nicknames?.length > 0 && (
             <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>

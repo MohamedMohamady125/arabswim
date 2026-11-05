@@ -277,6 +277,16 @@ figure { margin: 0; }
   background: #ffffff; color: var(--color-accent-800);
   border-color: #ffffff; transform: translateY(-2px);
 }
+/* light-background variant (swimmer profile header): navy icon in an outlined
+   chip that fills navy on hover */
+.asw-social-light {
+  width: 30px; height: 30px;
+  border-color: var(--color-neutral-300); color: var(--color-box-top);
+}
+.asw-social-light:hover, .asw-social-light:focus-visible {
+  background: var(--color-box-top); color: #ffffff;
+  border-color: var(--color-box-top);
+}
 
 /* medal standings (shared frame): phone fits the whole table on screen —
    tight cell gutters, narrow rank + medal columns, names ellipsize */

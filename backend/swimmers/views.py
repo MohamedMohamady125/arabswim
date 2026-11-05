@@ -21,7 +21,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'date_of_birth', 'created_at']
 
     # Fields a verified athlete may edit on their own profile
-    ATHLETE_EDITABLE = {'email', 'phone', 'instagram_url', 'facebook_url'}
+    ATHLETE_EDITABLE = {'email', 'phone', 'instagram_url', 'facebook_url',
+                        'youtube_url', 'tiktok_url', 'x_url'}
 
     def get_permissions(self):
         if self.action in ('partial_update', 'update', 'upload_photo'):

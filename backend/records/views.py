@@ -112,6 +112,32 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
             ))
             if not rows:
                 continue
+            # Lead-in split times compete for the SHORTER event's record
+            # (first 50 of a 100 — rule 2026-11-04)
+            from .models import IntermediateTime
+            for ir in IntermediateTime.objects.filter(result__in=base).values(
+                'event_id', 'event__name', 'event__sort_order', 'event__distance',
+                'result__swimmer_id', 'result__nationality_id',
+                'result__nationality__region', 'result__age_at_competition',
+                'time_centiseconds', 'result__championship__name',
+                'result__championship__date', 'result__championship__location',
+                'result__championship__country__name',
+            ):
+                rows.append({
+                    'event_id': ir['event_id'], 'event__name': ir['event__name'],
+                    'event__sort_order': ir['event__sort_order'],
+                    'event__distance': ir['event__distance'],
+                    'swimmer_id': ir['result__swimmer_id'],
+                    'nationality_id': ir['result__nationality_id'],
+                    'nationality__region': ir['result__nationality__region'],
+                    'age_at_competition': ir['result__age_at_competition'],
+                    'time_centiseconds': ir['time_centiseconds'],
+                    'championship__name': ir['result__championship__name'],
+                    'championship__date': ir['result__championship__date'],
+                    'championship__location': ir['result__championship__location'],
+                    'championship__country__name': ir['result__championship__country__name'],
+                    'fina_points': None,
+                })
 
             scopes = [('arab', [r for r in rows])]
             if region == 'GCC':
@@ -438,6 +464,64 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
                     'championship_country_flag': result.championship.country.flag_url if result.championship.country else '',
                     'date': result.championship.date.isoformat(),
                 })
+
+        # Lead-in split records: a time from the START of a longer race at a
+        # shorter standard distance competes for that shorter event's record
+        # (the first 50 of a 100 can beat the 50 record — rule 2026-11-04).
+        from .models import IntermediateTime
+        iqs = IntermediateTime.objects.filter(result__in=qs).select_related(
+            'event', 'result', 'result__swimmer', 'result__nationality',
+            'result__swimmer__nationality', 'result__event',
+            'result__championship', 'result__championship__country')
+        ibest = (iqs.values('event_id', 'result__swimmer__sex')
+                 .annotate(best_time=Min('time_centiseconds')))
+        by_key = {(r['event_id'], r['gender']): r for r in records}
+        for entry in ibest:
+            key = (entry['event_id'], entry['result__swimmer__sex'])
+            cur = by_key.get(key)
+            if cur and cur['time_centiseconds'] <= entry['best_time']:
+                continue
+            it = (iqs.filter(event_id=entry['event_id'],
+                             result__swimmer__sex=entry['result__swimmer__sex'],
+                             time_centiseconds=entry['best_time'])
+                  .order_by('result__championship__date').first())
+            if not it:
+                continue
+            res = it.result
+            nat2 = res.nationality or res.swimmer.nationality
+            row = {
+                'result_id': res.id,
+                'championship_id': res.championship_id,
+                'event_id': it.event_id,
+                'event_name': it.event.name,
+                'event_distance': it.event.distance,
+                'event_sort_order': it.event.sort_order,
+                'is_relay': False,
+                'gender': res.swimmer.sex,
+                'swimmer_name': res.swimmer.name,
+                'swimmer_id': res.swimmer_id,
+                'is_relay_team': res.swimmer.is_relay_team,
+                'nationality': nat2.name if nat2 else '',
+                'nationality_code': nat2.code if nat2 else '',
+                'nationality_flag': nat2.flag_url if nat2 else '',
+                'time': _fmt_cs(it.time_centiseconds),
+                'time_centiseconds': it.time_centiseconds,
+                'fina_points': None,
+                'championship_name': res.championship.name,
+                'championship_country': res.championship.country.name if res.championship.country else '',
+                'championship_country_code': res.championship.country.code if res.championship.country else '',
+                'championship_country_flag': res.championship.country.flag_url if res.championship.country else '',
+                'date': res.championship.date.isoformat() if res.championship.date else '',
+                'from_split': True,
+                'source_event_name': res.event.name,
+                # deep links must open the PARENT swim (filed under the
+                # longer source event) in the meet results view
+                'source_event_id': res.event_id,
+            }
+            if cur:
+                records.remove(cur)
+            records.append(row)
+            by_key[key] = row
 
         # Sort by event sort_order then distance
         records.sort(key=lambda r: (r['gender'], r['event_sort_order'], r['event_distance']))

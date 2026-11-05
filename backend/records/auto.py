@@ -80,53 +80,65 @@ def check_and_update_records(result):
     if region == 'GCC':
         scopes.append(('GCC', None))
 
+    # Candidate swims this result contributes: the race itself, plus its
+    # lead-in splits — a time from the START of a longer race at a shorter
+    # standard distance is official for that distance (first 50 of a 100
+    # can break the 50 record; user rule 2026-11-04).
+    candidates = [(event, time_cs)]
+    if not result.event.is_relay and pool != 'OW':
+        from .intermediates import sync_intermediate_times
+        for it in sync_intermediate_times(result):
+            candidates.append((it.event, it.time_centiseconds))
+
     broken = []
-    for scope, country_id in scopes:
-        # Find existing record for this event + scope + pool
-        existing = Record.objects.filter(
-            event=event,
-            record_type=scope,
-            pool=pool,
-        )
-        if scope == 'NATIONAL' and country_id:
-            existing = existing.filter(country_id=country_id)
+    for cand_event, cand_cs in candidates:
+        for scope, country_id in scopes:
+            # Find existing record for this event + scope + pool
+            existing = Record.objects.filter(
+                event=cand_event,
+                record_type=scope,
+                pool=pool,
+            )
+            if scope == 'NATIONAL' and country_id:
+                existing = existing.filter(country_id=country_id)
 
-        # Filter by gender for individual events
-        if not event.is_relay:
-            existing = existing.filter(swimmer__sex=swimmer.sex)
+            # Filter by gender for individual events
+            if not cand_event.is_relay:
+                existing = existing.filter(swimmer__sex=swimmer.sex)
 
-        best = existing.order_by('time_centiseconds').first()
+            best = existing.order_by('time_centiseconds').first()
 
-        if best and time_cs >= best.time_centiseconds:
-            continue  # Not a record
+            if best and cand_cs >= best.time_centiseconds:
+                continue  # Not a record
 
-        rec_date = meet_date or __import__('datetime').date.today()
+            rec_date = meet_date or __import__('datetime').date.today()
 
-        # This swim is the new standing record for the scope: demote the
-        # previous current record(s) so the "new records" list (is_new=True)
-        # shows only the latest, not every record ever broken here.
-        existing.filter(is_new=True).update(is_new=False)
+            # This swim is the new standing record for the scope: demote the
+            # previous current record(s) so the "new records" list
+            # (is_new=True) shows only the latest, not every record ever
+            # broken here.
+            existing.filter(is_new=True).update(is_new=False)
 
-        # New record! Create it
-        Record.objects.create(
-            swimmer=swimmer,
-            event=event,
-            record_type=scope,
-            pool=pool,
-            time_centiseconds=time_cs,
-            location=location,
-            meet_name=meet_name,
-            country=nat,
-            result_date=rec_date,
-            result=result,
-            is_new=True,
-        )
-        broken.append(scope)
+            # New record! Create it
+            Record.objects.create(
+                swimmer=swimmer,
+                event=cand_event,
+                record_type=scope,
+                pool=pool,
+                time_centiseconds=cand_cs,
+                location=location,
+                meet_name=meet_name,
+                country=nat,
+                result_date=rec_date,
+                result=result,
+                is_new=True,
+            )
+            broken.append(scope)
 
-        # Meets are not always imported in chronological order. If this
-        # record predates existing rows that are SLOWER, those rows were
-        # never actually records — prune them so history stays clean.
-        existing.filter(result_date__gte=rec_date,
-                        time_centiseconds__gt=time_cs).delete()
+            # Meets are not always imported in chronological order. If this
+            # record predates existing rows that are SLOWER, those rows were
+            # never actually records — prune them so history stays clean.
+            existing.filter(result_date__gte=rec_date,
+                            time_centiseconds__gt=cand_cs).delete()
 
     return broken

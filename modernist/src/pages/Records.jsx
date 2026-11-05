@@ -27,9 +27,10 @@ export const sortByEvent = (a, b) =>
 export function normalizeComputed(r) {
   return {
     key: `${r.event_id}-${r.gender}-${r.swimmer_id}-${r.time_centiseconds}`,
-    // deep link to the exact swim (row expanded with splits) in the meet
+    // deep link to the exact swim (row expanded with splits) in the meet —
+    // a split record's parent swim is filed under the longer source event
     link: r.championship_id && r.result_id
-      ? `/meets/${r.championship_id}?tab=results&event=${r.event_id}&gender=${r.gender}&result=${r.result_id}`
+      ? `/meets/${r.championship_id}?tab=results&event=${r.source_event_id || r.event_id}&gender=${r.gender}&result=${r.result_id}`
       : null,
     eventName: r.event_name,
     sortOrder: r.event_sort_order ?? 99,
@@ -45,6 +46,9 @@ export function normalizeComputed(r) {
     meet: r.championship_name,
     location: r.championship_country,
     date: r.date,
+    // record set by a lead-in split of a longer race (first 50 of a 100…)
+    fromSplit: !!r.from_split,
+    sourceEvent: r.source_event_name || '',
   }
 }
 
@@ -90,7 +94,15 @@ export function RecordTable({ rows }) {
                 onClick={() => { if (r.link) navigate(r.link) }}
                 style={r.link ? { cursor: 'pointer' } : undefined}
               >
-                <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{r.eventName}</td>
+                <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  {r.eventName}
+                  {r.fromSplit && (
+                    <span className="tag" title={`Set on the opening ${r.distance}m of the ${r.sourceEvent}`}
+                      style={{ marginLeft: 8, fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', padding: '2px 6px', background: 'color-mix(in srgb, var(--asw-gold) 16%, transparent)', color: 'var(--color-accent-800)', border: '1px solid var(--asw-gold)' }}>
+                      SPLIT
+                    </span>
+                  )}
+                </td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Flag code={r.natCode} name={r.natName} />
@@ -123,6 +135,12 @@ export function RecordTable({ rows }) {
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-neutral-700)', marginTop: 1 }}>
                 {r.eventName}
+                {r.fromSplit && (
+                  <span title={`Set on the opening ${r.distance}m of the ${r.sourceEvent}`}
+                    style={{ marginLeft: 6, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.04em', padding: '1px 4px', background: 'color-mix(in srgb, var(--asw-gold) 16%, transparent)', color: 'var(--color-accent-800)', border: '1px solid var(--asw-gold)' }}>
+                    SPLIT
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ flex: 'none', textAlign: 'right' }}>

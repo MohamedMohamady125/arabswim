@@ -4,6 +4,27 @@ from swimmers.models import Swimmer
 from championships.models import Result
 
 
+class IntermediateTime(models.Model):
+    """A time taken from the START of a longer individual race at a shorter
+    standard distance — the first 50 of a 100 Free, the first 100 of a 200
+    Breast… In swimming these count as official times for RECORD purposes
+    (user rule 2026-11-04). They never feed rankings or a swimmer's times
+    list; `event` is the SHORTER event the time applies to."""
+    result = models.ForeignKey(Result, on_delete=models.CASCADE,
+                               related_name='intermediate_times')
+    event = models.ForeignKey(Event, on_delete=models.CASCADE,
+                              related_name='intermediate_times')
+    time_centiseconds = models.IntegerField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=['result', 'event'], name='uniq_intermediate_result_event')]
+        indexes = [models.Index(fields=['event', 'time_centiseconds'])]
+
+    def __str__(self):
+        return f'{self.event.name} {self.time_centiseconds}cs (from result {self.result_id})'
+
+
 class Record(models.Model):
     RECORD_TYPE_CHOICES = [
         ('ARAB', 'Arab'), ('NATIONAL', 'National'), ('GCC', 'GCC'),

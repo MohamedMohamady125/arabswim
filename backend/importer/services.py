@@ -1019,10 +1019,15 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         meet_country = _detect_country_from_meet(
             meet_info.get('name', ''), meet_info.get('location', '')
         )
-    if not meet_country:
+    # Swimmer-centric imports (Upload Special / Special Excel): a meet's flag
+    # must reflect WHERE it was held. Guessing from swimmer nationalities
+    # would stamp the athlete's own flag on every meet in the workbook
+    # (user rule 2026-11-04), so the country stays blank until the file's
+    # Meet Country column, the meet name/location, or the admin states it.
+    if not meet_country and not (special or unpublished):
         meet_country = _most_common_country(preview_data)
-    if not meet_country:
-        meet_country = Country.objects.first()
+        if not meet_country:
+            meet_country = Country.objects.first()
 
     # STRICT nationality rule: never guess an athlete's nationality from the
     # meet's host country. A nationality is only set when the file states it

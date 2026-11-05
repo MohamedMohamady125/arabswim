@@ -1228,12 +1228,46 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         for t in Team.objects.select_related('country'):
             team_by_key.setdefault(normalize_team_key(t.name), t)
         latest_date = max((c['last_meet_date'] for c in clubs), default=None)
+        from teams.utils import national_team_country
         for c in clubs:
             t = team_by_key.get(normalize_team_key(c['club']))
-            c['country'] = t.country.name if t else None
-            c['country_code'] = t.country.code if t else None
-            c['country_flag'] = t.country.flag_url if t else None
-            c['is_national'] = bool(t and t.is_national_team)
+            country = t.country if t else None
+            is_national = bool(t and t.is_national_team)
+            if not t:
+                # No Team record (bare "TUN", "Tunisia", "TUNISIE"…):
+                # recognize national-team spellings in any language. A bare
+                # IOC code only counts when it matches the swimmer's own
+                # nationality (club abbreviations collide with codes).
+                nt = national_team_country(c['club'], swimmer.nationality)
+                if nt:
+                    country = nt
+                    is_national = True
+            c['country'] = country.name if country else None
+            c['country_code'] = country.code if country else None
+            c['country_flag'] = country.flag_url if country else None
+            c['is_national'] = is_national
+
+        # One row per national team: every spelling the files used ("TUN",
+        # "Tunisia", "TUNISIE", "Federation Tunisienne de Natation") folds
+        # into a single entry carrying the country's own name.
+        folded = []
+        nat_by_code = {}
+        for c in clubs:
+            if not (c['is_national'] and c['country_code']):
+                folded.append(c)
+                continue
+            agg = nat_by_code.get(c['country_code'])
+            if not agg:
+                agg = dict(c, club=c['country'])
+                nat_by_code[c['country_code']] = agg
+                folded.append(agg)
+            else:
+                agg['meets'] += c['meets']
+                agg['results'] += c['results']
+                agg['first_meet'] = min(agg['first_meet'], c['first_meet'])
+                agg['last_meet'] = max(agg['last_meet'], c['last_meet'])
+                agg['last_meet_date'] = max(agg['last_meet_date'], c['last_meet_date'])
+        clubs = folded
         # A club stops being "current" the moment the swimmer competes for a
         # different club — only the most recent club is current. National
         # teams run in parallel with clubs, so they stay "current" while the

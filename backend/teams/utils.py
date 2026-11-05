@@ -66,14 +66,54 @@ def strip_nt_suffix(name):
     return _NT_SUFFIX_RE.sub('', (name or '').strip()).strip()
 
 
-def national_team_country(name, team_country=None):
+# French/English demonym adjectives → IOC code, for federation-style team
+# names in meet files ("Tunisienne de Natation", "Federation Tunisienne de
+# Natation", "Egyptian Swimming Federation"). Keys are normalize_team_key
+# output (casefolded), accented and plain forms both listed.
+_DEMONYM_CODES = {
+    'tunisien': 'TUN', 'tunisienne': 'TUN', 'tunisian': 'TUN',
+    'algerien': 'ALG', 'algerienne': 'ALG', 'algérien': 'ALG', 'algérienne': 'ALG', 'algerian': 'ALG',
+    'marocain': 'MAR', 'marocaine': 'MAR', 'moroccan': 'MAR',
+    'egyptien': 'EGY', 'egyptienne': 'EGY', 'égyptien': 'EGY', 'égyptienne': 'EGY', 'egyptian': 'EGY',
+    'libanais': 'LBN', 'libanaise': 'LBN', 'lebanese': 'LBN',
+    'syrien': 'SYR', 'syrienne': 'SYR', 'syrian': 'SYR',
+    'jordanien': 'JOR', 'jordanienne': 'JOR', 'jordanian': 'JOR',
+    'libyen': 'LBY', 'libyenne': 'LBY', 'libyan': 'LBY',
+    'soudanais': 'SUD', 'soudanaise': 'SUD', 'sudanese': 'SUD',
+    'saoudien': 'KSA', 'saoudienne': 'KSA', 'saoudi': 'KSA',
+    'koweitien': 'KWT', 'koweitienne': 'KWT', 'kuwaiti': 'KWT',
+    'qatarien': 'QAT', 'qatarienne': 'QAT', 'qatari': 'QAT',
+    'bahreinien': 'BHR', 'bahreinienne': 'BHR', 'bahraini': 'BHR',
+    'emirati': 'UAE', 'emirien': 'UAE', 'emirienne': 'UAE',
+    'omanais': 'OMA', 'omanaise': 'OMA', 'omani': 'OMA',
+    'yemenite': 'YEM', 'yemeni': 'YEM',
+    'irakien': 'IRQ', 'irakienne': 'IRQ', 'iraqi': 'IRQ',
+    'palestinien': 'PLE', 'palestinienne': 'PLE', 'palestinian': 'PLE',
+    'mauritanien': 'MTN', 'mauritanienne': 'MTN', 'mauritanian': 'MTN',
+    'djiboutien': 'DJI', 'djiboutienne': 'DJI', 'djiboutian': 'DJI',
+    'somalien': 'SOM', 'somalienne': 'SOM', 'somali': 'SOM',
+    'comorien': 'COM', 'comorienne': 'COM', 'comorian': 'COM',
+}
+# Generic words that carry no identity in national-federation team names.
+# A name must contain at least one of these for the demonym path to fire —
+# a bare adjective alone ("Tunisienne") stays whatever the file said.
+_FED_STOPWORDS = {
+    'federation', 'fédération', 'fed', 'royale', 'royal', 'de', 'la', 'le',
+    'des', 'du', "d'", 'natation', 'swimming', 'swim', 'aquatics',
+    'aquatique', 'aquatiques', 'nationale', 'national', 'equipe', 'équipe',
+}
+
+
+def national_team_country(name, team_country=None, allow_bare_code=True):
     """Return the Country if this team name is a national-team variant
     ("Bahrain", "Bahrain Team A", "BRN Bahrain", "Bahrain National Team",
     "Djibouti NT", "Bahrein NT" — including alias spellings).
 
     A name that is just a bare IOC code ("BRN") only counts when the
     team's own country (if given) agrees — club abbreviations collide
-    with codes (EST = Espérance Sportive de Tunis, not Estonia)."""
+    with codes (EST = Espérance Sportive de Tunis, not Estonia). Callers
+    with no country context at all (club creation from raw file names)
+    pass allow_bare_code=False so a bare code never resolves."""
     if not name:
         return None
     raw = str(name).strip()
@@ -86,14 +126,42 @@ def national_team_country(name, team_country=None):
         code = c.code.casefold()
         if key in {ckey, f'{code} {ckey}', f'{ckey} {code}'}:
             return c
-        if key == code and (team_country is None or team_country.id == c.id):
-            return c
+        if key == code:
+            if team_country is not None and team_country.id == c.id:
+                return c
+            if team_country is None and allow_bare_code:
+                return c
     # Alias spellings ("Bahrein NT", "Maroc NT") only when an explicit NT
     # marker was present — a bare club abbreviation ("EST") must never
     # resolve to a country here.
     if nt != raw:
         from importer.matcher import resolve_country
         return resolve_country(nt)
+    # Country-name alias in another language, no NT marker ("TUNISIE",
+    # "Egypte"): full names are unambiguous — never a bare 3-letter code.
+    if len(key) > 3:
+        from importer.matcher import COUNTRY_NAME_ALIASES
+        code = COUNTRY_NAME_ALIASES.get(nt.strip().upper())
+        if code:
+            hit = Country.objects.filter(code=code).first()
+            if hit:
+                return hit
+    # Federation-style names: drop the generic federation words; when at
+    # least one was dropped and the remainder is a demonym or a country
+    # name/alias ("Tunisienne de Natation", "Federation Tunisienne de
+    # Natation", "Egyptian Swimming Federation"), it is that country's
+    # national squad.
+    words = key.split()
+    core = [w for w in words if w not in _FED_STOPWORDS]
+    if core and len(core) < len(words):
+        if len(core) == 1 and core[0] in _DEMONYM_CODES:
+            return Country.objects.filter(code=_DEMONYM_CODES[core[0]]).first()
+        rest = ' '.join(core)
+        if len(rest) > 3:
+            from importer.matcher import resolve_country
+            hit = resolve_country(rest)
+            if hit:
+                return hit
     return None
 
 
@@ -285,9 +353,20 @@ def auto_create_teams():
     def bare_code(club):
         return code_countries.get(club.strip().casefold())
 
+    # National-team recognition (NT suffix, country names in any language,
+    # federation-style names) memoized per unique club string — the loops
+    # below run per swimmer/result row.
+    _nt_cache = {}
+
+    def nt_variant(club):
+        if club not in _nt_cache:
+            _nt_cache[club] = (nt_suffix_country(club)
+                               or national_team_country(club, allow_bare_code=False))
+        return _nt_cache[club]
+
     for swimmer in swimmers:
         club = swimmer.club.strip()
-        nt_c = nt_suffix_country(club)
+        nt_c = nt_variant(club)
         code = bare_code(club)
         if not nt_c:
             if not club or not is_valid_team_name(club):
@@ -320,16 +399,21 @@ def auto_create_teams():
     result_rows = (Result.objects
                    .exclude(Q(team='') | Q(team__isnull=True))
                    .values('team', 'championship__country__code',
-                           'championship__classification__name')
+                           'championship__classification__name',
+                           'championship__is_published')
                    .annotate(n=_Count('id')))
     for row in result_rows:
         # Only read clubs from National/Other meets — international meets
-        # have country names in the team column, not actual clubs
+        # have country names in the team column, not actual clubs. The
+        # hidden (unpublished) meets of swimmer-centric special imports
+        # also carry real club names, written however the foreign meet
+        # file spelled them.
         classification = row['championship__classification__name'] or ''
-        if classification not in ('National', 'Other'):
+        is_special_hidden = not row['championship__is_published']
+        if classification not in ('National', 'Other') and not is_special_hidden:
             continue
         club = strip_squad_number((row['team'] or '')).strip()
-        nt_c = nt_suffix_country(club)
+        nt_c = nt_variant(club)
         code = bare_code(club)
         if not nt_c:
             if not club or club == 'LP' or not is_valid_team_name(club):
@@ -344,14 +428,16 @@ def auto_create_teams():
         if code:
             club_data[club_key]['bare_code'] = code
         club_data[club_key]['count'] += row['n']
-        # Vote the meet's host country, but ONLY for National/Other meets
-        # where every club genuinely belongs to that country.  At
-        # international meets a club is a guest — voting the host country
-        # would give EST (Tunisia) a Qatar flag just because the swimmer
-        # once competed at a Qatari meet.
+        # Vote the meet's host country for National/Other meets, where every
+        # club genuinely belongs to that country — and for the hidden
+        # special-import meets: STRICT rule (2026-11-04), a non-national
+        # team's flag follows WHERE the meet was played, never the
+        # swimmer's own nationality. Published international meets stay
+        # excluded (their team column holds country names, and a guest
+        # club must not inherit the host's flag).
         classification = row['championship__classification__name'] or ''
         code = row['championship__country__code']
-        if code and classification in ('National', 'Other'):
+        if code and (classification in ('National', 'Other') or is_special_hidden):
             club_data[club_key]['nationalities'][code] = \
                 club_data[club_key]['nationalities'].get(code, 0) + row['n']
 
@@ -450,9 +536,12 @@ def ensure_team_exists(club_name, country=None):
         return None
 
     club_name = club_name.strip()
-    # A name ending in "NT" is a national team — it gets its OWN country
-    # (resolved from the name) and is flagged, never a host-country club.
-    nt_country = nt_suffix_country(club_name)
+    # A name ending in "NT" — or any national-team variant in any language
+    # ("Tunisia", "TUNISIE", "Federation Tunisienne de Natation") — is a
+    # national team: it gets its OWN country (resolved from the name) and
+    # is flagged, never a host-country club.
+    nt_country = (nt_suffix_country(club_name)
+                  or national_team_country(club_name, allow_bare_code=False))
     if not nt_country:
         if not is_valid_team_name(club_name):
             return None

@@ -227,7 +227,7 @@ export default function Records() {
       <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Seg
-            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }, { value: 'OW', label: 'Open Water' }]}
+            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
             value={pool}
             onChange={setPool}
           />

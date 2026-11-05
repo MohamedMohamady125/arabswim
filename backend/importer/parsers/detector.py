@@ -939,6 +939,9 @@ def _excel_round(raw):
     # Specific named rounds first (before generic 'final' match)
     if 'swim' in rl and 'off' in rl:
         return 'Swim-off'
+    # French "Barrage (Finales)" IS a swim-off — must map before 'final'
+    if 'barrage' in rl:
+        return 'Swim-off'
     if 'junior' in rl and 'final' in rl:
         return 'Junior Final'
     if re.search(r'\bfinal\s*d\b', rl):

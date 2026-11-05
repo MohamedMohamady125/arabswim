@@ -264,6 +264,20 @@ figure { margin: 0; }
 .results-table td { padding-top: 5px; padding-bottom: 5px; }
 /* rankings: swimmer column absorbs the leftover width; names ellipsize on one line */
 .rankings-table td.swimmer-cell { width: 100%; max-width: 0; }
+/* footer social buttons: circular outline chips on the navy footer that
+   fill white on hover/tap */
+.asw-social {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.35); color: #ffffff;
+  text-decoration: none; background: transparent;
+  transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+}
+.asw-social:hover, .asw-social:focus-visible {
+  background: #ffffff; color: var(--color-accent-800);
+  border-color: #ffffff; transform: translateY(-2px);
+}
+
 /* medal standings (shared frame): phone fits the whole table on screen —
    tight cell gutters, narrow rank + medal columns, names ellipsize */
 @media (max-width: 900px) {

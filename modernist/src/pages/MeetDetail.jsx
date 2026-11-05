@@ -26,8 +26,15 @@ import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakd
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
-// Round display order: finals first, then consolation, prelims, heats
+// Round display order: finals first, then consolation, prelims, heats.
+// Swim-offs ("Barrage") come AFTER Heats (boss rule 2026-11-04), and any
+// unmapped round name sorts last instead of first (indexOf -1).
 const ROUND_ORDER = ['Finals', 'Consolation', 'Final C', 'Final D', 'Junior Final', 'Semifinals', 'Semis', 'Prelims', 'Heats', 'Swim-off', '']
+const roundIdx = (r) => {
+  const key = /barrage/i.test(r || '') ? 'Swim-off' : r
+  const i = ROUND_ORDER.indexOf(key)
+  return i === -1 ? ROUND_ORDER.length : i
+}
 const roundLabel = (r, allRounds) => {
   if (!r) return 'Timed Finals'
   if (r === 'Finals') {
@@ -39,7 +46,7 @@ const roundLabel = (r, allRounds) => {
   if (r === 'Consolation') return 'Final B'
   if (r === 'Final C') return 'Final C'
   if (r === 'Final D') return 'Final D'
-  if (r === 'Swim-off') return 'Swim-off'
+  if (r === 'Swim-off' || /barrage/i.test(r)) return 'Swim-off'
   if (r === 'Semifinals' || r === 'Semis') return 'Semi-Final'
   if (r === 'Junior Final') return 'Junior Final'
   if (r === 'Prelims' || r === 'Heats') return 'Heats'
@@ -646,7 +653,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         const data = list(res.data)
         setRows(data)
         const rounds = [...new Set(data.map((r) => r.round_type || ''))]
-        rounds.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
+        rounds.sort((a, b) => roundIdx(a) - roundIdx(b))
         // deep-linked swim: jump to its round and open its splits
         const target = initialResult.current
           && data.find((r) => String(r.id) === String(initialResult.current))
@@ -691,7 +698,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     if (isOpenView) return []
     const catRows = selectedCategory === 'ALL' ? rows : rows.filter((r) => (r.category || '') === selectedCategory)
     const rs = [...new Set(catRows.map((r) => r.round_type || ''))]
-    rs.sort((a, b) => ROUND_ORDER.indexOf(a) - ROUND_ORDER.indexOf(b))
+    rs.sort((a, b) => roundIdx(a) - roundIdx(b))
     return rs
   }, [rows, selectedCategory, isOpenView])
 

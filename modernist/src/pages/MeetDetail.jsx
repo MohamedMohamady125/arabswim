@@ -1228,12 +1228,12 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
 
 // Special card with photo for the top male and top female athlete of a
 // tab (PBs, Top performances, Most improved, Most decorated).
-function FeaturedCards({ picks, sideBySide = false }) {
+function FeaturedCards({ picks, sideBySide = false, stackOnPhone = false, hideRank = false }) {
   const navigate = useNavigate()
   const shown = picks.filter(Boolean)
   if (shown.length === 0) return null
   return (
-    <div style={{
+    <div className={stackOnPhone ? 'featured-stack-phone' : undefined} style={{
       display: 'grid',
       // sideBySide keeps the two cards on one row even on phone widths;
       // a single pick never reserves an empty second column and caps narrower
@@ -1256,7 +1256,7 @@ function FeaturedCards({ picks, sideBySide = false }) {
               : (p.name || '?').charAt(0)}
           </div>
           <div style={{ flex: 1, minWidth: 0, padding: '10px 12px 10px 0', display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
-            <div className="micro" style={{ color: 'var(--color-accent-800)', fontWeight: 700 }}>#1 · {p.tag}</div>
+            <div className="micro" style={{ color: 'var(--color-accent-800)', fontWeight: 700 }}>{hideRank ? p.tag : `#1 · ${p.tag}`}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
               <Flag code={p.nationality_code} name={p.name} placeholder />
               <span style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
@@ -1434,8 +1434,8 @@ function MedalsTab({ meetId, isNational }) {
       )}
 
       <div className="pad">
-        {/* sideBySide: both #1 cards (men + women) stay visible in one row on phone */}
-        <FeaturedCards sideBySide picks={[decoratedPick('M', "Men's"), decoratedPick('F', "Women's")]} />
+        {/* desktop: men + women side by side; phone: stacked so full names show */}
+        <FeaturedCards sideBySide stackOnPhone hideRank picks={[decoratedPick('M', "Men's"), decoratedPick('F', "Women's")]} />
         {/* tally */}
         {scopeOptions.length > 0 && (
           <>

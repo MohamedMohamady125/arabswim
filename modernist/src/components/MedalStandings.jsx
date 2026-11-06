@@ -59,13 +59,13 @@ export default function MedalStandings({
         <div className="live-podium" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 16 }}>
           {top3.map((r, i) => (
             <div key={key(r, i)} style={{
-              /* standard site navy box (same blue as every other box) */
-              border: '1px solid var(--color-neutral-200)', borderTop: `3px solid ${PODIUM_META[i].ring}`,
-              borderRadius: 12, padding: '12px 14px', background: 'var(--color-box-top)', color: '#fff', minWidth: 0,
+              /* white card with the standard navy top frame */
+              border: '1px solid var(--color-neutral-200)', borderTop: '3px solid var(--color-box-top)',
+              borderRadius: 12, padding: '12px 14px', background: '#fff', minWidth: 0,
               boxShadow: '0 1px 4px rgba(12,35,64,.05)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, minWidth: 0, overflow: 'hidden' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.65)' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-neutral-600, #8b9099)' }}>
                   {PODIUM_META[i].label}
                 </span>
                 {chip(r, i)}

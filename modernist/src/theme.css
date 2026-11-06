@@ -804,6 +804,10 @@ a.asw-partner-pill:hover {
   .asw-partner-pill { height: 58px; min-width: 128px; padding: 0 20px; flex: none; }
   .asw-partner-logo { max-height: 30px; max-width: 108px; }
 }
+/* featured #1 cards that stack vertically on phone (full names visible) */
+@media (max-width: 900px) {
+  .featured-stack-phone { grid-template-columns: 1fr !important; }
+}
 @keyframes asw-partners-marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }

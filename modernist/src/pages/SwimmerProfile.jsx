@@ -1508,6 +1508,14 @@ export default function SwimmerProfile() {
                 {icon}
               </a>
             ))}
+            {/* admin shortcut: no socials saved yet → one tap to add them */}
+            {isAdmin && !(swimmer.instagram_url || swimmer.facebook_url || swimmer.youtube_url || swimmer.tiktok_url || swimmer.x_url) && (
+              <button type="button" className="asw-social asw-social-light" title="Add social links"
+                aria-label="Add social links" style={{ cursor: 'pointer', fontSize: 16, fontWeight: 700, background: 'transparent' }}
+                onClick={() => setAdminEditOpen(true)}>
+                +
+              </button>
+            )}
           </div>
           {swimmer.nicknames?.length > 0 && (
             <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>

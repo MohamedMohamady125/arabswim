@@ -42,13 +42,17 @@ class Command(BaseCommand):
             if abs(ratio - TARGET) <= TOLERANCE:
                 self.stdout.write(f'#{a.id} already 16:9 ({w}x{h}) — skipped')
                 continue
-            if ratio > TARGET:          # too wide: trim the sides
+            if ratio > TARGET:          # too wide: trim the sides equally
                 new_w = round(h * TARGET)
                 left = (w - new_w) // 2
                 box = (left, 0, left + new_w, h)
-            else:                        # too tall: trim top/bottom equally
+            else:
+                # Too tall: anchor near the TOP, never the center — in news
+                # photos of people the face sits in the upper part of the
+                # frame, and a center band decapitates it. Keep a small 8%
+                # headroom above the band.
                 new_h = round(w / TARGET)
-                top = (h - new_h) // 2
+                top = min(round(h * 0.08), h - new_h)
                 box = (0, top, w, top + new_h)
             out = img.crop(box)
             tag = 'APPLIED' if apply else 'would crop (dry-run)'

@@ -115,7 +115,7 @@ export default function Article() {
         {/* ── Cover image ── */}
         {article.cover_image && (
           <div style={{
-            position: 'relative', margin: '0 0 28px', height: 'min(460px, 58vw)',
+            position: 'relative', margin: '0 0 28px', aspectRatio: '16 / 9',
             overflow: 'hidden', borderRadius: 2, background: 'var(--color-accent-800)',
           }}>
             <img

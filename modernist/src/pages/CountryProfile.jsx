@@ -172,7 +172,7 @@ function NewsTab({ countryId, countryName }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {articles.map((a) => (
             <Link key={a.id} className="fed-news-card" to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div className="fed-news-img" style={{ position: 'relative', height: 175, overflow: 'hidden', background: 'var(--color-accent-800)', flex: 'none' }}>
+              <div className="fed-news-img" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)', flex: 'none' }}>
                 {a.cover_image && (
                   <>
                     <img className="news-cover-img" src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -2143,7 +2143,7 @@ export default function CountryProfile() {
                   {newsItems.map((a, i) => {
                     const inner = (
                       <>
-                        <div style={{ width: 128, height: 86, borderRadius: 8, overflow: 'hidden', flex: 'none', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, color: '#8a9bb5' }}>
+                        <div style={{ width: 128, aspectRatio: '16 / 9', borderRadius: 8, overflow: 'hidden', flex: 'none', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, color: '#8a9bb5' }}>
                           {a?.cover_image
                             ? <img className="news-cover-img" src={a.cover_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             : '📷'}

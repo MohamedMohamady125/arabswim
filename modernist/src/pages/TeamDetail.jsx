@@ -1319,7 +1319,7 @@ export default function TeamDetail() {
   const newsCard = (a, i) => {
     const inner = (
       <>
-        <div style={{ position: 'relative', margin: 10, height: 200, borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>
+        <div style={{ position: 'relative', margin: 10, aspectRatio: '16 / 9', borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>
           {a?.cover_image ? (
             <>
               <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />

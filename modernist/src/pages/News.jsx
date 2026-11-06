@@ -279,7 +279,7 @@ export default function News() {
           <Link to={`/news/${lead.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 28, alignItems: 'start' }}>
               {lead.cover_image && (
-                <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', height: 380, overflow: 'hidden', background: 'var(--color-accent-800)' }}>
+                <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
                   <img className="news-cover-img" src={mediaUrl(lead.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               )}
@@ -325,11 +325,11 @@ export default function News() {
                 {rest.map((a) => (
                   <Link key={a.id} to={`/news/${a.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
                     {a.cover_image ? (
-                      <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', height: 180, overflow: 'hidden', background: 'var(--color-accent-800)' }}>
+                      <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
                         <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                     ) : (
-                      <div style={{ width: '100%', height: 180, background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <span className="micro">ArabSwiM</span>
                       </div>
                     )}

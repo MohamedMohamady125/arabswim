@@ -1,6 +1,37 @@
 import { useState, useCallback, useEffect } from 'react'
 import Cropper from 'react-easy-crop'
+import smartcrop from 'smartcrop'
 import { Modal } from './ui'
+
+// Content-aware auto-framing: smartcrop.js scores edges/skin/saturation to
+// find the best crop of the given aspect; when the browser ships the native
+// FaceDetector API, detected faces boost the score so people stay in frame.
+// Returns {x, y, width, height} in source pixels, or null (caller falls back
+// to the default centered crop).
+async function suggestCrop(img, aspect) {
+  try {
+    const w = img.naturalWidth || img.width
+    const h = img.naturalHeight || img.height
+    if (!w || !h) return null
+    const target = w / h > aspect
+      ? { width: Math.round(h * aspect), height: h }
+      : { width: w, height: Math.round(w / aspect) }
+    let boost = []
+    if (typeof window !== 'undefined' && 'FaceDetector' in window) {
+      try {
+        const faces = await new window.FaceDetector({ fastMode: true, maxDetectedFaces: 5 }).detect(img)
+        boost = faces.map((f) => ({
+          x: f.boundingBox.x, y: f.boundingBox.y,
+          width: f.boundingBox.width, height: f.boundingBox.height, weight: 1.0,
+        }))
+      } catch { /* detector unavailable or failed — scores alone still work */ }
+    }
+    const { topCrop } = await smartcrop.crop(img, { ...target, boost })
+    return topCrop || null
+  } catch {
+    return null
+  }
+}
 
 // Longest output side — keeps uploads light and rendering fast on phones
 const MAX_SIDE = 1600
@@ -52,7 +83,7 @@ const ASPECTS = [
  *   onDone      — (croppedFile: File) => void
  *   onCancel    — () => void
  */
-export default function ImageCropper({ file, aspect = 1, lockAspect = false, onDone, onCancel, title = 'Adjust photo', extraAction = null }) {
+export default function ImageCropper({ file, aspect = 1, lockAspect = false, smart = false, onDone, onCancel, title = 'Adjust photo', extraAction = null }) {
   const [imageSrc, setImageSrc] = useState(null)
   const [naturalAspect, setNaturalAspect] = useState(1)
   const [aspectKey, setAspectKey] = useState(aspect)
@@ -61,6 +92,10 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, onD
   const [rotation, setRotation] = useState(0)
   const [croppedArea, setCroppedArea] = useState(null)
   const [saving, setSaving] = useState(false)
+  // smart mode: hold the cropper until the suggested frame is known, then
+  // mount it pre-positioned via initialCroppedAreaPixels (applies on mount)
+  const [smartArea, setSmartArea] = useState(null)
+  const [smartPending, setSmartPending] = useState(smart)
 
   useEffect(() => {
     if (!file) return
@@ -72,9 +107,17 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, onD
   useEffect(() => {
     if (!imageSrc) return
     const img = new Image()
-    img.onload = () => setNaturalAspect(img.width / img.height || 1)
+    img.onload = async () => {
+      setNaturalAspect(img.width / img.height || 1)
+      if (smart && typeof aspect === 'number') {
+        const area = await suggestCrop(img, aspect)
+        setSmartArea(area)
+      }
+      setSmartPending(false)
+    }
+    img.onerror = () => setSmartPending(false)
     img.src = imageSrc
-  }, [imageSrc])
+  }, [imageSrc, smart, aspect])
 
   const onCropComplete = useCallback((_, area) => {
     setCroppedArea(area)
@@ -107,18 +150,30 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, onD
   return (
     <Modal title={title} onClose={onCancel} width={520}>
       <div style={{ position: 'relative', width: '100%', height: 340, background: '#111', borderRadius: 8, overflow: 'hidden' }}>
-        <Cropper
-          image={imageSrc}
-          crop={crop}
-          zoom={zoom}
-          rotation={rotation}
-          aspect={activeAspect}
-          onCropChange={setCrop}
-          onZoomChange={setZoom}
-          onRotationChange={setRotation}
-          onCropComplete={onCropComplete}
-        />
+        {smartPending ? (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '0.04em' }}>
+            Framing the subject…
+          </div>
+        ) : (
+          <Cropper
+            image={imageSrc}
+            crop={crop}
+            zoom={zoom}
+            rotation={rotation}
+            aspect={activeAspect}
+            initialCroppedAreaPixels={smartArea || undefined}
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onRotationChange={setRotation}
+            onCropComplete={onCropComplete}
+          />
+        )}
       </div>
+      {smart && smartArea && !smartPending && (
+        <div className="micro" style={{ marginTop: 8, textTransform: 'none', letterSpacing: 0, fontSize: 11.5, color: 'var(--color-neutral-700)' }}>
+          Auto-framed on the subject — drag or zoom to adjust before applying.
+        </div>
+      )}
 
       {!lockAspect && (
         <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -171,7 +226,7 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, onD
  * uploads a photo.
  * Props: onChange(file), aspect, lockAspect, accept, className, style
  */
-export function CropUpload({ onChange, aspect = 1, lockAspect = false, accept = 'image/*', className = 'input', style }) {
+export function CropUpload({ onChange, aspect = 1, lockAspect = false, smart = false, accept = 'image/*', className = 'input', style }) {
   const [cropFile, setCropFile] = useState(null)
   return (
     <>
@@ -181,7 +236,7 @@ export function CropUpload({ onChange, aspect = 1, lockAspect = false, accept = 
       />
       {cropFile && (
         <ImageCropper
-          file={cropFile} aspect={aspect} lockAspect={lockAspect}
+          file={cropFile} aspect={aspect} lockAspect={lockAspect} smart={smart}
           onDone={(f) => { onChange(f); setCropFile(null) }}
           onCancel={() => setCropFile(null)}
         />

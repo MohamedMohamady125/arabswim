@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { getArticle } from '../api/news'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { getArticle, deleteArticle } from '../api/news'
 import Flag from '../components/Flag'
 import { Loading, Empty } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
-import { Edit3 } from 'lucide-react'
+import { Edit3, Trash2 } from 'lucide-react'
 import { ArticleModal } from './News'
 
 /* ── Al Jazeera typography — the real aljazeera.net stack ─────────── */
@@ -14,6 +14,7 @@ const AJ_HEADING_FONTS = AJ_FONTS
 
 export default function Article() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { isAdmin } = useAuth()
   const [article, setArticle] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -67,11 +68,26 @@ export default function Article() {
           }}>{isRTL ? 'أخبار' : 'News'}</span>
           {isAdmin && article.status !== 'PUBLISHED' && <span className="tag tag-neutral">Draft</span>}
           {isAdmin && (
-            <button type="button" className="btn btn-secondary"
-              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, fontSize: 12 }}
-              onClick={() => setEditing(true)}>
-              <Edit3 size={13} /> Edit
-            </button>
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+              <button type="button" className="btn btn-secondary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, fontSize: 12 }}
+                onClick={() => setEditing(true)}>
+                <Edit3 size={13} /> Edit
+              </button>
+              <button type="button" className="btn btn-secondary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, fontSize: 12, borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)' }}
+                onClick={async () => {
+                  if (!window.confirm(`Delete article "${article.title}"? This cannot be undone.`)) return
+                  try {
+                    await deleteArticle(article.id)
+                    navigate('/news')
+                  } catch {
+                    window.alert('Failed to delete article')
+                  }
+                }}>
+                <Trash2 size={13} /> Delete
+              </button>
+            </span>
           )}
         </div>
         {editing && (

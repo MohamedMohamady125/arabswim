@@ -163,7 +163,7 @@ export function ArticleModal({ article, onClose, onSaved }) {
         </div>
         <div className="field">
           <label>Cover image</label>
-          <CropUpload aspect={16 / 9} onChange={setCover} />
+          <CropUpload aspect={16 / 9} smart onChange={setCover} />
           {cover && <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>Adjusted cover ready</div>}
         </div>
         <div className="field">

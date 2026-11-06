@@ -384,7 +384,7 @@ function ArticleModal({ team, onClose, onSaved }) {
     <Modal title="Add Club News" onClose={onClose}>
       <Field label="Title"><input className="input" style={{ width: '100%' }} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
       <Field label="Body"><textarea className="input" rows={7} style={{ width: '100%', resize: 'vertical' }} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
-      <Field label="Cover image"><CropUpload aspect={16 / 9} onChange={setCover} className="" /></Field>
+      <Field label="Cover image"><CropUpload aspect={16 / 9} smart onChange={setCover} className="" /></Field>
       {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>

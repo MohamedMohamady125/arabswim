@@ -774,6 +774,15 @@ a.asw-partner-pill:hover {
   max-height: 34px; max-width: 132px;
   width: auto; height: auto; object-fit: contain; display: block;
 }
+/* built-in wordmark partners (shown until real sponsor logos exist):
+   accent icon + two-weight wordmark, so each pill reads like a real logo */
+.asw-partner-mark {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: var(--font-heading); font-weight: 800; font-size: 14px;
+  letter-spacing: 0.08em; color: var(--color-box-top); white-space: nowrap;
+}
+.asw-partner-mark svg { flex: none; color: var(--color-accent); }
+.asw-partner-mark-lt { font-weight: 500; color: var(--color-neutral-600, #8b9099); }
 /* desktop: the marquee wrappers flatten away so the row lays out pills
    exactly as before, and the duplicate logo set stays hidden */
 .asw-partners-track, .asw-partners-half { display: contents; }

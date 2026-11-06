@@ -2,9 +2,30 @@ import { useEffect, useState } from 'react'
 import { getSponsors } from '../api/sponsors'
 import { mediaUrl } from '../utils'
 
+// Built-in partner wordmarks shown while no real sponsor is configured in the
+// admin. Fictional names on purpose — the strip must never claim a sponsorship
+// that doesn't exist. Real sponsors from the DB replace these automatically.
+const ic = (path, viewBox = '0 0 24 24') => (
+  <svg width="18" height="18" viewBox={viewBox} fill="currentColor" aria-hidden="true">{path}</svg>
+)
+const DEFAULT_PARTNERS = [
+  { id: 'aquatech', name: 'AquaTech', bold: 'AQUA', light: 'TECH',
+    icon: ic(<path d="M12 2.7s6.5 7.1 6.5 11.5a6.5 6.5 0 1 1-13 0C5.5 9.8 12 2.7 12 2.7z" />) },
+  { id: 'marlin', name: 'Marlin Sports', bold: 'MARLIN', light: 'SPORTS',
+    icon: ic(<path d="M2 12c4-5 10-7 20-7-2 2-3 4-3.3 6.2L22 18c-7 0-12-1-16.5-4L2 16.5 3.6 12 2 12z" />) },
+  { id: 'bluelane', name: 'BlueLane', bold: 'BLUE', light: 'LANE',
+    icon: ic(<><rect x="3" y="5" width="18" height="2.6" rx="1.3" /><rect x="3" y="10.7" width="18" height="2.6" rx="1.3" /><rect x="3" y="16.4" width="18" height="2.6" rx="1.3" /></>) },
+  { id: 'hydrafuel', name: 'HydraFuel', bold: 'HYDRA', light: 'FUEL',
+    icon: ic(<path d="M13 2 4.5 13.5H11L9.8 22l8.7-11.5H12L13 2z" />) },
+  { id: 'orcagear', name: 'Orca Gear', bold: 'ORCA', light: 'GEAR',
+    icon: ic(<path d="M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2v3c-2.5 0-2.5-2-5-2s-2.5 2-5 2-2.5-2-5-2-2.5 2-5 2v-3zM2 8c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2v3c-2.5 0-2.5-2-5-2s-2.5 2-5 2-2.5-2-5-2-2.5 2-5 2V8z" />) },
+  { id: 'swimpro', name: 'SwimPro Academy', bold: 'SWIM', light: 'PRO',
+    icon: ic(<path d="M12 4a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm0 14a6 6 0 1 1 6-6 6 6 0 0 1-6 6zm1-10h-2v5l4 2.4 1-1.6-3-1.8V8zM9 1h6v2H9z" />) },
+]
+
 // Sponsor/partner logo strip, shown site-wide just above the footer
-// (mirrors the "GLOBAL PARTNERS" band on worldaquatics.com). Renders
-// nothing until there is at least one active partner with a logo.
+// (mirrors the "GLOBAL PARTNERS" band on worldaquatics.com). Shows the
+// built-in wordmarks until a real partner with a logo exists in the admin.
 export default function Partners() {
   const [partners, setPartners] = useState([])
 
@@ -20,10 +41,10 @@ export default function Partners() {
     return () => { alive = false }
   }, [])
 
-  if (partners.length === 0) return null
+  const shown = partners.length > 0 ? partners : DEFAULT_PARTNERS
 
   const pillFor = (p, dupe) => {
-    const img = (
+    const img = p.logo ? (
       <img
         src={mediaUrl(p.logo)}
         alt={dupe ? '' : p.name}
@@ -31,6 +52,11 @@ export default function Partners() {
         loading="lazy"
         className="asw-partner-logo"
       />
+    ) : (
+      <span className="asw-partner-mark" title={p.name}>
+        {p.icon}
+        <span>{p.bold}<span className="asw-partner-mark-lt">{p.light}</span></span>
+      </span>
     )
     return p.website ? (
       <a
@@ -56,10 +82,10 @@ export default function Partners() {
         {/* On phone the track auto-scrolls as an endless marquee (second copy
             makes the loop seamless); on desktop both wrappers flatten away
             (display:contents) and the duplicate set is hidden. */}
-        <div className="asw-partners-track" style={{ '--partner-count': partners.length }}>
-          <div className="asw-partners-half">{partners.map((p) => pillFor(p, false))}</div>
+        <div className="asw-partners-track" style={{ '--partner-count': shown.length }}>
+          <div className="asw-partners-half">{shown.map((p) => pillFor(p, false))}</div>
           <div className="asw-partners-half asw-partner-dupe" aria-hidden="true">
-            {partners.map((p) => pillFor(p, true))}
+            {shown.map((p) => pillFor(p, true))}
           </div>
         </div>
       </div>

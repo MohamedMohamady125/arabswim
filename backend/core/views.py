@@ -612,6 +612,29 @@ class CountryViewSet(viewsets.ModelViewSet):
                 break
         top_swimmers.sort(key=lambda s: -(s['best_fina'] or 0))
 
+        # Best Season Performance: the top FINA swim of the CURRENT season
+        # (calendar year), never an all-time swim from years back. If the
+        # current year has no results yet, fall back to the most recent
+        # year that does — same convention as the swimmer profile stats.
+        season_year = cur_year
+        if not fina_qs.filter(championship__date__year=season_year).exists():
+            latest_date = (fina_qs.order_by('-championship__date')
+                           .values_list('championship__date', flat=True).first())
+            if latest_date:
+                season_year = latest_date.year
+        sb = (fina_qs.filter(championship__date__year=season_year)
+              .order_by('-fina_points').first())
+        season_best = None
+        if sb:
+            season_best = {
+                'id': sb.swimmer_id, 'name': sb.swimmer.name, 'sex': sb.swimmer.sex,
+                'photo': sb.swimmer.photo.url if sb.swimmer.photo else None,
+                'best_fina': sb.fina_points, 'best_event': sb.event.name,
+                'best_time': _fmt_cs(sb.time_centiseconds),
+                'championship': sb.championship.name,
+                'season': season_year,
+            }
+
         # National best time per event / sex / pool (individual events)
         groups = (results_qs.filter(event__is_relay=False, time_centiseconds__gt=0,
                                     is_hc=False)
@@ -903,6 +926,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             'country_battle': country_battle,
             'most_participated': most_participated,
             'top_swimmers': top_swimmers,
+            'season_best': season_best,
             'top_medalists': top_medalists,
             'top_medalists_international': top_medalists_international,
             'top_medalists_national': top_medalists_national,

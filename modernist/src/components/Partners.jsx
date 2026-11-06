@@ -22,35 +22,46 @@ export default function Partners() {
 
   if (partners.length === 0) return null
 
+  const pillFor = (p, dupe) => {
+    const img = (
+      <img
+        src={mediaUrl(p.logo)}
+        alt={dupe ? '' : p.name}
+        title={p.name}
+        loading="lazy"
+        className="asw-partner-logo"
+      />
+    )
+    return p.website ? (
+      <a
+        key={dupe ? `d-${p.id}` : p.id}
+        href={p.website}
+        target="_blank"
+        rel="noreferrer"
+        className="asw-partner-pill"
+        aria-label={p.name}
+        tabIndex={dupe ? -1 : undefined}
+      >
+        {img}
+      </a>
+    ) : (
+      <span key={dupe ? `d-${p.id}` : p.id} className="asw-partner-pill">{img}</span>
+    )
+  }
+
   return (
     <section className="rule-t asw-partners" aria-label="Partners">
       <span className="asw-partners-label">Our Partners</span>
       <div className="asw-partners-row">
-        {partners.map((p) => {
-          const pill = (
-            <img
-              src={mediaUrl(p.logo)}
-              alt={p.name}
-              title={p.name}
-              loading="lazy"
-              className="asw-partner-logo"
-            />
-          )
-          return p.website ? (
-            <a
-              key={p.id}
-              href={p.website}
-              target="_blank"
-              rel="noreferrer"
-              className="asw-partner-pill"
-              aria-label={p.name}
-            >
-              {pill}
-            </a>
-          ) : (
-            <span key={p.id} className="asw-partner-pill">{pill}</span>
-          )
-        })}
+        {/* On phone the track auto-scrolls as an endless marquee (second copy
+            makes the loop seamless); on desktop both wrappers flatten away
+            (display:contents) and the duplicate set is hidden. */}
+        <div className="asw-partners-track" style={{ '--partner-count': partners.length }}>
+          <div className="asw-partners-half">{partners.map((p) => pillFor(p, false))}</div>
+          <div className="asw-partners-half asw-partner-dupe" aria-hidden="true">
+            {partners.map((p) => pillFor(p, true))}
+          </div>
+        </div>
       </div>
     </section>
   )

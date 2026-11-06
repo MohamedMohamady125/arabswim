@@ -2085,7 +2085,10 @@ export default function CountryProfile() {
         // Highlight cards: a big pool of ideas, 4 random ones per visit,
         // never the same swimmer twice in one set (a federation dominated by
         // one star shouldn't show him in every card).
-        const bestPerf = topSwimmers[0]
+        // Season best comes from the dedicated current-season payload field,
+        // NOT topSwimmers (those are all-time bests — showing a 2023 swim as
+        // "season best" was the bug).
+        const seasonBest = profile.season_best
         const topMedalist = topMedalists[0]
         const recsByDate = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
         const newestRecord = recsByDate[0]
@@ -2302,7 +2305,7 @@ export default function CountryProfile() {
                 const gsb = medalBoxes.reduce((acc, m) => ({ g: acc.g + (m.gold || 0), s: acc.s + (m.silver || 0), b: acc.b + (m.bronze || 0) }), { g: 0, s: 0, b: 0 })
                 const lastHosted = [...hosted].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
                 const pool = [
-                  { key: 'best-perf', person: bestPerf && nameKey(bestPerf.name), valid: !!bestPerf, render: () => hl({ photo: bestPerf.photo, title: <>Best Season<br />Performance</>, big: bestPerf.best_time || '—', sub: bestPerf.best_event || '', name: bestPerf.name, extra: bestPerf.championship }) },
+                  { key: 'best-perf', person: seasonBest && nameKey(seasonBest.name), valid: !!seasonBest, render: () => hl({ photo: seasonBest.photo, title: <>Best Season<br />Performance</>, big: seasonBest.best_time || '—', sub: seasonBest.best_event ? `${seasonBest.best_event} · ${seasonBest.season}` : '', name: seasonBest.name, extra: seasonBest.championship }) },
                   { key: 'decorated', person: topMedalist && nameKey(topMedalist.name), valid: !!topMedalist, render: () => hl({ photo: topMedalist.photo, title: <>Most Decorated<br />Swimmer</>, big: topMedalist.total || 0, sub: 'Total Medals', name: topMedalist.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🏆</span> }) },
                   { key: 'new-record', person: newestRecord && nameKey(newestRecord.swimmer), valid: !!newestRecord, render: () => hl({ photo: newestRecord.swimmer_photo, title: 'New Record', big: newestRecord.time || '—', sub: newestRecord.event || '', name: newestRecord.swimmer, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span> }) },
                   { key: 'trending', person: t && nameKey(t.name), valid: !!t, render: () => hl({ photo: t.photo, title: <>Trending<br />Swimmer</>, big: (<span style={{ color: trendUp ? '#0d7a52' : '#a8402f', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}{!t.is_new && !t.is_hot && <span style={{ fontSize: 17, lineHeight: 1 }}>{trendUp ? '▲' : '▼'}</span>}</span>), sub: `Arab ranking #${t.rank}${t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}`, name: <SwimmerLink id={t.id} name={t.name} />, extra: t.best_event ? `${t.best_event} · ${t.best_time}${t.fina ? ` · ${t.fina} pts` : ''}` : null, icon: <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{trendUp ? '📈' : '📉'}</span> }) },

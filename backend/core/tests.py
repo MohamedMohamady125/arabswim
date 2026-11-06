@@ -109,6 +109,25 @@ class CountryProfileTests(TestCase):
         self.assertEqual(d['top_medalists'][0]['name'], 'Omar Kamal')
         self.assertEqual(d['top_medalists'][0]['gold'], 1)
 
+    def test_season_best_ignores_old_seasons(self):
+        # A HIGHER-FINA swim from an old season must never headline the
+        # "Best Season Performance" card — only the latest active season.
+        free50 = Event.objects.get(name='50m Freestyle')
+        old_champ = Championship.objects.create(
+            name='2023 Tyr Pro Series', date=date(2023, 6, 1), pool='LCM',
+            country=self.egy, location='Fort Lauderdale')
+        veteran = Swimmer.objects.create(name='Old Star', nationality=self.egy,
+                                         sex='M', birth_year=1999)
+        Result.objects.create(swimmer=veteran, championship=old_champ,
+                              event=free50, round_type='Finals',
+                              time_centiseconds=2200, fina_points=900)
+        d = self.get_profile()
+        sb = d['season_best']
+        self.assertEqual(sb['name'], 'Omar Kamal')      # 2026 swim wins
+        self.assertEqual(sb['best_fina'], 700)
+        self.assertEqual(sb['season'], 2026)
+        self.assertEqual(sb['championship'], 'Arab Cup')
+
 
 class CountryListOrderingTests(TestCase):
     """Nationality lists/dropdowns always lead with Arab nations (incl. GCC),

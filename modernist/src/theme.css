@@ -759,11 +759,12 @@ figure { margin: 0; }
   display: flex; align-items: center; flex-wrap: wrap;
   justify-content: space-between; gap: 18px 16px; flex: 1;
 }
+/* big circular partner chips — logo-first, like a federation sponsor wall */
 .asw-partner-pill {
   display: inline-flex; align-items: center; justify-content: center;
-  height: 68px; min-width: 156px; padding: 0 30px;
+  width: 108px; height: 108px; padding: 0; flex: none;
   background: #ffffff; border: 1px solid var(--color-divider);
-  border-radius: 999px; text-decoration: none;
+  border-radius: 50%; text-decoration: none; overflow: hidden;
   transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 a.asw-partner-pill:hover {
@@ -772,17 +773,18 @@ a.asw-partner-pill:hover {
   transform: translateY(-2px);
 }
 .asw-partner-logo {
-  max-height: 34px; max-width: 132px;
+  max-height: 76px; max-width: 76px;
   width: auto; height: auto; object-fit: contain; display: block;
 }
 /* built-in wordmark partners (shown until real sponsor logos exist):
-   accent icon + two-weight wordmark, so each pill reads like a real logo */
+   accent icon stacked over a two-weight wordmark inside the circle */
 .asw-partner-mark {
-  display: inline-flex; align-items: center; gap: 9px;
-  font-family: var(--font-heading); font-weight: 800; font-size: 14px;
-  letter-spacing: 0.08em; color: var(--color-box-top); white-space: nowrap;
+  display: inline-flex; flex-direction: column; align-items: center; gap: 7px;
+  font-family: var(--font-heading); font-weight: 800; font-size: 10.5px;
+  letter-spacing: 0.06em; color: var(--color-box-top); white-space: nowrap;
+  text-align: center;
 }
-.asw-partner-mark svg { flex: none; color: var(--color-accent); }
+.asw-partner-mark svg { flex: none; width: 28px; height: 28px; color: var(--color-accent); }
 .asw-partner-mark-lt { font-weight: 500; color: var(--color-neutral-600, #8b9099); }
 /* desktop: the marquee wrappers flatten away so the row lays out pills
    exactly as before, and the duplicate logo set stays hidden */
@@ -801,8 +803,10 @@ a.asw-partner-pill:hover {
   }
   .asw-partners-half { display: flex; align-items: center; gap: 14px; padding-right: 14px; }
   .asw-partner-dupe { display: flex; }
-  .asw-partner-pill { height: 58px; min-width: 128px; padding: 0 20px; flex: none; }
-  .asw-partner-logo { max-height: 30px; max-width: 108px; }
+  .asw-partner-pill { width: 92px; height: 92px; }
+  .asw-partner-logo { max-height: 64px; max-width: 64px; }
+  .asw-partner-mark { font-size: 9.5px; gap: 6px; }
+  .asw-partner-mark svg { width: 24px; height: 24px; }
 }
 /* featured #1 cards that stack vertically on phone (full names visible) */
 @media (max-width: 900px) {

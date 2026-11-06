@@ -12,7 +12,7 @@ const DEFAULT_PARTNERS = [
   // Real federation partner: Fédération Royale Marocaine de Natation —
   // official lockup bundled locally (local: true skips the API media prefix)
   { id: 'frmn', name: 'Fédération Royale Marocaine de Natation',
-    logo: '/partners/frmn.png', local: true, website: 'https://frmnatation.com' },
+    logo: '/partners/frmn-crest.png', local: true, website: 'https://frmnatation.com' },
   { id: 'aquatech', name: 'AquaTech', bold: 'AQUA', light: 'TECH',
     icon: ic(<path d="M12 2.7s6.5 7.1 6.5 11.5a6.5 6.5 0 1 1-13 0C5.5 9.8 12 2.7 12 2.7z" />) },
   { id: 'marlin', name: 'Marlin Sports', bold: 'MARLIN', light: 'SPORTS',

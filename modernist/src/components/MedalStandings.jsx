@@ -122,7 +122,9 @@ export default function MedalStandings({
                           {renderEntity(r, i)}
                         </span>
                         {expandContent && (
-                          <span style={{ fontSize: 9, color: 'var(--color-neutral-500)', flex: 'none' }}>{isOpen ? '▴' : '▾'}</span>
+                          <span className="medal-expand-btn" aria-hidden="true" style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                          </span>
                         )}
                       </span>
                     </td>

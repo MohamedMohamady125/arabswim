@@ -1312,24 +1312,27 @@ function EntityAthleteMedals({ medals, isNational }) {
     return <div className="micro" style={{ padding: '14px 18px' }}>No athlete medals recorded</div>
   }
   return (
-    <div style={{ padding: '4px 18px 12px' }}>
+    <div className="medal-drop">
       {groups.map((g, gi) => {
         const sw = g.swimmer
         const isRelay = sw?.is_relay_team
         return (
-          <div key={sw?.id || gi} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 0', borderTop: gi > 0 ? '1px solid var(--wa-line)' : 'none', flexWrap: 'wrap' }}>
+          <div key={sw?.id || gi} className="medal-drop-row">
             <span
+              className="medal-drop-name"
               onClick={isRelay ? undefined : () => navigate(`/swimmers/${sw?.id}`)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, cursor: isRelay ? 'default' : 'pointer', minWidth: 170 }}
+              style={{ cursor: isRelay ? 'default' : 'pointer' }}
             >
               <Flag code={sw?.nationality_detail?.code} name={sw?.nationality_detail?.name} placeholder />
-              {sw?.name}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw?.name}</span>
               {isRelay && <span className="tag tag-neutral" style={{ flex: 'none' }}>{isNational ? 'Club' : 'Country'}</span>}
             </span>
-            <span className="micro asw-num" style={{ paddingTop: 3, flex: 'none' }}>
-              {g.gold}G · {g.silver}S · {g.bronze}B
+            <span className="medal-drop-counts asw-num">
+              {[['GOLD', g.gold], ['SILVER', g.silver], ['BRONZE', g.bronze]].map(([t, n]) => (
+                <span key={t}><MedalIcon type={t} size={13} />{n}</span>
+              ))}
             </span>
-            <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1, minWidth: 200 }}>
+            <span className="medal-drop-chips">
               {g.medals.map((m, mi) => (
                 <span key={m.id || mi} className="tag tag-neutral" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                   <MedalIcon type={m.medal_type} size={12} />
@@ -1340,6 +1343,38 @@ function EntityAthleteMedals({ medals, isNational }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/* Dropdown body for a swimmer tally row: every medal that swimmer won at
+   this meet, one aligned line per medal, plus a link to the full profile
+   (the row click now toggles this panel instead of navigating). */
+function SwimmerMedalDetails({ medals, swimmerId }) {
+  const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
+  const sorted = [...medals].sort((a, b) => (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3))
+  if (sorted.length === 0) {
+    return <div className="micro" style={{ padding: '14px 18px' }}>No medals recorded</div>
+  }
+  return (
+    <div className="medal-drop">
+      {sorted.map((m, i) => (
+        <div key={m.id || i} className="medal-drop-medal">
+          <span className="medal-drop-medal-type">
+            <MedalIcon type={m.medal_type} size={14} />
+            {m.medal_type === 'GOLD' ? 'Gold' : m.medal_type === 'SILVER' ? 'Silver' : 'Bronze'}
+          </span>
+          <span style={{ fontWeight: 700, fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {m.event_detail?.name}
+          </span>
+          {m.scope === 'OPEN' && <span className="tag tag-neutral" style={{ flex: 'none' }}>Open podium</span>}
+        </div>
+      ))}
+      {swimmerId && (
+        <Link to={`/swimmers/${swimmerId}`} className="medal-drop-profile" onClick={(e) => e.stopPropagation()}>
+          Full profile →
+        </Link>
+      )}
     </div>
   )
 }
@@ -1457,18 +1492,24 @@ function MedalsTab({ meetId, isNational }) {
                   rows={tallyRows}
                   entityHeader={activeScope === 'country' ? 'Country' : activeScope === 'club' ? 'Club' : 'Swimmer'}
                   rowKey={(row, i) => row.swimmer__id || row.team_key || row.swimmer__nationality__code || i}
-                  onRowClick={activeScope === 'swimmer'
-                    ? (row) => row.swimmer__id && navigate(`/swimmers/${row.swimmer__id}`)
-                    : undefined}
-                  // Club/nation rows drop down every athlete's medals for that entity
-                  expandContent={activeScope === 'swimmer' ? undefined : (row) => (
-                    <EntityAthleteMedals
-                      isNational={isNational}
-                      medals={activeScope === 'club'
-                        ? medals.filter((m) => m.team_key && m.team_key === row.team_key)
-                        : medals.filter((m) => m.nationality_code && m.nationality_code === row.swimmer__nationality__code)}
-                    />
-                  )}
+                  // Every tally row drops down the medal detail: club/nation
+                  // rows list each athlete's medals, swimmer rows list that
+                  // swimmer's own medals one per line.
+                  expandContent={activeScope === 'swimmer'
+                    ? (row) => (
+                      <SwimmerMedalDetails
+                        swimmerId={row.swimmer__id}
+                        medals={medals.filter((m) => (m.swimmer_detail?.id || m.swimmer) === row.swimmer__id)}
+                      />
+                    )
+                    : (row) => (
+                      <EntityAthleteMedals
+                        isNational={isNational}
+                        medals={activeScope === 'club'
+                          ? medals.filter((m) => m.team_key && m.team_key === row.team_key)
+                          : medals.filter((m) => m.nationality_code && m.nationality_code === row.swimmer__nationality__code)}
+                      />
+                    )}
                   renderPodiumChip={(row) => (
                     activeScope === 'club' ? (
                       <>

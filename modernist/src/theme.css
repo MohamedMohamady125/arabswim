@@ -853,3 +853,53 @@ a.asw-partner-pill:hover {
   .live-gender-cols { grid-template-columns: 1fr !important; }
   .live-day-body { padding: 16px !important; }
 }
+
+/* ── Medal tally dropdowns (championship Medals tab) ──
+   Round chevron toggle on every expandable row + aligned grid body:
+   name column / medal-count column / event-chip column on desktop,
+   stacking cleanly on phone. */
+.medal-expand-btn {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%; margin-left: auto;
+  border: 1px solid var(--color-neutral-300); background: #fff;
+  color: var(--color-accent);
+  transition: transform .15s ease, background .15s ease;
+}
+tr:hover .medal-expand-btn { background: var(--color-accent-100); }
+
+.medal-drop { padding: 4px 18px 14px; }
+.medal-drop-row {
+  display: grid; grid-template-columns: minmax(190px, 250px) 118px 1fr;
+  gap: 6px 16px; align-items: center; padding: 11px 0;
+}
+.medal-drop-row + .medal-drop-row { border-top: 1px solid var(--wa-line); }
+.medal-drop-name {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 13px; min-width: 0;
+}
+.medal-drop-counts { display: inline-flex; gap: 10px; font-size: 12px; font-weight: 700; }
+.medal-drop-counts > span { display: inline-flex; align-items: center; gap: 3px; min-width: 26px; }
+.medal-drop-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+
+/* swimmer tally: one aligned line per medal */
+.medal-drop-medal {
+  display: grid; grid-template-columns: 92px 1fr auto;
+  gap: 12px; align-items: center; padding: 10px 0;
+}
+.medal-drop-medal + .medal-drop-medal { border-top: 1px solid var(--wa-line); }
+.medal-drop-medal-type {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 800; font-size: 12px; letter-spacing: 0.02em;
+}
+.medal-drop-profile {
+  display: inline-block; margin-top: 10px;
+  font-size: 12px; font-weight: 800; color: var(--color-accent); text-decoration: none;
+}
+.medal-drop-profile:hover { text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .medal-drop { padding: 2px 12px 12px; }
+  .medal-drop-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .medal-drop-chips { grid-column: 1 / -1; }
+  .medal-drop-medal { grid-template-columns: 84px 1fr auto; gap: 8px; }
+}

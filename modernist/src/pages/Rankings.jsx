@@ -234,12 +234,6 @@ export default function Rankings() {
                       <td className="num asw-num">{r.age_at_competition ?? '—'}</td>
                       <td className="time asw-time">
                         {r.time}
-                        {r.from_split && (
-                          <span className="tag" title={`Swum as the opening split of the ${r.source_event_name}`}
-                            style={{ marginLeft: 6, fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', padding: '2px 6px', background: 'color-mix(in srgb, var(--asw-gold) 16%, transparent)', color: 'var(--color-accent-800)', border: '1px solid var(--asw-gold)' }}>
-                            SPLIT
-                          </span>
-                        )}
                       </td>
                       <td className="num asw-num">{r.fina_points ?? '—'}</td>
                       {/* one line — long meet names ellipsize so rows stay short */}

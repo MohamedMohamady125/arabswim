@@ -96,12 +96,6 @@ export function RecordTable({ rows }) {
               >
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                   {r.eventName}
-                  {r.fromSplit && (
-                    <span className="tag" title={`Set on the opening ${r.distance}m of the ${r.sourceEvent}`}
-                      style={{ marginLeft: 8, fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', padding: '2px 6px', background: 'color-mix(in srgb, var(--asw-gold) 16%, transparent)', color: 'var(--color-accent-800)', border: '1px solid var(--asw-gold)' }}>
-                      SPLIT
-                    </span>
-                  )}
                 </td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -135,12 +129,6 @@ export function RecordTable({ rows }) {
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-neutral-700)', marginTop: 1 }}>
                 {r.eventName}
-                {r.fromSplit && (
-                  <span title={`Set on the opening ${r.distance}m of the ${r.sourceEvent}`}
-                    style={{ marginLeft: 6, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.04em', padding: '1px 4px', background: 'color-mix(in srgb, var(--asw-gold) 16%, transparent)', color: 'var(--color-accent-800)', border: '1px solid var(--asw-gold)' }}>
-                    SPLIT
-                  </span>
-                )}
               </div>
             </div>
             <div style={{ flex: 'none', textAlign: 'right' }}>

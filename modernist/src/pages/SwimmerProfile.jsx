@@ -1495,28 +1495,33 @@ export default function SwimmerProfile() {
                 <span className="asw-num" style={{ fontWeight: 600 }}>{part}</span>
               </span>
             ))}
-            {[
-              ['Instagram', swimmer.instagram_url, IconInstagram],
-              ['Facebook', swimmer.facebook_url, IconFacebook],
-              ['YouTube', swimmer.youtube_url, IconYoutube],
-              ['TikTok', swimmer.tiktok_url, IconTiktok],
-              ['X', swimmer.x_url, IconX],
-            ].filter(([, href]) => href).map(([label, href, icon]) => (
-              <a key={label} href={href} target="_blank" rel="noopener noreferrer"
-                title={label} aria-label={`${swimmer.name} on ${label}`}
-                className="asw-social asw-social-light">
-                {icon}
-              </a>
-            ))}
-            {/* admin shortcut: no socials saved yet → one tap to add them */}
-            {isAdmin && !(swimmer.instagram_url || swimmer.facebook_url || swimmer.youtube_url || swimmer.tiktok_url || swimmer.x_url) && (
-              <button type="button" className="asw-social asw-social-light" title="Add social links"
-                aria-label="Add social links" style={{ cursor: 'pointer', fontSize: 16, fontWeight: 700, background: 'transparent' }}
-                onClick={() => setAdminEditOpen(true)}>
-                +
-              </button>
-            )}
           </div>
+          {/* social chips on their OWN line (phone and desktop) — navy filled, white icons */}
+          {(swimmer.instagram_url || swimmer.facebook_url || swimmer.youtube_url || swimmer.tiktok_url || swimmer.x_url || isAdmin) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              {[
+                ['Instagram', swimmer.instagram_url, IconInstagram],
+                ['Facebook', swimmer.facebook_url, IconFacebook],
+                ['YouTube', swimmer.youtube_url, IconYoutube],
+                ['TikTok', swimmer.tiktok_url, IconTiktok],
+                ['X', swimmer.x_url, IconX],
+              ].filter(([, href]) => href).map(([label, href, icon]) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                  title={label} aria-label={`${swimmer.name} on ${label}`}
+                  className="asw-social asw-social-light">
+                  {icon}
+                </a>
+              ))}
+              {/* admin shortcut: no socials saved yet → one tap to add them */}
+              {isAdmin && !(swimmer.instagram_url || swimmer.facebook_url || swimmer.youtube_url || swimmer.tiktok_url || swimmer.x_url) && (
+                <button type="button" className="asw-social asw-social-light" title="Add social links"
+                  aria-label="Add social links" style={{ cursor: 'pointer', fontSize: 16, fontWeight: 700 }}
+                  onClick={() => setAdminEditOpen(true)}>
+                  +
+                </button>
+              )}
+            </div>
+          )}
           {swimmer.nicknames?.length > 0 && (
             <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
               {swimmer.nicknames.map((n, i) => (

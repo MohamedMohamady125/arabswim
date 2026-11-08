@@ -393,11 +393,15 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         data = []
         pool = request.query_params.get('pool')
 
+        # Swimmers with a recorded nationality change carry the era's flag on
+        # EVERY swim (old country before the change, new country after it).
+        # Swimmers who never changed keep clean rows — their single flag is
+        # already in the profile header.
+        has_nat_changes = swimmer.nationality_changes.exists()
+
         def represented(r):
-            # Country the swimmer represented at that meet, only when it
-            # differs from the current nationality (old-flag indicator).
             nat = r.nationality
-            if nat and nat.id != swimmer.nationality_id:
+            if nat and (has_nat_changes or nat.id != swimmer.nationality_id):
                 return {'code': nat.code, 'name': nat.name, 'flag_url': nat.flag_url}
             return None
 
@@ -538,8 +542,13 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             'country', 'classification_category', 'classification').order_by('-date')
         # Meets swum under a previous nationality (old-flag indicator)
         old_nat_by_champ = {}
-        for row in (Result.objects.filter(swimmer=swimmer, nationality__isnull=False)
-                    .exclude(nationality_id=swimmer.nationality_id)
+        # Same rule as event_history: a swimmer with a recorded nationality
+        # change shows the represented flag on every meet (old AND new era);
+        # everyone else only ever gets the differs-from-current indicator.
+        nat_rows = Result.objects.filter(swimmer=swimmer, nationality__isnull=False)
+        if not swimmer.nationality_changes.exists():
+            nat_rows = nat_rows.exclude(nationality_id=swimmer.nationality_id)
+        for row in (nat_rows
                     .values('championship_id', 'nationality__code',
                             'nationality__name', 'nationality__flag_url')
                     .distinct()):

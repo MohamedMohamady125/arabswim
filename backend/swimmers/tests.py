@@ -189,14 +189,25 @@ class ResultNationalityStampingTests(TestCase):
         self.assertEqual(old_medal.nationality_id, self.egy.id)
         self.assertEqual(new_medal.nationality_id, self.qat.id)
 
-    def test_event_history_marks_old_nationality_swims(self):
+    def test_event_history_flags_every_era_after_a_change(self):
+        # A swimmer who changed nationality carries the era's flag on EVERY
+        # swim: the old country before the change, the new one after it.
         self._change('2026-01-01')
         resp = self.client.get(
             f'/api/v1/swimmers/{self.swimmer.id}/events/{self.event.id}/history/')
         self.assertEqual(resp.status_code, 200)
         by_meet = {row['championship_name']: row for row in resp.json()}
         self.assertEqual(by_meet['Old Meet']['represented']['code'], 'EGY')
-        self.assertIsNone(by_meet['New Meet']['represented'])
+        self.assertEqual(by_meet['New Meet']['represented']['code'], 'QAT')
+
+    def test_event_history_no_flags_without_a_change(self):
+        # No recorded nationality change → rows stay clean (the single
+        # flag already lives in the profile header).
+        resp = self.client.get(
+            f'/api/v1/swimmers/{self.swimmer.id}/events/{self.event.id}/history/')
+        self.assertEqual(resp.status_code, 200)
+        for row in resp.json():
+            self.assertIsNone(row['represented'])
 
 
 class SetClubCountryTests(TestCase):

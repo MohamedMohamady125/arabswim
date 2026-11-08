@@ -1645,9 +1645,14 @@ function PersonalBestsTab({ stats }) {
 function TopPerformancesTab({ stats }) {
   const navigate = useNavigate()
   const [perfGender, setPerfGender] = useState('overall')
+  const [perfScope, setPerfScope] = useState('all')
 
-  const all = stats?.top_performers || []
-  if (all.length === 0) return <Empty label="No top performances yet" />
+  const raw = stats?.top_performers || []
+  if (raw.length === 0) return <Empty label="No top performances yet" />
+
+  // Arab-only scope narrows everything below it, featured cards included
+  const all = perfScope === 'arab' ? raw.filter((t) => t.is_arab) : raw
+  const mixedRegions = raw.some((t) => t.is_arab) && raw.some((t) => !t.is_arab)
 
   const performers = all
     .filter((t) => perfGender === 'overall' || t.gender === perfGender)
@@ -1677,13 +1682,22 @@ function TopPerformancesTab({ stats }) {
         <div style={{ marginBottom: 28, maxWidth: 760 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
             <div className="kicker">Top performances — highest FINA points</div>
-            {all.some((t) => t.gender === 'M') && all.some((t) => t.gender === 'F') && (
-              <Seg
-                options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
-                value={perfGender}
-                onChange={setPerfGender}
-              />
-            )}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {mixedRegions && (
+                <Seg
+                  options={[{ value: 'all', label: 'All' }, { value: 'arab', label: 'Arab' }]}
+                  value={perfScope}
+                  onChange={setPerfScope}
+                />
+              )}
+              {raw.some((t) => t.gender === 'M') && raw.some((t) => t.gender === 'F') && (
+                <Seg
+                  options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+                  value={perfGender}
+                  onChange={setPerfGender}
+                />
+              )}
+            </div>
           </div>
           {performers.length === 0 ? (
             <Empty label="No performances for this filter" />
@@ -1887,6 +1901,7 @@ function MostImprovedTab({ meetId }) {
   const navigate = useNavigate()
   const [rows, setRows] = useState(null)
   const [gender, setGender] = useState('overall')
+  const [scope, setScope] = useState('all')
 
   useEffect(() => {
     let alive = true
@@ -1899,7 +1914,10 @@ function MostImprovedTab({ meetId }) {
   if (rows === null) return <Loading label="Loading most improved" />
 
   // Only genuine improvements — swimmers with no previous time never appear
-  const improvements = rows.filter((s) => !s.is_new_entry)
+  const allImprovements = rows.filter((s) => !s.is_new_entry)
+  const mixedRegions = allImprovements.some((s) => s.is_arab) && allImprovements.some((s) => !s.is_arab)
+  // Arab-only scope narrows everything below it, featured cards included
+  const improvements = scope === 'arab' ? allImprovements.filter((s) => s.is_arab) : allImprovements
   const filtered = improvements.filter((s) => gender === 'overall' || s.gender === gender)
 
   // #1 male and female by time drop (list is sorted by improvement)
@@ -1926,13 +1944,22 @@ function MostImprovedTab({ meetId }) {
           <div className="kicker">Most improved swimmers</div>
           <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, fontSize: 12, marginTop: 4 }}>Biggest time drops vs previous personal best</div>
         </div>
-        {improvements.some((s) => s.gender === 'M') && improvements.some((s) => s.gender === 'F') && (
-          <Seg
-            options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
-            value={gender}
-            onChange={setGender}
-          />
-        )}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {mixedRegions && (
+            <Seg
+              options={[{ value: 'all', label: 'All' }, { value: 'arab', label: 'Arab' }]}
+              value={scope}
+              onChange={setScope}
+            />
+          )}
+          {allImprovements.some((s) => s.gender === 'M') && allImprovements.some((s) => s.gender === 'F') && (
+            <Seg
+              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+              value={gender}
+              onChange={setGender}
+            />
+          )}
+        </div>
       </div>
       {filtered.length === 0 ? (
         <Empty label="No improvements recorded for this meet" />

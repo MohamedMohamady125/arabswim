@@ -10,6 +10,7 @@ import Partners from './Partners'
 // nav path → launch-toggle key (sections the admin can hide)
 const FEATURE_PATHS = {
   '/coaches': 'coaches',
+  '/referees': 'referees',
   '/hall-of-fame': 'hall_of_fame',
   '/news': 'news',
   '/media': 'media',
@@ -63,6 +64,7 @@ const NAV = [
     links: [
       ['Swimmers', '/swimmers'],
       ['Coaches', '/coaches'],
+      ['Referees', '/referees'],
       ['Clubs', '/teams'],
       ['Academies', '/academies'],
       ['Compare', '/compare'],

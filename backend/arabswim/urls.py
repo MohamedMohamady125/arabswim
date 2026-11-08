@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/v1/', include('qualifying_times.urls')),
     path('api/v1/', include('sponsors.urls')),
     path('api/v1/', include('coaches.urls')),
+    path('api/v1/', include('referees.urls')),
     path('api/v1/', include('predictions.urls')),
     path('api/v1/', include('reports.urls')),
     path('api/v1/', include('lab.urls')),

@@ -28,6 +28,7 @@ import Academies from './pages/Academies'
 import AcademyProfile from './pages/AcademyProfile'
 import TeamDetail from './pages/TeamDetail'
 import Coaches from './pages/Coaches'
+import Referees from './pages/Referees'
 import HallOfFame from './pages/HallOfFame'
 import News from './pages/News'
 import Article from './pages/Article'
@@ -84,6 +85,7 @@ export default function App() {
         <Route path="/academies" element={<RequireFeature flag="academies"><Academies /></RequireFeature>} />
         <Route path="/academies/:id" element={<RequireFeature flag="academies"><AcademyProfile /></RequireFeature>} />
         <Route path="/coaches" element={<RequireFeature flag="coaches"><Coaches /></RequireFeature>} />
+        <Route path="/referees" element={<RequireFeature flag="referees"><Referees /></RequireFeature>} />
         <Route path="/hall-of-fame" element={<RequireFeature flag="hall_of_fame"><HallOfFame /></RequireFeature>} />
         <Route path="/news" element={<RequireFeature flag="news"><News /></RequireFeature>} />
         {/* Article reader stays reachable even when the /news index is toggled off:

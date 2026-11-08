@@ -158,8 +158,9 @@ function NewsTab({ countryId, countryName }) {
   useEffect(() => {
     let alive = true
     const unwrap = (r) => (Array.isArray(r.data) ? r.data : r.data?.results || [])
-    // Only articles linked to this federation (directly or via its clubs)
-    getArticles({ country: countryId, status: 'PUBLISHED', ordering: '-published_at' })
+    // Only articles linked to this federation (directly or via its clubs);
+    // no countryId (pan-Arab page) → region-wide news
+    getArticles({ ...(countryId ? { country: countryId } : {}), status: 'PUBLISHED', ordering: '-published_at' })
       .then((r) => alive && setArticles(unwrap(r)))
       .catch(() => alive && setArticles([]))
     return () => { alive = false }
@@ -232,7 +233,11 @@ function RankingTab({ countryId }) {
   useEffect(() => {
     if (!event) return
     let alive = true; setLoading(true)
-    getRankings({ scope: 'national', country: countryId, gender, pool, event, age_group: ageGroup, limit: 20, page })
+    getRankings({
+      // no countryId (pan-Arab page) → the Arab-wide ranking
+      ...(countryId ? { scope: 'national', country: countryId } : { scope: 'arab' }),
+      gender, pool, event, age_group: ageGroup, limit: 20, page,
+    })
       .then((r) => {
         if (!alive) return
         setRows(r.data?.results || (Array.isArray(r.data) ? r.data : []))
@@ -453,7 +458,7 @@ function QualifyingTab({ countryId, qualSub, setQualSub }) {
   useEffect(() => {
     if (!standardId || qualSub !== 'qualified') return
     let alive = true; setQualData(null)
-    getQualifiedSwimmers(standardId, { country: countryId })
+    getQualifiedSwimmers(standardId, countryId ? { country: countryId } : {})
       .then((r) => alive && setQualData(r.data))
       .catch(() => alive && setQualData({ window: null, qualified: [] }))
     return () => { alive = false }
@@ -989,8 +994,8 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
         const cls = all.find((c) => c.name === className)
         if (!cls) return Promise.reject(new Error('unknown classification'))
         return Promise.all([
-          getMedals({ country: countryId, classification: cls.id, page_size: 5000 }),
-          getMedalSwimmerSummary({ country: countryId, classification: cls.id, limit: 'all' }),
+          getMedals({ ...(countryId ? { country: countryId } : {}), classification: cls.id, page_size: 5000 }),
+          getMedalSwimmerSummary({ ...(countryId ? { country: countryId } : {}), classification: cls.id, limit: 'all' }),
           getMedalSummary({ classification: cls.id }),
           getCountries(),
         ])
@@ -1845,15 +1850,21 @@ function FedBoardModal({ member, teamId, onClose, onSaved }) {
   )
 }
 
-export default function CountryProfile() {
-  const { id } = useParams()
+// Tabs that make no sense on the virtual pan-Arab federation page
+const ARAB_FED_EXCLUDED = new Set(['team', 'prediction', 'compare', 'clubs', 'academies'])
+
+export default function CountryProfile({ arabFed = false }) {
+  const { id: paramId } = useParams()
+  // arabFed → the virtual pan-Arab federation (backend pk 'arab')
+  const id = arabFed ? 'arab' : paramId
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAdmin } = useAuth()
   const { flag } = useFeatures()
   // Admin visibility toggles: hidden tabs vanish for visitors, stay (dimmed)
   // for admins. Overview is always available and is the fallback.
   const tabHidden = (v) => v !== 'overview' && !flag(`fed.tab.${v}`)
-  const visibleTabs = TABS.filter((t) => isAdmin || !tabHidden(t.value))
+  const visibleTabs = TABS.filter((t) =>
+    (!arabFed || !ARAB_FED_EXCLUDED.has(t.value)) && (isAdmin || !tabHidden(t.value)))
   const rawTab = searchParams.get('tab') || 'overview'
   const tab = visibleTabs.some((t) => t.value === rawTab) ? rawTab : 'overview'
   const mclass = searchParams.get('mclass') || ''
@@ -1881,7 +1892,7 @@ export default function CountryProfile() {
 
   useEffect(() => {
     let alive = true
-    getCoaches({ country: id })
+    getCoaches(arabFed ? {} : { country: id })
       .then((r) => alive && setCountryCoaches((Array.isArray(r.data) ? r.data : r.data?.results || []).slice(0, 8)))
       .catch(() => alive && setCountryCoaches([]))
     return () => { alive = false }
@@ -1901,8 +1912,9 @@ export default function CountryProfile() {
   useEffect(() => {
     let alive = true
     const unwrap = (r) => (Array.isArray(r.data) ? r.data : r.data?.results || [])
-    // Only articles linked to this federation (directly or via its clubs)
-    getArticles({ country: id, status: 'PUBLISHED', ordering: '-published_at' })
+    // Only articles linked to this federation (directly or via its clubs);
+    // the pan-Arab page shows news from the whole region
+    getArticles({ ...(arabFed ? {} : { country: id }), status: 'PUBLISHED', ordering: '-published_at' })
       .then((r) => alive && setOvNews(unwrap(r).slice(0, 4)))
       .catch(() => alive && setOvNews([]))
     return () => { alive = false }
@@ -2006,7 +2018,7 @@ export default function CountryProfile() {
             <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <Link to="/countries" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: 'var(--color-accent-800)' }}>← All federations</Link>
-                {isAdmin && (
+                {isAdmin && !arabFed && (
                   <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setFedModal('info')}>Edit info</button>
                 )}
               </div>
@@ -2034,7 +2046,7 @@ export default function CountryProfile() {
                     fontSize: 'clamp(28px, 4vw, 42px)', lineHeight: 1.04, letterSpacing: '-0.02em',
                     color: navy, textTransform: 'uppercase',
                   }}>
-                    {country.name}<br />Swimming Federation
+                    {arabFed ? <>Arab Swimming<br />Federation</> : <>{country.name}<br />Swimming Federation</>}
                   </h1>
                   <div style={{ marginTop: 6, fontSize: 15, fontWeight: 700, color: 'var(--color-accent-800)' }}>
                     {country.federation_tagline || 'Excellence in Water, Unity in Sport'}
@@ -2591,7 +2603,7 @@ export default function CountryProfile() {
       {/* ===== MEDALS ===== */}
       {tab === 'medals' && mclass && (
         <MedalClassDetail
-          countryId={id}
+          countryId={arabFed ? null : id}
           className={mclass}
           box={medalBoxes.find((m) => m.name === mclass)}
           onBack={() => setSearchParams({ tab: 'medals' }, { replace: true })}
@@ -2662,11 +2674,11 @@ export default function CountryProfile() {
       {tab === 'compare' && <CompareTab profile={profile} country={country} />}
 
       {/* ===== QUALIFYING ===== */}
-      {tab === 'qualifying' && <QualifyingTab countryId={id} qualSub={qualSub} setQualSub={setQualSub} />}
+      {tab === 'qualifying' && <QualifyingTab countryId={arabFed ? null : id} qualSub={qualSub} setQualSub={setQualSub} />}
 
       {/* ===== DATA TABS ===== */}
-      {tab === 'news' && <NewsTab countryId={id} countryName={country.name} />}
-      {tab === 'ranking' && <RankingTab countryId={id} />}
+      {tab === 'news' && <NewsTab countryId={arabFed ? null : id} countryName={country.name} />}
+      {tab === 'ranking' && <RankingTab countryId={arabFed ? null : id} />}
       {tab === 'pools' && <PoolsTab hosted={hosted} countryName={country.name} />}
       {tab === 'prediction' && <PredictionTab countryName={country.name} />}
       {tab === 'multimedia' && <MultimediaTab champIds={new Set([...hosted, ...participated].map((c) => c.id))} champNames={[...hosted, ...participated].map((c) => c.name)} countryName={country.name} />}

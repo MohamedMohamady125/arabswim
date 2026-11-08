@@ -4,7 +4,10 @@ from core.models import Country
 
 class Team(models.Model):
     name = models.CharField(max_length=200, unique=True)
-    country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name='teams')
+    # Nullable for exactly one virtual row: the "Arab Swimming Federation"
+    # national team that backs the pan-Arab federation page's Board tab.
+    country = models.ForeignKey(Country, on_delete=models.PROTECT,
+                                related_name='teams', null=True, blank=True)
     logo = models.ImageField(upload_to='teams/logos/', blank=True, null=True)
     banner = models.ImageField(upload_to='teams/banners/', blank=True, null=True)
     founded_year = models.IntegerField(blank=True, null=True)

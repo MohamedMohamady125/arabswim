@@ -96,6 +96,9 @@ export default function App() {
         <Route path="/reports" element={<RequireAdmin><Reports /></RequireAdmin>} />
         <Route path="/lab" element={<RequireFeature flag="lab"><Lab /></RequireFeature>} />
         <Route path="/countries/:id" element={<CountryProfile />} />
+        {/* virtual pan-Arab federation: the federation dashboard aggregated
+            over every Arab + GCC nation */}
+        <Route path="/arab-federation" element={<CountryProfile arabFed />} />
         <Route path="*" element={<div className="empty">Page not found</div>} />
       </Route>
     </Routes>

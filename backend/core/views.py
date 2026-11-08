@@ -463,9 +463,30 @@ class CountryViewSet(viewsets.ModelViewSet):
         from medals.models import Medal
         from records.models import Record
 
-        country = self.get_object()
+        from swimmers.models import Swimmer as _Swimmer
+        from championships.models import Championship as _Championship
+        from teams.models import Team as _Team
 
-        swimmer_counts = country.swimmers.filter(is_relay_team=False).aggregate(
+        # pk='arab' → the virtual pan-Arab federation: every ARAB+GCC nation
+        # aggregated into one profile (no Country row exists for it).
+        is_arab_fed = (pk == 'arab')
+        _R = ['ARAB', 'GCC']
+        if is_arab_fed:
+            country = None
+            swimmers_base = _Swimmer.objects.filter(nationality__region__in=_R)
+            hosted_qs = _Championship.objects.filter(country__region__in=_R)
+            teams_count = _Team.objects.filter(country__region__in=_R).count()
+            # Board/team storage for the virtual federation: the dedicated
+            # countryless national team created by the teams data migration.
+            own_teams_qs = _Team.objects.filter(country__isnull=True, is_national_team=True)
+        else:
+            country = self.get_object()
+            swimmers_base = country.swimmers
+            hosted_qs = country.championships
+            teams_count = country.teams.count()
+            own_teams_qs = country.teams.all()
+
+        swimmer_counts = swimmers_base.filter(is_relay_team=False).aggregate(
             total=Count('id'), male=Count('id', filter=Q(sex='M')),
             female=Count('id', filter=Q(sex='F')),
         )
@@ -474,21 +495,34 @@ class CountryViewSet(viewsets.ModelViewSet):
         # stamps), never the swimmer's current nationality — otherwise a
         # nationality change drags their whole history to the new country.
         # Unstamped legacy rows fall back to the swimmer's nationality.
-        results_qs = Result.objects.filter(
-            Q(nationality=country)
-            | Q(nationality__isnull=True, swimmer__nationality=country))
-        medals_qs = Medal.objects.filter(
-            Q(nationality=country)
-            | Q(nationality__isnull=True, swimmer__nationality=country))
+        if is_arab_fed:
+            results_qs = Result.objects.filter(
+                Q(nationality__region__in=_R)
+                | Q(nationality__isnull=True, swimmer__nationality__region__in=_R))
+            medals_qs = Medal.objects.filter(
+                Q(nationality__region__in=_R)
+                | Q(nationality__isnull=True, swimmer__nationality__region__in=_R))
+        else:
+            results_qs = Result.objects.filter(
+                Q(nationality=country)
+                | Q(nationality__isnull=True, swimmer__nationality=country))
+            medals_qs = Medal.objects.filter(
+                Q(nationality=country)
+                | Q(nationality__isnull=True, swimmer__nationality=country))
         medal_counts = medals_qs.aggregate(
             gold=Count('id', filter=Q(medal_type='GOLD')),
             silver=Count('id', filter=Q(medal_type='SILVER')),
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
         )
-        records_qs = Record.objects.filter(
-            Q(country=country)
-            | Q(country__isnull=True, swimmer__nationality=country))
+        if is_arab_fed:
+            # The pan-Arab page shows the REGIONAL record books (Arab, GCC,
+            # continental, world…) — 22 national record sets would flood it.
+            records_qs = Record.objects.exclude(record_type='NATIONAL')
+        else:
+            records_qs = Record.objects.filter(
+                Q(country=country)
+                | Q(country__isnull=True, swimmer__nationality=country))
 
         # Medal tally per championship classification (Arab, National, ...)
         medals_by_classification = [
@@ -539,8 +573,8 @@ class CountryViewSet(viewsets.ModelViewSet):
             'swimmers_male': swimmer_counts['male'],
             'swimmers_female': swimmer_counts['female'],
             'results': results_qs.count(),
-            'championships_hosted': country.championships.count(),
-            'teams': country.teams.count(),
+            'championships_hosted': hosted_qs.count(),
+            'teams': teams_count,
             'records': records_qs.count(),
             'medals': medal_counts['total'],
             # International-level metrics (National-classified meets excluded)
@@ -556,7 +590,7 @@ class CountryViewSet(viewsets.ModelViewSet):
         from datetime import date as _date
         cur_year = _date.today().year
         birth_years = list(
-            country.swimmers.filter(is_relay_team=False)
+            swimmers_base.filter(is_relay_team=False)
             .filter(Q(date_of_birth__isnull=False) | Q(birth_year__isnull=False))
             .values_list('date_of_birth__year', 'birth_year'))
         age_buckets = {'U12': 0, '12-14': 0, '15-17': 0, '18-20': 0, '21-24': 0, '25+': 0}
@@ -750,7 +784,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,
             'location': c.location,
             'classification': c.classification.name if c.classification else None,
-        } for c in country.championships.select_related('classification').all()[:25]]
+        } for c in hosted_qs.select_related('classification').all()[:25]]
 
         # Championships participated: every championship where this country has results
         from championships.models import Championship
@@ -790,7 +824,7 @@ class CountryViewSet(viewsets.ModelViewSet):
 
         teams = [{
             'id': t.id, 'name': t.name, 'is_national_team': t.is_national_team,
-        } for t in country.teams.all()]
+        } for t in own_teams_qs]
 
         # Most participated swimmers — strictly international meets, no
         # fallback. Federations with only national meets show an empty list.
@@ -828,9 +862,11 @@ class CountryViewSet(viewsets.ModelViewSet):
                          .order_by('-best')[:300])
         now_rank = {r['swimmer_id']: i + 1 for i, r in enumerate(now_rows)}
         prev_rank = {r['swimmer_id']: i + 1 for i, r in enumerate(prev_rows)}
+        _nat_kw = ({'nationality__region__in': _R} if is_arab_fed
+                   else {'nationality': country})
         mine_names = dict(Swimmer.objects.filter(
             id__in=list(now_rank),
-            nationality=country).values_list('id', 'name'))
+            **_nat_kw).values_list('id', 'name'))
         mine = set(mine_names)
         # Diversity: the overview shows 4 highlight cards (best performance,
         # most decorated, newest record, trending). Prefer a trending swimmer
@@ -879,9 +915,10 @@ class CountryViewSet(viewsets.ModelViewSet):
             # Nobody climbed and nobody is new: never present a dropper as
             # "trending". Fall back to the federation's best performer of
             # the last 6 months (highest-FINA recent swim).
+            _hot_kw = ({} if is_arab_fed else {'nationality': country})
             _hot_qs = rank_base.filter(
-                nationality=country,
-                championship__date__gte=cutoff).order_by('-fina_points')
+                championship__date__gte=cutoff,
+                **_hot_kw).order_by('-fina_points')
             _excl = [sid for sid, nm in mine_names.items()
                      if _nk(nm) in featured]
             hot = (_hot_qs.exclude(swimmer_id__in=_excl)
@@ -917,7 +954,10 @@ class CountryViewSet(viewsets.ModelViewSet):
             }
 
         return Response({
-            'country': CountrySerializer(country).data,
+            'country': ({
+                'id': 'arab', 'name': 'Arab Swimming Federation',
+                'code': 'ARAB', 'region': 'ARAB', 'flag_url': None,
+            } if is_arab_fed else CountrySerializer(country).data),
             'stats': stats,
             'demographics': demographics,
             'trending': trending,
@@ -941,7 +981,10 @@ class CountryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def progression(self, request, pk=None):
         """Time progression for a country's swimmers by stroke."""
-        country = self.get_object()
+        # pk='arab' → the virtual pan-Arab federation (all ARAB+GCC nations)
+        country = None if pk == 'arab' else self.get_object()
+        _nat_kw = ({'nationality__region__in': ['ARAB', 'GCC']} if country is None
+                   else {'nationality': country})
         from championships.models import Result
         from django.db.models import Min, Count
 
@@ -955,9 +998,10 @@ class CountryViewSet(viewsets.ModelViewSet):
         # Find events for this stroke with best times by this country's swimmers
         event_stats = (
             Result.objects.filter(
-                nationality=country, swimmer__is_relay_team=False,
+                swimmer__is_relay_team=False,
                 championship__pool=pool, event__is_relay=False,
                 event__stroke=stroke, time_centiseconds__gt=0,
+                **_nat_kw,
             )
             .values('event_id', 'event__name', 'event__sort_order')
             .annotate(count=Count('id'), best=Min('time_centiseconds'))
@@ -972,9 +1016,10 @@ class CountryViewSet(viewsets.ModelViewSet):
             # collapsed into a single point.)
             rows = (
                 Result.objects.filter(
-                    nationality=country, swimmer__is_relay_team=False,
+                    swimmer__is_relay_team=False,
                     event_id=es['event_id'], championship__pool=pool,
                     event__is_relay=False, time_centiseconds__gt=0,
+                    **_nat_kw,
                 )
                 .values('championship__date', 'championship__name',
                         'swimmer__name', 'time_centiseconds', 'fina_points')
@@ -1017,11 +1062,14 @@ class CountryViewSet(viewsets.ModelViewSet):
         params = request.query_params
         sex = params.get('sex', 'M')
         pool = params.get('pool', 'LCM')
+        _nat_kw = ({'nationality__region__in': ['ARAB', 'GCC']} if country is None
+                   else {'nationality': country})
         base = Result.objects.filter(
-            nationality=country, swimmer__is_relay_team=False,
+            swimmer__is_relay_team=False,
             swimmer__sex=sex, championship__pool=pool,
             event__is_relay=False, time_centiseconds__gt=0,
             championship__date__isnull=False,
+            **_nat_kw,
         )
         # Optional meet-level filter: a specific classification name, or
         # INTL = everything except domestic National/University/Other meets

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getRecords, createRecord } from '../api/records'
+import { getRecords, createRecord, importRecordsExcel, getRecordsImportTemplate } from '../api/records'
 import { searchSwimmers } from '../api/swimmers'
 import { getEvents } from '../api/core'
 import Flag from '../components/Flag'
@@ -195,12 +195,120 @@ function AddRecordModal({ onClose, onCreated }) {
   )
 }
 
+/* Excel import: records-only sheets (no results) — pick the file, every
+   valid row becomes a record, broken rows come back listed with their row
+   number and reason. */
+function ImportRecordsModal({ onClose, onImported }) {
+  const [file, setFile] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
+
+  const downloadTemplate = async () => {
+    try {
+      const r = await getRecordsImportTemplate()
+      const url = URL.createObjectURL(r.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'records-import-template.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('Could not download the template')
+    }
+  }
+
+  const upload = async () => {
+    if (!file || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const r = await importRecordsExcel(file)
+      setResult(r.data)
+      if (r.data.created > 0) onImported()
+    } catch (err) {
+      const d = err?.response?.data
+      setError(d?.error || 'Import failed — check the file and try again')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const label = { display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(8,24,44,0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{ width: 560, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
+          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Import Records from Excel</strong>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
+        </div>
+
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-neutral-700)' }}>
+            One row per record. Required columns: <strong>Swimmer</strong> (exact name as on the site),{' '}
+            <strong>Event</strong> (e.g. 50 M Freestyle or 50 Free), <strong>Time</strong> (27.45 or 1:56.30),{' '}
+            <strong>Scope</strong> (National / Arab / GCC…), <strong>Date</strong>.
+            Optional: Pool (LCM/SCM), Age Category (Open/U17…), Meet, Location, Country.
+            Imported records are marked new, so they show on this page right away.
+          </div>
+          <button type="button" className="btn btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 12 }} onClick={downloadTemplate}>
+            ⬇ Download Excel template
+          </button>
+
+          <div>
+            <label style={label}>Excel file (.xlsx)</label>
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={(e) => { setFile(e.target.files?.[0] || null); setResult(null); setError('') }}
+            />
+          </div>
+
+          {result && (
+            <div style={{ border: '1px solid var(--color-divider)', padding: '12px 14px', fontSize: 13 }}>
+              <div style={{ fontWeight: 800, color: result.created > 0 ? 'var(--asw-fast)' : 'var(--color-text)' }}>
+                {result.created} record{result.created !== 1 ? 's' : ''} imported
+                {result.duplicates > 0 && ` · ${result.duplicates} duplicate${result.duplicates !== 1 ? 's' : ''} skipped`}
+              </div>
+              {result.errors?.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--asw-slow)', marginBottom: 4 }}>
+                    {result.errors.length} row{result.errors.length !== 1 ? 's' : ''} need fixing:
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {result.errors.map((e, i) => (
+                      <li key={i}>Row {e.row}: {e.error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          {error && <div style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
+        </div>
+
+        <div className="rule-t" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{result ? 'Done' : 'Cancel'}</button>
+          <button type="button" className="btn btn-primary" disabled={!file || busy} onClick={upload}>
+            {busy ? 'Importing…' : 'Import records'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function NewRecords() {
   const { isAdmin } = useAuth()
   const [records, setRecords] = useState([])
   const [scope, setScope] = useState('NATIONAL')
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
@@ -244,9 +352,14 @@ export default function NewRecords() {
           {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label === 'All' ? 'All scopes' : o.label}</option>)}
         </select>
         {isAdmin && (
-          <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={() => setAddOpen(true)}>
-            + Add Record
-          </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
+            <button className="btn btn-secondary" onClick={() => setImportOpen(true)}>
+              ⬆ Import Excel
+            </button>
+            <button className="btn btn-primary" onClick={() => setAddOpen(true)}>
+              + Add Record
+            </button>
+          </div>
         )}
       </div>
 
@@ -254,6 +367,12 @@ export default function NewRecords() {
         <AddRecordModal
           onClose={() => setAddOpen(false)}
           onCreated={() => { setAddOpen(false); setRefresh((n) => n + 1) }}
+        />
+      )}
+      {importOpen && (
+        <ImportRecordsModal
+          onClose={() => setImportOpen(false)}
+          onImported={() => setRefresh((n) => n + 1)}
         />
       )}
 

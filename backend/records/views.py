@@ -64,6 +64,251 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
         serializer = RecordSerializer(records, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], url_path='import-template')
+    def import_template(self, request):
+        """Blank Excel template (header + one example row) for the records
+        import on the New Records page."""
+        import io
+        from django.http import HttpResponse
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Records'
+        headers = ['Swimmer', 'Event', 'Time', 'Scope', 'Pool', 'Age Category',
+                   'Date', 'Meet', 'Location', 'Country']
+        ws.append(headers)
+        ws.append(['Ahmed Ayoub HAFNAOUI', '1500 M Freestyle', '14:31.54',
+                   'Arab', 'LCM', 'Open', '2023-07-30',
+                   'World Championships', 'Fukuoka, Japan', 'Tunisia'])
+        for col, width in zip('ABCDEFGHIJ', (28, 20, 10, 10, 7, 13, 12, 28, 20, 14)):
+            ws.column_dimensions[col].width = width
+        buf = io.BytesIO()
+        wb.save(buf)
+        resp = HttpResponse(
+            buf.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = 'attachment; filename="records-import-template.xlsx"'
+        return resp
+
+    @action(detail=False, methods=['post'], url_path='import-excel',
+            permission_classes=[IsAuthenticated])
+    def import_excel(self, request):
+        """Import records from an Excel sheet (records only, no results).
+
+        Expected columns (header row, order free, names flexible):
+        Swimmer, Event, Time, Scope, Pool, Age Category, Date, Meet,
+        Location, Country. Valid rows import; broken rows come back with
+        their row number and reason so nothing fails silently. Exact
+        duplicates of existing records are skipped.
+        """
+        import re
+        from datetime import date, datetime, time as dtime
+        from openpyxl import load_workbook
+        from core.models import Country, Event
+        from swimmers.models import Swimmer
+
+        f = request.FILES.get('file')
+        if not f:
+            return Response({'error': 'No file uploaded (field name: file)'}, status=400)
+        try:
+            wb = load_workbook(f, data_only=True)
+        except Exception:
+            return Response({'error': 'Could not read the file — is it a valid .xlsx?'}, status=400)
+        ws = wb.active
+
+        COL_ALIASES = {
+            'swimmer': {'swimmer', 'swimmer name', 'name', 'athlete'},
+            'event': {'event', 'event name', 'race'},
+            'time': {'time', 'result', 'mark'},
+            'record_type': {'scope', 'record type', 'record_type', 'type', 'record'},
+            'pool': {'pool', 'course'},
+            'age_category': {'age category', 'age_category', 'age', 'category'},
+            'date': {'date', 'result date', 'result_date'},
+            'meet_name': {'meet', 'meet name', 'meet_name', 'championship', 'competition'},
+            'location': {'location', 'city', 'place'},
+            'country': {'country', 'nation', 'nationality'},
+        }
+        header = [str(c.value).strip().lower() if c.value is not None else ''
+                  for c in next(ws.iter_rows(min_row=1, max_row=1))]
+        colmap = {}
+        for idx, h in enumerate(header):
+            for field, aliases in COL_ALIASES.items():
+                if h in aliases and field not in colmap:
+                    colmap[field] = idx
+        missing = [f for f in ('swimmer', 'event', 'time', 'record_type', 'date')
+                   if f not in colmap]
+        if missing:
+            return Response({'error': f'Missing required column(s): {", ".join(missing)}. '
+                                      'Download the template to see the expected headers.'},
+                            status=400)
+
+        STROKES = {
+            'free': 'Freestyle', 'freestyle': 'Freestyle', 'fr': 'Freestyle',
+            'back': 'Backstroke', 'backstroke': 'Backstroke', 'bk': 'Backstroke',
+            'breast': 'Breaststroke', 'breaststroke': 'Breaststroke', 'br': 'Breaststroke',
+            'fly': 'Butterfly', 'butterfly': 'Butterfly', 'bf': 'Butterfly',
+            'im': 'Individual Medley', 'medley': 'Individual Medley',
+            'individual medley': 'Individual Medley',
+        }
+        TYPES = {c[0].lower(): c[0] for c in Record.RECORD_TYPE_CHOICES}
+        TYPES.update({c[1].lower(): c[0] for c in Record.RECORD_TYPE_CHOICES})
+
+        def parse_time_cell(v):
+            if v is None:
+                return None
+            if isinstance(v, dtime):            # Excel time cell
+                return ((v.hour * 60 + v.minute) * 60 + v.second) * 100 + v.microsecond // 10000
+            if isinstance(v, (int, float)):     # plain seconds e.g. 27.45
+                return round(float(v) * 100) if v > 0 else None
+            s = str(v).strip().replace(',', '.')
+            m = re.match(r'^(?:(\d+):)?(?:(\d+):)?(\d+)(?:\.(\d{1,2}))?$', s)
+            if not m:
+                return None
+            h_or_m, mm, ss, hh = m.groups()
+            hh = int((hh or '0').ljust(2, '0'))
+            total = int(ss)
+            if mm is not None:                  # H:MM:SS
+                total += int(mm) * 60 + int(h_or_m) * 3600
+            elif h_or_m is not None:            # M:SS
+                total += int(h_or_m) * 60
+            return total * 100 + hh if total or hh else None
+
+        def parse_date_cell(v):
+            if isinstance(v, datetime):
+                return v.date()
+            if isinstance(v, date):
+                return v
+            s = str(v or '').strip()
+            for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%d.%m.%Y', '%Y/%m/%d'):
+                try:
+                    return datetime.strptime(s, fmt).date()
+                except ValueError:
+                    continue
+            return None
+
+        def find_event(raw):
+            s = str(raw or '').strip()
+            if not s:
+                return None
+            ev = Event.objects.filter(name__iexact=s).first()
+            if ev:
+                return ev
+            m = re.match(r'^(\d+)\s*m?\s+(.+)$', s, re.I)
+            if m:
+                dist, stroke_raw = int(m.group(1)), m.group(2).strip().lower()
+                stroke = STROKES.get(stroke_raw)
+                if stroke:
+                    return (Event.objects.filter(name__iexact=f'{dist} M {stroke}').first()
+                            or Event.objects.filter(is_relay=False, distance=dist,
+                                                    stroke=stroke).first())
+            return None
+
+        def norm_name(n):
+            return ' '.join(str(n or '').lower().split())
+
+        # Name lookup over all individual swimmers: exact normalized name,
+        # plus order-insensitive token key (SURNAME Given vs Given SURNAME)
+        by_name, by_tokens = {}, {}
+        for s in Swimmer.objects.filter(is_relay_team=False).select_related('nationality'):
+            k = norm_name(s.name)
+            by_name.setdefault(k, []).append(s)
+            by_tokens.setdefault(' '.join(sorted(k.split())), []).append(s)
+
+        created, duplicates, errors = 0, 0, []
+        for rownum, row in enumerate(ws.iter_rows(min_row=2), start=2):
+            vals = [c.value for c in row]
+            if all(v is None or str(v).strip() == '' for v in vals):
+                continue
+
+            def cell(field):
+                i = colmap.get(field)
+                return vals[i] if i is not None and i < len(vals) else None
+
+            raw_name = str(cell('swimmer') or '').strip()
+            matches = by_name.get(norm_name(raw_name)) \
+                or by_tokens.get(' '.join(sorted(norm_name(raw_name).split()))) or []
+            if not raw_name:
+                errors.append({'row': rownum, 'error': 'Missing swimmer name'})
+                continue
+            if not matches:
+                errors.append({'row': rownum, 'error': f'Swimmer not found: "{raw_name}"'})
+                continue
+            if len(matches) > 1:
+                errors.append({'row': rownum,
+                               'error': f'Several swimmers are named "{raw_name}" — add them manually'})
+                continue
+            swimmer = matches[0]
+
+            event = find_event(cell('event'))
+            if not event:
+                errors.append({'row': rownum, 'error': f'Unknown event: "{cell("event")}"'})
+                continue
+
+            cs = parse_time_cell(cell('time'))
+            if not cs:
+                errors.append({'row': rownum,
+                               'error': f'Could not read time "{cell("time")}" (use 27.45 or 1:56.30)'})
+                continue
+
+            rtype = TYPES.get(str(cell('record_type') or '').strip().lower()
+                              .removesuffix(' records').removesuffix(' record'))
+            if not rtype:
+                errors.append({'row': rownum,
+                               'error': f'Unknown scope "{cell("record_type")}" '
+                                        '(National, Arab, GCC, African, Asian, Mediterranean, Islamic, World)'})
+                continue
+
+            rdate = parse_date_cell(cell('date'))
+            if not rdate:
+                errors.append({'row': rownum,
+                               'error': f'Could not read date "{cell("date")}" (use YYYY-MM-DD or DD/MM/YYYY)'})
+                continue
+
+            pool_raw = str(cell('pool') or 'LCM').strip().upper()
+            pool = {'LCM': 'LCM', '50M': 'LCM', '50': 'LCM',
+                    'SCM': 'SCM', '25M': 'SCM', '25': 'SCM',
+                    'OW': 'OW', 'OPEN WATER': 'OW'}.get(pool_raw)
+            if not pool:
+                errors.append({'row': rownum, 'error': f'Unknown pool "{cell("pool")}" (LCM or SCM)'})
+                continue
+
+            age_raw = str(cell('age_category') or 'OPEN').strip().upper()
+            m_age = re.match(r'^U?\s*(\d{2})$', age_raw)
+            age_cat = 'OPEN' if age_raw in ('', 'OPEN') else (f'U{m_age.group(1)}' if m_age else None)
+            if age_cat not in dict(Record.AGE_CATEGORY_CHOICES):
+                errors.append({'row': rownum, 'error': f'Unknown age category "{cell("age_category")}"'})
+                continue
+
+            country = None
+            c_raw = str(cell('country') or '').strip()
+            if c_raw:
+                country = (Country.objects.filter(name__iexact=c_raw).first()
+                           or Country.objects.filter(code__iexact=c_raw).first())
+                if not country:
+                    errors.append({'row': rownum, 'error': f'Unknown country "{c_raw}"'})
+                    continue
+            if country is None:
+                country = swimmer.nationality
+
+            if Record.objects.filter(swimmer=swimmer, event=event, record_type=rtype,
+                                     pool=pool, age_category=age_cat,
+                                     time_centiseconds=cs, result_date=rdate).exists():
+                duplicates += 1
+                continue
+
+            Record.objects.create(
+                swimmer=swimmer, event=event, record_type=rtype,
+                age_category=age_cat, pool=pool, time_centiseconds=cs,
+                result_date=rdate, country=country,
+                meet_name=str(cell('meet_name') or '').strip(),
+                location=str(cell('location') or '').strip(),
+                is_new=True,
+            )
+            created += 1
+
+        return Response({'created': created, 'duplicates': duplicates, 'errors': errors})
+
     @action(detail=False, methods=['get'])
     def held(self, request):
         """All computed records held by one swimmer, across every scope

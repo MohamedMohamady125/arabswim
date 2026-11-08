@@ -5,6 +5,13 @@ export const getNewRecords = () => api.get('/records/new/')
 export const createRecord = (data) => api.post('/records/', data)
 export const updateRecord = (id, data) => api.patch(`/records/${id}/`, data)
 export const deleteRecord = (id) => api.delete(`/records/${id}/`)
+export const importRecordsExcel = (file) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post('/records/import-excel/', fd)
+}
+export const getRecordsImportTemplate = () =>
+  api.get('/records/import-template/', { responseType: 'blob' })
 export const getComputedRecords = (params) => api.get('/records/computed/', { params })
 export const getHeldRecords = (params) => api.get('/records/held/', { params })
 export const getRecordGaps = (params) => api.get('/records/gaps/', { params })

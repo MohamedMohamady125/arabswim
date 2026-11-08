@@ -2391,7 +2391,7 @@ export default function CountryProfile({ arabFed = false }) {
             <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
           </div>
           <p style={{ textAlign: 'center', fontSize: 13, color: '#6b7d94', maxWidth: 500, margin: '0 auto 28px', lineHeight: 1.5 }}>
-            The Board of Directors is responsible for the strategic direction, governance, and overall leadership of the {country.name} Swimming Federation.
+            The Board of Directors is responsible for the strategic direction, governance, and overall leadership of the {arabFed ? 'Arab Swimming Federation' : `${country.name} Swimming Federation`}.
           </p>
 
           {isAdmin && (() => {

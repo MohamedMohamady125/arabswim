@@ -239,7 +239,7 @@ export default function Academies() {
                 )}
                 {a._team && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--color-neutral-200)', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)' }}>
-                    <span className="asw-num">{a.swimmers_count ? `${a.swimmers_count} swimmers` : 'Full profile'}</span>
+                    <span>Full profile</span>
                     <span>Results, records &amp; rankings →</span>
                   </div>
                 )}

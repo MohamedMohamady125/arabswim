@@ -161,7 +161,7 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
           {sorted === null ? (
             <Loading label="Loading swims" />
           ) : sorted.length === 0 ? (
-            <div style={{ padding: '26px 20px', textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-600)' }}>
+            <div style={{ padding: '26px 20px', textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)' }}>
               No swims recorded at this meet yet.
             </div>
           ) : (

@@ -65,7 +65,7 @@ export default function MedalStandings({
               boxShadow: '0 1px 4px rgba(12,35,64,.05)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, minWidth: 0, overflow: 'hidden' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-neutral-600, #8b9099)' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-neutral-700)' }}>
                   {PODIUM_META[i].label}
                 </span>
                 {chip(r, i)}

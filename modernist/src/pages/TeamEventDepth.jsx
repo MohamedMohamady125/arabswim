@@ -11,7 +11,7 @@ import { formatDate, formatTime, mediaUrl } from '../utils'
 
 const INK = 'var(--color-accent-800)'
 const MUTED = 'var(--color-neutral-700)'
-const SOFT = 'var(--color-neutral-600)'
+const SOFT = 'var(--color-neutral-700)'
 const LINE = 'var(--color-neutral-300)'
 const HEAD = 'var(--font-heading)'
 

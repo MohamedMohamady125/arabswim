@@ -439,7 +439,7 @@ figure { margin: 0; }
 /* — loading / empty — */
 .loading, .empty {
   padding: 48px 32px; text-align: center; font-size: 13px;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-600);
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700);
 }
 
 /* — responsive visibility — */
@@ -751,7 +751,7 @@ figure { margin: 0; }
   flex: none; white-space: nowrap;
   font-family: var(--font-heading); font-weight: 700; font-size: 12px;
   letter-spacing: 0.22em; text-transform: uppercase;
-  color: var(--color-neutral-600, #8b9099);
+  color: var(--color-neutral-700);
 }
 .asw-partners-label::before { content: none; }
 .asw-partners-row {
@@ -784,7 +784,7 @@ a.asw-partner-pill:hover {
   text-align: center;
 }
 .asw-partner-mark svg { flex: none; width: 28px; height: 28px; color: var(--color-accent); }
-.asw-partner-mark-lt { font-weight: 500; color: var(--color-neutral-600, #8b9099); }
+.asw-partner-mark-lt { font-weight: 500; color: var(--color-neutral-700); }
 /* desktop: the marquee wrappers flatten away so the row lays out pills
    exactly as before, and the duplicate logo set stays hidden */
 .asw-partners-track, .asw-partners-half { display: contents; }

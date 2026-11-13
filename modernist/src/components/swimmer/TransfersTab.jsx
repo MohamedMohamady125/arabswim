@@ -286,7 +286,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
                   <>
                     <Flag code={ch.from_country_code} name={ch.from_country} flagUrl={ch.from_country_flag} />
                     <span>{ch.from_country}</span>
-                    <span style={{ color: 'var(--color-neutral-600)' }}>→</span>
+                    <span style={{ color: 'var(--color-neutral-700)' }}>→</span>
                   </>
                 )}
                 <Flag code={ch.to_country_code} name={ch.to_country} flagUrl={ch.to_country_flag} />

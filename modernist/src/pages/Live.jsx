@@ -77,7 +77,7 @@ function InlineResults({ meetId, meet, item }) {
 
   if (rows === null) return <div style={{ padding: '6px 0' }}><Loading label="Loading results" /></div>
   if (rows.length === 0) {
-    return <div style={{ padding: '12px 16px', fontSize: 12.5, color: 'var(--color-neutral-600)' }}>No results uploaded yet.</div>
+    return <div style={{ padding: '12px 16px', fontSize: 12.5, color: 'var(--color-neutral-700)' }}>No results uploaded yet.</div>
   }
   return (
     <div className="live-fade-in" style={{ background: 'var(--color-surface)', borderTop: '1px solid var(--color-neutral-200)' }}>
@@ -178,7 +178,7 @@ function ProgramRow({ item, seq, meetId, meet, hasResults, last }) {
             {g.label}
           </span>
         </div>
-        <div style={{ fontSize: 11.5, color: 'var(--color-neutral-600)', marginTop: 3, fontWeight: 600 }}>
+        <div style={{ fontSize: 11.5, color: 'var(--color-neutral-700)', marginTop: 3, fontWeight: 600 }}>
           {SESSION_LABEL[item.session] || item.session}
           {item.age_category ? ` · ${item.age_category}` : ''}
         </div>
@@ -378,7 +378,7 @@ function MedalsPanel({ rows, clubRows }) {
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <Flag code={r.swimmer__nationality__code} />
               <span style={{ fontWeight: 800 }}>{r.swimmer__nationality__code}</span>
-              <span className="hide-mobile" style={{ color: 'var(--color-neutral-600)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
+              <span className="hide-mobile" style={{ color: 'var(--color-neutral-700)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
             </span>
           )}
         />
@@ -438,7 +438,7 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
                 <div style={{ fontWeight: 800, fontFamily: 'var(--font-heading)', fontSize: 13.5, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {d.title}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--color-neutral-600)', fontWeight: 600, marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', fontWeight: 600, marginTop: 2 }}>
                   {d.day ? `Day ${d.day} · ` : ''}{formatDate(d.uploaded_at)}
                 </div>
               </div>

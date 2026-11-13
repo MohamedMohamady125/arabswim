@@ -146,7 +146,7 @@ function ClubLogo({ logo, name, size = 26 }) {
     <span style={{
       ...base, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.38, fontWeight: 700, letterSpacing: '.02em',
-      background: 'var(--color-neutral-200)', color: 'var(--color-neutral-600)',
+      background: 'var(--color-neutral-200)', color: 'var(--color-neutral-700)',
     }}>{initials}</span>
   )
 }
@@ -1771,7 +1771,7 @@ function OverviewTab({ meetId, stats }) {
                     <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-2)', borderRadius: 3, minWidth: 6 }} />
                   </div>
                   <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 12.5 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 500 }}> sw</span></span>
-                  <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-600)' }}>{c.results_count} res</span>
+                  <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-700)' }}>{c.results_count} res</span>
                 </div>
               ))}
             </div>
@@ -1797,7 +1797,7 @@ function OverviewTab({ meetId, stats }) {
                     <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-500)', borderRadius: 3, minWidth: 6 }} />
                   </div>
                   <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 12.5 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 500 }}> sw</span></span>
-                  <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-600)' }}>{c.results_count} res</span>
+                  <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-700)' }}>{c.results_count} res</span>
                 </div>
               ))}
             </div>
@@ -1818,7 +1818,7 @@ function OverviewTab({ meetId, stats }) {
                 <div key={d.age} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
                   <span className="asw-num" style={{ fontSize: 10, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 3 }}>{d.count}</span>
                   <div style={{ width: '72%', maxWidth: 30, height: `${Math.max(3, (d.count / maxC) * 110)}px`, background: 'var(--color-accent-800)', borderRadius: '2px 2px 0 0' }} />
-                  <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 5 }}>{d.age}</span>
+                  <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-700)', marginTop: 5 }}>{d.age}</span>
                 </div>
               ))}
             </div>
@@ -2002,7 +2002,7 @@ function MostImprovedTab({ meetId }) {
 
                   {/* time journey + relative drop bar */}
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span className="asw-num" style={{ fontSize: 13, color: 'var(--color-neutral-600)', textDecoration: 'line-through' }}>{s.previous_best}</span>
+                    <span className="asw-num" style={{ fontSize: 13, color: 'var(--color-neutral-700)', textDecoration: 'line-through' }}>{s.previous_best}</span>
                     <span style={{ color: 'var(--asw-fast)', fontWeight: 700, fontSize: 12 }}>→</span>
                     <span className="asw-time" style={{ fontSize: 16 }}>{s.current_time}</span>
                   </div>
@@ -3167,7 +3167,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
           {activeData === null ? (
             <Loading label="Loading results" />
           ) : activeData.length === 0 ? (
-            <div className="micro" style={{ padding: '8px 0', color: 'var(--color-neutral-600)' }}>
+            <div className="micro" style={{ padding: '8px 0', color: 'var(--color-neutral-700)' }}>
               {tab === 'heats' ? 'No heats uploaded yet' : 'No results uploaded yet for this event'}
             </div>
           ) : tab === 'heats' && heatGroups.length > 1 ? (

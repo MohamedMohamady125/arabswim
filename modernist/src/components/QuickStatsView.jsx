@@ -25,7 +25,7 @@ function VBars({ data, color = NAVY, height = 140 }) {
         <div key={i} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: NAVY_DARK }}>{d.value}</span>
           <div style={{ width: '100%', maxWidth: 26, height: Math.max(3, Math.round((d.value / max) * height)), background: d.color || color }} />
-          <span style={{ fontSize: 9.5, fontWeight: 600, color: 'var(--color-neutral-600)', textAlign: 'center', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{d.label}</span>
+          <span style={{ fontSize: 9.5, fontWeight: 600, color: 'var(--color-neutral-700)', textAlign: 'center', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{d.label}</span>
         </div>
       ))}
     </div>
@@ -273,7 +273,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ textAlign: 'right' }}>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: NAVY }}>{malePct}%</div>
-                  <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-600)' }}>{participation.male}</div>
+                  <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-700)' }}>{participation.male}</div>
                 </div>
                 <Donut segments={[
                   { label: 'Male', value: participation.male, color: NAVY },
@@ -281,7 +281,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                 ]} centerTop={counts.swimmers} centerBot="SWIMMERS" />
                 <div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: GOLD }}>{femalePct}%</div>
-                  <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-600)' }}>{participation.female}</div>
+                  <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-700)' }}>{participation.female}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 10 }}>
@@ -304,7 +304,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-neutral-600)' }}>
+                <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-neutral-700)' }}>
                   <th style={{ textAlign: 'left', paddingBottom: 6 }}>#</th>
                   <th style={{ textAlign: 'left', paddingBottom: 6 }}>Swimmer</th>
                   <th style={{ textAlign: 'center', paddingBottom: 6 }}>Swims</th>
@@ -315,7 +315,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
               <tbody>
                 {busiest.map((s, i) => (
                   <tr key={s.swimmer_id} className="hair-t">
-                    <td className="asw-num" style={{ padding: '7px 0', fontWeight: 700, color: 'var(--color-neutral-600)' }}>{i + 1}</td>
+                    <td className="asw-num" style={{ padding: '7px 0', fontWeight: 700, color: 'var(--color-neutral-700)' }}>{i + 1}</td>
                     <td style={{ padding: '7px 0' }}>
                       <Link to={`/swimmers/${s.swimmer_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}>
                         <Flag code={s.nationality_code} name={s.nationality} /> {s.swimmer_name}
@@ -439,7 +439,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
             {recCounters.map((c) => (
               <div key={c.label} className="qs-panel" style={{ padding: '12px 8px', textAlign: 'center' }}>
                 <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: c.color }}>{c.count}</div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-neutral-600)', marginTop: 2 }}>{c.label}</div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 2 }}>{c.label}</div>
               </div>
             ))}
           </div>

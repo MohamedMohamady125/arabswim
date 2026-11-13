@@ -11,7 +11,7 @@ import { formatDate, formatTime, mediaUrl } from '../../utils'
 
 const INK = 'var(--color-accent-800)'
 const MUTED = 'var(--color-neutral-700)'
-const SOFT = 'var(--color-neutral-600)'
+const SOFT = 'var(--color-neutral-700)'
 const LINE = 'var(--color-neutral-300)'
 const HEAD = 'var(--font-heading)'
 
@@ -284,8 +284,8 @@ export function DepthTab({ id, kind = 'club' }) {
                         className="asw-num"
                         style={{ height: 44, borderRadius: 8, cursor: 'pointer', fontFamily: HEAD, fontWeight: 900, fontSize: 16,
                           border: sel ? `2px solid ${INK}` : '1px solid transparent',
-                          background: `color-mix(in srgb, var(--color-accent-500) ${pct}%, #fff)`,
-                          color: pct > 55 ? '#fff' : INK }}>
+                          background: `color-mix(in srgb, var(--color-accent-400) ${pct}%, #fff)`,
+                          color: INK }}>
                         {e.swimmer_count}
                       </button>
                     )
@@ -305,7 +305,7 @@ export function DepthTab({ id, kind = 'club' }) {
               <div key={e.event_id} id={`depth-ev-${e.event_id}`} style={{ background: '#fff', border: `1px solid ${focus === e.event_id ? INK : LINE}`, borderRadius: 12, padding: '14px 16px', boxShadow: focus === e.event_id ? '0 0 0 3px var(--color-accent-200)' : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 15, color: INK, flex: 1, minWidth: 0 }}>{e.event_name}</span>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: tone }}>{label}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: MUTED }}><span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: tone }} />{label}</span>
                   <span className="asw-num" style={{ fontSize: 12.5, fontWeight: 800, color: INK }}>{e.swimmer_count} {e.swimmer_count === 1 ? 'swimmer' : 'swimmers'}</span>
                   {/* expand: this event on a page of its own */}
                   <Link to={full} aria-label={`Open ${e.event_name} on its own page`} title="Open full view"
@@ -375,8 +375,9 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
               const on = activeType === t
               return (
                 <button key={t} type="button" onClick={() => { setRecType(t); setAge('') }} aria-pressed={on}
-                  style={{ ...pillBase, border: `2px solid ${typeColors[t]}`, background: on ? typeColors[t] : '#fff', color: on ? '#fff' : typeColors[t] }}>
-                  {typeLabels[t]} Records <span className="asw-num" style={{ opacity: 0.85 }}>· {n}</span>
+                  style={{ ...pillBase, display: 'inline-flex', alignItems: 'center', gap: 8, border: `2px solid ${INK}`, background: on ? INK : '#fff', color: on ? '#fff' : INK }}>
+                  <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', background: typeColors[t], border: on ? '1.5px solid #fff' : 'none', flex: 'none' }} />
+                  {typeLabels[t]} Records <span className="asw-num">· {n}</span>
                 </button>
               )
             })}

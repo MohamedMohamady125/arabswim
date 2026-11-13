@@ -94,7 +94,7 @@ export default function Home() {
                         ? <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</Link>
                         : <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</span>}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--color-neutral-600)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.event_detail?.name}{r.pool ? ` · ${r.pool}` : ''}{r.result_date ? ` · ${formatDate(r.result_date)}` : ''}
                     </div>
                   </div>

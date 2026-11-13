@@ -29,7 +29,7 @@ function ClubLogo({ logo, name, size = 24 }) {
     <span style={{
       ...base, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.38, fontWeight: 700, letterSpacing: '.02em',
-      background: 'var(--color-neutral-200)', color: 'var(--color-neutral-600)',
+      background: 'var(--color-neutral-200)', color: 'var(--color-neutral-700)',
     }}>{initials}</span>
   )
 }

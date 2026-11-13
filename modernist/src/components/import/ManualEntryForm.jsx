@@ -634,7 +634,7 @@ export default function ManualEntryForm({ onComplete }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {relayLegs.map((leg, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span className="asw-num" style={{ width: 20, textAlign: 'center', fontWeight: 700, fontSize: 13, color: 'var(--color-neutral-600)' }}>{i + 1}</span>
+                    <span className="asw-num" style={{ width: 20, textAlign: 'center', fontWeight: 700, fontSize: 13, color: 'var(--color-neutral-700)' }}>{i + 1}</span>
                     <input className="input" type="text" placeholder="Swimmer name"
                       value={leg.name} style={{ flex: 2, padding: '7px 8px', fontSize: 13 }}
                       onChange={(e) => {

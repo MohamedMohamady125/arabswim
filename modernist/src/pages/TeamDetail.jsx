@@ -12,7 +12,7 @@ import api from '../api/client'
 import Flag from '../components/Flag'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
-import { Loading, Empty, Seg, Modal } from '../components/ui'
+import { Loading, Empty, Seg, Modal, MedalIcon } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { MiniHBars, MiniDonut, AgePyramid, MiniPanel, CHART_COLORS } from '../components/MiniCharts'
 import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
@@ -48,9 +48,9 @@ const COACH_LEVELS = {
 }
 
 const CLASS_COLORS = {
-  Arab: 'var(--color-accent-800)', GCC: '#7d8a99', African: '#a8402f', Asian: '#a05f2c',
-  Mediterranean: '#4a8fc0', Islamic: '#0d7a52', World: '#b98a1e', Olympic: '#0c2340',
-  National: '#2e6b4f', University: '#6b4f8a', Other: '#5a6572',
+  Arab: 'var(--color-accent-800)', GCC: 'var(--color-neutral-700)', African: 'var(--asw-slow)', Asian: 'var(--asw-bronze)',
+  Mediterranean: 'var(--color-accent-2)', Islamic: 'var(--asw-fast)', World: 'var(--asw-gold)', Olympic: 'var(--color-accent-800)',
+  National: '#2e6b4f', University: '#6b4f8a', Other: 'var(--color-neutral-700)',
 }
 
 const REC_TYPE_LABELS = {
@@ -59,8 +59,8 @@ const REC_TYPE_LABELS = {
 }
 const REC_TYPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
 const REC_TYPE_COLORS = {
-  NATIONAL: 'var(--color-accent-800)', ARAB: '#b98a1e', GCC: '#0d7a52', AFRICAN: '#a8402f',
-  ASIAN: '#a05f2c', MEDITERRANEAN: '#4a8fc0', ISLAMIC: '#0d7a52', WORLD: '#0c2340',
+  NATIONAL: 'var(--color-accent-800)', ARAB: 'var(--asw-gold)', GCC: 'var(--asw-fast)', AFRICAN: 'var(--asw-slow)',
+  ASIAN: 'var(--asw-bronze)', MEDITERRANEAN: 'var(--color-accent-2)', ISLAMIC: 'var(--asw-fast)', WORLD: 'var(--color-accent-800)',
 }
 
 const TABS = [
@@ -453,7 +453,7 @@ function PredictionTab({ id }) {
   return (
     <div className="pad-lg">
       <TabHeading title="Next-Season Projection" />
-      <div style={{ textAlign: 'center', fontSize: 12.5, color: '#6b7d94', margin: '-8px 0 16px' }}>
+      <div style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--color-neutral-700)', margin: '-8px 0 16px' }}>
         Linear trend over each swimmer's seasonal bests — a forecast, not a promise
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
@@ -512,7 +512,7 @@ const STROKES = [
   { value: 'Butterfly', label: 'Fly' },
   { value: 'Individual Medley', label: 'IM' },
 ]
-const LINE_HEX = ['var(--color-accent-800)', '#4a8fc0', '#0c2340', '#72a4cf', 'var(--color-accent-800)', 'var(--color-accent-800)', '#aecae4', 'var(--color-accent-800)']
+const LINE_HEX = ['var(--color-accent-800)', 'var(--color-accent-2)', 'var(--color-accent-800)', 'var(--color-accent-400)', 'var(--color-accent-800)', 'var(--color-accent-800)', 'var(--color-accent-300)', 'var(--color-accent-800)']
 
 function TeamProgressionChart({ lines }) {
   const allPoints = lines.flatMap((l) => l.points || [])
@@ -540,10 +540,10 @@ function TeamProgressionChart({ lines }) {
         {Array.from({ length: 4 }, (_, i) => {
           const cs = minCs + (range * i) / 3
           const yy = y(cs)
-          return <g key={i}><line x1={pL} x2={W - pR} y1={yy} y2={yy} stroke="#e5e9ed" /><text x={pL - 8} y={yy + 4} textAnchor="end" fill="#58687c" fontSize="11" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtAxis(cs)}</text></g>
+          return <g key={i}><line x1={pL} x2={W - pR} y1={yy} y2={yy} stroke="var(--color-neutral-300)" /><text x={pL - 8} y={yy + 4} textAnchor="end" fill="var(--color-neutral-700)" fontSize="11" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtAxis(cs)}</text></g>
         })}
         {yearLabels.map((yr) => (
-          <text key={yr} x={x(`${yr}-07-01`)} y={H - 4} textAnchor="middle" fill="#58687c" fontSize="10">{yr}</text>
+          <text key={yr} x={x(`${yr}-07-01`)} y={H - 4} textAnchor="middle" fill="var(--color-neutral-700)" fontSize="10">{yr}</text>
         ))}
         {lines.map((line, li) => {
           const pts = (line.points || []).filter((p) => p.time_cs)
@@ -603,7 +603,7 @@ function ProgressionTab({ id }) {
 
 // ── Statistics tab (fed blue dashboard, computed client-side) ─
 
-const PERF_BAR_COLORS = ['#7d3c98', 'var(--color-accent-800)', '#3b9dd6', '#27ae60', '#52c78a', '#f5d547', '#f7b731', '#f4845f', '#e63946', '#b0bec5']
+const PERF_BAR_COLORS = ['var(--color-accent-900)', 'var(--color-accent-800)', 'var(--color-accent-700)', 'var(--color-accent-600)', 'var(--color-accent-500)', 'var(--color-accent-400)', 'var(--color-accent-300)', 'var(--color-accent-2-300)', 'var(--color-accent-200)', 'var(--color-neutral-400)']
 
 function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxes, photoById, sexById }) {
   const [statSeed] = useState(() => Math.floor(Math.random() * 2 ** 31))
@@ -670,16 +670,16 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
         <span style={{ width: 4, height: 17, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{title}</span>
       </div>
-      <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
+      <div style={{ fontSize: 10.5, color: 'var(--color-neutral-700)', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
     </div>
   )
   const card = (children, extra = {}) => (
-    <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', ...extra }}>{children}</div>
+    <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', ...extra }}>{children}</div>
   )
-  const thStyle = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', paddingBottom: 6, borderBottom: '2px solid #e2e8f0' }
-  const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f0f4f8', fontSize: 12.5, background: i % 2 === 1 ? '#fafbfd' : 'transparent' })
+  const thStyle = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-700)', paddingBottom: 6, borderBottom: '2px solid var(--color-neutral-300)' }
+  const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-neutral-200)', fontSize: 12.5, background: i % 2 === 1 ? 'var(--color-neutral-100)' : 'transparent' })
   const badge = { width: 24, height: 24, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }
-  const mc = (color) => ({ width: 26, height: 26, borderRadius: '50%', background: color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 })
+  const mc = (color) => ({ width: 26, height: 26, borderRadius: '50%', background: `color-mix(in srgb, ${color} 24%, #fff)`, border: `1.5px solid ${color}`, color: 'var(--color-accent-800)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 })
 
   const topPerfTable = (rows) => (
     <>
@@ -694,7 +694,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
         <div key={t.swimmer_id} style={rowStyle(i)}>
           <span style={badge}>{i + 1}</span>
           <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: 'var(--color-accent-800)' }}><SwimmerLink id={t.swimmer_id} name={t.swimmer_name} /></span>
-          <span style={{ width: 120, color: '#6b7d94', fontSize: 11 }}>{t.event_name}</span>
+          <span style={{ width: 120, color: 'var(--color-neutral-700)', fontSize: 11 }}>{t.event_name}</span>
           <span className="asw-num" style={{ width: 60, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 12.5 }}>{t.time}</span>
           <span className="asw-num" style={{ width: 36, textAlign: 'right', fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 13 }}>{t.fina_points ?? '—'}</span>
         </div>
@@ -707,18 +707,18 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
         <span style={{ width: 24 }}>#</span>
         <span style={{ flex: 1 }}>Swimmer</span>
-        <span style={{ width: 28, textAlign: 'center', color: '#d4af37', fontWeight: 900 }}>G</span>
-        <span style={{ width: 28, textAlign: 'center', color: '#a8a9ad', fontWeight: 900 }}>S</span>
-        <span style={{ width: 28, textAlign: 'center', color: '#cd7f32', fontWeight: 900 }}>B</span>
+        <span style={{ width: 28, textAlign: 'center', color: 'var(--color-neutral-700)', fontWeight: 900, borderBottom: '2px solid var(--asw-gold)' }}>G</span>
+        <span style={{ width: 28, textAlign: 'center', color: 'var(--color-neutral-700)', fontWeight: 900, borderBottom: '2px solid var(--asw-silver)' }}>S</span>
+        <span style={{ width: 28, textAlign: 'center', color: 'var(--color-neutral-700)', fontWeight: 900, borderBottom: '2px solid var(--asw-bronze)' }}>B</span>
         <span style={{ width: 40, textAlign: 'center' }}>Total</span>
       </div>
       {rows.map((m, i) => (
         <div key={m.id ?? i} style={rowStyle(i)}>
           <span style={badge}>{i + 1}</span>
           <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: 'var(--color-accent-800)' }}><SwimmerLink id={m.id} name={m.name} /></span>
-          <span style={mc('#d4af37')}>{m.gold}</span>
-          <span style={mc('#a8a9ad')}>{m.silver}</span>
-          <span style={mc('#cd7f32')}>{m.bronze}</span>
+          <span style={mc('var(--asw-gold)')}>{m.gold}</span>
+          <span style={mc('var(--asw-silver)')}>{m.silver}</span>
+          <span style={mc('var(--asw-bronze)')}>{m.bronze}</span>
           <span className="asw-num" style={{ width: 40, textAlign: 'center', fontWeight: 900, fontSize: 14, color: 'var(--color-accent-800)' }}>{m.total}</span>
         </div>
       ))}
@@ -726,13 +726,13 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
   )
 
   const recCard = (label, sub, content) => (
-    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
-      <div style={{ padding: '10px 12px 7px', borderBottom: '1px solid #f0f3f7' }}>
+    <div style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
+      <div style={{ padding: '10px 12px 7px', borderBottom: '1px solid var(--color-neutral-200)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 4, height: 14, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
           <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{label}</span>
         </div>
-        <div style={{ fontSize: 9.5, color: '#7a8ca0', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
+        <div style={{ fontSize: 9.5, color: 'var(--color-neutral-700)', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
       </div>
       {content}
     </div>
@@ -746,13 +746,13 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
         <div style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--color-accent-800)', lineHeight: 1.2, marginBottom: 4 }}>
           <SwimmerLink id={id} name={name} />
         </div>
-        <div style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>{subLabel}</div>
+        <div style={{ fontSize: 10.5, color: 'var(--color-neutral-700)', marginBottom: 6 }}>{subLabel}</div>
         <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1 }}>{bigValue}</div>
-        {dateStr && <div style={{ fontSize: 10, color: '#9baab8', marginTop: 5 }}>{dateStr}</div>}
+        {dateStr && <div style={{ fontSize: 10, color: 'var(--color-neutral-700)', marginTop: 5 }}>{dateStr}</div>}
       </div>
     </div>
   )
-  const recEmpty = <div style={{ padding: '30px', textAlign: 'center', color: '#bbb', fontSize: 13, minHeight: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>—</div>
+  const recEmpty = <div style={{ padding: '30px', textAlign: 'center', color: 'var(--color-neutral-500)', fontSize: 13, minHeight: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>—</div>
 
   const maxTotal = Math.max(...medalBoxes.map((m) => m.total), 1)
   // Leaders plus this team: inside the top 8 → the top 9; further down →
@@ -769,7 +769,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
   const maxBattle = Math.max(...battle.map((r) => r.total), 1)
 
   return (
-    <div className="m-pad" style={{ background: '#f8fafc', padding: '28px 24px' }}>
+    <div className="m-pad" style={{ background: 'var(--color-neutral-100)', padding: '28px 24px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 40, height: 2, background: 'var(--color-accent-800)' }} />
@@ -780,11 +780,13 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
 
       {/* Row 0: headline numbers */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 10 }}>
-        {[['Swimmers', stats?.swimmers, 'var(--color-accent-800)'], ['Race Swims', stats?.results, 'var(--color-accent-800)'], ['Championships', stats?.championships, 'var(--color-accent-800)'],
-          ['Gold', stats?.medals?.gold, '#d4af37'], ['Silver', stats?.medals?.silver, '#a8a9ad'], ['Bronze', stats?.medals?.bronze, '#cd7f32']].map(([label, v, color]) => (
-          <div key={label} style={{ background: '#fff', border: '1px solid #dde3ea', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,.07)', padding: '14px 12px', textAlign: 'center' }}>
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, color }}>{formatNumber(v)}</div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#5a6b80', marginTop: 3 }}>{label}</div>
+        {[['Swimmers', Object.keys(sexById).length || stats?.swimmers, 'var(--color-accent-800)'], ['Race Swims', stats?.results, 'var(--color-accent-800)'], ['Championships', stats?.championships, 'var(--color-accent-800)'],
+          ['Gold', stats?.medals?.gold, 'var(--asw-gold)'], ['Silver', stats?.medals?.silver, 'var(--asw-silver)'], ['Bronze', stats?.medals?.bronze, 'var(--asw-bronze)']].map(([label, v, color]) => (
+          <div key={label} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,.07)', padding: '14px 12px', textAlign: 'center' }}>
+            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, color: 'var(--color-accent-800)' }}>{formatNumber(v)}</div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              {color !== 'var(--color-accent-800)' && <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flex: 'none' }} />}{label}
+            </div>
           </div>
         ))}
       </div>
@@ -803,7 +805,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
         {medalBoxes.length > 0 && card(<>
           {cardHeader('Medals', 'Total Medals by Competition')}
           <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11 }}>
-            {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([lbl, c]) => (
+            {[['Gold', 'var(--asw-gold)'], ['Silver', 'var(--asw-silver)'], ['Bronze', 'var(--asw-bronze)']].map(([lbl, c]) => (
               <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 11, height: 11, borderRadius: '50%', background: c, display: 'inline-block' }} />{lbl}
               </span>
@@ -811,11 +813,11 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
           </div>
           {medalBoxes.length === 0 ? <Empty label="No medals" /> : medalBoxes.map((m) => (
             <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
-              <span style={{ width: 88, fontSize: 11.5, fontWeight: 700, flexShrink: 0, color: '#374151' }}>{m.name}</span>
-              <div style={{ flex: 1, height: 20, display: 'flex', background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
+              <span style={{ width: 88, fontSize: 11.5, fontWeight: 700, flexShrink: 0, color: 'var(--color-neutral-800)' }}>{m.name}</span>
+              <div style={{ flex: 1, height: 20, display: 'flex', background: 'var(--color-accent-100)', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ width: `${(m.total / maxTotal) * 100}%`, display: 'flex', minWidth: m.total > 0 ? 20 : 0 }}>
-                  {[['gold', '#d4af37'], ['silver', '#a8a9ad'], ['bronze', '#cd7f32']].map(([key, color]) =>
-                    m[key] > 0 && <div key={key} style={{ flex: m[key], background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 10, minWidth: 14 }} className="asw-num">{m[key]}</div>
+                  {[['gold', 'var(--asw-gold)'], ['silver', 'var(--asw-silver)'], ['bronze', 'var(--asw-bronze)']].map(([key, color]) =>
+                    m[key] > 0 && <div key={key} style={{ flex: m[key], background: `color-mix(in srgb, ${color} 45%, #fff)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-accent-800)', fontWeight: 800, fontSize: 10, minWidth: 14 }} className="asw-num">{m[key]}</div>
                   )}
                 </div>
               </div>
@@ -857,7 +859,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
 
       {/* Row 4: Performance Index | Club Battle */}
       <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-        <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea' }}>
+        <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid var(--color-neutral-300)' }}>
           {cardHeader('Performance Index', `Distribution of ${team.name} Swimmers by Performance Level`)}
           <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
             {perfDist.map((d, i) => (
@@ -866,8 +868,8 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
                   {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: 'var(--color-accent-800)' }}>{d.count}</div>}
                   <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: '3px 3px 0 0' }} />
                 </div>
-                <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, minHeight: 19, color: '#5a6b80', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
-                <div style={{ fontSize: 6.5, color: '#9baab8', marginTop: 1 }}>({d.range})</div>
+                <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, minHeight: 19, color: 'var(--color-neutral-700)', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
+                <div style={{ fontSize: 6.5, color: 'var(--color-neutral-700)', marginTop: 1 }}>({d.range})</div>
               </div>
             ))}
           </div>
@@ -878,10 +880,10 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
             const mine = r.is_current
             return (
               <div key={r.team_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
-                <span className="asw-num" style={{ width: 18, fontSize: 11, fontWeight: 800, color: '#7a8ca0', flexShrink: 0, textAlign: 'right' }}>{r.rank}</span>
-                <span style={{ width: 104, fontSize: 11.5, fontWeight: mine ? 900 : 600, flexShrink: 0, color: mine ? 'var(--color-accent-800)' : '#374151', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{r.team_name}</span>
-                <div style={{ flex: 1, height: 18, background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ width: `${(r.total / maxBattle) * 100}%`, height: '100%', background: mine ? 'var(--color-accent-800)' : '#9db8d6', borderRadius: 3, minWidth: r.total > 0 ? 8 : 0 }} />
+                <span className="asw-num" style={{ width: 18, fontSize: 11, fontWeight: 800, color: 'var(--color-neutral-700)', flexShrink: 0, textAlign: 'right' }}>{r.rank}</span>
+                <span style={{ width: 104, fontSize: 11.5, fontWeight: mine ? 900 : 600, flexShrink: 0, color: mine ? 'var(--color-accent-800)' : 'var(--color-neutral-800)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{r.team_name}</span>
+                <div style={{ flex: 1, height: 18, background: 'var(--color-accent-100)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${(r.total / maxBattle) * 100}%`, height: '100%', background: mine ? 'var(--color-accent-800)' : 'var(--color-accent-300)', borderRadius: 3, minWidth: r.total > 0 ? 8 : 0 }} />
                 </div>
                 <span className="asw-num" style={{ width: 28, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{r.total}</span>
               </div>
@@ -1012,11 +1014,11 @@ function CompareTab({ team, profile, stats, records }) {
           </div>
           {rows.map(([label, a, b], i) => {
             const winA = a > b; const winB = b > a
-            const numStyle = (win) => ({ width: 110, fontWeight: 900, fontSize: 16, color: win ? 'var(--color-accent-800)' : '#6b7a90' })
+            const numStyle = (win) => ({ width: 110, fontWeight: 900, fontSize: 16, color: win ? 'var(--color-accent-800)' : 'var(--color-neutral-700)' })
             return (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', background: i % 2 ? '#f4f8fc' : '#fff', borderBottom: '1px solid #e3ecf5' }}>
+              <div key={label} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', background: i % 2 ? 'var(--color-neutral-100)' : '#fff', borderBottom: '1px solid var(--color-accent-100)' }}>
                 <span className="asw-num" style={{ ...numStyle(winA), textAlign: 'left' }}>{formatNumber(a)}</span>
-                <span style={{ flex: 1, textAlign: 'center', fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#374151' }}>{label}</span>
+                <span style={{ flex: 1, textAlign: 'center', fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-neutral-800)' }}>{label}</span>
                 <span className="asw-num" style={{ ...numStyle(winB), textAlign: 'right' }}>{formatNumber(b)}</span>
               </div>
             )
@@ -1155,7 +1157,7 @@ export default function TeamDetail() {
   if (loading) return <Loading label="Loading profile" />
   if (!team) return <Empty label="Profile not found" />
 
-  const navy = '#0c2340'
+  const navy = 'var(--color-accent-800)'
   const kickerText = team.is_national_team ? 'National Swimming Team' : team.is_academy ? 'Swimming Academy' : 'Swimming Club'
   // one word for what this page is about — used in every label below
   const kind = team.is_national_team ? 'team' : team.is_academy ? 'academy' : 'club'
@@ -1189,7 +1191,7 @@ export default function TeamDetail() {
   const newsCard = (a, i) => {
     const inner = (
       <>
-        <div style={{ position: 'relative', margin: 10, aspectRatio: '16 / 9', borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#8a9bb5', flex: 'none' }}>
+        <div style={{ position: 'relative', margin: 10, aspectRatio: '16 / 9', borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, var(--color-accent-200), var(--color-neutral-300))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'var(--color-neutral-700)', flex: 'none' }}>
           {a?.cover_image ? (
             <>
               <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1218,7 +1220,7 @@ export default function TeamDetail() {
         </div>
       </>
     )
-    const cardStyle = { borderRadius: 12, overflow: 'hidden', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column', minHeight: 0, textDecoration: 'none' }
+    const cardStyle = { borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column', minHeight: 0, textDecoration: 'none' }
     return a
       ? <Link key={a.id} to={`/news/${a.id}`} style={cardStyle}>{inner}</Link>
       : <div key={`ph-${i}`} style={cardStyle}>{inner}</div>
@@ -1226,8 +1228,8 @@ export default function TeamDetail() {
 
   // Person card (board + coaches)
   const personCard = ({ role, name, photo, actions }, i) => (
-    <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', }}>
-      <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: photo ? `url(${mediaUrl(photo)}) center/cover` : 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>{photo ? '' : '👤'}</div>
+    <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', }}>
+      <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: photo ? `url(${mediaUrl(photo)}) center/cover` : 'linear-gradient(180deg, var(--color-neutral-200), var(--color-neutral-300))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: 'var(--color-neutral-700)' }}>{photo ? '' : '👤'}</div>
       <div style={{ paddingTop: 16 }}>
         <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}>{name}</div>
         <div style={{ fontSize: 13.5, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{role}</div>
@@ -1238,11 +1240,7 @@ export default function TeamDetail() {
     </div>
   )
 
-  const medalBadge = (type) => {
-    const map = { GOLD: ['G', 'var(--asw-gold)'], SILVER: ['S', 'var(--asw-silver)'], BRONZE: ['B', '#c88a4d'] }
-    const [letter, bg] = map[type] || ['?', '#999']
-    return <span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: bg, color: '#fff', fontWeight: 900, fontSize: 12 }}>{letter}</span>
-  }
+  const medalBadge = (type) => <MedalIcon type={type} size={20} />
 
   return (
     <div className="m-zoom">
@@ -1345,11 +1343,11 @@ export default function TeamDetail() {
         }
         const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 12)
         const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-box-top)' }
-        const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', flexShrink: 0, overflow: 'hidden' }
+        const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, var(--color-accent-200), var(--color-accent-100))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: 'var(--color-neutral-700)', flexShrink: 0, overflow: 'hidden' }
         const hBody = { padding: '12px 8px 10px 2px', flex: 1, display: 'flex', flexDirection: 'column' }
         const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 7, lineHeight: 1.3 }
         const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 29, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1.1 }
-        const hSub = { fontSize: 12.5, color: '#33415c', marginTop: 4 }
+        const hSub = { fontSize: 12.5, color: 'var(--color-neutral-800)', marginTop: 4 }
         const barsIcon = (
           <span style={{ position: 'absolute', right: 16, bottom: 14, display: 'inline-flex', alignItems: 'flex-end', gap: 2.5 }}>
             {[7, 12, 17, 22].map((h, k) => <span key={k} style={{ width: 4.5, height: h, background: 'var(--color-accent-800)', borderRadius: 1.5, display: 'inline-block' }} />)}
@@ -1357,13 +1355,13 @@ export default function TeamDetail() {
         )
         const infoCell = (label, value) => (
           <div key={label}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a8ca0' }}>{label}</div>
+            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</div>
             <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', marginTop: 3, overflowWrap: 'anywhere' }}>{value || '—'}</div>
           </div>
         )
         const newsItems = articles.slice(0, 3)
         const hIcon = { width: 56, height: 56, borderRadius: 12, background: 'var(--color-accent-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0, margin: '6px 0 6px 4px' }
-        const cardBox = { borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px' }
+        const cardBox = { borderRadius: 12, background: '#fff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px' }
         const cardTitle = (text) => (
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 12 }}>{text}</div>
         )
@@ -1387,15 +1385,15 @@ export default function TeamDetail() {
         })()
         const topMedal = medalists.slice(0, 5)
         const lbRow = (i, id2, name, sub, right, rightSub) => (
-          <div key={`${id2}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderTop: i ? '1px solid #eef2f7' : 'none', minHeight: 44 }}>
+          <div key={`${id2}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderTop: i ? '1px solid var(--color-neutral-200)' : 'none', minHeight: 44 }}>
             <span className="asw-num" style={{ width: 22, height: 22, borderRadius: '50%', background: i === 0 ? 'var(--color-accent-800)' : 'var(--color-accent-100)', color: i === 0 ? '#fff' : 'var(--color-accent-800)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flex: 'none' }}>{i + 1}</span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: 13.5, color: 'var(--color-accent-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><SwimmerLink id={id2} name={name} /></span>
-              {sub ? <span style={{ display: 'block', fontSize: 11.5, color: '#5a6b80', marginTop: 1 }}>{sub}</span> : null}
+              {sub ? <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-neutral-700)', marginTop: 1 }}>{sub}</span> : null}
             </span>
             <span style={{ textAlign: 'right', flex: 'none' }}>
               <span className="asw-num" style={{ display: 'block', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)' }}>{right}</span>
-              {rightSub ? <span className="asw-num" style={{ display: 'block', fontSize: 11.5, color: '#5a6b80' }}>{rightSub}</span> : null}
+              {rightSub ? <span className="asw-num" style={{ display: 'block', fontSize: 11.5, color: 'var(--color-neutral-700)' }}>{rightSub}</span> : null}
             </span>
           </div>
         )
@@ -1409,14 +1407,14 @@ export default function TeamDetail() {
           ['Best performance', bestPerf?.fina_points ? `${bestPerf.fina_points} FINA pts` : null],
         ].filter(([, v]) => v)
         return (
-          <div className="m-pad" style={{ padding: '18px 28px 32px', background: '#eaf1f9' }}>
+          <div className="m-pad" style={{ padding: '18px 28px 32px', background: 'var(--color-accent-100)' }}>
             {/* Key numbers */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
               {statTiles.map(([label, value, sub]) => (
                 <div key={label} style={{ ...cardBox, padding: '16px 20px', borderTop: '3px solid var(--color-box-top)' }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a8ca0' }}>{label}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, lineHeight: 1.1, letterSpacing: '-0.02em', color: 'var(--color-accent-800)', marginTop: 4 }}>{value}</div>
-                  <div className="asw-num" style={{ fontSize: 12.5, color: '#5a6b80', marginTop: 3 }}>{sub}</div>
+                  <div className="asw-num" style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', marginTop: 3 }}>{sub}</div>
                 </div>
               ))}
             </div>
@@ -1427,7 +1425,7 @@ export default function TeamDetail() {
                 <div style={cardBox}>
                   {cardTitle(`About ${team.name}`)}
                   {team.description
-                    ? <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.7, color: '#33415c', whiteSpace: 'pre-line', maxWidth: '70ch' }}>{team.description}</p>
+                    ? <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.7, color: 'var(--color-neutral-800)', whiteSpace: 'pre-line', maxWidth: '70ch' }}>{team.description}</p>
                     : canManage
                       ? <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40, marginBottom: 16 }} onClick={() => setModal({ type: 'club' })}>+ Add a description</button>
                       : null}
@@ -1466,8 +1464,8 @@ export default function TeamDetail() {
                     </div>
                   </div>
                 ) : canManage ? (
-                  <div style={{ ...cardBox, border: '1.5px dashed #c6d4e2', boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-                    <div style={{ fontSize: 13.5, color: '#5a6b80' }}>No news yet. Articles you publish appear here.</div>
+                  <div style={{ ...cardBox, border: '1.5px dashed var(--color-neutral-400)', boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 13.5, color: 'var(--color-neutral-700)' }}>No news yet. Articles you publish appear here.</div>
                     <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40 }} onClick={() => setTab('news')}>Go to news</button>
                   </div>
                 ) : null}
@@ -1477,9 +1475,9 @@ export default function TeamDetail() {
                     {cardTitle(`Trophies · ${trophies.length}`)}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                       {trophies.map((t, i) => (
-                        <div key={t.id ?? i} style={{ border: '1px solid #e2e9f2', borderLeft: '4px solid var(--asw-gold)', borderRadius: 8, padding: '12px 14px', background: '#fff' }}>
+                        <div key={t.id ?? i} style={{ border: '1px solid var(--color-neutral-300)', borderLeft: '4px solid var(--asw-gold)', borderRadius: 8, padding: '12px 14px', background: '#fff' }}>
                           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-accent-800)' }}>🏆 {t.name}</div>
-                          <div className="asw-num" style={{ fontWeight: 800, fontSize: 13, marginTop: 4, color: '#5a6b80' }}>{t.year}</div>
+                          <div className="asw-num" style={{ fontWeight: 800, fontSize: 13, marginTop: 4, color: 'var(--color-neutral-700)' }}>{t.year}</div>
                         </div>
                       ))}
                     </div>
@@ -1500,7 +1498,7 @@ export default function TeamDetail() {
                       <div style={hBig}>{big}</div>
                       {sub ? <div style={hSub}>{sub}</div> : null}
                       {name ? <div style={{ ...hSub, fontWeight: 700, color: 'var(--color-accent-800)' }}>{name}</div> : null}
-                      {extra ? <div style={{ ...hSub, color: '#5a6b80' }}>{extra}</div> : null}
+                      {extra ? <div style={{ ...hSub, color: 'var(--color-neutral-700)' }}>{extra}</div> : null}
                     </div>
                     {icon === undefined ? barsIcon : icon}
                     {badgeEl}
@@ -1558,17 +1556,17 @@ export default function TeamDetail() {
                     ? { display: 'flex', width: 'max-content', animationDuration: `${Math.max(topRecords.length * 5, 25)}s` }
                     : { display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {(topRecords.length >= 4 ? [...topRecords, ...topRecords] : topRecords).map((r, i) => (
-                  <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
+                  <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '24px 0 8px' }}>
-                      <div style={{ width: photoById[r.swimmer_id] ? 165 : 96, height: photoById[r.swimmer_id] ? 165 : 96, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '4px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(0,0,0,.12)', overflow: 'hidden' }}>
+                      <div style={{ width: photoById[r.swimmer_id] ? 165 : 96, height: photoById[r.swimmer_id] ? 165 : 96, borderRadius: '50%', background: 'linear-gradient(180deg, var(--color-accent-100), var(--color-neutral-400))', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: 'var(--color-neutral-700)', border: '4px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(0,0,0,.12)', overflow: 'hidden' }}>
                         {photoById[r.swimmer_id] ? <img src={mediaUrl(photoById[r.swimmer_id])} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, color: 'var(--color-accent-800)' }}>{acronym(r.swimmer_name).slice(0, 2)}</span>}
                       </div>
                     </div>
                     <div style={{ padding: '12px 12px 0' }}>
                       <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} /></div>
-                      <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      <div style={{ fontSize: 13.5, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <span>{String(r.event_name || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
-                        <span style={{ color: '#c6d4e2' }}>|</span>
+                        <span style={{ color: 'var(--color-neutral-400)' }}>|</span>
                         <span>{r.pool === 'SCM' ? 'SCM' : 'LCM'}</span>
                       </div>
                     </div>
@@ -1597,7 +1595,7 @@ export default function TeamDetail() {
           {articles.length === 0 ? <Empty label="No news from this club yet" /> : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
               {articles.map((a) => (
-                <Link key={a.id} to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+                <Link key={a.id} to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
                   <div style={{ position: 'relative', height: 175, overflow: 'hidden', background: 'var(--color-accent-800)', flex: 'none' }}>
                     {a.cover_image && (
                       <>
@@ -1620,7 +1618,7 @@ export default function TeamDetail() {
                         }}>{a.title}</div>
                       )
                     })()}
-                    <div dir={/[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.body || '') ? 'rtl' : 'ltr'} style={{ fontSize: 12.5, color: '#58687c', lineHeight: 1.6, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
+                    <div dir={/[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.body || '') ? 'rtl' : 'ltr'} style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', lineHeight: 1.6, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
                     <span style={{ marginTop: 'auto', color: 'var(--color-accent-800)', fontWeight: 700, fontSize: 13 }}>Read more →</span>
                   </div>
                 </Link>
@@ -1641,7 +1639,7 @@ export default function TeamDetail() {
             <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 24, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Board of Directors</h2>
             <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
           </div>
-          <p style={{ textAlign: 'center', fontSize: 13, color: '#6b7d94', maxWidth: 500, margin: '0 auto 18px', lineHeight: 1.5 }}>
+          <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)', maxWidth: 500, margin: '0 auto 18px', lineHeight: 1.5 }}>
             The Board of Directors is responsible for the strategic direction, governance, and overall leadership of {team.name}.
           </p>
           {canManage && (
@@ -1666,7 +1664,7 @@ export default function TeamDetail() {
 
       {/* ===== TEAM (Coaches / Swimmers) ===== */}
       {tab === 'team' && (
-        <div className="m-pad" style={{ padding: '0 28px 28px', background: '#eef3f9' }}>
+        <div className="m-pad" style={{ padding: '0 28px 28px', background: 'var(--color-accent-100)' }}>
           <SubTabs options={[['coaches', 'Coaches'], ['swimmers', 'Swimmers']]} value={teamSub} onChange={setTeamSub} />
           {teamSub === 'coaches' && (<>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '10px 0 22px' }}>
@@ -1737,19 +1735,19 @@ export default function TeamDetail() {
               })()}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
                 {roster.map((s) => (
-                  <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', border: '3px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
+                  <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(180deg, var(--color-accent-100), var(--color-neutral-400))', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
                       {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
                     </div>
                     <div style={{ padding: '10px 2px 0' }}>
                       <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
                         <SwimmerLink id={s.id} name={s.name} />
                       </div>
-                      <div style={{ fontSize: 11.5, color: '#33415c', fontWeight: 500, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 11.5, color: 'var(--color-neutral-800)', fontWeight: 500, lineHeight: 1.5 }}>
                         {s.sex === 'F' ? "Women's" : "Men's"}{s.birth_year ? ` · ${s.birth_year}` : ''}
                       </div>
                     </div>
-                    <div style={{ marginTop: 'auto', paddingTop: 9, borderTop: '1px solid #eef2f7' }}>
+                    <div style={{ marginTop: 'auto', paddingTop: 9, borderTop: '1px solid var(--color-neutral-200)' }}>
                       <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
                         <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
                       </Link>
@@ -1768,7 +1766,7 @@ export default function TeamDetail() {
 
       {/* ===== TRAINING ===== */}
       {tab === 'training' && !team?.is_national_team && (
-        <div className="m-pad" style={{ padding: '24px 32px 40px', background: '#eaf1f9' }}>
+        <div className="m-pad" style={{ padding: '24px 32px 40px', background: 'var(--color-accent-100)' }}>
           <TabHeading kicker="Monthly Schedule" title="Training Calendar" />
           <TrainingCalendar teamId={Number(id)} canEdit={canManage} />
         </div>
@@ -1846,13 +1844,13 @@ export default function TeamDetail() {
           {medalBoxes.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'center' }}>
               {medalBoxes.map((m) => (
-                <div key={m.name} style={{ background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'var(--color-accent-800)', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a8aa0' }}>{m.name}</div>
+                <div key={m.name} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'var(--color-accent-800)', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{m.name}</div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: 'var(--color-accent-800)' }}>{formatNumber(m.total)}</div>
                   <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 800 }}>
-                    <span style={{ color: '#b98a1e' }}>{m.gold}G</span>
-                    <span style={{ color: '#8a97a8' }}>{m.silver}S</span>
-                    <span style={{ color: '#b06a35' }}>{m.bronze}B</span>
+                    <span style={{ color: 'var(--asw-gold)' }}>{m.gold}G</span>
+                    <span style={{ color: 'var(--asw-silver)' }}>{m.silver}S</span>
+                    <span style={{ color: 'var(--asw-bronze)' }}>{m.bronze}B</span>
                   </div>
                 </div>
               ))}
@@ -1937,7 +1935,7 @@ export default function TeamDetail() {
           {albums.length === 0 ? <Empty label="No photo or video albums yet" /> : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
               {albums.map((a) => (
-                <Link key={a.id} to={`/media/albums/${a.id}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+                <Link key={a.id} to={`/media/albums/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
                   <div style={{ height: 160, background: a.cover ? `url(${mediaUrl(a.cover)}) center/cover` : 'var(--color-accent-800)', display: 'flex', alignItems: 'flex-end' }}>
                     <span style={{ background: 'rgba(13,45,94,.85)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: '0 8px 0 0' }} className="asw-num">{a.items_count || 0} items</span>
                   </div>

@@ -105,7 +105,7 @@ function Funnel({ rows }) {
                 <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>{formatNumber(r.visitors)}</span>
               </div>
             </div>
-            <span className="asw-num" style={{ width: 86, flex: 'none', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-600)' }}>
+            <span className="asw-num" style={{ width: 86, flex: 'none', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-700)' }}>
               {ofTop}% of all{i > 0 ? ` · ${ofPrev}% kept` : ''}
             </span>
           </div>
@@ -140,7 +140,7 @@ function StatChip({ icon: Icon, value, label, growth, color = NAVY }) {
     <div className="qs-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '14px 8px', textAlign: 'center' }}>
       <Icon size={20} style={{ color }} />
       <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, color: NAVY_DARK, lineHeight: 1.1 }}>{value}</span>
-      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-600)' }}>{label}</span>
+      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</span>
       {growth !== undefined && <Growth pct={growth} />}
     </div>
   )
@@ -279,7 +279,7 @@ export default function AdminAnalytics() {
                 <div key={h.hour} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                   <div title={`${h.hour}:00 — ${h.views} views`}
                     style={{ width: '100%', maxWidth: 20, height: Math.max(3, Math.round((h.views / max) * 110)), background: h.views ? NAVY : 'var(--color-neutral-200)' }} />
-                  <span style={{ fontSize: 8, fontWeight: 600, color: 'var(--color-neutral-600)' }}>{h.hour % 3 === 0 ? h.hour : ''}</span>
+                  <span style={{ fontSize: 8, fontWeight: 600, color: 'var(--color-neutral-700)' }}>{h.hour % 3 === 0 ? h.hour : ''}</span>
                 </div>
               ))
             })()}

@@ -982,7 +982,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         const tile = { border: '1px solid var(--color-divider)', background: '#fff', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }
         const tLabel = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-500)' }
         const tVal = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }
-        const tSub = { fontSize: 11, color: 'var(--color-neutral-600)' }
+        const tSub = { fontSize: 11, color: 'var(--color-neutral-700)' }
         // Biggest title: most prestigious classification with golds (else the
         // best medal colour at the highest level), from the medal hierarchy
         const PRESTIGE = ['OLYMPIC', 'WORLD', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ARAB', 'GCC', 'NATIONAL']
@@ -1105,7 +1105,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                     {pb.meet_name}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    {pb.meet_date && <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{formatDate(pb.meet_date)}</span>}
+                    {pb.meet_date && <span style={{ fontSize: 11, color: 'var(--color-neutral-700)' }}>{formatDate(pb.meet_date)}</span>}
                     {pb.pool && <span className="tag tag-accent-2" style={{ fontSize: 9, padding: '1px 6px' }}>{pb.pool}</span>}
                   </div>
                 </div>
@@ -1138,7 +1138,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                 <div key={y} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
                   <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 4 }}>{byYear[y]}</span>
                   <div style={{ width: '70%', maxWidth: 36, height: `${Math.max(4, (byYear[y] / maxY) * 110)}px`, background: 'linear-gradient(180deg, var(--color-accent-500), var(--color-accent-800))', borderRadius: '3px 3px 0 0' }} />
-                  <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-600)', marginTop: 6 }}>{y}</span>
+                  <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-700)', marginTop: 6 }}>{y}</span>
                 </div>
               ))}
             </div>
@@ -1187,7 +1187,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                     {r.meet_name || r.location}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    {r.date && <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{formatDate(r.date)}</span>}
+                    {r.date && <span style={{ fontSize: 11, color: 'var(--color-neutral-700)' }}>{formatDate(r.date)}</span>}
                     {r.pool && <span className="tag tag-accent-2" style={{ fontSize: 9, padding: '1px 6px' }}>{r.pool}</span>}
                   </div>
                 </div>

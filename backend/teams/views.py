@@ -102,6 +102,9 @@ class TeamViewSet(viewsets.ModelViewSet):
             qs = qs.filter(country_id=country)
         if is_national and is_national.lower() in ('true', 'false'):
             qs = qs.filter(is_national_team=is_national.lower() == 'true')
+        is_academy = self.request.query_params.get('is_academy')
+        if is_academy and is_academy.lower() in ('true', 'false'):
+            qs = qs.filter(is_academy=is_academy.lower() == 'true')
         return qs
 
     # ── helpers for full-report logic ──────────────────────────────
@@ -263,6 +266,7 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def medals(self, request, pk=None):
+        from importer.parsers.base import format_centiseconds
         team = self.get_object()
         team_medals = (
             self._full_report_medals(team)
@@ -279,11 +283,18 @@ class TeamViewSet(viewsets.ModelViewSet):
                 'swimmer_name': m.swimmer.name,
                 'event_name': m.event.name,
                 'event_id': m.event.id,
+                'championship_id': m.championship_id,
                 'championship_name': m.championship.name,
+                'championship_pool': m.championship.pool,
                 'championship_date': str(m.championship.date),
                 'championship_location': m.championship.location,
                 'championship_country': m.championship.country.name if m.championship.country else '',
                 'team': m.result.team if m.result else '',
+                'time': format_centiseconds(m.result.time_centiseconds) if m.result and m.result.time_centiseconds else '',
+                'fina_points': m.result.fina_points if m.result else None,
+                'round_type': m.result.round_type if m.result else '',
+                'category': m.result.category if m.result else '',
+                'is_relay': m.event.is_relay,
             })
 
         return Response(data)
@@ -592,7 +603,7 @@ class TeamViewSet(viewsets.ModelViewSet):
             Q(swimmer__club__iexact=team.name) |
             Q(swimmer__results__team__iexact=team.name)
         ).select_related(
-            'swimmer', 'swimmer__nationality', 'event'
+            'swimmer', 'swimmer__nationality', 'event', 'country'
         ).distinct().order_by('event__sort_order', 'event__distance')
         data = [{
             'id': r.id,
@@ -605,6 +616,17 @@ class TeamViewSet(viewsets.ModelViewSet):
             'time': format_centiseconds(r.time_centiseconds),
             'pool': r.pool,
             'date': r.result_date,
+            'sex': r.swimmer.sex,
+            'age_category': r.age_category,
+            'meet_name': r.meet_name,
+            'location': r.location,
+            'is_relay': r.event.is_relay,
+            'photo': r.swimmer.photo.url if r.swimmer.photo else None,
+            # NATIONAL records belong to a nation — name it on the card
+            'country_code': (r.country.code if r.country_id else
+                             (r.swimmer.nationality.code if r.swimmer.nationality else '')),
+            'country_name': (r.country.name if r.country_id else
+                             (r.swimmer.nationality.name if r.swimmer.nationality else '')),
         } for r in records]
         return Response(data)
 
@@ -655,31 +677,76 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def ranking(self, request, pk=None):
-        """Rank this team among clubs in the same country by medal count."""
+        """Rank this team among its real peers by medals won for the team.
+
+        Peers are entities of the same kind: a national team is ranked
+        against the other national teams; a club or academy against the
+        clubs/academies based in the same country. Medals count for the
+        team they were won for (the result's team), so a swimmer's medals
+        from another club or country never inflate a peer. A club whose
+        swims mostly took place in another country (a visiting foreign club
+        that inherited the host meet's country) is not a peer.
+        """
+        from django.db.models.functions import Lower
         team = self.get_object()
-        country_teams = Team.objects.filter(country=team.country, is_national_team=False)
+        if team.is_national_team:
+            peers_qs = Team.objects.filter(is_national_team=True)
+        else:
+            peers_qs = Team.objects.filter(country=team.country, is_national_team=False)
+        peers = {t.id: t for t in peers_qs}
+        peers[team.id] = team
+        by_name = {t.name.lower(): t for t in peers.values()}
+        names = list(by_name)
+
+        # Where does each peer actually race? (dominant championship country)
+        visiting = set()
+        if not team.is_national_team and team.country_id:
+            home = {}
+            for row in (Result.objects.annotate(tl=Lower('team')).filter(tl__in=names)
+                        .values('tl', 'championship__country_id').annotate(n=Count('id'))):
+                cur = home.get(row['tl'])
+                if cur is None or row['n'] > cur[1]:
+                    home[row['tl']] = (row['championship__country_id'], row['n'])
+            visiting = {tl for tl, (cid, _n) in home.items()
+                        if cid and cid != team.country_id and tl != team.name.lower()}
+
+        counts = {}
+        for row in (Medal.objects.filter(result__isnull=False)
+                    .annotate(tl=Lower('result__team')).filter(tl__in=names)
+                    .values('tl', 'medal_type').annotate(n=Count('id'))):
+            c = counts.setdefault(row['tl'], {'gold': 0, 'silver': 0, 'bronze': 0})
+            key = row['medal_type'].lower()
+            if key in c:
+                c[key] += row['n']
+        # The current team uses the same scope as its Medals tab / overview
+        # so its number is identical everywhere on the page
+        own = self._full_report_medals(team).aggregate(
+            gold=Count('id', filter=Q(medal_type='GOLD')),
+            silver=Count('id', filter=Q(medal_type='SILVER')),
+            bronze=Count('id', filter=Q(medal_type='BRONZE')),
+        )
+        counts[team.name.lower()] = own
+
         ranking = []
-        for t in country_teams:
-            t_swimmers = Swimmer.objects.filter(
-                Q(club__iexact=t.name) | Q(results__team__iexact=t.name)
-            ).exclude(is_relay_team=True).distinct().values_list('id', flat=True)
-            counts = Medal.objects.filter(swimmer_id__in=t_swimmers).aggregate(
-                gold=Count('id', filter=Q(medal_type='GOLD')),
-                silver=Count('id', filter=Q(medal_type='SILVER')),
-                bronze=Count('id', filter=Q(medal_type='BRONZE')),
-                total=Count('id'),
-            )
-            # Zero-medal clubs aren't rankable "by medal count"; keep the
-            # requested club itself so its row always appears
-            if not counts['total'] and t.id != team.id:
+        for tl, t in by_name.items():
+            if tl in visiting:
+                continue
+            c = counts.get(tl) or {'gold': 0, 'silver': 0, 'bronze': 0}
+            total = c['gold'] + c['silver'] + c['bronze']
+            # Zero-medal teams aren't rankable "by medals"; always keep the
+            # requested team so its row appears
+            if not total and t.id != team.id:
                 continue
             ranking.append({
                 'team_id': t.id,
                 'team_name': t.name,
+                'logo': t.logo.url if t.logo else None,
+                'is_academy': t.is_academy,
                 'is_current': t.id == team.id,
-                **counts,
+                'gold': c['gold'], 'silver': c['silver'], 'bronze': c['bronze'],
+                'total': total,
             })
-        ranking.sort(key=lambda r: (-(r['gold']), -(r['silver']), -(r['bronze'])))
+        ranking.sort(key=lambda r: (-r['total'], -r['gold'], -r['silver'], -r['bronze'], r['team_name']))
         for i, r in enumerate(ranking):
             r['rank'] = i + 1
         return Response(ranking)

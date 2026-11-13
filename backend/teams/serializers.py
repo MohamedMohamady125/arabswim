@@ -31,7 +31,7 @@ class TeamListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
         fields = ['id', 'name', 'country', 'country_detail', 'logo', 'banner',
-                  'is_national_team', 'founded_year', 'swimmers_count']
+                  'is_national_team', 'is_academy', 'founded_year', 'swimmers_count']
 
     def get_swimmers_count(self, obj):
         # Prefer annotation (single query) set by the viewset list action
@@ -57,7 +57,8 @@ class TeamCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
         fields = ['id', 'name', 'country', 'logo', 'banner', 'founded_year', 'description',
-                  'website', 'address', 'email', 'phone', 'is_national_team', 'trophies_data']
+                  'website', 'address', 'email', 'phone', 'is_national_team', 'is_academy',
+                  'trophies_data']
 
     def _parse_trophies(self, value):
         if not value:

@@ -300,12 +300,18 @@ export function DepthTab({ id, kind = 'club' }) {
           {rows.map((e) => {
             const [label, tone] = depthLevel(e.swimmer_count)
             const lead = e.top[0]?.time_cs || 0
+            const full = `/teams/${id}/depth/${e.event_id}?pool=${pool}${gender ? `&gender=${gender}` : ''}`
             return (
               <div key={e.event_id} id={`depth-ev-${e.event_id}`} style={{ background: '#fff', border: `1px solid ${focus === e.event_id ? INK : LINE}`, borderRadius: 12, padding: '14px 16px', boxShadow: focus === e.event_id ? '0 0 0 3px var(--color-accent-200)' : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 15, color: INK, flex: 1, minWidth: 0 }}>{e.event_name}</span>
                   <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: tone }}>{label}</span>
                   <span className="asw-num" style={{ fontSize: 12.5, fontWeight: 800, color: INK }}>{e.swimmer_count} {e.swimmer_count === 1 ? 'swimmer' : 'swimmers'}</span>
+                  {/* expand: this event on a page of its own */}
+                  <Link to={full} aria-label={`Open ${e.event_name} on its own page`} title="Open full view"
+                    style={{ width: 40, height: 40, margin: '-8px -8px -8px 0', borderRadius: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: INK, flex: 'none' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="m21 3-7 7" /><path d="m3 21 7-7" /></svg>
+                  </Link>
                 </div>
                 <div style={{ height: 6, borderRadius: 3, background: 'var(--color-neutral-200)', margin: '10px 0 8px', overflow: 'hidden' }}>
                   <div style={{ width: `${Math.max((e.swimmer_count / summary.max) * 100, 4)}%`, height: '100%', background: tone, borderRadius: 3 }} />
@@ -318,9 +324,10 @@ export function DepthTab({ id, kind = 'club' }) {
                     <span className="asw-num asw-time" style={{ width: 66, textAlign: 'right', fontWeight: 800, color: INK, flex: 'none' }}>{s.time}</span>
                   </div>
                 ))}
-                {e.swimmer_count > e.top.length && (
-                  <div style={{ fontSize: 11.5, color: SOFT, paddingTop: 6 }}>+ {e.swimmer_count - e.top.length} more with a time</div>
-                )}
+                <Link to={full} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 40, marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--color-neutral-200)', fontSize: 12.5, fontWeight: 700, color: INK, textDecoration: 'none' }}>
+                  <span>{e.swimmer_count > e.top.length ? `See all ${e.swimmer_count} swimmers` : 'Open full view'}</span>
+                  <span aria-hidden="true">→</span>
+                </Link>
               </div>
             )
           })}

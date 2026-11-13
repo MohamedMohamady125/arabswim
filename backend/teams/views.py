@@ -381,6 +381,44 @@ class TeamViewSet(viewsets.ModelViewSet):
         if gender in ('M', 'F'):
             base = base.filter(swimmer__sex=gender)
 
+        # ?event=<id> → the full depth chart of one event: every swimmer
+        # with their best swim, where and when it was set
+        event_id = request.query_params.get('event')
+        if event_id:
+            rows = (base.filter(event_id=event_id)
+                    .select_related('swimmer', 'championship', 'event')
+                    .order_by('time_centiseconds'))
+            seen, swimmers, event = set(), [], None
+            for r in rows:
+                event = event or r.event
+                if r.swimmer_id in seen:
+                    continue
+                seen.add(r.swimmer_id)
+                sw = r.swimmer
+                dob = getattr(sw, 'date_of_birth', None)
+                swimmers.append({
+                    'swimmer_id': sw.id, 'name': sw.name, 'sex': sw.sex,
+                    'birth_year': dob.year if dob else getattr(sw, 'birth_year', None),
+                    'photo': sw.photo.url if sw.photo else None,
+                    'time': _fmt_cs(r.time_centiseconds), 'time_cs': r.time_centiseconds,
+                    'fina_points': r.fina_points,
+                    'age': r.age_at_competition,
+                    'meet_id': r.championship_id, 'meet_name': r.championship.name,
+                    'date': str(r.championship.date) if r.championship.date else None,
+                    'round_type': r.round_type,
+                })
+            if event is None:
+                from core.models import Event
+                event = Event.objects.filter(id=event_id).first()
+            return Response({
+                'event': {'id': event.id, 'name': event.name, 'stroke': event.stroke,
+                          'distance': event.distance} if event else None,
+                'pool': pool, 'gender': gender or '',
+                'team': {'id': team.id, 'name': team.name, 'is_academy': team.is_academy,
+                         'is_national_team': team.is_national_team},
+                'swimmers': swimmers,
+            })
+
         # One best time per swimmer per event.
         best = (base.values(
             'event_id', 'event__name', 'event__stroke', 'event__distance',

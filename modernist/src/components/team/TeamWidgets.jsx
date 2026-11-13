@@ -351,9 +351,6 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
   const filtered = ofType.filter((r) => (
     (!gender || sexOf(r) === gender) && (!pool || r.pool === pool) && (!age || (r.age_category || 'OPEN') === age)
   ))
-  const withPhotos = filtered.some((r) => r.photo || photoById[r.swimmer_id])
-
-  const chip = { fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', padding: '3px 8px', borderRadius: 6, background: 'var(--color-accent-100)', color: INK, whiteSpace: 'nowrap' }
   const pillBase = { padding: '9px 18px', minHeight: 40, borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }
 
   return (
@@ -390,47 +387,56 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
         </div>
 
         {filtered.length === 0 ? <Empty label="No records for this selection" /> : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 }}>
+          /* The site's standard record card (same markup as New Records) */
+          <div className="record-cards">
             {filtered.map((r, i) => {
               const photo = r.photo || photoById[r.swimmer_id]
               const sex = sexOf(r)
-              const scope = activeType === 'NATIONAL' && r.country_name ? `${r.country_name} National` : typeLabels[activeType]
+              const time = typeof r.time === 'number' ? formatTime(r.time) : r.time
               return (
-                <div key={r.id ?? i} style={{ borderRadius: 14, background: '#fff', border: `1px solid ${LINE}`, borderTop: `3px solid ${typeColors[activeType]}`, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {withPhotos && (
-                    <div style={{ width: '100%', aspectRatio: '4 / 3', borderRadius: 10, overflow: 'hidden', background: 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {photo
-                        ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-                        : <span style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 30, color: SOFT }}>{acronym(r.swimmer_name)}</span>}
+                <div key={r.id ?? i}>
+                  {photo ? (
+                    <img src={mediaUrl(photo)} alt={r.swimmer_name} className="grayscale"
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', objectPosition: 'center top', display: 'block', marginBottom: 10 }} />
+                  ) : (
+                    <div style={{ width: '100%', aspectRatio: '1 / 1', marginBottom: 10, background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: HEAD, fontWeight: 800, fontSize: 30, color: 'var(--color-accent)' }}>
+                      {(r.swimmer_name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')}
                     </div>
                   )}
-                  {/* 1 · event + pool */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 14.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.event_name}</span>
-                    <span className="asw-num" style={chip}>{r.pool}</span>
+                  {/* 1 — scope + age category */}
+                  <div className="card-kicker" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span>{typeLabels[r.record_type] || r.record_type} record</span>
+                    <span style={{ opacity: 0.5 }}>·</span>
+                    <span>{ageLabel(r.age_category)}</span>
                   </div>
-                  {/* 2 · time */}
-                  <div className="asw-num asw-time" style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 32, color: INK, letterSpacing: '-0.02em', lineHeight: 1 }}>
-                    {typeof r.time === 'number' ? formatTime(r.time) : r.time}
+                  {/* 2 — event with gender */}
+                  <div className="rec-event" style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>
+                    {sex ? (sex === 'F' ? "Women's " : "Men's ") : ''}{r.event_name}
                   </div>
-                  {/* 3 · holder */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, minHeight: 20 }}>
-                    {r.country_code ? <Flag code={r.country_code} name={r.country_name} /> : null}
-                    {r.swimmer_id
-                      ? <Link to={`/swimmers/${r.swimmer_id}`} style={{ fontWeight: 700, fontSize: 14, color: INK, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.swimmer_name}</Link>
-                      : <span style={{ fontWeight: 700, fontSize: 14, color: INK }}>{r.swimmer_name}</span>}
+                  {/* 3 — pool badge in front of the time */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
+                    <span className="tag tag-accent-2" style={{ fontSize: 10, padding: '2px 8px', fontWeight: 700 }}>{r.pool}</span>
+                    <span className="asw-num rec-time" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 22 }}>{time}</span>
                   </div>
-                  {/* 4 · whose record */}
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={chip}>{scope}</span>
-                    <span style={chip}>{ageLabel(r.age_category)}</span>
-                    {sex ? <span style={chip}>{sex === 'F' ? 'Women' : 'Men'}{r.is_relay ? ' · Relay' : ''}</span> : (r.is_relay ? <span style={chip}>Relay</span> : null)}
+                  {/* 4 — swimmer name + flag */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                    <Flag code={r.nationality_code || r.country_code} name={r.country_name} />
+                    {r.swimmer_id && !r.is_relay ? (
+                      <Link to={`/swimmers/${r.swimmer_id}`} className="rec-name" style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>{r.swimmer_name}</Link>
+                    ) : (
+                      <span className="rec-name" style={{ fontSize: 13, fontWeight: 600 }}>{r.swimmer_name}</span>
+                    )}
                   </div>
-                  {/* 5 · when + where */}
-                  <div style={{ marginTop: 'auto', paddingTop: 10, borderTop: `1px solid var(--color-neutral-200)`, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
-                    <div className="asw-num" style={{ fontWeight: 700, color: INK }}>{r.date ? formatDate(r.date) : 'Date not recorded'}</div>
-                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[r.meet_name, r.location].filter(Boolean).join(' · ') || 'Meet not recorded'}</div>
-                  </div>
+                  {/* 5 — meet name */}
+                  {(r.meet_name || r.location) && (
+                    <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 6 }}>
+                      {[r.meet_name, r.location].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                  {/* 6 — date of meet */}
+                  {r.date && (
+                    <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{formatDate(r.date)}</div>
+                  )}
                 </div>
               )
             })}

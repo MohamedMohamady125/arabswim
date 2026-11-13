@@ -121,7 +121,7 @@ export function SwimmerMedalsByMeet({ medals }) {
       {meets.map((g) => {
         const isOpen = open === g.key
         return (
-          <div key={g.key} style={{ border: `1px solid ${LINE}`, borderLeft: `3px solid ${isOpen ? INK : LINE}`, borderRadius: 10, background: '#fff', overflow: 'hidden' }}>
+          <div key={g.key} style={{ border: `1px solid ${isOpen ? 'var(--color-accent-400)' : LINE}`, borderRadius: 10, background: '#fff', overflow: 'hidden' }}>
             <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : g.key)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', minHeight: 48, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: INK }}>
               <span style={{ flex: 1, minWidth: 0 }}>

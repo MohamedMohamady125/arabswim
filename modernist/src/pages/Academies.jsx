@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Phone, Mail, Globe, AtSign, MapPin } from 'lucide-react'
 import { getAcademies, createAcademy, updateAcademy, deleteAcademy } from '../api/academies'
+import { getTeams } from '../api/teams'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Modal } from '../components/ui'
@@ -135,9 +136,17 @@ export default function Academies() {
 
   useEffect(() => {
     let alive = true
-    getAcademies({ page_size: 300 })
-      .then((res) => { if (alive) setAcademies(list(res.data)) })
-      .catch(() => {})
+    // Two sources, one list: directory-only academies, plus clubs flagged as
+    // academies — those carry a full profile (roster, results, records…)
+    Promise.allSettled([getAcademies({ page_size: 300 }), getTeams({ is_academy: 'true' })])
+      .then(([acad, teams]) => {
+        if (!alive) return
+        const plain = acad.status === 'fulfilled' ? list(acad.value.data) : []
+        const full = (teams.status === 'fulfilled' ? list(teams.value.data) : [])
+          .filter((t) => t.is_academy)
+          .map((t) => ({ ...t, _team: true }))
+        setAcademies([...full, ...plain].sort((a, b) => String(a.name).localeCompare(String(b.name))))
+      })
       .finally(() => alive && setLoading(false))
     getCountries()
       .then((res) => {
@@ -198,7 +207,7 @@ export default function Academies() {
         <div className="pad">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
             {filtered.map((a) => (
-              <Link key={a.id} to={`/academies/${a.id}`} style={{
+              <Link key={a._team ? `team-${a.id}` : a.id} to={a._team ? `/teams/${a.id}` : `/academies/${a.id}`} style={{
                 background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12,
                 boxShadow: 'var(--shadow-sm)', padding: '14px 16px',
                 display: 'flex', flexDirection: 'column', gap: 12,
@@ -215,7 +224,7 @@ export default function Academies() {
                       <span>{a.country_detail?.name}{a.city ? ` · ${a.city}` : ''}</span>
                     </div>
                   </div>
-                  {isAdmin && (
+                  {isAdmin && !a._team && (
                     <button className="btn btn-secondary" style={{ flex: 'none', fontSize: 11 }}
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setModal({ academy: a }) }}>Edit</button>
                   )}
@@ -228,7 +237,13 @@ export default function Academies() {
                     <MapPin size={13} style={{ flex: 'none', marginTop: 2 }} /> {a.address}
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
+                {a._team && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--color-neutral-200)', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)' }}>
+                    <span className="asw-num">{a.swimmers_count ? `${a.swimmers_count} swimmers` : 'Full profile'}</span>
+                    <span>Results, records &amp; rankings →</span>
+                  </div>
+                )}
+                <div style={{ display: a._team ? 'none' : 'flex', gap: 6, marginTop: 'auto' }}>
                   <ContactLink href={a.phone ? `tel:${a.phone}` : ''} icon={Phone} label="Phone" />
                   <ContactLink href={a.email ? `mailto:${a.email}` : ''} icon={Mail} label="Email" />
                   <ContactLink href={a.website ? (/^https?:\/\//i.test(a.website) ? a.website : `https://${a.website}`) : ''} icon={Globe} label="Website" />

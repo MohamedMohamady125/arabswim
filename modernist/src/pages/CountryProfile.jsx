@@ -18,7 +18,7 @@ import { getClassifications } from '../api/records'
 import Flag, { flagImage } from '../components/Flag'
 import FederationProgressionTab from '../components/FederationProgression'
 import MedalStandings from '../components/MedalStandings'
-import { Loading, Empty, SectHead, Seg, Pager, Modal } from '../components/ui'
+import { Loading, notify, Empty, SectHead, Seg, Pager, Modal } from '../components/ui'
 import { MiniBars, MiniHBars, CHART_COLORS } from '../components/MiniCharts'
 import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2 } from '../utils'
 import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
@@ -2462,7 +2462,7 @@ export default function CountryProfile({ arabFed = false }) {
                         onClick={async () => {
                           if (!window.confirm(`Remove ${member.name} from the board?`)) return
                           try { await deleteBoardMember(member.id); setBoardKey((k) => k + 1); setFedNotice({ where: 'board', text: `${member.name} removed` }) }
-                          catch { window.alert('Could not remove this board member. Please try again.') }
+                          catch { notify('Could not remove this board member. Please try again.') }
                         }}>Remove</button>
                     </div>
                   )}

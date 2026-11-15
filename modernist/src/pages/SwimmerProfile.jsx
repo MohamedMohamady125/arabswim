@@ -23,7 +23,7 @@ import { getSwimmerDna, getSwimmerChase } from '../api/lab'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
 import Flag from '../components/Flag'
-import { Loading, Empty, Seg, Modal } from '../components/ui'
+import { Loading, notify, Empty, Seg, Modal } from '../components/ui'
 import ImageCropper from '../components/ImageCropper'
 import { formatDate, mediaUrl } from '../utils'
 import SplitsBreakdown from '../components/swimmer/SplitsBreakdown'
@@ -315,7 +315,7 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
                   try {
                     await deleteSwimmerPhoto(swimmer.id)
                     onSaved()
-                  } catch { window.alert('Failed to delete photo') }
+                  } catch { notify('Failed to delete photo') }
                 }}>
                 Delete photo
               </button>
@@ -1561,7 +1561,7 @@ export default function SwimmerProfile() {
                     try {
                       await updateSwimmer(id, { nicknames: [] })
                       setSwimmer({ ...swimmer, nicknames: [] })
-                    } catch { window.alert('The name variants could not be cleared. Please try again.') }
+                    } catch { notify('The name variants could not be cleared. Please try again.') }
                   }}>
                   Clear all
                 </button>
@@ -1592,7 +1592,7 @@ export default function SwimmerProfile() {
                       try {
                         await updateSwimmer(id, { is_retired: next })
                         setSwimmer({ ...swimmer, is_retired: next })
-                      } catch { window.alert('The status could not be changed. Please try again.') }
+                      } catch { notify('The status could not be changed. Please try again.') }
                     }}>
                     {swimmer.is_retired ? 'Mark active' : 'Mark retired'}
                   </button>

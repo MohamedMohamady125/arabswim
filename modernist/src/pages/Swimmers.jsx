@@ -5,7 +5,7 @@ import { getSwimmers, deleteSwimmer, searchSwimmers } from '../api/swimmers'
 import { getCountries } from '../api/core'
 import { mergeSwimmers } from '../api/importer'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Pager, Seg, Modal } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Pager, Seg, Modal } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
@@ -308,7 +308,7 @@ export default function Swimmers() {
       setRows((prev) => prev.filter((r) => r.id !== s.id))
       setCount((c) => Math.max(0, c - 1))
     } catch {
-      window.alert('Failed to delete swimmer')
+      notify('Failed to delete swimmer')
     }
   }
 

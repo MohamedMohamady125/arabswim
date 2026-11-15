@@ -107,7 +107,7 @@ export default function MeetGallery({ meetId, isAdmin }) {
             </form>
             <label className="btn btn-primary" style={{ opacity: uploading ? 0.5 : 1, pointerEvents: uploading ? 'none' : 'auto' }}>
               {uploading ? 'Uploading…' : 'Add photos'}
-              <input type="file" accept="image/*" multiple onChange={handleUpload} style={{ display: 'none' }} />
+              <input type="file" accept="image/*" multiple onChange={handleUpload} className="sr-only" />
             </label>
           </div>
         )}

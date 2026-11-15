@@ -5,7 +5,7 @@ import { getArticles, createArticle, updateArticle, deleteArticle } from '../api
 import { getCountries } from '../api/core'
 import { getTeams, getTeam } from '../api/teams'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Pager, Seg, Modal } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Pager, Seg, Modal } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import { CropUpload } from '../components/ImageCropper'
@@ -220,7 +220,7 @@ export default function News() {
       setArticles((prev) => prev.filter((x) => x.id !== a.id))
       setCount((c) => Math.max(0, c - 1))
     } catch {
-      window.alert('Failed to delete article')
+      notify('Failed to delete article')
     }
   }
 

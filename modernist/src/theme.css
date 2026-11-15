@@ -935,3 +935,11 @@ tr:hover .medal-expand-btn { background: var(--color-accent-100); }
   /* profile pages are scaled to 0.75 on phone, so their controls start larger */
   .m-zoom .seg-opt { min-height: 48px; }
 }
+
+/* Flow: non-blocking notices (replace window.alert) */
+.asw-notices { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; width: max-content; max-width: calc(100vw - 32px); pointer-events: none; }
+.asw-notice { pointer-events: auto; cursor: pointer; background: var(--color-accent-800); color: var(--color-bg); font-size: 13px; font-weight: 700; line-height: 1.4; padding: 10px 16px; max-width: 520px; border-left: 4px solid var(--asw-fast); }
+.asw-notice.is-error { border-left-color: var(--asw-slow); }
+/* Fitts's Law: upload buttons (a label around a visually hidden file input) are reachable by keyboard */
+label.btn { position: relative; }
+label.btn:focus-within { outline: 2px solid var(--color-accent-2); outline-offset: 2px; }

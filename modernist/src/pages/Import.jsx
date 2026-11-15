@@ -17,7 +17,7 @@ import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
 import MeetProgramEditor, { LocalProgramEditor } from '../components/MeetProgramEditor'
 import DragDropProgramEditor from '../components/DragDropProgramEditor'
-import { PageHead, Loading, Empty, Seg } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Seg } from '../components/ui'
 
 const MAX_FILES = 200
 
@@ -866,7 +866,7 @@ export default function Import() {
                     </p>
                     <label className="btn btn-ghost" style={{ fontSize: 13, opacity: loading ? 0.5 : 1, pointerEvents: loading ? 'none' : 'auto' }}>
                       {namePdfs.length ? `${namePdfs.length} PDF${namePdfs.length > 1 ? 's' : ''} attached` : 'Attach meet PDFs'}
-                      <input type="file" accept=".pdf" multiple style={{ display: 'none' }} disabled={loading}
+                      <input type="file" accept=".pdf" multiple className="sr-only" disabled={loading}
                         onChange={(e) => setNamePdfs(Array.from(e.target.files || []))} />
                     </label>
                     {namePdfs.length > 0 && (
@@ -1990,7 +1990,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
                       try {
                         const res = await applyTC(m.result.championship_id)
                         setTcApplied((prev) => ({ ...prev, [m.result.championship_id]: res.data }))
-                      } catch { window.alert('Failed to apply TC rules') }
+                      } catch { notify('Failed to apply TC rules') }
                       setTcBusy(null)
                     }}
                   >
@@ -2459,7 +2459,7 @@ function ScrapeTab() {
           </p>
           <label className="btn btn-ghost" style={{ fontSize: 13, opacity: starting ? 0.5 : 1, pointerEvents: starting ? 'none' : 'auto' }}>
             {heatsPdfs.length ? `${heatsPdfs.length} PDF${heatsPdfs.length > 1 ? 's' : ''} attached` : 'Attach heats PDFs'}
-            <input type="file" accept=".pdf" multiple style={{ display: 'none' }} disabled={starting}
+            <input type="file" accept=".pdf" multiple className="sr-only" disabled={starting}
               onChange={(e) => setHeatsPdfs(Array.from(e.target.files || []))} />
           </label>
           {heatsPdfs.length > 0 && (

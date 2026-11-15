@@ -5,7 +5,7 @@ import {
   getAlbum, getMediaItems, uploadPhotos, createMediaItem,
   updateMediaItem, deleteMediaItem,
 } from '../api/media'
-import { Loading, Empty } from '../components/ui'
+import { Loading, notify, Empty } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import { CropQueue } from '../components/ImageCropper'
@@ -78,7 +78,7 @@ export default function Album() {
       await uploadPhotos(fd)
       await load()
     } catch {
-      window.alert('Upload failed')
+      notify('Upload failed')
     } finally {
       setUploading(false)
     }
@@ -93,7 +93,7 @@ export default function Album() {
       setVideoUrl('')
       await load()
     } catch {
-      window.alert('Failed to add video (check the URL)')
+      notify('Failed to add video (check the URL)')
     } finally {
       setAddingVideo(false)
     }
@@ -105,7 +105,7 @@ export default function Album() {
       await deleteMediaItem(item.id)
       setItems((prev) => prev.filter((i) => i.id !== item.id))
     } catch {
-      window.alert('Failed to delete item')
+      notify('Failed to delete item')
     }
   }
 
@@ -115,7 +115,7 @@ export default function Album() {
       await updateMediaItem(item.id, { caption })
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, caption } : i)))
     } catch {
-      window.alert('Failed to save caption')
+      notify('Failed to save caption')
     }
   }
 
@@ -124,7 +124,7 @@ export default function Album() {
       await updateMediaItem(item.id, { display_size })
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, display_size } : i)))
     } catch {
-      window.alert('Failed to save size')
+      notify('Failed to save size')
     }
   }
 
@@ -157,7 +157,7 @@ export default function Album() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: uploading ? 0.5 : 1, pointerEvents: uploading ? 'none' : 'auto' }}
             >
               <ImagePlus size={14} /> {uploading ? 'Uploading…' : 'Add photos'}
-              <input type="file" accept="image/*" multiple onChange={onFilesSelect} style={{ display: 'none' }} />
+              <input type="file" accept="image/*" multiple onChange={onFilesSelect} className="sr-only" />
             </label>
             <form onSubmit={addVideo} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input

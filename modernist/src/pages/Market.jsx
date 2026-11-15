@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, X, Trash2 } from 'lucide-react'
 import { getListings, updateListing, deleteListing } from '../api/market'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Seg } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Seg } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
@@ -79,7 +79,7 @@ export default function Market() {
       await updateListing(l.id, { status })
       setReloadKey((k) => k + 1)
     } catch {
-      window.alert('Failed to update listing')
+      notify('Failed to update listing')
     }
   }
 
@@ -89,7 +89,7 @@ export default function Market() {
       await deleteListing(l.id)
       setListings((prev) => prev.filter((x) => x.id !== l.id))
     } catch {
-      window.alert('Failed to delete listing')
+      notify('Failed to delete listing')
     }
   }
 

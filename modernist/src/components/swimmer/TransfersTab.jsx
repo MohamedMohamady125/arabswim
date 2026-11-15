@@ -4,7 +4,7 @@ import { getSwimmerTransferHistory, changeSwimmerNationality, deleteNationalityC
 import { getCountries } from '../../api/core'
 import { useAuth } from '../../context/AuthContext'
 import Flag from '../Flag'
-import { Loading, Empty } from '../ui'
+import { Loading, notify, Empty } from '../ui'
 import { formatDate } from '../../utils'
 
 function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved }) {
@@ -277,8 +277,8 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
               </button>
             )}
           </div>
-          <div className="cellgrid" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(2, data.nationality_meet_counts.length))}, 1fr)` }}>
-            {data.nationality_meet_counts.map((n, i) => (
+          <div className="cellgrid" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(2, (data.nationality_meet_counts || []).length))}, 1fr)` }}>
+            {(data.nationality_meet_counts || []).map((n, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Flag code={n.country_code} name={n.country} flagUrl={n.country_flag} />
                 <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{n.country}</span>
@@ -325,7 +325,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
                         setNotice('Nationality change deleted.')
                         setReloadKey((k) => k + 1)
                       } catch {
-                        window.alert('Failed to delete entry')
+                        notify('Failed to delete entry')
                       }
                     }}
                   >

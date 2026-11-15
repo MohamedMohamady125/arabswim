@@ -6,6 +6,29 @@ export function Loading({ label = 'Loading' }) {
   return <div className="loading" role="status" aria-live="polite">{label}…</div>
 }
 
+// Flow: a notice that does not block the page the way window.alert does.
+// Failures stay longer and are announced assertively; tap to dismiss.
+export function notify(message, kind) {
+  const text = String(message || '').trim()
+  if (!text || typeof document === 'undefined') return
+  const bad = kind ? kind === 'error' : /fail|could not|couldn't|unable|error|invalid|not allowed|denied/i.test(text)
+  let host = document.getElementById('asw-notices')
+  if (!host) {
+    host = document.createElement('div')
+    host.id = 'asw-notices'
+    host.className = 'asw-notices'
+    document.body.appendChild(host)
+  }
+  const el = document.createElement('div')
+  el.className = 'asw-notice' + (bad ? ' is-error' : '')
+  el.setAttribute('role', bad ? 'alert' : 'status')
+  el.textContent = text
+  const close = () => { if (el.parentNode) el.parentNode.removeChild(el) }
+  el.addEventListener('click', close)
+  host.appendChild(el)
+  setTimeout(close, bad ? 8000 : 4500)
+}
+
 // Paradox of the Active User: an empty state can say what to do next.
 // `hint` is one plain sentence; children hold an optional action (button/link).
 export function Empty({ label = 'No data', hint, children }) {

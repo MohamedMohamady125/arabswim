@@ -12,7 +12,7 @@ import api from '../api/client'
 import Flag from '../components/Flag'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
-import { Loading, Empty, Seg, Modal, MedalIcon } from '../components/ui'
+import { Loading, notify, Empty, Seg, Modal, MedalIcon } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { MiniHBars, MiniDonut, AgePyramid, MiniPanel, CHART_COLORS } from '../components/MiniCharts'
 import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
@@ -1671,7 +1671,7 @@ export default function TeamDetail() {
                     <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setModal({ type: 'board', payload: m })}>Edit</button>
                     <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={async () => {
                       if (!window.confirm(`Remove ${m.name} from the board?`)) return
-                      try { await deleteBoardMember(m.id); flash('Removed'); load() } catch { window.alert('Could not remove this member. Try again.') }
+                      try { await deleteBoardMember(m.id); flash('Removed'); load() } catch { notify('Could not remove this member. Try again.') }
                     }}>Remove</button>
                   </>) : null,
                 }))
@@ -1707,7 +1707,7 @@ export default function TeamDetail() {
                       <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setModal({ type: 'coach', payload: c })}>Edit</button>
                       <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={async () => {
                         if (!window.confirm(`Remove coach ${c.name}?`)) return
-                        try { await deleteCoach(c.id); flash('Removed'); load() } catch { window.alert('Could not remove this coach. Try again.') }
+                        try { await deleteCoach(c.id); flash('Removed'); load() } catch { notify('Could not remove this coach. Try again.') }
                       }}>Remove</button>
                     </>) : null,
                   }))

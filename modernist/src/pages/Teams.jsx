@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { GitMerge, Sparkles, Trash2, X, ArrowLeftRight } from 'lucide-react'
 import { getTeams, deleteTeam, bulkDeleteTeams, mergeTeams, findDuplicateTeams, autoDedupeTeams } from '../api/teams'
-import { PageHead, Loading, Empty, Pager, Modal } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Pager, Modal } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
@@ -438,7 +438,7 @@ export default function Teams() {
       setTeams((prev) => prev.filter((x) => x.id !== t.id))
       setSelected((prev) => { const next = new Set(prev); next.delete(t.id); return next })
     } catch {
-      window.alert('Failed to delete team')
+      notify('Failed to delete team')
     }
   }
 
@@ -452,7 +452,7 @@ export default function Teams() {
       setSelected(new Set())
       refresh()
     } catch {
-      window.alert('Bulk delete failed')
+      notify('Bulk delete failed')
     } finally {
       setBulkDeleting(false)
     }

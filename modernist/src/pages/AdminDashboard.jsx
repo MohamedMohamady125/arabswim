@@ -7,7 +7,7 @@ import { useFeatures } from '../context/FeaturesContext'
 import { FEATURE_GROUPS } from '../featureRegistry'
 import { getTeams } from '../api/teams'
 import { getAcademies } from '../api/academies'
-import { PageHead, SectHead, Loading, Empty, Seg } from '../components/ui'
+import { PageHead, SectHead, Loading, notify, Empty, Seg } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { CropUpload } from '../components/ImageCropper'
 
@@ -36,7 +36,7 @@ function ClaimsQueue() {
       }
       load()
     } catch (err) {
-      window.alert(err.response?.data?.error || 'Action failed')
+      notify(err.response?.data?.error || 'Action failed')
     } finally {
       setBusyId(null)
     }
@@ -232,7 +232,7 @@ function SiteFeatures() {
       await updateFeatures(patch)
       refreshFeatures()
     } catch {
-      window.alert('Failed to update — try again')
+      notify('Failed to update — try again')
     } finally {
       setBusy(null)
     }
@@ -313,20 +313,20 @@ function PhotoQueue() {
   })
 
   const approveOne = async (id) => {
-    try { await approvePhotoRequest(id) } catch { window.alert('The photo could not be approved. Please try again.'); return }
+    try { await approvePhotoRequest(id) } catch { notify('The photo could not be approved. Please try again.'); return }
     setRequests((prev) => prev.filter((r) => r.id !== id))
     setSelected((prev) => { const n = new Set(prev); n.delete(id); return n })
   }
 
   const rejectOne = async (id) => {
-    try { await rejectPhotoRequest(id) } catch { window.alert('The photo could not be rejected. Please try again.'); return }
+    try { await rejectPhotoRequest(id) } catch { notify('The photo could not be rejected. Please try again.'); return }
     setRequests((prev) => prev.filter((r) => r.id !== id))
     setSelected((prev) => { const n = new Set(prev); n.delete(id); return n })
   }
 
   const bulkApprove = async () => {
     if (!selected.size) return
-    try { await bulkApprovePhotos([...selected]) } catch { window.alert('The photos could not be approved. Please try again.'); return }
+    try { await bulkApprovePhotos([...selected]) } catch { notify('The photos could not be approved. Please try again.'); return }
     setSelected(new Set())
     load()
   }
@@ -335,7 +335,7 @@ function PhotoQueue() {
     if (!selected.size) return
     // bulk reject cannot be undone from here, so ask first
     if (!window.confirm(`Reject ${selected.size} photo${selected.size === 1 ? '' : 's'}?`)) return
-    try { await bulkRejectPhotos([...selected]) } catch { window.alert('The photos could not be rejected. Please try again.'); return }
+    try { await bulkRejectPhotos([...selected]) } catch { notify('The photos could not be rejected. Please try again.'); return }
     setSelected(new Set())
     load()
   }
@@ -430,7 +430,7 @@ function PartnersManager() {
       await updateSponsor(p.id, { is_active: !p.is_active })
       load()
     } catch {
-      window.alert('Failed to update — try again')
+      notify('Failed to update — try again')
     } finally {
       setBusyId(null)
     }
@@ -443,7 +443,7 @@ function PartnersManager() {
       await deleteSponsor(p.id)
       load()
     } catch {
-      window.alert('Failed to delete — try again')
+      notify('Failed to delete — try again')
     } finally {
       setBusyId(null)
     }
@@ -463,7 +463,7 @@ function PartnersManager() {
       ])
       load()
     } catch {
-      window.alert('Failed to reorder — try again')
+      notify('Failed to reorder — try again')
     } finally {
       setBusyId(null)
     }
@@ -563,7 +563,7 @@ function EditHistory() {
       await revertChange(entry.id)
       load()
     } catch (err) {
-      window.alert(err.response?.data?.error || 'Undo failed — please try again.')
+      notify(err.response?.data?.error || 'Undo failed — please try again.')
     } finally {
       setBusyId(null)
     }

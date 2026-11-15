@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { getAlbums, createAlbum, deleteAlbum } from '../api/media'
 import { getChampionships } from '../api/championships'
-import { PageHead, Loading, Empty } from '../components/ui'
+import { PageHead, Loading, notify, Empty } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
@@ -68,7 +68,7 @@ export default function Media() {
       await deleteAlbum(al.id)
       setAlbums((prev) => prev.filter((a) => a.id !== al.id))
     } catch {
-      window.alert('Failed to delete album')
+      notify('Failed to delete album')
     }
   }
 

@@ -493,7 +493,7 @@ export default function QualifyingTimes() {
                   <button className="btn btn-secondary" onClick={() => setAddTimeModal(true)}>Add time</button>
                   <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
                     Upload PDF
-                    <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={async (e) => {
+                    <input type="file" accept=".pdf" className="sr-only" onChange={async (e) => {
                       const f = e.target.files?.[0]
                       if (!f) return
                       setUploading(true)

@@ -17,7 +17,7 @@ import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary
 import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
 import AthleteMeetCard from '../components/meets/AthleteMeetCard'
-import { Loading, Empty, Seg, MedalIcon } from '../components/ui'
+import { Loading, notify, Empty, Seg, MedalIcon } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES } from '../utils'
@@ -862,7 +862,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       loadResults()
       onDataChanged?.()
     } catch {
-      window.alert('Failed to duplicate rank')
+      notify('Failed to duplicate rank')
     }
   }
 
@@ -873,7 +873,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       loadResults()
       onDataChanged?.()
     } catch {
-      window.alert('Failed to delete the result')
+      notify('Failed to delete the result')
     }
   }
 
@@ -2321,7 +2321,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
       await deleteChampionship(meet.id)
       navigate('/championships')
     } catch {
-      window.alert('Failed to delete the championship')
+      notify('Failed to delete the championship')
       setDeleting(false)
     }
   }
@@ -2851,31 +2851,31 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
           </button>
           <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
             Upload bulletin
-            <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={async (e) => {
+            <input type="file" accept=".pdf" className="sr-only" onChange={async (e) => {
               const f = e.target.files?.[0]
               if (!f) return
               try {
                 const fd = new FormData(); fd.append('file', f)
                 const res = await uploadBulletin(meetId, fd)
-                window.alert(`Bulletin parsed: ${res.data.items_detected} events detected, ${res.data.program_items_created} program items created`)
+                notify(`Bulletin parsed: ${res.data.items_detected} events detected, ${res.data.program_items_created} program items created`)
                 getMeetProgram(meetId).then((r) => setProgram(r.data)).catch(() => {})
-              } catch { window.alert('Failed to parse bulletin') }
+              } catch { notify('Failed to parse bulletin') }
               e.target.value = ''
             }} />
           </label>
           <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
             Upload heats
-            <input type="file" accept=".pdf,.html,.htm,.xlsx,.xls,.csv" style={{ display: 'none' }} onChange={async (e) => {
+            <input type="file" accept=".pdf,.html,.htm,.xlsx,.xls,.csv" className="sr-only" onChange={async (e) => {
               const f = e.target.files?.[0]
               if (!f) return
               try {
                 const fd = new FormData(); fd.append('file', f)
                 const res = await quickImport(meetId, fd)
-                window.alert(res.data.message || 'Heats are being imported. Refresh in a few seconds to see results.')
+                notify(res.data.message || 'Heats are being imported. Refresh in a few seconds to see results.')
                 // Refresh program after a short delay
                 setTimeout(() => getMeetProgram(meetId).then((r) => setProgram(r.data)).catch(() => {}), 5000)
               } catch (err) {
-                window.alert(err.response?.data?.error || 'Failed to import heats')
+                notify(err.response?.data?.error || 'Failed to import heats')
               }
               e.target.value = ''
             }} />
@@ -3284,7 +3284,7 @@ function LivePanel({ meet, onFinished }) {
       await finishLiveMeet(meet.id)
       onFinished()
     } catch {
-      window.alert('Failed to finish the meet')
+      notify('Failed to finish the meet')
     } finally {
       setFinishing(false)
     }
@@ -3450,8 +3450,8 @@ export default function MeetDetail() {
                       const res = await applyTC(id)
                       setMeet({ ...meet, has_open_podium: true, b_final_no_medals: true })
                       refreshStats()
-                      window.alert(`TC applied: ${res.data.medals_awarded} medals awarded, ${res.data.categories_inferred} categories inferred`)
-                    } catch { window.alert('Failed to apply TC rules') }
+                      notify(`TC applied: ${res.data.medals_awarded} medals awarded, ${res.data.categories_inferred} categories inferred`)
+                    } catch { notify('Failed to apply TC rules') }
                   }}>
                     Apply TC rules
                   </button>
@@ -3467,8 +3467,8 @@ export default function MeetDetail() {
                       await updateChampionship(id, { has_double_podium: enabling })
                       setMeet({ ...meet, has_double_podium: enabling })
                       refreshStats()
-                      window.alert(enabling ? 'Double podium enabled — medals recomputed' : 'Double podium disabled — medals recomputed')
-                    } catch { window.alert('Failed to update double podium') }
+                      notify(enabling ? 'Double podium enabled — medals recomputed' : 'Double podium disabled — medals recomputed')
+                    } catch { notify('Failed to update double podium') }
                   }}>
                     {meet.has_double_podium ? 'Double podium: ON' : 'Double podium'}
                   </button>
@@ -3479,7 +3479,7 @@ export default function MeetDetail() {
                     try {
                       await updateChampionship(id, { is_published: !meet.is_published })
                       setMeet({ ...meet, is_published: !meet.is_published })
-                    } catch { window.alert('Failed to update') }
+                    } catch { notify('Failed to update') }
                   }}>
                   {meet.is_published ? 'Unpublish' : 'Publish'}
                 </button>
@@ -3489,9 +3489,9 @@ export default function MeetDetail() {
                     const res = await swapNames(id)
                     const msg = `Swapped ${res.data.renamed} swimmer names` +
                       (res.data.duplicates?.length ? `\n\n${res.data.duplicates.length} duplicate(s) detected — merge them manually` : '')
-                    window.alert(msg)
+                    notify(msg)
                     refreshStats()
-                  } catch { window.alert('Failed to swap names') }
+                  } catch { notify('Failed to swap names') }
                 }}>
                   Swap names
                 </button>
@@ -3500,7 +3500,7 @@ export default function MeetDetail() {
                   try {
                     await deleteChampionship(id)
                     navigate('/championships')
-                  } catch { window.alert('Failed to delete meet') }
+                  } catch { notify('Failed to delete meet') }
                 }}>
                   Delete meet
                 </button>

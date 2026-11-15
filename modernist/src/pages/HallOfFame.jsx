@@ -4,7 +4,7 @@ import { Trash2, Plus } from 'lucide-react'
 import { getInductees, createInductee, deleteInductee } from '../api/fame'
 import { searchSwimmers } from '../api/swimmers'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Seg } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Seg } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
@@ -61,7 +61,7 @@ export default function HallOfFame() {
       await deleteInductee(p.id)
       setInductees((prev) => prev.filter((x) => x.id !== p.id))
     } catch {
-      window.alert('Failed to remove inductee')
+      notify('Failed to remove inductee')
     }
   }
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getArticle, deleteArticle } from '../api/news'
 import Flag from '../components/Flag'
-import { Loading, Empty } from '../components/ui'
+import { Loading, notify, Empty } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import { Edit3, Trash2 } from 'lucide-react'
@@ -88,7 +88,7 @@ export default function Article() {
                     await deleteArticle(article.id)
                     navigate('/news')
                   } catch {
-                    window.alert('Failed to delete article')
+                    notify('Failed to delete article')
                   }
                 }}>
                 <Trash2 size={13} /> Delete

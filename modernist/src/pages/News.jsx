@@ -77,7 +77,7 @@ export function ArticleModal({ article, onClose, onSaved }) {
     setSaving(true); setError('')
     try {
       const fd = new FormData()
-      fd.append('title', form.title)
+      fd.append('title', form.title.trim())
       fd.append('body', form.body)
       fd.append('status', form.status)
       // only send a real date — an empty value would fail DRF date parsing;
@@ -105,16 +105,16 @@ export function ArticleModal({ article, onClose, onSaved }) {
   return (
     <Modal title={article ? 'Edit Article' : 'Create Article'} onClose={onClose} width={640}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box" role="alert">{error}</div>}
         <div className="field">
-          <label>Title *</label>
-          <input className="input" dir={isRTLText(form.title) ? 'rtl' : 'ltr'}
+          <label htmlFor="article-title">Title *</label>
+          <input id="article-title" className="input" dir={isRTLText(form.title) ? 'rtl' : 'ltr'}
             style={isRTLText(form.title) ? { fontFamily: "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif", textAlign: 'right' } : undefined}
             value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         </div>
         <div className="field">
-          <label>Body</label>
-          <textarea className="input" rows={10} dir={isRTLText(form.body) ? 'rtl' : 'ltr'}
+          <label htmlFor="article-body">Body</label>
+          <textarea id="article-body" className="input" rows={10} dir={isRTLText(form.body) ? 'rtl' : 'ltr'}
             value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
             style={{
               resize: 'vertical', minHeight: 160,
@@ -123,16 +123,16 @@ export function ArticleModal({ article, onClose, onSaved }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
-            <label>Status</label>
-            <select className="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+            <label htmlFor="article-status">Status</label>
+            <select id="article-status" className="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
               <option value="DRAFT">Draft</option>
               <option value="PUBLISHED">Published</option>
             </select>
           </div>
           <div className="field">
-            <label>Publish date (optional)</label>
+            <label htmlFor="article-date">Publish date (optional)</label>
             <input
-              className="input" type="date" value={form.published_at}
+              id="article-date" className="input" type="date" value={form.published_at}
               max="2100-12-31"
               onChange={(e) => setForm({ ...form, published_at: e.target.value })}
             />
@@ -142,8 +142,8 @@ export function ArticleModal({ article, onClose, onSaved }) {
           </div>
         </div>
         <div className="field">
-          <label>Federation (optional)</label>
-          <select className="select" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>
+          <label htmlFor="article-federation">Federation (optional)</label>
+          <select id="article-federation" className="select" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>
             <option value="">None</option>
             {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -151,8 +151,8 @@ export function ArticleModal({ article, onClose, onSaved }) {
         <div className="field">
           <label>Club (optional)</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <input className="input" placeholder="Search clubs…" value={clubQuery} onChange={(e) => setClubQuery(e.target.value)} />
-            <select className="select" value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })}>
+            <input className="input" inputMode="search" aria-label="Search clubs" placeholder="Search clubs…" value={clubQuery} onChange={(e) => setClubQuery(e.target.value)} />
+            <select className="select" aria-label="Club" value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })}>
               <option value="">None</option>
               {clubOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -167,8 +167,8 @@ export function ArticleModal({ article, onClose, onSaved }) {
           {cover && <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>Adjusted cover ready</div>}
         </div>
         <div className="field">
-          <label>PDF attachment (optional)</label>
-          <input className="input" type="file" accept=".pdf,application/pdf" onChange={(e) => setAttachment(e.target.files?.[0] || null)} />
+          <label htmlFor="article-pdf">PDF attachment (optional)</label>
+          <input id="article-pdf" className="input" type="file" accept=".pdf,application/pdf" onChange={(e) => setAttachment(e.target.files?.[0] || null)} />
           {article?.attachment && !attachment && (
             <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
               Current: <a href={mediaUrl(article.attachment)} target="_blank" rel="noreferrer">view PDF</a> — choose a file to replace it
@@ -256,14 +256,16 @@ export default function News() {
           <input
             className="input"
             style={{ maxWidth: 320 }}
+            inputMode="search"
             placeholder="Search articles…"
+            aria-label="Search articles"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           />
           {isAdmin && (
             <>
               <Seg options={STATUS_TABS} value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1) }} />
-              <button className="btn btn-primary" onClick={() => setEditArticle({})}>Create article</button>
+              <button type="button" className="btn btn-primary" onClick={() => setEditArticle({})}>Create article</button>
             </>
           )}
         </div>
@@ -272,7 +274,7 @@ export default function News() {
       {loading ? (
         <Loading label="Loading news" />
       ) : articles.length === 0 ? (
-        <Empty label="No articles found" />
+        <Empty label="No articles found" hint={search ? 'Try a shorter or different search.' : (isAdmin ? 'Use "Create article" above to publish the first story.' : 'New stories will appear here.')} />
       ) : (
         <div className="pad-lg">
           {/* lead story */}

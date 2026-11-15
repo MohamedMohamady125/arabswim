@@ -20,10 +20,14 @@ const dropdownItemStyle = {
   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
 }
 
-function Section({ n, title, children }) {
+function Section({ n, title, children, done = false }) {
   return (
     <div style={{ border: '1px solid var(--color-divider)', padding: 20 }}>
-      <div className="kicker" style={{ marginBottom: 12 }}>{n} — {title}</div>
+      {/* Zeigarnik / Goal-Gradient: a finished step is ticked, so what is left stays visible */}
+      <div className="kicker" style={{ marginBottom: 12 }}>
+        {n} — {title}
+        {done && <span style={{ marginInlineStart: 8, color: 'var(--asw-fast)' }}>✓<span className="sr-only"> done</span></span>}
+      </div>
       {children}
     </div>
   )
@@ -75,6 +79,7 @@ export default function ManualEntryForm({ onComplete }) {
   const [subClassifications, setSubClassifications] = useState([])
 
   const [loading, setLoading] = useState(false)
+  const [creating, setCreating] = useState('') // 'swimmer' | 'champ' while that request runs
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
 
@@ -169,8 +174,9 @@ export default function ManualEntryForm({ onComplete }) {
 
   const handleCreateSwimmer = async () => {
     setError('')
+    setCreating('swimmer')
     try {
-      const payload = { ...newSwimmer }
+      const payload = { ...newSwimmer, name: newSwimmer.name.trim(), club: newSwimmer.club.trim() }
       if (payload.birth_year) payload.birth_year = Number(payload.birth_year)
       if (!payload.date_of_birth) delete payload.date_of_birth
       if (!payload.birth_year) delete payload.birth_year
@@ -180,14 +186,20 @@ export default function ManualEntryForm({ onComplete }) {
       setSwimmerQuery('')
     } catch (err) {
       setError(extractError(err, 'Failed to create swimmer'))
+    } finally {
+      setCreating('')
     }
   }
 
   const handleCreateChamp = async () => {
     setError('')
+    setCreating('champ')
     try {
       const formData = new FormData()
-      Object.entries(newChamp).forEach(([k, v]) => { if (v && k !== 'is_published') formData.append(k, v) })
+      Object.entries(newChamp).forEach(([k, v]) => {
+        const val = typeof v === 'string' ? v.trim() : v
+        if (val && k !== 'is_published') formData.append(k, val)
+      })
       formData.append('is_published', newChamp.is_published ? 'true' : 'false')
       const res = await createChampionship(formData)
       setSelectedChamp(res.data)
@@ -195,6 +207,8 @@ export default function ManualEntryForm({ onComplete }) {
       setChampQuery('')
     } catch (err) {
       setError(extractError(err, 'Failed to create championship'))
+    } finally {
+      setCreating('')
     }
   }
 
@@ -230,9 +244,9 @@ export default function ManualEntryForm({ onComplete }) {
         swimmer: selectedSwimmer.id,
         event: resultForm.event,
         time_centiseconds: timeCentiseconds,
-        team: resultForm.team || '',
+        team: (resultForm.team || '').trim(),
         round_type: resultForm.round_type || '',
-        category: resultForm.category || '',
+        category: (resultForm.category || '').trim(),
         original_rank: resultForm.rank ? parseInt(resultForm.rank) : null,
         fina_points: resultForm.fina_points ? parseInt(resultForm.fina_points) : null,
         medal: resultForm.medal || '',
@@ -270,7 +284,7 @@ export default function ManualEntryForm({ onComplete }) {
 
   if (success) {
     return (
-      <div style={{ border: '1px solid var(--asw-fast)', padding: 32, textAlign: 'center' }}>
+      <div role="status" style={{ border: '1px solid var(--asw-fast)', padding: 32, textAlign: 'center' }}>
         <div className="kicker" style={{ color: 'var(--asw-fast)', marginBottom: 12 }}>Result added</div>
         <div style={{ fontSize: 13, marginBottom: 20 }}>
           <p style={{ fontWeight: 700, margin: '0 0 4px' }}>{success.swimmer_name}</p>
@@ -288,13 +302,13 @@ export default function ManualEntryForm({ onComplete }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {error && (
-        <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>
+        <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>
           {error}
         </div>
       )}
 
       {/* Section A: Swimmer */}
-      <Section n="1" title="Select Swimmer *">
+      <Section n="1" title="Select Swimmer *" done={!!selectedSwimmer}>
         {selectedSwimmer ? (
           <SelectedBox
             title={selectedSwimmer.name}
@@ -306,47 +320,47 @@ export default function ManualEntryForm({ onComplete }) {
             <div className="micro" style={{ marginBottom: 12 }}>Create new swimmer</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="grid-2">
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>Full name *</label>
-                <input className="input" type="text" value={newSwimmer.name}
+                <label htmlFor="me-sw-full-name">Full name *</label>
+                <input id="me-sw-full-name" className="input" type="text" value={newSwimmer.name}
                   onChange={(e) => setNewSwimmer({ ...newSwimmer, name: e.target.value })} />
               </div>
               <div className="field">
-                <label>Date of birth</label>
-                <input className="input" type="date" value={newSwimmer.date_of_birth}
+                <label htmlFor="me-sw-date-of-birth">Date of birth</label>
+                <input id="me-sw-date-of-birth" className="input" type="date" value={newSwimmer.date_of_birth}
                   onChange={(e) => setNewSwimmer({ ...newSwimmer, date_of_birth: e.target.value })} />
               </div>
               <div className="field">
-                <label>Or birth year</label>
-                <input className="input" type="number" min="1950" max="2025" placeholder="e.g. 2005"
+                <label htmlFor="me-sw-or-birth-year">Or birth year</label>
+                <input id="me-sw-or-birth-year" className="input" type="number" inputMode="numeric" min="1950" max="2025" placeholder="e.g. 2005"
                   value={newSwimmer.birth_year}
                   onChange={(e) => setNewSwimmer({ ...newSwimmer, birth_year: e.target.value })} />
               </div>
               <div className="field">
-                <label>Nationality *</label>
-                <select className="select" value={newSwimmer.nationality}
+                <label htmlFor="me-sw-nationality">Nationality *</label>
+                <select id="me-sw-nationality" className="select" value={newSwimmer.nationality}
                   onChange={(e) => setNewSwimmer({ ...newSwimmer, nationality: e.target.value })}>
                   <option value="">Select…</option>
                   {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Sex</label>
-                <select className="select" value={newSwimmer.sex}
+                <label htmlFor="me-sw-sex">Sex</label>
+                <select id="me-sw-sex" className="select" value={newSwimmer.sex}
                   onChange={(e) => setNewSwimmer({ ...newSwimmer, sex: e.target.value })}>
                   <option value="M">Male</option>
                   <option value="F">Female</option>
                 </select>
               </div>
               <div className="field">
-                <label>Club</label>
-                <input className="input" type="text" value={newSwimmer.club}
+                <label htmlFor="me-sw-club">Club</label>
+                <input id="me-sw-club" className="input" type="text" value={newSwimmer.club}
                   onChange={(e) => setNewSwimmer({ ...newSwimmer, club: e.target.value })} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button type="button" className="btn btn-primary" onClick={handleCreateSwimmer}
-                disabled={!newSwimmer.name || (!newSwimmer.date_of_birth && !newSwimmer.birth_year) || !newSwimmer.nationality}>
-                Create swimmer
+                disabled={creating === 'swimmer' || !newSwimmer.name.trim() || (!newSwimmer.date_of_birth && !newSwimmer.birth_year) || !newSwimmer.nationality}>
+                {creating === 'swimmer' ? 'Creating…' : 'Create swimmer'}
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => setShowNewSwimmer(false)}>Cancel</button>
             </div>
@@ -354,7 +368,7 @@ export default function ManualEntryForm({ onComplete }) {
         ) : (
           <div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              <select className="select" style={{ flex: '0 1 180px' }} value={swimmerCountry}
+              <select className="select" aria-label="Filter swimmers by country" style={{ flex: '0 1 180px' }} value={swimmerCountry}
                 onChange={(e) => { setSwimmerCountry(e.target.value); setSwimmerResults([]) }}>
                 <option value="">All countries</option>
                 {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -364,7 +378,7 @@ export default function ManualEntryForm({ onComplete }) {
               </span>
             </div>
             <div style={{ position: 'relative' }} ref={swimmerDropdownRef}>
-              <input className="input" type="text" placeholder="Search swimmers by name…" value={swimmerQuery}
+              <input className="input" type="text" aria-label="Search swimmers by name" autoComplete="off" placeholder="Search swimmers by name…" value={swimmerQuery}
                 onChange={(e) => handleSwimmerSearch(e.target.value)} />
               {swimmerResults.length > 0 && (
                 <div style={dropdownStyle}>
@@ -391,7 +405,7 @@ export default function ManualEntryForm({ onComplete }) {
       </Section>
 
       {/* Section B: Championship */}
-      <Section n="2" title="Select Championship *">
+      <Section n="2" title="Select Championship *" done={!!selectedChamp}>
         {selectedChamp ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <SelectedBox
@@ -406,28 +420,28 @@ export default function ManualEntryForm({ onComplete }) {
             <div className="micro" style={{ marginBottom: 12 }}>Create new championship</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="grid-2">
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>Championship name *</label>
-                <input className="input" type="text" value={newChamp.name}
+                <label htmlFor="me-ch-championship-name">Championship name *</label>
+                <input id="me-ch-championship-name" className="input" type="text" value={newChamp.name}
                   onChange={(e) => setNewChamp({ ...newChamp, name: e.target.value })} />
               </div>
               <div className="field">
-                <label>Country *</label>
-                <select className="select" value={newChamp.country}
+                <label htmlFor="me-ch-country">Country *</label>
+                <select id="me-ch-country" className="select" value={newChamp.country}
                   onChange={(e) => setNewChamp({ ...newChamp, country: e.target.value })}>
                   <option value="">Select…</option>
                   {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Pool</label>
-                <select className="select" value={newChamp.pool}
+                <label htmlFor="me-ch-pool">Pool</label>
+                <select id="me-ch-pool" className="select" value={newChamp.pool}
                   onChange={(e) => setNewChamp({ ...newChamp, pool: e.target.value })}>
                   {POOL_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Start date *</label>
-                <input className="input" type="date" value={newChamp.date}
+                <label htmlFor="me-ch-start-date">Start date *</label>
+                <input id="me-ch-start-date" className="input" type="date" value={newChamp.date}
                   onChange={(e) => {
                     const date = e.target.value
                     // Pre-fill end date with the start date so the end-date
@@ -439,26 +453,26 @@ export default function ManualEntryForm({ onComplete }) {
                   }} />
               </div>
               <div className="field">
-                <label>End date</label>
-                <input className="input" type="date" value={newChamp.end_date} min={newChamp.date || undefined}
+                <label htmlFor="me-ch-end-date">End date</label>
+                <input id="me-ch-end-date" className="input" type="date" value={newChamp.end_date} min={newChamp.date || undefined}
                   onChange={(e) => setNewChamp({ ...newChamp, end_date: e.target.value })} />
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>Location</label>
-                <input className="input" type="text" value={newChamp.location}
+                <label htmlFor="me-ch-location">Location</label>
+                <input id="me-ch-location" className="input" type="text" value={newChamp.location}
                   onChange={(e) => setNewChamp({ ...newChamp, location: e.target.value })} />
               </div>
               <div className="field">
-                <label>Classification</label>
-                <select className="select" value={newChamp.classification}
+                <label htmlFor="me-ch-classification">Classification</label>
+                <select id="me-ch-classification" className="select" value={newChamp.classification}
                   onChange={(e) => setNewChamp({ ...newChamp, classification: e.target.value, sub_classification: '' })}>
                   <option value="">Select…</option>
                   {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Sub classification</label>
-                <select className="select" value={newChamp.sub_classification} disabled={!subClassifications.length}
+                <label htmlFor="me-ch-sub-classification">Sub classification</label>
+                <select id="me-ch-sub-classification" className="select" value={newChamp.sub_classification} disabled={!subClassifications.length}
                   onChange={(e) => setNewChamp({ ...newChamp, sub_classification: e.target.value })}>
                   <option value="">Select…</option>
                   {subClassifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -477,8 +491,8 @@ export default function ManualEntryForm({ onComplete }) {
             </label>
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button type="button" className="btn btn-primary" onClick={handleCreateChamp}
-                disabled={!newChamp.name || !newChamp.country || !newChamp.date}>
-                Create championship
+                disabled={creating === 'champ' || !newChamp.name.trim() || !newChamp.country || !newChamp.date}>
+                {creating === 'champ' ? 'Creating…' : 'Create championship'}
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => setShowNewChamp(false)}>Cancel</button>
             </div>
@@ -486,7 +500,7 @@ export default function ManualEntryForm({ onComplete }) {
         ) : (
           <div>
             <div style={{ position: 'relative' }} ref={champDropdownRef}>
-              <input className="input" type="text" placeholder="Search championships by name…" value={champQuery}
+              <input className="input" type="text" aria-label="Search championships by name" autoComplete="off" placeholder="Search championships by name…" value={champQuery}
                 onChange={(e) => handleChampSearch(e.target.value)} />
               {champResults.length > 0 && (
                 <div style={dropdownStyle}>
@@ -513,30 +527,30 @@ export default function ManualEntryForm({ onComplete }) {
       </Section>
 
       {/* Section C: Result */}
-      <Section n="3" title="Result Details *">
+      <Section n="3" title="Result Details *" done={!!resultForm.event && !!resultForm.time}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="grid-2">
           <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>Event *</label>
-            <select className="select" value={resultForm.event}
+            <label htmlFor="me-res-event">Event *</label>
+            <select id="me-res-event" className="select" value={resultForm.event}
               onChange={(e) => { setResultForm({ ...resultForm, event: e.target.value }); setSplitTimes({}) }}>
               <option value="">Select event</option>
               {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
           </div>
           <div className="field">
-            <label>Time * (e.g. 1:23.45 or 56.78)</label>
-            <input className="input asw-num" type="text" value={resultForm.time} placeholder="0:00.00"
+            <label htmlFor="me-res-time">Time * (e.g. 1:23.45 or 56.78)</label>
+            <input id="me-res-time" className="input asw-num" type="text" value={resultForm.time} placeholder="0:00.00"
               onChange={(e) => setResultForm({ ...resultForm, time: e.target.value })} />
           </div>
           <div className="field">
-            <label>FINA (auto-calculated)</label>
-            <input className="input asw-num" type="number" value={resultForm.fina_points}
+            <label htmlFor="me-res-fina">FINA (auto-calculated)</label>
+            <input id="me-res-fina" className="input asw-num" type="number" value={resultForm.fina_points}
               style={{ background: 'var(--color-accent-100)', fontWeight: 600 }}
               onChange={(e) => setResultForm({ ...resultForm, fina_points: e.target.value })} />
           </div>
           <div className="field">
-            <label>Round</label>
-            <select className="select" value={resultForm.round_type}
+            <label htmlFor="me-res-round">Round</label>
+            <select id="me-res-round" className="select" value={resultForm.round_type}
               onChange={(e) => setResultForm({ ...resultForm, round_type: e.target.value })}>
               <option value="Finals">Final</option>
               <option value="Finals">Final A</option>
@@ -551,8 +565,8 @@ export default function ManualEntryForm({ onComplete }) {
             </select>
           </div>
           <div className="field">
-            <label>Rank (optional)</label>
-            <input className="input" type="number" min="1" max="999" placeholder="e.g. 1" value={resultForm.rank}
+            <label htmlFor="me-res-rank">Rank (optional)</label>
+            <input id="me-res-rank" className="input" type="number" inputMode="numeric" min="1" max="999" placeholder="e.g. 1" value={resultForm.rank}
               onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
           </div>
           <div className="field">
@@ -562,7 +576,7 @@ export default function ManualEntryForm({ onComplete }) {
               const start = selectedChamp?.date ? new Date(selectedChamp.date) : null
               const end = selectedChamp?.end_date ? new Date(selectedChamp.end_date) : start
               if (!start || isNaN(start)) return (
-                <input className="input" type="date" value={resultForm.date}
+                <input className="input" type="date" aria-label="Day" value={resultForm.date}
                   onChange={(e) => setResultForm({ ...resultForm, date: e.target.value })} />
               )
               const days = []
@@ -572,11 +586,11 @@ export default function ManualEntryForm({ onComplete }) {
                 d.setDate(d.getDate() + 1)
               }
               if (days.length <= 1) return (
-                <input className="input" type="date" value={resultForm.date || start.toISOString().slice(0, 10)}
+                <input className="input" type="date" aria-label="Day" value={resultForm.date || start.toISOString().slice(0, 10)}
                   onChange={(e) => setResultForm({ ...resultForm, date: e.target.value })} />
               )
               return (
-                <select className="select" value={resultForm.date}
+                <select className="select" aria-label="Day" value={resultForm.date}
                   onChange={(e) => setResultForm({ ...resultForm, date: e.target.value })}>
                   <option value="">Select day…</option>
                   {days.map((day, i) => {
@@ -588,13 +602,13 @@ export default function ManualEntryForm({ onComplete }) {
             })()}
           </div>
           <div className="field">
-            <label>Category (optional)</label>
-            <input className="input" type="text" placeholder="e.g. Cadets, 13-14 ans" value={resultForm.category}
+            <label htmlFor="me-res-category">Category (optional)</label>
+            <input id="me-res-category" className="input" type="text" placeholder="e.g. Cadets, 13-14 ans" value={resultForm.category}
               onChange={(e) => setResultForm({ ...resultForm, category: e.target.value })} />
           </div>
           <div className="field">
-            <label>Medal (optional)</label>
-            <select className="select" value={resultForm.medal}
+            <label htmlFor="me-res-medal">Medal (optional)</label>
+            <select id="me-res-medal" className="select" value={resultForm.medal}
               onChange={(e) => setResultForm({ ...resultForm, medal: e.target.value })}>
               <option value="">No medal</option>
               <option value="GOLD">Gold</option>
@@ -615,6 +629,7 @@ export default function ManualEntryForm({ onComplete }) {
                     <input
                       className="input asw-num"
                       type="text"
+                      aria-label={`Split time at ${dist}m`}
                       placeholder={dist === selectedEvent.distance ? 'final' : '0:00.00'}
                       value={splitTimes[dist] || ''}
                       style={{ padding: '7px 8px', fontSize: 13 }}
@@ -635,14 +650,14 @@ export default function ManualEntryForm({ onComplete }) {
                 {relayLegs.map((leg, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span className="asw-num" style={{ width: 20, textAlign: 'center', fontWeight: 700, fontSize: 13, color: 'var(--color-neutral-700)' }}>{i + 1}</span>
-                    <input className="input" type="text" placeholder="Swimmer name"
+                    <input className="input" type="text" aria-label={`Relay swimmer ${i + 1} name`} placeholder="Swimmer name"
                       value={leg.name} style={{ flex: 2, padding: '7px 8px', fontSize: 13 }}
                       onChange={(e) => {
                         const next = [...relayLegs]
                         next[i] = { ...next[i], name: e.target.value }
                         setRelayLegs(next)
                       }} />
-                    <input className="input asw-num" type="text" placeholder="Split time"
+                    <input className="input asw-num" type="text" aria-label={`Relay swimmer ${i + 1} split time`} placeholder="Split time"
                       value={leg.split_time} style={{ flex: 1, padding: '7px 8px', fontSize: 13, maxWidth: 110 }}
                       onChange={(e) => {
                         const next = [...relayLegs]
@@ -655,14 +670,15 @@ export default function ManualEntryForm({ onComplete }) {
             </div>
           )}
           <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>Team / club</label>
-            <input className="input" type="text" value={resultForm.team} placeholder="Club or team name at this meet"
+            <label htmlFor="me-res-team-club">Team / club</label>
+            <input id="me-res-team-club" className="input" type="text" value={resultForm.team} placeholder="Club or team name at this meet"
               onChange={(e) => setResultForm({ ...resultForm, team: e.target.value })} />
           </div>
         </div>
       </Section>
 
-      {/* Submit */}
+      {/* Submit — the error is repeated here because the top of this long form may be off screen */}
+      {error && <div className="error-box">{error}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button type="button" className="btn btn-primary" onClick={handleSubmit}
           disabled={loading || !selectedSwimmer || !selectedChamp || !resultForm.event || !resultForm.time}>

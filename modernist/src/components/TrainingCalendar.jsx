@@ -39,7 +39,12 @@ function SessionModal({ session, teamId, academyId, onClose, onSaved }) {
   const save = async () => {
     if (!form.date || !form.start_time) { setErr('Date and start time are required'); return }
     setBusy(true); setErr('')
-    const payload = { ...form, end_time: form.end_time || null }
+    // Postel's Law: stray spaces around typed text are dropped before saving
+    const payload = {
+      ...form, end_time: form.end_time || null,
+      location: form.location.trim(), coach_name: form.coach_name.trim(),
+      group_name: form.group_name.trim(), age_group: form.age_group.trim(), notes: form.notes.trim(),
+    }
     if (teamId) payload.team = teamId
     if (academyId) payload.academy = academyId
     try {
@@ -59,17 +64,20 @@ function SessionModal({ session, teamId, academyId, onClose, onSaved }) {
       } else {
         await updateTrainingSession(session.id, payload)
       }
-      onSaved(); onClose()
+      onSaved(isNew ? 'Training session added' : 'Training session saved'); onClose()
     } catch (e2) {
-      setErr(e2?.response?.data ? JSON.stringify(e2.response.data) : 'Save failed')
+      // plain words next to the form, not raw server JSON
+      const d = e2?.response?.data
+      const first = d && typeof d === 'object' ? Object.values(d).flat()[0] : d
+      setErr(`Could not save the session. ${typeof first === 'string' && first.length < 200 ? first : 'Check the fields and try again.'}`)
     } finally { setBusy(false) }
   }
 
   const remove = async () => {
     if (!window.confirm('Delete this training session?')) return
     setBusy(true)
-    try { await deleteTrainingSession(session.id); onSaved(); onClose() }
-    catch { setErr('Delete failed'); setBusy(false) }
+    try { await deleteTrainingSession(session.id); onSaved('Training session deleted'); onClose() }
+    catch { setErr('Could not delete the session. Please try again.'); setBusy(false) }
   }
 
   const field = (label, node) => (
@@ -82,15 +90,15 @@ function SessionModal({ session, teamId, academyId, onClose, onSaved }) {
   return (
     <Modal title={isNew ? 'Add training session' : 'Edit training session'} onClose={onClose} width={520}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
-        {field('Date', <input className="input" type="date" value={form.date} onChange={set('date')} style={{ width: '100%' }} />)}
+        {field('Date', <input className="input" type="date" required value={form.date} onChange={set('date')} style={{ width: '100%' }} />)}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 8px' }}>
-          {field('Start', <input className="input" type="time" value={form.start_time} onChange={set('start_time')} style={{ width: '100%' }} />)}
+          {field('Start', <input className="input" type="time" required value={form.start_time} onChange={set('start_time')} style={{ width: '100%' }} />)}
           {field('End', <input className="input" type="time" value={form.end_time} onChange={set('end_time')} style={{ width: '100%' }} />)}
         </div>
-        {field('Team / group name', <input className="input" value={form.group_name} onChange={set('group_name')} placeholder="e.g. First Team" style={{ width: '100%' }} />)}
-        {field('Team age', <input className="input" value={form.age_group} onChange={set('age_group')} placeholder="e.g. U12, 13-14, Seniors" style={{ width: '100%' }} />)}
-        {field('Coach name', <input className="input" value={form.coach_name} onChange={set('coach_name')} style={{ width: '100%' }} />)}
-        {field('Location', <input className="input" value={form.location} onChange={set('location')} placeholder="Pool / venue" style={{ width: '100%' }} />)}
+        {field('Team / group name', <input className="input" value={form.group_name} onChange={set('group_name')} autoComplete="off" placeholder="e.g. First Team" style={{ width: '100%' }} />)}
+        {field('Team age', <input className="input" value={form.age_group} onChange={set('age_group')} autoComplete="off" placeholder="e.g. U12, 13-14, Seniors" style={{ width: '100%' }} />)}
+        {field('Coach name', <input className="input" value={form.coach_name} onChange={set('coach_name')} autoComplete="off" style={{ width: '100%' }} />)}
+        {field('Location', <input className="input" value={form.location} onChange={set('location')} autoComplete="off" placeholder="Pool / venue" style={{ width: '100%' }} />)}
       </div>
       {field('Notes', <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} style={{ width: '100%', resize: 'vertical' }} />)}
       {isNew && (
@@ -99,7 +107,7 @@ function SessionModal({ session, teamId, academyId, onClose, onSaved }) {
           Repeat weekly on this weekday for the rest of the month
         </label>
       )}
-      {err && <div style={{ color: '#a8402f', fontSize: 12.5, marginBottom: 10 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: '#a8402f', fontSize: 12.5, marginBottom: 10 }}>{err}</div>}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
         {!isNew && <button type="button" className="btn" onClick={remove} disabled={busy} style={{ marginRight: 'auto', color: '#a8402f' }}>Delete</button>}
         <button type="button" className="btn" onClick={onClose} disabled={busy}>Cancel</button>
@@ -125,6 +133,7 @@ function DayWidget({ dateISO, sessions, canEdit, onClose, onEdit, onAdd }) {
               </span>
               {canEdit && (
                 <button type="button" className="btn" style={{ marginLeft: 'auto', padding: '2px 12px', fontSize: 11.5 }}
+                  aria-label={`Edit session at ${fmtTime(s.start_time)}`}
                   onClick={() => onEdit(s)}>Edit</button>
               )}
             </div>
@@ -154,19 +163,21 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  const [notice, setNotice] = useState('') // Peak-End Rule: confirm a save/delete after the modal closes
   const [modal, setModal] = useState(null) // { session } | { session: null, date }
   const [dayView, setDayView] = useState(null) // ISO date whose sessions are shown in the widget
   const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
     let alive = true
-    setLoading(true)
+    setLoading(true); setFailed(false)
     const params = { month: monthKey(month) }
     if (teamId) params.team = teamId
     if (academyId) params.academy = academyId
     getTrainingSessions(params)
       .then((res) => alive && setSessions(list(res.data)))
-      .catch(() => alive && setSessions([]))
+      .catch(() => { if (alive) { setSessions([]); setFailed(true) } })
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [teamId, academyId, month, refresh])
@@ -186,7 +197,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
   const iso = (d) => `${month.getFullYear()}-${pad(month.getMonth() + 1)}-${pad(d)}`
 
   const monthLabel = month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  const shift = (n) => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + n, 1))
+  const shift = (n) => { setNotice(''); setMonth((m) => new Date(m.getFullYear(), m.getMonth() + n, 1)) }
 
   const navBtn = { border: '1px solid #cdd9e6', background: '#fff', borderRadius: 8, width: 34, height: 34, cursor: 'pointer', fontWeight: 800, color: NAVY, fontSize: 15 }
 
@@ -194,16 +205,19 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
     <div style={{ background: '#fff', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, padding: '18px 18px 20px', boxShadow: '0 1px 6px rgba(11,41,72,.06)' }}>
       {/* Header: month nav + add */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-        <button type="button" style={navBtn} onClick={() => shift(-1)} aria-label="Previous month">‹</button>
+        <button type="button" style={navBtn} onClick={() => shift(-1)} aria-label="Previous month" title="Previous month">‹</button>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 19, color: NAVY, minWidth: 170, textAlign: 'center' }}>{monthLabel}</div>
-        <button type="button" style={navBtn} onClick={() => shift(1)} aria-label="Next month">›</button>
+        <button type="button" style={navBtn} onClick={() => shift(1)} aria-label="Next month" title="Next month">›</button>
         <div style={{ flex: 1 }} />
         {canEdit && (
           <button type="button" className="btn btn-primary" onClick={() => setModal({ session: null })}>+ Add session</button>
         )}
       </div>
+      {notice && <div role="status" style={{ fontSize: 12.5, fontWeight: 700, color: NAVY, marginBottom: 10 }}>{notice}.</div>}
 
-      {loading ? <Loading label="Loading training calendar" /> : (
+      {loading ? <Loading label="Loading training calendar" /> : failed ? (
+        <Empty label="Could not load the training calendar" hint="Check your connection, then change the month or reload the page to try again." />
+      ) : (
         <>
           <div style={{ overflowX: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(96px, 1fr))', gap: 6, minWidth: 720 }}>
@@ -216,11 +230,18 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
                 const dSessions = byDate[dISO] || []
                 const isToday = dISO === todayISO
                 const hasPractice = dSessions.length > 0
+                const open = hasPractice
+                  ? () => setDayView(dISO)
+                  : (canEdit ? () => setModal({ session: null, date: dISO }) : undefined)
                 return (
                   <div key={dISO}
-                    onClick={hasPractice
-                      ? () => setDayView(dISO)
-                      : (canEdit ? () => setModal({ session: null, date: dISO }) : undefined)}
+                    onClick={open}
+                    // Jakob's Law: a clickable day behaves like a button for keyboard and screen readers
+                    {...(open ? {
+                      role: 'button', tabIndex: 0, className: 'row-link',
+                      'aria-label': `${new Date(dISO + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}: ${hasPractice ? `${dSessions.length} training session${dSessions.length === 1 ? '' : 's'}, view details` : 'add a training session'}`,
+                      onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open() } },
+                    } : {})}
                     style={{
                       background: hasPractice ? '#eaf3fb' : '#fff',
                       border: isToday ? '2px solid var(--color-accent)' : (hasPractice ? '1px solid #c9ddf0' : '1px solid #e2e9f2'),
@@ -231,7 +252,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
                     {hasPractice && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 8 }}>
                         <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-accent-800)', flexShrink: 0 }} />
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: NAVY }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: NAVY }}>
                           {dSessions.length === 1 ? 'Practice' : `${dSessions.length} sessions`}
                         </span>
                       </div>
@@ -244,7 +265,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
 
           {/* Session list under the grid — full details */}
           {sessions.length === 0 ? (
-            <div style={{ marginTop: 14 }}><Empty label="No training sessions scheduled this month" /></div>
+            <div style={{ marginTop: 14 }}><Empty label="No training sessions scheduled this month" hint={canEdit ? 'Use “Add session”, or click a day, to schedule one.' : 'Use the arrows above to check another month.'} /></div>
           ) : (
             <div style={{ marginTop: 16, overflowX: 'auto' }}>
               <table className="table" style={{ width: '100%', fontSize: 12.5 }}>
@@ -256,7 +277,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
                     <th style={{ textAlign: 'left' }}>Age</th>
                     <th style={{ textAlign: 'left' }}>Coach</th>
                     <th style={{ textAlign: 'left' }}>Location</th>
-                    {canEdit && <th />}
+                    {canEdit && <th><span className="sr-only">Actions</span></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -270,7 +291,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
                       <td>{s.location || '—'}</td>
                       {canEdit && (
                         <td style={{ textAlign: 'right' }}>
-                          <button type="button" className="btn" style={{ padding: '2px 10px', fontSize: 11.5 }} onClick={() => setModal({ session: s })}>Edit</button>
+                          <button type="button" className="btn" style={{ padding: '2px 10px', fontSize: 11.5 }} aria-label={`Edit session on ${s.date} at ${fmtTime(s.start_time)}`} onClick={() => setModal({ session: s })}>Edit</button>
                         </td>
                       )}
                     </tr>
@@ -297,7 +318,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
           session={modal.session || (modal.date ? { date: modal.date } : null)}
           teamId={teamId} academyId={academyId}
           onClose={() => setModal(null)}
-          onSaved={() => setRefresh((r) => r + 1)}
+          onSaved={(msg) => { setRefresh((r) => r + 1); setNotice(msg || '') }}
         />
       )}
     </div>

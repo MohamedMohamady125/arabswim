@@ -141,7 +141,9 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
   const activeAspect = aspectKey === 'original' ? naturalAspect : aspectKey
 
   const chip = (active) => ({
-    padding: '4px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+    // Fitts's Law: 32px tall chips
+    display: 'inline-flex', alignItems: 'center', minHeight: 32,
+    padding: '4px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
     border: `1px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
     background: active ? 'var(--color-accent-800)' : '#fff',
     color: active ? '#fff' : 'var(--color-neutral-700)',
@@ -151,7 +153,7 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
     <Modal title={title} onClose={onCancel} width={520}>
       <div style={{ position: 'relative', width: '100%', height: 340, background: '#111', borderRadius: 8, overflow: 'hidden' }}>
         {smartPending ? (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '0.04em' }}>
+          <div role="status" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '0.04em' }}>
             Framing the subject…
           </div>
         ) : (
@@ -179,7 +181,7 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
         <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
           <span className="micro" style={{ flex: 'none' }}>Frame</span>
           {ASPECTS.map((a) => (
-            <button key={a.label} type="button" style={chip(aspectKey === a.key)} onClick={() => setAspectKey(a.key)}>
+            <button key={a.label} type="button" aria-pressed={aspectKey === a.key} style={chip(aspectKey === a.key)} onClick={() => setAspectKey(a.key)}>
               {a.label}
             </button>
           ))}
@@ -189,7 +191,7 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
       <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
         <span className="micro" style={{ flex: 'none', width: 42 }}>Zoom</span>
         <input
-          type="range" min={1} max={4} step={0.05} value={zoom}
+          type="range" aria-label="Zoom" min={1} max={4} step={0.05} value={zoom}
           onChange={(e) => setZoom(Number(e.target.value))}
           style={{ flex: 1 }}
         />
@@ -197,11 +199,12 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
       <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
         <span className="micro" style={{ flex: 'none', width: 42 }}>Rotate</span>
         <input
-          type="range" min={-45} max={45} step={1} value={rotation > 180 ? rotation - 360 : rotation}
+          type="range" aria-label="Rotate" min={-45} max={45} step={1} value={rotation > 180 ? rotation - 360 : rotation}
           onChange={(e) => setRotation(Number(e.target.value))}
           style={{ flex: 1 }}
         />
         <button type="button" className="btn btn-secondary" style={{ fontSize: 11.5, padding: '4px 10px' }}
+          aria-label="Rotate 90 degrees" title="Rotate 90 degrees"
           onClick={() => setRotation((r) => (r + 90) % 360)}>
           90°
         </button>
@@ -226,12 +229,12 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
  * uploads a photo.
  * Props: onChange(file), aspect, lockAspect, accept, className, style
  */
-export function CropUpload({ onChange, aspect = 1, lockAspect = false, smart = false, accept = 'image/*', className = 'input', style }) {
+export function CropUpload({ onChange, aspect = 1, lockAspect = false, smart = false, accept = 'image/*', className = 'input', style, ariaLabel = 'Choose an image' }) {
   const [cropFile, setCropFile] = useState(null)
   return (
     <>
       <input
-        className={className} style={style} type="file" accept={accept}
+        className={className} style={style} type="file" accept={accept} aria-label={ariaLabel}
         onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f); e.target.value = '' }}
       />
       {cropFile && (

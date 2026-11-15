@@ -29,8 +29,10 @@ function ClaimsQueue() {
       if (action === 'approve') {
         await approveClaim(claim.id)
       } else {
-        const note = window.prompt('Reason for declining (optional):') || ''
-        await declineClaim(claim.id, note)
+        // Cancel in the prompt means "do not decline" (it used to decline anyway)
+        const note = window.prompt('Reason for declining (optional):')
+        if (note === null) return
+        await declineClaim(claim.id, note.trim())
       }
       load()
     } catch (err) {
@@ -41,7 +43,7 @@ function ClaimsQueue() {
   }
 
   if (!claims) return <Loading label="Loading claims" />
-  if (claims.length === 0) return <Empty label="No pending claims" />
+  if (claims.length === 0) return <Empty label="No pending claims" hint="New profile claims from athletes will appear here." />
 
   return (
     <div>
@@ -49,7 +51,13 @@ function ClaimsQueue() {
         <div key={c.id} className="hair-b" style={{ display: 'flex', gap: 16, alignItems: 'center', padding: '14px 0', flexWrap: 'wrap' }}>
           <img
             src={mediaUrl(c.id_document)}
-            alt="ID document"
+            alt={`ID document from ${c.username}`}
+            role="button"
+            tabIndex={0}
+            className="row-link"
+            aria-expanded={preview === c.id}
+            title={preview === c.id ? 'Hide the large ID document' : 'Show the ID document larger'}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click() } }}
             onClick={() => setPreview(preview === c.id ? null : c.id)}
             style={{ width: 90, height: 64, objectFit: 'cover', cursor: 'zoom-in', border: '1px solid var(--color-divider)' }}
           />
@@ -63,12 +71,13 @@ function ClaimsQueue() {
             <div className="micro" style={{ marginTop: 3 }}>{new Date(c.created_at).toLocaleDateString('en-GB')}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-primary" disabled={busyId === c.id} onClick={() => act(c, 'approve')}>Approve</button>
-            <button className="btn btn-secondary" disabled={busyId === c.id} onClick={() => act(c, 'decline')}>Decline</button>
+            {/* Von Restorff: one row per claim, so Approve is outlined instead of a solid primary on every row */}
+            <button type="button" className="btn btn-secondary" style={{ borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} disabled={busyId === c.id} onClick={() => act(c, 'approve')}>{busyId === c.id ? 'Working…' : 'Approve'}</button>
+            <button type="button" className="btn btn-secondary" disabled={busyId === c.id} onClick={() => act(c, 'decline')}>Decline</button>
           </div>
           {preview === c.id && (
             <div style={{ width: '100%' }}>
-              <img src={mediaUrl(c.id_document)} alt="ID document large" style={{ maxWidth: '100%', maxHeight: 520, border: '1px solid var(--color-divider)' }} />
+              <img src={mediaUrl(c.id_document)} alt={`ID document from ${c.username}, large`} style={{ maxWidth: '100%', maxHeight: 520, border: '1px solid var(--color-divider)' }} />
             </div>
           )}
         </div>
@@ -105,7 +114,7 @@ function OrgAccountForm() {
     setCopied(false)
     setLoading(true)
     try {
-      const body = { kind, email }
+      const body = { kind, email: email.trim() }
       if (kind === 'CLUB') body.team = teamId
       else if (kind === 'ACADEMY') body.academy = academyId
       else body.country = countryId
@@ -141,21 +150,21 @@ function OrgAccountForm() {
           onChange={setKind}
         />
         <div className="field">
-          <label>Org email (they sent you)</label>
-          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <label htmlFor="org-email">Org email (they sent you)</label>
+          <input id="org-email" className="input" type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         {kind === 'CLUB' ? (
           <>
             <div className="field">
-              <label>Country</label>
-              <select className="select" value={teamCountry} onChange={(e) => { setTeamCountry(e.target.value); setTeamId('') }}>
+              <label htmlFor="org-club-country">Country</label>
+              <select id="org-club-country" className="select" value={teamCountry} onChange={(e) => { setTeamCountry(e.target.value); setTeamId('') }}>
                 <option value="">All countries</option>
                 {arabCountries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="field">
-              <label>Club</label>
-              <select className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)} required>
+              <label htmlFor="org-club">Club</label>
+              <select id="org-club" className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)} required>
                 <option value="">Select club…</option>
                 {visibleTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
@@ -164,15 +173,15 @@ function OrgAccountForm() {
         ) : kind === 'ACADEMY' ? (
           <>
             <div className="field">
-              <label>Country</label>
-              <select className="select" value={teamCountry} onChange={(e) => { setTeamCountry(e.target.value); setAcademyId('') }}>
+              <label htmlFor="org-academy-country">Country</label>
+              <select id="org-academy-country" className="select" value={teamCountry} onChange={(e) => { setTeamCountry(e.target.value); setAcademyId('') }}>
                 <option value="">All countries</option>
                 {arabCountries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="field">
-              <label>Academy</label>
-              <select className="select" value={academyId} onChange={(e) => setAcademyId(e.target.value)} required>
+              <label htmlFor="org-academy">Academy</label>
+              <select id="org-academy" className="select" value={academyId} onChange={(e) => setAcademyId(e.target.value)} required>
                 <option value="">Select academy…</option>
                 {(teamCountry ? academies.filter((a) => String(a.country) === String(teamCountry)) : academies)
                   .map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -181,15 +190,15 @@ function OrgAccountForm() {
           </>
         ) : (
           <div className="field">
-            <label>Federation country</label>
-            <select className="select" value={countryId} onChange={(e) => setCountryId(e.target.value)} required>
+            <label htmlFor="org-federation">Federation country</label>
+            <select id="org-federation" className="select" value={countryId} onChange={(e) => setCountryId(e.target.value)} required>
               <option value="">Select country…</option>
               {arabCountries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         )}
         {error && (
-          <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
+          <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
         )}
         <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 40 }}>
           {loading ? 'Creating…' : 'Create account'}
@@ -197,14 +206,14 @@ function OrgAccountForm() {
       </form>
 
       {result && (
-        <div style={{ marginTop: 18, border: '2px solid var(--asw-gold)', padding: '14px 16px' }}>
+        <div role="status" style={{ marginTop: 18, border: '2px solid var(--asw-gold)', padding: '14px 16px' }}>
           <div className="kicker" style={{ marginBottom: 8 }}>Account created — send these credentials</div>
           <div className="asw-num" style={{ fontSize: 14, lineHeight: 1.8 }}>
             Username: <strong>{result.username}</strong><br />
             Password: <strong>{result.password}</strong>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
-            <button className="btn btn-secondary" onClick={copy}>{copied ? 'Copied ✓' : 'Copy credentials'}</button>
+            <button type="button" className="btn btn-secondary" onClick={copy}>{copied ? 'Copied ✓' : 'Copy credentials'}</button>
             <span className="micro" style={{ color: 'var(--asw-slow)' }}>The password is shown only once.</span>
           </div>
         </div>
@@ -247,10 +256,10 @@ function SiteFeatures() {
                 {hiddenCount ? `${hiddenCount} hidden` : 'all visible'}
               </span>
               <span style={{ flex: 1 }} />
-              <button className="btn btn-secondary" style={{ height: 26, fontSize: 11 }} disabled={busy === group.id}
-                onClick={() => setGroup(group, true)}>Show all</button>
-              <button className="btn btn-secondary" style={{ height: 26, fontSize: 11 }} disabled={busy === group.id}
-                onClick={() => setGroup(group, false)}>Hide all</button>
+              <button type="button" className="btn btn-secondary" style={{ height: 26, fontSize: 11 }} disabled={busy === group.id}
+                aria-label={`Show all in ${group.label}`} onClick={() => setGroup(group, true)}>Show all</button>
+              <button type="button" className="btn btn-secondary" style={{ height: 26, fontSize: 11 }} disabled={busy === group.id}
+                aria-label={`Hide all in ${group.label}`} onClick={() => setGroup(group, false)}>Hide all</button>
             </div>
             <div className="micro" style={{ marginBottom: 10, color: 'var(--color-neutral-700)' }}>{group.hint}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -264,9 +273,12 @@ function SiteFeatures() {
                         {on ? 'Visible' : 'Hidden'}
                       </div>
                     </div>
+                    {/* Von Restorff: several items can be hidden at once, so "Show" is outlined, not a solid primary each */}
                     <button
-                      className={`btn ${on ? 'btn-secondary' : 'btn-primary'}`}
-                      style={{ height: 28, fontSize: 12 }}
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ height: 28, fontSize: 12, ...(on ? {} : { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }) }}
+                      aria-label={`${on ? 'Hide' : 'Show'} ${label}`}
                       disabled={busy === key}
                       onClick={() => toggle(key)}
                     >
@@ -301,53 +313,58 @@ function PhotoQueue() {
   })
 
   const approveOne = async (id) => {
-    await approvePhotoRequest(id)
+    try { await approvePhotoRequest(id) } catch { window.alert('The photo could not be approved. Please try again.'); return }
     setRequests((prev) => prev.filter((r) => r.id !== id))
     setSelected((prev) => { const n = new Set(prev); n.delete(id); return n })
   }
 
   const rejectOne = async (id) => {
-    await rejectPhotoRequest(id)
+    try { await rejectPhotoRequest(id) } catch { window.alert('The photo could not be rejected. Please try again.'); return }
     setRequests((prev) => prev.filter((r) => r.id !== id))
     setSelected((prev) => { const n = new Set(prev); n.delete(id); return n })
   }
 
   const bulkApprove = async () => {
     if (!selected.size) return
-    await bulkApprovePhotos([...selected])
+    try { await bulkApprovePhotos([...selected]) } catch { window.alert('The photos could not be approved. Please try again.'); return }
     setSelected(new Set())
     load()
   }
 
   const bulkReject = async () => {
     if (!selected.size) return
-    await bulkRejectPhotos([...selected])
+    // bulk reject cannot be undone from here, so ask first
+    if (!window.confirm(`Reject ${selected.size} photo${selected.size === 1 ? '' : 's'}?`)) return
+    try { await bulkRejectPhotos([...selected]) } catch { window.alert('The photos could not be rejected. Please try again.'); return }
     setSelected(new Set())
     load()
   }
 
   if (!requests) return <Loading label="Loading photo requests" />
-  if (requests.length === 0) return <Empty label="No pending photo requests" />
+  if (requests.length === 0) return <Empty label="No pending photo requests" hint="New photos sent by swimmers and clubs will appear here." />
 
   return (
     <div>
       {selected.size > 0 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
           <span style={{ fontSize: 13, fontWeight: 700 }}>{selected.size} selected</span>
-          <button className="btn btn-primary" style={{ height: 30, fontSize: 12 }} onClick={bulkApprove}>Approve all</button>
-          <button className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} onClick={bulkReject}>Reject all</button>
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set())}>Clear</button>
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set(requests.map((r) => r.id)))}>Select all</button>
+          <button type="button" className="btn btn-primary" style={{ height: 30, fontSize: 12 }} onClick={bulkApprove}>Approve all</button>
+          <button type="button" className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} onClick={bulkReject}>Reject all</button>
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set())}>Clear</button>
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set(requests.map((r) => r.id)))}>Select all</button>
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
         {requests.map((r) => (
           <div key={r.id} style={{
             border: selected.has(r.id) ? '2px solid var(--color-accent)' : '1px solid var(--color-divider)',
-            background: 'var(--color-surface)', overflow: 'hidden', cursor: 'pointer',
+            background: 'var(--color-surface)', overflow: 'hidden',
           }}>
-            <div onClick={() => toggle(r.id)} style={{ position: 'relative' }}>
-              <img src={mediaUrl(r.photo)} alt="" style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover', display: 'block' }} />
+            {/* only the photo selects the card, so only the photo shows the pointer */}
+            <div onClick={() => toggle(r.id)} style={{ position: 'relative' }} role="button" tabIndex={0} className="row-link"
+              aria-pressed={selected.has(r.id)} aria-label={`Select the photo for ${r.swimmer_name}`}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click() } }}>
+              <img src={mediaUrl(r.photo)} alt={`New photo for ${r.swimmer_name}`} style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover', display: 'block' }} />
               {selected.has(r.id) && (
                 <div style={{ position: 'absolute', top: 6, left: 6, width: 20, height: 20, background: 'var(--color-accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>✓</div>
               )}
@@ -357,8 +374,9 @@ function PhotoQueue() {
                 <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>
               </div>
               <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                <button className="btn btn-primary" style={{ flex: 1, height: 24, fontSize: 10, padding: 0 }} onClick={() => approveOne(r.id)}>✓</button>
-                <button className="btn btn-secondary" style={{ flex: 1, height: 24, fontSize: 10, padding: 0 }} onClick={() => rejectOne(r.id)}>✕</button>
+                {/* Von Restorff: outlined per card; the solid primary is "Approve all" above */}
+                <button type="button" className="btn btn-secondary" style={{ flex: 1, height: 24, fontSize: 12, padding: 0, borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} aria-label={`Approve the photo for ${r.swimmer_name}`} title="Approve" onClick={() => approveOne(r.id)}>✓</button>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1, height: 24, fontSize: 12, padding: 0 }} aria-label={`Reject the photo for ${r.swimmer_name}`} title="Reject" onClick={() => rejectOne(r.id)}>✕</button>
               </div>
             </div>
           </div>
@@ -458,12 +476,12 @@ function PartnersManager() {
       </div>
       <form onSubmit={add} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', marginBottom: 20, maxWidth: 720 }}>
         <div className="field" style={{ flex: '1 1 180px' }}>
-          <label>Partner name</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Speedo" />
+          <label htmlFor="partner-name">Partner name</label>
+          <input id="partner-name" className="input" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Speedo" />
         </div>
         <div className="field" style={{ flex: '1 1 200px' }}>
-          <label>Website (optional)</label>
-          <input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
+          <label htmlFor="partner-website">Website (optional)</label>
+          <input id="partner-website" className="input" inputMode="url" autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
         </div>
         <div className="field" style={{ flex: '1 1 200px' }}>
           <label>Logo image</label>
@@ -473,7 +491,7 @@ function PartnersManager() {
           {saving ? 'Adding…' : 'Add partner'}
         </button>
       </form>
-      {error && <div className="error-box" style={{ marginBottom: 14, maxWidth: 720 }}>{error}</div>}
+      {error && <div className="error-box" role="alert" style={{ marginBottom: 14, maxWidth: 720 }}>{error}</div>}
 
       {!partners ? (
         <Loading label="Loading partners" />
@@ -494,12 +512,13 @@ function PartnersManager() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <button className="btn btn-secondary btn-icon" disabled={busyId === p.id || i === 0} onClick={() => move(p, -1)} title="Move up" aria-label="Move up">↑</button>
-                <button className="btn btn-secondary btn-icon" disabled={busyId === p.id || i === partners.length - 1} onClick={() => move(p, 1)} title="Move down" aria-label="Move down">↓</button>
-                <button className={`btn ${p.is_active ? 'btn-secondary' : 'btn-primary'}`} style={{ height: 30, fontSize: 12 }} disabled={busyId === p.id} onClick={() => toggleActive(p)}>
+                <button type="button" className="btn btn-secondary btn-icon" disabled={busyId === p.id || i === 0} onClick={() => move(p, -1)} title="Move up" aria-label="Move up">↑</button>
+                <button type="button" className="btn btn-secondary btn-icon" disabled={busyId === p.id || i === partners.length - 1} onClick={() => move(p, 1)} title="Move down" aria-label="Move down">↓</button>
+                {/* Von Restorff: "Add partner" is this section's one solid primary */}
+                <button type="button" className="btn btn-secondary" style={{ height: 30, fontSize: 12, ...(p.is_active ? {} : { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }) }} aria-label={`${p.is_active ? 'Hide' : 'Show'} ${p.name}`} disabled={busyId === p.id} onClick={() => toggleActive(p)}>
                   {p.is_active ? 'Hide' : 'Show'}
                 </button>
-                <button className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} disabled={busyId === p.id} onClick={() => remove(p)}>Delete</button>
+                <button type="button" className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} aria-label={`Delete ${p.name}`} disabled={busyId === p.id} onClick={() => remove(p)}>Delete</button>
               </div>
             </div>
           ))}
@@ -558,7 +577,7 @@ function EditHistory() {
       {!log ? (
         <Loading label="Loading edit history" />
       ) : log.length === 0 ? (
-        <Empty label="No recent edits" />
+        <Empty label="No recent edits" hint="Manual edits to times, swimmers, meets and records will be listed here." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {log.map((e) => (
@@ -586,7 +605,7 @@ function EditHistory() {
                   {fmtWhen(e.created_at)}{e.user_name ? ` · ${e.user_name}` : ''}
                 </div>
               </div>
-              <button className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} disabled={busyId === e.id} onClick={() => undo(e)}>
+              <button type="button" className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} disabled={busyId === e.id} onClick={() => undo(e)}>
                 {busyId === e.id ? 'Undoing…' : 'Undo'}
               </button>
             </div>

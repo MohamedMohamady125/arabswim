@@ -153,8 +153,8 @@ export function SwimmerMedalsByMeet({ medals }) {
                   </div>
                 ))}
                 {g.id ? (
-                  <div style={{ padding: '9px 14px', borderTop: `1px solid ${LINE}`, textAlign: 'right' }}>
-                    <Link to={`/championships/${g.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 12, fontWeight: 700, color: INK, textDecoration: 'none' }}>Open meet results →</Link>
+                  <div style={{ padding: '1px 14px', borderTop: `1px solid ${LINE}`, textAlign: 'right' }}>
+                    <Link to={`/championships/${g.id}`} onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 12, fontWeight: 700, color: INK, textDecoration: 'none' }}>Open meet results →</Link>
                   </div>
                 ) : null}
               </div>
@@ -198,12 +198,13 @@ export function DepthTab({ id, kind = 'club' }) {
 
   useEffect(() => {
     let alive = true
+    let fails = 0
     setData(null)
     const q = (p) => api.get(`/teams/${id}/depth/`, { params: { pool: p, ...(gender ? { gender } : {}) } })
-      .then((r) => (Array.isArray(r.data) ? r.data : [])).catch(() => [])
+      .then((r) => (Array.isArray(r.data) ? r.data : [])).catch(() => { fails += 1; return [] })
     Promise.all([q('LCM'), q('SCM')]).then(([LCM, SCM]) => {
       if (!alive) return
-      setData({ LCM, SCM })
+      setData({ LCM, SCM, failed: fails === 2 })
       // land on the pool the squad actually races in most
       const entries = (rows) => rows.reduce((n, e) => n + e.swimmer_count, 0)
       setPool((cur) => cur || (entries(SCM) > entries(LCM) ? 'SCM' : 'LCM'))
@@ -246,7 +247,10 @@ export function DepthTab({ id, kind = 'club' }) {
         <Seg options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={(v) => { setGender(v); setFocus(null) }} />
       </div>
 
-      {!rows ? <Loading label="Loading squad depth" /> : rows.length === 0 ? <Empty label="No times for this selection" /> : (<>
+      {!rows ? <Loading label="Loading squad depth" /> : rows.length === 0 ? (data.failed
+        ? <Empty label="Could not load squad depth" hint="Check your connection and reload the page." />
+        : <Empty label="No times for this selection" hint="Try the other pool, or choose All." />
+      ) : (<>
         {/* Headline numbers */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 16 }}>
           {tile('Events covered', `${summary.covered} / ${summary.programme}`, 'of the individual programme')}
@@ -279,7 +283,7 @@ export function DepthTab({ id, kind = 'club' }) {
                     const pct = 14 + Math.round((e.swimmer_count / summary.max) * 78)
                     const sel = focus === e.event_id
                     return (
-                      <button key={`${s}-${d}`} type="button" title={`${e.event_name}: ${e.swimmer_count} swimmers`}
+                      <button key={`${s}-${d}`} type="button" title={`${e.event_name}: ${e.swimmer_count} swimmers`} aria-label={`${e.event_name}: ${e.swimmer_count} swimmers`}
                         onClick={() => { setFocus(e.event_id); document.getElementById(`depth-ev-${e.event_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}
                         className="asw-num"
                         style={{ height: 44, borderRadius: 8, cursor: 'pointer', fontFamily: HEAD, fontWeight: 900, fontSize: 16,
@@ -319,7 +323,8 @@ export function DepthTab({ id, kind = 'club' }) {
                 {e.top.map((s, i) => (
                   <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: i ? `1px solid var(--color-neutral-200)` : 'none', fontSize: 13 }}>
                     <span className="asw-num" style={{ width: 16, fontWeight: 800, color: SOFT, flex: 'none' }}>{i + 1}</span>
-                    <Link to={`/swimmers/${s.swimmer_id}`} style={{ flex: 1, minWidth: 0, color: INK, fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</Link>
+                    {/* Fitts's Law: the name fills the row's height without making the row taller */}
+                    <Link to={`/swimmers/${s.swimmer_id}`} style={{ flex: 1, minWidth: 0, padding: '7px 0', margin: '-7px 0', color: INK, fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</Link>
                     <span className="asw-num" style={{ width: 58, textAlign: 'right', fontSize: 11.5, color: MUTED, flex: 'none' }}>{i ? gapStr(s.time_cs - lead) : (s.fina_points ? `${s.fina_points} pts` : '')}</span>
                     <span className="asw-num asw-time" style={{ width: 66, textAlign: 'right', fontWeight: 800, color: INK, flex: 'none' }}>{s.time}</span>
                   </div>
@@ -394,7 +399,7 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
           {filtered.length} {filtered.length === 1 ? 'record' : 'records'}
         </div>
 
-        {filtered.length === 0 ? <Empty label="No records for this selection" /> : (
+        {filtered.length === 0 ? <Empty label="No records for this selection" hint="Try All, Both pools or All ages." /> : (
           /* The site's standard record card (same markup as New Records) */
           <div className="record-cards">
             {filtered.map((r, i) => {
@@ -430,7 +435,7 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                     <Flag code={r.nationality_code || r.country_code} name={r.country_name} />
                     {r.swimmer_id && !r.is_relay ? (
-                      <Link to={`/swimmers/${r.swimmer_id}`} className="rec-name" style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>{r.swimmer_name}</Link>
+                      <Link to={`/swimmers/${r.swimmer_id}`} className="rec-name" style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600, padding: '8px 0', margin: '-8px 0' }}>{r.swimmer_name}</Link>
                     ) : (
                       <span className="rec-name" style={{ fontSize: 13, fontWeight: 600 }}>{r.swimmer_name}</span>
                     )}

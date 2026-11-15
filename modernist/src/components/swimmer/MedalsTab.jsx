@@ -16,7 +16,7 @@ function PercentRing({ pct, color, title, desc }) {
     <div className="rule-t" style={{ paddingTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
       <div className="kicker" style={{ textAlign: 'center' }}>{title}</div>
       <div style={{ position: 'relative', width: 128, height: 128 }}>
-        <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+        <svg viewBox="0 0 120 120" role="img" aria-label={`${title}: ${pct}%`} style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
           <circle cx="60" cy="60" r={r} fill="none" stroke="var(--color-neutral-300)" strokeWidth="12" />
           <circle cx="60" cy="60" r={r} fill="none" stroke={color} strokeWidth="12"
             strokeDasharray={`${(pct / 100) * C} ${C}`} />
@@ -49,7 +49,9 @@ function MedalDonut({ counts, label, size = 160 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 'none' }}>
       <div style={{ position: 'relative', width: size, height: size }}>
-        <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+        <svg viewBox="0 0 120 120" role="img"
+          aria-label={`${label ? `${label}: ` : ''}${counts.gold} gold, ${counts.silver} silver, ${counts.bronze} bronze`}
+          style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
           {counts.total === 0 && (
             <circle cx="60" cy="60" r={r} fill="none" stroke="var(--color-neutral-300)" strokeWidth="22" />
           )}
@@ -107,9 +109,9 @@ function DistCard({ title, counts, shareOfCareer }) {
 }
 
 export default function MedalsTab({ stats }) {
-  if (!stats) return null
+  if (!stats) return <Empty label="Medals unavailable" hint="They could not be loaded. Reload the page to try again." />
   const { medals, medals_hierarchy, total_races, intl_medals } = stats
-  if (!medals || medals.total === 0) return <Empty label="No medals yet" />
+  if (!medals || medals.total === 0) return <Empty label="No medals yet" hint="Medals appear here once this swimmer finishes on a podium." />
 
   // Aggregate per-competition counts from the classification hierarchy
   const compCounts = {}
@@ -156,7 +158,7 @@ export default function MedalsTab({ stats }) {
             {/* single-line label so all three cards stay perfectly level on phones */}
             <div className="card-kicker" style={{ color: c.color, whiteSpace: 'nowrap' }}>{c.title}</div>
             {c.img && (
-              <img src={c.img} alt={c.title} width={44} height={44} style={{ margin: '8px auto 0' }} />
+              <img src={c.img} alt="" width={44} height={44} style={{ margin: '8px auto 0' }} />
             )}
             <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40, lineHeight: 1.1, marginTop: c.img ? 4 : 24, color: c.color }}>
               {c.n}

@@ -50,6 +50,7 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
   const [duplicates, setDuplicates] = useState([])
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
+  const [searched, setSearched] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [merging, setMerging] = useState(false)
   const [error, setError] = useState('')
@@ -57,11 +58,12 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
 
   useEffect(() => {
     clearTimeout(debounceRef.current)
-    if (query.trim().length < 2) { setResults([]); return }
+    if (query.trim().length < 2) { setResults([]); setSearched(false); return }
     debounceRef.current = setTimeout(() => {
       searchSwimmers(query.trim(), countryFilter ? { nationality: countryFilter } : {})
         .then((res) => setResults(Array.isArray(res.data) ? res.data : res.data?.results || []))
         .catch(() => setResults([]))
+        .finally(() => setSearched(true))
     }, 300)
     return () => clearTimeout(debounceRef.current)
   }, [query, countryFilter])
@@ -124,7 +126,7 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
             {step === 1 ? 'Step 1 — Keep (primary)' : 'Keeping'}
           </div>
           {primary ? card(primary, (
-            <button className="btn btn-secondary" style={{ fontSize: 11 }}
+            <button type="button" className="btn btn-secondary" style={{ fontSize: 11 }}
               onClick={() => { setPrimary(null); setDuplicates([]); setStep(1) }}>Change</button>
           )) : (
             <div className="text-muted" style={{ fontSize: 13, fontStyle: 'italic' }}>Search and select below…</div>
@@ -143,7 +145,7 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
               {duplicates.map((d) => (
                 <div key={d.id}>
                   {card(d, (
-                    <button className="btn btn-secondary" style={{ fontSize: 11 }}
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: 11 }} aria-label={`Remove ${d.name}`}
                       onClick={() => setDuplicates(duplicates.filter((x) => x.id !== d.id))}>Remove</button>
                   ))}
                 </div>
@@ -159,10 +161,12 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
           autoFocus
           style={{ flex: 1, minWidth: 200 }}
           placeholder={step === 1 ? 'Search for the swimmer to KEEP…' : 'Search to add another DUPLICATE…'}
+          aria-label={step === 1 ? 'Search for the swimmer to keep' : 'Search for a duplicate swimmer to merge'}
+          autoComplete="off"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select className="select" style={{ width: 170 }} value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)}>
+        <select className="select" aria-label="Filter search by country" style={{ width: 170 }} value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)}>
           <option value="">All countries</option>
           {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -173,6 +177,7 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
               .map((s) => (
                 <button
                   key={s.id}
+                  type="button"
                   onClick={() => pick(s)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-divider)', cursor: 'pointer', font: 'inherit' }}
                 >
@@ -185,10 +190,16 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
               ))}
           </div>
         )}
+        {/* Paradox of the Active User: a search with no matches says so */}
+        {searched && query.trim().length >= 2 && results.length === 0 && (
+          <div className="text-muted" role="status" style={{ flexBasis: '100%', fontSize: 13 }}>
+            No swimmers match “{query.trim()}”. Check the spelling or change the country.
+          </div>
+        )}
       </div>
 
       {error && (
-        <div style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
+        <div role="alert" style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
       )}
 
       {confirming ? (
@@ -198,8 +209,8 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
             and {duplicates.length > 1 ? 'these profiles' : dupNames} will be deleted. This cannot be undone.
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button className="btn btn-secondary" onClick={() => setConfirming(false)} disabled={merging}>Back</button>
-            <button className="btn btn-primary" onClick={doMerge} disabled={merging}>
+            <button type="button" className="btn btn-secondary" onClick={() => setConfirming(false)} disabled={merging}>Back</button>
+            <button type="button" className="btn btn-primary" onClick={doMerge} disabled={merging}>
               {merging ? 'Merging…' : `Confirm merge (${duplicates.length})`}
             </button>
           </div>
@@ -232,6 +243,7 @@ export default function Swimmers() {
   const [count, setCount] = useState(0)
   const [countries, setCountries] = useState([])
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
   const [showMerge, setShowMerge] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const debounceRef = useRef(null)
@@ -264,7 +276,7 @@ export default function Swimmers() {
   useEffect(() => {
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      setQuery(search)
+      setQuery(search.trim()) // Postel's Law: stray spaces never change the search
       setPage(1)
     }, 400)
     return () => clearTimeout(debounceRef.current)
@@ -273,6 +285,7 @@ export default function Swimmers() {
   useEffect(() => {
     let alive = true
     setLoading(true)
+    setFailed(false)
     const params = { page, page_size: PAGE_SIZE }
     if (query) params.search = query
     if (country) params.nationality = country
@@ -283,7 +296,7 @@ export default function Swimmers() {
         setRows(res.data?.results || [])
         setCount(res.data?.count || 0)
       })
-      .catch(() => { if (alive) { setRows([]); setCount(0) } })
+      .catch(() => { if (alive) { setRows([]); setCount(0); setFailed(true) } })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [query, country, sex, page, reloadKey])
@@ -312,11 +325,14 @@ export default function Swimmers() {
           className="input"
           style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
           placeholder="Search by name…"
+          aria-label="Search swimmers by name"
+          autoComplete="off"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <select
           className="select"
+          aria-label="Filter by country"
           style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 220 }}
           value={country}
           onChange={(e) => { setCountry(e.target.value); setPage(1) }}
@@ -334,7 +350,7 @@ export default function Swimmers() {
           onChange={(v) => { setSex(v); setPage(1) }}
         />
         {isAdmin && (
-          <button className="btn btn-secondary" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowMerge(true)}>
+          <button type="button" className="btn btn-secondary" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowMerge(true)}>
             <GitMerge size={14} /> Merge
           </button>
         )}
@@ -343,7 +359,14 @@ export default function Swimmers() {
       {loading ? (
         <Loading label="Loading swimmers" />
       ) : visible.length === 0 ? (
-        <Empty label="No swimmers found" />
+        failed ? (
+          <Empty label="Swimmers could not be loaded" hint="Check your connection and try again in a moment." />
+        ) : (
+          <Empty
+            label="No swimmers found"
+            hint={query ? `Nothing matches “${query}”. Check the spelling or try part of the name.` : (country || sex) ? 'Try a different country or gender filter.' : undefined}
+          />
+        )
       ) : (
         <div className="pad">
           <div className="swimmer-grid">
@@ -360,9 +383,10 @@ export default function Swimmers() {
                   )}
                   {isAdmin && (
                     <button
+                      type="button"
                       className="btn btn-secondary btn-icon"
                       title="Delete swimmer"
-                      aria-label="Delete swimmer"
+                      aria-label={`Delete ${s.name}`}
                       style={{ position: 'absolute', top: 6, right: 6, background: 'var(--color-surface)' }}
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(s) }}
                     >
@@ -380,7 +404,7 @@ export default function Swimmers() {
                     <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.nationality_detail?.name || '—'}</span>
                     {(s.birth_year || s.sex) && (
-                      <span className="tag tag-accent-2" style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 6px', whiteSpace: 'nowrap' }}>
+                      <span className="tag tag-accent-2" style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 6px', whiteSpace: 'nowrap' }}>
                         {s.birth_year || ''}{s.birth_year && s.sex ? ' · ' : ''}{s.sex === 'M' ? '♂' : s.sex === 'F' ? '♀' : ''}
                       </span>
                     )}

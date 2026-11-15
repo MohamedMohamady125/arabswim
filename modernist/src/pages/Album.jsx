@@ -29,6 +29,15 @@ export default function Album() {
   const [cropQueue, setCropQueue] = useState(null)
   const [videoUrl, setVideoUrl] = useState('')
   const [lightbox, setLightbox] = useState(null)
+  const [addingVideo, setAddingVideo] = useState(false)
+
+  // Jakob's Law: Escape closes the photo viewer
+  useEffect(() => {
+    if (!lightbox) return undefined
+    const onKey = (e) => { if (e.key === 'Escape') setLightbox(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [lightbox])
 
   const load = () => {
     return Promise.allSettled([getAlbum(id), getMediaItems({ album: id })])
@@ -77,13 +86,16 @@ export default function Album() {
 
   const addVideo = async (e) => {
     e.preventDefault()
-    if (!videoUrl.trim()) return
+    if (!videoUrl.trim() || addingVideo) return
+    setAddingVideo(true)
     try {
       await createMediaItem({ album: id, media_type: 'VIDEO', video_url: videoUrl.trim() })
       setVideoUrl('')
       await load()
     } catch {
       window.alert('Failed to add video (check the URL)')
+    } finally {
+      setAddingVideo(false)
     }
   }
 
@@ -117,7 +129,11 @@ export default function Album() {
   }
 
   if (loading) return <Loading label="Loading album" />
-  if (!album) return <Empty label="Album not found" />
+  if (!album) return (
+    <Empty label="Album not found" hint="It may have been deleted, or the link is wrong.">
+      <Link to="/media" className="btn btn-secondary">All albums</Link>
+    </Empty>
+  )
 
   const isVideo = (it) => it.media_type === 'VIDEO' || (!!it.video_url && !it.image)
   const photoSrc = (it) => mediaUrl(it.image || it.url || it.file)
@@ -125,8 +141,9 @@ export default function Album() {
   return (
     <div>
       <div className="pad-lg rule-b">
-        <Link to="/media" style={{ fontSize: 12, textDecoration: 'none' }}>← All albums</Link>
-        <div className="kicker" style={{ margin: '16px 0 6px' }}>Album</div>
+        {/* Fitts's Law: 32px tall back link (kicker margin reduced so the header keeps its height) */}
+        <Link to="/media" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 12, textDecoration: 'none' }}>← All albums</Link>
+        <div className="kicker" style={{ margin: '8px 0 6px' }}>Album</div>
         <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>{album.title}</h1>
         <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8 }}>
           <span className="asw-num">{items.length || album.items_count || 0}</span> item{(items.length || album.items_count || 0) === 1 ? '' : 's'} · {formatDate(album.created_at)}
@@ -148,11 +165,12 @@ export default function Album() {
                 type="url"
                 style={{ width: 260 }}
                 placeholder="YouTube / video link…"
+                aria-label="YouTube or video link"
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
               />
-              <button type="submit" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Video size={14} /> Add video
+              <button type="submit" className="btn btn-secondary" disabled={addingVideo} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Video size={14} /> {addingVideo ? 'Adding…' : 'Add video'}
               </button>
             </form>
           </div>
@@ -160,14 +178,18 @@ export default function Album() {
       </div>
 
       {items.length === 0 ? (
-        <Empty label="No photos or videos in this album" />
+        <Empty label="No photos or videos in this album" hint={isAdmin ? 'Use "Add photos" or paste a video link above.' : undefined} />
       ) : (
         <div className="pad-lg">
           <div className="gallery-grid" style={{ gap: 8 }}>
             {items.map((it) => (
               <figure key={it.id} style={{ margin: 0 }}>
                 <div
-                  className="album-photo"
+                  className="album-photo row-link"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={isVideo(it) && it.video_url ? `Open video${it.caption ? `: ${it.caption}` : ''}` : `View photo${it.caption ? `: ${it.caption}` : ''}`}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click() } }}
                   style={{
                     aspectRatio: isVideo(it) ? '16 / 9'
                       : (SIZE_RATIOS[it.display_size] || (it.display_size === 'ORIGINAL' ? undefined : '1 / 1')),
@@ -209,6 +231,7 @@ export default function Album() {
                       type="text"
                       defaultValue={it.caption || ''}
                       placeholder="Add a caption…"
+                      aria-label="Caption"
                       style={{ flex: 1, fontSize: 12 }}
                       onBlur={(e) => saveCaption(it, e.target.value)}
                     />
@@ -219,6 +242,7 @@ export default function Album() {
                         onChange={(e) => saveSize(it, e.target.value)}
                         style={{ fontSize: 12, width: 'auto' }}
                         title="Display size"
+                        aria-label="Display size"
                       >
                         {SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
@@ -229,6 +253,7 @@ export default function Album() {
                       style={{ display: 'inline-flex', alignItems: 'center' }}
                       onClick={() => handleDeleteItem(it)}
                       aria-label="Delete item"
+                      title="Delete item"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -246,11 +271,16 @@ export default function Album() {
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(10, 15, 25, 0.92)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}
           onClick={() => setLightbox(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightbox.caption || 'Photo'}
         >
           <button
             type="button"
             aria-label="Close"
-            style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'rgba(255,255,255,0.75)', cursor: 'pointer', padding: 8 }}
+            title="Close"
+            autoFocus
+            style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'rgba(255,255,255,0.75)', cursor: 'pointer', padding: 8, minWidth: 40, minHeight: 40 }}
           >
             <X size={24} />
           </button>

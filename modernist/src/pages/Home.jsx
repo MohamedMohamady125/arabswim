@@ -27,7 +27,11 @@ export default function Home() {
   }, [])
 
   if (loading) return <Loading label="Loading statistics" />
-  if (!data?.championship) return <Empty label="No championship statistics available yet" />
+  if (!data?.championship) return (
+    <Empty label="No championship statistics available yet" hint="Check back soon, or browse the meets already published.">
+      <Link to="/championships" className="btn btn-secondary">Browse championships</Link>
+    </Empty>
+  )
 
   const champ = data.championship
 
@@ -40,7 +44,7 @@ export default function Home() {
           background: 'var(--asw-slow)', color: '#fff', textDecoration: 'none',
           padding: '10px 16px', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em',
         }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite', flex: 'none' }} />
+          <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite', flex: 'none' }} />
           LIVE NOW: {liveMeets.length === 1
             ? liveMeets[0].name
             : `${liveMeets.length} meets in progress`}
@@ -54,7 +58,7 @@ export default function Home() {
         <div className="container" style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: GOLD }}>Arab Swim</div>
           <h1 style={{ margin: 0, fontSize: 'clamp(28px, 5vw, 42px)', letterSpacing: '0.02em', textTransform: 'uppercase', color: '#fff' }}>Quick Statistics</h1>
-          <Link to={`/meets/${champ.id}`} style={{ color: GOLD, textDecoration: 'none', fontSize: 'clamp(13px, 2.5vw, 16px)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <Link to={`/meets/${champ.id}`} style={{ padding: '7px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, header height unchanged */, color: GOLD, textDecoration: 'none', fontSize: 'clamp(13px, 2.5vw, 16px)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {champ.name}
           </Link>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', justifyContent: 'center', alignItems: 'center', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
@@ -86,12 +90,12 @@ export default function Home() {
               const rtColor = r.record_type === 'ARAB' ? 'var(--color-accent-800)' : r.record_type === 'GCC' ? 'var(--color-accent)' : 'var(--color-accent-2)'
               return (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: '1px solid var(--color-divider)', borderRadius: 8, background: '#fff' }}>
-                  <span style={{ flex: 'none', minWidth: 42, textAlign: 'center', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.04em', color: '#fff', background: rtColor, borderRadius: 4, padding: '3px 5px' }}>{r.record_type}</span>
+                  <span style={{ flex: 'none', minWidth: 42, textAlign: 'center', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em', color: '#fff', background: rtColor, borderRadius: 4, padding: '3px 5px' }}>{r.record_type}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13 }}>
                       <Flag code={code} name={sw.nationality_detail?.name} />
                       {sw.id
-                        ? <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</Link>
+                        ? <Link to={`/swimmers/${sw.id}`} style={{ padding: '6px 0', margin: '-6px 0' /* Fitts's Law: 32px hit area, card height unchanged */, color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</Link>
                         : <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</span>}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

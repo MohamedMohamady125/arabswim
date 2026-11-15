@@ -35,7 +35,7 @@ export function MiniBars({ data, color = NAVY, height = 130 }) {
         <div key={i} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: NAVY_DARK }}>{d.value}</span>
           <div style={{ width: '100%', maxWidth: 30, height: Math.max(3, Math.round((d.value / max) * height)), background: d.color || color, borderRadius: '3px 3px 0 0' }} />
-          <span style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textAlign: 'center', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{d.label}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: MUTED, textAlign: 'center', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{d.label}</span>
         </div>
       ))}
     </div>
@@ -68,7 +68,8 @@ export function MiniDonut({ segments, size = 150, thickness = 26, centerTop, cen
   const C = 2 * Math.PI * r
   let acc = 0
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" style={{ display: 'block' }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" style={{ display: 'block' }}
+      aria-label={`${centerTop ?? ''} ${centerBot || ''} — ${(segments || []).map((s) => `${s.label}: ${s.value}`).join(', ')}`.trim()}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={TRACK} strokeWidth={thickness} />
       {(segments || []).map((s, i) => {
         const frac = s.value / total
@@ -88,7 +89,8 @@ export function MiniDonut({ segments, size = 150, thickness = 26, centerTop, cen
       )}
       {centerBot && (
         <text x="50%" y="61%" textAnchor="middle"
-          style={{ fontWeight: 700, fontSize: 8.5, letterSpacing: '0.09em', fill: MUTED }}>{centerBot}</text>
+          /* legibility: 10.5px floor; tracking tightened so the label still fits inside the ring */
+          style={{ fontWeight: 700, fontSize: 10.5, letterSpacing: '0.02em', fill: MUTED }}>{centerBot}</text>
       )}
     </svg>
   )
@@ -106,7 +108,8 @@ export function MiniLine({ points, color = NAVY, fmt }) {
   const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')
   const label = (v) => (fmt ? fmt(v) : v)
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img">
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img"
+      aria-label={points.map((p) => `${p.label}: ${label(p.value)}`).join(', ')}>
       <polyline points={`${x(0)},${H - padB + 4} ${path} ${x(points.length - 1)},${H - padB + 4}`}
         fill="color-mix(in srgb, var(--color-accent) 8%, transparent)" stroke="none" />
       <polyline points={path} fill="none" stroke={color} strokeWidth="2.5" />
@@ -114,9 +117,9 @@ export function MiniLine({ points, color = NAVY, fmt }) {
         <g key={i}>
           <circle cx={x(i)} cy={y(p.value)} r="3.5" fill={color} />
           <text x={x(i)} y={y(p.value) - 8} textAnchor="middle"
-            style={{ fontWeight: 800, fontSize: 10.5, fill: NAVY_DARK }}>{label(p.value)}</text>
+            style={{ fontWeight: 800, fontSize: 11, fill: NAVY_DARK }}>{label(p.value)}</text>
           <text x={x(i)} y={H - 8} textAnchor="middle"
-            style={{ fontWeight: 600, fontSize: 9.5, fill: MUTED }}>{p.label}</text>
+            style={{ fontWeight: 600, fontSize: 11, fill: MUTED }}>{p.label}</text>
         </g>
       ))}
     </svg>
@@ -129,7 +132,7 @@ export function AgePyramid({ rows }) {
   const max = Math.max(...rows.map((r) => Math.max(r.male, r.female)), 1)
   return (
     <div style={{ display: 'grid', gap: 6 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10.5, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
         <span style={{ flex: 1, textAlign: 'right', color: NAVY_DARK }}>Men</span>
         <span style={{ width: 54, flex: 'none' }} />
         <span style={{ flex: 1, color: BLUE }}>Women</span>
@@ -139,7 +142,7 @@ export function AgePyramid({ rows }) {
           <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
             <div style={{ width: `${(r.male / max) * 100}%`, minWidth: r.male ? 3 : 0, height: 14, background: NAVY, borderRadius: '3px 0 0 3px' }} title={`Men ${r.label}: ${r.male}`} />
           </div>
-          <span style={{ width: 54, flex: 'none', textAlign: 'center', fontSize: 10.5, fontWeight: 700, color: 'var(--color-text)' }}>{r.label}</span>
+          <span style={{ width: 54, flex: 'none', textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--color-text)' }}>{r.label}</span>
           <div style={{ flex: 1 }}>
             <div style={{ width: `${(r.female / max) * 100}%`, minWidth: r.female ? 3 : 0, height: 14, background: BLUE, borderRadius: '0 3px 3px 0' }} title={`Women ${r.label}: ${r.female}`} />
           </div>

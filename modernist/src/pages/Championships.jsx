@@ -110,6 +110,8 @@ export default function Championships() {
     return past[0] ? { ...past[0], isUpcoming: false } : null
   }, [meets])
 
+  const clearFilters = () => { setSearch(''); setYear(''); setCountry(''); setClassification(''); setPool('ALL') }
+
   if (loading) return <Loading label="Loading championships" />
 
   return (
@@ -150,7 +152,9 @@ export default function Championships() {
       <div className="rule-b meets-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           className="input"
-          style={{ width: 220 }}
+          type="search"
+          aria-label="Search meets"
+          style={{ width: 220, appearance: 'none', WebkitAppearance: 'none' }}
           placeholder="Search meets…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -160,26 +164,32 @@ export default function Championships() {
           value={pool}
           onChange={(v) => setPool(pool === v ? 'ALL' : v)}
         />
-        <select className="select" style={{ width: 120, minWidth: 92 }} value={year} onChange={(e) => setYear(e.target.value)}>
+        <select className="select" aria-label="Year" style={{ width: 120, minWidth: 92 }} value={year} onChange={(e) => setYear(e.target.value)}>
           <option value="">All years</option>
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
-        <select className="select" style={{ width: 190, minWidth: 126 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+        <select className="select" aria-label="Country" style={{ width: 190, minWidth: 126 }} value={country} onChange={(e) => setCountry(e.target.value)}>
           <option value="">All countries</option>
           {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         {classifications.length > 0 && (
-          <select className="select" style={{ width: 190, minWidth: 150 }} value={classification} onChange={(e) => setClassification(e.target.value)}>
+          <select className="select" aria-label="Classification" style={{ width: 190, minWidth: 150 }} value={classification} onChange={(e) => setClassification(e.target.value)}>
             <option value="">All classifications</option>
             {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )}
         {(search || year || country || classification || pool !== 'ALL') && (
-          <button className="btn btn-ghost" onClick={() => { setSearch(''); setYear(''); setCountry(''); setClassification(''); setPool('ALL') }}>Clear</button>
+          <button type="button" className="btn btn-ghost" style={{ minHeight: 36 }} onClick={clearFilters}>Clear</button>
         )}
       </div>
 
-      {groups.length === 0 && <Empty label="No meets match these filters" />}
+      {groups.length === 0 && (meets.length === 0
+        ? <Empty label="No meets to show yet" hint="The list could not be loaded or is still empty. Reload the page or check back later." />
+        : (
+          <Empty label="No meets match these filters" hint="Try another year or country, or clear the filters.">
+            <button type="button" className="btn btn-secondary" onClick={clearFilters}>Clear filters</button>
+          </Empty>
+        ))}
 
       {groups.map((g) => (
         <div key={g.key} className="rule-b">
@@ -206,7 +216,7 @@ export default function Championships() {
                   <div style={{ flex: 1, minWidth: 160 }}>
                     <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>
                       {m.name}
-                      {isAdmin && m.is_published === false && <span className="tag tag-neutral" style={{ marginLeft: 8, fontSize: 10, verticalAlign: 'middle' }}>Unpublished</span>}
+                      {isAdmin && m.is_published === false && <span className="tag tag-neutral" style={{ marginLeft: 8, fontSize: 11, verticalAlign: 'middle' }}>Unpublished</span>}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 3 }}>
                       {isAdmin && m.location ? `${m.location}, ` : ''}

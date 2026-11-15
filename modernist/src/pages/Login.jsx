@@ -16,7 +16,8 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      const res = await loginApi(username, password)
+      // Postel's Law: tolerate stray spaces around the username (never the password)
+      const res = await loginApi(username.trim(), password)
       login(res.data.access, res.data.refresh)
       const user = (await getMe()).data
       if (user.role === 'ADMIN') navigate('/import')
@@ -36,20 +37,22 @@ export default function Login() {
         <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: 'contain' }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em' }}>ARABSWIM</span>
       </div>
-      <div className="kicker" style={{ marginBottom: 20 }}>Sign in</div>
+      {/* real page heading for assistive tech; the kicker below keeps the look */}
+      <h1 className="sr-only">Sign in</h1>
+      <div className="kicker" aria-hidden="true" style={{ marginBottom: 20 }}>Sign in</div>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && (
-          <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>
+          <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>
             {error}
           </div>
         )}
         <div className="field">
-          <label>Username</label>
-          <input className="input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+          <label htmlFor="login-username">Username</label>
+          <input id="login-username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} className="input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
         </div>
         <div className="field">
-          <label>Password</label>
-          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <label htmlFor="login-password">Password</label>
+          <input id="login-password" name="password" autoComplete="current-password" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
         <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 40 }}>
           {loading ? 'Signing in…' : 'Sign in'}

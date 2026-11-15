@@ -195,7 +195,7 @@ figure { margin: 0; }
 }
 /* utility for inline-styled white cards */
 .navy-top { border-top: 3px solid var(--color-box-top) !important; }
-.card-kicker { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent); }
+.card-kicker { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent); }
 .card-title {
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
   font-size: 17px; line-height: 1.2;
@@ -550,7 +550,7 @@ figure { margin: 0; }
      card width ~170px keeps photos small while text stays legible */
   .record-cards { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
   .record-cards > * { padding: 10px !important; }
-  .record-cards .card-kicker { font-size: 8.5px; letter-spacing: 0.06em; }
+  .record-cards .card-kicker { font-size: 10px; letter-spacing: 0.04em; }
   .record-cards .rec-time { font-size: 18px !important; }
   .record-cards .rec-event { font-size: 11px !important; }
   .record-cards .rec-name { font-size: 11.5px !important; }
@@ -901,4 +901,37 @@ tr:hover .medal-expand-btn { background: var(--color-accent-100); }
   .medal-drop-row { grid-template-columns: minmax(0, 1fr) auto; }
   .medal-drop-chips { grid-column: 1 / -1; }
   .medal-drop-medal { grid-template-columns: 84px 1fr auto; gap: 8px; }
+}
+
+/* ═══ Laws of UX pass (lawsofux.com) ═══ */
+/* Fitts's Law: name links inside dense tables and tickers get a taller hit
+   area. The extra height lives on a pseudo-element, so rows keep their size. */
+.table td a, .medals-table td a, .asw-ticker-track a { position: relative; }
+.table td a::after, .medals-table td a::after, .asw-ticker-track a::after { content: ''; position: absolute; inset: -7px 0; }
+/* Jakob's Law / Working Memory: the nav shows which section you are in */
+.asw-navcol a.active { color: var(--color-accent); font-weight: 700; }
+.asw-footlink { display: block; color: #ffffff; text-decoration: none; font-size: 12px; line-height: 2; }
+.asw-footlink:hover { text-decoration: underline; }
+/* Doherty Threshold: anything still loading shows motion straight away */
+.loading::before {
+  content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 10px; vertical-align: -1px;
+  border: 2px solid var(--color-neutral-300); border-top-color: var(--color-accent); border-radius: 50%;
+  animation: asw-spin 0.7s linear infinite;
+}
+@keyframes asw-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .loading::before { animation: none; } }
+/* Paradox of the Active User: empty states say what to do next */
+.empty-hint { display: block; margin-top: 8px; font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--color-neutral-700); }
+.empty-action { margin-top: 14px; letter-spacing: 0; text-transform: none; }
+/* Law of Similarity: rows that open something look and behave like links */
+.row-link { cursor: pointer; }
+.row-link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+/* visually hidden label text for screen readers */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 900px) {
+  /* Fitts's Law on touch: footer and drawer links are thumb-sized */
+  .asw-footlink { display: flex; align-items: center; min-height: 36px; line-height: 1.3; font-size: 13px; }
+  .asw-navcol a { display: flex; align-items: center; min-height: 38px; line-height: 1.3 !important; }
+  /* profile pages are scaled to 0.75 on phone, so their controls start larger */
+  .m-zoom .seg-opt { min-height: 48px; }
 }

@@ -40,11 +40,11 @@ function Triangle({ x, y, color }) {
 }
 
 function SubTabs({ options, value, onChange }) {
-  const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }
+  const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', minHeight: 36 }
   return (
     <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', margin: '18px 0 24px' }}>
       {options.map(([val, label]) => (
-        <button key={val} type="button" onClick={() => onChange(val)}
+        <button key={val} type="button" onClick={() => onChange(val)} aria-pressed={value === val}
           style={value === val ? { ...base, background: 'var(--color-accent-800)', color: '#fff' } : { ...base, background: '#fff', color: 'var(--color-accent-800)' }}>
           {label}
         </button>
@@ -73,7 +73,7 @@ function OverviewHeatmap({ data, onPickEvent }) {
   if (!data) return <Loading label="Loading progression" />
   const years = data.years || []
   const events = data.events || []
-  if (!years.length || !events.length) return <Empty label="No results for this selection" />
+  if (!years.length || !events.length) return <Empty label="No results for this selection" hint="Try the other gender or pool length." />
   return (
     <div>
       <div style={{ display: 'flex', gap: 18, justifyContent: 'center', flexWrap: 'wrap', fontSize: 11.5, color: '#58687c', marginBottom: 14 }}>
@@ -101,9 +101,14 @@ function OverviewHeatmap({ data, onPickEvent }) {
               const trend = present.length > 1 ? pctChange(first.time_cs, last.time_cs) : null
               let prevCs = null
               return (
-                <tr key={ev.event_id} onClick={() => onPickEvent(ev.event_id)} style={{ cursor: 'pointer' }}
+                <tr key={ev.event_id} className="row-link" onClick={() => onPickEvent(ev.event_id)}
                   title={`Open ${ev.name} in the By Event view`}>
-                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{ev.name}</td>
+                  {/* Jakob's Law: the row stays clickable; the event name is a real button for keyboard users */}
+                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); onPickEvent(ev.event_id) }}
+                      aria-label={`${ev.name}: open the full chart`}
+                      style={{ background: 'none', border: 0, padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{ev.name}</button>
+                  </td>
                   {years.map((y) => {
                     const c = cells[y]
                     const pct = c ? pctChange(prevCs, c.time_cs) : null
@@ -137,7 +142,7 @@ function OverviewHeatmap({ data, onPickEvent }) {
 function SeasonChart({ seasons, benchmarks }) {
   const [tooltip, setTooltip] = useState(null)
   const mobile = useIsMobile()
-  if (!seasons.length) return <Empty label="No seasons for this event" />
+  if (!seasons.length) return <Empty label="No seasons for this event" hint="Pick another event from the list above." />
 
   const years = seasons.map((s) => s.year)
   const benchLines = []
@@ -179,7 +184,8 @@ function SeasonChart({ seasons, benchmarks }) {
   const legendY = mobile ? 26 : 36
   return (
     <div style={{ position: 'relative' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }} fontFamily={FONT} onClick={() => setTooltip(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }} fontFamily={FONT} onClick={() => setTooltip(null)}
+        role="img" aria-label={`National best by season: ${seasons.map((s) => `${s.year} ${s.best}`).join(', ')}. The same figures are in the table below.`}>
         <rect width={W} height={H} fill="#ffffff" />
 
         {/* Legend */}
@@ -307,7 +313,7 @@ function SeasonChart({ seasons, benchmarks }) {
 function EventView({ data }) {
   if (!data) return <Loading label="Loading event progression" />
   const seasons = data.seasons || []
-  if (!seasons.length) return <Empty label="No results for this event yet" />
+  if (!seasons.length) return <Empty label="No results for this event yet" hint="Pick another event, gender or pool length above." />
   const benchmarks = data.benchmarks || {}
   const latest = seasons[seasons.length - 1]
 
@@ -377,7 +383,7 @@ function EventView({ data }) {
 function RecordsView({ data }) {
   if (!data) return <Loading label="Loading record history" />
   const timeline = data.timeline || []
-  if (!timeline.length) return <Empty label="No record history for this event" />
+  if (!timeline.length) return <Empty label="No record history for this event" hint="Pick another event, gender or pool length above." />
 
   const mobileStep = timeline.length > 1
   return (
@@ -462,7 +468,8 @@ function StepChart({ timeline }) {
 
   return (
     <div className="table-scroll">
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }} fontFamily={FONT}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }} fontFamily={FONT}
+        role="img" aria-label={`Record history: ${timeline.map((t) => `${t.time} by ${t.swimmer}`).join(', ')}. The same figures are in the table below.`}>
         <rect width={W} height={H} fill="#fff" />
         {yTicks.map((cs, i) => (
           <g key={i}>
@@ -630,7 +637,7 @@ export default function FederationProgressionTab({ countryId }) {
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
         {sub === 'intl' && (
-          <select className="select" style={{ width: 'auto', minWidth: 160 }} value={cls} onChange={(e) => setCls(e.target.value)}>
+          <select className="select" aria-label="Meet level" style={{ width: 'auto', minWidth: 160 }} value={cls} onChange={(e) => setCls(e.target.value)}>
             {MEET_LEVELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         )}
@@ -638,7 +645,7 @@ export default function FederationProgressionTab({ countryId }) {
           <Seg options={[{ value: 'heatmap', label: 'Heatmap' }, { value: 'event', label: 'By Event' }]} value={intlMode} onChange={setIntlMode} />
         )}
         {sub === 'intl' && intlMode === 'event' && (
-          <select className="select" style={{ width: 'auto', minWidth: 190 }} value={eventId || ''} onChange={(e) => setEventId(e.target.value)}>
+          <select className="select" aria-label="Event" style={{ width: 'auto', minWidth: 190 }} value={eventId || ''} onChange={(e) => setEventId(e.target.value)}>
             {intlGrouped.map(([stroke, evs]) => (
               <optgroup key={stroke} label={stroke}>
                 {evs.map((ev) => <option key={ev.event_id} value={ev.event_id}>{ev.name}</option>)}
@@ -647,7 +654,7 @@ export default function FederationProgressionTab({ countryId }) {
           </select>
         )}
         {(sub === 'event' || sub === 'records') && (
-          <select className="select" style={{ width: 'auto', minWidth: 190 }} value={eventId || ''} onChange={(e) => setEventId(e.target.value)}>
+          <select className="select" aria-label="Event" style={{ width: 'auto', minWidth: 190 }} value={eventId || ''} onChange={(e) => setEventId(e.target.value)}>
             {grouped.map(([stroke, evs]) => (
               <optgroup key={stroke} label={stroke}>
                 {evs.map((ev) => <option key={ev.event_id} value={ev.event_id}>{ev.name}</option>)}
@@ -662,14 +669,14 @@ export default function FederationProgressionTab({ countryId }) {
       {sub === 'overview' && (
         <OverviewHeatmap data={overview} onPickEvent={(id) => { setEventId(String(id)); setSub('event') }} />
       )}
-      {sub === 'event' && (overview && !events.length ? <Empty label="No results for this selection" /> : <EventView data={eventData} />)}
-      {sub === 'records' && (overview && !events.length ? <Empty label="No results for this selection" /> : <RecordsView data={recordsData} />)}
+      {sub === 'event' && (overview && !events.length ? <Empty label="No results for this selection" hint="Try the other gender or pool length." /> : <EventView data={eventData} />)}
+      {sub === 'records' && (overview && !events.length ? <Empty label="No results for this selection" hint="Try the other gender or pool length." /> : <RecordsView data={recordsData} />)}
       {sub === 'intl' && (intlMode === 'heatmap'
         ? (intlOverview && !intlEvents.length
-            ? <Empty label="No international results for this selection" />
+            ? <Empty label="No international results for this selection" hint="Try another meet level, gender or pool length." />
             : <OverviewHeatmap data={intlOverview} onPickEvent={(id) => { setEventId(String(id)); setIntlMode('event') }} />)
         : (intlOverview && !intlEvents.length
-            ? <Empty label="No international results for this selection" />
+            ? <Empty label="No international results for this selection" hint="Try another meet level, gender or pool length." />
             : <EventView data={intlEventData} />))}
     </div>
   )

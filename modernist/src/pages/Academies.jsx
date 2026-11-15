@@ -41,7 +41,7 @@ function ContactLink({ href, icon: Icon, label }) {
       href={href} target="_blank" rel="noreferrer"
       onClick={(e) => e.stopPropagation()}
       title={label} aria-label={label}
-      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, border: '1px solid var(--color-divider)', color: 'var(--color-text)' }}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, border: '1px solid var(--color-divider)', color: 'var(--color-text)' }}
     >
       <Icon size={13} />
     </a>
@@ -79,13 +79,16 @@ function AcademyModal({ academy, countries, onClose, onSaved }) {
     setBusy(true); setErr('')
     try {
       const fd = new FormData()
-      for (const [k, v] of Object.entries(form)) fd.append(k, k === 'name' ? v.trim() : v)
+      for (const [k, v] of Object.entries(form)) fd.append(k, typeof v === 'string' ? v.trim() : v) // Postel's Law: stray spaces never reach the server
       if (logo) fd.append('logo', logo)
       if (academy) await updateAcademy(academy.id, fd)
       else await createAcademy(fd)
-      onSaved()
+      onSaved(academy ? 'Academy saved' : 'Academy added')
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      const d = e.response?.data
+      setErr(d && typeof d === 'object'
+        ? Object.entries(d).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${[].concat(v).join(' ')}`).join(' · ')
+        : 'Could not save. Check your connection and try again.')
       setBusy(false)
     }
   }
@@ -101,19 +104,24 @@ function AcademyModal({ academy, countries, onClose, onSaved }) {
           </select>
         </Fld>
         <Fld label="City"><input className="input" style={{ width: '100%' }} value={form.city} onChange={set('city')} /></Fld>
-        <Fld label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Fld>
-        <Fld label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Fld>
-        <Fld label="Website"><input className="input" style={{ width: '100%' }} value={form.website} onChange={set('website')} /></Fld>
+        <Fld label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Fld>
+        <Fld label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Fld>
+        <Fld label="Website"><input className="input" style={{ width: '100%' }} inputMode="url" autoComplete="url" value={form.website} onChange={set('website')} /></Fld>
         <Fld label="Instagram"><input className="input" style={{ width: '100%' }} placeholder="@handle" value={form.instagram} onChange={set('instagram')} /></Fld>
       </div>
       <Fld label="Address"><input className="input" style={{ width: '100%' }} value={form.address} onChange={set('address')} /></Fld>
       <Fld label="Description"><textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }} value={form.description} onChange={set('description')} /></Fld>
       <Fld label="Logo (cropped square)"><CropUpload aspect={1} lockAspect onChange={setLogo} />{logo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Logo ready ✓</div>}</Fld>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
         {academy ? (
           <button className="btn btn-secondary" disabled={busy} style={{ color: 'var(--asw-slow)' }}
-            onClick={async () => { if (window.confirm(`Delete ${academy.name}?`)) { await deleteAcademy(academy.id); onSaved() } }}>Delete</button>
+            onClick={async () => {
+              if (!window.confirm(`Delete ${academy.name}?`)) return
+              setBusy(true); setErr('')
+              try { await deleteAcademy(academy.id); onSaved('Academy deleted') }
+              catch { setErr('Could not delete. Try again.'); setBusy(false) }
+            }}>Delete</button>
         ) : <span />}
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
@@ -133,6 +141,8 @@ export default function Academies() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null) // { academy } | null
   const [reloadKey, setReloadKey] = useState(0)
+  const [failed, setFailed] = useState(false)
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -141,6 +151,7 @@ export default function Academies() {
     Promise.allSettled([getAcademies({ page_size: 300 }), getTeams({ is_academy: 'true' })])
       .then(([acad, teams]) => {
         if (!alive) return
+        setFailed(acad.status !== 'fulfilled' && teams.status !== 'fulfilled')
         const plain = acad.status === 'fulfilled' ? list(acad.value.data) : []
         const full = (teams.status === 'fulfilled' ? list(teams.value.data) : [])
           .filter((t) => t.is_academy)
@@ -180,6 +191,8 @@ export default function Academies() {
       <div className="rule-b records-filters" style={{ padding: '12px 32px', display: 'flex', gap: 10, flexWrap: 'nowrap', alignItems: 'center' }}>
         <input
           className="input"
+          type="search"
+          aria-label="Search academies"
           style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
           placeholder="Search academies…"
           value={search}
@@ -187,6 +200,7 @@ export default function Academies() {
         />
         <select
           className="select"
+          aria-label="Filter by country"
           style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 220 }}
           value={country}
           onChange={(e) => setCountry(e.target.value)}
@@ -199,10 +213,16 @@ export default function Academies() {
         {isAdmin && (
           <button className="btn btn-primary" style={{ flex: 'none', fontSize: 12 }} onClick={() => setModal({ academy: null })}>+ Add academy</button>
         )}
+        {/* Peak-End Rule: confirm the save once the dialog has closed */}
+        {notice && <span role="status" style={{ flex: 'none', fontSize: 12, color: 'var(--asw-fast)' }}>{notice} ✓</span>}
       </div>
 
       {filtered.length === 0 ? (
-        <Empty label="No academies found" />
+        failed ? (
+          <Empty label="Could not load academies" hint="Check your connection and reload the page." />
+        ) : (
+          <Empty label="No academies found" hint={(search.trim() || country) ? 'Try a different name or choose All countries.' : undefined} />
+        )
       ) : (
         <div className="pad">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
@@ -260,7 +280,7 @@ export default function Academies() {
 
       {modal && (
         <AcademyModal academy={modal.academy} countries={countries} onClose={() => setModal(null)}
-          onSaved={() => { setModal(null); setReloadKey((k) => k + 1) }} />
+          onSaved={(msg) => { setModal(null); setReloadKey((k) => k + 1); setNotice(msg || ''); setTimeout(() => setNotice(''), 4000) }} />
       )}
     </div>
   )

@@ -6,10 +6,12 @@ const cellInput = {
   color: 'var(--color-text)',
 }
 
-function CellInput({ value, onChange, width, mono }) {
+function CellInput({ value, onChange, width, mono, label }) {
   return (
     <input
       type="text"
+      aria-label={label}
+      autoComplete="off"
       value={value}
       onChange={onChange}
       style={{
@@ -105,15 +107,22 @@ export default function EditableResultsTable({ preview, onPreviewChange }) {
           <div key={eventIdx}>
             {/* Event header */}
             <div
-              className="hair-b"
+              className="hair-b row-link"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '8px 16px', background: 'var(--color-surface)', cursor: 'pointer', gap: 12,
               }}
+              role="button"
+              tabIndex={0}
+              aria-expanded={!!expandedEvents[eventIdx]}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return // keys on "Remove event" stay with that button
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleEvent(eventIdx) }
+              }}
               onClick={() => toggleEvent(eventIdx)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span className="micro" style={{ width: 12 }}>{expandedEvents[eventIdx] ? '▼' : '▶'}</span>
+                <span className="micro" aria-hidden="true" style={{ width: 12 }}>{expandedEvents[eventIdx] ? '▼' : '▶'}</span>
                 <span style={{ fontWeight: 700, fontSize: 13 }}>{ev.event_name}</span>
                 <span className="micro">
                   {ev.gender === 'M' ? "Men's" : ev.gender === 'F' ? "Women's" : 'Mixed'}
@@ -125,8 +134,13 @@ export default function EditableResultsTable({ preview, onPreviewChange }) {
                 <span className="micro asw-num">{ev.results.length} results</span>
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); deleteEvent(eventIdx) }}
-                  style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--asw-slow)', fontFamily: 'inherit' }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    // removing a whole event drops all its rows, so ask first
+                    if (!window.confirm(`Remove "${ev.event_name}" and its ${ev.results.length} results from this import?`)) return
+                    deleteEvent(eventIdx)
+                  }}
+                  style={{ border: 0, background: 'transparent', cursor: 'pointer', minHeight: 32, padding: '0 6px', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--asw-slow)', fontFamily: 'inherit' }}
                 >
                   Remove event
                 </button>
@@ -147,7 +161,7 @@ export default function EditableResultsTable({ preview, onPreviewChange }) {
                       <th style={{ minWidth: 120 }}>Club</th>
                       <th style={{ width: 100 }}>Time</th>
                       <th style={{ width: 60 }}>FINA</th>
-                      <th style={{ width: 32 }}></th>
+                      <th style={{ width: 40 }}><span className="sr-only">Delete</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -155,19 +169,21 @@ export default function EditableResultsTable({ preview, onPreviewChange }) {
                       <React.Fragment key={ri}>
                         <tr>
                           <td className="asw-num text-muted" style={{ fontSize: 12 }}>{r.rank || ri + 1}</td>
-                          <td><CellInput value={r.swimmer_name || ''} onChange={(e) => updateResult(eventIdx, ri, 'swimmer_name', e.target.value)} /></td>
-                          <td><CellInput value={r.birth_year || ''} onChange={(e) => updateResult(eventIdx, ri, 'birth_year', e.target.value)} /></td>
-                          <td><CellInput value={r.age || ''} onChange={(e) => updateResult(eventIdx, ri, 'age', e.target.value)} /></td>
-                          <td><CellInput value={r.nationality_code || ''} onChange={(e) => updateResult(eventIdx, ri, 'nationality_code', e.target.value)} /></td>
-                          <td><CellInput value={r.club || ''} onChange={(e) => updateResult(eventIdx, ri, 'club', e.target.value)} /></td>
-                          <td><CellInput mono value={r.time_text || ''} onChange={(e) => updateResult(eventIdx, ri, 'time_text', e.target.value)} /></td>
-                          <td><CellInput value={r.fina_points || ''} onChange={(e) => updateResult(eventIdx, ri, 'fina_points', e.target.value)} /></td>
+                          <td><CellInput label="Name" value={r.swimmer_name || ''} onChange={(e) => updateResult(eventIdx, ri, 'swimmer_name', e.target.value)} /></td>
+                          <td><CellInput label="Birth year" value={r.birth_year || ''} onChange={(e) => updateResult(eventIdx, ri, 'birth_year', e.target.value)} /></td>
+                          <td><CellInput label="Age" value={r.age || ''} onChange={(e) => updateResult(eventIdx, ri, 'age', e.target.value)} /></td>
+                          <td><CellInput label="Nationality code" value={r.nationality_code || ''} onChange={(e) => updateResult(eventIdx, ri, 'nationality_code', e.target.value)} /></td>
+                          <td><CellInput label="Club" value={r.club || ''} onChange={(e) => updateResult(eventIdx, ri, 'club', e.target.value)} /></td>
+                          <td><CellInput mono label="Time" value={r.time_text || ''} onChange={(e) => updateResult(eventIdx, ri, 'time_text', e.target.value)} /></td>
+                          <td><CellInput label="FINA points" value={r.fina_points || ''} onChange={(e) => updateResult(eventIdx, ri, 'fina_points', e.target.value)} /></td>
                           <td>
                             <button
                               type="button"
                               onClick={() => deleteResult(eventIdx, ri)}
                               title="Delete row"
-                              style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'var(--asw-slow)', fontSize: 15, lineHeight: 1, padding: 2 }}
+                              aria-label={`Delete row ${ri + 1}${r.swimmer_name ? `: ${r.swimmer_name}` : ''}`}
+                              // Fitts's Law: wider target; height kept so the dense row does not grow
+                              style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'var(--asw-slow)', fontSize: 15, lineHeight: 1, padding: '4px 2px', minWidth: 32 }}
                             >
                               ×
                             </button>

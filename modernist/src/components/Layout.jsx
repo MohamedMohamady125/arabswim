@@ -100,15 +100,17 @@ function SearchBox({ compact = false, onDone }) {
     onDone?.()
   }
   return (
-    <form onSubmit={submit} style={{ display: 'flex', alignItems: 'center', gap: 8, width: compact ? '100%' : 320 }}>
+    <form role="search" onSubmit={submit} style={{ display: 'flex', alignItems: 'center', gap: 8, width: compact ? '100%' : 320 }}>
       <input
         className="input"
-        style={{ height: 34, minHeight: 34 }}
+        type="search"
+        aria-label="Search swimmers, meets, clubs"
+        style={{ height: 36, minHeight: 36 }}
         placeholder="Search swimmers, meets, clubs"
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
-      <button className="btn btn-primary" style={{ height: 34 }} type="submit">
+      <button className="btn btn-primary" style={{ height: 36 }} type="submit" aria-label="Search">
         {compact ? <Search size={15} /> : 'Search'}
       </button>
     </form>
@@ -138,7 +140,7 @@ function Header() {
           )}
           <button
             className="btn btn-secondary"
-            style={{ height: 28, marginLeft: 'auto', fontSize: 12 }}
+            style={{ height: 32, minHeight: 32, marginLeft: 'auto', fontSize: 12 }}
             onClick={() => { logout(); navigate('/') }}
           >
             Sign out
@@ -162,7 +164,7 @@ function Header() {
         <button
           className="btn btn-icon show-mobile-flex"
           style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.4)', color: '#fff' }}
-          onClick={() => setOpen(!open)} aria-label="Menu"
+          onClick={() => setOpen(!open)} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open}
         >
           {open ? <X size={18} /> : <Menu size={18} />}
         </button>
@@ -191,7 +193,7 @@ function Header() {
               <div key={group.label} className="asw-navcol">
                 <div className="kicker" style={{ marginBottom: 6 }}>{group.label}</div>
                 {group.links.map(([label, to]) => (
-                  <NavLink key={to} to={to} style={{ fontSize: 14, lineHeight: 2.2 }}>{label}</NavLink>
+                  <NavLink key={to} to={to} style={{ fontSize: 14 }}>{label}</NavLink>
                 ))}
               </div>
             ))}
@@ -242,7 +244,7 @@ function Footer() {
           <div key={group.label}>
             <div className="kicker" style={{ color: 'var(--color-accent-2-400)', marginBottom: 8 }}>{group.label}</div>
             {group.links.map(([label, to]) => (
-              <Link key={to} to={to} style={{ display: 'block', color: '#ffffff', textDecoration: 'none', fontSize: 12, lineHeight: 2 }}>{label}</Link>
+              <Link key={to} to={to} className="asw-footlink">{label}</Link>
             ))}
           </div>
         ))}
@@ -267,7 +269,7 @@ export default function Layout() {
   return (
     <div className="shell">
       <Header />
-      <main className="shell-main">
+      <main id="main" className="shell-main">
         <Outlet />
       </main>
       <Partners />

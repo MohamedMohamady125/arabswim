@@ -129,11 +129,11 @@ const TABS = [
 ]
 
 export function SubTabs({ options, value, onChange }) {
-  const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }
+  const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', minHeight: 36 }
   return (
     <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', margin: '18px 0 24px' }}>
       {options.map(([val, label]) => (
-        <button key={val} type="button" onClick={() => onChange(val)}
+        <button key={val} type="button" onClick={() => onChange(val)} aria-pressed={value === val}
           style={value === val ? { ...base, background: 'var(--color-accent-800)', color: '#fff' } : { ...base, background: '#fff', color: 'var(--color-accent-800)' }}>
           {label}
         </button>
@@ -169,7 +169,7 @@ function NewsTab({ countryId, countryName }) {
   return (
     <div className="pad-lg">
       <TabHeading title={`${countryName} News`} />
-      {articles.length === 0 ? <Empty label="No news articles yet" /> : (
+      {articles.length === 0 ? <Empty label="No news articles yet" hint="News about this federation will appear here once published." /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {articles.map((a) => (
             <Link key={a.id} className="fed-news-card" to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
@@ -261,7 +261,7 @@ function RankingTab({ countryId }) {
     <div className="pad-lg">
       <TabHeading title="National Ranking" />
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
-        <select className="select" style={{ width: 'auto', minWidth: 180 }} value={event} onChange={(e) => setEvent(e.target.value)}>
+        <select className="select" aria-label="Event" style={{ width: 'auto', minWidth: 180 }} value={event} onChange={(e) => setEvent(e.target.value)}>
           {grouped.map(([stroke, evs]) => (
             <optgroup key={stroke} label={stroke}>
               {evs.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
@@ -270,12 +270,12 @@ function RankingTab({ countryId }) {
         </select>
         <Seg options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]} value={gender} onChange={setGender} />
         <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
-        <select className="select" style={{ width: 'auto' }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+        <select className="select" aria-label="Age group" style={{ width: 'auto' }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
           <option value="OPEN">Open</option>
           {['U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17'].map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
-      {loading ? <Loading label="Loading ranking" /> : rows.length === 0 ? <Empty label="No results for this event" /> : (
+      {loading ? <Loading label="Loading ranking" /> : rows.length === 0 ? <Empty label="No results for this event" hint="Try another event, gender, pool length or age group." /> : (
         <>
         {/* phone: 8 columns can't share 390px — drop FINA/Championship/Location
             there (the essentials stay) instead of wrapping every cell to 3 lines */}
@@ -323,7 +323,7 @@ function AcademiesTab({ countryId }) {
   return (
     <div className="pad-lg">
       <SectHead title={`Academies · ${academies.length}`} />
-      {academies.length === 0 ? <Empty label="No academies registered" /> : (
+      {academies.length === 0 ? <Empty label="No academies registered" hint="Academies from this country will be listed here." /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
           {academies.map((a) => (
             <Link key={a.id} to={`/academies/${a.id}`} style={{
@@ -384,7 +384,7 @@ function ClubsTab({ countryId }) {
   return (
     <div className="pad-lg">
       <SectHead title={`Clubs · ${clubs.length}`} />
-      {clubs.length === 0 ? <Empty label="No clubs registered" /> : (
+      {clubs.length === 0 ? <Empty label="No clubs registered" hint="Clubs from this country will be listed here." /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
           {clubs.map((t) => (
             <Link key={t.id} to={`/teams/${t.id}`} style={{
@@ -487,7 +487,7 @@ function QualifyingTab({ countryId, qualSub, setQualSub }) {
       <SubTabs options={[['standards', 'Standards'], ['qualified', 'Qualified']]} value={qualSub} onChange={setQualSub} />
       {standards.length === 0 ? <Empty label="No qualifying standards published yet" /> : (<>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
-          <select className="select" style={{ width: 'auto', minWidth: 220 }} value={standardId} onChange={(e) => setStandardId(e.target.value)}>
+          <select className="select" aria-label="Qualifying standard" style={{ width: 'auto', minWidth: 220 }} value={standardId} onChange={(e) => setStandardId(e.target.value)}>
             {standards.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.year})</option>)}
           </select>
           {qualSub === 'standards' && (<>
@@ -496,7 +496,7 @@ function QualifyingTab({ countryId, qualSub, setQualSub }) {
           </>)}
         </div>
         {!detail ? <Loading label="Loading standard" /> : qualSub === 'standards' ? (
-          standardRows.length === 0 ? <Empty label="No cuts for this selection" /> : (
+          standardRows.length === 0 ? <Empty label="No cuts for this selection" hint="Try the other gender or pool length." /> : (
             <div className="table-scroll" style={{ maxWidth: 620, margin: '0 auto' }}><table className="table"><thead><tr><th>Event</th><th className="time">A Cut</th><th className="time">B Cut</th></tr></thead><tbody>
               {standardRows.map((r) => (
                 <tr key={r.event}><td style={{ fontWeight: 600 }}>{r.event}</td><td className="time asw-time" style={{ fontWeight: 800, color: 'var(--color-accent-800)' }}>{r.A || '—'}</td><td className="time asw-time">{r.B || '—'}</td></tr>
@@ -547,8 +547,8 @@ function PredictionTab({ countryName }) {
   const card = (p, hosted) => (
     <Link key={p.id} to="/predictions" style={{ background: '#fff', border: hosted ? '2px solid var(--color-accent-800)' : '1px solid #e2e8f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, padding: '16px 18px', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 6, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: CLASS_COLORS[p.classification] || 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>{p.classification || 'Meet'}</span>
-        {hosted && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>Hosted here</span>}
+        <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: CLASS_COLORS[p.classification] || 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>{p.classification || 'Meet'}</span>
+        {hosted && <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>Hosted here</span>}
         {p.stage && <span className="micro" style={{ marginLeft: 'auto' }}>{p.stage === 'OFFICIAL' ? 'Official entries' : 'Early forecast'}</span>}
       </div>
       <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>{p.name}</div>
@@ -563,7 +563,7 @@ function PredictionTab({ countryName }) {
   return (
     <div className="pad-lg">
       <TabHeading title="Medal Predictions" />
-      {preds.length === 0 ? <Empty label="No upcoming championships with predictions" /> : (
+      {preds.length === 0 ? <Empty label="No upcoming championships with predictions" hint="Predictions open once the next championship is announced." /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
           {mine.map((p) => card(p, true))}
           {others.map((p) => card(p, false))}
@@ -681,7 +681,7 @@ function ArchivesTab({ hosted, participated, countryName }) {
           </div>
           {meets.map((c) => (
             <Link key={`${c.kind}-${c.id}`} to={`/meets/${c.id}`} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', color: 'inherit', textDecoration: 'none', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, background: c.kind === 'Hosted' ? 'var(--color-accent-800)' : '#eef3f9', color: c.kind === 'Hosted' ? '#fff' : 'var(--color-accent-800)', flex: 'none' }}>{c.kind}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, background: c.kind === 'Hosted' ? 'var(--color-accent-800)' : '#eef3f9', color: c.kind === 'Hosted' ? '#fff' : 'var(--color-accent-800)', flex: 'none' }}>{c.kind}</span>
               <span style={{ flex: 1, minWidth: 200 }}>
                 <span style={{ fontWeight: 600, display: 'block' }}>{c.name}</span>
                 <span className="text-muted" style={{ fontSize: 12 }}>{formatDate(c.date)} · {c.pool}{c.location ? ` · ${c.location}` : ''}{c.classification ? ` · ${c.classification}` : ''}</span>
@@ -715,7 +715,8 @@ function ProgressionChart({ lines }) {
   const y = (cs) => pT + ((cs - minCs) / range) * (H - pT - pB)
   return (
     <div className="table-scroll">
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: 600, height: 'auto' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: 600, height: 'auto' }}
+        role="img" aria-label={`Best time by year, ${years[0]} to ${years[years.length - 1]}: ${lines.map((l) => l.event).join(', ')}`}>
         {csValues.length > 1 && Array.from({ length: 4 }, (_, i) => {
           const cs = minCs + (range * i) / 3
           const yy = y(cs)
@@ -723,7 +724,7 @@ function ProgressionChart({ lines }) {
           return <g key={i}><line x1={pL} x2={W - pR} y1={yy} y2={yy} stroke="#e5e9ed" /><text x={pL - 8} y={yy + 4} textAnchor="end" fill="#58687c" fontSize="11" style={{ fontVariantNumeric: 'tabular-nums' }}>{m ? `${m}:${String(s).padStart(2, '0')}` : `${s}.${String(c).padStart(2, '0')}`}</text></g>
         })}
         {years.filter((_, i) => i % Math.ceil(years.length / 8) === 0 || i === years.length - 1).map((yr) => (
-          <text key={yr} x={x(yr)} y={H - 4} textAnchor="middle" fill="#58687c" fontSize="10">{yr}</text>
+          <text key={yr} x={x(yr)} y={H - 4} textAnchor="middle" fill="#58687c" fontSize="11">{yr}</text>
         ))}
         {lines.map((line, li) => {
           const pts = (line.points || []).filter((p) => p.cs)
@@ -770,8 +771,8 @@ const S = {
   bg: '#ffffff',
   card: { background: '#fff', borderRadius: 6, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,.06)', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', position: 'relative' },
   title: { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.2 },
-  sub: { fontSize: 10.5, color: '#7a8ca0', marginBottom: 14, marginTop: 3, lineHeight: 1.3 },
-  viewAll: { fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer', textDecoration: 'none', textTransform: 'none', letterSpacing: '0.03em' },
+  sub: { fontSize: 11, color: '#7a8ca0', marginBottom: 14, marginTop: 3, lineHeight: 1.3 },
+  viewAll: { fontSize: 11, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', textDecoration: 'none', textTransform: 'none', letterSpacing: '0.03em' },
   rankBadge: (i) => ({
     width: 26, height: 26, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     fontSize: 12, fontWeight: 800, color: '#fff',
@@ -783,7 +784,7 @@ const S = {
     fontSize: 12, fontWeight: 800, color: '#fff', background: color, flexShrink: 0,
     boxShadow: '0 1px 3px rgba(0,0,0,.15)',
   }),
-  th: { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', padding: '8px 0', borderBottom: '2px solid #e2e8f0' },
+  th: { fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', padding: '8px 0', borderBottom: '2px solid #e2e8f0' },
   row: (i) => ({ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid #f0f3f7', fontSize: 13, background: i % 2 === 1 ? '#fafbfd' : 'transparent' }),
   photo: { width: 52, height: 52, borderRadius: '50%', background: '#e8ecf1', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#8a9bb5', border: '2px solid #d0d8e4', overflow: 'hidden' },
   photoSmall: { width: 28, height: 28, borderRadius: '50%', background: '#e8ecf1', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#8a9bb5', border: '1.5px solid #d0d8e4', overflow: 'hidden' },
@@ -886,7 +887,7 @@ function RecordsTab({ records, country }) {
   })
 
   const selStyle = { padding: '10px 20px', border: '1px solid #c0cad8', borderRadius: 6, fontSize: 14, fontWeight: 600, color: 'var(--color-accent-800)', background: '#fff', cursor: 'pointer', minWidth: 180, appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%230b2948\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }
-  const pillBase = { padding: '8px 18px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }
+  const pillBase = { padding: '8px 18px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', minHeight: 36 }
   const pillActive = { ...pillBase, background: 'var(--color-accent-800)', color: '#fff' }
   const pillInactive = { ...pillBase, background: '#fff', color: 'var(--color-accent-800)' }
 
@@ -906,7 +907,7 @@ function RecordsTab({ records, country }) {
       {typesPresent.length > 1 && (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
           {typesPresent.map((t) => (
-            <button key={t} type="button" onClick={() => setRecType(t)}
+            <button key={t} type="button" onClick={() => setRecType(t)} aria-pressed={activeType === t}
               style={activeType === t
                 ? { ...pillBase, border: `2px solid ${REC_TYPE_COLORS[t]}`, background: REC_TYPE_COLORS[t], color: '#fff' }
                 : { ...pillBase, border: `2px solid ${REC_TYPE_COLORS[t]}`, background: '#fff', color: REC_TYPE_COLORS[t] }}>
@@ -919,10 +920,10 @@ function RecordsTab({ records, country }) {
       {/* Filters: Men's/Women's pills (Men's default) + Pool dropdown */}
       <div style={{ display: 'flex', gap: 16, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" onClick={() => setGender('M')} style={gender === 'M' ? pillActive : pillInactive}>♂ Men's</button>
-          <button type="button" onClick={() => setGender('F')} style={gender === 'F' ? pillActive : pillInactive}>♀ Women's</button>
+          <button type="button" onClick={() => setGender('M')} aria-pressed={gender === 'M'} style={gender === 'M' ? pillActive : pillInactive}>♂ Men's</button>
+          <button type="button" onClick={() => setGender('F')} aria-pressed={gender === 'F'} style={gender === 'F' ? pillActive : pillInactive}>♀ Women's</button>
         </div>
-        <select style={selStyle} value={pool} onChange={(e) => setPool(e.target.value)}>
+        <select aria-label="Pool length" style={selStyle} value={pool} onChange={(e) => setPool(e.target.value)}>
           <option value="">🏊 Pool</option>
           <option value="LCM">LCM (50m)</option>
           <option value="SCM">SCM (25m)</option>
@@ -932,7 +933,7 @@ function RecordsTab({ records, country }) {
       {/* Age category pills */}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
         {AGE_CATS.map((cat) => (
-          <button key={cat} type="button" onClick={() => setAgeCat(cat)}
+          <button key={cat} type="button" onClick={() => setAgeCat(cat)} aria-pressed={ageCat === cat}
             style={ageCat === cat ? pillActive : pillInactive}>
             {cat}
           </button>
@@ -940,7 +941,7 @@ function RecordsTab({ records, country }) {
       </div>
 
       {/* Record cards grid */}
-      {filtered.length === 0 ? <Empty label="No records for this selection" /> : (
+      {filtered.length === 0 ? <Empty label="No records for this selection" hint="Try another gender, pool length or age category." /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 18 }}>
           {filtered.map((r, i) => (
             <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', borderTop: '3px solid var(--color-box-top)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column' }}>
@@ -1054,7 +1055,7 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
   const medalBadge = (type) => {
     const map = { GOLD: ['G', 'var(--asw-gold)'], SILVER: ['S', 'var(--asw-silver)'], BRONZE: ['B', '#c88a4d'] }
     const [letter, bg] = map[type] || ['?', '#999']
-    return <span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: bg, color: '#fff', fontWeight: 900, fontSize: 12 }}>{letter}</span>
+    return <span className="asw-num" title={type ? type.charAt(0) + type.slice(1).toLowerCase() : undefined} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: bg, color: '#fff', fontWeight: 900, fontSize: 12 }}>{letter}</span>
   }
   const statBox = (label, value, accent) => (
     <div style={{ flex: '1 1 100px', maxWidth: 160, background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
@@ -1065,7 +1066,7 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
 
   return (
     <div className="pad-lg">
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--color-accent-800)', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+      <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--color-accent-800)', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: 40 }}>
         ← All competitions
       </button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '14px 0 18px', flexWrap: 'wrap' }}>
@@ -1087,7 +1088,7 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
       {loading && <Loading label="Loading medals" />}
 
       {!loading && sub === 'countries' && (
-        standings.length === 0 ? <Empty label="No medals" /> : (
+        standings.length === 0 ? <Empty label="No medals" hint="Could not load the standings for this competition, or none exist yet." /> : (
           <MedalStandings
             rows={standings}
             entityHeader="Country"
@@ -1109,7 +1110,7 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
       )}
 
       {!loading && sub === 'championships' && (
-        byChamp.length === 0 ? <Empty label="No medals" /> : (
+        byChamp.length === 0 ? <Empty label="No medals" hint="No medals won at this level of competition yet." /> : (
           <div className="table-scroll"><table className="table"><thead><tr><th>Championship</th><th>Date</th><th>Location</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
             {byChamp.map((c) => (
               <tr key={c.id}>
@@ -1127,7 +1128,7 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
       )}
 
       {!loading && sub === 'medalists' && (
-        medalists.length === 0 ? <Empty label="No medalists" /> : (
+        medalists.length === 0 ? <Empty label="No medalists" hint="No swimmer has won a medal at this level of competition yet." /> : (
           <MedalStandings
             rows={medalists}
             entityHeader="Swimmer"
@@ -1141,8 +1142,8 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
       )}
 
       {!loading && sub === 'medals' && (
-        sortedMedals.length === 0 ? <Empty label="No medals" /> : (
-          <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 40 }}></th><th>Event</th><th>Swimmer</th><th>Championship</th><th>Date</th></tr></thead><tbody>
+        sortedMedals.length === 0 ? <Empty label="No medals" hint="No medals won at this level of competition yet." /> : (
+          <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 40 }}><span className="sr-only">Medal</span></th><th>Event</th><th>Swimmer</th><th>Championship</th><th>Date</th></tr></thead><tbody>
             {sortedMedals.map((m) => (
               <tr key={m.id}>
                 <td>{medalBadge(m.medal_type)}</td>
@@ -1240,13 +1241,13 @@ function CompareTab({ profile, country }) {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, margin: '18px 0 26px', flexWrap: 'wrap' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: 'var(--color-accent-800)' }}><Flag code={country.code} /> {country.name}</span>
         <span style={{ fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 15 }}>VS</span>
-        <select value={otherId} onChange={(e) => setOtherId(e.target.value)} style={{ padding: '9px 14px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', background: '#fff', fontFamily: 'inherit' }}>
+        <select aria-label="Federation to compare against" value={otherId} onChange={(e) => setOtherId(e.target.value)} style={{ minHeight: 36, padding: '9px 14px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', background: '#fff', fontFamily: 'inherit' }}>
           <option value="">Choose a federation…</option>
           {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
       {loadingOther && <Loading label="Loading federation" />}
-      {!loadingOther && !other && <Empty label="Pick a federation to compare against" />}
+      {!loadingOther && !other && <Empty label="Pick a federation to compare against" hint="Choose one from the list above to see both side by side." />}
       {!loadingOther && other && (
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-accent-800)', color: '#fff', borderRadius: '8px 8px 0 0', fontWeight: 800, fontSize: 14 }}>
@@ -1295,8 +1296,9 @@ function CompareTab({ profile, country }) {
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => commonEvents.length > 1 && setBattleKey(commonEvents.filter((k) => k !== battleKey)[Math.floor(Math.random() * (commonEvents.length - 1))])}
-                    style={{ background: 'var(--color-accent-800)', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 14px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ background: 'var(--color-accent-800)', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 14px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', minHeight: 36 }}
                   >
                     Another event
                   </button>
@@ -1366,15 +1368,15 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
         <span style={{ width: 4, height: 17, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{title}</span>
-        <span style={{ fontSize: 10, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', cursor: 'pointer' }}>View All</span>
+        <span style={{ fontSize: 11, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
       </div>
-      <div style={{ fontSize: 10.5, color: '#7a8ca0', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
+      <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
     </div>
   )
   const card = (children, extra = {}) => (
     <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', ...extra }}>{children}</div>
   )
-  const thStyle = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', paddingBottom: 6, borderBottom: '2px solid #e2e8f0' }
+  const thStyle = { fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', paddingBottom: 6, borderBottom: '2px solid #e2e8f0' }
   const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f0f4f8', fontSize: 12.5, background: i % 2 === 1 ? '#fafbfd' : 'transparent' })
   const badge = { width: 24, height: 24, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }
   const mc = (color) => ({ width: 26, height: 26, borderRadius: '50%', background: color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 })
@@ -1404,7 +1406,8 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
     return (
       <div className="m-donut" style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
         <div className="m-donut-pie" style={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
-          <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+          <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}
+            role="img" aria-label={`${total} ${centerLabel}: ${segs.map((s) => `${s.label} ${s.count} (${s.pct}%)`).join(', ')}`}>
             {segs.map((s) => s.count > 0 && (
               <circle key={s.label} cx="60" cy="60" r={r} fill="none" stroke={s.color} strokeWidth="22"
                 strokeDasharray={`${s.dash} ${C}`} strokeDashoffset={s.offset} />
@@ -1412,7 +1415,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           </svg>
           <span style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1, color: 'var(--color-accent-800)' }}>{total}</span>
-            <span style={{ fontSize: 9, color: '#7a8ca0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{centerLabel}</span>
+            <span style={{ fontSize: 10.5, color: '#7a8ca0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{centerLabel}</span>
           </span>
         </div>
         <div className="m-donut-legend" style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 130 }}>
@@ -1509,11 +1512,11 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
               <SwimmerLink id={id} name={name} />
             </span>
           </div>
-          {line && <div className="m-hl4-line" style={{ fontSize: 10.5, color: '#7a8ca0', marginBottom: 6 }}>{line}</div>}
+          {line && <div className="m-hl4-line" style={{ fontSize: 11, color: '#7a8ca0', marginBottom: 6 }}>{line}</div>}
           <div className="asw-num m-hl4-big" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: bigSize, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1 }}>
             {big}
           </div>
-          {date && <div className="m-hl4-date" style={{ fontSize: 10, color: '#9baab8', marginTop: 5 }}>{formatDate(date)}</div>}
+          {date && <div className="m-hl4-date" style={{ fontSize: 11, color: '#9baab8', marginTop: 5 }}>{formatDate(date)}</div>}
         </div>
       </div>
     </div>
@@ -1607,7 +1610,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
                 <div style={{ flex: 1, height: 20, display: 'flex', background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ width: `${(m.total / maxTotal) * 100}%`, display: 'flex', minWidth: m.total > 0 ? 20 : 0 }}>
                     {[['gold', '#d4af37'], ['silver', '#a8a9ad'], ['bronze', '#cd7f32']].map(([key, color]) =>
-                      m[key] > 0 && <div key={key} style={{ flex: m[key], background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 10, minWidth: 14 }} className="asw-num">{m[key]}</div>
+                      m[key] > 0 && <div key={key} style={{ flex: m[key], background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 11, minWidth: 14 }} className="asw-num">{m[key]}</div>
                     )}
                   </div>
                 </div>
@@ -1660,8 +1663,9 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
                   <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: '3px 3px 0 0' }} />
                 </div>
                 {/* label area: fixed height so two-line labels don't push bars up */}
-                <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, minHeight: 19, color: '#5a6b80', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
-                <div style={{ fontSize: 6.5, color: '#9baab8', marginTop: 1 }}>({d.range})</div>
+                {/* legibility: 11px on desktop; scales down only where nine columns leave no room (phone) */}
+                <div style={{ fontSize: 'clamp(7.5px, 1.25vw, 11px)', marginTop: 6, lineHeight: 1.2, minHeight: 19, color: '#5a6b80', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
+                <div style={{ fontSize: 'clamp(6.5px, 1.15vw, 10.5px)', color: '#9baab8', marginTop: 1 }}>({d.range})</div>
               </div>
             ))}
           </div>
@@ -1702,7 +1706,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         const cell = (t) => t ? (
           <div style={{ minWidth: 0 }}>
             <div className="asw-time" style={{ fontWeight: 800, fontSize: 13, color: 'var(--color-accent-800)' }}>{t.time}</div>
-            <div style={{ fontSize: 10.5, color: '#6b7d94', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 11, color: '#6b7d94', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               <SwimmerLink id={t.swimmer_id} name={t.swimmer} />{t.fina ? ` · ${t.fina}` : ''}
             </div>
           </div>
@@ -1762,6 +1766,13 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   )
 }
 
+// Plain-words save error shown next to the form (never raw server JSON)
+function saveErrorText(e) {
+  const d = e?.response?.data
+  const first = d && typeof d === 'object' ? Object.values(d).flat()[0] : d
+  return `Could not save. ${typeof first === 'string' && first.length < 200 ? first : 'Check the fields and try again.'}`
+}
+
 function Fld({ label, children }) {
   return (
     <label style={{ display: 'block', marginBottom: 12 }}>
@@ -1787,26 +1798,27 @@ function FedInfoModal({ country, onClose, onSaved }) {
   const save = async () => {
     setBusy(true); setErr('')
     try {
-      await updateCountry(country.id, form)
+      // Postel's Law: stray spaces around typed text are dropped before saving
+      await updateCountry(country.id, Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim()])))
       onSaved()
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setErr(saveErrorText(e))
       setBusy(false)
     }
   }
   return (
     <Modal title="Edit federation info" onClose={onClose} width={480}>
-      <Fld label="Tagline"><input className="input" style={{ width: '100%' }} value={form.federation_tagline} onChange={set('federation_tagline')} placeholder="Excellence in Water, Unity in Sport" /></Fld>
+      <Fld label="Tagline"><input className="input" style={{ width: '100%' }} value={form.federation_tagline} onChange={set('federation_tagline')} autoComplete="off" placeholder="Excellence in Water, Unity in Sport" /></Fld>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Fld label="Phone"><input className="input" style={{ width: '100%' }} value={form.federation_phone} onChange={set('federation_phone')} /></Fld>
-        <Fld label="Email"><input className="input" style={{ width: '100%' }} value={form.federation_email} onChange={set('federation_email')} /></Fld>
+        <Fld label="Phone"><input className="input" type="tel" inputMode="tel" autoComplete="tel" style={{ width: '100%' }} value={form.federation_phone} onChange={set('federation_phone')} /></Fld>
+        <Fld label="Email"><input className="input" type="email" inputMode="email" autoComplete="email" style={{ width: '100%' }} value={form.federation_email} onChange={set('federation_email')} /></Fld>
       </div>
-      <Fld label="Website"><input className="input" style={{ width: '100%' }} value={form.federation_website} onChange={set('federation_website')} placeholder="federation.example.com" /></Fld>
-      <Fld label="Address"><input className="input" style={{ width: '100%' }} value={form.federation_address} onChange={set('federation_address')} /></Fld>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      <Fld label="Website"><input className="input" inputMode="url" autoComplete="url" autoCapitalize="none" style={{ width: '100%' }} value={form.federation_website} onChange={set('federation_website')} placeholder="federation.example.com" /></Fld>
+      <Fld label="Address"><input className="input" autoComplete="street-address" style={{ width: '100%' }} value={form.federation_address} onChange={set('federation_address')} /></Fld>
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-        <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
-        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
       </div>
     </Modal>
   )
@@ -1825,26 +1837,26 @@ function FedBoardModal({ member, teamId, onClose, onSaved }) {
     try {
       const fd = new FormData()
       fd.append('name', form.name.trim())
-      fd.append('role', form.role)
+      fd.append('role', form.role.trim())
       fd.append('team', teamId)
       if (photo) fd.append('photo', photo)
       if (member) await updateBoardMember(member.id, fd)
       else await createBoardMember(fd)
       onSaved()
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setErr(saveErrorText(e))
       setBusy(false)
     }
   }
   return (
     <Modal title={member ? 'Edit board member' : 'Add board member'} onClose={onClose} width={440}>
-      <Fld label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Fld>
-      <Fld label="Role"><input className="input" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Fld>
+      <Fld label="Name"><input className="input" autoComplete="off" required style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Fld>
+      <Fld label="Role"><input className="input" autoComplete="off" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Fld>
       <Fld label="Photo"><CropUpload aspect={4 / 5} onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-        <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
-        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
       </div>
     </Modal>
   )
@@ -1887,6 +1899,7 @@ export default function CountryProfile({ arabFed = false }) {
   const [fedModal, setFedModal] = useState(null) // 'info' | {type:'board', member}
   const [reloadKey, setReloadKey] = useState(0)
   const [boardKey, setBoardKey] = useState(0)
+  const [fedNotice, setFedNotice] = useState(null) // Peak-End Rule: { where: 'info' | 'board', text } shown after a save
   // New seed each page open → highlight cards shuffle per visit
   const [hlSeed] = useState(() => Math.floor(Math.random() * 2 ** 31))
 
@@ -1948,7 +1961,11 @@ export default function CountryProfile({ arabFed = false }) {
   }, [id, profile, progStroke, progPool])
 
   if (loading) return <Loading label="Loading federation profile" />
-  if (!profile?.country) return <Empty label="Federation not found" />
+  if (!profile?.country) return (
+    <Empty label="Federation not found" hint="It may have been removed, or the page could not load. Check your connection and try again.">
+      <Link to="/countries" className="btn btn-secondary">← All federations</Link>
+    </Empty>
+  )
 
   const { country, medals } = profile
   const topSwimmers = profile.top_swimmers || []
@@ -1996,7 +2013,7 @@ export default function CountryProfile({ arabFed = false }) {
         const alpha2 = flagAlpha2(country.code)
         const icon = (d) => (
           <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
           </span>
         )
         const contactRow = (ic, content) => (
@@ -2017,9 +2034,13 @@ export default function CountryProfile({ arabFed = false }) {
             <FedHeroPhoto candidates={photoCandidates} extras={ovNews.map((a) => a?.cover_image)} />
             <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <Link to="/countries" style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: 'var(--color-accent-800)' }}>← All federations</Link>
+                {/* Fitts's Law: back link is a 40px target (30px after the phone zoom) */}
+                <Link to="/countries" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, paddingRight: 12, fontSize: 12, textDecoration: 'none', fontWeight: 700, color: 'var(--color-accent-800)' }}>← All federations</Link>
                 {isAdmin && !arabFed && (
-                  <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setFedModal('info')}>Edit info</button>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                    {fedNotice?.where === 'info' && <span role="status" style={{ fontSize: 12, fontWeight: 700, color: 'var(--asw-fast)' }}>{fedNotice.text}</span>}
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setFedModal('info')}>Edit info</button>
+                  </span>
                 )}
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
@@ -2061,7 +2082,7 @@ export default function CountryProfile({ arabFed = false }) {
                     {country.federation_website && contactRow(
                       icon(<><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></>),
                       <a href={/^https?:/.test(country.federation_website) ? country.federation_website : `https://${country.federation_website}`}
-                        target="_blank" rel="noreferrer" style={{ color: navy, textDecoration: 'none' }}>
+                        target="_blank" rel="noreferrer" style={{ color: navy, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 32, margin: '-2px 0' }}>
                         {country.federation_website.replace(/^https?:\/\//, '')}
                       </a>)}
                     {contactRow(
@@ -2079,8 +2100,11 @@ export default function CountryProfile({ arabFed = false }) {
       <div className="rule-b" style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto' }}>
         {visibleTabs.map((t) => (
           <button key={t.value} type="button" onClick={() => setTab(t.value)}
+            aria-current={tab === t.value ? 'page' : undefined}
             title={tabHidden(t.value) ? 'Hidden from visitors (admin visibility settings)' : undefined}
             style={{
+              // Fitts's Law: 48px here = 36px after the phone zoom (0.75)
+              minHeight: 48,
               padding: '12px 16px', background: 'none', border: 'none', borderBottom: tab === t.value ? '3px solid var(--color-accent)' : '3px solid transparent',
               cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: tab === t.value ? 800 : 600,
               fontSize: 13, color: tab === t.value ? 'var(--color-accent)' : 'var(--color-text)', whiteSpace: 'nowrap',
@@ -2398,7 +2422,8 @@ export default function CountryProfile({ arabFed = false }) {
             const nat = teams.find((t) => t.is_national_team)
             return nat ? (
               <div style={{ textAlign: 'center', marginBottom: 18 }}>
-                <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setFedModal({ type: 'board', member: null, teamId: nat.id })}>+ Add board member</button>
+                <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setFedModal({ type: 'board', member: null, teamId: nat.id })}>+ Add board member</button>
+                {fedNotice?.where === 'board' && <div role="status" style={{ fontSize: 12, fontWeight: 700, color: 'var(--asw-fast)', marginTop: 8 }}>{fedNotice.text}</div>}
               </div>
             ) : null
           })()}
@@ -2419,7 +2444,7 @@ export default function CountryProfile({ arabFed = false }) {
                 </div>
                 <div style={{ marginTop: 'auto', paddingTop: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
                       <div style={{ width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '10px solid #fff', marginLeft: 3 }} />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 20 }}>
@@ -2431,10 +2456,14 @@ export default function CountryProfile({ arabFed = false }) {
                   <div style={{ fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 8 }}>Listen to message</div>
                   {isAdmin && member && (
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 }}>
-                      <button className="btn btn-secondary" style={{ fontSize: 11 }}
+                      <button type="button" className="btn btn-secondary" style={{ fontSize: 11 }} aria-label={`Edit ${member.name}`}
                         onClick={() => setFedModal({ type: 'board', member, teamId: member.team })}>Edit</button>
-                      <button className="btn btn-secondary" style={{ fontSize: 11 }}
-                        onClick={async () => { if (window.confirm(`Remove ${member.name} from the board?`)) { await deleteBoardMember(member.id); setBoardKey((k) => k + 1) } }}>Remove</button>
+                      <button type="button" className="btn btn-secondary" style={{ fontSize: 11 }} aria-label={`Remove ${member.name}`}
+                        onClick={async () => {
+                          if (!window.confirm(`Remove ${member.name} from the board?`)) return
+                          try { await deleteBoardMember(member.id); setBoardKey((k) => k + 1); setFedNotice({ where: 'board', text: `${member.name} removed` }) }
+                          catch { window.alert('Could not remove this board member. Please try again.') }
+                        }}>Remove</button>
                     </div>
                   )}
                 </div>
@@ -2472,7 +2501,7 @@ export default function CountryProfile({ arabFed = false }) {
               </div>
             </div>
             <div style={{ marginTop: 'auto', paddingTop: 9, borderTop: '1px solid #eef2f7' }}>
-              <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
+              <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
                 <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
               </Link>
               {isAdmin && (
@@ -2491,7 +2520,7 @@ export default function CountryProfile({ arabFed = false }) {
             </div>
             <div style={{ marginTop: 'auto', paddingTop: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
                   <div style={{ width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '10px solid #fff', marginLeft: 3 }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 20 }}>
@@ -2518,7 +2547,7 @@ export default function CountryProfile({ arabFed = false }) {
             </>)}
             {teamSub === 'swimmers' && (<>
               {secTitle('🏊', 'Swimmers')}
-              {topSwimmers.length === 0 ? <Empty label="No swimmers" /> : (
+              {topSwimmers.length === 0 ? <Empty label="No swimmers" hint="Swimmers appear here once this federation has results in the database." /> : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
                   {topSwimmers.map(swimmerCard)}
                 </div>
@@ -2557,7 +2586,7 @@ export default function CountryProfile({ arabFed = false }) {
                 const isOpen = openChamp === c.id
                 return (
                   <div key={c.id} className="hair-b">
-                    <button type="button" onClick={() => setOpenChamp(isOpen ? null : c.id)}
+                    <button type="button" onClick={() => setOpenChamp(isOpen ? null : c.id)} aria-expanded={isOpen}
                       style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 0', background: 'none', border: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left', color: 'inherit' }}>
                       <span style={{ flex: 1, minWidth: 220 }}><span style={{ fontWeight: 600, display: 'block' }}>{c.name}</span><span className="text-muted" style={{ fontSize: 12 }}>{formatDate(c.date)} · {c.pool}{c.location ? ` · ${c.location}` : ''}</span></span>
                       <span className="asw-num text-muted" style={{ fontSize: 12 }}>{c.swimmers_count} swimmers · {c.results_count} results</span>
@@ -2566,11 +2595,11 @@ export default function CountryProfile({ arabFed = false }) {
                     </button>
                     {isOpen && (
                       <div style={{ padding: '0 0 16px' }}>
-                        <Link to={`/meets/${c.id}`} style={{ fontSize: 12 }}>View full meet details →</Link>
+                        <Link to={`/meets/${c.id}`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 12 }}>View full meet details →</Link>
                         {Array.isArray(c.swimmers) && c.swimmers.length > 0 && (
                           <><div className="micro" style={{ margin: '12px 0 6px' }}>Athletes · {c.swimmers.length}</div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '2px 16px' }}>
-                            {c.swimmers.map((s) => (<Link key={s.id} to={`/swimmers/${s.id}`} style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, padding: '2px 0' }}>{s.name} <span className="text-muted" style={{ fontSize: 11 }}>{s.sex === 'F' ? 'W' : 'M'}</span></Link>))}
+                            {c.swimmers.map((s) => (<Link key={s.id} to={`/swimmers/${s.id}`} style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, padding: '6px 0' }}>{s.name} <span className="text-muted" style={{ fontSize: 11 }}>{s.sex === 'F' ? 'W' : 'M'}</span></Link>))}
                           </div></>
                         )}
                       </div>
@@ -2636,11 +2665,12 @@ export default function CountryProfile({ arabFed = false }) {
                 <div
                   key={m.name}
                   onClick={() => setSearchParams({ tab: 'medals', mclass: m.name })}
-                  role="button" tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter') setSearchParams({ tab: 'medals', mclass: m.name }) }}
+                  role="button" tabIndex={0} className="row-link"
+                  aria-label={`${m.name}: ${m.total} medals, open details`}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSearchParams({ tab: 'medals', mclass: m.name }) } }}
                   style={{ background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'var(--color-accent-800)', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240, cursor: 'pointer', position: 'relative' }}
                 >
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a8aa0' }}>{m.name}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a8aa0' }}>{m.name}</div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: 'var(--color-accent-800)' }}>{formatNumber(m.total)}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                     <div className="asw-num" style={{ display: 'flex', gap: 8, fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
@@ -2656,7 +2686,7 @@ export default function CountryProfile({ arabFed = false }) {
             )
           })()}
           <SectHead title={`Top Medalists · ${topMedalists.length}`} />
-          {topMedalists.length === 0 ? <Empty label="No medals" /> : (
+          {topMedalists.length === 0 ? <Empty label="No medals" hint="Medalists appear here once this federation wins a medal." /> : (
             <div className="table-scroll" style={{ maxWidth: 880 }}><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
               {topMedalists.map((m, i) => (<tr key={m.id ?? i}><td className="asw-num">{i + 1}</td><td><SwimmerLink id={m.id} name={m.name} /></td><td className="num asw-num" style={{ fontWeight: 800, color: 'var(--asw-gold)' }}>{m.gold}</td><td className="num asw-num">{m.silver}</td><td className="num asw-num">{m.bronze}</td><td className="num asw-num" style={{ fontWeight: 800 }}>{m.total}</td></tr>))}
             </tbody></table></div>
@@ -2687,11 +2717,11 @@ export default function CountryProfile({ arabFed = false }) {
       {/* ===== ADMIN MODALS ===== */}
       {fedModal === 'info' && (
         <FedInfoModal country={country} onClose={() => setFedModal(null)}
-          onSaved={() => { setFedModal(null); setReloadKey((k) => k + 1) }} />
+          onSaved={() => { setFedModal(null); setReloadKey((k) => k + 1); setFedNotice({ where: 'info', text: 'Federation info saved' }) }} />
       )}
       {fedModal?.type === 'board' && (
         <FedBoardModal member={fedModal.member} teamId={fedModal.teamId} onClose={() => setFedModal(null)}
-          onSaved={() => { setFedModal(null); setBoardKey((k) => k + 1) }} />
+          onSaved={() => { setFedModal(null); setBoardKey((k) => k + 1); setFedNotice({ where: 'board', text: 'Board member saved' }) }} />
       )}
     </div>
   )

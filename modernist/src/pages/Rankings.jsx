@@ -149,12 +149,12 @@ export default function Rankings() {
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {scope === 'national' && (
-            <select className="select" style={{ flex: '2 1 140px', width: 'auto', minWidth: 0, maxWidth: 260 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+            <select className="select" aria-label="Country" style={{ flex: '2 1 140px', width: 'auto', minWidth: 0, maxWidth: 260 }} value={country} onChange={(e) => setCountry(e.target.value)}>
               <option value="">Select country…</option>
               {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
-          <select className="select" style={{ flex: '3 1 170px', width: 'auto', minWidth: 0, maxWidth: 420 }} value={event} onChange={(e) => setEvent(e.target.value)}>
+          <select className="select" aria-label="Event" style={{ flex: '3 1 170px', width: 'auto', minWidth: 0, maxWidth: 420 }} value={event} onChange={(e) => setEvent(e.target.value)}>
             <option value="">Select event…</option>
             {eventGroups.map((g) => (
               <optgroup key={g.stroke} label={g.stroke}>
@@ -162,24 +162,24 @@ export default function Rankings() {
               </optgroup>
             ))}
           </select>
-          <select className="select" style={{ flex: '1 1 90px', width: 'auto', minWidth: 0, maxWidth: 160 }} value={year} onChange={(e) => setYear(e.target.value)}>
+          <select className="select" aria-label="Season" style={{ flex: '1 1 90px', width: 'auto', minWidth: 0, maxWidth: 160 }} value={year} onChange={(e) => setYear(e.target.value)}>
             <option value="">All-time</option>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-          <select className="select" style={{ flex: '1 1 84px', width: 'auto', minWidth: 0, maxWidth: 150 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+          <select className="select" aria-label="Age group" style={{ flex: '1 1 84px', width: 'auto', minWidth: 0, maxWidth: 150 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
             {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
           </select>
         </div>
       </div>
 
       {scope === 'national' && !country ? (
-        <Empty label="Select a country to view national rankings" />
+        <Empty label="Select a country to view national rankings" hint="Pick a federation from the country list above." />
       ) : !event ? (
-        <Empty label="Select an event to view rankings" />
+        <Empty label="Select an event to view rankings" hint="Pick an event from the list above." />
       ) : loading ? (
         <Loading label="Loading rankings" />
       ) : rows.length === 0 ? (
-        <Empty label="No rankings for this selection" />
+        <Empty label="No rankings for this selection" hint="Try another season, age group or pool." />
       ) : (
         <div className="pad">
           {selectedEvent && (
@@ -217,7 +217,13 @@ export default function Rankings() {
                     <tr
                       key={`${r.rank}-${r.swimmer_id}`}
                       onClick={() => { if (swimLink) navigate(swimLink) }}
-                      style={swimLink ? { cursor: 'pointer' } : undefined}
+                      className={swimLink ? 'row-link' : undefined}
+                      role={swimLink ? 'link' : undefined}
+                      tabIndex={swimLink ? 0 : undefined}
+                      onKeyDown={swimLink ? (e) => {
+                        // Jakob's Law: the row is a link, so Enter/Space open it
+                        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(swimLink) }
+                      } : undefined}
                       title={swimLink ? 'View this swim' : undefined}
                     >
                       <td className="asw-num" style={{ fontWeight: 800 }}>{isTied ? '=' : r.rank}</td>

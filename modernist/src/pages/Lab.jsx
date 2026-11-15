@@ -38,7 +38,8 @@ function Radar({ axes, size = 280 }) {
   const poly = axes.map((a, i) => pt(i, R * (Math.max(0, a.percentile) / 100)).join(',')).join(' ')
   const rings = [0.25, 0.5, 0.75, 1]
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: '100%' }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: '100%' }} role="img"
+      aria-label={`Stroke percentiles: ${axes.map((a) => `${a.stroke} ${Math.max(0, a.percentile)}%`).join(', ')}`}>
       {rings.map((f) => (
         <polygon
           key={f}
@@ -66,7 +67,7 @@ function Radar({ axes, size = 280 }) {
             y={y}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize="10.5"
+            fontSize="11"
             fontWeight="700"
             fill="var(--color-text)"
           >
@@ -111,6 +112,8 @@ function SwimmerPicker({ onPick }) {
       <input
         className="input"
         placeholder="Search a swimmer…"
+        aria-label="Search a swimmer to open their Lab"
+        autoComplete="off"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => { if (results.length) setOpen(true) }}
@@ -129,6 +132,12 @@ function SwimmerPicker({ onPick }) {
               <span className="text-muted asw-num" style={{ fontSize: 12 }}>{s.birth_year || ''}</span>
             </button>
           ))}
+        </div>
+      )}
+      {/* Paradox of the Active User: a search with no matches says so */}
+      {open && results.length === 0 && q.trim() && (
+        <div role="status" className="text-muted" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: 'var(--color-bg)', border: '1px solid var(--color-divider)', borderTop: 0, boxShadow: 'var(--shadow-md)', padding: '10px 12px', fontSize: 13 }}>
+          No swimmers match “{q.trim()}”. Check the spelling.
         </div>
       )}
     </div>
@@ -211,18 +220,21 @@ function SwimmerLab() {
           </div>
         )}
         {eventOptions.length > 0 && (
-          <select className="select" style={{ width: 'auto', marginLeft: 'auto' }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
+          <select className="select" aria-label="Event" style={{ width: 'auto', marginLeft: 'auto' }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
             {eventOptions.map((a) => <option key={a.event_id} value={a.event_id}>{a.event_name}</option>)}
           </select>
         )}
       </div>
 
       {!swimmer ? (
-        <Empty label="Search a swimmer to open their Lab" />
+        <Empty label="Search a swimmer to open their Lab" hint="Type a name in the search box above and pick a swimmer from the list." />
       ) : loading ? (
         <Loading label="Crunching numbers" />
       ) : (
         <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          {!dna && !(chase && chase.my_rank) && !consistency && !(rivals && rivals.rivals.length > 0) && (
+            <Empty label="No Lab numbers for this swimmer" hint="There is not enough race data yet, or it could not be loaded. Try another swimmer." />
+          )}
           {/* DNA */}
           {dna && (
             <section>
@@ -366,6 +378,7 @@ function EventLab() {
   const { groups } = useEventGroups(pool)
   const [timeStr, setTimeStr] = useState('')
   const [whatif, setWhatif] = useState(null)
+  const [whatifState, setWhatifState] = useState('') // '' | 'loading' | 'bad' | 'failed'
   const [club, setClub] = useState(null)
   const [depth, setDepth] = useState(null)
 
@@ -383,8 +396,11 @@ function EventLab() {
 
   const runWhatIf = () => {
     const cs = parseTime(timeStr)
-    if (!cs || !eventId) { setWhatif(null); return }
-    getWhatIf({ ...params, time_centiseconds: cs }).then((r) => setWhatif(r.data)).catch(() => setWhatif(null))
+    if (!cs || !eventId) { setWhatif(null); setWhatifState('bad'); return }
+    setWhatifState('loading')
+    getWhatIf({ ...params, time_centiseconds: cs })
+      .then((r) => { setWhatif(r.data); setWhatifState('') })
+      .catch(() => { setWhatif(null); setWhatifState('failed') })
   }
 
   return (
@@ -395,7 +411,7 @@ function EventLab() {
           <Seg options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]} value={gender} onChange={setGender} />
           <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
         </div>
-        <select className="select" style={{ width: 'auto', maxWidth: 260 }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
+        <select className="select" aria-label="Event" style={{ width: 'auto', maxWidth: 260 }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
           {groups.map((g) => (
             <optgroup key={g.stroke} label={g.stroke}>
               {g.events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
@@ -404,7 +420,7 @@ function EventLab() {
         </select>
       </div>
 
-      {!eventId ? <Empty label="Select an event" /> : (
+      {!eventId ? <Empty label="Select an event" hint="Choose an event from the list above to see its numbers." /> : (
         <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
           {/* What-if */}
           <section>
@@ -414,11 +430,20 @@ function EventLab() {
                 className="input"
                 style={{ width: 160 }}
                 placeholder="e.g. 51.20 or 1:52.30"
+                aria-label="Time to project, for example 51.20 or 1:52.30"
+                autoComplete="off"
                 value={timeStr}
                 onChange={(e) => setTimeStr(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') runWhatIf() }}
               />
-              <button className="btn btn-primary" onClick={runWhatIf}>Project</button>
+              <button type="button" className="btn btn-primary" onClick={runWhatIf} disabled={whatifState === 'loading'}>
+                {whatifState === 'loading' ? 'Projecting…' : 'Project'}
+              </button>
+              {(whatifState === 'bad' || whatifState === 'failed') && (
+                <span role="alert" style={{ fontSize: 13, color: 'var(--asw-slow)' }}>
+                  {whatifState === 'bad' ? 'Enter a time like 51.20 or 1:52.30.' : 'The projection could not be loaded. Try again.'}
+                </span>
+              )}
               {whatif && (
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <Stat label="Projected rank" value={`#${whatif.projected_rank}`} sub={`of ${whatif.field_size}`} />

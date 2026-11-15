@@ -212,12 +212,12 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
                   {GENDER_LABEL[card.gender] || card.gender}
                 </span>
                 {card.session && (
-                  <span className="tag tag-neutral" style={{ fontSize: 10, flexShrink: 0 }}>
+                  <span className="tag tag-neutral" style={{ fontSize: 11, flexShrink: 0 }}>
                     {SESSION_LABEL[card.session] || card.session}
                   </span>
                 )}
                 {card.age_category && (
-                  <span className="tag tag-neutral" style={{ fontSize: 10, flexShrink: 0 }}>
+                  <span className="tag tag-neutral" style={{ fontSize: 11, flexShrink: 0 }}>
                     {card.age_category}
                   </span>
                 )}
@@ -254,11 +254,11 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
                   fontSize: 12.5,
                 }}>
                   Day {d.day}
-                  <span style={{ fontWeight: 400, fontSize: 10, marginLeft: 6, opacity: 0.85 }}>
+                  <span style={{ fontWeight: 400, fontSize: 11, marginLeft: 6, opacity: 0.85 }}>
                     {formatDate(d.date)}
                   </span>
                   {dayItems.length > 0 && (
-                    <span style={{ fontWeight: 400, fontSize: 10, marginLeft: 6, opacity: 0.85 }}>
+                    <span style={{ fontWeight: 400, fontSize: 11, marginLeft: 6, opacity: 0.85 }}>
                       · {dayItems.length} events
                     </span>
                   )}
@@ -350,6 +350,7 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [dirty, setDirty] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   // Load existing program
   useEffect(() => {
@@ -370,7 +371,7 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
         }
         setItems(flat)
       })
-      .catch(() => {})
+      .catch(() => setLoadFailed(true))
   }, [champId])
 
   // Build event cards from the meet's result events
@@ -471,6 +472,10 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
     }
   }
 
+  // a failed load says so instead of leaving a blank space
+  if (champId && loadFailed) {
+    return <div className="micro" role="status" style={{ textTransform: 'none', letterSpacing: 0 }}>The program could not be loaded. Reload the page to try again.</div>
+  }
   if (!champId || days.length === 0) return null
 
   const cardStyle = (isDragging) => ({
@@ -505,7 +510,7 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
           {busy ? 'Saving…' : 'Save program'}
         </button>
       </div>
-      {msg && <div className="micro" style={{ marginBottom: 8, textTransform: 'none', letterSpacing: 0 }}>{msg}</div>}
+      {msg && <div className="micro" role="status" style={{ marginBottom: 8, textTransform: 'none', letterSpacing: 0 }}>{msg}</div>}
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
         {/* Left: unplaced events */}
@@ -539,8 +544,8 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
               <div key={d.day} style={{ minWidth: 200, flex: '1 0 200px', border: '1px solid var(--color-neutral-300)', background: '#fff' }}>
                 <div style={{ padding: '8px 10px', background: 'var(--color-accent)', color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5 }}>
                   Day {d.day}
-                  <span style={{ fontWeight: 400, fontSize: 10, marginLeft: 6, opacity: 0.85 }}>{formatDate(d.date)}</span>
-                  {dayItems.length > 0 && <span style={{ fontWeight: 400, fontSize: 10, marginLeft: 6, opacity: 0.85 }}>· {dayItems.length}</span>}
+                  <span style={{ fontWeight: 400, fontSize: 11, marginLeft: 6, opacity: 0.85 }}>{formatDate(d.date)}</span>
+                  {dayItems.length > 0 && <span style={{ fontWeight: 400, fontSize: 11, marginLeft: 6, opacity: 0.85 }}>· {dayItems.length}</span>}
                 </div>
                 {hasSessions ? (
                   <>
@@ -590,7 +595,7 @@ function DropZone({ items, allItems, onDrop, onDragOver, onRemove, style }) {
             key={`${it.event_name}-${it.gender}-${it.session}-${it.age_category}`}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '4px 6px', marginBottom: 3,
+              padding: '0 0 0 6px', marginBottom: 3,
               background: '#fff', border: '1px solid var(--color-neutral-200)',
               fontSize: 12,
             }}
@@ -600,20 +605,21 @@ function DropZone({ items, allItems, onDrop, onDragOver, onRemove, style }) {
               {GENDER_LABEL[it.gender] || ''}
             </span>
             {it.session && (
-              <span className="tag tag-neutral" style={{ fontSize: 9, flexShrink: 0 }}>
+              <span className="tag tag-neutral" style={{ fontSize: 11, flexShrink: 0 }}>
                 {SESSION_LABEL[it.session] || it.session}
               </span>
             )}
             {it.age_category && (
-              <span className="tag tag-neutral" style={{ fontSize: 9, flexShrink: 0 }}>
+              <span className="tag tag-neutral" style={{ fontSize: 11, flexShrink: 0 }}>
                 {it.age_category}
               </span>
             )}
             <button
               type="button"
               onClick={() => onRemove(globalIdx)}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 3px', color: 'var(--asw-slow)', fontSize: 14, lineHeight: 1 }}
-              aria-label="Remove"
+              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 3px', minWidth: 32, minHeight: 32, flex: 'none', color: 'var(--asw-slow)', fontSize: 14, lineHeight: 1 }}
+              aria-label={`Remove ${it.event_name}`}
+              title="Remove"
             >
               ×
             </button>

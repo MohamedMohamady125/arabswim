@@ -74,12 +74,13 @@ function ClaimModal({ swimmer, onClose, onSubmitted }) {
       </div>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && (
-          <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
+          <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
         )}
         <input
           className="input"
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          aria-label="Photo of your passport or national ID (JPG, PNG or WebP)"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           required
         />
@@ -113,7 +114,8 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
     setLoading(true)
     setError('')
     try {
-      await updateSwimmer(swimmer.id, form)
+      // Postel's Law: stray spaces around pasted links/emails are dropped
+      await updateSwimmer(swimmer.id, Object.fromEntries(Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])))
       if (photo) {
         const fd = new FormData()
         fd.append('photo', photo)
@@ -132,6 +134,7 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
     <label style={{ display: 'block' }}>
       <div className="card-kicker" style={{ marginBottom: 4 }}>{label}</div>
       <input className="input" type={type} value={form[key]} style={{ width: '100%' }}
+        autoComplete={type === 'email' ? 'email' : type === 'tel' ? 'tel' : 'off'}
         onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
     </label>
   )
@@ -140,7 +143,7 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
     <Modal title="Edit My Profile" onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {error && (
-          <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
+          <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
         )}
         {photoSubmitted && (
           <div style={{ border: '1px solid var(--asw-fast)', color: 'var(--asw-fast)', padding: '10px 12px', fontSize: 13 }}>
@@ -162,7 +165,7 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
             onCancel={() => setCropFile(null)} />
         )}
         {field('Email', 'email', 'email')}
-        {field('Phone', 'phone')}
+        {field('Phone', 'phone', 'tel')}
         {field('Instagram URL', 'instagram_url', 'url')}
         {field('Facebook URL', 'facebook_url', 'url')}
         {field('YouTube URL', 'youtube_url', 'url')}
@@ -259,12 +262,12 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
     <Modal title="Edit Swimmer" onClose={onClose} width={620}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {error && (
-          <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
+          <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
         )}
-        {field('Full name', 'name', 'text', { required: true })}
+        {field('Full name', 'name', 'text', { required: true, autoComplete: 'off' })}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {field('Date of birth', 'date_of_birth', 'date')}
-          {field('Birth year (if DOB unknown)', 'birth_year', 'number', { min: 1900, max: 2100 })}
+          {field('Birth year (if DOB unknown)', 'birth_year', 'number', { min: 1900, max: 2100, inputMode: 'numeric' })}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label style={{ display: 'block' }}>
@@ -288,7 +291,7 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
         {field('Club', 'club')}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {field('Email', 'email', 'email')}
-          {field('Phone', 'phone')}
+          {field('Phone', 'phone', 'tel')}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {field('Instagram URL', 'instagram_url', 'url')}
@@ -402,7 +405,7 @@ function EventList({ events, selected, onSelect, detail }) {
           const isSel = selected?.event_id === e.event_id && selected?.pool === e.pool
           return (
             <Fragment key={`${e.event_id}-${e.pool}`}>
-            <button type="button" onClick={() => onSelect(e)}
+            <button type="button" onClick={() => onSelect(e)} aria-pressed={isSel}
               className="hair-b"
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, width: '100%',
@@ -432,7 +435,7 @@ function EventList({ events, selected, onSelect, detail }) {
       {section('Short course', scm)}
       {section('Open water', ow)}
       {section('Relay Splits', relays)}
-      {events.length === 0 && <Empty label="No competition results yet" />}
+      {events.length === 0 && <Empty label="No competition results yet" hint="Times appear here once this swimmer has results from an imported meet." />}
     </div>
   )
 }
@@ -440,7 +443,7 @@ function EventList({ events, selected, onSelect, detail }) {
 function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
   const [expandedSplits, setExpandedSplits] = useState(null)
 
-  if (!selectedEvent) return <Empty label="Select an event to view full time history" />
+  if (!selectedEvent) return <Empty label="Select an event to view full time history" hint="Pick an event from the list to see every race swum in it." />
   if (loadingHistory) return <Loading label="Loading history" />
 
   // PB = fastest official swim; ignore HC rows and status rows (DNS/DQ/DNF
@@ -488,19 +491,24 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                         {splits.length > 0 && (
                           <button type="button"
                             onClick={(e) => { e.stopPropagation(); setExpandedSplits(showSplits ? null : h.id) }}
-                            className={showSplits ? 'tag tag-dark' : 'tag tag-outline'}
-                            style={{ cursor: 'pointer', border: showSplits ? 0 : undefined, font: 'inherit', fontSize: 9, padding: '1px 6px' }}
+                            aria-expanded={showSplits}
+                            // Fitts's Law: ~34px hit box around the small pill; negative margin keeps the row height
+                            style={{ cursor: 'pointer', border: 0, background: 'none', font: 'inherit', display: 'inline-flex', padding: '8px 2px', margin: '-8px -2px' }}
                             title="Show split times">
-                            Splits {showSplits ? '−' : '+'}
+                            <span className={showSplits ? 'tag tag-dark' : 'tag tag-outline'} style={{ border: showSplits ? 0 : undefined, fontSize: 11, padding: '1px 6px' }}>
+                              Splits {showSplits ? '−' : '+'}
+                            </span>
                           </button>
                         )}
                         {relayLegs.length > 0 && (
                           <button type="button"
                             onClick={(e) => { e.stopPropagation(); setExpandedSplits(showSplits ? null : h.id) }}
-                            className={showSplits ? 'tag tag-dark' : 'tag tag-outline'}
-                            style={{ cursor: 'pointer', border: showSplits ? 0 : undefined, font: 'inherit', fontSize: 9, padding: '1px 6px' }}
+                            aria-expanded={showSplits}
+                            style={{ cursor: 'pointer', border: 0, background: 'none', font: 'inherit', display: 'inline-flex', padding: '8px 2px', margin: '-8px -2px' }}
                             title="Show relay lineup">
-                            Lineup {showSplits ? '−' : '+'}
+                            <span className={showSplits ? 'tag tag-dark' : 'tag tag-outline'} style={{ border: showSplits ? 0 : undefined, fontSize: 11, padding: '1px 6px' }}>
+                              Lineup {showSplits ? '−' : '+'}
+                            </span>
                           </button>
                         )}
                         {h.is_relay && h.leg_order && (
@@ -522,7 +530,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                         )}
                         {!h.is_relay && isBest && (
                           <span className="tag tag-dark" title="Personal best"
-                            style={{ justifyContent: 'center', lineHeight: 1, minWidth: 30, padding: '4px 8px', fontSize: 10, fontWeight: 800, letterSpacing: '0.08em' }}>
+                            style={{ justifyContent: 'center', lineHeight: 1, minWidth: 30, padding: '4px 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>
                             PB
                           </span>
                         )}
@@ -561,7 +569,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
                             const mine = h.leg_order && order === h.leg_order
                             return (
                               <div key={li} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: mine ? 700 : 400 }}>
-                                <span className="asw-num" style={{ width: 44, color: mine ? 'var(--color-accent)' : 'var(--color-neutral-600)' }}>Leg {order}</span>
+                                <span className="asw-num" style={{ width: 44, color: mine ? 'var(--color-accent)' : 'var(--color-neutral-700)' }}>Leg {order}</span>
                                 <span style={{ flex: 1, color: mine ? 'var(--color-accent)' : 'inherit' }}>{leg.name || '—'}</span>
                                 <span className="asw-time" style={{ fontSize: 13 }}>{leg.split_time || '—'}</span>
                               </div>
@@ -597,7 +605,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
               )
             })}
             {history.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24 }} className="text-muted">No times recorded</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24 }} className="text-muted">No times recorded for this event, or they could not be loaded. Pick another event.</td></tr>
             )}
           </tbody>
         </table>
@@ -620,7 +628,8 @@ function DnaRadar({ axes, size = 260 }) {
   const poly = axes.map((a, i) => pt(i, R * (Math.max(0, a.percentile) / 100)).join(',')).join(' ')
   const rings = [0.25, 0.5, 0.75, 1]
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: '100%' }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: '100%' }} role="img"
+      aria-label={`Stroke percentiles: ${axes.map((a) => `${a.stroke} ${Math.max(0, a.percentile)}%`).join(', ')}`}>
       {rings.map((f) => (
         <polygon key={f} points={axes.map((_, i) => pt(i, R * f).join(',')).join(' ')}
           fill="none" stroke="var(--color-neutral-200)" strokeWidth="1" />
@@ -638,7 +647,7 @@ function DnaRadar({ axes, size = 260 }) {
         const [x, y] = pt(i, R + 20)
         return (
           <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle"
-            fontSize="10.5" fontWeight="700" fill="var(--color-text)">
+            fontSize="11" fontWeight="700" fill="var(--color-text)">
             {a.stroke.replace('Individual Medley', 'IM')}
           </text>
         )
@@ -740,7 +749,7 @@ export function ChaseSection({ swimmerId }) {
           <div className="sect-head">
             <h4>The Chase</h4>
             {eventOptions.length > 1 && (
-              <select className="select" style={{ width: 'auto', fontSize: 12, height: 30 }}
+              <select className="select" aria-label="Event for The Chase" style={{ width: 'auto', fontSize: 12, height: 32 }}
                 value={eventId} onChange={(e) => setEventId(e.target.value)}>
                 {eventOptions.map((a) => <option key={a.event_id} value={a.event_id}>{a.event_name}</option>)}
               </select>
@@ -866,7 +875,7 @@ function RankingsPreview({ swimmerId, onViewAll }) {
           <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
             <div style={{ background: 'var(--color-accent)', color: '#fff', minWidth: 48, height: 48, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px' }}>
               <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: r.rank >= 1000 ? 14 : r.rank >= 100 ? 16 : 22, lineHeight: 1 }}>{r.rank}</span>
-              <span style={{ fontSize: r.rank >= 100 ? 8 : 10, fontWeight: 800, marginTop: 1 }}>{ordSuffix(r.rank)}</span>
+              <span style={{ fontSize: 11, fontWeight: 800, marginTop: 1 }}>{ordSuffix(r.rank)}</span>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -909,7 +918,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
       .catch(() => { if (alive) setHeldRecords([]) })
     return () => { alive = false }
   }, [swimmerId])
-  if (!stats) return <Empty label="No stats available" />
+  if (!stats) return <Empty label="No stats available" hint="This swimmer's statistics could not be loaded. Reload the page, or open the Times tab." />
   const {
     medals, total_championships, total_records, best_fina,
     season_best_fina, best_event, top_personal_bests, records, fina_distribution,
@@ -929,8 +938,8 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
   }
   const cardNum = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color: '#fff', lineHeight: 1.1 }
-  const cardLabel = { fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }
-  const cardSub = { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 2 }
+  const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }
+  const cardSub = { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -980,7 +989,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         // is UTC midnight and renders as the previous day west of UTC)
         const fmtDate = (d) => d ? new Date(`${d}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
         const tile = { border: '1px solid var(--color-divider)', background: '#fff', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }
-        const tLabel = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-500)' }
+        const tLabel = { fontSize: 11, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-500)' }
         const tVal = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }
         const tSub = { fontSize: 11, color: 'var(--color-neutral-700)' }
         // Biggest title: most prestigious classification with golds (else the
@@ -1106,7 +1115,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     {pb.meet_date && <span style={{ fontSize: 11, color: 'var(--color-neutral-700)' }}>{formatDate(pb.meet_date)}</span>}
-                    {pb.pool && <span className="tag tag-accent-2" style={{ fontSize: 9, padding: '1px 6px' }}>{pb.pool}</span>}
+                    {pb.pool && <span className="tag tag-accent-2" style={{ fontSize: 11, padding: '1px 6px' }}>{pb.pool}</span>}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flex: 'none' }}>
@@ -1138,7 +1147,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                 <div key={y} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
                   <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 4 }}>{byYear[y]}</span>
                   <div style={{ width: '70%', maxWidth: 36, height: `${Math.max(4, (byYear[y] / maxY) * 110)}px`, background: 'linear-gradient(180deg, var(--color-accent-500), var(--color-accent-800))', borderRadius: '3px 3px 0 0' }} />
-                  <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-700)', marginTop: 6 }}>{y}</span>
+                  <span className="asw-num" style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 6 }}>{y}</span>
                 </div>
               ))}
             </div>
@@ -1188,7 +1197,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     {r.date && <span style={{ fontSize: 11, color: 'var(--color-neutral-700)' }}>{formatDate(r.date)}</span>}
-                    {r.pool && <span className="tag tag-accent-2" style={{ fontSize: 9, padding: '1px 6px' }}>{r.pool}</span>}
+                    {r.pool && <span className="tag tag-accent-2" style={{ fontSize: 11, padding: '1px 6px' }}>{r.pool}</span>}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flex: 'none' }}>
@@ -1230,7 +1239,7 @@ function ProgressionTab({ swimmerId }) {
       {lines === null ? (
         <Loading label="Loading progression" />
       ) : lines.length === 0 ? (
-        <Empty label={`No ${pool === 'LCM' ? 'long course' : 'short course'} progression data`} />
+        <Empty label={`No ${pool === 'LCM' ? 'long course' : 'short course'} progression data`} hint={`Try ${pool === 'LCM' ? 'Short Course' : 'Long Course'} above.`} />
       ) : (
         <ProgressionChart lines={lines} />
       )}
@@ -1261,12 +1270,15 @@ function MergeModal({ swimmer, onClose, onMerged }) {
   const [results, setResults] = useState([])
   const [selected, setSelected] = useState(null)
   const [merging, setMerging] = useState(false)
+  const [searched, setSearched] = useState(false)
+  const [error, setError] = useState('')
   const debounce = useRef(null)
 
-  const search = (q) => {
-    setQuery(q)
+  const search = (raw) => {
+    setQuery(raw)
+    const q = raw.trim() // Postel's Law
     if (debounce.current) clearTimeout(debounce.current)
-    if (q.length < 2) { setResults([]); return }
+    if (q.length < 2) { setResults([]); setSearched(false); return }
     debounce.current = setTimeout(() => {
       searchSwimmers(q, { include_all: true })
         .then((res) => {
@@ -1274,6 +1286,7 @@ function MergeModal({ swimmer, onClose, onMerged }) {
           setResults(list.filter((s) => s.id !== swimmer.id))
         })
         .catch(() => setResults([]))
+        .finally(() => setSearched(true))
     }, 300)
   }
 
@@ -1281,6 +1294,7 @@ function MergeModal({ swimmer, onClose, onMerged }) {
     if (!selected) return
     if (!window.confirm(`Merge "${selected.name}" into "${swimmer.name}"?\n\nAll results, medals, and records from "${selected.name}" will be moved to this profile. "${selected.name}" will be deleted.\n\nThis cannot be undone.`)) return
     setMerging(true)
+    setError('')
     try {
       await mergeSwimmers(swimmer.id, [selected.id])
       onMerged()
@@ -1289,7 +1303,7 @@ function MergeModal({ swimmer, onClose, onMerged }) {
         || (err?.response?.status === 401 || err?.response?.status === 403
           ? 'You must be signed in as an admin to merge swimmers.'
           : 'Merge failed — please try again.')
-      window.alert(msg)
+      setError(msg) // shown next to the Confirm button instead of a browser alert
       setMerging(false)
     }
   }
@@ -1299,7 +1313,7 @@ function MergeModal({ swimmer, onClose, onMerged }) {
       <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12, color: 'var(--color-neutral-700)' }}>
         Search for the duplicate profile to merge INTO this swimmer ({swimmer.name}). The duplicate's results, medals, and records will be transferred here.
       </div>
-      <input className="input" placeholder="Search duplicate swimmer…" value={query} onChange={(e) => search(e.target.value)} style={{ marginBottom: 8 }} />
+      <input className="input" placeholder="Search duplicate swimmer…" aria-label="Search for the duplicate swimmer" autoComplete="off" value={query} onChange={(e) => search(e.target.value)} style={{ marginBottom: 8 }} />
       {results.length > 0 && !selected && (
         <div style={{ border: '1px solid var(--color-divider)', maxHeight: 250, overflowY: 'auto', marginBottom: 12 }}>
           {results.map((s) => (
@@ -1318,6 +1332,11 @@ function MergeModal({ swimmer, onClose, onMerged }) {
           ))}
         </div>
       )}
+      {searched && !selected && results.length === 0 && query.trim().length >= 2 && (
+        <div role="status" className="text-muted" style={{ fontSize: 13, marginBottom: 12 }}>
+          No swimmers match “{query.trim()}”. Check the spelling or try part of the name.
+        </div>
+      )}
       {selected && (
         <div style={{ border: '2px solid var(--color-accent)', padding: 16, marginBottom: 12 }}>
           <div className="kicker" style={{ marginBottom: 10 }}>Merge preview</div>
@@ -1327,7 +1346,7 @@ function MergeModal({ swimmer, onClose, onMerged }) {
               <div className="micro">{swimmer.nationality_detail?.name}{swimmer.birth_year ? ` · ${swimmer.birth_year}` : ''}</div>
               <span className="tag tag-accent" style={{ marginTop: 6 }}>Keep this profile</span>
             </div>
-            <div style={{ fontSize: 20, color: 'var(--color-neutral-500)' }}>←</div>
+            <div aria-hidden="true" style={{ fontSize: 20, color: 'var(--color-neutral-500)' }}>←</div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontWeight: 800, fontSize: 15 }}>{selected.name}</div>
               <div className="micro">{selected.nationality_detail?.name}{selected.birth_year ? ` · ${selected.birth_year}` : ''}</div>
@@ -1335,11 +1354,12 @@ function MergeModal({ swimmer, onClose, onMerged }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 14 }}>
-            <button className="btn btn-secondary" onClick={() => setSelected(null)}>Change</button>
-            <button className="btn btn-primary" onClick={handleMerge} disabled={merging}>
+            <button type="button" className="btn btn-secondary" onClick={() => { setSelected(null); setError('') }} disabled={merging}>Change</button>
+            <button type="button" className="btn btn-primary" onClick={handleMerge} disabled={merging}>
               {merging ? 'Merging…' : 'Confirm merge'}
             </button>
           </div>
+          {error && <div role="alert" style={{ marginTop: 10, textAlign: 'center', fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
         </div>
       )}
     </Modal>
@@ -1368,6 +1388,8 @@ export default function SwimmerProfile() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  // Peak-End Rule: confirm a finished save in plain words
+  const [notice, setNotice] = useState('')
 
   // ?edit=1 deep link (e.g. from a club roster) auto-opens the admin editor
   useEffect(() => {
@@ -1382,6 +1404,7 @@ export default function SwimmerProfile() {
   useEffect(() => {
     let alive = true
     setLoaded(false)
+    setNotice('')
     setSelectedEvent(null)
     setHistory([])
     Promise.allSettled([
@@ -1440,7 +1463,11 @@ export default function SwimmerProfile() {
   }
 
   if (!loaded) return <Loading label="Loading swimmer" />
-  if (!swimmer) return <Empty label="Swimmer not found" />
+  if (!swimmer) return (
+    <Empty label="Swimmer not found" hint="This profile may have been merged or removed, or it could not be loaded.">
+      <Link to="/swimmers" className="btn btn-secondary">Browse all swimmers</Link>
+    </Empty>
+  )
 
   // Non-Arab swimmers keep a normal profile but Records and Rankings are
   // Arab-only features (their scopes are national/Arab/GCC)
@@ -1528,16 +1555,21 @@ export default function SwimmerProfile() {
                 <span key={i} className="tag tag-accent-2">{n.nickname}</span>
               ))}
               {isAdmin && (
-                <button className="btn btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}
+                <button type="button" className="btn btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}
                   onClick={async () => {
                     if (!window.confirm('Remove all name variants? They will be cleared from this profile.')) return
-                    await updateSwimmer(id, { nicknames: [] })
-                    setSwimmer({ ...swimmer, nicknames: [] })
+                    try {
+                      await updateSwimmer(id, { nicknames: [] })
+                      setSwimmer({ ...swimmer, nicknames: [] })
+                    } catch { window.alert('The name variants could not be cleared. Please try again.') }
                   }}>
                   Clear all
                 </button>
               )}
             </div>
+          )}
+          {notice && (
+            <div role="status" style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: 'var(--asw-fast)' }}>{notice}</div>
           )}
         </div>
         {(() => {
@@ -1557,8 +1589,10 @@ export default function SwimmerProfile() {
                   <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }}
                     onClick={async () => {
                       const next = !swimmer.is_retired
-                      await updateSwimmer(id, { is_retired: next })
-                      setSwimmer({ ...swimmer, is_retired: next })
+                      try {
+                        await updateSwimmer(id, { is_retired: next })
+                        setSwimmer({ ...swimmer, is_retired: next })
+                      } catch { window.alert('The status could not be changed. Please try again.') }
                     }}>
                     {swimmer.is_retired ? 'Mark active' : 'Mark retired'}
                   </button>
@@ -1609,6 +1643,7 @@ export default function SwimmerProfile() {
           onClose={() => setAdminEditOpen(false)}
           onSaved={async () => {
             setAdminEditOpen(false)
+            setNotice('Changes saved.')
             const res = await getSwimmer(id).catch(() => null)
             if (res) setSwimmer(res.data)
           }}
@@ -1632,6 +1667,7 @@ export default function SwimmerProfile() {
           onClose={() => setEditOpen(false)}
           onSaved={async () => {
             setEditOpen(false)
+            setNotice('Changes saved. A new photo appears once an admin approves it.')
             const res = await getSwimmer(id).catch(() => null)
             if (res) setSwimmer(res.data)
             refreshUser()

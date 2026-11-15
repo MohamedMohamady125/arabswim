@@ -100,7 +100,9 @@ export default function Market() {
           <input
             className="input"
             style={{ maxWidth: 320 }}
+            inputMode="search"
             placeholder="Search listings…"
+            aria-label="Search listings"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -111,7 +113,7 @@ export default function Market() {
       {loading ? (
         <Loading label="Loading listings" />
       ) : listings.length === 0 ? (
-        <Empty label="No listings found" />
+        <Empty label="No listings found" hint={search ? 'Try a shorter or different search.' : (isAdmin && statusFilter ? 'No listings have this status. Choose "All" to see every listing.' : 'Listings will appear here once they are approved.')} />
       ) : (
         <div className="pad-lg">
           <div className="cellgrid grid-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
@@ -122,7 +124,7 @@ export default function Market() {
                 <div key={l.id} style={{ display: 'flex', flexDirection: 'column' }}>
                   {img ? (
                     <div className="grayscale" style={{ height: 190, overflow: 'hidden', margin: '-14px -16px 12px' }}>
-                      <img src={mediaUrl(img)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={mediaUrl(img)} alt={l.title || ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   ) : (
                     <div style={{ height: 190, background: 'var(--color-neutral-200)', margin: '-14px -16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -162,7 +164,7 @@ export default function Market() {
                   {l.seller_contact && (
                     <div style={{ fontSize: 12, marginTop: 6 }}>
                       {href ? (
-                        <a href={href} target={href.startsWith('mailto:') ? undefined : '_blank'} rel="noreferrer">
+                        <a href={href} target={href.startsWith('mailto:') ? undefined : '_blank'} rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
                           Contact seller →
                         </a>
                       ) : (
@@ -176,7 +178,8 @@ export default function Market() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-divider)', flexWrap: 'wrap' }}>
                       {l.status === 'PENDING' && (
                         <>
-                          <button type="button" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setStatus(l, 'APPROVED')}>
+                          {/* Von Restorff: many cards on screen, so Approve is not a solid primary on each one */}
+                          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} onClick={() => setStatus(l, 'APPROVED')}>
                             <Check size={13} /> Approve
                           </button>
                           <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setStatus(l, 'REJECTED')}>
@@ -190,7 +193,7 @@ export default function Market() {
                         </button>
                       )}
                       <span style={{ flex: 1 }} />
-                      <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => handleDelete(l)}>
+                      <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} aria-label={`Delete listing ${l.title}`} onClick={() => handleDelete(l)}>
                         <Trash2 size={13} /> Delete
                       </button>
                     </div>

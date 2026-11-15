@@ -195,6 +195,8 @@ export default function Compare() {
           <input
             className="input"
             placeholder={selected.length >= MAX ? `Maximum ${MAX} swimmers` : 'Search a swimmer to add…'}
+            aria-label="Search a swimmer to add to the comparison"
+            autoComplete="off"
             value={q}
             disabled={selected.length >= MAX}
             onChange={(e) => setQ(e.target.value)}
@@ -216,6 +218,12 @@ export default function Compare() {
               ))}
             </div>
           )}
+          {/* Paradox of the Active User: a search with no matches says so */}
+          {open && results.length === 0 && q.trim() && (
+            <div role="status" className="text-muted" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: 'var(--color-bg)', border: '1px solid var(--color-divider)', borderTop: 0, boxShadow: 'var(--shadow-md)', padding: '10px 12px', fontSize: 13 }}>
+              No swimmers match “{q.trim()}”. Check the spelling.
+            </div>
+          )}
         </div>
         <button
           type="button"
@@ -235,7 +243,9 @@ export default function Compare() {
                   type="button"
                   onClick={() => remove(s.id)}
                   aria-label={`Remove ${s.name}`}
-                  style={{ background: 'none', border: 0, color: 'inherit', cursor: 'pointer', font: 'inherit', padding: '0 2px' }}
+                  title={`Remove ${s.name}`}
+                  // Fitts's Law: 32px hit box; negative margins keep the chip its size
+                  style={{ background: 'none', border: 0, color: 'inherit', cursor: 'pointer', font: 'inherit', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 32, minHeight: 32, margin: '-9px -6px -9px -8px' }}
                 >
                   ×
                 </button>
@@ -246,11 +256,11 @@ export default function Compare() {
       </div>
 
       {selected.length < 2 ? (
-        shuffling ? <Loading label="Drawing a face-off" /> : <Empty label="Select at least two swimmers" />
+        shuffling ? <Loading label="Drawing a face-off" /> : <Empty label="Select at least two swimmers" hint="Search for a swimmer above to add them, or draw a random face-off." />
       ) : loading ? (
         <Loading label="Comparing" />
       ) : !data || data.swimmers.length === 0 ? (
-        <Empty label="Comparison unavailable" />
+        <Empty label="Comparison unavailable" hint="The comparison could not be loaded. Check your connection, or remove a swimmer and add them again." />
       ) : (
         <div className="pad">
           {/* face-off header — the marketable bit: faces, flags, gold VS */}
@@ -273,7 +283,7 @@ export default function Compare() {
                     <div style={{ padding: '16px 18px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', textAlign: 'left' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Flag code={sw.nationality_code} name={sw.nationality} />
-                        <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1.2 }}>{sw.name}</Link>
+                        <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1.2, display: 'inline-block', padding: '6px 0', margin: '-6px 0' /* Fitts's Law: taller hit area, same layout */ }}>{sw.name}</Link>
                       </div>
                       <div className="text-muted" style={{ fontSize: 12, marginTop: 5 }}>
                         {[sw.club, sw.age ? `Age ${sw.age}` : null].filter(Boolean).join(' · ') || '—'}
@@ -303,7 +313,7 @@ export default function Compare() {
                     <Flag code={a.nationality_code} name={a.nationality} />
                     <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, lineHeight: 1.2 }}>{a.name}</span>
                   </div>
-                  <div className="vs-mid" style={{ color: 'var(--asw-gold)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 10 }}>Head to head</div>
+                  <div className="vs-mid" style={{ color: 'var(--asw-gold)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 11 }}>Head to head</div>
                   <div className="vs-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 7, minWidth: 0 }}>
                     <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, lineHeight: 1.2, textAlign: 'right' }}>{b.name}</span>
                     <Flag code={b.nationality_code} name={b.nationality} />
@@ -346,7 +356,7 @@ export default function Compare() {
                   <th>Event</th>
                   {data.swimmers.map((sw) => (
                     <th key={sw.id} className="time">
-                      <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 0', margin: '-8px 0' }}>
                         <Flag code={sw.nationality_code} name={sw.nationality} />
                         {/* the wrapper scrolls horizontally — never break a name mid-word */}
                         <span style={{ whiteSpace: 'nowrap' }}>{sw.name}</span>

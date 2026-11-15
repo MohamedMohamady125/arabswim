@@ -22,13 +22,13 @@ const heroIcon = {
 function HeroContact({ icon, children, href }) {
   const body = (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--color-accent-800)' }}>
-      <span style={heroIcon}>{icon}</span>
+      <span style={heroIcon} aria-hidden="true">{icon}</span>
       <span style={{ wordBreak: 'break-word' }}>{children}</span>
     </span>
   )
   if (href) {
     return (
-      <a href={href} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+      <a href={href} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
         {body}
       </a>
     )
@@ -68,7 +68,11 @@ export default function AcademyProfile() {
   }, [id])
 
   if (loading) return <Loading label="Loading academy" />
-  if (!academy) return <Empty label="Academy not found" />
+  if (!academy) return (
+    <Empty label="Academy not found" hint="It may have been removed, or the link is wrong.">
+      <Link to="/academies" className="btn btn-secondary">All academies</Link>
+    </Empty>
+  )
 
   const a = academy
   const country = a.country_detail
@@ -80,7 +84,7 @@ export default function AcademyProfile() {
         background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)',
         padding: '30px 32px 28px',
       }}>
-        <Link to="/academies" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', textDecoration: 'none' }}>
+        <Link to="/academies" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
           ← All academies
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
@@ -113,7 +117,7 @@ export default function AcademyProfile() {
             <div style={{ display: 'flex', gap: 18, marginTop: 16, flexWrap: 'wrap' }}>
               {a.phone && <HeroContact icon={svg.phone} href={`tel:${a.phone}`}>{a.phone}</HeroContact>}
               {a.email && <HeroContact icon={svg.mail} href={`mailto:${a.email}`}>{a.email}</HeroContact>}
-              {a.website && <HeroContact icon={svg.globe} href={a.website}>{String(a.website).replace(/^https?:\/\//, '')}</HeroContact>}
+              {a.website && <HeroContact icon={svg.globe} href={/^https?:\/\//i.test(a.website) ? a.website : `https://${a.website}`}>{String(a.website).replace(/^https?:\/\//, '')}</HeroContact>}
               {a.instagram && (
                 <HeroContact icon={svg.at} href={`https://instagram.com/${String(a.instagram).replace(/^@/, '')}`}>
                   @{String(a.instagram).replace(/^@/, '')}
@@ -178,7 +182,7 @@ export default function AcademyProfile() {
             </div>
             {a.address && (
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 14, fontSize: 13.5, color: '#37567a' }}>
-                <span style={heroIcon}>{svg.pin}</span>
+                <span style={heroIcon} aria-hidden="true">{svg.pin}</span>
                 <span style={{ paddingTop: 5 }}>{a.address}</span>
               </div>
             )}

@@ -62,7 +62,7 @@ function StandardTables({ times, gender, pool, isAdmin, onDeleteTime }) {
 
   const strokes = Object.keys(byStroke)
   if (strokes.length === 0) {
-    return <Empty label={`No times for ${gender === 'M' ? 'men' : 'women'} (${pool}) yet`} />
+    return <Empty label={`No times for ${gender === 'M' ? 'men' : 'women'} (${pool}) yet`} hint="Try the other pool or gender above." />
   }
 
   return (
@@ -122,37 +122,40 @@ function StandardModal({ standard, onClose, onSaved }) {
   }
   const submit = async (e) => {
     e.preventDefault()
-    if (!form.name) { setError('Name required'); return }
+    if (!form.name.trim()) { setError('Name required'); return }
     if (!form.qualifying_period_start || !form.qualifying_period_end) {
       setError('Qualifying period required — enter the competition date or the period dates'); return
     }
     setSaving(true)
+    setError('')
     try {
+      // Postel's Law: stray spaces around the name are dropped
+      const payload = { ...form, name: form.name.trim() }
       const res = standard?.id
-        ? await updateQualifyingStandard(standard.id, form)
-        : await createQualifyingStandard(form)
+        ? await updateQualifyingStandard(standard.id, payload)
+        : await createQualifyingStandard(payload)
       onSaved(res?.data, !standard?.id)
-    } catch (err) { setError(err.response?.data?.detail || 'Failed'); setSaving(false) }
+    } catch (err) { setError(err.response?.data?.detail || 'Could not save the standard. Check the fields and try again.'); setSaving(false) }
   }
   return (
     <Modal title={standard?.id ? 'Edit Standard' : 'Create Standard'} onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {error && <div className="error-box">{error}</div>}
-        <div className="field"><label>Name *</label><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
+        {error && <div className="error-box" role="alert">{error}</div>}
+        <div className="field"><label>Name *</label><input className="input" aria-label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div className="field"><label>Competition type</label><input className="input" value={form.competition_type} onChange={(e) => setForm({ ...form, competition_type: e.target.value })} placeholder="e.g. world_championships" /></div>
-          <div className="field"><label>Year</label><input className="input" type="number" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} /></div>
+          <div className="field"><label>Competition type</label><input className="input" aria-label="Competition type" value={form.competition_type} onChange={(e) => setForm({ ...form, competition_type: e.target.value })} placeholder="e.g. world_championships" /></div>
+          <div className="field"><label>Year</label><input className="input" aria-label="Year" type="number" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} /></div>
         </div>
         <div className="field">
           <label>Competition date</label>
-          <input className="input" type="date" value={compDate} onChange={(e) => applyCompDate(e.target.value)} />
+          <input className="input" aria-label="Competition date" type="date" value={compDate} onChange={(e) => applyCompDate(e.target.value)} />
           <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
             Enter the meet date and the qualifying period is calculated automatically (16-month window ending on this date) — or set the period yourself below.
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div className="field"><label>Qualifying start *</label><input className="input" type="date" value={form.qualifying_period_start} onChange={(e) => setForm({ ...form, qualifying_period_start: e.target.value })} /></div>
-          <div className="field"><label>Qualifying end *</label><input className="input" type="date" value={form.qualifying_period_end} onChange={(e) => setForm({ ...form, qualifying_period_end: e.target.value })} /></div>
+          <div className="field"><label>Qualifying start *</label><input className="input" aria-label="Qualifying start" type="date" value={form.qualifying_period_start} onChange={(e) => setForm({ ...form, qualifying_period_start: e.target.value })} /></div>
+          <div className="field"><label>Qualifying end *</label><input className="input" aria-label="Qualifying end" type="date" value={form.qualifying_period_end} onChange={(e) => setForm({ ...form, qualifying_period_end: e.target.value })} /></div>
         </div>
         <div className="text-muted" style={{ fontSize: 12 }}>
           Only swims inside this window count toward qualification in the federation Qualifying tab.
@@ -174,38 +177,39 @@ function AddTimeModal({ standardId, onClose, onSaved }) {
   useEffect(() => { getEvents().then((r) => setEvents(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {}) }, [])
   const submit = async (e) => {
     e.preventDefault()
-    if (!form.event || !form.time) { setError('Event and time required'); return }
-    const cs = parseTime(form.time)
-    if (!cs) { setError('Invalid time format'); return }
+    if (!form.event || !form.time.trim()) { setError('Event and time required'); return }
+    const cs = parseTime(form.time.trim())
+    if (!cs) { setError('Time must look like 27.45 or 1:02.34'); return }
     setSaving(true)
+    setError('')
     try {
-      await addQualifyingTime(standardId, { event: form.event, gender: form.gender, pool: form.pool, cut: form.cut, time_centiseconds: cs })
+      await addQualifyingTime(standardId, { event: form.event, gender: form.gender, pool: form.pool, cut: form.cut.trim(), time_centiseconds: cs })
       onSaved()
-    } catch (err) { setError(err.response?.data?.detail || err.response?.data?.error || 'Failed'); setSaving(false) }
+    } catch (err) { setError(err.response?.data?.detail || err.response?.data?.error || 'Could not add the time. Try again.'); setSaving(false) }
   }
   return (
     <Modal title="Add Qualifying Time" onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box" role="alert">{error}</div>}
         <div className="field"><label>Event *</label>
-          <select className="select" value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })}>
+          <select className="select" aria-label="Event" value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })}>
             <option value="">Select event…</option>
             {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
           </select>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
           <div className="field"><label>Gender</label>
-            <select className="select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
+            <select className="select" aria-label="Gender" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
               <option value="M">Men</option><option value="F">Women</option>
             </select>
           </div>
           <div className="field"><label>Pool</label>
-            <select className="select" value={form.pool} onChange={(e) => setForm({ ...form, pool: e.target.value })}>
+            <select className="select" aria-label="Pool" value={form.pool} onChange={(e) => setForm({ ...form, pool: e.target.value })}>
               <option value="LCM">LCM</option><option value="SCM">SCM</option>
             </select>
           </div>
-          <div className="field"><label>Cut</label><input className="input" value={form.cut} onChange={(e) => setForm({ ...form, cut: e.target.value })} placeholder="A" /></div>
-          <div className="field"><label>Time *</label><input className="input asw-num" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} placeholder="27.45" /></div>
+          <div className="field"><label>Cut</label><input className="input" aria-label="Cut" value={form.cut} onChange={(e) => setForm({ ...form, cut: e.target.value })} placeholder="A" /></div>
+          <div className="field"><label>Time *</label><input className="input asw-num" aria-label="Time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} placeholder="27.45" /></div>
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -290,12 +294,12 @@ function BulkTimesModal({ standard, onClose, onSaved }) {
   return (
     <Modal title={`Times — ${standard.name}`} onClose={onClose} width={720}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box" role="alert">{error}</div>}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span className="micro">Cut</span>
-            <input className="input" value={cut} onChange={(e) => setCut(e.target.value.toUpperCase())}
+            <input className="input" aria-label="Cut" value={cut} onChange={(e) => setCut(e.target.value.toUpperCase())}
               style={{ width: 52, textAlign: 'center' }} maxLength={2} />
           </div>
           <span className="micro" style={{ marginLeft: 'auto' }}>
@@ -314,6 +318,7 @@ function BulkTimesModal({ standard, onClose, onSaved }) {
                   {['M', 'F'].map((g) => (
                     <td key={g} className="time" style={{ minWidth: 110 }}>
                       <input className="input asw-num" placeholder="—" style={inputStyle}
+                        aria-label={`${ev.name} ${g === 'M' ? 'Men' : 'Women'}`}
                         value={values[`${ev.id}-${g}`] || ''}
                         onChange={(e) => setValues((v) => ({ ...v, [`${ev.id}-${g}`]: e.target.value }))} />
                     </td>
@@ -349,6 +354,13 @@ export default function QualifyingTimes() {
   const [uploadFile, setUploadFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [notice, setNotice] = useState(null) // { text, bad } — Peak-End Rule: confirm saves, explain failures
+
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => setNotice(null), 5000)
+    return () => clearTimeout(t)
+  }, [notice])
 
   // Load the complete standards list (follow pagination if present)
   useEffect(() => {
@@ -406,8 +418,14 @@ export default function QualifyingTimes() {
         )}
       </PageHead>
 
+      {notice && (
+        <div role={notice.bad ? 'alert' : 'status'} className="rule-b" style={{ padding: '10px 32px', fontSize: 13, fontWeight: 700, color: notice.bad ? 'var(--asw-slow)' : 'var(--asw-fast)' }}>
+          {notice.text}
+        </div>
+      )}
+
       {standards.length === 0 ? (
-        <Empty label="No qualifying standards published" />
+        <Empty label="No qualifying standards published" hint={isAdmin ? 'Create the first standard with the button above.' : 'Check back later, or reload the page.'} />
       ) : (
         <>
           {/* Competition selector — big and prominent */}
@@ -420,8 +438,9 @@ export default function QualifyingTimes() {
                     key={s.id}
                     type="button"
                     onClick={() => setSelectedId(s.id)}
+                    aria-pressed={active}
                     style={{
-                      cursor: 'pointer',
+                      cursor: 'pointer', minHeight: 36,
                       fontFamily: 'var(--font-heading)', fontWeight: 800,
                       fontSize: active ? 22 : 15,
                       padding: 0, lineHeight: 1.2,
@@ -454,7 +473,7 @@ export default function QualifyingTimes() {
           {detailLoading ? (
             <Loading label="Loading standard" />
           ) : !detail ? (
-            <Empty label="Standard unavailable" />
+            <Empty label="Standard unavailable" hint="Pick another competition above, or reload the page." />
           ) : (
             <div style={{ padding: '18px 32px 28px' }}>
               {/* the selected tab already names the standard — only show
@@ -482,7 +501,8 @@ export default function QualifyingTimes() {
                         const fd = new FormData(); fd.append('file', f)
                         await uploadQualifyingPdf(selectedId, fd)
                         setReloadKey((k) => k + 1)
-                      } catch { window.alert('Upload failed') }
+                        setNotice({ text: 'PDF uploaded.' })
+                      } catch { setNotice({ text: 'Upload failed. Check the file is a PDF and try again.', bad: true }) }
                       setUploading(false)
                       e.target.value = ''
                     }} />
@@ -491,9 +511,12 @@ export default function QualifyingTimes() {
                   <button className="btn" style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)', marginLeft: 'auto' }}
                     onClick={async () => {
                       if (!window.confirm(`Delete "${detail.name}"? All qualifying times in it will be removed.`)) return
-                      await deleteQualifyingStandard(selectedId)
+                      try {
+                        await deleteQualifyingStandard(selectedId)
+                      } catch { setNotice({ text: 'Could not delete the standard. Try again.', bad: true }); return }
                       setSelectedId(null)
                       setReloadKey((k) => k + 1)
+                      setNotice({ text: 'Standard deleted.' })
                     }}>Delete standard</button>
                 </div>
               )}
@@ -511,6 +534,7 @@ export default function QualifyingTimes() {
         <StandardModal standard={editModal.id ? editModal : null} onClose={() => setEditModal(null)}
           onSaved={(saved, isNew) => {
             setEditModal(null)
+            setNotice({ text: 'Standard saved.' })
             setReloadKey((k) => k + 1)
             if (saved?.id) setSelectedId(saved.id)
             // fresh standard: jump straight into the times grid
@@ -519,11 +543,11 @@ export default function QualifyingTimes() {
       )}
       {bulkModal && (
         <BulkTimesModal standard={bulkModal} onClose={() => setBulkModal(null)}
-          onSaved={() => { setBulkModal(null); setReloadKey((k) => k + 1) }} />
+          onSaved={() => { setBulkModal(null); setNotice({ text: 'Times saved.' }); setReloadKey((k) => k + 1) }} />
       )}
       {addTimeModal && selectedId && (
         <AddTimeModal standardId={selectedId} onClose={() => setAddTimeModal(false)}
-          onSaved={() => { setAddTimeModal(false); setReloadKey((k) => k + 1) }} />
+          onSaved={() => { setAddTimeModal(false); setNotice({ text: 'Time added.' }); setReloadKey((k) => k + 1) }} />
       )}
     </div>
   )

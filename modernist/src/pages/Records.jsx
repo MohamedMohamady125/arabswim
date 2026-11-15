@@ -72,6 +72,11 @@ function normalizeManual(r) {
   }
 }
 
+// Jakob's Law: a row that opens a swim behaves like a link (Enter/Space, focus ring)
+const rowKeyNav = (go) => (e) => {
+  if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go() }
+}
+
 export function RecordTable({ rows }) {
   const navigate = useNavigate()
   return (
@@ -92,7 +97,11 @@ export function RecordTable({ rows }) {
               <tr
                 key={r.key}
                 onClick={() => { if (r.link) navigate(r.link) }}
-                style={r.link ? { cursor: 'pointer' } : undefined}
+                className={r.link ? 'row-link' : undefined}
+                role={r.link ? 'link' : undefined}
+                tabIndex={r.link ? 0 : undefined}
+                title={r.link ? 'View this swim' : undefined}
+                onKeyDown={r.link ? rowKeyNav(() => navigate(r.link)) : undefined}
               >
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                   {r.eventName}
@@ -118,9 +127,12 @@ export function RecordTable({ rows }) {
         {rows.map((r) => (
           <div
             key={r.key}
-            className="hair-b"
+            className={r.link ? 'hair-b row-link' : 'hair-b'}
             onClick={() => { if (r.link) navigate(r.link) }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', cursor: r.link ? 'pointer' : 'default' }}
+            role={r.link ? 'link' : undefined}
+            tabIndex={r.link ? 0 : undefined}
+            onKeyDown={r.link ? rowKeyNav(() => navigate(r.link)) : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}
           >
             <Flag code={r.natCode} name={r.natName} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -244,21 +256,21 @@ export default function Records() {
           />
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select className="select" style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 180 }} value={scope} onChange={(e) => setScope(e.target.value)}>
+          <select className="select" aria-label="Record book" style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 180 }} value={scope} onChange={(e) => setScope(e.target.value)}>
             {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           {needsCountry && (
-            <select className="select" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+            <select className="select" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
               <option value="">Select country…</option>
               {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
           {isComputed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span className="hide-mobile" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
+              <span className="hide-mobile" style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
                 Age category
               </span>
-              <select className="select" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+              <select className="select" aria-label="Age category" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
                 {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
               </select>
             </div>
@@ -267,11 +279,11 @@ export default function Records() {
       </div>
 
       {needsCountry && !country ? (
-        <Empty label="Select a country to view national records" />
+        <Empty label="Select a country to view national records" hint="Pick a federation from the country list above." />
       ) : loading ? (
         <Loading label="Loading records" />
       ) : rows.length === 0 ? (
-        <Empty label={`No ${pool} records for this scope yet — try switching the pool or age group`} />
+        <Empty label={`No ${pool} records for this scope yet`} hint="Try switching the pool or the age group." />
       ) : (
         sections.map((s, i) => (
           <Section

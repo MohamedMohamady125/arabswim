@@ -97,6 +97,7 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
             <button
               key={d.day}
               type="button"
+              aria-pressed={!!active}
               onClick={() => { setActiveDay(d.day); setMsg('') }}
               style={{
                 cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: 700,
@@ -107,11 +108,11 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
               }}
             >
               Day {d.day}
-              <span style={{ display: 'block', fontWeight: 400, fontSize: 10, opacity: 0.8 }}>
+              <span style={{ display: 'block', fontWeight: 400, fontSize: 11, opacity: 0.8 }}>
                 {formatDate(d.date)}
               </span>
               {d.items.length > 0 && (
-                <span style={{ fontWeight: 400, fontSize: 10, opacity: 0.8 }}> · {d.items.length} events</span>
+                <span style={{ fontWeight: 400, fontSize: 11, opacity: 0.8 }}> · {d.items.length} events</span>
               )}
             </button>
           )
@@ -120,30 +121,33 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
 
       {/* add row */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-        <select style={inputStyle} value={eventId} onChange={(e) => setEventId(e.target.value)}>
+        <select aria-label="Event" style={inputStyle} value={eventId} onChange={(e) => setEventId(e.target.value)}>
           <option value="">Event…</option>
           {eventOptions.map((e) => (
             <option key={e.id} value={e.id}>{e.name}{e.scheduled ? ' ✓ scheduled' : ''}</option>
           ))}
         </select>
-        <select style={inputStyle} value={gender} onChange={(e) => setGender(e.target.value)}>
+        <select aria-label="Gender" style={inputStyle} value={gender} onChange={(e) => setGender(e.target.value)}>
           <option value="M">Men</option>
           <option value="F">Women</option>
           <option value="BOTH">Both (Men & Women)</option>
           <option value="X">Mixed</option>
         </select>
-        <select style={inputStyle} value={session} onChange={(e) => setSession(e.target.value)}>
+        <select aria-label="Session" style={inputStyle} value={session} onChange={(e) => setSession(e.target.value)}>
           <option value="">Session…</option>
           <option value="HEATS">Heats</option>
           <option value="SEMIS">Semifinals</option>
           <option value="FINALS">Finals</option>
         </select>
-        <select style={inputStyle} value={timeOfDay} onChange={(e) => setTimeOfDay(e.target.value)}>
+        <select aria-label="Time of day" style={inputStyle} value={timeOfDay} onChange={(e) => setTimeOfDay(e.target.value)}>
           <option value="">Time…</option>
           <option value="MORNING">Morning</option>
           <option value="EVENING">Evening</option>
         </select>
         <input
+          type="text"
+          aria-label="Age category (optional)"
+          autoComplete="off"
           style={{ ...inputStyle, width: 110 }}
           value={ageCat}
           onChange={(e) => setAgeCat(e.target.value)}
@@ -155,7 +159,7 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
         </button>
         {action}
       </div>
-      {msg && <div className="micro" style={{ marginBottom: 8, textTransform: 'none', letterSpacing: 0 }}>{msg}</div>}
+      {msg && <div className="micro" role="status" style={{ marginBottom: 8, textTransform: 'none', letterSpacing: 0 }}>{msg}</div>}
 
       {/* items for the active day */}
       {day && day.items.length > 0 ? (
@@ -163,7 +167,7 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
           {day.items.map((it, i) => (
             <div
               key={`${it.event}-${it.gender}-${it.session || ''}-${it.time_of_day || ''}-${it.age_category || ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderBottom: '1px solid var(--color-divider)', fontSize: 13, background: '#fff' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 8px', borderBottom: '1px solid var(--color-divider)', fontSize: 13, background: '#fff' }}
             >
               <span className="asw-num" style={{ width: 22, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
               <span style={{ fontWeight: 600 }}>{it.event_name}</span>
@@ -172,9 +176,9 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
               {it.time_of_day && <span className="tag tag-neutral" style={{ flex: 'none' }}>{TIME_OF_DAY_LABEL[it.time_of_day]}</span>}
               {it.age_category && <span className="tag tag-neutral" style={{ flex: 'none' }}>{it.age_category}</span>}
               <span style={{ marginLeft: 'auto', display: 'flex', gap: 2 }}>
-                <button type="button" onClick={() => moveItem(i, -1)} disabled={i === 0} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px' }} aria-label="Move up">↑</button>
-                <button type="button" onClick={() => moveItem(i, 1)} disabled={i === day.items.length - 1} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px' }} aria-label="Move down">↓</button>
-                <button type="button" onClick={() => removeItem(i)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px', color: 'var(--asw-slow)' }} aria-label="Remove">×</button>
+                <button type="button" onClick={() => moveItem(i, -1)} disabled={i === 0} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px', minWidth: 32, minHeight: 32 }} aria-label="Move up" title="Move up">↑</button>
+                <button type="button" onClick={() => moveItem(i, 1)} disabled={i === day.items.length - 1} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px', minWidth: 32, minHeight: 32 }} aria-label="Move down" title="Move down">↓</button>
+                <button type="button" onClick={() => removeItem(i)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px', minWidth: 32, minHeight: 32, color: 'var(--asw-slow)' }} aria-label="Remove" title="Remove">×</button>
               </span>
             </div>
           ))}
@@ -202,14 +206,16 @@ export default function MeetProgramEditor({ champId, onSaved }) {
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     if (!champId) return
     setDirty(false)
     setMsg('')
+    setLoadFailed(false)
     getMeetProgram(champId)
       .then((res) => setDays(res.data?.days || []))
-      .catch(() => setDays([]))
+      .catch(() => { setDays([]); setLoadFailed(true) })
   }, [champId])
 
   const patchDay = (dayNo, items) => {
@@ -234,6 +240,10 @@ export default function MeetProgramEditor({ champId, onSaved }) {
     }
   }
 
+  // a failed load says so instead of leaving a blank space
+  if (champId && loadFailed) {
+    return <div className="micro" role="status" style={{ textTransform: 'none', letterSpacing: 0 }}>The program could not be loaded. Reload the page to try again.</div>
+  }
   if (!champId || days.length === 0) return null
 
   return (

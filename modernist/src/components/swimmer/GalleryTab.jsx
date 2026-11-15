@@ -18,12 +18,20 @@ export default function GalleryTab({ swimmerId }) {
     return () => { alive = false }
   }, [swimmerId])
 
+  // Jakob's Law: Escape closes the photo viewer
+  useEffect(() => {
+    if (!lightbox) return
+    const onKey = (e) => { if (e.key === 'Escape') setLightbox(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [lightbox])
+
   if (media === null) return <Loading label="Loading media" />
 
   const photos = media.filter((m) => m.media_type === 'PHOTO' && m.image)
   const videos = media.filter((m) => m.media_type === 'VIDEO' && m.video_url)
 
-  if (!photos.length && !videos.length) return <Empty label="No media yet" />
+  if (!photos.length && !videos.length) return <Empty label="No media yet" hint="Photos and videos of this swimmer will appear here once they are added." />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -35,6 +43,7 @@ export default function GalleryTab({ swimmerId }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 2 }}>
             {photos.map((p) => (
               <button key={p.id} type="button" onClick={() => setLightbox(p)}
+                aria-label={p.caption ? `Open photo: ${p.caption}` : 'Open photo'}
                 style={{ border: 0, padding: 0, cursor: 'pointer', background: 'var(--color-neutral-200)', aspectRatio: '1', overflow: 'hidden', position: 'relative' }}>
                 <img src={mediaUrl(p.image)} alt={p.caption || ''} loading="lazy" className="grayscale"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -57,6 +66,7 @@ export default function GalleryTab({ swimmerId }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
             {videos.map((v) => (
               <a key={v.id} href={v.video_url} target="_blank" rel="noopener noreferrer"
+                aria-label={`${v.caption ? `Play video: ${v.caption}` : 'Play video'} (opens in a new tab)`}
                 style={{ textDecoration: 'none', color: 'inherit', border: '1px solid var(--color-divider)' }}>
                 <div style={{ position: 'relative', aspectRatio: '16/9', background: 'var(--color-accent-800)', overflow: 'hidden' }}>
                   {v.embed_thumbnail && (
@@ -77,10 +87,10 @@ export default function GalleryTab({ swimmerId }) {
       )}
 
       {lightbox && (
-        <div onClick={() => setLightbox(null)}
+        <div onClick={() => setLightbox(null)} role="dialog" aria-modal="true" aria-label={lightbox.caption || 'Photo'}
           style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(18,37,61,0.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <button type="button" aria-label="Close" onClick={() => setLightbox(null)}
-            style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 0, color: '#fff', cursor: 'pointer' }}>
+          <button type="button" aria-label="Close" title="Close" onClick={() => setLightbox(null)}
+            style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 0, color: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, minHeight: 40, padding: 0 }}>
             <X size={28} />
           </button>
           <figure style={{ margin: 0, maxWidth: '100%', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>

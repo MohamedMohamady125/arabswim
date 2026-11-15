@@ -17,6 +17,7 @@ export default function Media() {
   const [showForm, setShowForm] = useState(false)
   const [championships, setChampionships] = useState([])
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [form, setForm] = useState({ title: '', description: '', championship: '' })
 
   useEffect(() => {
@@ -47,15 +48,15 @@ export default function Media() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    if (!form.title.trim()) { window.alert('Title is required'); return }
-    setSaving(true)
+    if (!form.title.trim()) { setFormError('Give the album a title first.'); return }
+    setSaving(true); setFormError('')
     try {
-      const res = await createAlbum({ ...form, championship: form.championship || null })
+      const res = await createAlbum({ ...form, title: form.title.trim(), description: form.description.trim(), championship: form.championship || null })
       setShowForm(false)
       setForm({ title: '', description: '', championship: '' })
       navigate(`/media/albums/${res.data.id}`)
     } catch {
-      window.alert('Failed to create album')
+      setFormError('The album could not be created. Check your connection and try again.')
     } finally {
       setSaving(false)
     }
@@ -86,6 +87,7 @@ export default function Media() {
                   className="input"
                   style={{ maxWidth: 240 }}
                   placeholder="Album title *"
+                  aria-label="Album title"
                   value={form.title}
                   autoFocus
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -94,12 +96,14 @@ export default function Media() {
                   className="input"
                   style={{ maxWidth: 280 }}
                   placeholder="Description (optional)"
+                  aria-label="Album description (optional)"
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 />
                 <select
                   className="select"
                   style={{ maxWidth: 240 }}
+                  aria-label="Championship"
                   value={form.championship}
                   onChange={(e) => setForm((f) => ({ ...f, championship: e.target.value }))}
                 >
@@ -109,7 +113,9 @@ export default function Media() {
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Creating…' : 'Create album'}
                 </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+                <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); setFormError('') }}>Cancel</button>
+                {/* error sits next to the form, in plain words */}
+                {formError && <div role="alert" className="error-box" style={{ flexBasis: '100%' }}>{formError}</div>}
               </form>
             )}
           </div>
@@ -119,7 +125,7 @@ export default function Media() {
       {loading ? (
         <Loading label="Loading albums" />
       ) : albums.length === 0 ? (
-        <Empty label="No albums yet" />
+        <Empty label="No albums yet" hint={isAdmin ? 'Use "New album" above to create the first one.' : 'Photo albums will appear here after championships and events.'} />
       ) : (
         <div className="pad-lg">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '28px 20px' }}>
@@ -128,7 +134,7 @@ export default function Media() {
                 <Link to={`/media/albums/${al.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <div className="grayscale" style={{ aspectRatio: '1/1', background: 'var(--color-surface)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {al.cover ? (
-                      <img src={mediaUrl(al.cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={mediaUrl(al.cover)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       <span className="micro" style={{ padding: 8, textAlign: 'center' }}>{al.title}</span>
                     )}
@@ -146,6 +152,7 @@ export default function Media() {
                     className="btn btn-ghost"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 4 }}
                     onClick={() => handleDelete(al)}
+                    aria-label={`Delete album ${al.title}`}
                   >
                     <Trash2 size={13} /> Delete
                   </button>

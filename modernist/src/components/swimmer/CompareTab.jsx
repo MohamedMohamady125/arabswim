@@ -28,6 +28,7 @@ function Portrait({ s, size = 56 }) {
 export default function CompareTab({ swimmerId }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
+  const [searched, setSearched] = useState(false)
   const [opponents, setOpponents] = useState([]) // [{id, name}]
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -36,7 +37,7 @@ export default function CompareTab({ swimmerId }) {
 
   // Debounced opponent search
   useEffect(() => {
-    if (!query.trim() || query.trim().length < 2) { setResults([]); return }
+    if (!query.trim() || query.trim().length < 2) { setResults([]); setSearched(false); return }
     clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => {
       searchSwimmers(query.trim())
@@ -46,6 +47,7 @@ export default function CompareTab({ swimmerId }) {
           setResults(l.filter((s) => !taken.has(String(s.id))).slice(0, 8))
         })
         .catch(() => setResults([]))
+        .finally(() => setSearched(true))
     }, 250)
     return () => clearTimeout(searchTimer.current)
   }, [query, swimmerId, opponents])
@@ -118,7 +120,9 @@ export default function CompareTab({ swimmerId }) {
               <span key={o.id} className="tag tag-dark" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                 {o.name}
                 <button type="button" onClick={() => setOpponents((l) => l.filter((x) => x.id !== o.id))}
-                  style={{ border: 0, background: 'transparent', color: 'inherit', cursor: 'pointer', padding: 0, display: 'inline-flex' }}>
+                  aria-label={`Remove ${o.name}`} title={`Remove ${o.name}`}
+                  // Fitts's Law: 32px hit box; negative margins keep the chip its size
+                  style={{ border: 0, background: 'transparent', color: 'inherit', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 32, minHeight: 32, margin: '-9px -10px -9px -8px' }}>
                   <X size={12} />
                 </button>
               </span>
@@ -131,6 +135,8 @@ export default function CompareTab({ swimmerId }) {
               className="input"
               style={{ width: '100%' }}
               placeholder="Search a swimmer to add…"
+              aria-label="Search a swimmer to compare against"
+              autoComplete="off"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -147,16 +153,22 @@ export default function CompareTab({ swimmerId }) {
                 ))}
               </div>
             )}
+            {/* Paradox of the Active User: a search with no matches says so */}
+            {searched && query.trim().length >= 2 && results.length === 0 && (
+              <div role="status" className="text-muted" style={{ fontSize: 13, marginTop: 6 }}>
+                No swimmers match “{query.trim()}”. Check the spelling.
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {opponents.length === 0 ? (
-        <Empty label="Add swimmers to see the head-to-head" />
+        <Empty label="Add swimmers to see the head-to-head" hint="Search for a swimmer above and pick them from the list." />
       ) : loading ? (
         <Loading label="Comparing" />
       ) : swimmers.length < 2 ? (
-        <Empty label="Comparison unavailable" />
+        <Empty label="Comparison unavailable" hint="The comparison could not be loaded. Remove a swimmer and add them again." />
       ) : (
         <>
           {/* Scoreboard strip — one cell per swimmer */}
@@ -174,7 +186,7 @@ export default function CompareTab({ swimmerId }) {
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 36, lineHeight: 1.15, marginTop: 6, color: wins[s.id] >= maxWins && maxWins > 0 ? 'var(--asw-gold)' : 'rgba(255,255,255,0.8)' }}>
                     {wins[s.id]}
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6 }}>Event wins</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6 }}>Event wins</div>
                   {leads && <span className="tag" style={{ background: 'var(--asw-gold)', color: '#fff', border: 0, marginTop: 6, display: 'inline-block' }}>LEADS H2H</span>}
                 </div>
               )
@@ -188,7 +200,7 @@ export default function CompareTab({ swimmerId }) {
 
           {/* Event-by-event table */}
           {rows.length === 0 ? (
-            <Empty label="No events in common" />
+            <Empty label="No events in common" hint={pool !== 'ALL' ? 'Try All Pools, or add a different swimmer.' : 'These swimmers have not swum the same events. Add a different swimmer.'} />
           ) : (
             <div className="table-scroll">
               <table className="table" style={{ fontSize: 13 }}>
@@ -220,11 +232,11 @@ export default function CompareTab({ swimmerId }) {
                                   {e.best_time}
                                 </span>
                                 {soleWin ? (
-                                  <span className="asw-num" style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: FAST }}>fastest</span>
+                                  <span className="asw-num" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: FAST }}>fastest</span>
                                 ) : isWin ? (
                                   <span className="micro" style={{ display: 'block', color: 'var(--color-accent)' }}>dead heat</span>
                                 ) : (
-                                  <span className="asw-num" style={{ display: 'block', fontSize: 10.5, color: 'var(--asw-slow)' }}>+{formatTime(e.best_cs - r.bestCs)}</span>
+                                  <span className="asw-num" style={{ display: 'block', fontSize: 11, color: 'var(--asw-slow)' }}>+{formatTime(e.best_cs - r.bestCs)}</span>
                                 )}
                               </>
                             )}

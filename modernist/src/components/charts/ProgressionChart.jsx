@@ -180,6 +180,8 @@ function Chart({ lines, title, showSwimmer = false }) {
   return (
     <div style={{ position: 'relative' }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }} fontFamily={FONT_STACK}
+        role="img"
+        aria-label={`${title ? `${title}: ` : ''}times over time for ${processedLines.map((l) => `${l.event_name} (${l.points.length} swim${l.points.length !== 1 ? 's' : ''}${l.points.length ? `, best ${formatCs(Math.min(...l.points.map((p) => p.time_cs)))}` : ''})`).join('; ')}. The table below lists best and latest times.`}
         onClick={() => setTooltip(null)}>
         {/* Flat white canvas */}
         <rect width={W} height={H} fill="#ffffff" />
@@ -383,7 +385,7 @@ function SummaryTable({ lines, showSwimmer }) {
               <tr key={line.event_id || line.event_name}>
                 <td>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    <svg width="10" height="10"><polygon points="5,0 0,8.5 10,8.5" fill={color} /></svg>
+                    <svg width="10" height="10" aria-hidden="true"><polygon points="5,0 0,8.5 10,8.5" fill={color} /></svg>
                     <span style={{ fontWeight: 600 }}>{line.event_name}</span>
                   </span>
                 </td>
@@ -405,7 +407,7 @@ function SummaryTable({ lines, showSwimmer }) {
 }
 
 export default function ProgressionChart({ lines = [], title, showSwimmer = false }) {
-  if (!lines.length) return <Empty label="No progression data" />
+  if (!lines.length) return <Empty label="No progression data" hint="The chart appears once there are dated times to plot." />
 
   // Assign each event a fixed color so single charts match the collective chart
   const coloredLines = lines.map((l, i) => ({ ...l, color: LINE_COLORS[i % LINE_COLORS.length] }))

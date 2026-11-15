@@ -35,7 +35,7 @@ function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved 
         country,
         from_country: fromCountry || null,
         effective_date: date,
-        notes,
+        notes: notes.trim(),
       })
       onSaved()
     } catch (err) {
@@ -51,30 +51,31 @@ function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved 
     >
       <div
         style={{ background: 'var(--color-bg, #fff)', border: '2px solid var(--color-text)', width: '100%', maxWidth: 460 }}
+        role="dialog" aria-modal="true" aria-label="Change nationality"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
           <div className="kicker">Change nationality</div>
-          <button className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close"><X size={14} /></button>
+          <button type="button" className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close" title="Close"><X size={14} /></button>
         </div>
         <form onSubmit={submit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="field">
-            <label>Old nationality</label>
-            <select className="select" value={fromCountry} onChange={(e) => setFromCountry(e.target.value)}>
+            <label htmlFor="natl-from">Old nationality</label>
+            <select id="natl-from" className="select" value={fromCountry} onChange={(e) => setFromCountry(e.target.value)}>
               <option value="">— none / unknown —</option>
               {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="field">
-            <label>New nationality</label>
-            <select className="select" value={country} onChange={(e) => setCountry(e.target.value)}>
+            <label htmlFor="natl-to">New nationality</label>
+            <select id="natl-to" className="select" value={country} onChange={(e) => setCountry(e.target.value)}>
               <option value="">— pick country —</option>
               {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="field">
-            <label>Effective date</label>
-            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <label htmlFor="natl-date">Effective date</label>
+            <input id="natl-date" className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className="field">
             <div style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', lineHeight: 1.5 }}>
@@ -85,10 +86,10 @@ function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved 
             </div>
           </div>
           <div className="field">
-            <label>Notes (optional)</label>
-            <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. sports citizenship change" />
+            <label htmlFor="natl-notes">Notes (optional)</label>
+            <input id="natl-notes" className="input" autoComplete="off" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. sports citizenship change" />
           </div>
-          {error && <div style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{error}</div>}
+          {error && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Change nationality'}</button>
@@ -116,6 +117,9 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
   const [clubDraft, setClubDraft] = useState('')
   const [clubCountryDraft, setClubCountryDraft] = useState('')
   const [savingClub, setSavingClub] = useState(false)
+  const [clubError, setClubError] = useState('')
+  // Peak-End Rule: confirm a finished save in plain words
+  const [notice, setNotice] = useState('')
   // Country options for the club-country fix, loaded once on first edit
   const [countryOptions, setCountryOptions] = useState(null)
   const { isAdmin } = useAuth()
@@ -124,6 +128,8 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
     setEditingClub(club.club)
     setClubDraft(club.club)
     setClubCountryDraft(club.country_code || '')
+    setClubError('')
+    setNotice('')
     if (!countryOptions) {
       getCountries({ page_size: 500 })
         .then((res) => {
@@ -140,13 +146,16 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
     const countryChanged = clubCountryDraft && clubCountryDraft !== (club.country_code || '')
     if (!nameChanged && !countryChanged) { setEditingClub(null); return }
     setSavingClub(true)
+    setClubError('')
     try {
       if (nameChanged) await renameSwimmerClub(swimmerId, club.club, newName)
       if (countryChanged) await setSwimmerClubCountry(swimmerId, nameChanged ? newName : club.club, clubCountryDraft)
       setEditingClub(null)
+      setNotice('Club updated.')
       setReloadKey((k) => k + 1)
     } catch (err) {
-      window.alert(err.response?.data?.error || 'Failed to update the club')
+      // error stays next to the field instead of a browser alert
+      setClubError(err.response?.data?.error || 'The club could not be updated. Please try again.')
     } finally {
       setSavingClub(false)
     }
@@ -161,7 +170,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
   }, [swimmerId, reloadKey])
 
   if (data === undefined) return <Loading label="Loading transfer history" />
-  if (data === null) return <Empty label="Failed to load transfer history" />
+  if (data === null) return <Empty label="Failed to load transfer history" hint="Check your connection and reload the page." />
 
   // Public view hides no-op rows (same from/to). Admins see every entry so a
   // wrongly-added nationality can always be deleted.
@@ -178,13 +187,16 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {isAdmin && notice && (
+        <div role="status" style={{ fontSize: 13, fontWeight: 600, color: 'var(--asw-fast)' }}>{notice}</div>
+      )}
       {/* Clubs */}
       <div>
         <div className="sect-head">
           <h4>Clubs</h4>
         </div>
         {clubs.length === 0 ? (
-          <Empty label="No club history available" />
+          <Empty label="No club history available" hint="Clubs appear here once this swimmer has results swum for a club." />
         ) : (
           <div className="cellgrid" style={{ gridTemplateColumns: '1fr' }}>
             {[...clubs].reverse().map((club, i) => (
@@ -196,6 +208,8 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
                       className="input"
                       style={{ flex: 1, minWidth: 140, minHeight: 32, fontSize: 13 }}
                       value={clubDraft}
+                      aria-label="Club name"
+                      autoComplete="off"
                       autoFocus
                       onChange={(e) => setClubDraft(e.target.value)}
                       onKeyDown={(e) => {
@@ -215,24 +229,27 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
                         <option key={c.code} value={c.code}>{c.name}</option>
                       ))}
                     </select>
-                    <button className="btn btn-primary btn-icon" disabled={savingClub}
-                      title="Save" aria-label="Save club"
+                    <button type="button" className="btn btn-primary btn-icon" disabled={savingClub}
+                      title={savingClub ? 'Saving…' : 'Save'} aria-label={savingClub ? 'Saving club' : 'Save club'}
                       onClick={() => saveClubEdit(club)}>
                       <Check size={13} />
                     </button>
-                    <button className="btn btn-secondary btn-icon" disabled={savingClub}
+                    <button type="button" className="btn btn-secondary btn-icon" disabled={savingClub}
                       title="Cancel" aria-label="Cancel edit"
                       onClick={() => setEditingClub(null)}>
                       <X size={13} />
                     </button>
+                    {clubError && (
+                      <span role="alert" style={{ flexBasis: '100%', fontSize: 13, color: 'var(--asw-slow)' }}>{clubError}</span>
+                    )}
                   </span>
                 ) : (
                   <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>
                     {club.club}
                     {isAdmin && (
-                      <button className="btn btn-secondary btn-icon" style={{ marginLeft: 8 }}
+                      <button type="button" className="btn btn-secondary btn-icon" style={{ marginLeft: 8 }}
                         title="Edit this club's name or country"
-                        aria-label="Edit club"
+                        aria-label={`Edit club ${club.club}`}
                         onClick={() => startClubEdit(club)}>
                         <Pencil size={12} />
                       </button>
@@ -255,7 +272,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
           <div className="sect-head">
             <h4>Nationality</h4>
             {isAdmin && (
-              <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setShowChange(true)}>
+              <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => { setNotice(''); setShowChange(true) }}>
                 Change nationality
               </button>
             )}
@@ -286,7 +303,8 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
                   <>
                     <Flag code={ch.from_country_code} name={ch.from_country} flagUrl={ch.from_country_flag} />
                     <span>{ch.from_country}</span>
-                    <span style={{ color: 'var(--color-neutral-700)' }}>→</span>
+                    <span aria-hidden="true" style={{ color: 'var(--color-neutral-700)' }}>→</span>
+                    <span className="sr-only">to</span>
                   </>
                 )}
                 <Flag code={ch.to_country_code} name={ch.to_country} flagUrl={ch.to_country_flag} />
@@ -295,6 +313,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
                 {ch.notes && <span className="text-muted">({ch.notes})</span>}
                 {isAdmin && ch.id != null && (
                   <button
+                    type="button"
                     className="btn btn-secondary btn-icon"
                     title="Delete this history entry"
                     aria-label="Delete nationality change"
@@ -303,6 +322,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
                       if (!window.confirm('Delete this nationality-change entry?')) return
                       try {
                         await deleteNationalityChange(swimmerId, ch.id)
+                        setNotice('Nationality change deleted.')
                         setReloadKey((k) => k + 1)
                       } catch {
                         window.alert('Failed to delete entry')
@@ -323,7 +343,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
           swimmerId={swimmerId}
           currentCountryId={currentCountryId}
           onClose={() => setShowChange(false)}
-          onSaved={() => { setShowChange(false); setReloadKey((k) => k + 1) }}
+          onSaved={() => { setShowChange(false); setNotice('Nationality change saved.'); setReloadKey((k) => k + 1) }}
         />
       )}
     </div>

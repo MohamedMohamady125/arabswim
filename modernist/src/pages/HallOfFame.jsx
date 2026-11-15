@@ -22,9 +22,10 @@ export default function HallOfFame() {
   const [category, setCategory] = useState('LEGEND')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
 
   const load = () => {
-    getInductees({ search: search || undefined })
+    getInductees({ search: search.trim() || undefined })
       .then((res) => {
         const d = res.data
         setInductees(Array.isArray(d) ? d : d?.results || [])
@@ -35,13 +36,14 @@ export default function HallOfFame() {
 
   useEffect(() => {
     let alive = true
-    getInductees({ search: search || undefined })
+    getInductees({ search: search.trim() || undefined })
       .then((res) => {
         if (!alive) return
         const d = res.data
         setInductees(Array.isArray(d) ? d : d?.results || [])
+        setFailed(false)
       })
-      .catch(() => { if (alive) setInductees([]) })
+      .catch(() => { if (alive) { setInductees([]); setFailed(true) } })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [search])
@@ -72,6 +74,8 @@ export default function HallOfFame() {
       >
         <input
           className="input"
+          type="search"
+          aria-label="Search inductees"
           style={{ maxWidth: 320, marginTop: 14 }}
           placeholder="Search inductees…"
           value={search}
@@ -88,7 +92,14 @@ export default function HallOfFame() {
       {loading ? (
         <Loading label="Loading the Hall of Fame" />
       ) : sorted.length === 0 ? (
-        <Empty label={`No ${CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} yet`} />
+        failed ? (
+          <Empty label="Could not load the Hall of Fame" hint="Check your connection and reload the page." />
+        ) : (
+          <Empty
+            label={`No ${CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} ${search.trim() ? 'match your search' : 'yet'}`}
+            hint={search.trim() ? 'Try a different name, or look in another category.' : undefined}
+          />
+        )
       ) : (
         <div className="grid-2 pad" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
           {sorted.map((p) => {
@@ -116,7 +127,7 @@ export default function HallOfFame() {
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--color-divider)' }}>
                   {p.swimmer ? (
-                    <Link to={`/swimmers/${p.swimmer}`} style={{ fontSize: 12, textDecoration: 'none' }}>
+                    <Link to={`/swimmers/${p.swimmer}`} style={{ fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
                       View swimmer profile →
                     </Link>
                   ) : (
@@ -152,6 +163,7 @@ function AddInductee({ category, onAdded }) {
   const [year, setYear] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [added, setAdded] = useState('')
   const boxRef = useRef(null)
 
   useEffect(() => {
@@ -167,7 +179,7 @@ function AddInductee({ category, onAdded }) {
   const submit = async (e) => {
     e.preventDefault()
     if (!picked || saving) return
-    setSaving(true); setError('')
+    setSaving(true); setError(''); setAdded('')
     try {
       await createInductee({
         swimmer: picked.id,
@@ -177,10 +189,11 @@ function AddInductee({ category, onAdded }) {
         achievements: achievements.trim(),
         ...(year ? { inducted_year: year } : {}),
       })
+      setAdded(`${picked.name} added to ${catLabel}`) // Peak-End Rule: confirm the save
       setPicked(null); setQuery(''); setAchievements(''); setYear('')
       onAdded()
     } catch {
-      setError('Failed to add — is the swimmer already inducted?')
+      setError('Could not add this swimmer. They may already be in the Hall of Fame.')
     } finally {
       setSaving(false)
     }
@@ -194,6 +207,8 @@ function AddInductee({ category, onAdded }) {
         <div ref={boxRef} style={{ position: 'relative', flex: '1 1 260px', minWidth: 0 }}>
           <input
             className="input"
+            type="search"
+            aria-label={`Search a swimmer to add to ${catLabel}`}
             style={{ width: '100%' }}
             placeholder={`Search a swimmer to add to ${catLabel}…`}
             value={picked ? picked.name : query}
@@ -206,23 +221,24 @@ function AddInductee({ category, onAdded }) {
               borderRadius: 6, maxHeight: 260, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
             }}>
               {results.map((s) => (
-                <div
+                <button
+                  type="button"
                   key={s.id}
                   onClick={() => { setPicked(s); setResults([]) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 14 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 14, width: '100%', minHeight: 36, border: 0, background: 'transparent', color: 'inherit', font: 'inherit', textAlign: 'left' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-neutral-100, #f4f4f4)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                 >
                   <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
-        <input className="input" type="number" style={{ flex: '0 1 110px', minWidth: 0 }}
+        <input className="input" type="number" inputMode="numeric" aria-label="Year inducted" style={{ flex: '0 1 110px', minWidth: 0 }}
           placeholder="Year" value={year} onChange={(e) => setYear(e.target.value)} />
-        <input className="input" style={{ flex: '2 1 240px', minWidth: 0 }}
+        <input className="input" aria-label="Achievements (optional)" style={{ flex: '2 1 240px', minWidth: 0 }}
           placeholder="Achievements (optional)" value={achievements}
           onChange={(e) => setAchievements(e.target.value)} />
         <button className="btn btn-primary" type="submit" disabled={!picked || saving}
@@ -230,7 +246,8 @@ function AddInductee({ category, onAdded }) {
           <Plus size={14} /> {saving ? 'Adding…' : `Add to ${catLabel}`}
         </button>
       </form>
-      {error && <div style={{ marginTop: 6, fontSize: 13, color: 'var(--color-danger, #c0392b)' }}>{error}</div>}
+      {error && <div role="alert" style={{ marginTop: 6, fontSize: 13, color: 'var(--color-danger, #c0392b)' }}>{error}</div>}
+      {added && !error && <div role="status" style={{ marginTop: 6, fontSize: 13, color: 'var(--asw-fast)' }}>{added} ✓</div>}
     </div>
   )
 }

@@ -89,6 +89,9 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
     >
       <div
         className="athlete-card-pop"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${swimmer.name} at this meet`}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 480, maxHeight: 'min(84vh, 720px)', display: 'flex', flexDirection: 'column',
@@ -102,10 +105,12 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
           color: '#fff', padding: '18px 20px 16px', position: 'relative', flex: 'none',
         }}>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close"
+            title="Close"
             style={{
-              position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: '50%',
+              position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: '50%',
               border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'rgba(255,255,255,.14)', color: '#fff',
             }}
@@ -180,7 +185,7 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
                       {medal ? (
                         <MedalIcon type={medal} size={21} style={{ display: 'block' }} />
                       ) : r.is_hc ? (
-                        <span style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
                       ) : (
                         <span className="asw-num" style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-neutral-500)' }}>
                           {r.original_rank || '–'}
@@ -193,7 +198,7 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                         <span style={{
-                          fontSize: 10, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+                          fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
                           padding: '1.5px 7px', borderRadius: 4,
                           background: (r.round_type === 'Finals' || !r.round_type) ? 'var(--color-accent-100)' : 'var(--color-neutral-200)',
                           color: (r.round_type === 'Finals' || !r.round_type) ? 'var(--color-accent)' : 'var(--color-neutral-600)',
@@ -201,10 +206,10 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
                           {roundTag(r.round_type)}
                         </span>
                         {r.category && (
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--color-neutral-500)' }}>{r.category}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-500)' }}>{r.category}</span>
                         )}
                         {isBest && (
-                          <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--asw-gold)', textTransform: 'uppercase' }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--asw-gold)', textTransform: 'uppercase' }}>
                             Top swim
                           </span>
                         )}
@@ -215,7 +220,7 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
                         {r.time_centiseconds > 0 ? r.formatted_time : (r.hc_type || '—')}
                       </div>
                       {r.fina_points ? (
-                        <div className="asw-num" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--color-neutral-500)', marginTop: 2 }}>
+                        <div className="asw-num" style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-500)', marginTop: 2 }}>
                           {r.fina_points} FINA
                         </div>
                       ) : null}

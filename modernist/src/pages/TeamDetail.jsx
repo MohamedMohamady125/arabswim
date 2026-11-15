@@ -32,6 +32,13 @@ const getTeamDepth = (id, params) => api.get(`/teams/${id}/depth/`, { params })
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
+// Admin forms: say what went wrong in plain words, never raw JSON
+const saveError = (e) => {
+  const d = e?.response?.data
+  if (d && typeof d === 'object') return Object.entries(d).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${[].concat(v).join(' ')}`).join(' · ')
+  return 'Could not save. Check your connection and try again.'
+}
+
 function acronym(name) {
   const words = String(name || '').split(/\s+/).filter(Boolean)
   if (words.length === 1) return words[0].slice(0, 3).toUpperCase()
@@ -80,9 +87,9 @@ const TABS = [
   { value: 'multimedia', label: 'Multimedia' },
 ]
 
-function SwimmerLink({ id, name }) {
+function SwimmerLink({ id, name, pad = true }) {
   if (!id) return <span style={{ fontWeight: 600 }}>{name}</span>
-  return <Link to={`/swimmers/${id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>{name}</Link>
+  return <Link to={`/swimmers/${id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600, padding: pad ? '7px 0' : undefined }}>{name}</Link>
 }
 
 function Field({ label, children }) {
@@ -129,13 +136,13 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
     setBusy(true); setErr('')
     try {
       const fd = new FormData()
-      Object.entries(form).forEach(([k, v]) => fd.append(k, v))
+      Object.entries(form).forEach(([k, v]) => fd.append(k, typeof v === 'string' ? v.trim() : v))
       if (logo) fd.append('logo', logo)
       fd.append('trophies_data', JSON.stringify(trophies.filter((t) => t.name && t.year)))
       await updateTeam(team.id, fd)
       onSaved()
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setErr(saveError(e))
       setBusy(false)
     }
   }
@@ -162,26 +169,26 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
           onChange={(e) => setForm((f) => ({ ...f, is_academy: e.target.checked }))} />
         Swimming academy — also listed on the Academies page
       </label>
-      <Field label="Founded year"><input className="input" style={{ width: '100%' }} type="number" value={form.founded_year} onChange={set('founded_year')} /></Field>
+      <Field label="Founded year"><input className="input" style={{ width: '100%' }} type="number" inputMode="numeric" value={form.founded_year} onChange={set('founded_year')} /></Field>
       <Field label="Description"><textarea className="input" rows={5} style={{ width: '100%', resize: 'vertical' }} value={form.description} onChange={set('description')} /></Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Website"><input className="input" style={{ width: '100%' }} value={form.website} onChange={set('website')} /></Field>
-        <Field label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Field>
-        <Field label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Field>
+        <Field label="Website"><input className="input" style={{ width: '100%' }} inputMode="url" autoComplete="url" value={form.website} onChange={set('website')} /></Field>
+        <Field label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Field>
+        <Field label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Field>
         <Field label="Address"><input className="input" style={{ width: '100%' }} value={form.address} onChange={set('address')} /></Field>
       </div>
       <div className="card-kicker" style={{ margin: '10px 0 6px' }}>Trophies</div>
       {trophies.map((t, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <input className="input" style={{ flex: 1 }} placeholder="Trophy / meet name" value={t.name}
+          <input className="input" style={{ flex: 1 }} aria-label={`Trophy ${i + 1} name`} placeholder="Trophy / meet name" value={t.name}
             onChange={(e) => setTrophies((l) => l.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-          <input className="input" style={{ width: 90 }} type="number" placeholder="Year" value={t.year}
+          <input className="input" style={{ width: 90 }} type="number" inputMode="numeric" aria-label={`Trophy ${i + 1} year`} placeholder="Year" value={t.year}
             onChange={(e) => setTrophies((l) => l.map((x, j) => (j === i ? { ...x, year: e.target.value } : x)))} />
-          <button className="btn btn-secondary btn-icon" onClick={() => setTrophies((l) => l.filter((_, j) => j !== i))}><X size={13} /></button>
+          <button type="button" className="btn btn-secondary btn-icon" aria-label={`Remove trophy ${i + 1}`} title="Remove trophy" onClick={() => setTrophies((l) => l.filter((_, j) => j !== i))}><X size={13} /></button>
         </div>
       ))}
       <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setTrophies((l) => [...l, { name: '', year: '' }])}>+ Add trophy</button>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 10 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 10 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
@@ -215,16 +222,16 @@ function CoachModal({ coach, team, countries, onClose, onSaved }) {
       fd.append('nationality', form.nationality)
       fd.append('team', team.id)
       fd.append('current_club', team.name)
-      fd.append('email', form.email)
-      fd.append('phone', form.phone)
-      fd.append('bio', form.bio)
+      fd.append('email', form.email.trim())
+      fd.append('phone', form.phone.trim())
+      fd.append('bio', form.bio.trim())
       if (form.years_experience) fd.append('years_experience', form.years_experience)
       if (photo) fd.append('photo', photo)
       if (coach) await updateCoach(coach.id, fd)
       else await createCoach(fd)
       onSaved()
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setErr(saveError(e))
       setBusy(false)
     }
   }
@@ -240,13 +247,13 @@ function CoachModal({ coach, team, countries, onClose, onSaved }) {
           </select>
         </Field>
         <Field label="Country"><CountrySelect value={form.nationality} onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} countries={countries} /></Field>
-        <Field label="Years experience"><input className="input" style={{ width: '100%' }} type="number" value={form.years_experience} onChange={set('years_experience')} /></Field>
+        <Field label="Years experience"><input className="input" style={{ width: '100%' }} type="number" inputMode="numeric" min="0" value={form.years_experience} onChange={set('years_experience')} /></Field>
         <Field label="Photo"><CropUpload aspect={4 / 5} onChange={setPhoto} className="" /></Field>
-        <Field label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Field>
-        <Field label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Field>
+        <Field label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Field>
+        <Field label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Field>
       </div>
       <Field label="Bio"><textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }} value={form.bio} onChange={set('bio')} /></Field>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
@@ -274,17 +281,17 @@ function BoardModal({ member, team, onClose, onSaved }) {
     try {
       const fd = new FormData()
       fd.append('name', form.name.trim())
-      fd.append('role', form.role)
+      fd.append('role', form.role.trim())
       fd.append('team', team.id)
-      fd.append('email', form.email)
-      fd.append('phone', form.phone)
-      fd.append('bio', form.bio)
+      fd.append('email', form.email.trim())
+      fd.append('phone', form.phone.trim())
+      fd.append('bio', form.bio.trim())
       if (photo) fd.append('photo', photo)
       if (member) await updateBoardMember(member.id, fd)
       else await createBoardMember(fd)
       onSaved()
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setErr(saveError(e))
       setBusy(false)
     }
   }
@@ -295,11 +302,11 @@ function BoardModal({ member, team, onClose, onSaved }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Role"><input className="input" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Field>
         <Field label="Photo"><CropUpload aspect={4 / 5} onChange={setPhoto} className="" /></Field>
-        <Field label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Field>
-        <Field label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Field>
+        <Field label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Field>
+        <Field label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Field>
       </div>
       <Field label="Bio"><textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }} value={form.bio} onChange={set('bio')} /></Field>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
@@ -334,7 +341,7 @@ function SwimmerModal({ swimmer, team, countries, onClose, onSaved }) {
       else await createSwimmer(payload)
       onSaved()
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setErr(saveError(e))
       setBusy(false)
     }
   }
@@ -343,7 +350,7 @@ function SwimmerModal({ swimmer, team, countries, onClose, onSaved }) {
     <Modal title={swimmer ? 'Edit swimmer' : 'Add swimmer'} onClose={onClose} width={480}>
       <Field label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Birth year"><input className="input" style={{ width: '100%' }} type="number" value={form.birth_year} onChange={set('birth_year')} /></Field>
+        <Field label="Birth year"><input className="input" style={{ width: '100%' }} type="number" inputMode="numeric" value={form.birth_year} onChange={set('birth_year')} /></Field>
         <Field label="Sex">
           <select className="select" style={{ width: '100%' }} value={form.sex} onChange={set('sex')}>
             <option value="M">Men</option>
@@ -352,7 +359,7 @@ function SwimmerModal({ swimmer, team, countries, onClose, onSaved }) {
         </Field>
       </div>
       <Field label="Country"><CountrySelect value={form.nationality} onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} countries={countries} /></Field>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
@@ -382,7 +389,7 @@ function ArticleModal({ team, onClose, onSaved }) {
       await createArticle(fd)
       onSaved()
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setErr(saveError(e))
       setBusy(false)
     }
   }
@@ -392,7 +399,7 @@ function ArticleModal({ team, onClose, onSaved }) {
       <Field label="Title"><input className="input" style={{ width: '100%' }} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
       <Field label="Body"><textarea className="input" rows={7} style={{ width: '100%', resize: 'vertical' }} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
       <Field label="Cover image"><CropUpload aspect={16 / 9} smart onChange={setCover} className="" /></Field>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Publishing…' : 'Publish'}</button>
@@ -412,14 +419,14 @@ function AlbumModal({ team, onClose, onSaved }) {
       await createAlbum({ title: title.trim(), team: team.id })
       onSaved()
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      setErr(saveError(e))
       setBusy(false)
     }
   }
   return (
     <Modal title="Add Album" onClose={onClose} width={440}>
       <Field label="Album title"><input className="input" style={{ width: '100%' }} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
@@ -462,7 +469,7 @@ function PredictionTab({ id }) {
       {data === null ? (
         <Loading label="Crunching seasons" />
       ) : items.length === 0 ? (
-        <Empty label="Not enough multi-season data to project" />
+        <Empty label="Not enough multi-season data to project" hint="A projection needs best times from more than one season. Try the other pool." />
       ) : (
         <div className="rule-t">
           {items.map((p, i) => {
@@ -473,7 +480,7 @@ function PredictionTab({ id }) {
               <div key={`${p.swimmer_id}-${p.event_id}`} className="hair-b asw-fade-up" style={{ padding: '13px 0', borderLeft: `4px solid ${color}`, paddingLeft: 12, animationDelay: `${Math.min(i * 40, 400)}ms` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                   <div>
-                    <Link to={`/swimmers/${p.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700, fontSize: 14 }}>{p.swimmer_name}</Link>
+                    <Link to={`/swimmers/${p.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700, fontSize: 14, padding: '7px 0' }}>{p.swimmer_name}</Link>
                     <span className="text-muted" style={{ fontSize: 13 }}> · {p.event_name}</span>
                   </div>
                   <span className="tag" style={{ background: color, color: '#fff', border: 0 }}>
@@ -516,7 +523,7 @@ const LINE_HEX = ['var(--color-accent-800)', 'var(--color-accent-2)', 'var(--col
 
 function TeamProgressionChart({ lines }) {
   const allPoints = lines.flatMap((l) => l.points || [])
-  if (allPoints.length === 0) return <Empty label="No progression data for this stroke" />
+  if (allPoints.length === 0) return <Empty label="No progression data for this stroke" hint="Try another stroke or the other pool." />
   const ts = (d) => new Date(d).getTime()
   const csValues = allPoints.map((p) => p.time_cs).filter(Boolean)
   const minCs = Math.min(...csValues)
@@ -536,14 +543,14 @@ function TeamProgressionChart({ lines }) {
   const yearLabels = [...new Set(allPoints.map((p) => new Date(p.date).getFullYear()))].sort()
   return (
     <div className="table-scroll">
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: 640, height: 'auto' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Time progression, ${Math.min(...yearLabels)} to ${Math.max(...yearLabels)}: ${lines.map((l) => l.event_name).join(', ')}`} style={{ width: '100%', maxWidth: 640, height: 'auto' }}>
         {Array.from({ length: 4 }, (_, i) => {
           const cs = minCs + (range * i) / 3
           const yy = y(cs)
           return <g key={i}><line x1={pL} x2={W - pR} y1={yy} y2={yy} stroke="var(--color-neutral-300)" /><text x={pL - 8} y={yy + 4} textAnchor="end" fill="var(--color-neutral-700)" fontSize="11" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtAxis(cs)}</text></g>
         })}
         {yearLabels.map((yr) => (
-          <text key={yr} x={x(`${yr}-07-01`)} y={H - 4} textAnchor="middle" fill="var(--color-neutral-700)" fontSize="10">{yr}</text>
+          <text key={yr} x={x(`${yr}-07-01`)} y={H - 4} textAnchor="middle" fill="var(--color-neutral-700)" fontSize="11">{yr}</text>
         ))}
         {lines.map((line, li) => {
           const pts = (line.points || []).filter((p) => p.time_cs)
@@ -670,13 +677,13 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
         <span style={{ width: 4, height: 17, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{title}</span>
       </div>
-      <div style={{ fontSize: 10.5, color: 'var(--color-neutral-700)', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
+      <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
     </div>
   )
   const card = (children, extra = {}) => (
     <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', ...extra }}>{children}</div>
   )
-  const thStyle = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-700)', paddingBottom: 6, borderBottom: '2px solid var(--color-neutral-300)' }
+  const thStyle = { fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-700)', paddingBottom: 6, borderBottom: '2px solid var(--color-neutral-300)' }
   const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-neutral-200)', fontSize: 12.5, background: i % 2 === 1 ? 'var(--color-neutral-100)' : 'transparent' })
   const badge = { width: 24, height: 24, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }
   const mc = (color) => ({ width: 26, height: 26, borderRadius: '50%', background: `color-mix(in srgb, ${color} 24%, #fff)`, border: `1.5px solid ${color}`, color: 'var(--color-accent-800)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 })
@@ -732,7 +739,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
           <span style={{ width: 4, height: 14, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
           <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{label}</span>
         </div>
-        <div style={{ fontSize: 9.5, color: 'var(--color-neutral-700)', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
+        <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
       </div>
       {content}
     </div>
@@ -746,9 +753,9 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
         <div style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--color-accent-800)', lineHeight: 1.2, marginBottom: 4 }}>
           <SwimmerLink id={id} name={name} />
         </div>
-        <div style={{ fontSize: 10.5, color: 'var(--color-neutral-700)', marginBottom: 6 }}>{subLabel}</div>
+        <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginBottom: 6 }}>{subLabel}</div>
         <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1 }}>{bigValue}</div>
-        {dateStr && <div style={{ fontSize: 10, color: 'var(--color-neutral-700)', marginTop: 5 }}>{dateStr}</div>}
+        {dateStr && <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 5 }}>{dateStr}</div>}
       </div>
     </div>
   )
@@ -793,8 +800,8 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
 
       {/* Row 1: Top Performance Men | Women */}
       <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {card(<>{cardHeader('Top Performance · Men', `Best Performances by ${team.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}</>)}
-        {card(<>{cardHeader('Top Performance · Women', `Best Performances by ${team.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No data" />}</>)}
+        {card(<>{cardHeader('Top Performance · Men', `Best Performances by ${team.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No men's performances with FINA points yet" />}</>)}
+        {card(<>{cardHeader('Top Performance · Women', `Best Performances by ${team.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No women's performances with FINA points yet" />}</>)}
       </div>
 
       {/* Row 2: Medals by competition | Most Decorated Men | Women */}
@@ -817,7 +824,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
               <div style={{ flex: 1, height: 20, display: 'flex', background: 'var(--color-accent-100)', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ width: `${(m.total / maxTotal) * 100}%`, display: 'flex', minWidth: m.total > 0 ? 20 : 0 }}>
                   {[['gold', 'var(--asw-gold)'], ['silver', 'var(--asw-silver)'], ['bronze', 'var(--asw-bronze)']].map(([key, color]) =>
-                    m[key] > 0 && <div key={key} style={{ flex: m[key], background: `color-mix(in srgb, ${color} 45%, #fff)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-accent-800)', fontWeight: 800, fontSize: 10, minWidth: 14 }} className="asw-num">{m[key]}</div>
+                    m[key] > 0 && <div key={key} style={{ flex: m[key], background: `color-mix(in srgb, ${color} 45%, #fff)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-accent-800)', fontWeight: 800, fontSize: 11, minWidth: 14 }} className="asw-num">{m[key]}</div>
                   )}
                 </div>
               </div>
@@ -825,8 +832,8 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
             </div>
           ))}
         </>)}
-        {card(<>{cardHeader('Most Decorated · Men', `Top 5 ${team.name} Male Swimmers by Total Medals`)}{maleMedalists.length ? decoratedTable(maleMedalists) : <Empty label="No data" />}</>)}
-        {card(<>{cardHeader('Most Decorated · Women', `Top 5 ${team.name} Female Swimmers by Total Medals`)}{femaleMedalists.length ? decoratedTable(femaleMedalists) : <Empty label="No data" />}</>)}
+        {card(<>{cardHeader('Most Decorated · Men', `Top 5 ${team.name} Male Swimmers by Total Medals`)}{maleMedalists.length ? decoratedTable(maleMedalists) : <Empty label="No medals won by men yet" />}</>)}
+        {card(<>{cardHeader('Most Decorated · Women', `Top 5 ${team.name} Female Swimmers by Total Medals`)}{femaleMedalists.length ? decoratedTable(femaleMedalists) : <Empty label="No medals won by women yet" />}</>)}
       </div>
 
       {/* Row 3: shuffled highlight boxes — random 4 from a wider pool per visit */}
@@ -876,7 +883,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
         </div>
         {card(<>
           {cardHeader('Medal Battle', `Total medals won for the team · ${peerLabel}`)}
-          {battle.length === 0 ? <Empty label="No data" /> : battle.map((r) => {
+          {battle.length === 0 ? <Empty label="No medal standings yet" /> : battle.map((r) => {
             const mine = r.is_current
             return (
               <div key={r.team_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
@@ -907,7 +914,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
               .map(([label, value]) => ({ label, value }))
               .sort((a, b) => b.value - a.value)
               .slice(0, 8)
-            return rows.length ? <MiniHBars rows={rows} labelWidth={150} /> : <Empty label="No data" />
+            return rows.length ? <MiniHBars rows={rows} labelWidth={150} /> : <Empty label="No recorded swims yet" />
           })()}
         </>)}
         {card(<>
@@ -927,7 +934,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: CHART_COLORS.BLUE }} />Women · {women} ({Math.round((women / total) * 100)}%)</span>
                 </div>
               </div>
-            ) : <Empty label="No roster data" />
+            ) : <Empty label="No swimmers on the roster yet" />
           })()}
         </>)}
       </div>
@@ -999,7 +1006,7 @@ function CompareTab({ team, profile, stats, records }) {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, margin: '18px 0 26px', flexWrap: 'wrap' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: 'var(--color-accent-800)' }}>{team.name}</span>
         <span style={{ fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 15 }}>VS</span>
-        <select value={otherId} onChange={(e) => setOtherId(e.target.value)} style={{ padding: '9px 14px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', background: '#fff', fontFamily: 'inherit' }}>
+        <select aria-label="Club to compare against" value={otherId} onChange={(e) => setOtherId(e.target.value)} style={{ padding: '9px 14px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', background: '#fff', fontFamily: 'inherit' }}>
           <option value="">Choose a club…</option>
           {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -1062,6 +1069,8 @@ export default function TeamDetail() {
   const [countryNews, setCountryNews] = useState([])
   const [medalistsAll, setMedalistsAll] = useState(false) // Medals tab: full list vs top 15
   const [medalLogOpen, setMedalLogOpen] = useState(false) // Medals tab: flat log of every medal
+  const [notice, setNotice] = useState('') // Peak-End Rule: short confirmation after a save
+  const flash = (msg) => { setNotice(msg); setTimeout(() => setNotice(''), 4000) }
 
   const load = useCallback(async (alive = { current: true }) => {
     const [profRes, medalsRes, timesRes, recRes, statsRes, rankRes, coachRes, newsRes, albumRes, boardRes] = await Promise.allSettled([
@@ -1117,7 +1126,7 @@ export default function TeamDetail() {
     getCountries({ page_size: 300 }).then((res) => setCountries(list(res.data))).catch(() => {})
   }, [canManage])
 
-  const refresh = () => { setModal(null); load() }
+  const refresh = () => { setModal(null); flash('Saved'); load() }
 
   const team = profile?.team
   const roster = useMemo(() => (profile?.roster || []).filter((s) => !s.is_relay_team), [profile])
@@ -1155,7 +1164,11 @@ export default function TeamDetail() {
   [ranking, id])
 
   if (loading) return <Loading label="Loading profile" />
-  if (!team) return <Empty label="Profile not found" />
+  if (!team) return (
+    <Empty label="Profile not found" hint="It may have been removed, or the page failed to load. Reload, or go back to the list.">
+      <Link to="/teams" className="btn btn-secondary">All clubs</Link>
+    </Empty>
+  )
 
   const navy = 'var(--color-accent-800)'
   const kickerText = team.is_national_team ? 'National Swimming Team' : team.is_academy ? 'Swimming Academy' : 'Swimming Club'
@@ -1166,7 +1179,7 @@ export default function TeamDetail() {
 
   const heroIcon = (d) => (
     <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
     </span>
   )
   const contactRow = (ic, content) => (
@@ -1262,8 +1275,8 @@ export default function TeamDetail() {
           })()}
         />
         <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
-          <Link to={team.is_academy ? '/academies' : '/teams'} style={{ fontSize: 12, textDecoration: 'none', fontWeight: 700, color: 'var(--color-accent-800)' }}>← All {team.is_academy ? 'academies' : 'clubs'}</Link>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
+          <Link to={team.is_academy ? '/academies' : '/teams'} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 12, textDecoration: 'none', fontWeight: 700, color: 'var(--color-accent-800)' }}>← All {team.is_academy ? 'academies' : 'clubs'}</Link>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 8, flexWrap: 'wrap' }}>
             {/* Circular logo — adapts to the artwork (solid or transparent) */}
             <ClubLogo src={team.logo} name={team.name} ring={navy} />
             <div style={{ minWidth: 260, maxWidth: 560 }}>
@@ -1288,7 +1301,7 @@ export default function TeamDetail() {
                 {team.website && contactRow(
                   heroIcon(<><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></>),
                   <a href={/^https?:/.test(team.website) ? team.website : `https://${team.website}`}
-                    target="_blank" rel="noreferrer" style={{ color: navy, textDecoration: 'none' }}>
+                    target="_blank" rel="noreferrer" style={{ color: navy, textDecoration: 'none', padding: '6px 0', margin: '-6px 0' }}>
                     {team.website.replace(/^https?:\/\//, '')}
                   </a>)}
                 {contactRow(
@@ -1307,8 +1320,10 @@ export default function TeamDetail() {
       <div className="rule-b" style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto' }}>
         {TABS.filter((t) => (t.value !== 'training' || !team?.is_national_team) && (isAdmin || !tabHidden(t.value))).map((t) => (
           <button key={t.value} type="button" onClick={() => setTab(t.value)}
+            aria-current={tab === t.value ? 'page' : undefined}
             title={tabHidden(t.value) ? 'Hidden from visitors (admin visibility settings)' : undefined}
             style={{
+              minHeight: 48, // Fitts's Law: 36px after the phone zoom (0.75)
               padding: '12px 16px', background: 'none', border: 'none', borderBottom: tab === t.value ? '3px solid var(--color-accent)' : '3px solid transparent',
               cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: tab === t.value ? 800 : 600,
               fontSize: 13, color: tab === t.value ? 'var(--color-accent)' : 'var(--color-text)', whiteSpace: 'nowrap',
@@ -1388,7 +1403,8 @@ export default function TeamDetail() {
           <div key={`${id2}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderTop: i ? '1px solid var(--color-neutral-200)' : 'none', minHeight: 44 }}>
             <span className="asw-num" style={{ width: 22, height: 22, borderRadius: '50%', background: i === 0 ? 'var(--color-accent-800)' : 'var(--color-accent-100)', color: i === 0 ? '#fff' : 'var(--color-accent-800)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flex: 'none' }}>{i + 1}</span>
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: 13.5, color: 'var(--color-accent-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><SwimmerLink id={id2} name={name} /></span>
+              {/* Fitts's Law: padding (cancelled by the margin) gives the name a 32px target without moving the row */}
+              <span style={{ display: 'block', fontSize: 13.5, color: 'var(--color-accent-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '7px 0', margin: '-7px 0' }}><SwimmerLink id={id2} name={name} /></span>
               {sub ? <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-neutral-700)', marginTop: 1 }}>{sub}</span> : null}
             </span>
             <span style={{ textAlign: 'right', flex: 'none' }}>
@@ -1457,7 +1473,7 @@ export default function TeamDetail() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, margin: '6px 2px 10px' }}>
                       {cardTitle('Latest news')}
-                      <button type="button" onClick={() => setTab('news')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', padding: '8px 0' }}>All news →</button>
+                      <button type="button" onClick={() => setTab('news')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', padding: '8px 0', minHeight: 32 }}>All news →</button>
                     </div>
                     <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                       {newsItems.map(newsCard)}
@@ -1563,7 +1579,7 @@ export default function TeamDetail() {
                       </div>
                     </div>
                     <div style={{ padding: '12px 12px 0' }}>
-                      <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} /></div>
+                      <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} pad={false} /></div>
                       <div style={{ fontSize: 13.5, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <span>{String(r.event_name || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
                         <span style={{ color: 'var(--color-neutral-400)' }}>|</span>
@@ -1592,7 +1608,7 @@ export default function TeamDetail() {
               <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'article' })}>+ Add news</button>
             </div>
           )}
-          {articles.length === 0 ? <Empty label="No news from this club yet" /> : (
+          {articles.length === 0 ? <Empty label={`No news from this ${kind} yet`} hint={canManage ? 'Use “Add news” above to publish the first article.' : undefined} /> : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
               {articles.map((a) => (
                 <Link key={a.id} to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
@@ -1653,7 +1669,10 @@ export default function TeamDetail() {
                   role: m.role || 'Member', name: m.name, photo: m.photo,
                   actions: canManage ? (<>
                     <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setModal({ type: 'board', payload: m })}>Edit</button>
-                    <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={async () => { if (window.confirm(`Remove ${m.name} from the board?`)) { await deleteBoardMember(m.id); load() } }}>Remove</button>
+                    <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={async () => {
+                      if (!window.confirm(`Remove ${m.name} from the board?`)) return
+                      try { await deleteBoardMember(m.id); flash('Removed'); load() } catch { window.alert('Could not remove this member. Try again.') }
+                    }}>Remove</button>
                   </>) : null,
                 }))
               : ['President', 'Vice President', 'Treasurer', 'Secretary General'].map((role) => ({ role, name: '—', photo: null }))
@@ -1686,7 +1705,10 @@ export default function TeamDetail() {
                     role: COACH_LEVELS[c.level] || c.level || 'Coach', name: c.name, photo: c.photo,
                     actions: canManage ? (<>
                       <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setModal({ type: 'coach', payload: c })}>Edit</button>
-                      <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={async () => { if (window.confirm(`Remove coach ${c.name}?`)) { await deleteCoach(c.id); load() } }}>Remove</button>
+                      <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={async () => {
+                        if (!window.confirm(`Remove coach ${c.name}?`)) return
+                        try { await deleteCoach(c.id); flash('Removed'); load() } catch { window.alert('Could not remove this coach. Try again.') }
+                      }}>Remove</button>
                     </>) : null,
                   }))
                 : ['Head Coach', 'Assistant Coach', 'Swimming Coach', 'Conditioning Coach'].map((role) => ({ role, name: '—', photo: null }))
@@ -1707,7 +1729,7 @@ export default function TeamDetail() {
                 <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'swimmer' })}>+ Add swimmer</button>
               </div>
             )}
-            {roster.length === 0 ? <Empty label="No swimmers on roster" /> : (
+            {roster.length === 0 ? <Empty label="No swimmers on the roster yet" hint={isAdmin ? 'Use “Add swimmer” above to add the first one.' : undefined} /> : (
               <>
               {(() => {
                 const bands = [
@@ -1747,8 +1769,8 @@ export default function TeamDetail() {
                         {s.sex === 'F' ? "Women's" : "Men's"}{s.birth_year ? ` · ${s.birth_year}` : ''}
                       </div>
                     </div>
-                    <div style={{ marginTop: 'auto', paddingTop: 9, borderTop: '1px solid var(--color-neutral-200)' }}>
-                      <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
+                    <div style={{ marginTop: 'auto', paddingTop: 2, borderTop: '1px solid var(--color-neutral-200)' }}>
+                      <Link to={`/swimmers/${s.id}`} aria-label={`View profile of ${s.name}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
                         <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
                       </Link>
                       {isAdmin && (
@@ -1797,7 +1819,7 @@ export default function TeamDetail() {
               ? 'National teams ranked by the medals won for the team'
               : `Clubs and academies based in ${team.country_detail?.name || 'the same country'}, ranked by the medals won for each team`}
           </div>
-          {rankingRows.length === 0 ? <Empty label="No ranking data" /> : (() => {
+          {rankingRows.length === 0 ? <Empty label="No ranking yet" hint="Teams appear here once they have won medals." /> : (() => {
             const badge = (r, size) => (
               <span style={{ width: size, height: size, borderRadius: '50%', flex: 'none', overflow: 'hidden', background: 'var(--color-accent-100)', border: '1px solid var(--color-neutral-300)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size * 0.34, color: 'var(--color-accent-800)' }}>
                 {r.logo ? <img src={mediaUrl(r.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : acronym(r.team_name).slice(0, 2)}
@@ -1845,7 +1867,7 @@ export default function TeamDetail() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'center' }}>
               {medalBoxes.map((m) => (
                 <div key={m.name} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'var(--color-accent-800)', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{m.name}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{m.name}</div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: 'var(--color-accent-800)' }}>{formatNumber(m.total)}</div>
                   <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 800 }}>
                     <span style={{ color: 'var(--asw-gold)' }}>{m.gold}G</span>
@@ -1862,7 +1884,7 @@ export default function TeamDetail() {
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>Medalists · {medalists.length}</div>
             {medalists.length > 0 && <div style={{ fontSize: 12.5, color: 'var(--color-neutral-700)' }}>Open a swimmer to see every medal, meet by meet</div>}
           </div>
-          {medalists.length === 0 ? <Empty label="No medals" /> : (
+          {medalists.length === 0 ? <Empty label={`No medals won by this ${kind} yet`} /> : (
             <div style={{ marginBottom: 26 }}>
               <MedalStandings
                 rows={medalists}
@@ -1896,13 +1918,13 @@ export default function TeamDetail() {
               {medalLogOpen && (
                 <div className="table-scroll" style={{ borderTop: '1px solid var(--color-neutral-300)' }}>
                   <table className="table">
-                    <thead><tr><th style={{ width: 40 }}></th><th>Event</th><th>Swimmer</th><th style={{ textAlign: 'right' }}>Time</th><th>Championship</th><th>Date</th></tr></thead>
+                    <thead><tr><th style={{ width: 40 }}><span className="sr-only">Medal</span></th><th>Event</th><th>Swimmer</th><th style={{ textAlign: 'right' }}>Time</th><th>Championship</th><th>Date</th></tr></thead>
                     <tbody>
                       {[...medals].sort((a, b) => (b.championship_date || '').localeCompare(a.championship_date || '')).map((m) => (
                         <tr key={m.id}>
                           <td>{medalBadge(m.medal_type)}</td>
                           <td style={{ fontWeight: 600 }}>{m.event_name || '—'}</td>
-                          <td><SwimmerLink id={m.swimmer_id} name={m.swimmer_name} /></td>
+                          <td><SwimmerLink id={m.swimmer_id} name={m.swimmer_name} pad={false} /></td>
                           <td className="asw-num" style={{ textAlign: 'right', fontWeight: 700 }}>{m.time || '—'}</td>
                           <td className="text-muted">{m.championship_name || '—'}</td>
                           <td className="text-muted">{formatDate(m.championship_date)}</td>
@@ -1932,7 +1954,7 @@ export default function TeamDetail() {
               <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'album' })}>+ Add album</button>
             </div>
           )}
-          {albums.length === 0 ? <Empty label="No photo or video albums yet" /> : (
+          {albums.length === 0 ? <Empty label="No photo or video albums yet" hint={canManage ? 'Use “Add album” above to create the first one.' : undefined} /> : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
               {albums.map((a) => (
                 <Link key={a.id} to={`/media/albums/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
@@ -1957,6 +1979,11 @@ export default function TeamDetail() {
       {modal?.type === 'swimmer' && <SwimmerModal swimmer={modal.payload} team={team} countries={countries} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'article' && <ArticleModal team={team} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'album' && <AlbumModal team={team} onClose={() => setModal(null)} onSaved={refresh} />}
+      {notice && (
+        <div role="status" style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 90, background: 'var(--color-accent-800)', color: 'var(--color-bg)', fontSize: 13, fontWeight: 700, padding: '10px 18px', borderRadius: 8 }}>
+          {notice} ✓
+        </div>
+      )}
     </div>
   )
 }

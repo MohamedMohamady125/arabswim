@@ -66,7 +66,7 @@ function SwimmerCard({ c, showDelta }) {
       </div>
       <div className="rec-name" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
         <Flag code={c.country_code} name={c.country_name} />
-        <Link to={`/swimmers/${c.swimmer_id}`}>{c.name}</Link>
+        <Link to={`/swimmers/${c.swimmer_id}`} style={{ padding: '7px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, same layout */ }}>{c.name}</Link>
       </div>
       <div className="rec-meta micro" style={{ marginTop: 5 }}>
         Seed <span className="asw-time">{c.seed}</span>
@@ -198,9 +198,11 @@ function EventDetail({ ev, champId, onChanged }) {
                 {canExclude && (
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <button
+                      type="button"
                       className="btn btn-secondary"
                       disabled={busyId === r.swimmer_id}
                       onClick={() => exclude(r)}
+                      aria-label={`Exclude ${r.name} from this meet's prediction`}
                       title="Exclude from this meet's prediction"
                     >
                       {busyId === r.swimmer_id ? '…' : 'Exclude'}
@@ -246,7 +248,7 @@ function AgeGroupsAdmin({ champId, onChanged }) {
       if (okMsg) setMsg(okMsg)
     } catch (e) {
       const d = e?.response?.data
-      setMsg(d && typeof d === 'object' ? Object.values(d).flat().join(' ') : 'Action failed')
+      setMsg(d && typeof d === 'object' ? Object.values(d).flat().join(' ') : 'Could not save the change. Try again.')
     } finally {
       setBusy(false)
     }
@@ -271,11 +273,11 @@ function AgeGroupsAdmin({ champId, onChanged }) {
         by their age in the meet year. Leave empty for open meets. Changes recompute the prediction instantly.
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: groups.length ? 12 : 0 }}>
-        <input style={{ ...inputStyle, width: 130 }} placeholder="Label, e.g. 13-14" value={label} onChange={(e) => setLabel(e.target.value)} />
-        <input style={{ ...inputStyle, width: 90 }} type="number" placeholder="Min age" value={minAge} onChange={(e) => setMinAge(e.target.value)} />
-        <input style={{ ...inputStyle, width: 90 }} type="number" placeholder="Max age" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} />
-        <button className="btn btn-primary" disabled={busy} onClick={add}>Add category</button>
-        {msg && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{msg}</span>}
+        <input aria-label="Category label" style={{ ...inputStyle, width: 130 }} placeholder="Label, e.g. 13-14" value={label} onChange={(e) => setLabel(e.target.value)} />
+        <input aria-label="Minimum age" style={{ ...inputStyle, width: 90 }} type="number" placeholder="Min age" value={minAge} onChange={(e) => setMinAge(e.target.value)} />
+        <input aria-label="Maximum age" style={{ ...inputStyle, width: 90 }} type="number" placeholder="Max age" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} />
+        <button type="button" className="btn btn-primary" disabled={busy} onClick={add}>{busy ? 'Saving…' : 'Add category'}</button>
+        {msg && <span role="status" className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{msg}</span>}
       </div>
       {groups.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -287,9 +289,11 @@ function AgeGroupsAdmin({ champId, onChanged }) {
                   : g.min_age != null ? `${g.min_age}+` : `up to ${g.max_age}`}
               </span>
               <button
+                type="button"
                 disabled={busy}
-                onClick={() => act(() => deletePredictionAgeGroup(champId, g.id), 'Category removed — prediction recomputed')}
-                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)' }}
+                title={`Remove ${g.label}`}
+                onClick={() => { if (window.confirm(`Remove the "${g.label}" category? The prediction is recomputed without it.`)) act(() => deletePredictionAgeGroup(champId, g.id), 'Category removed — prediction recomputed') }}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)', minWidth: 32, minHeight: 32, margin: '-7px -9px -7px -5px' /* Fitts's Law: 32px target, chip size unchanged */ }}
                 aria-label={`Remove ${g.label}`}
               >
                 ×
@@ -321,9 +325,9 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
   useEffect(load, [champId, refreshKey])
 
   useEffect(() => {
-    if (!query || query.length < 2 || swimmer) { setResults([]); return }
+    if (!query || query.trim().length < 2 || swimmer) { setResults([]); return }
     const t = setTimeout(() => {
-      searchSwimmers(query)
+      searchSwimmers(query.trim())
         .then((res) => setResults((Array.isArray(res.data) ? res.data : res.data?.results || []).slice(0, 8)))
         .catch(() => setResults([]))
     }, 250)
@@ -338,7 +342,7 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
       onChanged?.()
       if (okMsg) setMsg(okMsg)
     } catch (e) {
-      setMsg(e?.response?.data?.detail || 'Action failed')
+      setMsg(e?.response?.data?.detail || 'Could not save the change. Try again.')
     } finally {
       setBusy(false)
     }
@@ -363,7 +367,8 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: exclusions.length ? 12 : 0 }}>
         <div style={{ position: 'relative' }}>
           <input
-            style={{ ...inputStyle, minWidth: 220 }}
+            type="search" aria-label="Search swimmer to exclude"
+            style={{ ...inputStyle, minWidth: 220, appearance: 'none', WebkitAppearance: 'none' }}
             placeholder="Search swimmer to exclude…"
             value={swimmer ? swimmer.name : query}
             onChange={(e) => { setSwimmer(null); setQuery(e.target.value) }}
@@ -371,25 +376,27 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
           {results.length > 0 && (
             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: '#fff', border: '1px solid var(--color-neutral-300)', maxHeight: 220, overflowY: 'auto' }}>
               {results.map((s) => (
-                <div
+                <button
                   key={s.id}
+                  type="button"
                   onClick={() => { setSwimmer(s); setResults([]) }}
-                  style={{ padding: '7px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
+                  style={{ display: 'block', width: '100%', minHeight: 32, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '7px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
                 >
                   {s.name} {s.nationality_code ? `(${s.nationality_code})` : ''}
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
         <input
+          aria-label="Reason (optional)"
           style={{ ...inputStyle, width: 200 }}
           placeholder="Reason (optional)"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         />
-        <button className="btn btn-primary" disabled={busy} onClick={add}>Exclude athlete</button>
-        {msg && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{msg}</span>}
+        <button type="button" className="btn btn-primary" disabled={busy} onClick={add}>{busy ? 'Saving…' : 'Exclude athlete'}</button>
+        {msg && <span role="status" className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{msg}</span>}
       </div>
       {exclusions.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -399,9 +406,11 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
               {x.nationality_code && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{x.nationality_code}</span>}
               {x.reason && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>— {x.reason}</span>}
               <button
+                type="button"
                 disabled={busy}
+                title={`Restore ${x.swimmer_name}`}
                 onClick={() => act(() => removePredictionExclusion(champId, x.id), 'Restored — prediction recomputed')}
-                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)' }}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)', minWidth: 32, minHeight: 32, margin: '-7px -9px -7px -5px' /* Fitts's Law: 32px target, chip size unchanged */ }}
                 aria-label={`Restore ${x.swimmer_name}`}
               >
                 ×
@@ -432,9 +441,9 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
 
   // debounced swimmer search
   useEffect(() => {
-    if (!query || query.length < 2 || swimmer) { setResults([]); return }
+    if (!query || query.trim().length < 2 || swimmer) { setResults([]); return }
     const t = setTimeout(() => {
-      searchSwimmers(query)
+      searchSwimmers(query.trim())
         .then((res) => setResults((Array.isArray(res.data) ? res.data : res.data?.results || []).slice(0, 8)))
         .catch(() => setResults([]))
     }, 250)
@@ -448,7 +457,7 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
       loadEntries()
       if (okMsg) setMsg(okMsg)
     } catch (e) {
-      setMsg(e?.response?.data?.detail || 'Action failed')
+      setMsg(e?.response?.data?.detail || 'Could not save the change. Try again.')
     } finally {
       setBusy(false)
     }
@@ -456,7 +465,8 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
 
   const add = () => {
     if (!swimmer || !eventId) { setMsg('Pick a swimmer and an event'); return }
-    const cs = entryTime ? parseTime(entryTime) : null
+    const cs = entryTime.trim() ? parseTime(entryTime.trim()) : null
+    if (entryTime.trim() && !cs) { setMsg('Entry time must look like 27.45 or 1:02.34'); return }
     act(() => addPredictionEntry(champId, {
       swimmer: swimmer.id, event: Number(eventId),
       ...(cs ? { entry_time_cs: cs } : {}),
@@ -475,7 +485,8 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ position: 'relative' }}>
           <input
-            style={{ ...inputStyle, minWidth: 220 }}
+            type="search" aria-label="Search swimmer"
+            style={{ ...inputStyle, minWidth: 220, appearance: 'none', WebkitAppearance: 'none' }}
             placeholder="Search swimmer…"
             value={swimmer ? swimmer.name : query}
             onChange={(e) => { setSwimmer(null); setQuery(e.target.value) }}
@@ -483,18 +494,19 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
           {results.length > 0 && (
             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: '#fff', border: '1px solid var(--color-neutral-300)', maxHeight: 220, overflowY: 'auto' }}>
               {results.map((s) => (
-                <div
+                <button
                   key={s.id}
+                  type="button"
                   onClick={() => { setSwimmer(s); setResults([]) }}
-                  style={{ padding: '7px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
+                  style={{ display: 'block', width: '100%', minHeight: 32, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '7px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
                 >
                   {s.name} {s.nationality_code ? `(${s.nationality_code})` : ''}
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
-        <select style={inputStyle} value={eventId} onChange={(e) => setEventId(e.target.value)}>
+        <select aria-label="Event" style={inputStyle} value={eventId} onChange={(e) => setEventId(e.target.value)}>
           <option value="">Event…</option>
           {events
             .filter((e, i, arr) => arr.findIndex((x) => x.event_id === e.event_id && x.gender === e.gender) === i)
@@ -505,12 +517,13 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
             ))}
         </select>
         <input
+          aria-label="Entry time"
           style={{ ...inputStyle, width: 110 }}
           placeholder="Entry time"
           value={entryTime}
           onChange={(e) => setEntryTime(e.target.value)}
         />
-        <button className="btn btn-primary" disabled={busy} onClick={add}>Add entry</button>
+        <button type="button" className="btn btn-primary" disabled={busy} onClick={add}>{busy ? 'Saving…' : 'Add entry'}</button>
         <button
           className="btn btn-secondary" disabled={busy}
           onClick={() => act(() => seedPredictionEntries(champId), 'Seeded from automatic field')}
@@ -524,7 +537,7 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
           Recompute now
         </button>
       </div>
-      {msg && <div className="micro" style={{ marginBottom: 10 }}>{msg}</div>}
+      {msg && <div role="status" className="micro" style={{ marginBottom: 10 }}>{msg}</div>}
 
       {entries.length > 0 && (
         <div className="table-scroll">
@@ -548,7 +561,7 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
                     </button>
                     <button
                       className="btn btn-secondary" disabled={busy}
-                      onClick={() => act(() => deletePredictionEntry(champId, en.id))}
+                      onClick={() => { if (window.confirm(`Delete the entry for ${en.swimmer_name} in ${en.event_name}?`)) act(() => deletePredictionEntry(champId, en.id), 'Entry deleted') }}
                     >
                       Delete
                     </button>
@@ -633,7 +646,7 @@ function CandidateCard({ c, rank }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minWidth: 0 }}>
         <Flag code={c.country_code} name={c.country_name} />
-        <Link to={`/swimmers/${c.swimmer_id}`} style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <Link to={`/swimmers/${c.swimmer_id}`} style={{ padding: '7px 0', margin: '-7px 0', fontWeight: 700, fontSize: 13.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {c.name}
         </Link>
       </div>
@@ -646,12 +659,12 @@ function CandidateCard({ c, rank }) {
       <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, marginTop: 8, lineHeight: 1 }}>
         {Math.round(c.p_medal)}%
       </div>
-      <div className="micro" style={{ fontSize: 9, marginTop: 2 }}>Medal chance</div>
+      <div className="micro" style={{ fontSize: 11, marginTop: 2 }}>Medal chance</div>
       <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 9, borderTop: '1px solid var(--color-divider)', paddingTop: 8 }}>
         {[['Gold', c.eg], ['Silver', c.es], ['Bronze', c.eb]].map(([lab, v]) => (
           <div key={lab}>
             <div className="asw-num" style={{ fontWeight: 700, fontSize: 12.5 }}>{Math.round(v)}%</div>
-            <div className="micro" style={{ fontSize: 8.5 }}>{lab}</div>
+            <div className="micro" style={{ fontSize: 10.5, letterSpacing: '0.04em' }}>{lab}</div>
           </div>
         ))}
       </div>
@@ -666,6 +679,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
   const [stroke, setStroke] = useState('All')
   const [gender, setGender] = useState('M')
   const [openKey, setOpenKey] = useState('')
+  const [copied, setCopied] = useState(false) // Doherty Threshold: instant feedback on Copy link
 
   // best event per swimmer, with per-medal % of that event
   const candidates = useMemo(() => {
@@ -768,9 +782,10 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
             <SectHead title="Medal Projection Overview" />
             {table.length > 1 && (
               <select
+                aria-label={snap.is_national ? 'Club' : 'Country'}
                 value={selectedCountry?.name || ''}
                 onChange={(e) => setCountryKey(e.target.value)}
-                style={{ padding: '5px 8px', border: '1px solid var(--color-neutral-300)', fontSize: 12.5, background: '#fff', marginLeft: 'auto' }}
+                style={{ minHeight: 32, padding: '5px 8px', border: '1px solid var(--color-neutral-300)', fontSize: 12.5, background: '#fff', marginLeft: 'auto' }}
               >
                 {table.map((r) => <option key={r.name} value={r.name}>{r.name}</option>)}
               </select>
@@ -789,7 +804,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
               <StatCard label="Bronze" value={selectedCountry.bronze.toFixed(1)} accent="var(--asw-bronze)" sub="Expected" />
             </div>
           ) : (
-            <Empty label="No projection available yet" />
+            <Empty label="No projection available yet" hint="Check back after the next prediction update." />
           )}
         </div>
         <div style={{ flex: '0 1 280px', minWidth: 230, ...panelStyle }}>
@@ -807,7 +822,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
         <div style={{ flex: '1 1 520px', minWidth: 0 }}>
           <SectHead title="Top Medal Candidates" />
           {candidates.length === 0 ? (
-            <Empty label="No candidates yet" />
+            <Empty label="No candidates yet" hint="Candidates appear once the fields are predicted." />
           ) : (
             <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginTop: 10 }}>
               {candidates.map((c, i) => <CandidateCard key={c.swimmer_id} c={c} rank={i + 1} />)}
@@ -840,9 +855,9 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
               const active = stroke === s
               return (
                 <button
-                  key={s} type="button" onClick={() => { setStroke(s); setOpenKey('') }}
+                  key={s} type="button" aria-pressed={active} onClick={() => { setStroke(s); setOpenKey('') }}
                   style={{
-                    cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 11,
+                    cursor: 'pointer', minHeight: 32, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 11,
                     padding: '5px 10px', lineHeight: 1, whiteSpace: 'nowrap',
                     background: active ? 'var(--color-accent)' : 'var(--color-bg)',
                     color: active ? '#fff' : 'var(--color-accent-800)',
@@ -862,7 +877,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
             </span>
           </div>
           {eventRows.length === 0 ? (
-            <Empty label="No events match this filter" />
+            <Empty label="No events match this filter" hint="Try All events or the other gender." />
           ) : (
             <div className="table-scroll">
               <table className="table">
@@ -883,7 +898,11 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                     const open = openKey === key
                     return (
                       <React.Fragment key={key}>
-                        <tr onClick={() => setOpenKey(open ? '' : key)} style={{ cursor: 'pointer' }} title="View full field">
+                        <tr
+                          onClick={() => setOpenKey(open ? '' : key)} className="row-link" title="View full field"
+                          role="button" tabIndex={0} aria-expanded={open}
+                          onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpenKey(open ? '' : key) } }}
+                        >
                           <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                             {shortEvent(ev.event)}{ev.age_group ? ` · ${ev.age_group}` : ''} {open ? '▲' : '▾'}
                           </td>
@@ -987,7 +1006,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
             <a className="btn btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${pageUrl}`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
             <a className="btn btn-secondary" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(pageUrl)}`} target="_blank" rel="noreferrer">X</a>
             <a className="btn btn-secondary" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`} target="_blank" rel="noreferrer">Facebook</a>
-            <button className="btn btn-secondary" type="button" onClick={() => navigator.clipboard?.writeText(pageUrl)}>Copy link</button>
+            <button className="btn btn-secondary" type="button" onClick={() => { navigator.clipboard?.writeText(pageUrl); setCopied(true); setTimeout(() => setCopied(false), 2000) }}>{copied ? 'Link copied' : 'Copy link'}</button>
           </div>
         </div>
       </div>
@@ -1068,7 +1087,7 @@ export default function Predictions() {
       <PageHead title="Medal Predictions" />
 
       {champs.length === 0 ? (
-        <Empty label="No upcoming Arab, GCC or national championships to predict yet" />
+        <Empty label="No upcoming Arab, GCC or national championships to predict yet" hint="Predictions appear once an upcoming meet is on the calendar. Check back soon." />
       ) : (
         <>
           {/* championship tab bar */}
@@ -1080,8 +1099,9 @@ export default function Predictions() {
                   key={c.id}
                   type="button"
                   onClick={() => setSelectedId(c.id)}
+                  aria-pressed={active}
                   style={{
-                    cursor: 'pointer', whiteSpace: 'nowrap',
+                    cursor: 'pointer', whiteSpace: 'nowrap', minHeight: 36,
                     fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5,
                     padding: '7px 13px', lineHeight: 1,
                     background: active ? 'var(--color-accent)' : 'var(--color-bg)',
@@ -1099,7 +1119,7 @@ export default function Predictions() {
           {detailLoading ? (
             <Loading label="Computing prediction" />
           ) : !snap ? (
-            <Empty label="Prediction unavailable" />
+            <Empty label="Prediction unavailable" hint="Pick another championship above, or reload the page." />
           ) : (
             <div style={{ padding: '18px 32px 28px' }}>
               {/* header: dates + stage + confidence + updated
@@ -1167,9 +1187,10 @@ export default function Predictions() {
                     onChange={(g) => { setGender(g); setEventKey('') }}
                   />
                   <select
+                    aria-label="Event"
                     value={selectedEvent ? evKey(selectedEvent) : ''}
                     onChange={(e) => setEventKey(e.target.value)}
-                    style={{ padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }}
+                    style={{ minHeight: 36, padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }}
                   >
                     {genderEvents.map((e) => (
                       <option key={evKey(e)} value={evKey(e)}>
@@ -1178,7 +1199,7 @@ export default function Predictions() {
                     ))}
                   </select>
                 </div>
-                {selectedEvent ? <EventDetail ev={selectedEvent} champId={selectedId} onChanged={() => loadDetail(selectedId)} /> : <Empty label="No events predicted for this selection" />}
+                {selectedEvent ? <EventDetail ev={selectedEvent} champId={selectedId} onChanged={() => loadDetail(selectedId)} /> : <Empty label="No events predicted for this selection" hint="Try the other gender." />}
               </div>
               </>
               )}

@@ -45,6 +45,7 @@ export default function Countries() {
   const [countries, setCountries] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -54,7 +55,7 @@ export default function Countries() {
         const d = res.data
         setCountries(Array.isArray(d) ? d : d?.results || [])
       })
-      .catch(() => alive && setCountries([]))
+      .catch(() => { if (alive) { setCountries([]); setFailed(true) } })
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [])
@@ -84,6 +85,7 @@ export default function Countries() {
         <input
           className="input"
           style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
+          autoComplete="off"
           placeholder="Search federations…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -93,7 +95,7 @@ export default function Countries() {
       {loading ? (
         <Loading label="Loading federations" />
       ) : countries.length === 0 ? (
-        <Empty label="No federations found" />
+        <Empty label={failed ? 'Could not load federations' : 'No federations found'} hint={failed ? 'Check your connection and reload the page.' : undefined} />
       ) : (
         <>
           <div className="pad">
@@ -101,7 +103,7 @@ export default function Countries() {
             <div className="micro" style={{ marginBottom: 10 }}>
               Medals won at Arab &amp; GCC championships
             </div>
-            {arab.length === 0 ? <Empty label="No federations match" /> : <CountryTable countries={arab} />}
+            {arab.length === 0 ? <Empty label="No federations match" hint="Try a shorter name or the three-letter country code." /> : <CountryTable countries={arab} />}
           </div>
           {others.length > 0 && (
             <div className="rule-t pad">

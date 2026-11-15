@@ -14,7 +14,7 @@ const GOLD = 'var(--asw-gold)'
 
 /* ── Chart primitives (same flat style as Home quick stats) ─────────── */
 
-function LineChart({ points, color = NAVY, labelEvery = 1 }) {
+function LineChart({ points, color = NAVY, labelEvery = 1, label }) {
   const W = 640; const H = 180; const padX = 30; const padT = 20; const padB = 26
   if (points.length === 0) return null
   const vals = points.map((p) => p.value)
@@ -23,7 +23,7 @@ function LineChart({ points, color = NAVY, labelEvery = 1 }) {
   const y = (v) => padT + (1 - (v - min) / (max - min || 1)) * (H - padT - padB)
   const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img">
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={label}>
       <polyline points={`${x(0)},${H - padB + 4} ${path} ${x(points.length - 1)},${H - padB + 4}`}
         fill="color-mix(in srgb, var(--color-accent) 8%, transparent)" stroke="none" />
       <polyline points={path} fill="none" stroke={color} strokeWidth="2.5" />
@@ -32,7 +32,7 @@ function LineChart({ points, color = NAVY, labelEvery = 1 }) {
           {points.length <= 40 && <circle cx={x(i)} cy={y(p.value)} r="2.6" fill={color} />}
           {i % labelEvery === 0 && (
             <text x={x(i)} y={H - 8} textAnchor="middle"
-              style={{ fontWeight: 600, fontSize: 9, fill: 'var(--color-neutral-600)' }}>{p.label}</text>
+              style={{ fontWeight: 600, fontSize: 11, fill: 'var(--color-neutral-600)' }}>{p.label}</text>
           )}
         </g>
       ))}
@@ -64,7 +64,7 @@ function Donut({ segments, size = 150, thickness = 26, centerTop, centerBot }) {
   const C = 2 * Math.PI * r
   let acc = 0
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={segments.map((s) => `${s.label}: ${s.value}`).join(', ')}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-neutral-100)" strokeWidth={thickness} />
       {segments.map((s, i) => {
         const frac = s.value / total
@@ -82,7 +82,7 @@ function Donut({ segments, size = 150, thickness = 26, centerTop, centerBot }) {
         style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, fill: 'var(--color-accent-800)' }}>{centerTop}</text>
       {centerBot && (
         <text x="50%" y="61%" textAnchor="middle"
-          style={{ fontWeight: 700, fontSize: 8.5, letterSpacing: '0.09em', fill: 'var(--color-neutral-600)' }}>{centerBot}</text>
+          style={{ fontWeight: 700, fontSize: 10.5, letterSpacing: '0.09em', fill: 'var(--color-neutral-600)' }}>{centerBot}</text>
       )}
     </svg>
   )
@@ -129,7 +129,7 @@ function Growth({ pct }) {
   const up = pct >= 0
   const Icon = up ? TrendingUp : TrendingDown
   return (
-    <span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10.5, fontWeight: 800, color: up ? 'var(--asw-fast, #0d7a52)' : 'var(--asw-slow, #b3261e)' }}>
+    <span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 800, color: up ? 'var(--asw-fast, #0d7a52)' : 'var(--asw-slow, #b3261e)' }}>
       <Icon size={12} /> {up ? '+' : ''}{pct}%
     </span>
   )
@@ -140,7 +140,7 @@ function StatChip({ icon: Icon, value, label, growth, color = NAVY }) {
     <div className="qs-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '14px 8px', textAlign: 'center' }}>
       <Icon size={20} style={{ color }} />
       <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, color: NAVY_DARK, lineHeight: 1.1 }}>{value}</span>
-      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</span>
+      <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</span>
       {growth !== undefined && <Growth pct={growth} />}
     </div>
   )
@@ -169,7 +169,7 @@ export default function AdminAnalytics() {
   }, [days])
 
   if (loading && !data) return <Loading label="Loading analytics" />
-  if (!data) return <Empty label="Could not load analytics" />
+  if (!data) return <Empty label="Could not load analytics" hint="Check your connection and reload the page." />
 
   const t = data.totals
   const deviceColors = { desktop: NAVY, mobile: GOLD, tablet: BLUE }
@@ -184,7 +184,8 @@ export default function AdminAnalytics() {
     <div className="asw-fade-up">
       <PageHead kicker="Admin" title="Website Analytics" />
 
-      <div className="pad" style={{ display: 'grid', gap: 16 }}>
+      {/* Doherty Threshold: dim the old numbers while a new range loads */}
+      <div className="pad" aria-busy={loading} style={{ display: 'grid', gap: 16, opacity: loading ? 0.55 : 1 }}>
         {/* Range picker + live */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <Seg options={RANGES} value={days} onChange={(v) => setDays(Number(v))} />
@@ -213,9 +214,9 @@ export default function AdminAnalytics() {
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: NAVY }} /> Views</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: GOLD }} /> Visitors</span>
           </div>
-          <LineChart labelEvery={labelEvery}
+          <LineChart labelEvery={labelEvery} label="Page views per day"
             points={data.daily.map((d) => ({ label: shortDate(d.date), value: d.views }))} />
-          <LineChart color={GOLD} labelEvery={labelEvery}
+          <LineChart color={GOLD} labelEvery={labelEvery} label="Visitors per day"
             points={data.daily.map((d) => ({ label: shortDate(d.date), value: d.visitors }))} />
         </Panel>
 
@@ -279,7 +280,7 @@ export default function AdminAnalytics() {
                 <div key={h.hour} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                   <div title={`${h.hour}:00 — ${h.views} views`}
                     style={{ width: '100%', maxWidth: 20, height: Math.max(3, Math.round((h.views / max) * 110)), background: h.views ? NAVY : 'var(--color-neutral-200)' }} />
-                  <span style={{ fontSize: 8, fontWeight: 600, color: 'var(--color-neutral-700)' }}>{h.hour % 3 === 0 ? h.hour : ''}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-neutral-700)' }}>{h.hour % 3 === 0 ? h.hour : ''}</span>
                 </div>
               ))
             })()}

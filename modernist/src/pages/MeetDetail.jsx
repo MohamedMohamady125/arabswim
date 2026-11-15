@@ -26,6 +26,28 @@ import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakd
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
+// Jakob's Law: a clickable row/card acts like a link from the keyboard too
+// (Enter/Space; keys bubbling up from links and buttons inside are ignored).
+const rowLink = (fn, role = 'link') => (fn ? {
+  role, tabIndex: 0, onClick: fn,
+  onKeyDown: (e) => {
+    if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return
+    e.preventDefault()
+    fn(e)
+  },
+} : {})
+
+// Plain-words message from an API error body (never raw JSON)
+const apiMsg = (d, fallback) => {
+  if (!d) return fallback
+  if (typeof d === 'string') return d.length < 200 ? d : fallback
+  const k = Object.keys(d)[0]
+  const v = k ? d[k] : null
+  const text = Array.isArray(v) ? v[0] : v
+  if (typeof text !== 'string') return fallback
+  return ['detail', 'error', 'non_field_errors'].includes(k) ? text : `${k.replace(/_/g, ' ')}: ${text}`
+}
+
 // Round display order: finals first, then consolation, prelims, heats.
 // Swim-offs ("Barrage") come AFTER Heats (boss rule 2026-11-04), and any
 // unmapped round name sorts last instead of first (indexOf -1).
@@ -210,8 +232,8 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
         swimmer: swimmer.id,
         event: form.event,
         time_centiseconds: cs,
-        team: form.team || '',
-        category: form.category || '',
+        team: (form.team || '').trim(),
+        category: (form.category || '').trim(),
         round_type: form.round_type || '',
         fina_points: form.fina ? parseInt(form.fina) : null,
         medal: form.medal || '',
@@ -220,7 +242,7 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
       onAdded()
     } catch (err) {
       const d = err.response?.data
-      setError(d ? (typeof d === 'string' ? d : JSON.stringify(d)) : 'Could not add result')
+      setError(apiMsg(d, 'Could not add result'))
       setSaving(false)
     }
   }
@@ -242,13 +264,13 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(8, 24, 44, 0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px', overflowY: 'auto' }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-box-top)' }}>
+      <div role="dialog" aria-modal="true" aria-label={openWaterMode ? 'Add open water result' : 'Add result'} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h4 style={{ margin: 0 }}>{openWaterMode ? 'Add Open Water Result' : 'Add Result'}</h4>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close" title="Close">×</button>
         </div>
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {error && <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13 }}>{error}</div>}
+          {error && <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13 }}>{error}</div>}
           <div className="field">
             <label>Swimmer *</label>
             {swimmer ? (
@@ -263,7 +285,7 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
               </div>
             ) : (
               <div style={{ position: 'relative' }}>
-                <input className="input" type="text" placeholder="Search swimmers by name…" value={query} onChange={(e) => search(e.target.value)} />
+                <input className="input" type="text" aria-label="Search swimmers by name" autoComplete="off" placeholder="Search swimmers by name…" value={query} onChange={(e) => search(e.target.value)} />
                 {options.length > 0 && (
                   <div style={{ position: 'absolute', zIndex: 10, width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-divider)', marginTop: 2, boxShadow: 'var(--shadow-md)', maxHeight: 200, overflowY: 'auto' }}>
                     {options.map((s) => (
@@ -389,8 +411,8 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
     const payload = {
       event: form.event,
       round_type: form.round_type,
-      category: form.category,
-      team: form.team,
+      category: (form.category || '').trim(),
+      team: (form.team || '').trim(),
       time_centiseconds: cs,
       age_at_competition: form.age === '' ? null : parseInt(form.age),
       original_rank: form.original_rank === '' ? null : parseInt(form.original_rank),
@@ -428,7 +450,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
       onSaved()
     } catch (err) {
       const d = err.response?.data
-      setError(d ? (typeof d === 'string' ? d : JSON.stringify(d)) : 'Could not save the result')
+      setError(apiMsg(d, 'Could not save the result'))
       setSaving(false)
     }
   }
@@ -438,13 +460,13 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(8, 24, 44, 0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px', overflowY: 'auto' }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 560, maxWidth: '100%', borderTop: '4px solid var(--color-box-top)' }}>
+      <div role="dialog" aria-modal="true" aria-label="Edit result" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--color-bg)', width: 560, maxWidth: '100%', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h4 style={{ margin: 0 }}>Edit Result</h4>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close" title="Close">×</button>
         </div>
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {error && <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13 }}>{error}</div>}
+          {error && <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13 }}>{error}</div>}
           <div className="field">
             <label>{isRelay ? 'Relay team (placeholder swimmer)' : 'Swimmer'}</label>
             {swimmer ? (
@@ -459,7 +481,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
               </div>
             ) : (
               <div style={{ position: 'relative' }}>
-                <input className="input" type="text" placeholder="Search swimmers by name…" value={query} onChange={(e) => search(e.target.value)} />
+                <input className="input" type="text" aria-label="Search swimmers by name" autoComplete="off" placeholder="Search swimmers by name…" value={query} onChange={(e) => search(e.target.value)} />
                 {options.length > 0 && (
                   <div style={{ position: 'absolute', zIndex: 10, width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-divider)', marginTop: 2, boxShadow: 'var(--shadow-md)', maxHeight: 200, overflowY: 'auto' }}>
                     {options.map((s) => (
@@ -575,6 +597,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   })
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [selectedRound, setSelectedRound] = useState(null)
   const [expandedRow, setExpandedRow] = useState(null)
@@ -648,6 +671,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     if (!eventKey) return
     const [eventId, gender] = eventKey.split('|')
     setLoading(true)
+    setLoadFailed(false)
     getChampionshipResults(meetId, { event: eventId, gender, all_rounds: true })
       .then((res) => {
         const data = list(res.data)
@@ -670,7 +694,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         }
         setEditingRow(null)
       })
-      .catch(() => setRows([]))
+      .catch(() => { setRows([]); setLoadFailed(true) })
       .finally(() => setLoading(false))
   }
 
@@ -856,7 +880,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   if (events.length === 0) {
     return (
       <div className="pad">
-        <Empty label="No events for this meet" />
+        <Empty label="No events for this meet" hint={isAdmin ? 'Import a results file to fill this meet.' : 'Results will appear here once they are published.'} />
         {isAdmin && (
           <div style={{ textAlign: 'center', marginTop: -24, paddingBottom: 24 }}>
             <Link className="btn btn-primary" to={`/import?championship=${meetId}`}>Import results</Link>
@@ -906,12 +930,25 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     const splits = withFinishSplit(r.splits || [], r.time_centiseconds)
     const hasSub = (isRelay && swimmers.length > 0) || (!isRelay && (splits.length > 0 || r.reaction_time))
     const isExpanded = expandedRow === r.id
+    // a relay-team row with nothing to expand does nothing on click: no pointer
+    const rowClickable = !editMode && (hasSub || !r.swimmer_detail?.is_relay_team)
+    const rowExpands = !editMode && hasSub
     return (
       <React.Fragment key={r.id}>
         <tr
           data-result-id={r.id}
+          className={rowClickable ? 'row-link' : undefined}
+          // keyboard: only rows that open splits get a tab stop; the others
+          // are already reachable through the swimmer link
+          tabIndex={rowExpands ? 0 : undefined}
+          aria-expanded={rowExpands ? isExpanded : undefined}
+          onKeyDown={(e) => {
+            if (!rowExpands || e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return
+            e.preventDefault()
+            setExpandedRow(isExpanded ? null : r.id)
+          }}
           style={{
-            cursor: editMode ? 'default' : 'pointer',
+            cursor: rowClickable ? 'pointer' : 'default',
             background: highlightId === r.id ? 'color-mix(in srgb, var(--asw-gold) 18%, transparent)' : undefined,
             transition: 'background 0.6s',
           }}
@@ -958,7 +995,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                     flex: 'none', marginLeft: 'auto',
                     display: 'inline-flex', alignItems: 'center', gap: 3,
                     padding: '2px 5px', cursor: 'pointer',
-                    fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
+                    fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em',
                     fontFamily: 'var(--font-heading)',
                     border: `1px solid ${isExpanded ? 'var(--color-accent-800)' : 'var(--asw-gold)'}`,
                     background: isExpanded ? 'var(--color-accent-800)' : 'color-mix(in srgb, var(--asw-gold) 14%, transparent)',
@@ -984,7 +1021,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             {!r.time_centiseconds
               ? <span className="text-muted">{r.hc_type || '—'}</span>
               : isRelay && swimmers.length === 1 && swimmers[0]?.split_time && swimmers[0]?.first_leg !== false
-              ? <span title={`Relay time: ${r.formatted_time}`}>{swimmers[0].split_time} <span className="micro" style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 9 }}>SPLIT</span></span>
+              ? <span title={`Relay time: ${r.formatted_time}`}>{swimmers[0].split_time} <span className="micro" style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 10.5 }}>SPLIT</span></span>
               : r.formatted_time}
           </td>
           <td className="num asw-num">{r.fina_points ?? '—'}</td>
@@ -1007,13 +1044,13 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                 <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--color-divider)', background: 'var(--color-bg)' }}>
                   {r.reaction_time && (
                     <div style={{ padding: '5px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: splits.length > 0 ? '1px solid var(--color-divider)' : 'none', background: 'var(--color-accent-100)' }}>
-                      <div className="micro" style={{ fontSize: 9, marginBottom: 2, color: 'var(--color-accent-800)' }}>RT</div>
+                      <div className="micro" style={{ fontSize: 10.5, marginBottom: 2, color: 'var(--color-accent-800)' }}>RT</div>
                       <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)' }}>{Number(r.reaction_time).toFixed(2)}</div>
                     </div>
                   )}
                   {splits.map((s, j) => (
                     <div key={j} style={{ padding: '5px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: j < splits.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
-                      <div className="micro" style={{ fontSize: 9, marginBottom: 2 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</div>
+                      <div className="micro" style={{ fontSize: 10.5, marginBottom: 2 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</div>
                       <div className="asw-num" style={{ fontSize: 13, fontWeight: 700 }}>{s.time}</div>
                     </div>
                   ))}
@@ -1184,7 +1221,14 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
       )}
 
       {loading && <Loading label="Loading results" />}
-      {!loading && grouped.length === 0 && <Empty label="No results for this selection" />}
+      {/* Paradox of the Active User: a failed load says so and offers a retry */}
+      {!loading && grouped.length === 0 && (loadFailed ? (
+        <Empty label="Results could not be loaded" hint="Check your connection and try again.">
+          <button type="button" className="btn btn-secondary" onClick={loadResults}>Try again</button>
+        </Empty>
+      ) : (
+        <Empty label="No results for this selection" hint="Try another event, category or round." />
+      ))}
 
       {!loading && grouped.length > 0 && (
         <div className="table-scroll">
@@ -1243,7 +1287,8 @@ function FeaturedCards({ picks, sideBySide = false, stackOnPhone = false, hideRa
       {shown.map((p) => (
         <div
           key={p.tag}
-          onClick={p.swimmer_id ? () => navigate(`/swimmers/${p.swimmer_id}`) : undefined}
+          className={p.swimmer_id ? 'row-link' : undefined}
+          {...rowLink(p.swimmer_id ? () => navigate(`/swimmers/${p.swimmer_id}`) : null)}
           style={{
             border: '1px solid var(--color-divider)', background: sideBySide ? '#fff' : 'var(--color-surface)',
             borderTop: '3px solid var(--color-box-top)', display: 'flex', gap: 12,
@@ -1252,7 +1297,7 @@ function FeaturedCards({ picks, sideBySide = false, stackOnPhone = false, hideRa
         >
           <div className="grayscale" style={{ width: sideBySide ? 'clamp(52px, 18vw, 84px)' : 84, alignSelf: 'stretch', minHeight: 96, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, overflow: 'hidden' }}>
             {p.photo
-              ? <img src={mediaUrl(p.photo)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={mediaUrl(p.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : (p.name || '?').charAt(0)}
           </div>
           <div style={{ flex: 1, minWidth: 0, padding: '10px 12px 10px 0', display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
@@ -1261,11 +1306,11 @@ function FeaturedCards({ picks, sideBySide = false, stackOnPhone = false, hideRa
               <Flag code={p.nationality_code} name={p.name} />
               <span style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
             </div>
-            {p.sub && <div className="micro" style={{ fontSize: 10, textTransform: 'none', letterSpacing: 0 }}>{p.sub}</div>}
+            {p.sub && <div className="micro" style={{ fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>{p.sub}</div>}
             {p.value && (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{p.value}</span>
-                {p.valueLabel && <span className="micro" style={{ fontSize: 10 }}>{p.valueLabel}</span>}
+                {p.valueLabel && <span className="micro" style={{ fontSize: 10.5 }}>{p.valueLabel}</span>}
               </div>
             )}
             {/* medal tally as icons (not G/S/B letters) */}
@@ -1319,8 +1364,8 @@ function EntityAthleteMedals({ medals, isNational }) {
         return (
           <div key={sw?.id || gi} className="medal-drop-row">
             <span
-              className="medal-drop-name"
-              onClick={isRelay ? undefined : () => navigate(`/swimmers/${sw?.id}`)}
+              className={isRelay ? 'medal-drop-name' : 'medal-drop-name row-link'}
+              {...rowLink(isRelay ? null : () => navigate(`/swimmers/${sw?.id}`))}
               style={{ cursor: isRelay ? 'default' : 'pointer' }}
             >
               <Flag code={sw?.nationality_detail?.code} name={sw?.nationality_detail?.name} />
@@ -1485,7 +1530,7 @@ function MedalsTab({ meetId, isNational }) {
               )}
             </div>
             {tallyRows.length === 0 ? (
-              <Empty label="No medals recorded" />
+              <Empty label="No medals recorded" hint="Try another filter above." />
             ) : (
               <div style={{ marginBottom: 28 }}>
                 <MedalStandings
@@ -1569,7 +1614,7 @@ function PersonalBestsTab({ stats }) {
   // in an event are not "personal bests achieved".
   const pbs = (stats?.personal_bests || []).filter((s) => s.previous_best)
   const hasPbs = pbs.length > 0
-  if (!hasPbs) return <Empty label="No personal bests yet" />
+  if (!hasPbs) return <Empty label="No personal bests yet" hint="Swims that beat a swimmer's previous best time are listed here." />
 
   // #1 male and female by FINA points (list is FINA-sorted)
   const pbPick = (sex, tag) => {
@@ -1599,9 +1644,9 @@ function PersonalBestsTab({ stats }) {
             {pbs.map((s, i) => (
               <div
                 key={i}
-                className="hair-b asw-fade-up"
+                className="hair-b asw-fade-up row-link"
                 style={{ padding: '12px 0', cursor: 'pointer', animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}
+                {...rowLink(() => navigate(`/swimmers/${s.swimmer_id}`))}
               >
                 {/* Line 1 — rank + swimmer + new time */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1648,7 +1693,7 @@ function TopPerformancesTab({ stats }) {
   const [perfScope, setPerfScope] = useState('all')
 
   const raw = stats?.top_performers || []
-  if (raw.length === 0) return <Empty label="No top performances yet" />
+  if (raw.length === 0) return <Empty label="No top performances yet" hint="The highest FINA-point swims appear here once results are in." />
 
   // Arab-only scope narrows everything below it, featured cards included
   const all = perfScope === 'arab' ? raw.filter((t) => t.is_arab) : raw
@@ -1700,11 +1745,11 @@ function TopPerformancesTab({ stats }) {
             </div>
           </div>
           {performers.length === 0 ? (
-            <Empty label="No performances for this filter" />
+            <Empty label="No performances for this filter" hint="Try another filter above." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
               {performers.map((t, i) => (
-                <div key={i} style={{ cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${t.swimmer_id}`)}>
+                <div key={i} className="row-link" style={{ cursor: 'pointer' }} {...rowLink(() => navigate(`/swimmers/${t.swimmer_id}`))}>
                   <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 15, marginBottom: 4 }}>
                     <span className="asw-num text-muted">{i + 1}</span>
                     <Flag code={t.nationality_code} name={t.swimmer_name} />
@@ -1745,7 +1790,7 @@ function OverviewTab({ meetId, stats }) {
   }, [meetId])
 
   if (qsLoading) return <Loading label="Loading overview" />
-  if (!qs?.championship) return <Empty label="No overview available yet" />
+  if (!qs?.championship) return <Empty label="No overview available yet" hint="Open the Results tab to see the swims from this meet." />
 
   return (
     <div>
@@ -1763,7 +1808,7 @@ function OverviewTab({ meetId, stats }) {
             <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>{stats.countries.length} countries · ranked by swimmers entered</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 880 }}>
               {rows.map((c, i) => (
-                <div key={c.nationality__code || i} onClick={() => c.nationality__id && navigate(`/countries/${c.nationality__id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', cursor: c.nationality__id ? 'pointer' : 'default' }}>
+                <div key={c.nationality__code || i} className={c.nationality__id ? 'row-link' : undefined} {...rowLink(c.nationality__id ? () => navigate(`/countries/${c.nationality__id}`) : null)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', minHeight: 32, cursor: c.nationality__id ? 'pointer' : 'default' }}>
                   <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
                   <Flag code={c.nationality__code} name={c.nationality__name} />
                   <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nationality__name}</span>
@@ -1789,7 +1834,7 @@ function OverviewTab({ meetId, stats }) {
             <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Clubs ranked by swimmers entered</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 880 }}>
               {rows.map((c, i) => (
-                <div key={c.team} onClick={() => c.team_id && navigate(`/teams/${c.team_id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', cursor: c.team_id ? 'pointer' : 'default' }}>
+                <div key={c.team} className={c.team_id ? 'row-link' : undefined} {...rowLink(c.team_id ? () => navigate(`/teams/${c.team_id}`) : null)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', minHeight: 32, cursor: c.team_id ? 'pointer' : 'default' }}>
                   <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
                   <ClubLogo logo={c.team_logo} name={c.team} size={24} />
                   <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.team}</span>
@@ -1816,9 +1861,9 @@ function OverviewTab({ meetId, stats }) {
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 150, borderBottom: '1px solid var(--color-neutral-300)' }}>
               {ap.distribution.map((d) => (
                 <div key={d.age} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
-                  <span className="asw-num" style={{ fontSize: 10, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 3 }}>{d.count}</span>
+                  <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 3 }}>{d.count}</span>
                   <div style={{ width: '72%', maxWidth: 30, height: `${Math.max(3, (d.count / maxC) * 110)}px`, background: 'var(--color-accent-800)', borderRadius: '2px 2px 0 0' }} />
-                  <span className="asw-num" style={{ fontSize: 10, color: 'var(--color-neutral-700)', marginTop: 5 }}>{d.age}</span>
+                  <span className="asw-num" style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 5 }}>{d.age}</span>
                 </div>
               ))}
             </div>
@@ -1828,9 +1873,10 @@ function OverviewTab({ meetId, stats }) {
                   <div key={lbl} style={{ minWidth: 0 }}>
                     <div className="micro" style={{ marginBottom: 6 }}>{lbl}</div>
                     {(arr || []).map((s) => (
-                      <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', fontSize: 12, minWidth: 0 }}>
+                      <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, minWidth: 0 }}>
                         <Flag code={s.nationality_code} name={s.nationality} />
-                        <span style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}>{s.swimmer_name}</span>
+                        {/* Fitts's Law: a real link, 32px tall */}
+                        <Link to={`/swimmers/${s.swimmer_id}`} style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'inherit', textDecoration: 'none', lineHeight: '32px' }}>{s.swimmer_name}</Link>
                         <span className="asw-num" style={{ fontWeight: 800, color: 'var(--color-accent)' }}>{s.age}</span>
                       </div>
                     ))}
@@ -1865,11 +1911,15 @@ function OverviewTab({ meetId, stats }) {
                 {comparison.map((ch) => (
                   <tr
                     key={ch.id}
+                    className={ch.is_current ? undefined : 'row-link'}
                     style={{ cursor: ch.is_current ? 'default' : 'pointer', background: ch.is_current ? 'var(--color-accent-100)' : undefined }}
                     onClick={() => !ch.is_current && navigate(`/meets/${ch.id}?tab=statistics`)}
                   >
                     <td style={{ fontWeight: ch.is_current ? 700 : 400 }}>
-                      {ch.name}
+                      {/* Jakob's Law: the meet name is a real link, so the row works from the keyboard */}
+                      {ch.is_current ? ch.name : (
+                        <Link to={`/meets/${ch.id}?tab=statistics`} style={{ color: 'inherit', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>{ch.name}</Link>
+                      )}
                       {ch.is_current && <span className="tag tag-accent" style={{ marginLeft: 8 }}>Current</span>}
                     </td>
                     <td>
@@ -1962,7 +2012,7 @@ function MostImprovedTab({ meetId }) {
         </div>
       </div>
       {filtered.length === 0 ? (
-        <Empty label="No improvements recorded for this meet" />
+        <Empty label="No improvements recorded for this meet" hint="Swimmers who beat a previous best time are listed here." />
       ) : (() => {
         const maxDrop = Math.max(0.01, ...filtered.map((s) => parseFloat(s.improvement) || 0))
         return (
@@ -1974,7 +2024,8 @@ function MostImprovedTab({ meetId }) {
               return (
                 <div
                   key={i}
-                  onClick={() => navigate(`/swimmers/${s.swimmer_id}`)}
+                  className="row-link"
+                  {...rowLink(() => navigate(`/swimmers/${s.swimmer_id}`))}
                   style={{
                     border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
                     borderTop: `3px solid ${rankColor}`,
@@ -1993,7 +2044,7 @@ function MostImprovedTab({ meetId }) {
                         <Flag code={s.nationality_code} name={s.swimmer_name} />
                         <span style={{ fontWeight: 700, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.swimmer_name}</span>
                       </div>
-                      <div className="micro" style={{ marginTop: 1, fontSize: 10 }}>{s.event_name}</div>
+                      <div className="micro" style={{ marginTop: 1, fontSize: 10.5 }}>{s.event_name}</div>
                     </div>
                     <span className="asw-num" style={{ flex: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1, color: 'var(--asw-fast)' }}>
                       −{s.improvement}{String(s.improvement).includes(':') ? '' : 's'}
@@ -2038,7 +2089,7 @@ function RecordsBrokenTab({ meetId }) {
   }, [meetId])
 
   if (rows === null) return <Loading label="Computing broken records" />
-  if (rows.length === 0) return <Empty label="No records were broken at this meet" />
+  if (rows.length === 0) return <Empty label="No records were broken at this meet" hint="Open the Results tab to see every swim." />
 
   const genderOptions = [
     { value: 'ALL', label: 'All' },
@@ -2074,7 +2125,7 @@ function RecordsBrokenTab({ meetId }) {
       <div className="micro" style={{ marginBottom: 18, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
         Individual and relay records — computed automatically by comparing this meet's swims against the best times on record before the meet (same pool).
       </div>
-      {filtered.length === 0 && <Empty label="No records broken for this filter" />}
+      {filtered.length === 0 && <Empty label="No records broken for this filter" hint="Try another filter above." />}
       {groups.map((g) => {
         const c = BROKEN_SCOPE_COLOR[g.scope] || 'var(--color-accent)'
         return (
@@ -2086,13 +2137,13 @@ function RecordsBrokenTab({ meetId }) {
             {g.rows.map((r, i) => (
               <div
                 key={i}
-                className="hair-b asw-fade-up"
+                className={r.is_relay_team ? 'hair-b asw-fade-up' : 'hair-b asw-fade-up row-link'}
                 style={{
                   padding: '12px 0 12px 12px', borderLeft: `4px solid ${c}`,
                   cursor: r.is_relay_team ? 'default' : 'pointer',
                   animationDelay: `${Math.min(i * 40, 320)}ms`,
                 }}
-                onClick={r.is_relay_team ? undefined : () => navigate(`/swimmers/${r.swimmer_id}`)}
+                {...rowLink(r.is_relay_team ? null : () => navigate(`/swimmers/${r.swimmer_id}`))}
               >
                 {/* Line 1 — event + gender + new time */}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -2197,9 +2248,10 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
                         return (
                           <div
                             key={it.id || `${it.event}-${i}`}
-                            onClick={linked ? () => openResults(it) : undefined}
+                            className={linked ? 'row-link' : undefined}
+                            {...rowLink(linked ? () => openResults(it) : null)}
                             title={linked ? 'View results' : undefined}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', fontSize: 13, cursor: linked ? 'pointer' : 'default' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', minHeight: 32, fontSize: 13, cursor: linked ? 'pointer' : 'default' }}
                           >
                             <span className="asw-num" style={{ width: 20, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
                             <span style={{ fontWeight: 600, textDecoration: linked ? 'underline' : 'none', textDecorationColor: 'var(--color-neutral-300)', textUnderlineOffset: 3 }}>
@@ -2221,7 +2273,7 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
           ))}
         </div>
       ) : (
-        !isAdmin && <Empty label="The day-by-day program has not been published for this meet" />
+        !isAdmin && <Empty label="The day-by-day program has not been published for this meet" hint="Open the Results tab to browse the events that were swum." />
       )}
       {isAdmin && (
         <ProgramEditorToggle meetId={meetId} resultEvents={resultEvents} onSaved={load} />
@@ -2234,23 +2286,14 @@ function ProgramEditorToggle({ meetId, resultEvents, onSaved }) {
   const [mode, setMode] = useState('dropdown') // 'dropdown' | 'dragdrop'
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <button
-          type="button"
-          className={`btn ${mode === 'dropdown' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setMode('dropdown')}
-          style={{ fontSize: 12 }}
-        >
-          Dropdown editor
-        </button>
-        <button
-          type="button"
-          className={`btn ${mode === 'dragdrop' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setMode('dragdrop')}
-          style={{ fontSize: 12 }}
-        >
-          Drag &amp; drop editor
-        </button>
+      {/* Von Restorff + Similarity: a view switch uses the site's segmented
+          control, leaving "Save program" as the only primary button here */}
+      <div style={{ marginBottom: 10 }}>
+        <Seg
+          options={[{ value: 'dropdown', label: 'Dropdown editor' }, { value: 'dragdrop', label: 'Drag & drop editor' }]}
+          value={mode}
+          onChange={setMode}
+        />
       </div>
       {mode === 'dropdown' ? (
         <MeetProgramEditor champId={meetId} onSaved={onSaved} />
@@ -2362,7 +2405,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
     <div className="rule-b" style={{ padding: '18px 32px', background: 'var(--color-surface)' }}>
       <div className="kicker" style={{ marginBottom: 14 }}>Edit meet</div>
       {error && (
-        <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>
+        <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>
           {error}
         </div>
       )}
@@ -2498,7 +2541,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
               {allCats.map((cat) => (
                 <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                   <span style={{ fontWeight: 600, fontSize: 13, width: 140 }}>{cat}</span>
-                  <select className="select" style={{ fontSize: 13, padding: '4px 8px' }}
+                  <select className="select" aria-label={`Gender display for ${cat}`} style={{ fontSize: 13, padding: '4px 8px' }}
                     value={map[cat] || 'men'}
                     onChange={(e) => setForm((f) => ({
                       ...f, category_gender_map: { ...f.category_gender_map, [cat]: e.target.value }
@@ -2584,10 +2627,10 @@ function CompareMeetsModal({ meet, onClose }) {
       style={{ position: 'fixed', inset: 0, background: 'rgba(8,24,44,0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4vh 16px', overflowY: 'auto' }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div style={{ width: 860, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
+      <div role="dialog" aria-modal="true" aria-label="Compare meets" style={{ width: 860, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
           <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Compare meets</strong>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
+          <button type="button" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 36, minHeight: 36, marginRight: -8 }}>×</button>
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -2595,7 +2638,7 @@ function CompareMeetsModal({ meet, onClose }) {
             <div className="micro" style={{ marginBottom: 6 }}>
               Comparing <strong>{meet.name}</strong> with · same pool only ({meet.pool})
             </div>
-            <select className="select" style={{ width: '100%', maxWidth: 460 }} value={otherId} onChange={(e) => setOtherId(e.target.value)}>
+            <select className="select" aria-label="Meet to compare with" style={{ width: '100%', maxWidth: 460 }} value={otherId} onChange={(e) => setOtherId(e.target.value)}>
               <option value="">Choose a meet…</option>
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -2605,7 +2648,7 @@ function CompareMeetsModal({ meet, onClose }) {
             </select>
           </div>
 
-          {error && <div style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
+          {error && <div role="alert" style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
           {loading && <Loading label="Comparing meets" />}
 
           {a && b && !loading && (
@@ -2850,7 +2893,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
         {days.map((d) => {
           const active = selectedDay === d.num
           return (
-            <button key={d.num} type="button"
+            <button key={d.num} type="button" aria-pressed={active}
               onClick={() => setSelectedDay(d.num)}
               className={`live-daychip${active ? ' active' : ''}`}
               style={{
@@ -2864,19 +2907,19 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
               {d.isToday && (
                 <span style={{
                   position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
-                  fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em', padding: '2px 8px',
+                  fontSize: 10.5, lineHeight: 1.2, fontWeight: 800, letterSpacing: '0.1em', padding: '2px 8px',
                   borderRadius: 999, background: 'var(--asw-slow)', color: '#fff',
                 }}>
                   TODAY
                 </span>
               )}
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
                 {d.date.toLocaleDateString('en-GB', { weekday: 'short' })}
               </div>
               <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 800, marginTop: 2, lineHeight: 1 }}>
                 {d.date.getDate()}
               </div>
-              <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.06em' }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.06em' }}>
                 DAY {d.num}
               </div>
             </button>
@@ -3088,17 +3131,19 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
               <td style={{ maxWidth: 0, width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
+                  {/* relay-team rows open nothing, so they are not offered as buttons */}
                   <span
-                    role="button"
-                    tabIndex={0}
+                    className={r.swimmer_detail && !r.swimmer_detail.is_relay_team ? 'row-link' : undefined}
+                    role={r.swimmer_detail && !r.swimmer_detail.is_relay_team ? 'button' : undefined}
+                    tabIndex={r.swimmer_detail && !r.swimmer_detail.is_relay_team ? 0 : undefined}
                     onClick={(e) => {
                       e.stopPropagation()
                       if (r.swimmer_detail && !r.swimmer_detail.is_relay_team) setAthlete(r.swimmer_detail)
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && r.swimmer_detail && !r.swimmer_detail.is_relay_team) setAthlete(r.swimmer_detail)
+                      if ((e.key === 'Enter' || e.key === ' ') && r.swimmer_detail && !r.swimmer_detail.is_relay_team) { e.preventDefault(); setAthlete(r.swimmer_detail) }
                     }}
-                    style={{ color: 'inherit', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                    style={{ color: 'inherit', cursor: r.swimmer_detail && !r.swimmer_detail.is_relay_team ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                     {r.swimmer_detail?.name}
                   </span>
                 </div>
@@ -3119,7 +3164,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
       {athlete && (
         <AthleteMeetCard swimmer={athlete} meet={{ id: Number(meetId), name: meet?.name }} onClose={() => setAthlete(null)} />
       )}
-      <div onClick={loadResults}
+      <div className="row-link" {...rowLink(() => loadResults(), 'button')} aria-expanded={open}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: compact ? '9px 10px' : '11px 14px', cursor: 'pointer',
           background: open ? 'var(--color-accent-100)' : 'var(--color-surface)',
@@ -3129,14 +3174,14 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: compact ? 13 : 14, flex: 1, minWidth: 0 }}>{p.event_name}</span>
         {roundBadge && (
           <span style={{
-            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
             background: 'var(--color-accent-100)', color: 'var(--color-accent)',
             whiteSpace: 'nowrap', flex: 'none',
           }}>{roundBadge}</span>
         )}
         {(p.age_category || openCat) && (
           <span style={{
-            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
             background: 'var(--color-accent-100)', color: 'var(--color-accent)',
             whiteSpace: 'nowrap', flex: 'none',
           }}>{p.age_category || 'Open'}</span>
@@ -3149,9 +3194,9 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
           {hasHeats && (
             <div style={{ display: 'flex', gap: 0, marginBottom: 10 }}>
               {['results', 'heats'].map((t) => (
-                <button key={t} type="button" onClick={(e) => { e.stopPropagation(); switchTab(t) }}
+                <button key={t} type="button" aria-pressed={tab === t} onClick={(e) => { e.stopPropagation(); switchTab(t) }}
                   style={{
-                    padding: '5px 16px', fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-heading)',
+                    padding: '5px 16px', minHeight: 32, fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-heading)',
                     textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer',
                     border: '1px solid var(--color-accent)',
                     background: tab === t ? 'var(--color-accent)' : 'transparent',
@@ -3176,9 +3221,10 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
               {/* Mini sidebar */}
               <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 4, position: 'sticky', top: 80 }}>
                 {heatGroups.map((_, hi) => (
-                  <a key={hi} href={`#heat-${p.event}-${p.gender}-${hi}`}
+                  <a key={hi} href={`#heat-${p.event}-${p.gender}-${hi}`} aria-label={`Jump to heat ${hi + 1}`}
                     style={{
-                      fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 3,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 32, minWidth: 32,
+                      fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 3,
                       background: 'var(--color-accent-100)', color: 'var(--color-accent)',
                       textDecoration: 'none', textAlign: 'center', whiteSpace: 'nowrap',
                     }}>
@@ -3268,7 +3314,7 @@ function LivePanel({ meet, onFinished }) {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
               <span style={{ fontWeight: 800, fontFamily: 'var(--font-heading)' }}>Day {d.day}</span>
               <span className="micro">{formatDate(d.date)}</span>
-              {d.is_today && <span className="tag tag-dark" style={{ fontSize: 10 }}>TODAY</span>}
+              {d.is_today && <span className="tag tag-dark" style={{ fontSize: 11 }}>TODAY</span>}
             </div>
             {d.sessions.length === 0 ? (
               <div className="micro" style={{ marginBottom: 10 }}>No sessions uploaded yet</div>
@@ -3287,7 +3333,7 @@ function LivePanel({ meet, onFinished }) {
                 ))}
               </div>
             )}
-            <Link className="btn btn-secondary" style={{ height: 30, fontSize: 12, display: 'inline-flex', alignItems: 'center' }}
+            <Link className="btn btn-secondary" style={{ minHeight: 32, fontSize: 12, display: 'inline-flex', alignItems: 'center' }}
               to={`/import?championship=${meet.id}&live_day=${d.day}`}>
               Upload session
             </Link>
@@ -3351,7 +3397,13 @@ export default function MeetDetail() {
   }, [id])
 
   if (loading) return <Loading label="Loading meet" />
-  if (error || !meet) return <Empty label="Meet not found" />
+  if (error || !meet) {
+    return (
+      <Empty label="Meet not found" hint="It may have been removed, or the link is wrong.">
+        <Link className="btn btn-secondary" to="/championships">All meets</Link>
+      </Empty>
+    )
+  }
 
   // National/Other meets show team column + club tally; strictly classification-driven
   const isNational = ['National', 'Other'].includes(meet.classification_name)
@@ -3379,7 +3431,7 @@ export default function MeetDetail() {
               style={{ margin: 0, letterSpacing: '-0.03em' }}>{meet.name}</h1>
             <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span>{formatDateRange(meet.date, meet.end_date)}</span>
-              <span className="tag tag-dark" style={{ fontSize: 10 }}>{meet.pool}</span>
+              <span className="tag tag-dark" style={{ fontSize: 11 }}>{meet.pool}</span>
               {meet.country_detail && <><span style={{ color: 'var(--color-neutral-400)' }}>·</span><span>{meet.country_detail.name}</span></>}
               {meet.is_live && LIVE_BADGE}
             </div>
@@ -3405,7 +3457,8 @@ export default function MeetDetail() {
                   </button>
                 )}
                 {meet.country_detail?.code === 'TUN' && (
-                  <button type="button" className={`btn ${meet.has_double_podium ? 'btn-primary' : 'btn-secondary'}`} onClick={async () => {
+                  // Von Restorff: one primary in the header (Publish); the label carries the ON state
+                  <button type="button" className="btn btn-secondary" aria-pressed={!!meet.has_double_podium} onClick={async () => {
                     const enabling = !meet.has_double_podium
                     if (!window.confirm(enabling
                       ? 'Enable double podium?\n\n• Foreign guests keep their medals on the overall podium\n• Tunisian swimmers get their own parallel podium, ignoring foreigners\n• Works even when the first 2-3 finishers are foreigners\n\nMedals will be recomputed.'

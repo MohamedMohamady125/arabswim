@@ -25,7 +25,7 @@ function VBars({ data, color = NAVY, height = 140 }) {
         <div key={i} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: NAVY_DARK }}>{d.value}</span>
           <div style={{ width: '100%', maxWidth: 26, height: Math.max(3, Math.round((d.value / max) * height)), background: d.color || color }} />
-          <span style={{ fontSize: 9.5, fontWeight: 600, color: 'var(--color-neutral-700)', textAlign: 'center', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{d.label}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-neutral-700)', textAlign: 'center', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{d.label}</span>
         </div>
       ))}
     </div>
@@ -38,7 +38,8 @@ function Donut({ segments, size = 156, thickness = 27, centerTop, centerBot }) {
   const C = 2 * Math.PI * r
   let acc = 0
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img"
+      aria-label={`${centerTop ?? ''} ${centerBot || ''} — ${segments.map((s) => `${s.label}: ${s.value}`).join(', ')}`.trim()}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-neutral-100)" strokeWidth={thickness} />
       {segments.map((s, i) => {
         const frac = s.value / total
@@ -56,7 +57,8 @@ function Donut({ segments, size = 156, thickness = 27, centerTop, centerBot }) {
         style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, fill: 'var(--color-accent-800)' }}>{centerTop}</text>
       {centerBot && (
         <text x="50%" y="61%" textAnchor="middle"
-          style={{ fontWeight: 700, fontSize: 8.5, letterSpacing: '0.09em', fill: 'var(--color-neutral-600)' }}>{centerBot}</text>
+          /* legibility: 10.5px floor; tracking tightened so the label still fits inside the ring */
+          style={{ fontWeight: 700, fontSize: 10.5, letterSpacing: '0.02em', fill: 'var(--color-neutral-700)' }}>{centerBot}</text>
       )}
     </svg>
   )
@@ -71,7 +73,8 @@ function LineChart({ points, color = NAVY }) {
   const y = (v) => padT + (1 - (v - min) / span) * (H - padT - padB)
   const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img">
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img"
+      aria-label={points.map((p) => `${p.label}: ${p.value}`).join(', ')}>
       <polyline points={`${x(0)},${H - padB + 4} ${path} ${x(points.length - 1)},${H - padB + 4}`}
         fill="color-mix(in srgb, var(--color-accent) 8%, transparent)" stroke="none" />
       <polyline points={path} fill="none" stroke={color} strokeWidth="2.5" />
@@ -81,7 +84,7 @@ function LineChart({ points, color = NAVY }) {
           <text x={x(i)} y={y(p.value) - 8} textAnchor="middle"
             style={{ fontWeight: 800, fontSize: 11, fill: 'var(--color-accent-800)' }}>{p.value}</text>
           <text x={x(i)} y={H - 8} textAnchor="middle"
-            style={{ fontWeight: 600, fontSize: 9.5, fill: 'var(--color-neutral-600)' }}>{p.label}</text>
+            style={{ fontWeight: 600, fontSize: 11, fill: 'var(--color-neutral-700)' }}>{p.label}</text>
         </g>
       ))}
     </svg>
@@ -118,7 +121,7 @@ function MedalStack({ rows, wide = false }) {
                 r[k] > 0 ? (
                   <div key={k} title={`${k}: ${r[k]}`}
                     style={{ flex: r[k], background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0, overflow: 'hidden' }}>
-                    <span style={{ fontSize: 9, fontWeight: 800, color: fg }}>{r[k]}</span>
+                    <span style={{ fontSize: 11, lineHeight: 1, fontWeight: 800, color: fg }}>{r[k]}</span>
                   </div>
                 ) : null
               ))}
@@ -159,9 +162,9 @@ function StatChip({ icon: Icon, value, label }) {
       color: '#fff', padding: '14px 8px', textAlign: 'center',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
     }}>
-      <Icon size={18} style={{ color: 'rgba(255,255,255,0.7)' }} />
+      <Icon size={18} aria-hidden="true" style={{ color: 'rgba(255,255,255,0.7)' }} />
       <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{value}</span>
-      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{label}</span>
+      <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{label}</span>
     </div>
   )
 }
@@ -178,14 +181,14 @@ function LegendDot({ color, children }) {
 function PerfCard({ title, value, unit, name, code, event, gold = false }) {
   return (
     <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 128 }}>
-      <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>{title}</div>
+      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>{title}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
         <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 800, color: gold ? GOLD : '#fff', lineHeight: 1 }}>{value}</span>
-        {unit && <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{unit}</span>}
+        {unit && <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{unit}</span>}
       </div>
       <div style={{ marginTop: 'auto', fontSize: 11, fontWeight: 700, lineHeight: 1.3 }}>
         {name}{code ? ` (${code})` : ''}
-        {event && <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{event}</div>}
+        {event && <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{event}</div>}
       </div>
     </div>
   )
@@ -194,7 +197,7 @@ function PerfCard({ title, value, unit, name, code, event, gold = false }) {
 function ProgressRow({ icon: Icon, label, value }) {
   return (
     <div className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0' }}>
-      <Icon size={15} style={{ color: NAVY, flex: 'none' }} />
+      <Icon size={15} aria-hidden="true" style={{ color: NAVY, flex: 'none' }} />
       <span style={{ fontSize: 12.5, fontWeight: 600 }}>{label}</span>
       <span className="asw-num" style={{ marginLeft: 'auto', fontSize: 13.5, fontWeight: 800, color: NAVY_DARK }}>{value}</span>
     </div>
@@ -304,7 +307,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-neutral-700)' }}>
+                <tr style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-neutral-700)' }}>
                   <th style={{ textAlign: 'left', paddingBottom: 6 }}>#</th>
                   <th style={{ textAlign: 'left', paddingBottom: 6 }}>Swimmer</th>
                   <th style={{ textAlign: 'center', paddingBottom: 6 }}>Swims</th>
@@ -316,8 +319,9 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                 {busiest.map((s, i) => (
                   <tr key={s.swimmer_id} className="hair-t">
                     <td className="asw-num" style={{ padding: '7px 0', fontWeight: 700, color: 'var(--color-neutral-700)' }}>{i + 1}</td>
-                    <td style={{ padding: '7px 0' }}>
-                      <Link to={`/swimmers/${s.swimmer_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}>
+                    {/* Fitts's Law: the link fills the row height (row itself is not taller) */}
+                    <td style={{ padding: 0 }}>
+                      <Link to={`/swimmers/${s.swimmer_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 0', fontWeight: 700, color: 'inherit', textDecoration: 'none' }}>
                         <Flag code={s.nationality_code} name={s.nationality} /> {s.swimmer_name}
                       </Link>
                     </td>
@@ -350,8 +354,8 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
               </span>
             )}
           />
-          <div style={{ marginTop: 10, textAlign: 'center' }}>
-            <Link to={medalsLink} style={{ fontSize: 12, fontWeight: 700 }}>View full medal table →</Link>
+          <div style={{ marginTop: 4, textAlign: 'center' }}>
+            <Link to={medalsLink} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 36, padding: '0 10px', fontSize: 12, fontWeight: 700 }}>View full medal table →</Link>
           </div>
         </Panel>
         <Panel title={`Medals by ${medalEntity} (Top 10)`}>
@@ -439,7 +443,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
             {recCounters.map((c) => (
               <div key={c.label} className="qs-panel" style={{ padding: '12px 8px', textAlign: 'center' }}>
                 <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: c.color }}>{c.count}</div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 2 }}>{c.label}</div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 2 }}>{c.label}</div>
               </div>
             ))}
           </div>

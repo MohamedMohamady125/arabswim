@@ -73,7 +73,7 @@ export default function TeamEventDepth() {
     setData(null)
     api.get(`/teams/${id}/depth/`, { params: { event: eventId, pool, ...(gender ? { gender } : {}) } })
       .then((r) => alive && setData(r.data))
-      .catch(() => alive && setData({ swimmers: [] }))
+      .catch(() => alive && setData({ swimmers: [], failed: true }))
     return () => { alive = false }
   }, [id, eventId, pool, gender])
 
@@ -136,7 +136,10 @@ export default function TeamEventDepth() {
       </div>
 
       <div className="m-pad" style={{ padding: '20px 32px 40px', maxWidth: 1180, margin: '0 auto' }}>
-        {!data ? <Loading label="Loading event depth" /> : !stats ? <Empty label="No times in this event for this selection" /> : (<>
+        {!data ? <Loading label="Loading event depth" /> : !stats ? (data.failed
+          ? <Empty label="Could not load this event" hint="Check your connection and reload the page."><Link to={back} className="btn btn-secondary">Back to squad depth</Link></Empty>
+          : <Empty label="No times in this event for this selection" hint="Try the other pool, or choose All." />
+        ) : (<>
           {/* Headline numbers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
             {tile('Swimmers', swimmers.length, 'with a time in this event')}
@@ -179,11 +182,11 @@ export default function TeamEventDepth() {
                 Full ranking · {shown.length}{q.trim() ? ` of ${swimmers.length}` : ''}
               </div>
               {swimmers.length > 10 && (
-                <input className="input" aria-label="Find a swimmer" placeholder="Find a swimmer…" value={q} onChange={(e) => setQ(e.target.value)}
+                <input className="input" type="search" aria-label="Find a swimmer" placeholder="Find a swimmer…" value={q} onChange={(e) => setQ(e.target.value)}
                   style={{ width: 'auto', flex: '0 1 240px', minWidth: 0, minHeight: 40 }} />
               )}
             </div>
-            {shown.length === 0 ? <Empty label="No swimmer matches" /> : (
+            {shown.length === 0 ? <Empty label="No swimmer matches" hint="Check the spelling or clear the search." /> : (
               <div className="table-scroll">
                 <table className="table" style={{ marginBottom: 0 }}>
                   <thead>

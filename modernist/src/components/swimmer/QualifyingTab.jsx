@@ -36,7 +36,7 @@ export default function QualifyingTab({ swimmerId }) {
   }, [swimmerId, gapStandard])
 
   if (standards === null) return <Loading label="Loading standards" />
-  if (standards.length === 0) return <Empty label="No qualifying standards available" />
+  if (standards.length === 0) return <Empty label="No qualifying standards available" hint="Standards appear here once a qualifying list is published, or they could not be loaded." />
 
   const filteredGaps = (qualifyingGaps || []).filter((g) => g.pool === gapPool && g.cut === gapCut)
   const activeStandard = standards.find((s) => s.id === gapStandard)
@@ -54,7 +54,7 @@ export default function QualifyingTab({ swimmerId }) {
       {/* Standard pills */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {standards.map((s) => (
-          <button key={s.id} type="button" onClick={() => setGapStandard(s.id)}
+          <button key={s.id} type="button" onClick={() => setGapStandard(s.id)} aria-pressed={gapStandard === s.id}
             className={gapStandard === s.id ? 'btn btn-primary' : 'btn btn-secondary'}
             style={{ fontSize: 12 }}>
             {s.name}
@@ -68,7 +68,7 @@ export default function QualifyingTab({ swimmerId }) {
       </div>
 
       {filteredGaps.length === 0 ? (
-        <Empty label={`No qualifying gaps for ${gapPool} ${gapCut} Cut`} />
+        <Empty label={`No qualifying gaps for ${gapPool} ${gapCut} Cut`} hint="Try the other pool or cut, or pick another standard above." />
       ) : (
         <div className="rule-t">
           {filteredGaps.map((g) => {

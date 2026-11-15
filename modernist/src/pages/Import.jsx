@@ -702,6 +702,7 @@ export default function Import() {
           key={m.importId}
           type="button"
           onClick={() => setActive(i)}
+          aria-pressed={i === active}
           className={i === active ? 'btn btn-primary' : 'btn btn-secondary'}
           style={{
             fontSize: 12, padding: '5px 10px',
@@ -762,6 +763,7 @@ export default function Import() {
               <span
                 key={i}
                 className="micro"
+                aria-current={step === i ? 'step' : undefined}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   color: step === i ? 'var(--color-accent)' : step > i ? 'var(--asw-fast)' : undefined,
@@ -770,7 +772,8 @@ export default function Import() {
               >
                 <span className="asw-num">{step > i ? '✓' : i + 1}</span>
                 {label}
-                {i < stepLabels.length - 1 && <span style={{ color: 'var(--color-neutral-400)' }}>—</span>}
+                {step > i && <span className="sr-only"> (done)</span>}
+                {i < stepLabels.length - 1 && <span aria-hidden="true" style={{ color: 'var(--color-neutral-400)' }}>—</span>}
               </span>
             ))}
           </div>
@@ -778,7 +781,7 @@ export default function Import() {
       </div>
 
       <div className="pad">
-        {error && <div style={errorBox}>{error}</div>}
+        {error && <div role="alert" style={errorBox}>{error}</div>}
 
         {tab === 'manual' && <ManualEntryForm onComplete={() => switchTab('manual')} />}
         {tab === 'duplicates' && <DuplicatesTab />}
@@ -941,6 +944,11 @@ export default function Import() {
                 {/* Arab-only toggle */}
                 <div
                   onClick={() => toggleArabOnly(active)}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={!!meet.arabOnly}
+                  className="row-link"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click() } }}
                   style={{
                     marginBottom: 20, padding: 20, textAlign: 'center', cursor: 'pointer', userSelect: 'none',
                     border: `2px solid ${meet.arabOnly ? 'var(--asw-fast)' : 'var(--asw-gold)'}`,
@@ -1002,9 +1010,9 @@ export default function Import() {
 
                   {/* Target meet: create new or add into an existing one */}
                   <div className="field" style={{ marginBottom: 16, background: 'var(--color-accent-100)', padding: 12 }}>
-                    <label>Import into</label>
+                    <label htmlFor="imp-import-into">Import into</label>
                     <select
-                      className="select"
+                      id="imp-import-into" className="select"
                       value={meet.existingChampId}
                       onChange={(e) => updateMeet(active, { existingChampId: e.target.value })}
                     >
@@ -1026,9 +1034,9 @@ export default function Import() {
                     <>
                       <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                         <div className="field" style={{ gridColumn: '1 / -1' }}>
-                          <label>Championship name *</label>
+                          <label htmlFor="imp-championship-name">Championship name *</label>
                           <input
-                            className="input" type="text" value={meet.champForm.name}
+                            id="imp-championship-name" className="input" type="text" value={meet.champForm.name}
                             onChange={(e) => setChampForm({ name: e.target.value })}
                             placeholder="e.g. Championnat du Liban 25 M" required
                             style={{ borderColor: meet.champForm.name ? 'var(--asw-fast)' : 'var(--asw-slow)' }}
@@ -1036,9 +1044,9 @@ export default function Import() {
                         </div>
 
                         <div className="field">
-                          <label>Country *</label>
+                          <label htmlFor="imp-country">Country *</label>
                           <select
-                            className="select" value={meet.champForm.country}
+                            id="imp-country" className="select" value={meet.champForm.country}
                             onChange={(e) => setChampForm({ country: e.target.value })} required
                             style={{ borderColor: meet.champForm.country ? 'var(--asw-fast)' : 'var(--asw-slow)' }}
                           >
@@ -1048,9 +1056,9 @@ export default function Import() {
                         </div>
 
                         <div className="field">
-                          <label>Pool *</label>
+                          <label htmlFor="imp-pool">Pool *</label>
                           <select
-                            className="select" value={meet.champForm.pool}
+                            id="imp-pool" className="select" value={meet.champForm.pool}
                             onChange={(e) => setChampForm({ pool: e.target.value })}
                           >
                             {POOL_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
@@ -1058,9 +1066,9 @@ export default function Import() {
                         </div>
 
                         <div className="field">
-                          <label>Start date *</label>
+                          <label htmlFor="imp-start-date">Start date *</label>
                           <input
-                            className="input" type="date" value={meet.champForm.date}
+                            id="imp-start-date" className="input" type="date" value={meet.champForm.date}
                             onChange={(e) => {
                               const v = e.target.value
                               const patch = { date: v }
@@ -1072,18 +1080,18 @@ export default function Import() {
                         </div>
 
                         <div className="field">
-                          <label>End date</label>
+                          <label htmlFor="imp-end-date">End date</label>
                           <input
-                            className="input" type="date" value={meet.champForm.end_date}
+                            id="imp-end-date" className="input" type="date" value={meet.champForm.end_date}
                             min={meet.champForm.date || undefined}
                             onChange={(e) => setChampForm({ end_date: e.target.value })}
                           />
                         </div>
 
                         <div className="field" style={{ gridColumn: '1 / -1' }}>
-                          <label>Location</label>
+                          <label htmlFor="imp-location">Location</label>
                           <input
-                            className="input" type="text" value={meet.champForm.location}
+                            id="imp-location" className="input" type="text" value={meet.champForm.location}
                             onChange={(e) => setChampForm({ location: e.target.value })}
                             placeholder="City / Venue"
                           />
@@ -1095,9 +1103,9 @@ export default function Import() {
                         <div className="micro" style={{ marginBottom: 10 }}>Classification</div>
                         <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                           <div className="field">
-                            <label>Classification</label>
+                            <label htmlFor="imp-classification">Classification</label>
                             <select
-                              className="select" value={meet.champForm.classification}
+                              id="imp-classification" className="select" value={meet.champForm.classification}
                               onChange={(e) => setChampForm({ classification: e.target.value, sub_classification: '' })}
                             >
                               <option value="">Select…</option>
@@ -1105,9 +1113,9 @@ export default function Import() {
                             </select>
                           </div>
                           <div className="field">
-                            <label>Sub classification</label>
+                            <label htmlFor="imp-sub-classification">Sub classification</label>
                             <select
-                              className="select" value={meet.champForm.sub_classification}
+                              id="imp-sub-classification" className="select" value={meet.champForm.sub_classification}
                               onChange={(e) => setChampForm({ sub_classification: e.target.value })}
                               disabled={!subClassifications.length}
                             >
@@ -1136,9 +1144,9 @@ export default function Import() {
                       <div className="rule-t" style={{ marginTop: 16, paddingTop: 16 }}>
                         <div className="micro" style={{ marginBottom: 10 }}>Gender display</div>
                         <div className="field">
-                          <label>How to label gender tabs</label>
+                          <label htmlFor="imp-how-to-label-gender-tabs">How to label gender tabs</label>
                           <select
-                            className="select"
+                            id="imp-how-to-label-gender-tabs" className="select"
                             value={meet.champForm.gender_display || ''}
                             onChange={(e) => setChampForm({ gender_display: e.target.value })}
                           >
@@ -1172,6 +1180,7 @@ export default function Import() {
                                   <span style={{ fontWeight: 600, fontSize: 13, width: 140 }}>{cat}</span>
                                   <select
                                     className="select"
+                                    aria-label={`Gender labels for ${cat}`}
                                     style={{ fontSize: 13, padding: '4px 8px' }}
                                     value={map[cat] || 'men'}
                                     onChange={(e) => setChampForm({
@@ -1247,6 +1256,8 @@ export default function Import() {
                           key={m.importId} type="button"
                           onClick={() => setActive(i)}
                           style={{
+                            // Fitts's Law: 32px tall target for the inline link
+                            display: 'inline-flex', alignItems: 'center', minHeight: 32,
                             background: 'none', border: 'none', padding: 0, margin: '0 0 0 4px',
                             font: 'inherit', color: 'var(--asw-gold)', fontWeight: 700,
                             textDecoration: 'underline', cursor: 'pointer',
@@ -1264,7 +1275,12 @@ export default function Import() {
                   )}
                   <button
                     type="button" className="btn btn-secondary"
-                    onClick={() => { setStep(1); setMeets([]); setActive(0) }}
+                    disabled={loading}
+                    onClick={() => {
+                      // going back throws away the parsed files and every edit made here, so ask first
+                      if (!window.confirm('Go back to the upload step? The parsed files and any edits you made here will be discarded.')) return
+                      setStep(1); setMeets([]); setActive(0)
+                    }}
                   >
                     Back
                   </button>
@@ -1307,6 +1323,7 @@ export default function Import() {
                       ]} />
                       <input
                         className="input"
+                        aria-label="Search athletes by name"
                         placeholder="Search athletes by name…"
                         value={specialSearch}
                         onChange={(e) => setSpecialSearch(e.target.value)}
@@ -1345,6 +1362,8 @@ export default function Import() {
                               <td style={{ textAlign: 'center' }}>
                                 <input
                                   type="checkbox"
+                                  aria-label={`Keep ${m.parsed_name}`}
+                                  style={{ width: 18, height: 18, cursor: 'pointer' }}
                                   checked={!!meet.decisions[m.parsed_name]}
                                   onChange={(e) => toggleKeep(m, e.target.checked)}
                                 />
@@ -1383,7 +1402,8 @@ export default function Import() {
                             <td>
                               <select
                                 className="select"
-                                style={{ width: 'auto', minHeight: 30, fontSize: 13 }}
+                                aria-label={`Action for ${m.parsed_name}`}
+                                style={{ width: 'auto', minHeight: 32, fontSize: 13 }}
                                 value={meet.decisions[m.parsed_name]?.action || 'create'}
                                 onChange={(e) => updateDecision(m.parsed_name, e.target.value,
                                   e.target.value === 'match' ? m.matched_swimmer?.id : undefined)}
@@ -1405,8 +1425,13 @@ export default function Import() {
                 </>}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                  <button type="button" className="btn btn-secondary"
-                    onClick={() => { if (specialExcel) { setStep(1); setMeets([]); setActive(0) } else { setStep(2) } }}>Back</button>
+                  <button type="button" className="btn btn-secondary" disabled={loading}
+                    onClick={() => {
+                      if (specialExcel) {
+                        if (!window.confirm('Go back to the upload step? The parsed file and your athlete choices will be discarded.')) return
+                        setStep(1); setMeets([]); setActive(0)
+                      } else { setStep(2) }
+                    }}>Back</button>
                   <button type="button" className="btn btn-primary" onClick={handleConfirm}
                     disabled={loading
                       || (special && meets.reduce((n, m) => n + Object.keys(m.decisions || {}).length, 0) === 0)
@@ -1423,7 +1448,7 @@ export default function Import() {
                 (2,000+ per-meet tabs would be unusable) */}
             {step === 4 && specialExcel && batchResult && (
               <div style={{ border: '1px solid var(--color-divider)', padding: 24 }}>
-                <div className="kicker" style={{ marginBottom: 14 }}>Batch import complete</div>
+                <div className="kicker" role="status" style={{ marginBottom: 14 }}>Batch import complete</div>
                 <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', marginBottom: 16 }}>
                   {[['Meets imported', batchResult.meets_done],
                     ['Meets failed', batchResult.meets_failed],
@@ -1635,6 +1660,7 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
         ]} />
         <input
           className="input"
+          aria-label="Search athletes by name"
           placeholder="Search athletes by name…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -1654,6 +1680,10 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+        {filtered.length === 0 && (
+          <Empty label={query ? 'No athletes match this search' : 'No athletes found in this file'}
+            hint={query ? 'Clear the search box to see every athlete.' : 'Go back and check that the file has an athlete on every row.'} />
+        )}
         {filtered.map((a) => {
           const isOpen = expanded === a.name
           const act = actionOf(a)
@@ -1668,6 +1698,7 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
                 <button
                   type="button"
                   onClick={() => setExpanded(isOpen ? null : a.name)}
+                  aria-expanded={isOpen}
                   style={{ border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', color: 'inherit', textAlign: 'left', flex: '1 1 220px' }}
                 >
                   <div style={{ fontWeight: 700 }}>{a.name}</div>
@@ -1688,7 +1719,8 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
                 </button>
                 <select
                   className="select"
-                  style={{ width: 'auto', minHeight: 30, fontSize: 13 }}
+                  aria-label={`Action for ${a.name}`}
+                  style={{ width: 'auto', minHeight: 32, fontSize: 13 }}
                   value={act === 'match' && picked && a.decision?.swimmer_id === picked.id ? 'match_picked' : act}
                   onChange={(e) => setAction(a, e.target.value)}
                 >
@@ -1698,6 +1730,7 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
                   <option value="skip">Skip</option>
                 </select>
                 <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }}
+                  aria-expanded={isOpen} aria-label={`${isOpen ? 'Hide' : 'Show'} details for ${a.name}`}
                   onClick={() => setExpanded(isOpen ? null : a.name)}>
                   {isOpen ? 'Hide' : 'Details'}
                 </button>
@@ -1718,23 +1751,23 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
                           : 'No birth info in file'}
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <input className="input" style={{ flex: '2 1 200px' }} placeholder="Name"
+                      <input className="input" aria-label="Name" style={{ flex: '2 1 200px' }} placeholder="Name"
                         value={a.decision?.overrides?.name ?? a.name}
                         onChange={(e) => setOverride(a, 'name', e.target.value === a.name ? '' : e.target.value)} />
-                      <input className="input" style={{ flex: '0 1 110px' }} placeholder="Nat. code" maxLength={3}
+                      <input className="input" aria-label="Nationality code (3 letters)" style={{ flex: '0 1 110px' }} placeholder="Nat. code" maxLength={3}
                         value={a.decision?.overrides?.nationality_code ?? (a.nationality_code || '')}
                         onChange={(e) => setOverride(a, 'nationality_code', e.target.value.toUpperCase() === (a.nationality_code || '') ? '' : e.target.value.toUpperCase())} />
-                      <input className="input" style={{ flex: '0 1 110px' }} placeholder="Birth year" inputMode="numeric"
+                      <input className="input" aria-label="Birth year" style={{ flex: '0 1 110px' }} placeholder="Birth year" inputMode="numeric"
                         value={a.decision?.overrides?.birth_year ?? (a.birth_year || '')}
                         onChange={(e) => setOverride(a, 'birth_year', e.target.value.replace(/\D/g, '') === String(a.birth_year || '') ? '' : e.target.value.replace(/\D/g, ''))} />
-                      <select className="select" style={{ flex: '0 1 110px', width: 'auto' }}
+                      <select className="select" aria-label="Gender" style={{ flex: '0 1 110px', width: 'auto' }}
                         value={a.decision?.overrides?.gender ?? (a.gender || '')}
                         onChange={(e) => setOverride(a, 'gender', e.target.value === (a.gender || '') ? '' : e.target.value)}>
                         <option value="">Gender</option>
                         <option value="M">M</option>
                         <option value="F">F</option>
                       </select>
-                      <input className="input" style={{ flex: '2 1 180px' }} placeholder="Club"
+                      <input className="input" aria-label="Club" style={{ flex: '2 1 180px' }} placeholder="Club"
                         value={a.decision?.overrides?.club ?? (a.clubs[0] || '')}
                         onChange={(e) => setOverride(a, 'club', e.target.value === (a.clubs[0] || '') ? '' : e.target.value)} />
                     </div>
@@ -1745,12 +1778,13 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
                     <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Merge with a different existing swimmer</div>
                     <input
                       className="input"
+                      aria-label="Search existing swimmers"
                       placeholder="Search existing swimmers…"
                       value={expanded === a.name ? searchText : ''}
                       onChange={(e) => runSearch(e.target.value)}
                       style={{ width: '100%', maxWidth: 360 }}
                     />
-                    {searching && <div className="micro" style={{ marginTop: 6 }}>Searching…</div>}
+                    {searching && <div className="micro" role="status" style={{ marginTop: 6 }}>Searching…</div>}
                     {searchResults.length > 0 && (
                       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
                         {searchResults.map((sw) => (
@@ -1881,7 +1915,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
         >
           {m.result ? (
             <>
-              <div className="kicker" style={{ color: 'var(--asw-fast)', marginBottom: 14 }}>
+              <div className="kicker" role="status" style={{ color: 'var(--asw-fast)', marginBottom: 14 }}>
                 Import complete{meets.length > 1 ? `: ${m.result.championship_name}` : ''}
               </div>
               <div style={{ maxWidth: 640, margin: '0 auto 20px' }}>
@@ -1947,7 +1981,8 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
                 {/* TC button for Tunisian National meets */}
                 {m.result.championship_id && isTunNational(m) && !tcApplied[m.result.championship_id] && (
                   <button
-                    type="button" className="btn btn-primary"
+                    // Von Restorff: the one solid primary on this step is the closing action below
+                    type="button" className="btn btn-secondary"
                     disabled={tcBusy === m.result.championship_id}
                     onClick={async () => {
                       if (!window.confirm('Apply TC rules?\n\n• No medals for Final B (only Final A)\n• Open podium across all categories (fastest 3 overall)\n• Relays unaffected\n\nMedals will be recomputed.')) return
@@ -1973,7 +2008,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
               {cleanupChampId === m.result.championship_id && (
                 <div style={{ textAlign: 'left', maxWidth: 760, margin: '16px auto 0' }}>
                   {cleanupDone && (
-                    <div style={{ border: '1px solid var(--asw-fast)', color: 'var(--asw-fast)', padding: '10px 12px', fontSize: 13, marginBottom: 12 }}>
+                    <div role="status" style={{ border: '1px solid var(--asw-fast)', color: 'var(--asw-fast)', padding: '10px 12px', fontSize: 13, marginBottom: 12 }}>
                       Deleted {cleanupDone.deleted_results} results and {cleanupDone.deleted_orphan_swimmers} orphan swimmers.
                     </div>
                   )}
@@ -1987,12 +2022,14 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
                     </div>
                     {cleanupLoading ? (
                       <Loading label="Loading swimmers" />
+                    ) : swimmers.length === 0 ? (
+                      <Empty label="No swimmers to show for this meet" hint="The list could not be loaded, or every result is already removed." />
                     ) : (
                       <div className="table-scroll" style={{ maxHeight: 400, overflowY: 'auto' }}>
                         <table className="table">
                           <thead>
                             <tr>
-                              <th style={{ width: 32 }}></th>
+                              <th style={{ width: 32 }}><span className="sr-only">Select</span></th>
                               <th>Swimmer</th>
                               <th>Nationality</th>
                               <th>Region</th>
@@ -2003,7 +2040,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
                             {swimmers.map((s) => (
                               <tr key={s.swimmer_id} style={selected.has(s.swimmer_id) ? { background: 'color-mix(in srgb, var(--asw-slow) 8%, transparent)' } : undefined}>
                                 <td>
-                                  <input type="checkbox" checked={selected.has(s.swimmer_id)}
+                                  <input type="checkbox" aria-label={`Select ${s.name} for removal`} checked={selected.has(s.swimmer_id)}
                                     onChange={() => toggleSwimmer(s.swimmer_id)} />
                                 </td>
                                 <td style={{ fontWeight: 600 }}>{s.name}</td>
@@ -2031,7 +2068,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
                           style={{ background: 'var(--asw-slow)', color: '#fff' }}
                           onClick={handleDelete} disabled={cleanupLoading}
                         >
-                          Delete selected results
+                          {cleanupLoading ? 'Deleting…' : 'Delete selected results'}
                         </button>
                       </div>
                     )}
@@ -2041,7 +2078,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
             </>
           ) : (
             <>
-              <div className="kicker" style={{ color: 'var(--asw-slow)', marginBottom: 8 }}>
+              <div className="kicker" role="alert" style={{ color: 'var(--asw-slow)', marginBottom: 8 }}>
                 Import failed: {m.champForm.name || m.fileName}
               </div>
               <p style={{ fontSize: 13, color: 'var(--asw-slow)', marginBottom: 8 }}>{m.confirmError}</p>
@@ -2105,10 +2142,11 @@ function DuplicatesTab() {
         <h4>Potential Duplicate Swimmers</h4>
         <button type="button" className="btn btn-secondary" onClick={load}>Rescan</button>
       </div>
-      {message && <div style={successBox}>{message}</div>}
-      {error && <div style={errorBox}>{error}</div>}
+      {message && <div role="status" style={successBox}>{message}</div>}
+      {error && <div role="alert" style={errorBox}>{error}</div>}
       {pairs.length === 0 ? (
-        <Empty label="No potential duplicates found" />
+        // a failed scan shows only the error above, not a false "none found"
+        error ? null : <Empty label="No potential duplicates found" hint="Press Rescan after new imports to check again." />
       ) : (
         <div className="table-scroll">
           <table className="table">
@@ -2141,6 +2179,7 @@ function DuplicatesTab() {
                       <button
                         type="button" className="btn btn-secondary" style={{ fontSize: 12 }}
                         disabled={merging === i}
+                        aria-label={`Keep ${p.swimmer1.name} and merge ${p.swimmer2.name} into it`}
                         onClick={() => handleMerge(i, p.swimmer1, p.swimmer2)}
                       >
                         {merging === i ? 'Merging…' : '← Keep A'}
@@ -2148,6 +2187,7 @@ function DuplicatesTab() {
                       <button
                         type="button" className="btn btn-secondary" style={{ fontSize: 12 }}
                         disabled={merging === i}
+                        aria-label={`Keep ${p.swimmer2.name} and merge ${p.swimmer1.name} into it`}
                         onClick={() => handleMerge(i, p.swimmer2, p.swimmer1)}
                       >
                         {merging === i ? 'Merging…' : 'Keep B →'}
@@ -2229,7 +2269,7 @@ function SaudiScrapePanel() {
         <h4>Scrape SSF</h4>
         <span className="micro">All SSF meets newer than our latest Saudi national meet → standard Excel</span>
       </div>
-      {error && <div style={errorBox}>{error}</div>}
+      {error && <div role="alert" style={errorBox}>{error}</div>}
 
       <div style={{ border: '1px solid var(--color-divider)', padding: 20, marginBottom: 16 }}>
         <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 12 }}>
@@ -2246,7 +2286,9 @@ function SaudiScrapePanel() {
 
       {loading ? (
         <Loading label="Loading Saudi scrapes" />
-      ) : jobs.length === 0 ? null : (
+      ) : jobs.length === 0 ? (
+        <Empty label="No SSF scrapes yet" hint={'Press "Scrape SSF" above to fetch the newer Saudi meets.'} />
+      ) : (
         <div className="table-scroll" style={{ marginBottom: 8 }}>
           <table className="table">
             <thead>
@@ -2256,7 +2298,7 @@ function SaudiScrapePanel() {
                 <th className="num hide-mobile">Meets</th>
                 <th className="num">Rows</th>
                 <th>Status</th>
-                <th></th>
+                <th><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -2376,7 +2418,7 @@ function ScrapeTab() {
         <h4>Scrape Federation Results</h4>
         <span className="micro">ESF Hy-Tek results pages → clean Excel</span>
       </div>
-      {error && <div style={errorBox}>{error}</div>}
+      {error && <div role="alert" style={errorBox}>{error}</div>}
 
       <div style={{ border: '1px solid var(--color-divider)', padding: 20, marginBottom: 24 }}>
         <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 12 }}>
@@ -2388,7 +2430,9 @@ function ScrapeTab() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <input
             type="url"
+            inputMode="url"
             className="input"
+            aria-label="Federation results link"
             placeholder="https://www.esf-eg.org/images/results/swimming/…/results/"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -2428,7 +2472,7 @@ function ScrapeTab() {
       </div>
 
       {jobs.length === 0 ? (
-        <Empty label="No scrapes yet" />
+        <Empty label="No scrapes yet" hint="Paste a federation results link above and press Scrape." />
       ) : (
         <div className="table-scroll">
           <table className="table">
@@ -2440,7 +2484,7 @@ function ScrapeTab() {
                 <th className="num hide-mobile">Events</th>
                 <th className="num">Results</th>
                 <th>Status</th>
-                <th></th>
+                <th><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -2513,9 +2557,9 @@ function HistoryTab() {
         <h4>Import History</h4>
         <span className="micro">Last 50 imports</span>
       </div>
-      {error && <div style={errorBox}>{error}</div>}
+      {error && <div role="alert" style={errorBox}>{error}</div>}
       {logs.length === 0 ? (
-        <Empty label="No imports yet" />
+        error ? null : <Empty label="No imports yet" hint="Finished imports will be listed here." />
       ) : (
         <div className="table-scroll">
           <table className="table">

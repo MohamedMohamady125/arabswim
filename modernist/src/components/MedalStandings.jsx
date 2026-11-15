@@ -22,7 +22,7 @@ const th = {
 const td = { padding: '15px 12px', fontSize: 13.5, borderTop: '1px solid var(--wa-line)', color: 'var(--wa-ink)' }
 
 const medalTh = (headGrad, label, type) => (
-  <th className="medal-col" style={{ ...th, textAlign: 'center', background: headGrad, width: 54 }}>
+  <th className="medal-col" aria-label={label} style={{ ...th, textAlign: 'center', background: headGrad, width: 54 }}>
     <span className="hide-mobile">{label}</span>
     {/* phone: the medal itself instead of a G/S/B letter */}
     <span className="show-mobile-inline" style={{ lineHeight: 0 }}><MedalIcon type={type} size={15} style={{ verticalAlign: 'middle' }} /></span>
@@ -92,24 +92,33 @@ export default function MedalStandings({
         <table className="medals-table" style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
           <thead style={{ background: '#fff' }}>
             <tr>
-              <th style={{ ...th, textAlign: 'left', width: 32, paddingRight: 4 }}><span className="hide-mobile">Rank</span><span className="show-mobile-inline">#</span></th>
+              <th aria-label="Rank" style={{ ...th, textAlign: 'left', width: 32, paddingRight: 4 }}><span className="hide-mobile">Rank</span><span className="show-mobile-inline">#</span></th>
               <th style={{ ...th, textAlign: 'left' }}>{entityHeader}</th>
               {medalTh('var(--wa-gold-head)', 'Gold', 'GOLD')}
               {medalTh('var(--wa-silver-head)', 'Silver', 'SILVER')}
               {medalTh('var(--wa-bronze-head)', 'Bronze', 'BRONZE')}
-              <th style={{ ...th, textAlign: 'center' }}><span className="hide-mobile">Total</span><span className="show-mobile-inline">T</span></th>
+              <th aria-label="Total" style={{ ...th, textAlign: 'center' }}><span className="hide-mobile">Total</span><span className="show-mobile-inline">T</span></th>
             </tr>
           </thead>
           <tbody>
             {shown.map((r, i) => {
               const k = key(r, i)
               const isOpen = !!expandContent && openKey === k
+              const activate = expandContent
+                ? () => setOpenKey(isOpen ? null : k)
+                : onRowClick ? () => onRowClick(r) : undefined
               return (
                 <Fragment key={k}>
+                  {/* Jakob's Law: a clickable row is reachable by keyboard; it stays a table row so cells keep their headers */}
                   <tr
-                    onClick={expandContent
-                      ? () => setOpenKey(isOpen ? null : k)
-                      : onRowClick ? () => onRowClick(r) : undefined}
+                    onClick={activate}
+                    className={activate ? 'row-link' : undefined}
+                    tabIndex={activate ? 0 : undefined}
+                    aria-expanded={expandContent ? isOpen : undefined}
+                    onKeyDown={activate ? (e) => {
+                      if (e.target !== e.currentTarget) return
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate() }
+                    } : undefined}
                     style={{ background: '#fff', cursor: (onRowClick || expandContent) ? 'pointer' : 'default' }}
                   >
                     <td className="asw-num" style={{ ...td, fontWeight: 600, paddingRight: 4 }}>{i + 1}</td>
@@ -118,7 +127,7 @@ export default function MedalStandings({
                         the results table's swimmer cell) */}
                     <td style={{ ...td, width: '100%', maxWidth: 0 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', padding: '7px 0', margin: '-7px 0' }}>
                           {renderEntity(r, i)}
                         </span>
                         {expandContent && (

@@ -2,11 +2,20 @@ import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
 export function Loading({ label = 'Loading' }) {
-  return <div className="loading">{label}…</div>
+  // Doherty Threshold: announce the wait straight away (spinner is in theme.css)
+  return <div className="loading" role="status" aria-live="polite">{label}…</div>
 }
 
-export function Empty({ label = 'No data' }) {
-  return <div className="empty">{label}</div>
+// Paradox of the Active User: an empty state can say what to do next.
+// `hint` is one plain sentence; children hold an optional action (button/link).
+export function Empty({ label = 'No data', hint, children }) {
+  return (
+    <div className="empty" role="status">
+      {label}
+      {hint && <span className="empty-hint">{hint}</span>}
+      {children && <div className="empty-action">{children}</div>}
+    </div>
+  )
 }
 
 // Section header row: <SectHead title="Medal tally" to="/medals" linkLabel="All medals" />
@@ -42,12 +51,13 @@ export function Seg({ options, value, onChange, tabs = false }) {
     el?.scrollIntoView({ inline: 'center', block: 'nearest' })
   }, [tabs, value])
   return (
-    <div ref={wrapRef} className={`seg${tabs ? ' seg-tabs' : ''}`}>
+    <div ref={wrapRef} className={`seg${tabs ? ' seg-tabs' : ''}`} role={tabs ? 'tablist' : 'group'}>
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           className={`seg-opt${o.value === value ? ' on' : ''}`}
+          {...(tabs ? { role: 'tab', 'aria-selected': o.value === value } : { 'aria-pressed': o.value === value })}
           onClick={() => onChange(o.value)}
         >
           {o.label}
@@ -67,9 +77,13 @@ export function Modal({ title, onClose, children, width = 580 }) {
     // trap focus: prevent background scroll
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    // Jakob's Law: focus moves into the dialog and returns to where it was
+    const opener = document.activeElement
+    if (ref.current && !ref.current.contains(opener)) ref.current.focus()
     return () => {
       document.removeEventListener('keydown', handler)
       document.body.style.overflow = prev
+      if (opener && opener.focus && document.contains(opener)) opener.focus()
     }
   }, [onClose])
   return (
@@ -82,12 +96,13 @@ export function Modal({ title, onClose, children, width = 580 }) {
     >
       <div
         ref={ref}
-        style={{ background: 'var(--color-bg)', border: '2px solid var(--color-text)', width: '100%', maxWidth: width }}
+        tabIndex={-1}
+        style={{ outline: 'none', background: 'var(--color-bg)', border: '2px solid var(--color-text)', width: '100%', maxWidth: width }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
           <div className="kicker">{title}</div>
-          <button type="button" className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close" style={{ width: 30, height: 30, fontSize: 16 }}>×</button>
+          <button type="button" className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close" style={{ fontSize: 18 }}>×</button>
         </div>
         <div style={{ padding: 20 }}>{children}</div>
       </div>
@@ -132,8 +147,8 @@ export function Pager({ page, pageSize = 25, count, onPage }) {
       <span className="info asw-num">
         Page {page} of {pages} · {count?.toLocaleString('en-US')} entries
       </span>
-      <button className="btn btn-secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>← Prev</button>
-      <button className="btn btn-secondary" disabled={page >= pages} onClick={() => onPage(page + 1)}>Next →</button>
+      <button type="button" className="btn btn-secondary" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Previous page">← Prev</button>
+      <button type="button" className="btn btn-secondary" disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label="Next page">Next →</button>
     </div>
   )
 }

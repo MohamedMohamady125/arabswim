@@ -154,7 +154,7 @@ export default function RecordsTab({ swimmerId }) {
           Distance between all-time bests and current {SCOPE_LABELS[activeScope] || ''} records
         </div>
         {filteredGaps.length === 0 ? (
-          <Empty label={`No record gaps for ${SCOPE_LABELS[activeScope] || ''} ${gapPool}`} />
+          <Empty label={`No record gaps for ${SCOPE_LABELS[activeScope] || ''} ${gapPool}`} hint="Try the other pool or another record list above." />
         ) : (
           <div className="rule-t">
             {filteredGaps.map((g, gi) => {
@@ -218,7 +218,7 @@ export default function RecordsTab({ swimmerId }) {
     return (
       <div>
         {subTabs}
-        <Empty label="No records held" />
+        <Empty label="No records held" hint="Open Record Gaps above to see how close this swimmer is to each record." />
       </div>
     )
   }
@@ -245,7 +245,7 @@ export default function RecordsTab({ swimmerId }) {
           const c = SCOPE_COLORS[type] || 'var(--color-accent)'
           const active = type === activeType
           return (
-            <button key={type} type="button"
+            <button key={type} type="button" aria-pressed={active}
               onClick={() => setScopeFilter(type)}
               style={{
                 background: active ? c : 'var(--color-surface)',

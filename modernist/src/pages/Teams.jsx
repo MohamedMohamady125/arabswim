@@ -131,7 +131,7 @@ function AutoCleanModal({ onClose, onCleaned }) {
           )}
 
           {error && (
-            <div style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
+            <div role="alert" style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
           )}
 
           {confirming ? (
@@ -179,7 +179,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
         setAllTeams(res.data.teams || [])
         setOrphans(res.data.orphan_clubs || [])
       })
-      .catch(() => {})
+      .catch(() => setError('Could not load the team list. Close this window and try again.'))
       .finally(() => setLoading(false))
   }
   useEffect(loadTeams, [])
@@ -193,8 +193,8 @@ function MergeTeamsModal({ onClose, onMerged }) {
   const byCountry = countryFilter
     ? allTeams.filter((t) => String(t.country_detail?.id) === String(countryFilter))
     : allTeams
-  const filteredKeep = byCountry.filter((t) => t.id !== removeId && t.name.toLowerCase().includes(searchKeep.toLowerCase()))
-  const filteredRemove = byCountry.filter((t) => t.id !== keepId && t.name.toLowerCase().includes(searchRemove.toLowerCase()))
+  const filteredKeep = byCountry.filter((t) => t.id !== removeId && t.name.toLowerCase().includes(searchKeep.trim().toLowerCase()))
+  const filteredRemove = byCountry.filter((t) => t.id !== keepId && t.name.toLowerCase().includes(searchRemove.trim().toLowerCase()))
 
   const handleMerge = async () => {
     if (!keepId || !removeId) return
@@ -216,6 +216,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
       {teams.slice(0, 50).map((t) => (
         <button
           key={t.id}
+          type="button"
           onClick={() => onPick(t.id)}
           style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-divider)', cursor: 'pointer', font: 'inherit' }}
         >
@@ -276,6 +277,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
         <div>
           <select
             className="select"
+            aria-label="Filter teams by country"
             value={countryFilter}
             onChange={(e) => setCountryFilter(e.target.value)}
             style={{ marginBottom: 12, maxWidth: 240 }}
@@ -289,7 +291,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
               <div className="micro" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Keep (primary)</div>
               {keepTeam ? slot(keepTeam, 'kept team', () => setKeepId(null)) : (
                 <div>
-                  <input className="input" value={searchKeep} onChange={(e) => setSearchKeep(e.target.value)} placeholder="Search team to keep…" style={{ marginBottom: 8 }} />
+                  <input className="input" value={searchKeep} onChange={(e) => setSearchKeep(e.target.value)} type="search" aria-label="Search team to keep" placeholder="Search team to keep…" style={{ marginBottom: 8 }} />
                   {teamList(filteredKeep, setKeepId)}
                 </div>
               )}
@@ -309,7 +311,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
               <div className="micro" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Remove (merge into keep)</div>
               {removeTeam ? slot(removeTeam, 'removed team', () => setRemoveId(null), 'This team will be deleted after merge') : (
                 <div>
-                  <input className="input" value={searchRemove} onChange={(e) => setSearchRemove(e.target.value)} placeholder="Search team to remove…" style={{ marginBottom: 8 }} />
+                  <input className="input" value={searchRemove} onChange={(e) => setSearchRemove(e.target.value)} type="search" aria-label="Search team to remove" placeholder="Search team to remove…" style={{ marginBottom: 8 }} />
                   {teamList(filteredRemove, setRemoveId)}
                 </div>
               )}
@@ -336,7 +338,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
           )}
 
           {error && (
-            <div style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
+            <div role="alert" style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
           )}
 
           {confirming ? (
@@ -371,6 +373,7 @@ export default function Teams() {
   const [showMerge, setShowMerge] = useState(false)
   const [showAutoClean, setShowAutoClean] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [failed, setFailed] = useState(false)
   const { isAdmin } = useAuth()
 
   const refresh = () => {
@@ -378,8 +381,9 @@ export default function Teams() {
       .then((res) => {
         const d = res.data
         setTeams(Array.isArray(d) ? d : d?.results || [])
+        setFailed(false)
       })
-      .catch(() => {})
+      .catch(() => setFailed(true))
       .finally(() => setLoading(false))
   }
 
@@ -464,6 +468,8 @@ export default function Teams() {
       <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, flexWrap: 'nowrap', alignItems: 'center' }}>
         <input
           className="input"
+          type="search"
+          aria-label="Search clubs"
           style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
           placeholder="Search clubs…"
           value={search}
@@ -471,6 +477,7 @@ export default function Teams() {
         />
         <select
           className="select"
+          aria-label="Filter by country"
           style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 220 }}
           value={country}
           onChange={(e) => { setCountry(e.target.value); setPage(1) }}
@@ -484,7 +491,7 @@ export default function Teams() {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'nowrap' }}>
             {selected.size > 0 && (
               <button className="btn btn-primary" disabled={bulkDeleting} onClick={handleBulkDelete} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Trash2 size={14} /> Delete ({selected.size})
+                <Trash2 size={14} /> {bulkDeleting ? 'Deleting…' : `Delete (${selected.size})`}
               </button>
             )}
             <button className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowAutoClean(true)}>
@@ -498,7 +505,11 @@ export default function Teams() {
       </div>
 
       {filtered.length === 0 ? (
-        <Empty label="No clubs found" />
+        failed && teams.length === 0 ? (
+          <Empty label="Could not load clubs" hint="Check your connection and reload the page." />
+        ) : (
+          <Empty label="No clubs found" hint={(search.trim() || country) ? 'Try a different name or choose All countries.' : undefined} />
+        )
       ) : (
         <div className="pad">
           {isAdmin && (
@@ -523,7 +534,7 @@ export default function Teams() {
                   <span style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6, alignItems: 'center' }}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation() }}>
                     <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleOne(t.id)} aria-label={`Select ${t.name}`} style={{ cursor: 'pointer' }} />
-                    <button className="btn btn-secondary btn-icon" title="Delete team" aria-label="Delete team" onClick={() => handleDelete(t)}>
+                    <button className="btn btn-secondary btn-icon" title="Delete team" aria-label={`Delete ${t.name}`} onClick={() => handleDelete(t)}>
                       <Trash2 size={12} />
                     </button>
                   </span>

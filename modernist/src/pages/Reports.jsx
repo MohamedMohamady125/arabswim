@@ -76,7 +76,7 @@ function downloadCsv(filename, headers, rows) {
 // report endpoints by code — pass the shape each endpoint expects.
 function CountrySelect({ countries, value, onChange, label = 'All countries', byId = false }) {
   return (
-    <select className="select" style={CTRL} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="select" style={CTRL} aria-label="Country" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{label}</option>
       {countries.map((c) => <option key={c.id} value={byId ? c.id : c.code}>{c.name}</option>)}
     </select>
@@ -96,11 +96,11 @@ function ClassificationSelects({ classification, setClassification, subClass, se
   }, [classification])
   return (
     <>
-      <select className="select" style={CTRL} value={classification} onChange={(e) => { setClassification(e.target.value); setSubClass('') }}>
+      <select className="select" style={CTRL} aria-label="Classification" value={classification} onChange={(e) => { setClassification(e.target.value); setSubClass('') }}>
         <option value="">All classifications</option>
         {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
-      <select className="select" style={CTRL} value={subClass} onChange={(e) => setSubClass(e.target.value)} disabled={!subClasses.length}>
+      <select className="select" style={CTRL} aria-label="Sub-classification" value={subClass} onChange={(e) => setSubClass(e.target.value)} disabled={!subClasses.length}>
         <option value="">All sub-classifications</option>
         {subClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
@@ -110,7 +110,7 @@ function ClassificationSelects({ classification, setClassification, subClass, se
 
 function EventSelect({ eventGroups, value, onChange, label = 'All events' }) {
   return (
-    <select className="select" style={{ ...CTRL, flex: '1 1 180px' }} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="select" style={{ ...CTRL, flex: '1 1 180px' }} aria-label="Event" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{label}</option>
       {eventGroups.map((g) => (
         <optgroup key={g.stroke} label={g.stroke}>
@@ -123,7 +123,7 @@ function EventSelect({ eventGroups, value, onChange, label = 'All events' }) {
 
 function ChampionshipSelect({ championships, value, onChange, label = 'All championships' }) {
   return (
-    <select className="select" style={{ ...CTRL, flex: '1 1 200px' }} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="select" style={{ ...CTRL, flex: '1 1 200px' }} aria-label="Championship" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{label}</option>
       {championships.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
     </select>
@@ -132,7 +132,7 @@ function ChampionshipSelect({ championships, value, onChange, label = 'All champ
 
 function AgeGroupSelect({ value, onChange }) {
   return (
-    <select className="select" style={CTRL} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="select" style={CTRL} aria-label="Age group" value={value} onChange={(e) => onChange(e.target.value)}>
       {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
     </select>
   )
@@ -140,7 +140,7 @@ function AgeGroupSelect({ value, onChange }) {
 
 function YearSelect({ value, onChange }) {
   return (
-    <select className="select" style={CTRL} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="select" style={CTRL} aria-label="Year" value={value} onChange={(e) => onChange(e.target.value)}>
       {YEARS.map((y) => <option key={y.value} value={y.value}>{y.label}</option>)}
     </select>
   )
@@ -148,7 +148,7 @@ function YearSelect({ value, onChange }) {
 
 function ExportButton({ onClick }) {
   return (
-    <button className="btn btn-secondary" style={{ height: 32, marginLeft: 'auto' }} onClick={onClick}>
+    <button type="button" className="btn btn-secondary" style={{ height: 32, marginLeft: 'auto' }} onClick={onClick}>
       Export CSV
     </button>
   )
@@ -174,9 +174,9 @@ function Pager({ page, pages, onPage }) {
   if (pages <= 1) return null
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '18px 0 4px' }}>
-      <button className="btn btn-secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>← Prev</button>
+      <button type="button" className="btn btn-secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>← Prev</button>
       <span className="asw-num" style={{ fontWeight: 700, fontSize: 13 }}>Page {page} of {pages}</span>
-      <button className="btn btn-secondary" disabled={page >= pages} onClick={() => onPage(page + 1)}>Next →</button>
+      <button type="button" className="btn btn-secondary" disabled={page >= pages} onClick={() => onPage(page + 1)}>Next →</button>
     </div>
   )
 }
@@ -209,6 +209,8 @@ function SwimmerSearch({ country, gender, onPick }) {
         className="input"
         style={{ width: '100%', height: 36 }}
         placeholder="Search a swimmer…"
+        aria-label="Search a swimmer"
+        autoComplete="off"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => results.length && setOpen(true)}
@@ -222,8 +224,12 @@ function SwimmerSearch({ country, gender, onPick }) {
           {results.map((s) => (
             <div
               key={s.id}
+              role="button"
+              tabIndex={0}
+              className="row-link"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click() } }}
               onClick={() => { onPick({ id: s.id, name: s.name }); setQ(s.name); setOpen(false) }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', minHeight: 36, cursor: 'pointer' }}
               onMouseDown={(e) => e.preventDefault()}
             >
               {(s.nationality_code || s.country_code) && <Flag code={s.nationality_code || s.country_code} name={s.name} />}
@@ -245,14 +251,16 @@ function SwimmersReport({ countries }) {
   const [champ, setChamp] = useState('')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     if (!picked) { setData(null); return }
     let alive = true
     setLoading(true)
+    setFailed(false)
     getReportSwimmer({ swimmer: picked.id, championship: view === 'championship' && champ ? champ : undefined })
       .then((res) => { if (alive) setData(res.data) })
-      .catch(() => { if (alive) setData(null) })
+      .catch(() => { if (alive) { setData(null); setFailed(true) } })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [picked, view, champ])
@@ -273,7 +281,10 @@ function SwimmersReport({ countries }) {
       </div>
 
       {!picked ? (
-        <Empty label="Search and pick a swimmer to see their report" />
+        <Empty label="Search and pick a swimmer to see their report" hint="Type at least two letters of the name, then choose the swimmer from the list." />
+      ) : failed ? (
+        // a failed request must not leave an endless "Loading"
+        <Empty label="This swimmer's report could not be loaded" hint="Check your connection, then pick the swimmer again." />
       ) : loading || !data ? (
         <Loading label="Loading swimmer" />
       ) : (
@@ -324,11 +335,11 @@ function SwimmersReport({ countries }) {
 
           {view === 'championship' && (
             <div className="pad">
-              <select className="select" style={{ ...CTRL, flex: '1 1 260px', marginBottom: 12 }} value={champ} onChange={(e) => setChamp(e.target.value)}>
+              <select className="select" style={{ ...CTRL, flex: '1 1 260px', marginBottom: 12 }} aria-label="Championship" value={champ} onChange={(e) => setChamp(e.target.value)}>
                 <option value="">Choose a championship…</option>
                 {data.championships.map((c) => <option key={c.id} value={c.id}>{c.name} ({formatDate(c.date)})</option>)}
               </select>
-              {!champ ? <Empty label="Choose a championship to see results" />
+              {!champ ? <Empty label="Choose a championship to see results" hint="Use the menu above." />
                 : data.results_in_championship.length === 0 ? <Empty label="No results at this meet" /> : (
                   <div className="table-scroll">
                     <table className="table">
@@ -423,11 +434,11 @@ function MedalsReport({ countries }) {
     <div>
       <div className="rule-b" style={barStyle}>
         <Seg options={[{ value: 'country', label: 'By Country' }, { value: 'swimmer', label: 'By Swimmer' }, { value: 'championship', label: 'By Championship' }]} value={group} onChange={setGroup} />
-        <select className="select" style={CTRL} value={classification} onChange={(e) => setClassification(e.target.value)}>
+        <select className="select" style={CTRL} aria-label="Classification" value={classification} onChange={(e) => setClassification(e.target.value)}>
           <option value="">All classifications</option>
           {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <select className="select" style={CTRL} value={subClass} onChange={(e) => setSubClass(e.target.value)} disabled={!subClasses.length}>
+        <select className="select" style={CTRL} aria-label="Sub-classification" value={subClass} onChange={(e) => setSubClass(e.target.value)} disabled={!subClasses.length}>
           <option value="">All sub-classifications</option>
           {subClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -436,12 +447,12 @@ function MedalsReport({ countries }) {
         <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
         <YearSelect value={year} onChange={setYear} />
       </div>
-      {loading ? <Loading label="Building medal table" /> : rows.length === 0 ? <Empty label="No medals for this selection" /> : (
+      {loading ? <Loading label="Building medal table" /> : rows.length === 0 ? <Empty label="No medals for this selection" hint="Try removing a filter or choosing All time." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
           <div className="table-scroll">
             <table className="table">
-              <thead><tr><th style={{ width: 34 }}>#</th><th>{label}</th>{group === 'championship' && <th className="hide-mobile">Date</th>}<th className="num">🥇</th><th className="num">🥈</th><th className="num">🥉</th><th className="num">Total</th></tr></thead>
+              <thead><tr><th style={{ width: 34 }}>#</th><th>{label}</th>{group === 'championship' && <th className="hide-mobile">Date</th>}<th className="num" aria-label="Gold" title="Gold">🥇</th><th className="num" aria-label="Silver" title="Silver">🥈</th><th className="num" aria-label="Bronze" title="Bronze">🥉</th><th className="num">Total</th></tr></thead>
               <tbody>
                 {pager.pageRows.map((r, i) => (
                   <tr key={`${r.name}-${i}`}>
@@ -532,9 +543,9 @@ function RankingReport({ countries, eventGroups, championships }) {
         <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
         <EventSelect eventGroups={eventGroups} value={event} onChange={setEvent} label="Pick an event *" />
       </div>
-      {!event ? <Empty label="Pick an event to see the ranking" />
+      {!event ? <Empty label="Pick an event to see the ranking" hint="Use the event menu at the end of the filters above." />
         : loading ? <Loading label="Ranking swimmers" />
-          : rows.length === 0 ? <Empty label="No times for this selection" /> : (
+          : rows.length === 0 ? <Empty label="No times for this selection" hint="Try another pool, age group or year." /> : (
             <div className="pad">
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
               <div className="table-scroll">
@@ -632,9 +643,9 @@ function RecordsReport({ countries, championships }) {
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
         <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
       </div>
-      {scope === 'national' && !country ? <Empty label="Pick a country to see its records" />
+      {scope === 'national' && !country ? <Empty label="Pick a country to see its records" hint="Use the country menu next to National above." />
         : loading ? <Loading label="Computing records" />
-          : rows.length === 0 ? <Empty label="No records for this selection" /> : (
+          : rows.length === 0 ? <Empty label="No records for this selection" hint="Try removing a filter." /> : (
             <>
               <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 32px 0' }}><ExportButton onClick={exportCsv} /></div>
               {sections.map((s, i) => (
@@ -697,7 +708,7 @@ function ParticipationsReport({ countries, championships }) {
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
         <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
       </div>
-      {loading ? <Loading label="Counting participation" /> : rows.length === 0 ? <Empty label="No data for this selection" /> : (
+      {loading ? <Loading label="Counting participation" /> : rows.length === 0 ? <Empty label="No data for this selection" hint="Try removing a filter." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
           <div className="table-scroll">
@@ -795,7 +806,7 @@ function AgeReport({ countries, championships }) {
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
         <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
       </div>
-      {loading ? <Loading label="Grouping by age" /> : !data || data.distribution.length === 0 ? <Empty label="No aged swimmers for this selection" /> : (
+      {loading ? <Loading label="Grouping by age" /> : !data || data.distribution.length === 0 ? <Empty label="No aged swimmers for this selection" hint="Try removing a filter." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div className="kicker">Age distribution</div>
@@ -890,9 +901,9 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
         <YearSelect value={year} onChange={setYear} />
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
         <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
-        <input className="input" type="number" min="0" max="1200" style={{ ...CTRL, flex: '0 1 110px' }} placeholder="Min FINA" value={finaMin} onChange={(e) => setFinaMin(e.target.value)} />
+        <input className="input" type="number" inputMode="numeric" min="0" max="1200" style={{ ...CTRL, flex: '0 1 110px' }} aria-label="Minimum FINA points" title="Minimum FINA points" placeholder="Min FINA" value={finaMin} onChange={(e) => setFinaMin(e.target.value)} />
       </div>
-      {loading ? <Loading label="Finding top swims" /> : rows.length === 0 ? <Empty label="No swims above this FINA threshold" /> : (
+      {loading ? <Loading label="Finding top swims" /> : rows.length === 0 ? <Empty label="No swims above this FINA threshold" hint="Lower the Min FINA value or remove a filter." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
           <div className="table-scroll">
@@ -987,10 +998,10 @@ function ImprovementReport({ countries, eventGroups }) {
   return (
     <div>
       <div className="rule-b" style={barStyle}>
-        <select className="select" style={CTRL} value={yearFrom} onChange={(e) => setYearFrom(e.target.value)}>
+        <select className="select" style={CTRL} aria-label="From year" value={yearFrom} onChange={(e) => setYearFrom(e.target.value)}>
           {PLAIN_YEARS.map((y) => <option key={y} value={y}>From {y}</option>)}
         </select>
-        <select className="select" style={CTRL} value={yearTo} onChange={(e) => setYearTo(e.target.value)}>
+        <select className="select" style={CTRL} aria-label="To year" value={yearTo} onChange={(e) => setYearTo(e.target.value)}>
           {PLAIN_YEARS.map((y) => <option key={y} value={y}>To {y}</option>)}
         </select>
         <EventSelect eventGroups={eventGroups} value={event} onChange={setEvent} />
@@ -1000,7 +1011,7 @@ function ImprovementReport({ countries, eventGroups }) {
         <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
         <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
       </div>
-      {loading ? <Loading label="Finding biggest time drops" /> : rows.length === 0 ? <Empty label="No improvements between these years" /> : (
+      {loading ? <Loading label="Finding biggest time drops" /> : rows.length === 0 ? <Empty label="No improvements between these years" hint="Try a wider year range or remove a filter." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
           <div className="table-scroll">

@@ -21,7 +21,7 @@ function NewProfileForm({ sw, countryId, allCountries, onSubmit, busy }) {
     if (dob) fd.append('date_of_birth', dob)
     if (yob) fd.append('birth_year', yob)
     if (nationality) fd.append('nationality', nationality)
-    fd.append('club', club)
+    fd.append('club', club.trim())
     if (photo) fd.append('photo', photo)
     onSubmit(fd)
   }
@@ -33,46 +33,46 @@ function NewProfileForm({ sw, countryId, allCountries, onSubmit, busy }) {
     <div style={{ marginTop: 10, padding: 12, border: '1px solid var(--color-divider)', borderRadius: 4 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={label}>English name *</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+          <label style={label} htmlFor={`nm-name-${sw.id}`}>English name *</label>
+          <input id={`nm-name-${sw.id}`} type="text" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Mohamed Ali" style={fld} />
         </div>
         <div>
-          <label style={label}>Gender</label>
-          <select value={sex} onChange={(e) => setSex(e.target.value)} style={fld}>
+          <label style={label} htmlFor={`nm-sex-${sw.id}`}>Gender</label>
+          <select id={`nm-sex-${sw.id}`} value={sex} onChange={(e) => setSex(e.target.value)} style={fld}>
             <option value="">—</option>
             <option value="M">Male</option>
             <option value="F">Female</option>
           </select>
         </div>
         <div>
-          <label style={label}>Date of birth</label>
-          <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} style={fld} />
+          <label style={label} htmlFor={`nm-dob-${sw.id}`}>Date of birth</label>
+          <input id={`nm-dob-${sw.id}`} type="date" value={dob} onChange={(e) => setDob(e.target.value)} style={fld} />
         </div>
         <div>
-          <label style={label}>Year of birth</label>
-          <input type="number" value={yob} onChange={(e) => setYob(e.target.value)}
+          <label style={label} htmlFor={`nm-yob-${sw.id}`}>Year of birth</label>
+          <input id={`nm-yob-${sw.id}`} inputMode="numeric" type="number" value={yob} onChange={(e) => setYob(e.target.value)}
             placeholder="e.g. 2005" style={fld} />
         </div>
         <div>
-          <label style={label}>Nationality</label>
-          <select value={nationality} onChange={(e) => setNationality(e.target.value)} style={fld}>
+          <label style={label} htmlFor={`nm-nat-${sw.id}`}>Nationality</label>
+          <select id={`nm-nat-${sw.id}`} value={nationality} onChange={(e) => setNationality(e.target.value)} style={fld}>
             {allCountries.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={label}>Club</label>
-          <input type="text" value={club} onChange={(e) => setClub(e.target.value)} style={fld} />
+          <label style={label} htmlFor={`nm-club-${sw.id}`}>Club</label>
+          <input id={`nm-club-${sw.id}`} autoComplete="off" type="text" value={club} onChange={(e) => setClub(e.target.value)} style={fld} />
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={label}>Photo (drag to position / zoom to resize)</label>
+          <span style={label}>Photo (drag to position / zoom to resize)</span>
           <CropUpload aspect={1} onChange={(f) => setPhoto(f)} />
-          {photo && <span className="micro" style={{ color: 'var(--color-asw-fast, green)' }}>✓ photo ready</span>}
+          {photo && <span className="micro" style={{ color: 'var(--asw-fast)' }}>✓ photo ready</span>}
         </div>
       </div>
-      <button className="btn btn-primary" disabled={busy || name.trim().length < 2} onClick={submit}
+      <button type="button" className="btn btn-primary" disabled={busy || name.trim().length < 2} onClick={submit}
         style={{ height: 36, padding: '0 16px', marginTop: 10, opacity: (busy || name.trim().length < 2) ? 0.5 : 1 }}>
         {busy ? 'Saving…' : 'Create profile'}
       </button>
@@ -84,28 +84,29 @@ function Row({ sw, countryId, allCountries, onDone }) {
   const [sel, setSel] = useState('')          // chosen english candidate id, or 'NEW'
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(null)      // message after apply
+  const [err, setErr] = useState('')          // shown next to the row, in plain words
 
   const merge = async () => {
-    setBusy(true)
+    setBusy(true); setErr('')
     try {
       const res = await applyNameMatch({ arabic_id: sw.id, english_id: Number(sel) })
       setDone(res.data?.message || 'Done')
       onDone?.(sw.id)
     } catch (err) {
-      window.alert(err.response?.data?.error || 'Failed')
+      setErr(err.response?.data?.error || 'This could not be saved. Check your connection and try again.')
     } finally {
       setBusy(false)
     }
   }
 
   const createProfile = async (formData) => {
-    setBusy(true)
+    setBusy(true); setErr('')
     try {
       const res = await createNameMatchProfile(formData)
       setDone(res.data?.message || 'Done')
       onDone?.(sw.id)
     } catch (err) {
-      window.alert(err.response?.data?.error || 'Failed')
+      setErr(err.response?.data?.error || 'This could not be saved. Check your connection and try again.')
     } finally {
       setBusy(false)
     }
@@ -115,7 +116,7 @@ function Row({ sw, countryId, allCountries, onDone }) {
     return (
       <div className="hair-b" style={{ padding: '12px 0', fontSize: 13 }}>
         <span style={{ fontWeight: 700 }} dir="rtl">{sw.name}</span>
-        <span className="micro" style={{ marginInlineStart: 10, color: 'var(--color-asw-fast, green)' }}>✓ {done}</span>
+        <span className="micro" role="status" style={{ marginInlineStart: 10, color: 'var(--asw-fast)' }}>✓ {done}</span>
       </div>
     )
   }
@@ -131,7 +132,7 @@ function Row({ sw, countryId, allCountries, onDone }) {
           </div>
         </div>
         <div style={{ flex: '2 1 320px', minWidth: 260 }}>
-          <select value={sel} onChange={(e) => setSel(e.target.value)}
+          <select value={sel} onChange={(e) => setSel(e.target.value)} aria-label={`English profile for ${sw.name}`}
             style={{ width: '100%', height: 38, padding: '0 8px', fontSize: 13 }}>
             <option value="">— pick an English profile —</option>
             {sw.candidates.map((c) => (
@@ -146,12 +147,13 @@ function Row({ sw, countryId, allCountries, onDone }) {
           )}
         </div>
         {sel && sel !== 'NEW' && (
-          <button className="btn btn-primary" disabled={busy} onClick={merge}
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={merge}
             style={{ height: 38, padding: '0 16px', opacity: busy ? 0.5 : 1 }}>
-            {busy ? '…' : 'Merge'}
+            {busy ? 'Merging…' : 'Merge'}
           </button>
         )}
       </div>
+      {err && <div role="alert" className="error-box" style={{ marginTop: 10 }}>{err}</div>}
       {sel === 'NEW' && (
         <NewProfileForm sw={sw} countryId={countryId} allCountries={allCountries}
           onSubmit={createProfile} busy={busy} />
@@ -216,12 +218,14 @@ export default function NameMatch() {
       <div className="pad rule-b">
         <SectHead title="Country" />
         {countries.length === 0 ? (
-          <Empty label="No Arabic names left to reconcile" />
+          <Empty label="No Arabic names left to reconcile" hint="Every Arabic-named swimmer already has an English profile." />
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {countries.map((c) => (
               <button
                 key={c.id}
+                type="button"
+                aria-pressed={country === String(c.id)}
                 className={`btn ${country === String(c.id) ? 'btn-primary' : ''}`}
                 onClick={() => pickCountry(String(c.id))}
                 style={{ height: 34, padding: '0 14px', fontSize: 13 }}
@@ -242,17 +246,18 @@ export default function NameMatch() {
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { setPage(1); load(country, 1, q) } }}
               placeholder="Search Arabic name…"
+              aria-label="Search Arabic name"
               style={{ flex: '1 1 200px', height: 38, padding: '0 10px', fontSize: 13 }}
               dir="rtl"
             />
-            <button className="btn" onClick={() => { setPage(1); load(country, 1, q) }}
+            <button type="button" className="btn btn-secondary" disabled={loading} onClick={() => { setPage(1); load(country, 1, q) }}
               style={{ height: 38, padding: '0 16px' }}>Search</button>
           </div>
 
           {loading ? (
             <Loading label="Loading swimmers" />
           ) : !data || data.results.length === 0 ? (
-            <Empty label="No Arabic-named swimmers here" />
+            <Empty label="No Arabic-named swimmers here" hint={q ? 'Try a shorter search, or clear it and press Search.' : 'Pick another country above.'} />
           ) : (
             <>
               <div className="micro" style={{ marginBottom: 8 }}>{data.total} total to reconcile</div>

@@ -37,7 +37,7 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
     <div>
       <div className="sect-head">
         <h4>Ranking History</h4>
-        <select className="select" style={{ width: 'auto', fontSize: 12, height: 30 }}
+        <select className="select" aria-label="Event for ranking history" style={{ width: 'auto', fontSize: 12, height: 32 }}
           value={`${sel.event_id}|${sel.pool}`}
           onChange={(e) => {
             const [eid, pool] = e.target.value.split('|')
@@ -52,7 +52,7 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
       </div>
       <div className="rule-t" style={{ paddingTop: 12 }}>
         {!hist ? <Loading label="Loading history" /> : scoped.length === 0 ? (
-          <div className="text-muted" style={{ fontSize: 13 }}>No season history for this event yet.</div>
+          <div className="text-muted" style={{ fontSize: 13 }}>No season history for this event yet. Pick another event above.</div>
         ) : (
           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             {/* rank-per-season columns: rank 1 = full height */}
@@ -63,7 +63,7 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
                 return (
                   <div key={s.year} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                     <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>
-                      {rk.rank}<span style={{ fontSize: 10 }}>{ordSuffix(rk.rank)}</span>
+                      {rk.rank}<span style={{ fontSize: 11 }}>{ordSuffix(rk.rank)}</span>
                     </span>
                     <div style={{ width: '100%', maxWidth: 46, height: h, background: rk.rank === 1 ? 'var(--asw-gold)' : 'var(--color-accent)' }} />
                     <span className="micro asw-num">{s.year}</span>
@@ -119,7 +119,7 @@ export default function RankingsTab({ swimmerId, swimmer }) {
   }, [swimmerId])
 
   if (loading) return <Loading label="Loading rankings" />
-  if (!rankings || rankings.length === 0) return <Empty label="No ranking data available" />
+  if (!rankings || rankings.length === 0) return <Empty label="No ranking data available" hint="Rankings appear once this swimmer has official times, or they could not be loaded." />
 
   const eventMap = {}
   for (const e of events) {
@@ -187,7 +187,7 @@ export default function RankingsTab({ swimmerId, swimmer }) {
                   const rk = r.rankings[scope]
                   const isSel = r.event_id === selected.event_id
                   return (
-                    <button key={`${r.event_id}-${r.pool}`} type="button"
+                    <button key={`${r.event_id}-${r.pool}`} type="button" aria-pressed={isSel}
                       onClick={() => setSelectedEventId(r.event_id)}
                       className="hair-b"
                       style={{
@@ -199,7 +199,7 @@ export default function RankingsTab({ swimmerId, swimmer }) {
                       <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {eventName(r)}
                       </span>
-                      <span className="asw-num" style={{ flex: 'none', fontSize: 12, fontWeight: 600, color: isSel ? 'var(--color-accent)' : 'var(--color-neutral-600)' }}>
+                      <span className="asw-num" style={{ flex: 'none', fontSize: 12, fontWeight: 600, color: isSel ? 'var(--color-accent)' : 'var(--color-neutral-700)' }}>
                         {rk.rank}{rk.total ? `/${rk.total}` : ''}
                       </span>
                       <span className="asw-time" style={{ flex: 'none', width: 76, textAlign: 'right', fontSize: 13 }}>

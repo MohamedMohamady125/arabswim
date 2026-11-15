@@ -32,7 +32,11 @@ export default function Article() {
   }, [id, reloadKey])
 
   if (loading) return <Loading label="Loading article" />
-  if (!article || (article.status !== 'PUBLISHED' && !isAdmin)) return <Empty label="Article not found" />
+  if (!article || (article.status !== 'PUBLISHED' && !isAdmin)) return (
+    <Empty label="Article not found" hint="It may have been removed, or the link is wrong.">
+      <Link to="/news" className="btn btn-secondary">All news</Link>
+    </Empty>
+  )
 
   // Normalize CRLF from the editor, split paragraphs on blank lines; single
   // newlines inside a paragraph are preserved via white-space: pre-line.
@@ -51,8 +55,10 @@ export default function Article() {
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 60px' }}>
 
         {/* Breadcrumb */}
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 12 }}>
+          {/* Fitts's Law: 40px tall back link */}
           <Link to="/news" style={{
+            display: 'inline-flex', alignItems: 'center', minHeight: 40,
             fontSize: 13, textDecoration: 'none', color: 'var(--color-accent)',
             fontWeight: 600, letterSpacing: '0.02em',
           }}>← {isRTL ? 'جميع الأخبار' : 'All news'}</Link>
@@ -118,7 +124,7 @@ export default function Article() {
         }}>
           {article.country_detail && (
             <>
-              <Link to={`/countries/${article.country_detail.id}?tab=news`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'inherit', textDecoration: 'none' }}>
+              <Link to={`/countries/${article.country_detail.id}?tab=news`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 32, color: 'inherit', textDecoration: 'none' }}>
                 <Flag code={article.country_detail.code} name={article.country_detail.name} />
                 <span style={{ fontWeight: 600 }}>{article.country_detail.name}</span>
               </Link>
@@ -185,10 +191,11 @@ export default function Article() {
 
         {/* ── Footer ── */}
         <div style={{
-          marginTop: 40, paddingTop: 20,
+          marginTop: 40, paddingTop: 8,
           borderTop: '1px solid #e0e0e0',
         }}>
           <Link to="/news" style={{
+            display: 'inline-flex', alignItems: 'center', minHeight: 40,
             fontSize: 13, textDecoration: 'none', color: 'var(--color-accent)',
             fontWeight: 600,
           }}>← {isRTL ? 'العودة إلى الأخبار' : 'Back to all news'}</Link>

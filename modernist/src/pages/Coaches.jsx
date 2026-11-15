@@ -73,7 +73,7 @@ function CoachModal({ coach, countries, onClose, onSaved }) {
       const fd = new FormData()
       for (const [k, v] of Object.entries(form)) {
         if (k === 'years_experience' && v === '') continue
-        fd.append(k, k === 'name' ? v.trim() : v)
+        fd.append(k, typeof v === 'string' ? v.trim() : v) // Postel's Law: stray spaces never reach the server
       }
       fd.append('is_available', flags.is_available)
       fd.append('is_active', flags.is_active)
@@ -81,9 +81,12 @@ function CoachModal({ coach, countries, onClose, onSaved }) {
       if (cvFile) fd.append('cv_file', cvFile)
       if (coach) await updateCoach(coach.id, fd)
       else await createCoach(fd)
-      onSaved()
+      onSaved(coach ? 'Coach saved' : 'Coach added')
     } catch (e) {
-      setErr(e.response?.data ? JSON.stringify(e.response.data) : 'Save failed')
+      const d = e.response?.data
+      setErr(d && typeof d === 'object'
+        ? Object.entries(d).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${[].concat(v).join(' ')}`).join(' · ')
+        : 'Could not save. Check your connection and try again.')
       setBusy(false)
     }
   }
@@ -106,7 +109,7 @@ function CoachModal({ coach, countries, onClose, onSaved }) {
         </Fld>
         <Fld label="City"><input className="input" style={{ width: '100%' }} value={form.city} onChange={set('city')} /></Fld>
         <Fld label="Current club"><input className="input" style={{ width: '100%' }} value={form.current_club} onChange={set('current_club')} /></Fld>
-        <Fld label="Years of experience"><input className="input" style={{ width: '100%' }} type="number" value={form.years_experience} onChange={set('years_experience')} /></Fld>
+        <Fld label="Years of experience"><input className="input" style={{ width: '100%' }} type="number" inputMode="numeric" min="0" value={form.years_experience} onChange={set('years_experience')} /></Fld>
         <Fld label="Photo (cropped square)"><CropUpload aspect={1} lockAspect onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
       </div>
       <Fld label="Specializations (comma-separated)"><input className="input" style={{ width: '100%' }} placeholder="Sprints, Freestyle, Starts & turns" value={form.specializations} onChange={set('specializations')} /></Fld>
@@ -114,10 +117,10 @@ function CoachModal({ coach, countries, onClose, onSaved }) {
       <Fld label="Achievements (one per line)"><textarea className="input" rows={2} style={{ width: '100%', resize: 'vertical' }} value={form.achievements} onChange={set('achievements')} /></Fld>
       <Fld label="Bio"><textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }} value={form.bio} onChange={set('bio')} /></Fld>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Fld label="Email"><input className="input" style={{ width: '100%' }} value={form.email} onChange={set('email')} /></Fld>
-        <Fld label="Phone"><input className="input" style={{ width: '100%' }} value={form.phone} onChange={set('phone')} /></Fld>
+        <Fld label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Fld>
+        <Fld label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Fld>
         <Fld label="Instagram"><input className="input" style={{ width: '100%' }} placeholder="@handle" value={form.instagram} onChange={set('instagram')} /></Fld>
-        <Fld label="LinkedIn URL"><input className="input" style={{ width: '100%' }} value={form.linkedin} onChange={set('linkedin')} /></Fld>
+        <Fld label="LinkedIn URL"><input className="input" style={{ width: '100%' }} type="url" inputMode="url" value={form.linkedin} onChange={set('linkedin')} /></Fld>
       </div>
       <Fld label="CV (PDF)"><input className="input" type="file" accept=".pdf,application/pdf" onChange={(e) => setCvFile(e.target.files?.[0] || null)} /></Fld>
       <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
@@ -128,11 +131,16 @@ function CoachModal({ coach, countries, onClose, onSaved }) {
           <input type="checkbox" checked={flags.is_active} onChange={(e) => setFlags((f) => ({ ...f, is_active: e.target.checked }))} /> Active
         </label>
       </div>
-      {err && <div style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
         {coach ? (
           <button className="btn btn-secondary" disabled={busy} style={{ color: 'var(--asw-slow)' }}
-            onClick={async () => { if (window.confirm(`Delete coach ${coach.name}?`)) { await deleteCoach(coach.id); onSaved() } }}>Delete</button>
+            onClick={async () => {
+              if (!window.confirm(`Delete coach ${coach.name}?`)) return
+              setBusy(true); setErr('')
+              try { await deleteCoach(coach.id); onSaved('Coach deleted') }
+              catch { setErr('Could not delete. Try again.'); setBusy(false) }
+            }}>Delete</button>
         ) : <span />}
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
@@ -155,6 +163,8 @@ export default function Coaches() {
   const [level, setLevel] = useState('')
   const [expandedId, setExpandedId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  const [notice, setNotice] = useState('')
   const debounceRef = useRef(null)
 
   useEffect(() => {
@@ -174,7 +184,7 @@ export default function Coaches() {
   // debounce search
   useEffect(() => {
     clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setQuery(search), 400)
+    debounceRef.current = setTimeout(() => setQuery(search.trim()), 400)
     return () => clearTimeout(debounceRef.current)
   }, [search])
 
@@ -190,8 +200,9 @@ export default function Coaches() {
         if (!alive) return
         const d = res.data
         setRows(Array.isArray(d) ? d : d?.results || [])
+        setFailed(false)
       })
-      .catch(() => { if (alive) setRows([]) })
+      .catch(() => { if (alive) { setRows([]); setFailed(true) } })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [query, country, level, reloadKey])
@@ -204,6 +215,8 @@ export default function Coaches() {
       <div className="rule-b" style={{ padding: '16px 32px', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           className="input"
+          type="search"
+          aria-label="Search coaches"
           style={{ maxWidth: 320 }}
           placeholder="Search by name, club, specialty…"
           value={search}
@@ -211,6 +224,7 @@ export default function Coaches() {
         />
         <select
           className="select"
+          aria-label="Filter by country"
           style={{ maxWidth: 220 }}
           value={country}
           onChange={(e) => setCountry(e.target.value)}
@@ -223,6 +237,8 @@ export default function Coaches() {
         {isAdmin && (
           <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ coach: null })}>+ Add coach</button>
         )}
+        {/* Peak-End Rule: confirm the save once the dialog has closed */}
+        {notice && <span role="status" style={{ fontSize: 12, color: 'var(--asw-fast)' }}>{notice} ✓</span>}
       </div>
 
       {/* level filter chips */}
@@ -230,7 +246,8 @@ export default function Coaches() {
         <button
           type="button"
           className={level === '' ? 'tag tag-dark' : 'tag tag-neutral'}
-          style={{ cursor: 'pointer', border: 0, font: 'inherit' }}
+          aria-pressed={level === ''}
+          style={{ cursor: 'pointer', border: 0, font: 'inherit', minHeight: 32, display: 'inline-flex', alignItems: 'center' }}
           onClick={() => setLevel('')}
         >
           All levels
@@ -240,7 +257,8 @@ export default function Coaches() {
             key={k}
             type="button"
             className={level === k ? 'tag tag-dark' : 'tag tag-neutral'}
-            style={{ cursor: 'pointer', border: 0, font: 'inherit' }}
+            aria-pressed={level === k}
+            style={{ cursor: 'pointer', border: 0, font: 'inherit', minHeight: 32, display: 'inline-flex', alignItems: 'center' }}
             onClick={() => setLevel(level === k ? '' : k)}
           >
             {v}
@@ -251,7 +269,11 @@ export default function Coaches() {
       {loading ? (
         <Loading label="Loading coaches" />
       ) : rows.length === 0 ? (
-        <Empty label="No coaches found" />
+        failed ? (
+          <Empty label="Could not load coaches" hint="Check your connection and reload the page." />
+        ) : (
+          <Empty label="No coaches found" hint={(query || country || level) ? 'Try a different search or clear the filters.' : undefined} />
+        )
       ) : (
         <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {rows.map((c) => {
@@ -263,12 +285,20 @@ export default function Coaches() {
               <div key={c.id} style={{ border: '1px solid var(--color-divider)', opacity: c.is_active === false ? 0.6 : 1 }}>
                 {/* main row */}
                 <div
+                  className="row-link"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
                   style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: 16, cursor: 'pointer' }}
                   onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(isExpanded ? null : c.id) }
+                  }}
                 >
                   {c.photo ? (
                     <div className="grayscale" style={{ width: 64, height: 64, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)' }}>
-                      <img src={mediaUrl(c.photo)} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={mediaUrl(c.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   ) : (
                     <div style={{ width: 64, height: 64, flex: 'none', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>
@@ -328,7 +358,7 @@ export default function Coaches() {
                         <FileText size={13} /> CV
                       </a>
                     )}
-                    <ChevronDown size={16} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                    <ChevronDown size={16} aria-hidden="true" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
                   </div>
                 </div>
 
@@ -371,24 +401,24 @@ export default function Coaches() {
                         {(c.email || c.phone || c.instagram || c.linkedin) && (
                           <div>
                             <div className="kicker" style={{ marginBottom: 6 }}>Contact</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, fontSize: 13 }}>
                               {c.email && (
-                                <a href={`mailto:${c.email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit' }}>
+                                <a href={`mailto:${c.email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit', minHeight: 32 }}>
                                   <Mail size={13} /> {c.email}
                                 </a>
                               )}
                               {c.phone && (
-                                <a href={`tel:${c.phone}`} className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit' }}>
+                                <a href={`tel:${c.phone}`} className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit', minHeight: 32 }}>
                                   <Phone size={13} /> {c.phone}
                                 </a>
                               )}
                               {c.instagram && (
-                                <a href={`https://instagram.com/${String(c.instagram).replace('@', '')}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit' }}>
+                                <a href={`https://instagram.com/${String(c.instagram).replace('@', '')}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit', minHeight: 32 }}>
                                   <AtSign size={13} /> {c.instagram}
                                 </a>
                               )}
                               {c.linkedin && (
-                                <a href={c.linkedin} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit' }}>
+                                <a href={c.linkedin} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit', minHeight: 32 }}>
                                   <ExternalLink size={13} /> LinkedIn
                                 </a>
                               )}
@@ -414,7 +444,7 @@ export default function Coaches() {
 
       {modal && (
         <CoachModal coach={modal.coach} countries={countries} onClose={() => setModal(null)}
-          onSaved={() => { setModal(null); setReloadKey((k) => k + 1) }} />
+          onSaved={(msg) => { setModal(null); setReloadKey((k) => k + 1); setNotice(msg || ''); setTimeout(() => setNotice(''), 4000) }} />
       )}
     </div>
   )

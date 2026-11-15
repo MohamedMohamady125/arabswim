@@ -10,9 +10,9 @@ export const CLASSIFICATIONS = [
 ]
 
 export default function MeetsTab({ stats }) {
-  if (!stats) return null
+  if (!stats) return <Empty label="Meet history unavailable" hint="It could not be loaded. Reload the page to try again." />
   const championships = stats.championships || []
-  if (championships.length === 0) return <Empty label="No championship history yet" />
+  if (championships.length === 0) return <Empty label="No championship history yet" hint="Meets appear here once this swimmer has results at a championship." />
 
   // Participation counts by classification
   const counts = {}
@@ -80,10 +80,10 @@ export default function MeetsTab({ stats }) {
                     <span className="asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
                       {c.country ? `${c.country} · ` : ''}{formatDate(c.date)}
                     </span>
-                    <span className={`tag ${c.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`} style={{ fontSize: 10 }}>{c.pool}</span>
+                    <span className={`tag ${c.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`} style={{ fontSize: 11 }}>{c.pool}</span>
                   </div>
                 </div>
-                <span style={{ color: 'var(--color-neutral-500)' }}>→</span>
+                <span aria-hidden="true" style={{ color: 'var(--color-neutral-500)' }}>→</span>
               </Link>
             ))}
           </div>

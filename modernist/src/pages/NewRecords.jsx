@@ -32,6 +32,13 @@ function AddRecordModal({ onClose, onCreated }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // Jakob's Law: Escape closes a dialog
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   useEffect(() => {
     getEvents().then((res) => setEvents(Array.isArray(res.data) ? res.data : res.data?.results || [])).catch(() => {})
   }, [])
@@ -86,10 +93,10 @@ function AddRecordModal({ onClose, onCreated }) {
       style={{ position: 'fixed', inset: 0, background: 'rgba(8,24,44,0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <form onSubmit={submit} style={{ width: 520, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
+      <form onSubmit={submit} role="dialog" aria-modal="true" aria-label="Add record" style={{ width: 520, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
           <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Add Record</strong>
-          <button type="button" className="btn-ghost" onClick={onClose} aria-label="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
+          <button type="button" className="btn-ghost" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 36, minHeight: 36 }}>×</button>
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -100,11 +107,11 @@ function AddRecordModal({ onClose, onCreated }) {
               <div style={{ ...input, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Flag code={sel.nationality_detail?.code} name={sel.nationality_detail?.name} />
                 <span style={{ fontWeight: 600, flex: 1 }}>{sel.name}</span>
-                <button type="button" onClick={() => { setSel(null); setQ('') }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 16 }} aria-label="Clear swimmer">×</button>
+                <button type="button" onClick={() => { setSel(null); setQ('') }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32, margin: '-6px -6px -6px 0' }} aria-label="Clear swimmer" title="Clear swimmer">×</button>
               </div>
             ) : (
               <>
-                <input style={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search swimmer by name…" autoFocus />
+                <input type="search" aria-label="Swimmer" style={{ ...input, appearance: 'none', WebkitAppearance: 'none' }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search swimmer by name…" autoFocus />
                 {results.length > 0 && (
                   <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 5, background: 'var(--color-bg)', border: '1px solid var(--color-neutral-300)', borderTop: 'none', maxHeight: 260, overflowY: 'auto' }}>
                     {results.map((s) => (
@@ -127,27 +134,27 @@ function AddRecordModal({ onClose, onCreated }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
             <div>
               <label style={label}>Event</label>
-              <select style={input} value={form.event} onChange={set('event')}>
+              <select aria-label="Event" style={input} value={form.event} onChange={set('event')}>
                 <option value="">Select event…</option>
                 {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
               </select>
             </div>
             <div>
               <label style={label}>Record scope</label>
-              <select style={input} value={form.record_type} onChange={set('record_type')}>
+              <select aria-label="Record scope" style={input} value={form.record_type} onChange={set('record_type')}>
                 {RECORD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
               <label style={label}>Pool</label>
-              <select style={input} value={form.pool} onChange={set('pool')}>
+              <select aria-label="Pool" style={input} value={form.pool} onChange={set('pool')}>
                 <option value="LCM">LCM (50m)</option>
                 <option value="SCM">SCM (25m)</option>
               </select>
             </div>
             <div>
               <label style={label}>Age category</label>
-              <select style={input} value={form.age_category} onChange={set('age_category')}>
+              <select aria-label="Age category" style={input} value={form.age_category} onChange={set('age_category')}>
                 {AGE_CATEGORIES.map((a) => <option key={a} value={a}>{ageCategoryLabel(a)}</option>)}
               </select>
             </div>
@@ -156,22 +163,22 @@ function AddRecordModal({ onClose, onCreated }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 16 }}>
             <div>
               <label style={label}>Time</label>
-              <input style={input} className="asw-num" value={form.time} onChange={set('time')} placeholder="M:SS.hh" />
+              <input aria-label="Time" style={input} className="asw-num" value={form.time} onChange={set('time')} placeholder="M:SS.hh" />
             </div>
             <div>
               <label style={label}>Date</label>
-              <input style={input} className="asw-num" type="date" value={form.result_date} onChange={set('result_date')} />
+              <input aria-label="Date" style={input} className="asw-num" type="date" value={form.result_date} onChange={set('result_date')} />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
             <div>
               <label style={label}>Meet name</label>
-              <input style={input} value={form.meet_name} onChange={set('meet_name')} placeholder="e.g. Arab Championships" />
+              <input aria-label="Meet name" style={input} value={form.meet_name} onChange={set('meet_name')} placeholder="e.g. Arab Championships" />
             </div>
             <div>
               <label style={label}>Location</label>
-              <input style={input} value={form.location} onChange={set('location')} placeholder="City, Country" />
+              <input aria-label="Location" style={input} value={form.location} onChange={set('location')} placeholder="City, Country" />
             </div>
           </div>
 
@@ -183,7 +190,7 @@ function AddRecordModal({ onClose, onCreated }) {
           {form.time.trim() && !(cs > 0) && (
             <div className="micro" style={{ color: 'var(--color-accent)' }}>Time must look like 27.45 or 1:56.30</div>
           )}
-          {error && <div style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
+          {error && <div role="alert" style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
         </div>
 
         <div className="rule-t" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
@@ -203,6 +210,12 @@ function ImportRecordsModal({ onClose, onImported }) {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const downloadTemplate = async () => {
     try {
@@ -241,10 +254,10 @@ function ImportRecordsModal({ onClose, onImported }) {
       style={{ position: 'fixed', inset: 0, background: 'rgba(8,24,44,0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div style={{ width: 560, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
+      <div role="dialog" aria-modal="true" aria-label="Import records from Excel" style={{ width: 560, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
           <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Import Records from Excel</strong>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
+          <button type="button" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 36, minHeight: 36 }}>×</button>
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -263,13 +276,14 @@ function ImportRecordsModal({ onClose, onImported }) {
             <label style={label}>Excel file (.xlsx)</label>
             <input
               type="file"
+              aria-label="Excel file (.xlsx)"
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={(e) => { setFile(e.target.files?.[0] || null); setResult(null); setError('') }}
             />
           </div>
 
           {result && (
-            <div style={{ border: '1px solid var(--color-divider)', padding: '12px 14px', fontSize: 13 }}>
+            <div role="status" style={{ border: '1px solid var(--color-divider)', padding: '12px 14px', fontSize: 13 }}>
               <div style={{ fontWeight: 800, color: result.created > 0 ? 'var(--asw-fast)' : 'var(--color-text)' }}>
                 {result.created} record{result.created !== 1 ? 's' : ''} imported
                 {result.duplicates > 0 && ` · ${result.duplicates} duplicate${result.duplicates !== 1 ? 's' : ''} skipped`}
@@ -288,7 +302,7 @@ function ImportRecordsModal({ onClose, onImported }) {
               )}
             </div>
           )}
-          {error && <div style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
+          {error && <div role="alert" style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
         </div>
 
         <div className="rule-t" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
@@ -310,6 +324,13 @@ export default function NewRecords() {
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [refresh, setRefresh] = useState(0)
+  const [saved, setSaved] = useState(false) // Peak-End Rule: confirm the save
+
+  useEffect(() => {
+    if (!saved) return
+    const t = setTimeout(() => setSaved(false), 5000)
+    return () => clearTimeout(t)
+  }, [saved])
 
   useEffect(() => {
     let alive = true
@@ -348,15 +369,15 @@ export default function NewRecords() {
 
       {/* scope filter */}
       <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <select className="select" style={{ width: 170 }} value={scope} onChange={(e) => setScope(e.target.value)}>
+        <select className="select" aria-label="Record scope" style={{ width: 170 }} value={scope} onChange={(e) => setScope(e.target.value)}>
           {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label === 'All' ? 'All scopes' : o.label}</option>)}
         </select>
         {isAdmin && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
-            <button className="btn btn-secondary" onClick={() => setImportOpen(true)}>
+            <button type="button" className="btn btn-secondary" onClick={() => setImportOpen(true)}>
               ⬆ Import Excel
             </button>
-            <button className="btn btn-primary" onClick={() => setAddOpen(true)}>
+            <button type="button" className="btn btn-primary" onClick={() => setAddOpen(true)}>
               + Add Record
             </button>
           </div>
@@ -366,8 +387,13 @@ export default function NewRecords() {
       {addOpen && (
         <AddRecordModal
           onClose={() => setAddOpen(false)}
-          onCreated={() => { setAddOpen(false); setRefresh((n) => n + 1) }}
+          onCreated={() => { setAddOpen(false); setSaved(true); setRefresh((n) => n + 1) }}
         />
+      )}
+      {saved && (
+        <div role="status" className="rule-b" style={{ padding: '10px 32px', fontSize: 13, fontWeight: 700, color: 'var(--asw-fast)' }}>
+          Record saved. It appears under its own scope below.
+        </div>
       )}
       {importOpen && (
         <ImportRecordsModal
@@ -379,7 +405,7 @@ export default function NewRecords() {
       {loading ? (
         <Loading label="Loading new records" />
       ) : records.length === 0 ? (
-        <Empty label="No new records match this scope" />
+        <Empty label="No new records match this scope" hint="Try another scope from the list above." />
       ) : (
         groups.map(([type, rows]) => (
           <div key={type} className="rule-b pad">
@@ -457,7 +483,7 @@ function RecordCards({ rows }) {
                   </div>
                   {/* 3 — pool badge in front of the time */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
-                    <span className="tag tag-accent-2" style={{ fontSize: 10, padding: '2px 8px', fontWeight: 700 }}>{r.pool}</span>
+                    <span className="tag tag-accent-2" style={{ fontSize: 11, padding: '2px 8px', fontWeight: 700 }}>{r.pool}</span>
                     <span className="asw-num rec-time" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>
                       {r.formatted_time}
                     </span>
@@ -466,7 +492,7 @@ function RecordCards({ rows }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                     <Flag code={r.swimmer_detail?.nationality_detail?.code} name={r.swimmer_detail?.nationality_detail?.name} />
                     {r.swimmer && !r.swimmer_detail?.is_relay_team ? (
-                      <Link to={`/swimmers/${r.swimmer}`} className="rec-name" style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                      <Link to={`/swimmers/${r.swimmer}`} className="rec-name" style={{ padding: '7px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, same card height */, color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
                         {r.swimmer_detail?.name}
                       </Link>
                     ) : (

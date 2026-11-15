@@ -17,7 +17,8 @@ export default function Register() {
     setLoading(true)
     setError('')
     try {
-      const res = await registerApi({ username, email, password })
+      // Postel's Law: tolerate stray spaces (never trim the password)
+      const res = await registerApi({ username: username.trim(), email: email.trim(), password })
       login(res.data.access, res.data.refresh)
       navigate('/swimmers')
     } catch (err) {
@@ -37,27 +38,29 @@ export default function Register() {
         <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: 'contain' }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em' }}>ARABSWIM</span>
       </div>
-      <div className="kicker" style={{ marginBottom: 8 }}>Create account</div>
+      {/* real page heading for assistive tech; the kicker below keeps the look */}
+      <h1 className="sr-only">Create account</h1>
+      <div className="kicker" aria-hidden="true" style={{ marginBottom: 8 }}>Create account</div>
       <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 20 }}>
         Athletes: after signing up, find your profile in the swimmers section and claim it.
       </div>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && (
-          <div style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>
+          <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>
             {error}
           </div>
         )}
         <div className="field">
-          <label>Username</label>
-          <input className="input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+          <label htmlFor="register-username">Username</label>
+          <input id="register-username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} className="input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
         </div>
         <div className="field">
-          <label>Email</label>
-          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <label htmlFor="register-email">Email</label>
+          <input id="register-email" name="email" autoComplete="email" inputMode="email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <div className="field">
-          <label>Password</label>
-          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+          <label htmlFor="register-password">Password (at least 8 characters)</label>
+          <input id="register-password" name="password" autoComplete="new-password" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         </div>
         <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 40 }}>
           {loading ? 'Creating…' : 'Create account'}

@@ -28,7 +28,7 @@ function ClubLogo({ logo, name, size = 24 }) {
   return (
     <span style={{
       ...base, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.38, fontWeight: 700, letterSpacing: '.02em',
+      fontSize: Math.max(10.5, size * 0.38), fontWeight: 700, letterSpacing: '.02em',
       background: 'var(--color-neutral-200)', color: 'var(--color-neutral-700)',
     }}>{initials}</span>
   )
@@ -59,11 +59,12 @@ export default function Medals() {
   const [clubRows, setClubRows] = useState([])
   const [swimmerRows, setSwimmerRows] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false) // categories never arrived → no endless "Loading"
 
   useEffect(() => {
     getClassifications()
-      .then((res) => setClassifications(list(res.data)))
-      .catch(() => setClassifications([]))
+      .then((res) => { const cs = list(res.data); setClassifications(cs); if (cs.length === 0) setLoadFailed(true) })
+      .catch(() => { setClassifications([]); setLoadFailed(true) })
     getCountries({ has_swimmers: true })
       .then((res) => setCountries(list(res.data).filter((c) => c.region === 'ARAB' || c.region === 'GCC')))
       .catch(() => setCountries([]))
@@ -167,7 +168,7 @@ export default function Medals() {
 
   const countrySelect = (
     <select
-      className="select" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 280 }} value={country}
+      className="select" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 280 }} value={country}
       onChange={(e) => { setCountry(e.target.value); setChampionship('') }}
     >
       <option value="">All countries</option>
@@ -204,17 +205,23 @@ export default function Medals() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* National → country picker leads, same slot either way */}
           {countrySelect}
-          <select className="select" style={{ flex: '2 1 220px', width: 'auto', minWidth: 0, maxWidth: 440 }} value={championship} onChange={(e) => setChampionship(e.target.value)}>
+          <select className="select" aria-label="Championship" style={{ flex: '2 1 220px', width: 'auto', minWidth: 0, maxWidth: 440 }} value={championship} onChange={(e) => setChampionship(e.target.value)}>
             <option value="">All {category} championships</option>
             {visibleMeets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
       </div>
 
-      {loading ? (
+      {loadFailed ? (
+        <Empty label="Medal tables could not be loaded" hint="Reload the page or try again in a moment." />
+      ) : loading ? (
         <Loading label="Loading medals" />
       ) : rows.length === 0 ? (
-        <Empty label="No medals recorded for this selection" />
+        <Empty label="No medals recorded for this selection" hint="Try another category, country or championship.">
+          {(country || championship || gender) && (
+            <button type="button" className="btn btn-secondary" onClick={() => { setCountry(''); setChampionship(''); setGender('') }}>Clear filters</button>
+          )}
+        </Empty>
       ) : (
         <div className="pad">
           <MedalStandings

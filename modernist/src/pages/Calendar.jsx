@@ -45,7 +45,7 @@ function Countdown({ target }) {
       {cells.map(([v, l]) => (
         <div key={l} style={{ flex: 1, background: 'var(--color-bg)', padding: '8px 10px' }}>
           <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{v}</div>
-          <div className="micro" style={{ fontSize: 10 }}>{l}</div>
+          <div className="micro" style={{ fontSize: 11 }}>{l}</div>
         </div>
       ))}
     </div>
@@ -54,6 +54,13 @@ function Countdown({ target }) {
 
 /* Plain modal — zero radius, navy rule, per the modernist idiom */
 function Modal({ open, title, onClose, children }) {
+  // Jakob's Law: Escape closes a dialog
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
   if (!open) return null
   return (
     <div
@@ -62,11 +69,12 @@ function Modal({ open, title, onClose, children }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-label={title}
         style={{ background: 'var(--color-bg)', width: 520, maxWidth: '100%', borderTop: '4px solid var(--color-box-top)' }}
       >
         <div className="rule-b" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h4 style={{ margin: 0 }}>{title}</h4>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="btn btn-ghost" style={{ minWidth: 36, minHeight: 36 }} onClick={onClose} aria-label="Close" title="Close">×</button>
         </div>
         <div style={{ padding: 24 }}>{children}</div>
       </div>
@@ -161,29 +169,29 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="field">
           <label>Meet name *</label>
-          <input className="input" type="text" required value={form.name} onChange={set('name')} />
+          <input className="input" aria-label="Meet name" type="text" required value={form.name} onChange={set('name')} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
             <label>Start date *</label>
-            <input className="input" type="date" required value={form.date} onChange={set('date')} />
+            <input className="input" aria-label="Start date" type="date" required value={form.date} onChange={set('date')} />
           </div>
           <div className="field">
             <label>End date</label>
-            <input className="input" type="date" value={form.end_date} min={form.date || undefined} onChange={set('end_date')} />
+            <input className="input" aria-label="End date" type="date" value={form.end_date} min={form.date || undefined} onChange={set('end_date')} />
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
             <label>Country</label>
-            <select className="select" value={form.country} onChange={set('country')}>
+            <select className="select" aria-label="Country" value={form.country} onChange={set('country')}>
               <option value="">Select country</option>
               {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="field">
             <label>Pool</label>
-            <select className="select" value={form.pool} onChange={set('pool')}>
+            <select className="select" aria-label="Pool" value={form.pool} onChange={set('pool')}>
               <option value="LCM">Long Course (50m)</option>
               <option value="SCM">Short Course (25m)</option>
             </select>
@@ -192,7 +200,7 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
             <label>Open / Age Group</label>
-            <select className="select" value={form.meet_category} onChange={set('meet_category')}>
+            <select className="select" aria-label="Open / Age Group" value={form.meet_category} onChange={set('meet_category')}>
               <option value="">Not set</option>
               <option value="OPEN">Open</option>
               <option value="AGE_GROUP">Age Group</option>
@@ -200,13 +208,13 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
           </div>
           <div className="field">
             <label>Location</label>
-            <input className="input" type="text" value={form.location} onChange={set('location')} placeholder="City / venue" />
+            <input className="input" aria-label="Location" type="text" value={form.location} onChange={set('location')} placeholder="City / venue" />
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
             <label>Category</label>
-            <select className="select" value={form.classification_category}
+            <select className="select" aria-label="Category" value={form.classification_category}
               onChange={(e) => setForm({ ...form, classification_category: e.target.value, classification: '', sub_classification: '' })}>
               <option value="">Select category</option>
               {classCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -214,7 +222,7 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
           </div>
           <div className="field">
             <label>Classification</label>
-            <select className="select" value={form.classification}
+            <select className="select" aria-label="Classification" value={form.classification}
               onChange={(e) => setForm({ ...form, classification: e.target.value, sub_classification: '' })}>
               <option value="">Select classification</option>
               {classifications
@@ -226,7 +234,7 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
         {subClassifications.length > 0 && (
           <div className="field">
             <label>Sub-classification</label>
-            <select className="select" value={form.sub_classification} onChange={set('sub_classification')}>
+            <select className="select" aria-label="Sub-classification" value={form.sub_classification} onChange={set('sub_classification')}>
               <option value="">None</option>
               {subClassifications.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -234,25 +242,25 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
         )}
         <div className="field">
           <label>Website</label>
-          <input className="input" type="url" value={form.website} onChange={set('website')} placeholder="https://…" />
+          <input className="input" aria-label="Website" type="url" value={form.website} onChange={set('website')} placeholder="https://…" />
         </div>
         <div className="field">
           <label>Live results URL</label>
-          <input className="input" type="url" value={form.live_results_url} onChange={set('live_results_url')} placeholder="https://…" />
+          <input className="input" aria-label="Live results URL" type="url" value={form.live_results_url} onChange={set('live_results_url')} placeholder="https://…" />
         </div>
         <div className="field">
           <label>Registration link</label>
-          <input className="input" type="url" value={form.registration_url} onChange={set('registration_url')} placeholder="https://…" />
+          <input className="input" aria-label="Registration link" type="url" value={form.registration_url} onChange={set('registration_url')} placeholder="https://…" />
         </div>
         <div className="field">
           <label>Entry pack (PDF{meet.meet_guide_pdf ? ' — uploaded, choose a file to replace' : ''})</label>
-          <input className="input" type="file" accept=".pdf,application/pdf" onChange={(e) => setPackFile(e.target.files?.[0] || null)} />
+          <input className="input" type="file" aria-label="Entry pack PDF" accept=".pdf,application/pdf" onChange={(e) => setPackFile(e.target.files?.[0] || null)} />
         </div>
         <div className="field">
           <label>Meet photo{meet.meet_photo ? ' (uploaded, choose a file to replace)' : ''}</label>
           <CropUpload aspect={16 / 9} accept="image/jpeg,image/png,image/webp" onChange={setPhotoFile} />
         </div>
-        {error && <div style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{error}</div>}
+        {error && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save meet'}</button>
@@ -392,7 +400,7 @@ function BirthdaysTab() {
                 style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10, borderBottom: i < thisMonth.length - 1 ? '1px solid var(--color-divider)' : 'none' }}
               >
                 <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, width: 24, textAlign: 'center', flex: 'none' }}>{b.day}</span>
-                <Link to={`/swimmers/${b.id}`} style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, flex: 1 }}>{b.name}</Link>
+                <Link to={`/swimmers/${b.id}`} style={{ padding: '7px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, same row height */, color: 'inherit', textDecoration: 'none', fontSize: 13, flex: 1 }}>{b.name}</Link>
                 <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
                   {b.nationality}{b.age > 0 ? ` · ${b.age}` : ''}
                 </span>
@@ -436,6 +444,14 @@ export default function Calendar() {
   const [programChampId, setProgramChampId] = useState(null)
   const [newEvent, setNewEvent] = useState(EMPTY_EVENT)
   const [addLoading, setAddLoading] = useState(false)
+  const [addError, setAddError] = useState('')
+  const [notice, setNotice] = useState(null) // { text, bad } — Peak-End Rule: confirm saves, explain failures
+
+  useEffect(() => {
+    if (!notice) return undefined
+    const t = setTimeout(() => setNotice(null), 5000)
+    return () => clearTimeout(t)
+  }, [notice])
   const [classCategories, setClassCategories] = useState([])
   const [classifications, setClassifications] = useState([])
   const [subClassifications, setSubClassifications] = useState([])
@@ -559,21 +575,23 @@ export default function Calendar() {
   const handleAddEvent = async (e) => {
     e.preventDefault()
     setAddLoading(true)
+    setAddError('')
     try {
       const isMeetType = newEvent.event_type === 'MEET'
+      const title = newEvent.title.trim() // Postel's Law: stray spaces are dropped
       let championshipId = null
       if (isMeetType) {
         // Calendar-only championship: full meet card, hidden from the meets
         // list until real results exist. Classification makes upcoming
         // Arab/GCC/National meets appear on the Predictions page.
         const fd = new FormData()
-        fd.append('name', newEvent.title)
+        fd.append('name', title)
         fd.append('date', newEvent.date)
         if (newEvent.end_date) fd.append('end_date', newEvent.end_date)
         fd.append('pool', newEvent.pool || 'LCM')
         if (newEvent.meet_category) fd.append('meet_category', newEvent.meet_category)
         fd.append('country', newEvent.country)
-        if (newEvent.location) fd.append('location', newEvent.location)
+        if (newEvent.location.trim()) fd.append('location', newEvent.location.trim())
         if (newEvent.classification_category) fd.append('classification_category', newEvent.classification_category)
         if (newEvent.classification) fd.append('classification', newEvent.classification)
         if (newEvent.sub_classification) fd.append('sub_classification', newEvent.sub_classification)
@@ -583,7 +601,7 @@ export default function Calendar() {
       }
       const isBirthday = newEvent.event_type === 'BIRTHDAY'
       const payload = {
-        title: isBirthday ? `Birthday — ${newEvent.title}` : newEvent.title,
+        title: isBirthday ? `Birthday — ${title}` : title,
         date: newEvent.date,
         // the calendar model knows MEET and CUSTOM; birthdays are custom events
         event_type: isMeetType ? 'MEET' : 'CUSTOM',
@@ -601,9 +619,11 @@ export default function Calendar() {
         setProgramChampId(championshipId)
       } else {
         setShowAddEvent(false)
+        setNotice({ text: 'Event added to the calendar.' })
       }
     } catch (err) {
-      window.alert('Error: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message))
+      const d = err.response?.data
+      setAddError(d ? (typeof d === 'string' ? d : Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' ') : v}`).join(' · ')) : 'Could not save the event. Check your connection and try again.')
     } finally {
       setAddLoading(false)
     }
@@ -615,7 +635,8 @@ export default function Calendar() {
       await deleteCalendarEvent(ev.id)
       setCalEvents((prev) => prev.filter((e) => e.id !== ev.id))
       loadFeatured()
-    } catch { /* ignore */ }
+      setNotice({ text: 'Event deleted.' })
+    } catch { setNotice({ text: 'Could not delete the event. Try again.', bad: true }) }
   }
 
   const handleDeleteCalendarMeet = async (c) => {
@@ -630,7 +651,8 @@ export default function Calendar() {
       setCalEvents((prev) => prev.filter((ev) => ev.championship !== c.id))
       setExpandedMeetId(null)
       loadFeatured()
-    } catch { /* ignore */ }
+      setNotice({ text: 'Meet deleted from the calendar.' })
+    } catch { setNotice({ text: 'Could not delete the meet. Try again.', bad: true }) }
   }
 
   if (loading) return <Loading label="Loading calendar" />
@@ -653,6 +675,12 @@ export default function Calendar() {
           </div>
         )}
       </PageHead>
+
+      {notice && (
+        <div role={notice.bad ? 'alert' : 'status'} className="rule-b cal-row" style={{ padding: '10px 32px', fontSize: 13, fontWeight: 700, color: notice.bad ? 'var(--asw-slow)' : 'var(--asw-fast)' }}>
+          {notice.text}
+        </div>
+      )}
 
       {/* featured next meet + countdown */}
       {featured && (
@@ -707,18 +735,18 @@ export default function Calendar() {
         />
         {tab !== 'birthdays' && (
           <>
-            <select className="select" style={{ width: 120 }} value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+            <select className="select" aria-label="Year" style={{ width: 120 }} value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
               <option value="">All years</option>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
             {tab === 'meets' && (
-              <select className="select" style={{ width: 190 }} value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)}>
+              <select className="select" aria-label="Country" style={{ width: 190 }} value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)}>
                 <option value="">All countries</option>
                 {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             )}
             {(filterYear || filterCountry) && (
-              <button className="btn btn-ghost" onClick={() => { setFilterYear(''); setFilterCountry('') }}>Clear</button>
+              <button type="button" className="btn btn-ghost" style={{ minHeight: 36 }} onClick={() => { setFilterYear(''); setFilterCountry('') }}>Clear</button>
             )}
           </>
         )}
@@ -727,7 +755,13 @@ export default function Calendar() {
       {/* ── Meets tab ── */}
       {tab === 'meets' && (
         <div>
-          {meetGroups.length === 0 && <Empty label="No competitions found — try a different year or country" />}
+          {meetGroups.length === 0 && (
+            <Empty label="No competitions found" hint="Try a different year or country.">
+              {(filterYear || filterCountry) && (
+                <button type="button" className="btn btn-secondary" onClick={() => { setFilterYear(''); setFilterCountry('') }}>Show all years and countries</button>
+              )}
+            </Empty>
+          )}
           {meetGroups.map((g) => (
             <div key={g.key} className="rule-b">
               <div className="pad" style={{ paddingBottom: 10, display: 'flex', alignItems: 'baseline', gap: 12 }}>
@@ -742,13 +776,15 @@ export default function Calendar() {
                   return (
                     <div key={`m-${c.id}`} className={i < g.items.length - 1 || isExpanded ? 'hair-b' : ''}>
                       <div
-                        className="cal-row"
+                        className="cal-row row-link"
                         onClick={() => setExpandedMeetId(isExpanded ? null : c.id)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px', cursor: 'pointer', background: isExpanded ? 'var(--color-surface)' : undefined }}
+                        role="button" tabIndex={0} aria-expanded={isExpanded}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedMeetId(isExpanded ? null : c.id) } }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px', background: isExpanded ? 'var(--color-surface)' : undefined }}
                       >
                         {/* mini calendar tile: navy month strip over the day */}
                         <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
-                          <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 8.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
+                          <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 10.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
                           <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -760,7 +796,7 @@ export default function Calendar() {
                           </div>
                         </div>
                         {c.pool && <span className="tag tag-neutral hide-mobile">{c.pool}</span>}
-                        <span className="micro" style={{ fontSize: 10, width: 12, textAlign: 'center' }}>{isExpanded ? '▴' : '▾'}</span>
+                        <span className="micro" aria-hidden="true" style={{ fontSize: 11, width: 12, textAlign: 'center' }}>{isExpanded ? '▴' : '▾'}</span>
                       </div>
                       {isExpanded && (
                         <MeetExpandedPanel meet={c} isAdmin={isAdmin} onDelete={handleDeleteCalendarMeet} onEditLinks={setEditLinksMeet} />
@@ -773,12 +809,17 @@ export default function Calendar() {
                 return (
                   <div
                     key={`ev-${ev.id}`}
-                    className={`cal-row ${i < g.items.length - 1 ? 'hair-b' : ''}`}
-                    style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px', cursor: ev.championship ? 'pointer' : 'default' }}
+                    className={`cal-row ${ev.championship ? 'row-link ' : ''}${i < g.items.length - 1 ? 'hair-b' : ''}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px' }}
                     onClick={() => { if (ev.championship) navigate(`/meets/${ev.championship}`) }}
+                    role={ev.championship ? 'link' : undefined}
+                    tabIndex={ev.championship ? 0 : undefined}
+                    onKeyDown={ev.championship ? (e) => {
+                      if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(`/meets/${ev.championship}`) }
+                    } : undefined}
                   >
                     <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
-                      <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 8.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
+                      <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 10.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
                       <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -812,7 +853,7 @@ export default function Calendar() {
       {/* ── Other events tab ── */}
       {tab === 'events' && (
         <div>
-          {otherEvents.length === 0 && <Empty label="No custom events" />}
+          {otherEvents.length === 0 && <Empty label="No custom events" hint={filterYear ? 'Try another year, or clear the year filter.' : 'Nothing has been added here yet.'} />}
           {otherEvents.map(({ ev, d }, i) => (
             <div
               key={ev.id}
@@ -851,6 +892,7 @@ export default function Calendar() {
           onClose={() => setEditLinksMeet(null)}
           onSaved={() => {
             setEditLinksMeet(null)
+            setNotice({ text: 'Meet saved.' })
             setExpandedMeetId(null)
             loadMeets()
             loadFeatured()
@@ -882,7 +924,7 @@ export default function Calendar() {
         <form onSubmit={handleAddEvent} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="field">
             <label>Type</label>
-            <select className="select" value={newEvent.event_type}
+            <select className="select" aria-label="Type" value={newEvent.event_type}
               onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}>
               <option value="MEET">Meet / Championship</option>
               <option value="BIRTHDAY">Birthday</option>
@@ -892,6 +934,7 @@ export default function Calendar() {
           <div className="field">
             <label>{newEvent.event_type === 'MEET' ? 'Meet name *' : newEvent.event_type === 'BIRTHDAY' ? 'Name *' : 'Title *'}</label>
             <input className="input" type="text" required value={newEvent.title}
+              aria-label={newEvent.event_type === 'MEET' ? 'Meet name' : newEvent.event_type === 'BIRTHDAY' ? 'Name' : 'Title'}
               onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
               placeholder={newEvent.event_type === 'MEET' ? 'e.g. Arab Swimming Championships 2026'
                 : newEvent.event_type === 'BIRTHDAY' ? 'Who is celebrating?'
@@ -900,7 +943,7 @@ export default function Calendar() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="field">
               <label>Start date *</label>
-              <input className="input" type="date" required value={newEvent.date}
+              <input className="input" aria-label="Start date" type="date" required value={newEvent.date}
                 onChange={(e) => {
                   const d = e.target.value
                   const updates = { date: d }
@@ -910,7 +953,7 @@ export default function Calendar() {
             </div>
             <div className="field">
               <label>End date</label>
-              <input className="input" type="date" value={newEvent.end_date} min={newEvent.date || undefined}
+              <input className="input" aria-label="End date" type="date" value={newEvent.end_date} min={newEvent.date || undefined}
                 onChange={(e) => setNewEvent({ ...newEvent, end_date: e.target.value })} />
             </div>
           </div>
@@ -919,7 +962,7 @@ export default function Calendar() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="field">
                   <label>Country *</label>
-                  <select className="select" required value={newEvent.country}
+                  <select className="select" aria-label="Country" required value={newEvent.country}
                     onChange={(e) => setNewEvent({ ...newEvent, country: e.target.value })}>
                     <option value="">Select country</option>
                     {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -927,7 +970,7 @@ export default function Calendar() {
                 </div>
                 <div className="field">
                   <label>Pool</label>
-                  <select className="select" value={newEvent.pool}
+                  <select className="select" aria-label="Pool" value={newEvent.pool}
                     onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })}>
                     <option value="LCM">Long Course (50m)</option>
                     <option value="SCM">Short Course (25m)</option>
@@ -936,7 +979,7 @@ export default function Calendar() {
               </div>
               <div className="field">
                 <label>Open / Age Group</label>
-                <select className="select" value={newEvent.meet_category}
+                <select className="select" aria-label="Open / Age Group" value={newEvent.meet_category}
                   onChange={(e) => setNewEvent({ ...newEvent, meet_category: e.target.value })}>
                   <option value="">Not set</option>
                   <option value="OPEN">Open</option>
@@ -945,14 +988,14 @@ export default function Calendar() {
               </div>
               <div className="field">
                 <label>Location</label>
-                <input className="input" type="text" value={newEvent.location}
+                <input className="input" aria-label="Location" type="text" value={newEvent.location}
                   onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
                   placeholder="City / venue" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="field">
                   <label>Category</label>
-                  <select className="select" value={newEvent.classification_category}
+                  <select className="select" aria-label="Category" value={newEvent.classification_category}
                     onChange={(e) => setNewEvent({ ...newEvent, classification_category: e.target.value, classification: '', sub_classification: '' })}>
                     <option value="">Select category</option>
                     {classCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -960,7 +1003,7 @@ export default function Calendar() {
                 </div>
                 <div className="field">
                   <label>Classification</label>
-                  <select className="select" value={newEvent.classification}
+                  <select className="select" aria-label="Classification" value={newEvent.classification}
                     onChange={(e) => setNewEvent({ ...newEvent, classification: e.target.value, sub_classification: '' })}>
                     <option value="">Select classification</option>
                     {classifications
@@ -972,7 +1015,7 @@ export default function Calendar() {
               {subClassifications.length > 0 && (
                 <div className="field">
                   <label>Sub-classification</label>
-                  <select className="select" value={newEvent.sub_classification}
+                  <select className="select" aria-label="Sub-classification" value={newEvent.sub_classification}
                     onChange={(e) => setNewEvent({ ...newEvent, sub_classification: e.target.value })}>
                     <option value="">None</option>
                     {subClassifications.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -988,17 +1031,18 @@ export default function Calendar() {
           )}
           <div className="field">
             <label>Description</label>
-            <textarea className="input" rows={2} value={newEvent.description}
+            <textarea className="input" aria-label="Description" rows={2} value={newEvent.description}
               onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
               placeholder="Optional details…" style={{ resize: 'vertical' }} />
           </div>
+          {addError && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{addError}</div>}
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddEvent(false)}>Cancel</button>
             <button
               type="submit"
               className="btn btn-primary"
               style={{ flex: 1 }}
-              disabled={addLoading || !newEvent.title || !newEvent.date || (newEvent.event_type === 'MEET' && !newEvent.country)}
+              disabled={addLoading || !newEvent.title.trim() || !newEvent.date || (newEvent.event_type === 'MEET' && !newEvent.country)}
             >
               {addLoading ? 'Saving…' : 'Save'}
             </button>

@@ -34,10 +34,10 @@ function LivePill({ small = false }) {
   return (
     <span style={{
       background: LIVE_RED, color: '#fff', display: 'inline-flex', alignItems: 'center',
-      gap: 6, fontSize: small ? 10 : 11, fontWeight: 800, letterSpacing: '0.1em',
+      gap: 6, fontSize: small ? 10.5 : 11, fontWeight: 800, letterSpacing: '0.1em',
       padding: small ? '3px 9px' : '4px 12px', borderRadius: 999,
     }}>
-      <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite' }} />
+      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite' }} />
       LIVE
     </span>
   )
@@ -93,8 +93,8 @@ function InlineResults({ meetId, meet, item }) {
               role={clickable ? 'button' : undefined}
               tabIndex={clickable ? 0 : undefined}
               onClick={() => clickable && setAthlete(r.swimmer_detail)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && clickable) setAthlete(r.swimmer_detail) }}
-              className={clickable ? 'live-result-row' : undefined}
+              onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && clickable) { e.preventDefault(); setAthlete(r.swimmer_detail) } }}
+              className={clickable ? 'live-result-row row-link' : undefined}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px',
                 borderBottom: '1px solid var(--color-neutral-200)', background: '#fff',
@@ -103,7 +103,7 @@ function InlineResults({ meetId, meet, item }) {
             >
               <span style={{ width: 24, flex: 'none', display: 'flex', justifyContent: 'center' }}>
                 {r.is_hc ? (
-                  <span style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
                 ) : isFinal && i <= 2 ? (
                   <MedalIcon type={['GOLD', 'SILVER', 'BRONZE'][i]} size={18} style={{ display: 'block' }} />
                 ) : (
@@ -120,7 +120,7 @@ function InlineResults({ meetId, meet, item }) {
                 {r.swimmer_detail?.name}
               </span>
               {r.reaction_time && (
-                <span className="asw-num hide-mobile" style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--color-neutral-500)', flex: 'none' }}>
+                <span className="asw-num hide-mobile" style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-neutral-500)', flex: 'none' }}>
                   RT {Number(r.reaction_time).toFixed(2)}
                 </span>
               )}
@@ -134,10 +134,10 @@ function InlineResults({ meetId, meet, item }) {
           )
         })}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 16px' }}>
         <Link
           to={`/meets/${meetId}?tab=results&event=${item.event}&gender=${item.gender}&day=${item.day}&session=${item.session}`}
-          style={{ fontSize: 11.5, fontWeight: 800, textDecoration: 'none', color: 'var(--color-accent)' }}
+          style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 /* Fitts's Law; strip stays the same height */, fontSize: 11.5, fontWeight: 800, textDecoration: 'none', color: 'var(--color-accent)' }}
         >
           Heats, splits & more ›
         </Link>
@@ -172,7 +172,7 @@ function ProgramRow({ item, seq, meetId, meet, hasResults, last }) {
             {item.event_name}
           </span>
           <span style={{
-            fontSize: 10, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+            fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
             padding: '2px 8px', borderRadius: 4, background: g.bg, color: g.color, flex: 'none',
           }}>
             {g.label}
@@ -216,11 +216,12 @@ function ProgramRow({ item, seq, meetId, meet, hasResults, last }) {
   return (
     <div>
       <div
-        className="live-row-link"
+        className="live-row-link row-link"
         role="button"
         tabIndex={0}
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        onKeyDown={(e) => { if (e.key === 'Enter') setOpen((v) => !v) }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((v) => !v) } }}
         style={{ cursor: 'pointer' }}
       >
         {inner}
@@ -233,7 +234,7 @@ function ProgramRow({ item, seq, meetId, meet, hasResults, last }) {
 /* Program for one day, grouped Morning / Evening as session cards */
 function DayProgram({ day, meetId, meet, resultKeys }) {
   if (!day || (day.items || []).length === 0) {
-    return <Empty label="No program published for this day yet." />
+    return <Empty label="No program published for this day yet." hint="Pick another day in the Schedule tab, or check back later." />
   }
   // Unnumbered items (order 0/null) go AFTER numbered ones — never a
   // leading "–" row before event 1.
@@ -305,7 +306,7 @@ function ClubBadge({ logo, name, size = 22 }) {
   return (
     <span style={{
       width: size, height: size, minWidth: size, borderRadius: '50%', display: 'inline-flex',
-      alignItems: 'center', justifyContent: 'center', fontSize: size * 0.38, fontWeight: 800,
+      alignItems: 'center', justifyContent: 'center', fontSize: Math.max(10.5, size * 0.38), fontWeight: 800,
       background: 'var(--color-accent-100)', color: 'var(--color-accent-800)',
     }}>{initials}</span>
   )
@@ -396,13 +397,14 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
   const [day, setDay] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [ok, setOk] = useState('') // Peak-End Rule: confirm the upload
 
   const label = kind === 'STARTLIST' ? 'start lists' : 'reports'
   const rows = (docs || []).filter((d) => d.kind === kind)
 
   const upload = async () => {
     if (!file) return
-    setBusy(true); setErr('')
+    setBusy(true); setErr(''); setOk('')
     const fd = new FormData()
     fd.append('file', file)
     fd.append('kind', kind)
@@ -411,9 +413,10 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
     try {
       await uploadMeetDocument(meetId, fd)
       setFile(null); setTitle(''); setDay('')
+      setOk('Uploaded.')
       onChanged()
     } catch (e) {
-      setErr(e.response?.data?.error || 'Upload failed')
+      setErr(e.response?.data?.error || 'Upload failed. Check the file is a PDF and try again.')
     } finally {
       setBusy(false)
     }
@@ -431,7 +434,7 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
             }}>
               <span style={{
                 width: 34, height: 34, borderRadius: 9, flex: 'none', display: 'inline-flex',
-                alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800,
+                alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 800,
                 background: 'var(--color-accent-100)', color: 'var(--color-accent-800)',
               }}>PDF</span>
               <div style={{ minWidth: 0, flex: 1 }}>
@@ -444,7 +447,9 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
               </div>
               <a
                 href={mediaUrl(d.file)} target="_blank" rel="noreferrer"
+                aria-label={`Open ${d.title}`}
                 style={{
+                  display: 'inline-flex', alignItems: 'center', minHeight: 32,
                   flex: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
                   padding: '7px 14px', borderRadius: 999, textDecoration: 'none',
                   background: 'var(--color-accent-800)', color: '#fff',
@@ -454,8 +459,15 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
               </a>
               {isAdmin && (
                 <button
-                  onClick={() => deleteMeetDocument(meetId, d.id).then(onChanged)}
-                  style={{ flex: 'none', border: '1px solid var(--color-neutral-300)', background: '#fff', color: 'var(--asw-slow)', borderRadius: 999, padding: '6px 12px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+                  type="button"
+                  aria-label={`Delete ${d.title}`}
+                  onClick={() => {
+                    // destructive: ask first, and say so if it fails
+                    if (!window.confirm(`Delete "${d.title}"? This cannot be undone.`)) return
+                    setErr(''); setOk('')
+                    deleteMeetDocument(meetId, d.id).then(() => { setOk('Deleted.'); onChanged() }).catch(() => setErr('Could not delete the file. Try again.'))
+                  }}
+                  style={{ minHeight: 32, flex: 'none', border: '1px solid var(--color-neutral-300)', background: '#fff', color: 'var(--asw-slow)', borderRadius: 999, padding: '6px 12px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
                 >
                   Delete
                 </button>
@@ -466,13 +478,14 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
       )}
       {isAdmin && (
         <div style={{ border: '1px dashed var(--color-neutral-300)', borderRadius: 14, padding: '12px 16px', background: 'var(--color-surface)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
-          <input className="input" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} style={{ flex: '1 1 140px', width: 'auto' }} />
-          <input className="input" placeholder="Day" type="number" min="1" value={day} onChange={(e) => setDay(e.target.value)} style={{ flex: '0 1 70px', width: 'auto' }} />
-          <button className="btn btn-primary" disabled={!file || busy} onClick={upload}>
+          <input type="file" aria-label="PDF file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
+          <input className="input" aria-label="Title (optional)" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} style={{ flex: '1 1 140px', width: 'auto' }} />
+          <input className="input" aria-label="Day" placeholder="Day" type="number" min="1" value={day} onChange={(e) => setDay(e.target.value)} style={{ flex: '0 1 70px', width: 'auto' }} />
+          <button type="button" className="btn btn-primary" disabled={!file || busy} onClick={upload}>
             {busy ? 'Uploading…' : `Upload ${kind === 'STARTLIST' ? 'start list' : 'report'}`}
           </button>
-          {err && <span style={{ fontSize: 12, color: 'var(--asw-slow)', fontWeight: 700 }}>{err}</span>}
+          {err && <span role="alert" style={{ fontSize: 12, color: 'var(--asw-slow)', fontWeight: 700 }}>{err}</span>}
+          {ok && !err && <span role="status" style={{ fontSize: 12, color: 'var(--asw-fast)', fontWeight: 700 }}>{ok}</span>}
         </div>
       )}
     </div>
@@ -505,7 +518,7 @@ function LiveHub({ meet }) {
   }, [tab, selectedDay, program])
 
   const refresh = () => {
-    getMeetLive(meet.id).then((r) => { setLive(r.data); setUpdatedAt(new Date()) }).catch(() => {})
+    getMeetLive(meet.id).then((r) => { setLive(r.data); setUpdatedAt(new Date()) }).catch(() => setLive((cur) => cur || {})) // a failed fetch must not leave "Loading" forever
     getChampionshipStats(meet.id).then((r) => setStats(r.data)).catch(() => {})
     getMedalSummary({ championship: meet.id }).then((r) => setMedals(r.data)).catch(() => setMedals([]))
     getMedalClubSummary({ championship: meet.id }).then((r) => setClubMedals(r.data)).catch(() => setClubMedals([]))
@@ -613,6 +626,8 @@ function LiveHub({ meet }) {
             return (
               <button
                 key={key}
+                type="button"
+                aria-pressed={active}
                 onClick={() => setTab(key)}
                 className={`live-tabpill${active ? ' active' : ''}`}
                 style={{
@@ -649,7 +664,9 @@ function LiveHub({ meet }) {
               {isAdmin && (
                 <div style={{ marginBottom: 14 }}>
                   <button
-                    className={editProgram ? 'btn btn-primary' : 'btn btn-secondary'}
+                    type="button"
+                    aria-expanded={editProgram}
+                    className="btn btn-secondary" /* Von Restorff: the editor's own Save is the one primary */
                     onClick={() => setEditProgram((v) => !v)}
                   >
                     {editProgram ? 'Close program editor' : 'Edit program'}
@@ -673,6 +690,8 @@ function LiveHub({ meet }) {
                   return (
                     <button
                       key={d.day}
+                      type="button"
+                      aria-pressed={active}
                       onClick={() => setSelectedDay(d.day)}
                       className={`live-daychip${active ? ' active' : ''}`}
                       style={{
@@ -687,19 +706,19 @@ function LiveHub({ meet }) {
                       {isToday && (
                         <span style={{
                           position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)',
-                          fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em', padding: '2px 8px',
+                          fontSize: 10.5, lineHeight: 1.2, fontWeight: 800, letterSpacing: '0.1em', padding: '1px 8px',
                           borderRadius: 999, background: LIVE_RED, color: '#fff',
                         }}>
                           TODAY
                         </span>
                       )}
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
                         {weekday(d.date) || `Day ${d.day}`}
                       </div>
                       <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 800, marginTop: 2, lineHeight: 1 }}>
                         {d.date ? Number(d.date.slice(8, 10)) : d.day}
                       </div>
-                      <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.06em' }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.06em' }}>
                         DAY {d.day}
                       </div>
                       <div style={{ marginTop: 4, height: 11 }}>
@@ -729,6 +748,8 @@ function MeetCard({ meet, active, onSelect }) {
   const prog = dayProgress(meet)
   return (
     <button
+      type="button"
+      aria-pressed={active}
       onClick={onSelect}
       className="live-daychip"
       style={{

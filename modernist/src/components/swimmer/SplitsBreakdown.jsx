@@ -151,12 +151,14 @@ export default function SplitsBreakdown({ splits, eventName, roundType, totalCs,
       : { color: FINALS_COLOR, dash: null, marker: 'circle' }
 
     chart = (
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: 480, height: 'auto', display: 'block' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img"
+        aria-label={`Lap times chart${eventName ? ` for ${eventName}` : ''}: ${n} laps, fastest ${fmtSplitComma(minCs)}, slowest ${fmtSplitComma(maxCs)}. Full figures are in the table below.`}
+        style={{ width: '100%', maxWidth: 480, height: 'auto', display: 'block' }}>
         {/* gridlines + y-axis second labels */}
         {ticks.map((t) => (
           <g key={t}>
             <line x1={PX} y1={y(t)} x2={W - 16} y2={y(t)} stroke={GRID} strokeWidth="1" />
-            <text x={PX - 6} y={y(t) + 3} textAnchor="end" fill={AXIS_TEXT} style={{ fontSize: 9, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+            <text x={PX - 6} y={y(t) + 3} textAnchor="end" fill={AXIS_TEXT} style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
               {Math.round(t / 100)}s
             </text>
           </g>
@@ -215,16 +217,16 @@ export default function SplitsBreakdown({ splits, eventName, roundType, totalCs,
       {canToggle ? (
         <div className="seg">
           {[50, 100].map((v) => (
-            <button key={v} type="button" className={`seg-opt${by === v ? ' on' : ''}`} onClick={() => setBy(v)}
-              style={{ fontSize: 10, padding: '3px 8px' }}>
+            <button key={v} type="button" className={`seg-opt${by === v ? ' on' : ''}`} onClick={() => setBy(v)} aria-pressed={by === v}
+              style={{ fontSize: 11, padding: '3px 8px' }}>
               By {v}
             </button>
           ))}
         </div>
       ) : <span />}
       <button type="button" className="btn btn-secondary btn-icon" onClick={() => setFs((f) => !f)}
-        style={{ width: 26, height: 26, minWidth: 26 }}
-        aria-label={fs ? 'Exit fullscreen' : 'Fullscreen'}>
+        style={{ width: 32, height: 32, minWidth: 32, minHeight: 32 }}
+        aria-label={fs ? 'Exit fullscreen' : 'Fullscreen'} title={fs ? 'Exit fullscreen' : 'Fullscreen'}>
         {fs ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
       </button>
     </div>

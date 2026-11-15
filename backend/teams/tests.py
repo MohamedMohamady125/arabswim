@@ -468,3 +468,72 @@ class BoardMemberApiTests(TestCase):
         res = self.client.post('/api/v1/board-members/',
                                {'team': self.team.id, 'name': 'Nope'})
         self.assertEqual(res.status_code, 403)
+
+
+class TeamRankingEndpointTests(TestCase):
+    """/teams/<id>/ranking/: clubs of one country ranked by medals won for the
+    team; zero-medal peers and clubs of other countries stay out."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from medals.models import Medal
+        cls.uae = Country.objects.create(name='UAE', code='UAE', region='GCC')
+        cls.egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        cls.event = Event.objects.create(name='100 M Freestyle', distance=100,
+                                         stroke='Freestyle', is_relay=False)
+        cls.champ = Championship.objects.create(
+            name='UAE Open', date='2026-06-01', pool='LCM', country=cls.uae)
+        cls.big = Team.objects.create(name='Big Club', country=cls.uae)
+        cls.small = Team.objects.create(name='Small Club', country=cls.uae)
+        cls.empty = Team.objects.create(name='Empty Club', country=cls.uae)
+        cls.abroad = Team.objects.create(name='Cairo Club', country=cls.egy)
+
+        def medal(team_name, medal_type, n):
+            sw = Swimmer.objects.create(name=f'{team_name} {medal_type} {n}', sex='M',
+                                        nationality=cls.uae, club=team_name)
+            res = Result.objects.create(swimmer=sw, championship=cls.champ, event=cls.event,
+                                        round_type='Finals', category='', team=team_name,
+                                        time_centiseconds=5500 + n)
+            Medal.objects.create(swimmer=sw, championship=cls.champ, event=cls.event,
+                                 result=res, medal_type=medal_type)
+
+        medal('Big Club', 'GOLD', 1)
+        medal('Big Club', 'GOLD', 2)
+        medal('Big Club', 'BRONZE', 3)
+        medal('Small Club', 'SILVER', 1)
+        medal('Cairo Club', 'GOLD', 1)
+
+    def test_ranks_same_country_clubs_by_medals(self):
+        rows = self.client.get(f'/api/v1/teams/{self.small.id}/ranking/').json()
+        self.assertEqual([r['team_name'] for r in rows], ['Big Club', 'Small Club'])
+        self.assertEqual([r['rank'] for r in rows], [1, 2])
+        self.assertEqual((rows[0]['gold'], rows[0]['bronze'], rows[0]['total']), (2, 1, 3))
+        self.assertTrue(rows[1]['is_current'])
+        self.assertFalse(rows[0]['is_current'])
+
+    def test_requested_team_without_medals_still_listed(self):
+        rows = self.client.get(f'/api/v1/teams/{self.empty.id}/ranking/').json()
+        mine = [r for r in rows if r['is_current']]
+        self.assertEqual(len(mine), 1)
+        self.assertEqual(mine[0]['total'], 0)
+        self.assertEqual(mine[0]['rank'], len(rows))
+        self.assertNotIn('Cairo Club', [r['team_name'] for r in rows])
+
+    def test_stats_and_depth_survive_bad_input(self):
+        stats = self.client.get(f'/api/v1/teams/{self.big.id}/stats/').json()
+        self.assertEqual(stats['medals']['total'], 3)
+        self.assertEqual(stats['records'], 0)
+        self.assertEqual(self.client.get(f'/api/v1/teams/{self.big.id}/depth/?event=abc').status_code, 200)
+        self.assertEqual(self.client.get('/api/v1/coaches/?country=abc&team=x').status_code, 200)
+
+    def test_roster_includes_swimmers_assigned_without_results(self):
+        """A swimmer whose club is set by hand shows on the roster before
+        their first result, and the roster matches the stats count."""
+        Swimmer.objects.create(name='New Signing', sex='F', nationality=self.uae, club='big club')
+        profile = self.client.get(f'/api/v1/teams/{self.big.id}/profile/').json()
+        names = [s['name'] for s in profile['roster']]
+        self.assertIn('New Signing', names)
+        self.assertEqual(len(names), len(set(names)))
+        stats = self.client.get(f'/api/v1/teams/{self.big.id}/stats/').json()
+        self.assertEqual(stats['swimmers'], len(names))
+        self.assertEqual(self.client.get('/api/v1/teams/?country=abc').status_code, 200)

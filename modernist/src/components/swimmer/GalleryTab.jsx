@@ -3,20 +3,25 @@ import { Play, X } from 'lucide-react'
 import { getMediaItems } from '../../api/media'
 import { Loading, Empty } from '../ui'
 import { mediaUrl } from '../../utils'
+import LoadFailed from './LoadFailed'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
 export default function GalleryTab({ swimmerId }) {
   const [media, setMedia] = useState(null)
   const [lightbox, setLightbox] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
+    setFailed(false)
+    setMedia(null)
     getMediaItems({ swimmer: swimmerId })
       .then((res) => { if (alive) setMedia(list(res.data)) })
-      .catch(() => { if (alive) setMedia([]) })
+      .catch(() => { if (alive) { setMedia([]); setFailed(true) } })
     return () => { alive = false }
-  }, [swimmerId])
+  }, [swimmerId, reloadKey])
 
   // Jakob's Law: Escape closes the photo viewer
   useEffect(() => {
@@ -27,6 +32,7 @@ export default function GalleryTab({ swimmerId }) {
   }, [lightbox])
 
   if (media === null) return <Loading label="Loading media" />
+  if (failed) return <LoadFailed what="Photos and videos" onRetry={() => setReloadKey((k) => k + 1)} />
 
   const photos = media.filter((m) => m.media_type === 'PHOTO' && m.image)
   const videos = media.filter((m) => m.media_type === 'VIDEO' && m.video_url)

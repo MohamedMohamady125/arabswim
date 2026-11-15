@@ -99,7 +99,7 @@ class TeamViewSet(viewsets.ModelViewSet):
         country = self.request.query_params.get('country')
         is_national = self.request.query_params.get('is_national_team')
         if country:
-            qs = qs.filter(country_id=country)
+            qs = qs.filter(country_id=country) if country.isdigit() else qs.none()
         if is_national and is_national.lower() in ('true', 'false'):
             qs = qs.filter(is_national_team=is_national.lower() == 'true')
         is_academy = self.request.query_params.get('is_academy')
@@ -150,9 +150,14 @@ class TeamViewSet(viewsets.ModelViewSet):
         serializer = TeamDetailSerializer(team)
 
         # Roster
+        # Everyone who has raced for the team, plus swimmers whose current
+        # club is set to it (e.g. added by an admin before their first
+        # result) — a manual club assignment always shows. Same scope as
+        # the swimmer count in /stats/.
         roster = Swimmer.objects.filter(
-            id__in=self._roster_ids(team), is_relay_team=False,
-        ).select_related('nationality')
+            Q(id__in=self._roster_ids(team)) | Q(club__iexact=team.name),
+            is_relay_team=False,
+        ).select_related('nationality').distinct()
         roster_data = SwimmerListSerializer(roster, many=True).data
 
         # Best swimmers: by max FINA points across full report
@@ -233,12 +238,13 @@ class TeamViewSet(viewsets.ModelViewSet):
         event_filter = request.query_params.get('event')
         gender = request.query_params.get('gender')
         year = request.query_params.get('year')
+        # Postel's Law: a malformed id/year matches nothing instead of a 500
         if event_filter:
-            results = results.filter(event_id=event_filter)
+            results = results.filter(event_id=event_filter) if event_filter.isdigit() else results.none()
         if gender:
             results = results.filter(swimmer__sex=gender)
         if year:
-            results = results.filter(championship__date__year=int(year))
+            results = results.filter(championship__date__year=int(year)) if year.isdigit() else results.none()
 
         data = []
         for r in results:
@@ -385,6 +391,8 @@ class TeamViewSet(viewsets.ModelViewSet):
         # with their best swim, where and when it was set
         event_id = request.query_params.get('event')
         if event_id:
+            if not event_id.isdigit():  # malformed id: an empty chart, not a 500
+                event_id = 0
             rows = (base.filter(event_id=event_id)
                     .select_related('swimmer', 'championship', 'event')
                     .order_by('time_centiseconds'))
@@ -672,6 +680,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     def stats(self, request, pk=None):
         """Aggregate stats for a team."""
         from django.db.models import Min
+        from records.models import Record
         team = self.get_object()
         swimmers = Swimmer.objects.filter(
             Q(club__iexact=team.name) | Q(results__team__iexact=team.name)
@@ -699,7 +708,10 @@ class TeamViewSet(viewsets.ModelViewSet):
             'results': results_qs.count(),
             'championships': champ_count,
             'medals': total_medals,
-            'records': Result.objects.none().count(),  # placeholder
+            # same scope as the /records/ endpoint, so the number matches the Records tab
+            'records': Record.objects.filter(
+                Q(swimmer__club__iexact=team.name) | Q(swimmer__results__team__iexact=team.name)
+            ).distinct().count(),
             'best_fina': {
                 'points': best_fina.fina_points,
                 'swimmer_name': best_fina.swimmer.name,

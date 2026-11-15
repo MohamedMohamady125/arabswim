@@ -7,6 +7,38 @@ from .models import Swimmer
 from .serializers import SwimmerListSerializer, SwimmerDetailSerializer, SwimmerCreateUpdateSerializer
 
 
+def swimmer_name_search(qs, raw):
+    """Forgiving name search (Postel's Law): case, extra spaces, accents typed
+    by the visitor and word order never matter; nicknames match too; and
+    "el kamash" finds "ELKAMASH" (and the reverse) by also comparing with the
+    spaces squeezed out. Every word must match somewhere in the name."""
+    import unicodedata
+    from django.db.models import Q, Value, Exists, OuterRef
+    from django.db.models.functions import Replace
+    from .models import SwimmerNickname
+    text = ' '.join(str(raw or '').replace('\x00', '').split())
+    if not text:
+        return qs
+    plain = ''.join(c for c in unicodedata.normalize('NFKD', text) if not unicodedata.combining(c))
+    words = Q()
+    for typed, bare in zip(text.split(), plain.split() if len(plain.split()) == len(text.split()) else text.split()):
+        one = Q(name__icontains=typed) | Exists(
+            SwimmerNickname.objects.filter(swimmer=OuterRef('pk'), nickname__icontains=typed))
+        if bare != typed:
+            one |= Q(name__icontains=bare)
+        words &= one
+    squeezed = plain.replace(' ', '')
+    if len(squeezed) >= 3:
+        qs = qs.annotate(_name_squeezed=Replace('name', Value(' '), Value('')))
+        words |= Q(_name_squeezed__icontains=squeezed)
+    return qs.filter(words)
+
+
+class SwimmerSearchFilter(filters.SearchFilter):
+    def filter_queryset(self, request, queryset, view):
+        return swimmer_name_search(queryset, request.query_params.get(self.search_param, ''))
+
+
 class SwimmerPagination(PageNumberPagination):
     page_size = 50
     page_size_query_param = 'page_size'
@@ -16,7 +48,7 @@ class SwimmerPagination(PageNumberPagination):
 class SwimmerViewSet(viewsets.ModelViewSet):
     queryset = Swimmer.objects.select_related('nationality', 'account').prefetch_related('nicknames')
     pagination_class = SwimmerPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [SwimmerSearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['name', 'date_of_birth', 'created_at']
 
@@ -103,22 +135,30 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                 'name')
         nationality = self.request.query_params.get('nationality')
         sex = self.request.query_params.get('sex')
+        if nationality and not str(nationality).isdigit():
+            return qs.none()  # junk id matches nobody instead of raising a 500
         if nationality:
             qs = qs.filter(nationality_id=nationality)
         if sex:
             qs = qs.filter(sex=sex)
+        # A–Z jump on the Swimmers list: first letter of the name as shown
+        letter = (self.request.query_params.get('letter') or '').strip()[:1]
+        if letter and self.action == 'list':
+            qs = qs.filter(name__istartswith=letter)
         return qs
 
     @action(detail=False, methods=['get'])
     def search(self, request):
         q = request.query_params.get('q', '')
-        qs = Swimmer.objects.select_related('nationality').filter(name__icontains=q)
+        qs = swimmer_name_search(Swimmer.objects.select_related('nationality', 'account'), q)
         # The merge picker needs to find EVERY duplicate — including swimmers
         # left with an unresolved (region OTHER) nationality or relay-team
         # placeholders created during import. Public search hides those.
         if request.query_params.get('include_all') not in ('1', 'true', 'True'):
             qs = qs.exclude(nationality__region='OTHER').exclude(is_relay_team=True)
         nationality = request.query_params.get('nationality')
+        if nationality and not str(nationality).isdigit():
+            return Response([])
         if nationality:
             qs = qs.filter(nationality_id=nationality)
         swimmers = qs[:20]
@@ -303,7 +343,7 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         # Use the requested standard, or fall back to the latest one
         standard_id = request.query_params.get('standard')
         standard = None
-        if standard_id:
+        if standard_id and str(standard_id).isdigit():
             standard = QualifyingStandard.objects.filter(id=standard_id).first()
         if not standard:
             standard = QualifyingStandard.objects.first()
@@ -911,7 +951,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     def compare(self, request):
         """Compare up to 5 swimmers side-by-side."""
         ids = request.query_params.get('ids', '')
-        id_list = [i.strip() for i in ids.split(',') if i.strip()][:5]
+        # digits only: a hand-edited ?ids=abc used to raise a 500
+        id_list = [i.strip() for i in ids.split(',') if i.strip().isdigit()][:5]
         if len(id_list) < 2:
             return Response({'error': 'At least 2 swimmer IDs required'}, status=400)
 
@@ -1512,39 +1553,62 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         )
 
         gender = swimmer.sex  # rank within same gender
+        swimmer_bests = list(swimmer_bests)
+
+        # One query for the whole field instead of four per event per scope
+        # (a 13-event swimmer used to cost ~150 queries / 2s): every rival's
+        # best per event+pool in the widest scope, ranked in memory.
+        if 'arab' in scopes:
+            field_filter = {'swimmer__nationality__region__in': ['ARAB', 'GCC']}
+        else:
+            field_filter = {'swimmer__nationality_id': nat.id}
+        field = (
+            Result.objects.filter(
+                event_id__in={r['event_id'] for r in swimmer_bests},
+                is_hc=False,
+                time_centiseconds__gt=0,
+                swimmer__is_relay_team=False,
+                swimmer__sex=gender,
+                **field_filter,
+            )
+            .values('event_id', 'championship__pool', 'swimmer_id',
+                    'swimmer__nationality_id', 'swimmer__nationality__region',
+                    'swimmer__date_of_birth', 'swimmer__birth_year')
+            .annotate(pb=Min('time_centiseconds'))
+        )
+        by_event = {}
+        for f in field:
+            by_event.setdefault((f['event_id'], f['championship__pool'] or ''), []).append(f)
+
+        def _in_scope(f, scope_name):
+            if scope_name == 'national':
+                return f['swimmer__nationality_id'] == nat.id
+            if scope_name == 'gcc':
+                return f['swimmer__nationality__region'] == 'GCC'
+            return True  # arab: the whole field
+
+        def _in_age(f):
+            dob = f['swimmer__date_of_birth']
+            if dob:
+                return dob.year >= birth_year
+            return f['swimmer__birth_year'] is not None and f['swimmer__birth_year'] >= birth_year
+
+        def _rank(rows, best):
+            return {'rank': sum(1 for f in rows if f['pb'] < best) + 1, 'total': len(rows)}
 
         data = []
         for row in swimmer_bests:
             eid = row['event_id']
             pool = row['championship__pool'] or ''
             best = row['best']
+            rivals = by_event.get((eid, pool), [])
 
             ranks = {}
-            for scope_name, scope_filter in scopes.items():
-                base_qs = Result.objects.filter(
-                    event_id=eid,
-                    championship__pool=pool,
-                    is_hc=False,
-                    time_centiseconds__gt=0,
-                    swimmer__is_relay_team=False,
-                    swimmer__sex=gender,
-                    **scope_filter,
-                )
-
-                def _rank(qs):
-                    # Count distinct swimmers with a strictly better best time
-                    better_count = (
-                        qs.values('swimmer_id')
-                        .annotate(pb=Min('time_centiseconds'))
-                        .filter(pb__lt=best)
-                        .count()
-                    )
-                    total = qs.values('swimmer_id').distinct().count()
-                    return {'rank': better_count + 1, 'total': total}
-
-                ranks[scope_name] = _rank(base_qs)
+            for scope_name in scopes:
+                scoped = [f for f in rivals if _in_scope(f, scope_name)]
+                ranks[scope_name] = _rank(scoped, best)
                 if age_q is not None:
-                    age_rank = _rank(base_qs.filter(age_q))
+                    age_rank = _rank([f for f in scoped if _in_age(f)], best)
                     age_rank['label'] = age_label
                     ranks[scope_name]['age'] = age_rank
 
@@ -1572,6 +1636,8 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             return Response({'seasons': []})
 
         event_id = request.query_params.get('event')
+        if event_id and not str(event_id).isdigit():
+            event_id = None  # junk falls back to the default event, not a 500
         pool = request.query_params.get('pool') or 'LCM'
         own = Result.objects.filter(
             swimmer=swimmer, swimmer__is_relay_team=False,

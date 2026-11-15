@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Trash2, Edit3 } from 'lucide-react'
 import { getArticles, createArticle, updateArticle, deleteArticle } from '../api/news'
 import { getCountries } from '../api/core'
 import { getTeams, getTeam } from '../api/teams'
 import Flag from '../components/Flag'
-import { PageHead, Loading, notify, Empty, Pager, Seg, Modal } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Pager, Seg, Modal, FilterBar } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import { CropUpload } from '../components/ImageCropper'
@@ -20,9 +20,21 @@ const STATUS_TABS = [
 
 const isRTLText = (text) => /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(text || '')
 
+// cut on a word boundary so Arabic and English excerpts never end mid-word
 function excerpt(body, n = 100) {
-  const s = String(body || '')
-  return s.length > n ? `${s.slice(0, n)}…` : s
+  const s = String(body || '').replace(/\s+/g, ' ').trim()
+  if (s.length <= n) return s
+  const cut = s.slice(0, n)
+  const sp = cut.lastIndexOf(' ')
+  return `${(sp > n * 0.6 ? cut.slice(0, sp) : cut).trim()}…`
+}
+
+const AR_FONT = "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif"
+const monthOf = (a) => String(a.published_at || a.created_at || '').slice(0, 7)
+const monthLabel = (ym) => {
+  const [y, m] = ym.split('-').map(Number)
+  if (!y || !m) return 'Undated'
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 }
 
 export function ArticleModal({ article, onClose, onSaved }) {
@@ -94,6 +106,8 @@ export function ArticleModal({ article, onClose, onSaved }) {
       } else {
         await createArticle(fd)
       }
+      // Peak-End Rule: the last step confirms what happened
+      notify(form.status === 'PUBLISHED' ? (article ? 'Article saved. It is live on the site.' : 'Article published.') : 'Draft saved. Only admins can see it.')
       onSaved()
     } catch (err) {
       setError(err.response?.data?.detail || err.response?.data?.title?.[0]
@@ -189,17 +203,35 @@ export default function News() {
   const [articles, setArticles] = useState([])
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(1)
+  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
+  const [country, setCountry] = useState('')
+  const [countries, setCountries] = useState([])
   const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
   const [editArticle, setEditArticle] = useState(null) // null=closed, {}=create, article=edit
   const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    getCountries().then((res) => {
+      const all = Array.isArray(res.data) ? res.data : res.data?.results || []
+      setCountries(all.filter((c) => c.region === 'ARAB' || c.region === 'GCC'))
+    }).catch(() => {})
+  }, [])
+
+  // Doherty Threshold: wait for a pause in typing instead of reloading on every
+  // letter. Postel's Law: surrounding and doubled spaces are ignored.
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchInput.trim().replace(/\s+/g, ' ')); setPage(1) }, 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
   useEffect(() => {
     let alive = true
     setLoading(true)
     const status = isAdmin ? statusFilter || undefined : 'PUBLISHED'
-    getArticles({ status, search: search || undefined, page, page_size: PAGE_SIZE })
+    getArticles({ status, search: search || undefined, country: country || undefined, page, page_size: PAGE_SIZE })
       .then((res) => {
         if (!alive) return
         const d = res.data
@@ -207,11 +239,12 @@ export default function News() {
         if (!isAdmin) list = list.filter((a) => a.status === 'PUBLISHED')
         setArticles(list)
         setCount(Array.isArray(d) ? d.length : d?.count || list.length)
+        setFailed(false)
       })
-      .catch(() => alive && setArticles([]))
+      .catch(() => { if (alive) { setArticles([]); setCount(0); setFailed(true) } })
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [page, search, statusFilter, isAdmin, reloadKey])
+  }, [page, search, country, statusFilter, isAdmin, reloadKey])
 
   const handleDelete = async (a) => {
     if (!window.confirm(`Delete article "${a.title}"? This cannot be undone.`)) return
@@ -219,157 +252,186 @@ export default function News() {
       await deleteArticle(a.id)
       setArticles((prev) => prev.filter((x) => x.id !== a.id))
       setCount((c) => Math.max(0, c - 1))
+      notify('Article deleted.')
     } catch {
       notify('Failed to delete article')
     }
   }
 
-  const statusTag = (a) =>
-    isAdmin ? (
-      <span className={`tag ${a.status === 'PUBLISHED' ? 'tag-accent' : 'tag-neutral'}`}>
-        {a.status === 'PUBLISHED' ? 'Published' : 'Draft'}
-      </span>
-    ) : null
+  const filtered = !!(search || country || statusFilter)
+  const clearFilters = () => { setSearchInput(''); setSearch(''); setCountry(''); setStatusFilter(''); setPage(1) }
+  const goPage = (p) => { setPage(p); window.scrollTo(0, 0) }
 
-  const adminBtns = (a) =>
-    isAdmin ? (
-      <span style={{ display: 'inline-flex', gap: 6 }}>
-        <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditArticle(a) }}>
-          <Edit3 size={13} /> Edit
-        </button>
-        <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(a) }}>
-          <Trash2 size={13} /> Delete
-        </button>
-      </span>
-    ) : null
+  // Von Restorff: one lead story, and only on the unfiltered front page. A
+  // search result or page 2 is a plain list, so nothing is mislabelled "lead".
+  const showLead = !filtered && page === 1 && articles.length > 0
+  const lead = showLead ? articles[0] : null
+  const rest = showLead ? articles.slice(1) : articles
 
-  const lead = articles[0]
-  const rest = articles.slice(1)
+  // Chunking: once the grid spans several months, each month gets a heading
+  const groups = useMemo(() => {
+    const months = [...new Set(rest.map(monthOf))]
+    if (rest.length <= 6 || months.length < 2) return [{ key: 'all', label: null, items: rest }]
+    return months.map((m) => ({ key: m, label: monthLabel(m), items: rest.filter((a) => monthOf(a) === m) }))
+  }, [rest])
+
+  // Admin tools sit in their own row under the card, outside the link, so a
+  // click on Edit/Delete can never open the article (and the markup is valid).
+  const meta = (a, size) => (
+    <div className="content-news-meta" style={{ fontSize: size }}>
+      {a.country_detail && <Flag code={a.country_detail.code} name={a.country_detail.name} />}
+      {a.country_detail && <span>{a.country_detail.name}</span>}
+      <span>{formatDate(a.published_at || a.created_at)}</span>
+      {isAdmin && (
+        <span className={`tag ${a.status === 'PUBLISHED' ? 'tag-accent' : 'tag-outline'}`}>
+          {a.status === 'PUBLISHED' ? 'Published' : 'Draft — not public'}
+        </span>
+      )}
+      {isAdmin && (
+        <span className="content-news-admin">
+          <button type="button" className="btn btn-ghost" aria-label={`Edit ${a.title}`} onClick={() => setEditArticle(a)}>
+            <Edit3 size={13} /> Edit
+          </button>
+          <button type="button" className="btn btn-ghost" aria-label={`Delete ${a.title}`} onClick={() => handleDelete(a)}>
+            <Trash2 size={13} /> Delete
+          </button>
+        </span>
+      )}
+    </div>
+  )
+
+  const card = (a) => {
+    const rtlT = isRTLText(a.title)
+    const rtlB = isRTLText(a.body)
+    return (
+      <article key={a.id} className="content-newscard">
+        <Link to={`/news/${a.id}`}>
+          {a.cover_image ? (
+            <div className="news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
+              <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" loading="lazy" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          ) : (
+            <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="micro">ArabSwiM</span>
+            </div>
+          )}
+          <h2 className="content-news-title" dir={rtlT ? 'rtl' : 'ltr'} style={{
+            fontFamily: rtlT ? AR_FONT : 'var(--font-heading)',
+            fontWeight: rtlT ? 700 : 800,
+            fontSize: rtlT ? 20 : 18,
+            lineHeight: rtlT ? 1.6 : 1.18,
+            letterSpacing: rtlT ? 0 : '-0.015em',
+          }}>
+            {a.title}
+          </h2>
+          {a.body && (
+            <p dir={rtlB ? 'rtl' : 'ltr'} style={{
+              fontSize: rtlB ? 16 : 13,
+              lineHeight: rtlB ? 1.8 : 1.5,
+              color: 'var(--color-accent-800)', margin: '0 0 8px',
+              fontFamily: rtlB ? AR_FONT : 'inherit',
+            }}>
+              {excerpt(a.body)}
+            </p>
+          )}
+        </Link>
+        {meta(a, 12)}
+      </article>
+    )
+  }
+
+  const leadRtlT = lead && isRTLText(lead.title)
+  const leadRtlB = lead && isRTLText(lead.body)
 
   return (
     <div>
-      <style>{`a:hover .news-cover.grayscale { filter: none; }`}</style>
       <PageHead kicker="Content" title="News" sub="Stories and reports from around Arab swimming">
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 14 }}>
-          <input
-            className="input"
-            style={{ maxWidth: 320 }}
-            inputMode="search"
-            placeholder="Search articles…"
-            aria-label="Search articles"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-          />
-          {isAdmin && (
-            <>
-              <Seg options={STATUS_TABS} value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1) }} />
-              <button type="button" className="btn btn-primary" onClick={() => setEditArticle({})}>Create article</button>
-            </>
-          )}
-        </div>
+        {isAdmin && (
+          <div style={{ marginTop: 14 }}>
+            <button type="button" className="btn btn-primary" onClick={() => setEditArticle({})}>Create article</button>
+          </div>
+        )}
       </PageHead>
 
-      {loading ? (
-        <Loading label="Loading news" />
-      ) : articles.length === 0 ? (
-        <Empty label="No articles found" hint={search ? 'Try a shorter or different search.' : (isAdmin ? 'Use "Create article" above to publish the first story.' : 'New stories will appear here.')} />
-      ) : (
-        <div className="pad-lg">
-          {/* lead story */}
-          <Link to={`/news/${lead.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 28, alignItems: 'start' }}>
-              {lead.cover_image && (
-                <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
-                  <img className="news-cover-img" src={mediaUrl(lead.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-              )}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div className="card-kicker">Lead story</div>
-                  {statusTag(lead)}
-                </div>
-                <div dir={isRTLText(lead.title) ? 'rtl' : 'ltr'} style={{
-                  fontFamily: isRTLText(lead.title) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'var(--font-heading)',
-                  fontWeight: isRTLText(lead.title) ? 700 : 800,
-                  fontSize: 29,
-                  lineHeight: isRTLText(lead.title) ? 1.7 : 1.06,
-                  letterSpacing: isRTLText(lead.title) ? 0 : '-0.025em',
-                  margin: '8px 0 12px', color: 'var(--color-accent-800)',
-                }}>
-                  {lead.title}
-                </div>
-                <p dir={isRTLText(lead.body) ? 'rtl' : 'ltr'} style={{
-                  fontSize: isRTLText(lead.body) ? 18 : 15,
-                  lineHeight: isRTLText(lead.body) ? 1.8 : 1.55,
-                  color: 'var(--color-accent-800)', margin: '0 0 14px',
-                  fontFamily: isRTLText(lead.body) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'inherit',
-                  textAlign: isRTLText(lead.body) ? 'justify' : 'left',
-                }}>
-                  {excerpt(lead.body, 300)}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 12, borderTop: '1px solid var(--color-divider)', fontSize: 13, color: 'var(--color-neutral-700)' }}>
-                  {lead.country_detail && <Flag code={lead.country_detail.code} name={lead.country_detail.name} />}
-                  {lead.country_detail && <span>{lead.country_detail.name}</span>}
-                  <span>{formatDate(lead.published_at || lead.created_at)}</span>
-                  <span style={{ flex: 1 }} />
-                  {adminBtns(lead)}
-                </div>
-              </div>
-            </div>
-          </Link>
+      {/* Common Region + Working Memory: every way to narrow the list is in one
+          bar, with the number of articles shown and one way back to everything */}
+      <FilterBar count={loading || failed ? null : count} noun={count === 1 ? 'article' : 'articles'} active={filtered} onClear={clearFilters}>
+        <input
+          className="input"
+          style={{ width: 260, maxWidth: '100%' }}
+          type="search"
+          placeholder="Search title or text…"
+          aria-label="Search articles"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+        />
+        <select className="select" style={{ width: 'auto', maxWidth: '100%' }} aria-label="Federation" value={country} onChange={(e) => { setCountry(e.target.value); setPage(1) }}>
+          <option value="">All federations</option>
+          {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {isAdmin && <Seg options={STATUS_TABS} value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1) }} />}
+      </FilterBar>
 
-          {/* remaining articles */}
-          {rest.length > 0 && (
-            <div className="rule-t" style={{ marginTop: 28, paddingTop: 24 }}>
-              <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '28px 24px' }}>
-                {rest.map((a) => (
-                  <Link key={a.id} to={`/news/${a.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                    {a.cover_image ? (
-                      <div className="grayscale news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
-                        <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                    ) : (
-                      <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span className="micro">ArabSwiM</span>
-                      </div>
-                    )}
-                    {isAdmin && <div style={{ marginTop: 8 }}>{statusTag(a)}</div>}
-                    <div dir={isRTLText(a.title) ? 'rtl' : 'ltr'} style={{
-                      fontFamily: isRTLText(a.title) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'var(--font-heading)',
-                      fontWeight: isRTLText(a.title) ? 700 : 800,
-                      fontSize: isRTLText(a.title) ? 20 : 18,
-                      lineHeight: isRTLText(a.title) ? 1.6 : 1.18,
-                      letterSpacing: isRTLText(a.title) ? 0 : '-0.015em',
-                      margin: '10px 0 6px', color: 'var(--color-accent-800)',
-                    }}>
-                      {a.title}
-                    </div>
-                    {a.body && (
-                      <p dir={isRTLText(a.body) ? 'rtl' : 'ltr'} style={{
-                        fontSize: isRTLText(a.body) ? 16 : 13,
-                        lineHeight: isRTLText(a.body) ? 1.8 : 1.5,
-                        color: 'var(--color-accent-800)', margin: '0 0 8px',
-                        fontFamily: isRTLText(a.body) ? "'Al-Jazeera', 'Helvetica Neue', Arial, sans-serif" : 'inherit',
-                      }}>
-                        {excerpt(a.body)}
-                      </p>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                      {a.country_detail && <Flag code={a.country_detail.code} name={a.country_detail.name} />}
-                      {a.country_detail && <span>{a.country_detail.name}</span>}
-                      <span>{formatDate(a.published_at || a.created_at)}</span>
-                      <span style={{ flex: 1 }} />
-                      {adminBtns(a)}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
+      {loading && articles.length === 0 ? (
+        <Loading label="Loading news" />
+      ) : failed ? (
+        <Empty label="News could not be loaded" hint="Check your connection and try again.">
+          <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+        </Empty>
+      ) : articles.length === 0 ? (
+        <Empty label="No articles found" hint={filtered ? 'Nothing matches these filters. Try a shorter search or another federation.' : (isAdmin ? 'Use "Create article" above to publish the first story.' : 'New stories will appear here.')}>
+          {filtered && <button type="button" className="btn btn-secondary" onClick={clearFilters}>Show all news</button>}
+        </Empty>
+      ) : (
+        <div className="pad-lg" aria-busy={loading} style={{ opacity: loading ? 0.55 : 1 }}>
+          {lead && (
+            <article className="content-newscard content-newslead">
+              <Link to={`/news/${lead.id}`} className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 28, alignItems: 'start' }}>
+                {lead.cover_image && (
+                  <div className="news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
+                    <img className="news-cover-img" src={mediaUrl(lead.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                )}
+                <div>
+                  <div className="card-kicker">Latest story</div>
+                  <h2 className="content-news-title" dir={leadRtlT ? 'rtl' : 'ltr'} style={{
+                    fontFamily: leadRtlT ? AR_FONT : 'var(--font-heading)',
+                    fontWeight: leadRtlT ? 700 : 800,
+                    fontSize: 29,
+                    lineHeight: leadRtlT ? 1.7 : 1.06,
+                    letterSpacing: leadRtlT ? 0 : '-0.025em',
+                    margin: '8px 0 12px',
+                  }}>
+                    {lead.title}
+                  </h2>
+                  <p dir={leadRtlB ? 'rtl' : 'ltr'} style={{
+                    fontSize: leadRtlB ? 18 : 15,
+                    lineHeight: leadRtlB ? 1.8 : 1.55,
+                    color: 'var(--color-accent-800)', margin: '0 0 14px',
+                    fontFamily: leadRtlB ? AR_FONT : 'inherit',
+                    textAlign: leadRtlB ? 'justify' : 'left',
+                  }}>
+                    {excerpt(lead.body, 300)}
+                  </p>
+                  <span className="content-news-more" dir={leadRtlT ? 'rtl' : 'ltr'} style={leadRtlT ? { fontFamily: AR_FONT } : undefined}>
+                    {leadRtlT ? 'اقرأ الخبر كاملاً ←' : 'Read the full story →'}
+                  </span>
+                </div>
+              </Link>
+              {meta(lead, 13)}
+            </article>
           )}
 
-          <Pager page={page} pageSize={PAGE_SIZE} count={count} onPage={setPage} />
+          {groups.map((g, gi) => g.items.length > 0 && (
+            <section key={g.key} className={lead || gi > 0 ? 'rule-t' : undefined} style={lead || gi > 0 ? { marginTop: 28, paddingTop: 24 } : undefined}>
+              {g.label && <div className="kicker" style={{ marginBottom: 14 }}>{g.label}</div>}
+              <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '28px 24px' }}>
+                {g.items.map(card)}
+              </div>
+            </section>
+          ))}
+
+          <Pager page={page} pageSize={PAGE_SIZE} count={count} onPage={goPage} />
         </div>
       )}
 

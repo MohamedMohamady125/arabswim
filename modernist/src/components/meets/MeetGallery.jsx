@@ -28,6 +28,7 @@ export default function MeetGallery({ meetId, isAdmin }) {
   }, [lightbox])
 
   const load = () => {
+    setFailed(false)
     getOrCreateAlbumForChampionship(meetId)
       .then((res) => setAlbum(res.data))
       .catch(() => setFailed(true))
@@ -80,7 +81,14 @@ export default function MeetGallery({ meetId, isAdmin }) {
       .catch(() => setError('That item could not be deleted. Please try again.'))
   }
 
-  if (failed) return <Empty label="No gallery for this meet" hint="Photos and videos will appear here once they are added." />
+  // a failed load is not an empty gallery: say so and offer a retry
+  if (failed) {
+    return (
+      <Empty label="The gallery could not be loaded" hint="Check your connection and try again.">
+        <button type="button" className="btn btn-secondary" onClick={load}>Try again</button>
+      </Empty>
+    )
+  }
   if (!album) return <Loading label="Loading gallery" />
 
   return (
@@ -116,7 +124,10 @@ export default function MeetGallery({ meetId, isAdmin }) {
       {error && <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
       {items.length === 0 ? (
-        <Empty label={isAdmin ? 'No media yet — add photos or video links' : 'Media from this meet will appear here'} />
+        <Empty
+          label={isAdmin ? 'No photos or videos yet' : 'No photos or videos from this meet yet'}
+          hint={isAdmin ? 'Use "Add photos" or paste a YouTube / Instagram link above.' : 'They appear here as soon as they are added.'}
+        />
       ) : (
         <div className="gallery-grid" style={{ gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)' }}>
           {items.map((item) => (

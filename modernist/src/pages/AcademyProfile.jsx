@@ -145,48 +145,26 @@ export default function AcademyProfile() {
             </div>
           )}
 
-          <div style={{
-            background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
-            boxShadow: '0 1px 6px rgba(11,41,72,.06)', padding: '18px 20px',
-          }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', marginBottom: 12 }}>
-              Academy Information
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-              {country && (
-                <div style={infoCell}>
-                  <span style={infoLabel}>Country</span>
-                  <span style={{ ...infoValue, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                    <Flag code={country.code} name={country.name} /> {country.name}
-                  </span>
-                </div>
-              )}
-              {a.city && (
-                <div style={infoCell}>
-                  <span style={infoLabel}>City</span>
-                  <span style={infoValue}>{a.city}</span>
-                </div>
-              )}
-              {a.phone && (
-                <div style={infoCell}>
-                  <span style={infoLabel}>Phone</span>
-                  <span style={infoValue}>{a.phone}</span>
-                </div>
-              )}
-              {a.email && (
-                <div style={infoCell}>
-                  <span style={infoLabel}>Email</span>
-                  <span style={{ ...infoValue, wordBreak: 'break-all' }}>{a.email}</span>
-                </div>
-              )}
-            </div>
-            {a.address && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 14, fontSize: 13.5, color: '#37567a' }}>
+          {/* Occam's Razor: country, city, phone and email are already in the
+              header (as working links), so this card carries only what the
+              header does not — the address */}
+          {a.address && (
+            <div style={{
+              background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
+              boxShadow: '0 1px 6px rgba(11,41,72,.06)', padding: '18px 20px',
+            }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', marginBottom: 4 }}>
+                Where to find us
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 13.5, color: '#37567a' }}>
                 <span style={heroIcon} aria-hidden="true">{svg.pin}</span>
                 <span style={{ paddingTop: 5 }}>{a.address}</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+          {!a.description && !a.address && (
+            <Empty label="This academy has not added its details yet" hint="Training times appear in the calendar below when they are published." />
+          )}
 
           {/* Training calendar */}
           <div style={{ marginTop: 16 }}>

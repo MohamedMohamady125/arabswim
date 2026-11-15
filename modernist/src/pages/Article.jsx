@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getArticle, deleteArticle } from '../api/news'
+import { getArticle, getArticles, deleteArticle } from '../api/news'
 import Flag from '../components/Flag'
-import { Loading, notify, Empty } from '../components/ui'
+import { Loading, notify, Empty, BackLink } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import { Edit3, Trash2 } from 'lucide-react'
@@ -20,6 +20,20 @@ export default function Article() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [more, setMore] = useState([])
+
+  // Peak-End Rule: the page ends with the next stories, not a dead end
+  useEffect(() => {
+    let alive = true
+    getArticles({ status: 'PUBLISHED', page_size: 4 })
+      .then((res) => {
+        if (!alive) return
+        const list = Array.isArray(res.data) ? res.data : res.data?.results || []
+        setMore(list.filter((a) => String(a.id) !== String(id) && a.status === 'PUBLISHED').slice(0, 3))
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [id])
 
   useEffect(() => {
     let alive = true
@@ -48,44 +62,34 @@ export default function Article() {
   const textDir = isRTL ? 'rtl' : 'ltr'
 
   return (
-    <div style={{ background: '#fff', minHeight: '80vh' }}>
+    <div style={{ background: 'var(--color-bg)', minHeight: '80vh' }}>
       {/* Top accent bar */}
       <div style={{ height: 3, background: 'linear-gradient(90deg, var(--asw-gold), var(--color-accent))' }} />
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 60px' }}>
 
-        {/* Breadcrumb */}
-        <div style={{ marginBottom: 12 }}>
-          {/* Fitts's Law: 40px tall back link */}
-          <Link to="/news" style={{
-            display: 'inline-flex', alignItems: 'center', minHeight: 40,
-            fontSize: 13, textDecoration: 'none', color: 'var(--color-accent)',
-            fontWeight: 600, letterSpacing: '0.02em',
-          }}>← {isRTL ? 'جميع الأخبار' : 'All news'}</Link>
+        {/* Jakob's Law: one back link, top-left. Occam's Razor: the "News"
+            kicker that repeated it is gone; the row below only exists for admins */}
+        <div dir={textDir} style={{ marginBottom: 12 }}>
+          <BackLink to="/news">{isRTL ? 'جميع الأخبار' : 'All news'}</BackLink>
         </div>
 
-        {/* Category + status */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
-        }}>
-          <span style={{
-            fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
-            color: 'var(--color-accent)', fontFamily: 'var(--font-heading)',
-          }}>{isRTL ? 'أخبار' : 'News'}</span>
-          {isAdmin && article.status !== 'PUBLISHED' && <span className="tag tag-neutral">Draft</span>}
-          {isAdmin && (
+        {isAdmin && (
+          <div className="content-article-admin">
+            <span className={`tag ${article.status === 'PUBLISHED' ? 'tag-accent' : 'tag-outline'}`}>
+              {article.status === 'PUBLISHED' ? 'Published' : 'Draft — only admins can see this'}
+            </span>
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
-              <button type="button" className="btn btn-secondary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, fontSize: 12 }}
-                onClick={() => setEditing(true)}>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)}>
                 <Edit3 size={13} /> Edit
               </button>
               <button type="button" className="btn btn-secondary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, fontSize: 12, borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)' }}
+                style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)' }}
                 onClick={async () => {
                   if (!window.confirm(`Delete article "${article.title}"? This cannot be undone.`)) return
                   try {
                     await deleteArticle(article.id)
+                    notify('Article deleted.')
                     navigate('/news')
                   } catch {
                     notify('Failed to delete article')
@@ -94,8 +98,8 @@ export default function Article() {
                 <Trash2 size={13} /> Delete
               </button>
             </span>
-          )}
-        </div>
+          </div>
+        )}
         {editing && (
           <ArticleModal article={article} onClose={() => setEditing(false)}
             onSaved={() => { setEditing(false); setReloadKey((k) => k + 1) }} />
@@ -118,8 +122,8 @@ export default function Article() {
         <div dir={textDir} style={{
           display: 'flex', alignItems: 'center', gap: 10,
           paddingBottom: 18, marginBottom: 24,
-          borderBottom: '1px solid #e0e0e0',
-          fontSize: 14, color: '#6b6b6b',
+          borderBottom: '1px solid var(--color-divider)',
+          fontSize: 14, color: 'var(--color-neutral-700)',
           fontFamily: isRTL ? AJ_FONTS : 'var(--font-body)',
         }}>
           {article.country_detail && (
@@ -128,10 +132,10 @@ export default function Article() {
                 <Flag code={article.country_detail.code} name={article.country_detail.name} />
                 <span style={{ fontWeight: 600 }}>{article.country_detail.name}</span>
               </Link>
-              <span style={{ color: '#ccc' }}>|</span>
+              <span aria-hidden="true" style={{ color: 'var(--color-neutral-400)' }}>|</span>
             </>
           )}
-          <span>{formatDate(article.published_at || article.created_at)}</span>
+          <bdi dir="ltr">{formatDate(article.published_at || article.created_at)}</bdi>
         </div>
 
         {/* ── Cover image ── */}
@@ -150,7 +154,7 @@ export default function Article() {
         {/* ── Article body ── */}
         <div dir={textDir} style={{ fontFamily: isRTL ? AJ_FONTS : 'var(--font-body)' }}>
           {paragraphs.length === 0 ? (
-            <p style={{ fontSize: 14, color: '#999' }}>No article body.</p>
+            <p style={{ fontSize: 14, color: 'var(--color-neutral-700)' }}>{isAdmin ? 'This article has no text yet. Use Edit above to add it.' : 'This article has no text.'}</p>
           ) : (
             paragraphs.map((p, i) => (
               <p key={i} style={{
@@ -175,7 +179,7 @@ export default function Article() {
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 10,
                 padding: '12px 18px', textDecoration: 'none',
-                background: '#f7f7f7', border: '1px solid #e0e0e0', borderRadius: 6,
+                background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', minHeight: 44,
                 color: 'var(--color-accent-800)', fontWeight: 600, fontSize: 15,
                 fontFamily: isRTL ? AJ_FONTS : 'var(--font-body)',
               }}
@@ -189,16 +193,32 @@ export default function Article() {
           </div>
         )}
 
-        {/* ── Footer ── */}
-        <div style={{
-          marginTop: 40, paddingTop: 8,
-          borderTop: '1px solid #e0e0e0',
-        }}>
-          <Link to="/news" style={{
-            display: 'inline-flex', alignItems: 'center', minHeight: 40,
-            fontSize: 13, textDecoration: 'none', color: 'var(--color-accent)',
-            fontWeight: 600,
-          }}>← {isRTL ? 'العودة إلى الأخبار' : 'Back to all news'}</Link>
+        {/* ── More news (end of the story) ── */}
+        <div style={{ marginTop: 40, paddingTop: 20, borderTop: '2px solid var(--color-text)' }}>
+          {more.length > 0 && (
+            <>
+              <div className="kicker" style={{ marginBottom: 6 }}>More news</div>
+              {more.map((a) => {
+                const rtl = /[\u0600-\u06FF\u0750-\u077F]/.test(a.title || '')
+                return (
+                  <Link key={a.id} to={`/news/${a.id}`} className="content-article-more">
+                    {a.cover_image
+                      ? <img src={mediaUrl(a.cover_image)} alt="" loading="lazy" />
+                      : <span className="content-article-more-ph" aria-hidden="true" />}
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <strong dir={rtl ? 'rtl' : 'ltr'} style={rtl ? { fontFamily: AJ_FONTS, lineHeight: 1.6 } : undefined}>{a.title}</strong>
+                      <span className="content-article-more-date">
+                        {a.country_detail?.name ? `${a.country_detail.name} · ` : ''}{formatDate(a.published_at || a.created_at)}
+                      </span>
+                    </span>
+                  </Link>
+                )
+              })}
+            </>
+          )}
+          <div dir={textDir} style={{ marginTop: 12 }}>
+            <BackLink to="/news">{isRTL ? 'العودة إلى الأخبار' : 'Back to all news'}</BackLink>
+          </div>
         </div>
       </div>
     </div>

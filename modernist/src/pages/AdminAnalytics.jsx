@@ -4,7 +4,7 @@ import {
   TrendingUp, TrendingDown,
 } from 'lucide-react'
 import { getAnalyticsSummary } from '../api/analytics'
-import { PageHead, Loading, Empty, Seg } from '../components/ui'
+import { PageHead, Loading, Empty, Seg, BackLink } from '../components/ui'
 import { formatNumber } from '../utils'
 
 const NAVY = 'var(--color-accent)'
@@ -159,6 +159,7 @@ export default function AdminAnalytics() {
   const [days, setDays] = useState(30)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     setLoading(true)
@@ -166,10 +167,25 @@ export default function AdminAnalytics() {
       .then((res) => setData(res.data))
       .catch(() => setData(null))
       .finally(() => setLoading(false))
-  }, [days])
+  }, [days, retry])
 
   if (loading && !data) return <Loading label="Loading analytics" />
-  if (!data) return <Empty label="Could not load analytics" hint="Check your connection and reload the page." />
+  if (!data) return (
+    <Empty label="Could not load analytics" hint="Check your connection and try again.">
+      <button type="button" className="btn btn-secondary" onClick={() => setRetry((n) => n + 1)}>Try again</button>
+    </Empty>
+  )
+
+  // Tesler's Law: the server counts hours in UTC; the chart is shifted to the
+  // viewer's own clock so nobody has to convert in their head.
+  const tzShift = Math.round(-new Date().getTimezoneOffset() / 60)
+  const hourly = Array.from({ length: 24 }, (_, local) => {
+    const utc = ((local - tzShift) % 24 + 24) % 24
+    const row = (data.hourly || []).find((h) => Number(h.hour) === utc)
+    return { hour: local, views: row?.views || 0 }
+  })
+  const busiest = hourly.reduce((a, b) => (b.views > a.views ? b : a), hourly[0])
+  const rangeLabel = RANGES.find((r) => r.value === days)?.label || `${data.days} days`
 
   const t = data.totals
   const deviceColors = { desktop: NAVY, mobile: GOLD, tablet: BLUE }
@@ -182,7 +198,8 @@ export default function AdminAnalytics() {
 
   return (
     <div className="asw-fade-up">
-      <PageHead kicker="Admin" title="Website Analytics" />
+      <div className="pad" style={{ paddingBottom: 0 }}><BackLink to="/admin">Dashboard</BackLink></div>
+      <PageHead kicker="Admin" title="Website Analytics" sub="Who visits the site, what they read and where they come from." />
 
       {/* Doherty Threshold: dim the old numbers while a new range loads */}
       <div className="pad" aria-busy={loading} style={{ display: 'grid', gap: 16, opacity: loading ? 0.55 : 1 }}>
@@ -196,7 +213,8 @@ export default function AdminAnalytics() {
           </span>
         </div>
 
-        {/* Totals */}
+        {/* Totals — Working Memory: the heading repeats which range the numbers cover */}
+        <div className="kicker">Last {rangeLabel} <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--color-neutral-700)' }}>— arrows compare with the {rangeLabel} before</span></div>
         <div className="qs-cards-8">
           <StatChip icon={Eye} value={formatNumber(t.views)} label="Page Views" growth={t.views_growth} />
           <StatChip icon={Users} value={formatNumber(t.visitors)} label="Unique Visitors" growth={t.visitors_growth} color={GOLD} />
@@ -275,8 +293,8 @@ export default function AdminAnalytics() {
         <Panel title="Traffic by Hour of Day">
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3 }}>
             {(() => {
-              const max = Math.max(...data.hourly.map((h) => h.views), 1)
-              return data.hourly.map((h) => (
+              const max = Math.max(...hourly.map((h) => h.views), 1)
+              return hourly.map((h) => (
                 <div key={h.hour} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                   <div title={`${h.hour}:00 — ${h.views} views`}
                     style={{ width: '100%', maxWidth: 20, height: Math.max(3, Math.round((h.views / max) * 110)), background: h.views ? NAVY : 'var(--color-neutral-200)' }} />
@@ -285,7 +303,9 @@ export default function AdminAnalytics() {
               ))
             })()}
           </div>
-          <div className="micro" style={{ marginTop: 6, textAlign: 'center' }}>Hours are in UTC</div>
+          <div className="micro" style={{ marginTop: 6, textAlign: 'center', textTransform: 'none', letterSpacing: 0 }}>
+            Hours are in your local time{busiest?.views ? ` · busiest hour: ${busiest.hour}:00–${(busiest.hour + 1) % 24}:00` : ''}
+          </div>
         </Panel>
       </div>
     </div>

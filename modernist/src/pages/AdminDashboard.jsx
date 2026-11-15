@@ -7,11 +7,11 @@ import { useFeatures } from '../context/FeaturesContext'
 import { FEATURE_GROUPS } from '../featureRegistry'
 import { getTeams } from '../api/teams'
 import { getAcademies } from '../api/academies'
-import { PageHead, SectHead, Loading, notify, Empty, Seg } from '../components/ui'
+import { PageHead, SectHead, Loading, notify, Empty, Seg, Done } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { CropUpload } from '../components/ImageCropper'
 
-function ClaimsQueue() {
+function ClaimsQueue({ onCount }) {
   const [claims, setClaims] = useState(null)
   const [busyId, setBusyId] = useState(null)
   const [preview, setPreview] = useState(null)
@@ -22,17 +22,20 @@ function ClaimsQueue() {
       .catch(() => setClaims([]))
   }
   useEffect(load, [])
+  useEffect(() => { if (claims) onCount?.(claims.length) }, [claims, onCount])
 
   const act = async (claim, action) => {
     setBusyId(claim.id)
     try {
       if (action === 'approve') {
         await approveClaim(claim.id)
+        notify(`Claim approved. ${claim.username} now manages ${claim.swimmer_name}.`)
       } else {
         // Cancel in the prompt means "do not decline" (it used to decline anyway)
         const note = window.prompt('Reason for declining (optional):')
         if (note === null) return
         await declineClaim(claim.id, note.trim())
+        notify('Claim declined.')
       }
       load()
     } catch (err) {
@@ -43,7 +46,7 @@ function ClaimsQueue() {
   }
 
   if (!claims) return <Loading label="Loading claims" />
-  if (claims.length === 0) return <Empty label="No pending claims" hint="New profile claims from athletes will appear here." />
+  if (claims.length === 0) return <Done title="No profile claims waiting">New claims from athletes will appear here.</Done>
 
   return (
     <div>
@@ -295,7 +298,7 @@ function SiteFeatures() {
   )
 }
 
-function PhotoQueue() {
+function PhotoQueue({ onCount }) {
   const [requests, setRequests] = useState(null)
   const [selected, setSelected] = useState(new Set())
 
@@ -305,6 +308,7 @@ function PhotoQueue() {
       .catch(() => setRequests([]))
   }
   useEffect(load, [])
+  useEffect(() => { if (requests) onCount?.(requests.length) }, [requests, onCount])
 
   const toggle = (id) => setSelected((prev) => {
     const next = new Set(prev)
@@ -341,19 +345,21 @@ function PhotoQueue() {
   }
 
   if (!requests) return <Loading label="Loading photo requests" />
-  if (requests.length === 0) return <Empty label="No pending photo requests" hint="New photos sent by swimmers and clubs will appear here." />
+  if (requests.length === 0) return <Done title="No photo requests waiting">New photos sent by swimmers and clubs will appear here.</Done>
 
   return (
     <div>
-      {selected.size > 0 && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>{selected.size} selected</span>
-          <button type="button" className="btn btn-primary" style={{ height: 30, fontSize: 12 }} onClick={bulkApprove}>Approve all</button>
-          <button type="button" className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} onClick={bulkReject}>Reject all</button>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set())}>Clear</button>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set(requests.map((r) => r.id)))}>Select all</button>
-        </div>
-      )}
+      {/* Working Memory + Fitts's Law: the bulk bar is always there, says how many
+          are selected, and its buttons name the number they act on */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span className="asw-num" style={{ fontSize: 13, fontWeight: 700 }}>{selected.size} of {requests.length} selected</span>
+        {selected.size < requests.length
+          ? <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set(requests.map((r) => r.id)))}>Select all</button>
+          : <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelected(new Set())}>Clear selection</button>}
+        <span style={{ flex: 1 }} />
+        <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} disabled={!selected.size} onClick={bulkReject}>Reject {selected.size || ''}</button>
+        <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} disabled={!selected.size} onClick={bulkApprove}>Approve {selected.size || ''}</button>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
         {requests.map((r) => (
           <div key={r.id} style={{
@@ -375,8 +381,8 @@ function PhotoQueue() {
               </div>
               <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                 {/* Von Restorff: outlined per card; the solid primary is "Approve all" above */}
-                <button type="button" className="btn btn-secondary" style={{ flex: 1, height: 24, fontSize: 12, padding: 0, borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} aria-label={`Approve the photo for ${r.swimmer_name}`} title="Approve" onClick={() => approveOne(r.id)}>✓</button>
-                <button type="button" className="btn btn-secondary" style={{ flex: 1, height: 24, fontSize: 12, padding: 0 }} aria-label={`Reject the photo for ${r.swimmer_name}`} title="Reject" onClick={() => rejectOne(r.id)}>✕</button>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1, minHeight: 32, fontSize: 12, padding: 0, borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} aria-label={`Approve the photo for ${r.swimmer_name}`} title="Approve" onClick={() => approveOne(r.id)}>✓</button>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1, minHeight: 32, fontSize: 12, padding: 0 }} aria-label={`Reject the photo for ${r.swimmer_name}`} title="Reject" onClick={() => rejectOne(r.id)}>✕</button>
               </div>
             </div>
           </div>
@@ -415,6 +421,7 @@ function PartnersManager() {
       fd.append('logo', file)
       fd.append('sort_order', String((partners?.length || 0) + 1))
       await createSponsor(fd)
+      notify(`${name.trim()} added to the partners strip.`)
       setName(''); setWebsite(''); setFile(null)
       load()
     } catch (err) {
@@ -496,7 +503,7 @@ function PartnersManager() {
       {!partners ? (
         <Loading label="Loading partners" />
       ) : partners.length === 0 ? (
-        <Empty label="No partners yet — add your first above" />
+        <Empty label="No partners yet" hint="Fill in the name and logo above, then press Add partner." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {partners.map((p, i) => (
@@ -540,8 +547,18 @@ const ACTION_LABELS = { create: 'Added', update: 'Edited', delete: 'Deleted' }
 function fmtWhen(iso) {
   try {
     const d = new Date(iso)
-    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   } catch { return '' }
+}
+const dayOf = (iso) => (iso ? new Date(iso).toDateString() : '')
+function dayLabel(iso) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return 'Earlier'
+  const today = new Date()
+  const yest = new Date(); yest.setDate(today.getDate() - 1)
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  if (d.toDateString() === yest.toDateString()) return 'Yesterday'
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 function EditHistory() {
@@ -561,6 +578,7 @@ function EditHistory() {
     setBusyId(entry.id)
     try {
       await revertChange(entry.id)
+      notify('Edit undone. The previous values are back.')
       load()
     } catch (err) {
       notify(err.response?.data?.error || 'Undo failed — please try again.')
@@ -580,8 +598,13 @@ function EditHistory() {
         <Empty label="No recent edits" hint="Manual edits to times, swimmers, meets and records will be listed here." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {log.map((e) => (
-            <div key={e.id} className="hair-b" style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 0', flexWrap: 'wrap' }}>
+          {log.map((e, i) => (
+            <div key={e.id}>
+            {/* Chunking: the 40 newest edits are split by day */}
+            {dayOf(e.created_at) !== dayOf(log[i - 1]?.created_at) && (
+              <div className="kicker" style={{ margin: i ? '18px 0 2px' : '0 0 2px' }}>{dayLabel(e.created_at)}</div>
+            )}
+            <div className="hair-b" style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 0', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 220 }}>
                 <div style={{ fontSize: 13 }}>
                   <span style={{ fontWeight: 700 }}>{ACTION_LABELS[e.action] || e.action}</span>
@@ -609,6 +632,7 @@ function EditHistory() {
                 {busyId === e.id ? 'Undoing…' : 'Undo'}
               </button>
             </div>
+            </div>
           ))}
         </div>
       )}
@@ -616,52 +640,102 @@ function EditHistory() {
   )
 }
 
+const TOOLS = [
+  ['Import results', '/import', 'Upload meet files, scrape federations, fix duplicates'],
+  ['Name matching', '/admin/name-match', 'Link Arabic-named swimmers to English profiles'],
+  ['Reports', '/reports', 'Medals, rankings, records and participation tables'],
+  ['Website analytics', '/admin/analytics', 'Visitors, page views and traffic sources'],
+]
+
 export default function AdminDashboard() {
+  // Hick's Law: the page used to be eight stacked sections with the two work
+  // queues at the very bottom. It is now four tabs, opening on what is waiting.
+  const [tab, setTab] = useState('inbox')
+  const [claimCount, setClaimCount] = useState(null)
+  const [photoCount, setPhotoCount] = useState(null)
+  const waiting = (claimCount || 0) + (photoCount || 0)
+  const counted = claimCount !== null && photoCount !== null
+
   return (
     <div>
-      <PageHead kicker="Admin" title="Dashboard" />
-      <div className="pad rule-b">
-        <SectHead title="Website Analytics" />
-        <div className="micro" style={{ marginBottom: 12 }}>
-          Visitors, page views, traffic sources, devices and more — updated live.
+      <PageHead kicker="Admin" title="Dashboard" sub="Requests waiting for you, site settings and admin tools." />
+
+      {/* Common Region + Similarity: the other admin pages are one row of
+          identical link tiles (no solid buttons competing with the tasks below) */}
+      <nav aria-label="Admin tools" className="content-tools rule-b">
+        {TOOLS.map(([label, to, hint]) => (
+          <Link key={to} to={to}>
+            <strong>{label} →</strong>
+            <span>{hint}</span>
+          </Link>
+        ))}
+      </nav>
+
+      <div className="tabbar rule-b">
+        <Seg
+          tabs
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'inbox', label: counted && waiting > 0 ? `To review (${waiting})` : 'To review' },
+            { value: 'site', label: 'Site sections & partners' },
+            { value: 'accounts', label: 'Accounts' },
+            { value: 'history', label: 'Edit history' },
+          ]}
+        />
+      </div>
+
+      {tab === 'inbox' && (
+        <>
+          {/* Zeigarnik Effect / Peak-End Rule: unfinished work is counted; an empty inbox says so */}
+          {counted && (
+            <div className="pad" style={{ paddingBottom: 0 }}>
+              {waiting > 0 ? (
+                <div className="content-todo" role="status" style={{ marginBottom: 0 }}>
+                  <strong>{waiting} request{waiting === 1 ? '' : 's'} waiting</strong> — {claimCount} profile claim{claimCount === 1 ? '' : 's'}, {photoCount} photo{photoCount === 1 ? '' : 's'}.
+                </div>
+              ) : (
+                <Done title="All caught up">Nothing is waiting for review.</Done>
+              )}
+            </div>
+          )}
+          <div className="pad rule-b">
+            <SectHead title={`Profile claims${claimCount ? ` · ${claimCount}` : ''}`} />
+            <ClaimsQueue onCount={setClaimCount} />
+          </div>
+          <div className="pad">
+            <SectHead title={`Photo change requests${photoCount ? ` · ${photoCount}` : ''}`} />
+            <PhotoQueue onCount={setPhotoCount} />
+          </div>
+        </>
+      )}
+
+      {tab === 'site' && (
+        <>
+          <div className="pad rule-b">
+            <SectHead title="Site Sections" />
+            <SiteFeatures />
+          </div>
+          <div className="pad">
+            <SectHead title="Partners" />
+            <PartnersManager />
+          </div>
+        </>
+      )}
+
+      {tab === 'accounts' && (
+        <div className="pad">
+          <SectHead title="Create Club / Academy / Federation Account" />
+          <OrgAccountForm />
         </div>
-        <Link to="/admin/analytics" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 18px', textDecoration: 'none' }}>
-          Open Analytics →
-        </Link>
-      </div>
-      <div className="pad rule-b">
-        <SectHead title="Name Matching" />
-        <div className="micro" style={{ marginBottom: 12 }}>
-          Match Arabic-named swimmers to their English profiles — or give them a new one.
+      )}
+
+      {tab === 'history' && (
+        <div className="pad">
+          <SectHead title="Recent Edits · Undo" />
+          <EditHistory />
         </div>
-        <Link to="/admin/name-match" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 18px', textDecoration: 'none' }}>
-          Open Name Matching →
-        </Link>
-      </div>
-      <div className="pad rule-b">
-        <SectHead title="Recent Edits · Undo" />
-        <EditHistory />
-      </div>
-      <div className="pad rule-b">
-        <SectHead title="Site Sections" />
-        <SiteFeatures />
-      </div>
-      <div className="pad rule-b">
-        <SectHead title="Partners" />
-        <PartnersManager />
-      </div>
-      <div className="pad rule-b">
-        <SectHead title="Pending Profile Claims" />
-        <ClaimsQueue />
-      </div>
-      <div className="pad rule-b">
-        <SectHead title="Photo Change Requests" />
-        <PhotoQueue />
-      </div>
-      <div className="pad">
-        <SectHead title="Create Club / Federation Account" />
-        <OrgAccountForm />
-      </div>
+      )}
     </div>
   )
 }

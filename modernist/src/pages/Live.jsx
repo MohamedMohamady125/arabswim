@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { getLiveMeets, getMeetProgram, getMeetLive, getChampionshipStats, getChampionshipResults, getMeetDocuments, uploadMeetDocument, deleteMeetDocument } from '../api/championships'
+import { getLiveMeets, getChampionships, getMeetProgram, getMeetLive, getChampionshipStats, getChampionshipResults, getMeetDocuments, uploadMeetDocument, deleteMeetDocument } from '../api/championships'
 import { useAuth } from '../context/AuthContext'
 import { getMedalSummary, getMedalClubSummary } from '../api/medals'
 import { formatDateRange, formatNumber, formatDate, mediaUrl } from '../utils'
@@ -65,17 +65,29 @@ const GENDER_STYLE = {
 function InlineResults({ meetId, meet, item }) {
   const [rows, setRows] = useState(null)
   const [athlete, setAthlete] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [retry, setRetry] = useState(0)
   const isFinal = item.session === 'FINALS'
 
   useEffect(() => {
     const params = { event: item.event, gender: item.gender }
     if (item.session === 'HEATS') params.round_type = 'Prelims'
+    setFailed(false)
     getChampionshipResults(meetId, params)
       .then((res) => setRows(Array.isArray(res.data) ? res.data : res.data?.results || []))
-      .catch(() => setRows([]))
-  }, [meetId, item.event, item.gender, item.session])
+      .catch(() => { setRows([]); setFailed(true) })
+  }, [meetId, item.event, item.gender, item.session, retry])
 
   if (rows === null) return <div style={{ padding: '6px 0' }}><Loading label="Loading results" /></div>
+  // a failed load is not "no results yet"
+  if (failed) {
+    return (
+      <div role="alert" style={{ padding: '12px 16px', fontSize: 12.5, color: 'var(--color-neutral-700)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        These results could not be loaded.
+        <button type="button" className="btn btn-secondary" onClick={() => { setRows(null); setRetry((n) => n + 1) }}>Try again</button>
+      </div>
+    )
+  }
   if (rows.length === 0) {
     return <div style={{ padding: '12px 16px', fontSize: 12.5, color: 'var(--color-neutral-700)' }}>No results uploaded yet.</div>
   }
@@ -777,13 +789,28 @@ function MeetCard({ meet, active, onSelect }) {
 export default function Live() {
   const [meets, setMeets] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [retry, setRetry] = useState(0)
+  const [recent, setRecent] = useState([])
 
   useEffect(() => {
+    setFailed(false)
     getLiveMeets().then((res) => {
-      setMeets(res.data)
-      if (res.data.length > 0) setSelectedId(res.data[0].id)
-    }).catch(() => setMeets([]))
-  }, [])
+      const rows = Array.isArray(res.data) ? res.data : res.data?.results || []
+      setMeets(rows)
+      if (rows.length > 0) setSelectedId(rows[0].id)
+      // Paradox of the Active User: with nothing live, the page still leads
+      // somewhere — the latest meets that already have results.
+      if (rows.length === 0) {
+        getChampionships({ page_size: 30, ordering: '-date' })
+          .then((r) => {
+            const all = Array.isArray(r.data) ? r.data : r.data?.results || []
+            setRecent(all.filter((m) => (m.results_count ?? 0) > 0).slice(0, 3))
+          })
+          .catch(() => {})
+      }
+    }).catch(() => { setMeets([]); setFailed(true) })
+  }, [retry])
 
   if (!meets) return <Loading label="Loading live meets" />
 
@@ -798,10 +825,40 @@ export default function Live() {
       />
       {meets.length === 0 ? (
         <div className="pad-lg">
-          <Empty label="No meets are live right now." />
-          <div style={{ textAlign: 'center', marginTop: 12 }}>
-            <Link to="/calendar" className="btn btn-secondary">See upcoming meets in the calendar</Link>
-          </div>
+          {failed ? (
+            <Empty label="Live results could not be loaded" hint="Check your connection and try again.">
+              <button type="button" className="btn btn-secondary" onClick={() => { setMeets(null); setRetry((n) => n + 1) }}>Try again</button>
+            </Empty>
+          ) : (
+            <Empty label="No meets are live right now" hint="This page fills in during a meet: the day's program, results as they come in and the medal table.">
+              <Link to="/calendar" className="btn btn-secondary">See upcoming meets in the calendar</Link>
+            </Empty>
+          )}
+          {!failed && recent.length > 0 && (
+            <div style={{ maxWidth: 640, margin: '8px auto 0' }}>
+              <div className="kicker" style={{ marginBottom: 8 }}>Latest results</div>
+              <div style={{ border: '1px solid var(--color-divider)' }}>
+                {recent.map((m, i) => (
+                  <Link
+                    key={m.id}
+                    to={`/meets/${m.id}?tab=results`}
+                    className="row-link"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', minHeight: 48, color: 'inherit', textDecoration: 'none', borderTop: i ? '1px solid var(--color-divider)' : 'none' }}
+                  >
+                    <Flag code={m.country_detail?.code} name={m.country_detail?.name} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, lineHeight: 1.25 }}>{m.name}</span>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{formatDateRange(m.date, m.end_date)}</span>
+                    </span>
+                    <span aria-hidden="true" style={{ color: 'var(--color-neutral-700)' }}>→</span>
+                  </Link>
+                ))}
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Link to="/championships" style={{ fontSize: 13, fontWeight: 600 }}>All meets →</Link>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="pad-lg">

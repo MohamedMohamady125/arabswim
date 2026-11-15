@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getHeldRecords, getRecordGaps } from '../../api/records'
 import { Loading, Empty, Seg } from '../ui'
+import LoadFailed from './LoadFailed'
 
 // Compress age categories: ['U14','U15','U16','OPEN'] -> ['U14–U16', 'OPEN']
 export function compressCategories(cats) {
@@ -86,9 +87,13 @@ export default function RecordsTab({ swimmerId }) {
   const [gapScope, setGapScope] = useState(null)
   const [gapPool, setGapPool] = useState('LCM')
   const [scopeFilter, setScopeFilter] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
+    setLoading(true)
+    setFailed(false)
     Promise.all([
       getHeldRecords({ swimmer: swimmerId }),
       getRecordGaps({ swimmer: swimmerId }),
@@ -111,11 +116,12 @@ export default function RecordsTab({ swimmerId }) {
       )
       setRecords(all)
       setGaps(gapsRes.data || [])
-    }).catch(() => {}).finally(() => { if (alive) setLoading(false) })
+    }).catch(() => { if (alive) setFailed(true) }).finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [swimmerId])
+  }, [swimmerId, reloadKey])
 
   if (loading) return <Loading label="Loading records" />
+  if (failed) return <LoadFailed what="Records" onRetry={() => setReloadKey((k) => k + 1)} />
 
   const availableScopes = Object.keys(SCOPE_LABELS).filter((s) => gaps.some((g) => g.scope === s))
   const activeScope = gapScope && availableScopes.includes(gapScope) ? gapScope : availableScopes[0]

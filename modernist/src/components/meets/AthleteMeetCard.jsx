@@ -26,15 +26,18 @@ const roundTag = (r) => {
 export default function AthleteMeetCard({ swimmer, meet, onClose }) {
   const [rows, setRows] = useState(null)
   const [medals, setMedals] = useState([])
+  const [failed, setFailed] = useState(false)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
+    setFailed(false)
     getResults({ swimmer: swimmer.id, championship: meet.id })
       .then((r) => setRows(list(r.data)))
-      .catch(() => setRows([]))
+      .catch(() => { setRows([]); setFailed(true) })
     getMedals({ swimmer: swimmer.id, championship: meet.id })
       .then((r) => setMedals(list(r.data)))
       .catch(() => {})
-  }, [swimmer.id, meet.id])
+  }, [swimmer.id, meet.id, retry])
 
   // close on Escape
   useEffect(() => {
@@ -165,6 +168,13 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
         <div style={{ overflowY: 'auto', flex: 1, background: 'var(--color-surface)' }}>
           {sorted === null ? (
             <Loading label="Loading swims" />
+          ) : failed ? (
+            <div role="alert" style={{ padding: '26px 20px', textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)' }}>
+              The swims could not be loaded.
+              <div style={{ marginTop: 10 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => { setRows(null); setRetry((n) => n + 1) }}>Try again</button>
+              </div>
+            </div>
           ) : sorted.length === 0 ? (
             <div style={{ padding: '26px 20px', textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)' }}>
               No swims recorded at this meet yet.

@@ -5,7 +5,7 @@ import { getSwimmers, deleteSwimmer, searchSwimmers } from '../api/swimmers'
 import { getCountries } from '../api/core'
 import { mergeSwimmers } from '../api/importer'
 import Flag from '../components/Flag'
-import { PageHead, Loading, notify, Empty, Pager, Seg, Modal } from '../components/ui'
+import { PageHead, notify, Empty, Pager, Seg, Modal, FilterBar, Skeleton, Stepper } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
@@ -114,6 +114,8 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
 
   return (
     <Modal title="Merge Swimmers" onClose={onClose}>
+      {/* Goal-Gradient: three visible steps to the end of the merge */}
+      <Stepper steps={['Swimmer to keep', 'Duplicates', 'Confirm']} current={confirming ? 2 : primary ? 1 : 0} />
       <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
         Select the swimmer to <strong>keep</strong> (primary), then add one or more <strong>duplicates</strong> to
         merge into them. All results, records and medals from the duplicates will be transferred, and the
@@ -123,7 +125,7 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ border: '1px solid var(--color-divider)', padding: 12, flex: 1, minWidth: 220 }}>
           <div className="micro" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-            {step === 1 ? 'Step 1 — Keep (primary)' : 'Keeping'}
+            {step === 1 ? 'Keep (primary)' : 'Keeping'}
           </div>
           {primary ? card(primary, (
             <button type="button" className="btn btn-secondary" style={{ fontSize: 11 }}
@@ -232,30 +234,46 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
   )
 }
 
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+
 export default function Swimmers() {
-  const [searchParams] = useSearchParams()
-  const [search, setSearch] = useState(searchParams.get('search') || '')
-  const [query, setQuery] = useState(searchParams.get('search') || '')
-  const [country, setCountry] = useState('')
-  const [sex, setSex] = useState('')
-  const [page, setPage] = useState(1)
+  // Working Memory + Flow: search, filters, letter and page live in the URL, so
+  // Back from a profile returns to the same place in the list.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const query = (searchParams.get('search') || '').trim()
+  const country = searchParams.get('country') || ''
+  const sex = searchParams.get('sex') || ''
+  const letter = searchParams.get('letter') || ''
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+  const [search, setSearch] = useState(query)
   const [rows, setRows] = useState([])
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(null)
   const [countries, setCountries] = useState([])
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [showMerge, setShowMerge] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const debounceRef = useRef(null)
+  const topRef = useRef(null)
   const { isAdmin } = useAuth()
 
-  // header search box navigates here with ?search=
+  // change one or more URL params; any filter change goes back to page 1
+  const setParams = (changes, { keepPage = false } = {}) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (!keepPage) next.delete('page')
+      Object.entries(changes).forEach(([k, v]) => {
+        if (v === '' || v == null || (k === 'page' && Number(v) <= 1)) next.delete(k)
+        else next.set(k, String(v))
+      })
+      return next
+    }, { replace: true })
+  }
+
+  // header search box (or Back/Forward) changes ?search= from outside
   useEffect(() => {
-    const s = searchParams.get('search') || ''
-    setSearch(s)
-    setQuery(s)
-    setPage(1)
-  }, [searchParams])
+    setSearch((cur) => (cur.trim() === query ? cur : query))
+  }, [query])
 
   // countries once — Arab/GCC regions first
   useEffect(() => {
@@ -273,14 +291,13 @@ export default function Swimmers() {
   }, [])
 
   // debounce the search input
-  useEffect(() => {
+  const onSearch = (value) => {
+    setSearch(value)
     clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      setQuery(search.trim()) // Postel's Law: stray spaces never change the search
-      setPage(1)
-    }, 400)
-    return () => clearTimeout(debounceRef.current)
-  }, [search])
+    // Postel's Law: stray spaces never change the search
+    debounceRef.current = setTimeout(() => setParams({ search: value.trim().replace(/\s+/g, ' ') }), 350)
+  }
+  useEffect(() => () => clearTimeout(debounceRef.current), [])
 
   useEffect(() => {
     let alive = true
@@ -290,130 +307,180 @@ export default function Swimmers() {
     if (query) params.search = query
     if (country) params.nationality = country
     if (sex) params.sex = sex
+    if (letter) params.letter = letter
     getSwimmers(params)
       .then((res) => {
         if (!alive) return
         setRows(res.data?.results || [])
         setCount(res.data?.count || 0)
       })
-      .catch(() => { if (alive) { setRows([]); setCount(0); setFailed(true) } })
+      .catch((err) => {
+        if (!alive) return
+        // a stale ?page= past the last page (filters changed, bookmark) goes back to page 1
+        if (err?.response?.status === 404 && page > 1) { setParams({ page: 1 }, { keepPage: true }); return }
+        setRows([]); setCount(null); setFailed(true)
+      })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [query, country, sex, page, reloadKey])
+  }, [query, country, sex, letter, page, reloadKey])
 
   const handleDelete = async (s) => {
     if (!window.confirm(`Delete "${s.name}"? This cannot be undone.`)) return
     try {
       await deleteSwimmer(s.id)
       setRows((prev) => prev.filter((r) => r.id !== s.id))
-      setCount((c) => Math.max(0, c - 1))
+      setCount((c) => Math.max(0, (c || 0) - 1))
+      notify(`Deleted ${s.name}`)
     } catch {
       notify('Failed to delete swimmer')
     }
   }
 
+  const clearAll = () => {
+    clearTimeout(debounceRef.current)
+    setSearch('')
+    setSearchParams(new URLSearchParams(), { replace: true })
+  }
+
+  // Jakob's Law: a new page starts at the top of the list, not at the pager
+  const goPage = (p) => {
+    setParams({ page: p }, { keepPage: true })
+    topRef.current?.scrollIntoView({ block: 'start' })
+  }
+
   const visible = useMemo(() => rows.filter((s) => !s.is_relay_team), [rows])
-  const arabCount = countries.filter((c) => c.region === 'ARAB' || c.region === 'GCC').length
+  const arab = countries.filter((c) => c.region === 'ARAB' || c.region === 'GCC')
+  const others = countries.filter((c) => c.region !== 'ARAB' && c.region !== 'GCC')
+  const active = !!(query || country || sex || letter)
+  const from = (page - 1) * PAGE_SIZE + 1
 
   return (
-    <div>
+    <div ref={topRef}>
       <PageHead title="Swimmers" />
 
-      {/* filter bar: everything on one line */}
-      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, flexWrap: 'nowrap', alignItems: 'center' }}>
+      {/* Common Region: every way to narrow the list sits in one bar with the count */}
+      <FilterBar count={failed ? null : count} noun={count === 1 ? 'swimmer' : 'swimmers'} active={active} onClear={clearAll}>
         <input
           className="input"
-          style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
+          type="search"
+          style={{ flex: '2 1 200px', width: 'auto', minWidth: 0, maxWidth: 320 }}
           placeholder="Search by name…"
           aria-label="Search swimmers by name"
           autoComplete="off"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => onSearch(e.target.value)}
         />
         <select
           className="select"
           aria-label="Filter by country"
           style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 220 }}
           value={country}
-          onChange={(e) => { setCountry(e.target.value); setPage(1) }}
+          onChange={(e) => setParams({ country: e.target.value })}
         >
           <option value="">All countries</option>
-          {countries.map((c, i) => (
-            <option key={c.id} value={c.id}>
-              {i === arabCount && arabCount > 0 ? '— ' : ''}{c.name}
-            </option>
-          ))}
+          {others.length > 0 ? (
+            <>
+              <optgroup label="Arab countries">
+                {arab.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </optgroup>
+              <optgroup label="Other countries">
+                {others.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </optgroup>
+            </>
+          ) : arab.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <Seg
-          options={[{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+          options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
           value={sex}
-          onChange={(v) => { setSex(v); setPage(1) }}
+          onChange={(v) => setParams({ sex: v })}
         />
         {isAdmin && (
-          <button type="button" className="btn btn-secondary" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowMerge(true)}>
-            <GitMerge size={14} /> Merge
+          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowMerge(true)}>
+            <GitMerge size={14} /> Merge duplicates
           </button>
         )}
-      </div>
+      </FilterBar>
 
-      {loading ? (
-        <Loading label="Loading swimmers" />
+      {/* Chunking: thousands of names are reachable by first letter instead of 150 pages */}
+      <nav className="swimmers-az" aria-label="Jump to first letter of the name">
+        <button type="button" className={!letter ? 'on' : ''} aria-pressed={!letter} onClick={() => setParams({ letter: '' })}>All</button>
+        {LETTERS.map((l) => (
+          <button key={l} type="button" className={letter === l ? 'on' : ''} aria-pressed={letter === l} aria-label={`Names starting with ${l}`} onClick={() => setParams({ letter: letter === l ? '' : l })}>{l}</button>
+        ))}
+      </nav>
+
+      {loading && visible.length === 0 ? (
+        <div className="pad"><Skeleton rows={8} height={56} /></div>
       ) : visible.length === 0 ? (
         failed ? (
-          <Empty label="Swimmers could not be loaded" hint="Check your connection and try again in a moment." />
+          <Empty label="Swimmers could not be loaded" hint="Check your connection and try again.">
+            <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+          </Empty>
         ) : (
           <Empty
             label="No swimmers found"
-            hint={query ? `Nothing matches “${query}”. Check the spelling or try part of the name.` : (country || sex) ? 'Try a different country or gender filter.' : undefined}
-          />
+            hint={query
+              ? `Nothing matches “${query}”${country || sex || letter ? ' with these filters' : ''}. Check the spelling or try part of the name.`
+              : active ? 'No swimmer fits this combination of filters.' : undefined}
+          >
+            {active && <button type="button" className="btn btn-secondary" onClick={clearAll}>Clear filters</button>}
+          </Empty>
         )
       ) : (
-        <div className="pad">
-          <div className="swimmer-grid">
-            {visible.map((s) => (
-              <Link key={s.id} to={`/swimmers/${s.id}`} className="swimmer-card">
-                <div className="swimmer-card-photo">
-                  {s.photo ? (
-                    <img className="grayscale" src={mediaUrl(s.photo)} alt={s.name} loading="lazy" />
-                  ) : (
-                    <span className="swimmer-card-initials">{initials(s.name)}</span>
-                  )}
-                  {s.is_retired && (
-                    <span className="tag tag-neutral" style={{ position: 'absolute', left: 8, bottom: 8, background: 'var(--color-surface)' }}>Retired</span>
-                  )}
+        <div className="pad" style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.15s ease' }} aria-busy={loading}>
+          {count > PAGE_SIZE && (
+            <div className="swimmers-range asw-num">
+              Showing {from.toLocaleString('en-US')}–{(from + rows.length - 1).toLocaleString('en-US')} of {count.toLocaleString('en-US')}, A to Z
+            </div>
+          )}
+          <div className="swimmers-list">
+            {visible.map((s) => {
+              const words = (s.name || '').trim().split(/\s+/)
+              const sexWord = s.sex === 'M' ? 'Men' : s.sex === 'F' ? 'Women' : ''
+              return (
+                <div key={s.id} className="swimmers-item">
+                  <Link to={`/swimmers/${s.id}`} state={{ list: searchParams.toString() }} className="swimmers-item-link">
+                    <span className="swimmers-item-photo">
+                      {s.photo ? (
+                        <img className="grayscale" src={mediaUrl(s.photo)} alt="" loading="lazy" />
+                      ) : (
+                        <span aria-hidden="true">{initials(s.name)}</span>
+                      )}
+                    </span>
+                    <span className="swimmers-item-body">
+                      <span className="swimmers-item-name">
+                        {words.length < 2 ? s.name : <>{words[0]} <strong>{words.slice(1).join(' ')}</strong></>}
+                        {s.is_retired && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>Retired</span>}
+                      </span>
+                      <span className="swimmers-item-meta">
+                        <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
+                        <span className="swimmers-item-country">{s.nationality_detail?.name || 'Country not set'}</span>
+                        {s.club && <span className="swimmers-item-club">· {s.club}</span>}
+                      </span>
+                    </span>
+                    {(s.birth_year || sexWord) && (
+                      <span className="swimmers-item-side asw-num">
+                        {s.birth_year && <span title="Year of birth">{s.birth_year}</span>}
+                        {sexWord && <span className="micro">{sexWord}</span>}
+                      </span>
+                    )}
+                  </Link>
                   {isAdmin && (
                     <button
                       type="button"
-                      className="btn btn-secondary btn-icon"
+                      className="btn btn-ghost btn-icon swimmers-item-del"
                       title="Delete swimmer"
                       aria-label={`Delete ${s.name}`}
-                      style={{ position: 'absolute', top: 6, right: 6, background: 'var(--color-surface)' }}
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(s) }}
+                      onClick={() => handleDelete(s)}
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} />
                     </button>
                   )}
                 </div>
-                <div className="swimmer-card-body">
-                  <div className="swimmer-card-name">{(() => {
-                    const words = (s.name || '').split(' ')
-                    if (words.length < 2) return s.name
-                    return <>{words[0]}<br />{words.slice(1).join(' ')}</>
-                  })()}</div>
-                  <div className="swimmer-card-meta">
-                    <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.nationality_detail?.name || '—'}</span>
-                    {(s.birth_year || s.sex) && (
-                      <span className="tag tag-accent-2" style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 6px', whiteSpace: 'nowrap' }}>
-                        {s.birth_year || ''}{s.birth_year && s.sex ? ' · ' : ''}{s.sex === 'M' ? '♂' : s.sex === 'F' ? '♀' : ''}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
+              )
+            })}
           </div>
-          <Pager page={page} pageSize={PAGE_SIZE} count={count} onPage={setPage} />
+          <Pager page={page} pageSize={PAGE_SIZE} count={count} onPage={goPage} />
         </div>
       )}
 

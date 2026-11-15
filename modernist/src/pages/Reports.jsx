@@ -11,7 +11,7 @@ import { getChampionships, getClassifications, getSubClassifications } from '../
 import { getCountries, getEvents } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Seg } from '../components/ui'
+import { PageHead, Loading, Empty, Seg, FilterBar, ShowMore } from '../components/ui'
 import { formatDate, formatTime } from '../utils'
 
 // ── Filter 1: the eight report categories ────────────────────────────────────
@@ -45,12 +45,12 @@ const PLAIN_YEARS = (() => {
 })()
 
 const GENDER_OPTS = [{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]
-const POOL_OPTS = [{ value: '', label: 'All pools' }, { value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]
+// Mental Model: pool codes carry the length swimmers actually say
+const POOL_OPTS = [{ value: '', label: 'All pools' }, { value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]
 
 const CTRL = { flex: '0 1 auto', width: 'auto', minWidth: 0, height: 36 }
 // standard navy box (same as the swimmer Overall tiles — site-wide box rule)
 const statCard = { background: 'var(--color-accent-800)', color: '#fff', borderRadius: 8, padding: '14px 16px' }
-const barStyle = { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '14px 32px' }
 
 function list(d) { return Array.isArray(d) ? d : d?.results || [] }
 function yearRange(year) {
@@ -74,6 +74,18 @@ function downloadCsv(filename, headers, rows) {
 // ── Reusable filter controls ─────────────────────────────────────────────────
 // byId: rankings + computed-records endpoints key countries by id, the
 // report endpoints by code — pass the shape each endpoint expects.
+// Hick's Law: each report shows the three or four filters most people change;
+// the rest (year, championship, classification…) open on request. Working
+// Memory: the closed button says how many of the hidden filters are switched on.
+function MoreFilters({ on = [], children }) {
+  const n = on.filter(Boolean).length
+  return (
+    <ShowMore label={n ? `More filters (${n} on)` : 'More filters'} lessLabel="Fewer filters" defaultOpen={n > 0}>
+      {children}
+    </ShowMore>
+  )
+}
+
 function CountrySelect({ countries, value, onChange, label = 'All countries', byId = false }) {
   return (
     <select className="select" style={CTRL} aria-label="Country" value={value} onChange={(e) => onChange(e.target.value)}>
@@ -274,11 +286,11 @@ function SwimmersReport({ countries }) {
 
   return (
     <div>
-      <div className="rule-b" style={barStyle}>
+      <FilterBar>
         <SwimmerSearch country={country} gender={gender} onPick={setPicked} />
         <CountrySelect countries={countries} value={country} onChange={setCountry} label="All nationalities" />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
-      </div>
+      </FilterBar>
 
       {!picked ? (
         <Empty label="Search and pick a swimmer to see their report" hint="Type at least two letters of the name, then choose the swimmer from the list." />
@@ -432,21 +444,23 @@ function MedalsReport({ countries }) {
 
   return (
     <div>
-      <div className="rule-b" style={barStyle}>
+      <FilterBar>
         <Seg options={[{ value: 'country', label: 'By Country' }, { value: 'swimmer', label: 'By Swimmer' }, { value: 'championship', label: 'By Championship' }]} value={group} onChange={setGroup} />
-        <select className="select" style={CTRL} aria-label="Classification" value={classification} onChange={(e) => setClassification(e.target.value)}>
-          <option value="">All classifications</option>
-          {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select className="select" style={CTRL} aria-label="Sub-classification" value={subClass} onChange={(e) => setSubClass(e.target.value)} disabled={!subClasses.length}>
-          <option value="">All sub-classifications</option>
-          {subClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
         <CountrySelect countries={countries} value={country} onChange={setCountry} label="All nationalities" />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
-        <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
         <YearSelect value={year} onChange={setYear} />
-      </div>
+        <MoreFilters on={[pool, classification, subClass]}>
+          <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
+          <select className="select" style={CTRL} aria-label="Classification" value={classification} onChange={(e) => setClassification(e.target.value)}>
+            <option value="">All classifications</option>
+            {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select className="select" style={CTRL} aria-label="Sub-classification" value={subClass} onChange={(e) => setSubClass(e.target.value)} disabled={!subClasses.length}>
+            <option value="">All sub-classifications</option>
+            {subClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </MoreFilters>
+      </FilterBar>
       {loading ? <Loading label="Building medal table" /> : rows.length === 0 ? <Empty label="No medals for this selection" hint="Try removing a filter or choosing All time." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
@@ -502,6 +516,16 @@ function RankingReport({ countries, eventGroups, championships }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
 
+  // Tesler's Law: the ranking opens on the most asked-for event (100m
+  // Freestyle) instead of an empty page that waits for a choice
+  useEffect(() => {
+    if (event || !eventGroups.length) return
+    const all = eventGroups.flatMap((g) => g.events)
+    const pick = all.find((e) => !e.is_relay && Number(e.distance) === 100 && /free/i.test(`${e.stroke || ''} ${e.name || ''}`) && !/relay/i.test(e.name || '')) || all[0]
+    if (pick) setEvent(String(pick.id))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventGroups])
+
   // any filter change restarts from page 1
   useEffect(() => { setPage(1) }, [scope, country, event, gender, pool, ageGroup, year, champ, classification, subClass])
 
@@ -532,18 +556,21 @@ function RankingReport({ countries, eventGroups, championships }) {
 
   return (
     <div>
-      <div className="rule-b" style={barStyle}>
-        <Seg options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }, { value: 'national', label: 'National' }]} value={scope} onChange={setScope} />
-        {scope === 'national' && <CountrySelect byId countries={countries} value={country} onChange={setCountry} label="Pick a country" />}
-        <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
+      <FilterBar>
+        {/* Serial Position: the one required choice comes first */}
+        <EventSelect eventGroups={eventGroups} value={event} onChange={setEvent} label="Pick an event *" />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
         <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
-        <YearSelect value={year} onChange={setYear} />
-        <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
-        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
-        <EventSelect eventGroups={eventGroups} value={event} onChange={setEvent} label="Pick an event *" />
-      </div>
-      {!event ? <Empty label="Pick an event to see the ranking" hint="Use the event menu at the end of the filters above." />
+        <Seg options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }, { value: 'national', label: 'National' }]} value={scope} onChange={setScope} />
+        {scope === 'national' && <CountrySelect byId countries={countries} value={country} onChange={setCountry} label="Pick a country" />}
+        <MoreFilters on={[ageGroup !== 'OPEN', year, champ, classification, subClass]}>
+          <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
+          <YearSelect value={year} onChange={setYear} />
+          <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
+          <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
+        </MoreFilters>
+      </FilterBar>
+      {!event ? <Empty label="Pick an event to see the ranking" hint="Use the event menu at the start of the filters above." />
         : loading ? <Loading label="Ranking swimmers" />
           : rows.length === 0 ? <Empty label="No times for this selection" hint="Try another pool, age group or year." /> : (
             <div className="pad">
@@ -633,16 +660,18 @@ function RecordsReport({ countries, championships }) {
 
   return (
     <div className="records-page">
-      <div className="rule-b" style={barStyle}>
+      <FilterBar>
         <Seg options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }, { value: 'national', label: 'National' }]} value={scope} onChange={setScope} />
         {scope === 'national' && <CountrySelect byId countries={countries} value={country} onChange={setCountry} label="Pick a country" />}
         <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
-        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
-        <YearSelect value={year} onChange={setYear} />
-        <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
-        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
-      </div>
+        <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={setPool} />
+        <MoreFilters on={[year, champ, classification, subClass]}>
+          <YearSelect value={year} onChange={setYear} />
+          <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
+          <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
+        </MoreFilters>
+      </FilterBar>
       {scope === 'national' && !country ? <Empty label="Pick a country to see its records" hint="Use the country menu next to National above." />
         : loading ? <Loading label="Computing records" />
           : rows.length === 0 ? <Empty label="No records for this selection" hint="Try removing a filter." /> : (
@@ -699,15 +728,17 @@ function ParticipationsReport({ countries, championships }) {
 
   return (
     <div>
-      <div className="rule-b" style={barStyle}>
+      <FilterBar>
         <Seg options={[{ value: 'meet', label: 'By Championship' }, { value: 'country', label: 'By Country' }, { value: 'club', label: 'By Club' }, { value: 'event', label: 'By Event' }, { value: 'swimmer', label: 'By Swimmer' }]} value={group} onChange={setGroup} />
         <CountrySelect countries={countries} value={country} onChange={setCountry} label="All nationalities" />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
-        <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
         <YearSelect value={year} onChange={setYear} />
-        <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
-        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
-      </div>
+        <MoreFilters on={[pool, champ, classification, subClass]}>
+          <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
+          <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
+          <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
+        </MoreFilters>
+      </FilterBar>
       {loading ? <Loading label="Counting participation" /> : rows.length === 0 ? <Empty label="No data for this selection" hint="Try removing a filter." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
@@ -799,13 +830,15 @@ function AgeReport({ countries, championships }) {
 
   return (
     <div>
-      <div className="rule-b" style={barStyle}>
+      <FilterBar>
         <CountrySelect countries={countries} value={country} onChange={setCountry} label="All nationalities" />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
-        <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
         <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
-        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
-      </div>
+        <MoreFilters on={[pool, classification, subClass]}>
+          <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
+          <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
+        </MoreFilters>
+      </FilterBar>
       {loading ? <Loading label="Grouping by age" /> : !data || data.distribution.length === 0 ? <Empty label="No aged swimmers for this selection" hint="Try removing a filter." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -893,16 +926,22 @@ function HighPerformanceReport({ countries, eventGroups, championships }) {
 
   return (
     <div>
-      <div className="rule-b" style={barStyle}>
+      <FilterBar>
         <Seg options={[{ value: 'swimmer', label: 'By Swimmer' }, { value: 'country', label: 'By Country' }, { value: 'club', label: 'By Club' }]} value={group} onChange={setGroup} />
         <EventSelect eventGroups={eventGroups} value={event} onChange={setEvent} />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
-        <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
-        <YearSelect value={year} onChange={setYear} />
-        <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
-        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
-        <input className="input" type="number" inputMode="numeric" min="0" max="1200" style={{ ...CTRL, flex: '0 1 110px' }} aria-label="Minimum FINA points" title="Minimum FINA points" placeholder="Min FINA" value={finaMin} onChange={(e) => setFinaMin(e.target.value)} />
-      </div>
+        {/* the threshold defines this report, so it sits with the main filters and is labelled */}
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+          Min FINA points
+          <input className="input" type="number" inputMode="numeric" min="0" max="1200" step="50" style={{ ...CTRL, width: 90 }} value={finaMin} onChange={(e) => setFinaMin(e.target.value)} />
+        </label>
+        <MoreFilters on={[pool, year, champ, classification, subClass]}>
+          <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
+          <YearSelect value={year} onChange={setYear} />
+          <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
+          <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
+        </MoreFilters>
+      </FilterBar>
       {loading ? <Loading label="Finding top swims" /> : rows.length === 0 ? <Empty label="No swims above this FINA threshold" hint="Lower the Min FINA value or remove a filter." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
@@ -997,7 +1036,7 @@ function ImprovementReport({ countries, eventGroups }) {
 
   return (
     <div>
-      <div className="rule-b" style={barStyle}>
+      <FilterBar>
         <select className="select" style={CTRL} aria-label="From year" value={yearFrom} onChange={(e) => setYearFrom(e.target.value)}>
           {PLAIN_YEARS.map((y) => <option key={y} value={y}>From {y}</option>)}
         </select>
@@ -1007,10 +1046,12 @@ function ImprovementReport({ countries, eventGroups }) {
         <EventSelect eventGroups={eventGroups} value={event} onChange={setEvent} />
         <CountrySelect countries={countries} value={country} onChange={setCountry} label="All nationalities" />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
-        <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
-        <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
-        <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
-      </div>
+        <MoreFilters on={[pool, ageGroup !== 'OPEN', classification, subClass]}>
+          <Seg options={POOL_OPTS} value={pool} onChange={setPool} />
+          <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
+          <ClassificationSelects classification={classification} setClassification={setClassification} subClass={subClass} setSubClass={setSubClass} />
+        </MoreFilters>
+      </FilterBar>
       {loading ? <Loading label="Finding biggest time drops" /> : rows.length === 0 ? <Empty label="No improvements between these years" hint="Try a wider year range or remove a filter." /> : (
         <div className="pad">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
@@ -1095,11 +1136,11 @@ export default function Reports() {
     <div className="reports-page">
       <PageHead
         title="Reports"
-        kicker="Analytics"
+        kicker="Data"
         sub="Pick a report, then narrow it with the filters below. Every view exports to CSV."
       />
 
-      <div className="rule-b" style={{ padding: '12px 32px' }}>
+      <div className="tabbar rule-b">
         <Seg options={CATEGORIES} value={category} onChange={setCategory} tabs />
       </div>
 

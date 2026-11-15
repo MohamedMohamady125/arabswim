@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django.db.models import Min, F
 from core.audit import AuditLogMixin
 from .models import Record
@@ -21,11 +22,24 @@ def _fmt_cs(cs):
     return f'{seconds}.{centis:02d}'
 
 
+class RecordPagination(PageNumberPagination):
+    # Record books are read whole (a scope/pool/gender book is ~40 rows), so the
+    # page size is caller-controlled; the default stays the site-wide 25.
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 500
+
+
 class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
-    queryset = Record.objects.select_related('swimmer', 'swimmer__nationality', 'event')
+    # -id tie-break: many records share a date, and an unstable order makes
+    # rows repeat or go missing between pages
+    queryset = (Record.objects
+                .select_related('swimmer', 'swimmer__nationality', 'event', 'country')
+                .order_by('-result_date', '-id'))
+    pagination_class = RecordPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['swimmer__name']
-    ordering_fields = ['result_date', 'time_centiseconds']
+    ordering_fields = ['result_date', 'time_centiseconds', 'country__name', 'id']
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -50,6 +64,9 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
             qs = qs.filter(event_id=event)
         if swimmer:
             qs = qs.filter(swimmer_id=swimmer)
+        country = self.request.query_params.get('country')
+        if country and country.isdigit():
+            qs = qs.filter(country_id=int(country))
         if is_new is not None:
             qs = qs.filter(is_new=is_new.lower() == 'true')
         return qs

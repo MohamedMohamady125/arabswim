@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import Flag from '../Flag'
 import { Loading, notify, Empty } from '../ui'
 import { formatDate } from '../../utils'
+import LoadFailed from './LoadFailed'
 
 function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved }) {
   const [countries, setCountries] = useState([])
@@ -170,7 +171,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
   }, [swimmerId, reloadKey])
 
   if (data === undefined) return <Loading label="Loading transfer history" />
-  if (data === null) return <Empty label="Failed to load transfer history" hint="Check your connection and reload the page." />
+  if (data === null) return <LoadFailed what="Club and country history" onRetry={() => { setData(undefined); setReloadKey((k) => k + 1) }} />
 
   // Public view hides no-op rows (same from/to). Admins see every entry so a
   // wrongly-added nationality can always be deleted.

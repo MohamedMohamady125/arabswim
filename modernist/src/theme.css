@@ -943,3 +943,246 @@ tr:hover .medal-expand-btn { background: var(--color-accent-100); }
 /* Fitts's Law: upload buttons (a label around a visually hidden file input) are reachable by keyboard */
 label.btn { position: relative; }
 label.btn:focus-within { outline: 2px solid var(--color-accent-2); outline-offset: 2px; }
+
+/* ---------- Laws of UX shared patterns (components/ui.jsx) ---------- */
+.filterbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 32px; border-bottom: 1px solid var(--color-divider); background: var(--color-neutral-100); }
+.filterbar-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; min-width: 0; flex: 1 1 auto; }
+.filterbar-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--color-neutral-700); margin-left: auto; }
+.filterbar-clear, .showmore { font-size: 12px; min-height: 32px; }
+.stepper { list-style: none; display: flex; margin: 0 0 20px; padding: 0; }
+.stepper li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; font-size: 12px; color: var(--color-neutral-700); text-align: center; }
+.stepper li + li::before { content: ''; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--color-neutral-300); }
+.stepper li.done + li::before, .stepper li.done::before { background: var(--color-accent); }
+.stepper-dot { position: relative; z-index: 1; width: 28px; height: 28px; display: grid; place-items: center; border: 2px solid var(--color-neutral-400); background: var(--color-bg); font-size: 12px; font-weight: 700; }
+.stepper li.done .stepper-dot { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg); }
+.stepper li.now .stepper-dot { border-color: var(--color-accent); color: var(--color-accent); }
+.stepper li.now { color: var(--color-text); font-weight: 700; }
+.skeleton { display: grid; gap: 10px; padding: 16px 0; }
+.skeleton span { display: block; background: var(--color-neutral-200); animation: asw-pulse 1.2s ease-in-out infinite; }
+@keyframes asw-pulse { 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } }
+.done-state { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border: 2px solid var(--asw-fast); background: var(--color-bg); }
+.done-mark { width: 32px; height: 32px; flex: none; display: grid; place-items: center; background: var(--asw-fast); color: var(--color-bg); font-weight: 700; }
+.done-title { font-weight: 700; font-size: 15px; }
+.done-body { font-size: 13px; color: var(--color-neutral-700); margin-top: 4px; }
+.backlink { display: inline-flex; align-items: center; min-height: 40px; font-size: 13px; font-weight: 600; }
+@media (max-width: 900px) {
+  .filterbar { padding: 10px 16px; }
+  .stepper-label { font-size: 11px; }
+}
+
+/* ---------- SWIMMERS group: /swimmers list (A–Z jump, compact name cards) ---------- */
+/* Chunking: first-letter jump bar under the filter bar */
+.swimmers-az { display: flex; flex-wrap: wrap; gap: 2px; padding: 8px 32px; border-bottom: 1px solid var(--color-divider); }
+.swimmers-az button { min-width: 32px; min-height: 32px; padding: 0 6px; border: 1px solid transparent; background: none; font: inherit; font-size: 12px; font-weight: 700; color: var(--color-neutral-700); cursor: pointer; }
+.swimmers-az button:hover { border-color: var(--color-neutral-300); color: var(--color-text); }
+.swimmers-az button.on { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg); }
+.swimmers-az button:focus-visible { outline: 2px solid var(--color-accent-2); outline-offset: 1px; }
+.swimmers-range { font-size: 12px; color: var(--color-neutral-700); margin-bottom: 10px; }
+/* Similarity + Pragnanz: every swimmer is one compact card — photo or initials, name, country and club, year */
+.swimmers-list { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.swimmers-item { display: flex; align-items: stretch; border: 1px solid var(--color-divider); background: var(--color-surface); min-width: 0; }
+.swimmers-item:hover, .swimmers-item:focus-within { border-color: var(--color-accent); }
+.swimmers-item-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 8px; color: inherit; text-decoration: none; }
+.swimmers-item-link:focus-visible { outline: 2px solid var(--color-accent-2); outline-offset: -2px; }
+.swimmers-item-photo { flex: none; width: 44px; height: 55px; display: grid; place-items: center; overflow: hidden; background: var(--color-neutral-200); color: var(--color-neutral-800); font-family: var(--font-heading); font-weight: 800; font-size: 14px; letter-spacing: 0.04em; }
+.swimmers-item-photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.swimmers-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.swimmers-item-name { font-family: var(--font-heading); font-size: 14px; line-height: 1.25; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.swimmers-item-name strong { font-weight: 800; }
+.swimmers-item-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-neutral-700); min-width: 0; white-space: nowrap; }
+.swimmers-item-country { flex: none; }
+.swimmers-item-club { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.swimmers-item-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 13px; font-weight: 700; }
+.swimmers-item-side .micro { font-weight: 600; color: var(--color-neutral-700); }
+.swimmers-item-del { flex: none; align-self: center; margin-right: 6px; color: var(--color-neutral-700); }
+@media (max-width: 900px) {
+  .swimmers-az { padding: 6px 16px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .swimmers-az button { flex: none; min-width: 36px; min-height: 36px; }
+  .swimmers-list { grid-template-columns: 1fr; gap: 6px; }
+}
+
+/* ---------- MEETS group (Championships, MeetDetail, Live, Calendar) ---------- */
+/* Jakob's Law: back link row above the meet title */
+.meets-back { padding: 6px 32px 0; }
+.meets-head { padding-top: 10px; }
+/* Chunking: sub-tabs of the Highlights tab */
+.meets-subtabs { padding: 10px 32px; overflow-x: auto; background: var(--color-neutral-100); }
+/* Flow: previous / next event at the end of a results table */
+.meets-eventnav { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-divider); }
+.meets-eventnav .btn { min-height: 40px; max-width: 100%; }
+/* Fitts's Law: keyboard / touch alternative to drag and drop */
+.meets-move { display: inline-flex; gap: 2px; flex: none; }
+.meets-move button { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--color-divider); background: var(--color-bg); color: var(--color-text); font-size: 12px; cursor: pointer; padding: 0; }
+.meets-move button:disabled { opacity: 0.35; cursor: default; }
+.meets-move button:focus-visible { outline: 2px solid var(--color-accent-2); outline-offset: 1px; }
+@media (max-width: 900px) {
+  .meets-back { padding: 4px 16px 0; }
+  .meets-subtabs { padding: 8px 16px; }
+  .meets-fb .filterbar-controls { width: 100%; }
+  .meets-fb .filterbar-controls .input { width: 100% !important; }
+  .meets-fb .filterbar-controls .select { flex: 1; min-width: 0; width: auto !important; }
+  .meets-eventnav .btn { flex: 1 1 100%; justify-content: center; }
+  .meets-eventnav .micro { order: -1; width: 100%; text-align: center; }
+}
+
+/* ═══ CONTENT group (Layout, 404, News, Media, Market, Login/Register, admin, importer) ═══ */
+/* header nav — Proximity: one column per group, groups sized by their link count */
+.content-nav { display: flex; }
+.content-nav-group { flex: 1 1 0; min-width: 0; padding: 14px 20px 14px 24px; border-right: 1px solid var(--color-divider); }
+.content-nav-group:first-child { padding-left: 32px; }
+.content-nav-group:last-child { border-right: none; padding-right: 32px; }
+.content-nav-group a { overflow-wrap: anywhere; line-height: 1.5; padding: 2.5px 0; }
+.content-drawer { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 16px; }
+.content-signin { color: var(--color-bg); font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 4px; white-space: nowrap; }
+.content-signin:hover { text-decoration: underline; }
+/* signed-in bar — Common Region: account tools in one strip; the current tool is marked */
+.content-userbar { display: flex; align-items: center; gap: 4px 18px; flex-wrap: wrap; padding: 6px 32px; background: var(--color-neutral-100); }
+.content-userbar a { display: inline-flex; align-items: center; min-height: 32px; font-size: 13px; font-weight: 600; text-decoration: none; }
+.content-userbar a:hover { text-decoration: underline; }
+.content-userbar a.active { box-shadow: inset 0 -2px 0 var(--color-accent); }
+/* header search suggestions — Chunking: grouped by kind */
+.content-search { position: relative; display: flex; align-items: center; gap: 8px; }
+.content-search-panel { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60; background: var(--color-bg); color: var(--color-text); border: 2px solid var(--color-text); box-shadow: var(--shadow-lg); max-height: 70vh; overflow-y: auto; text-align: left; }
+.content-search-group { padding: 10px 12px 4px; border-bottom: 1px solid var(--color-divider); }
+.content-search-group .kicker { margin-bottom: 4px; }
+.content-search-hit { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 4px 0; background: none; border: none; font: inherit; font-size: 13px; font-weight: 600; color: inherit; text-align: left; cursor: pointer; }
+.content-search-hit span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.content-search-hit:hover span, .content-search-hit:focus-visible span { text-decoration: underline; }
+.content-search-all { display: block; width: 100%; min-height: 40px; padding: 0 12px; background: var(--color-neutral-100); border: none; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--color-accent); text-align: left; cursor: pointer; }
+.content-search-all:hover { text-decoration: underline; }
+.content-search-note { padding: 14px 12px; font-size: 13px; color: var(--color-neutral-700); }
+@media (max-width: 900px) {
+  .content-userbar { padding: 6px 16px; gap: 2px 14px; }
+}
+/* 404 */
+.content-notfound-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; margin-top: 28px; border-top: 1px solid var(--color-divider); border-left: 1px solid var(--color-divider); max-width: 980px; }
+.content-notfound-links a { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; min-height: 64px; text-decoration: none; color: inherit; border-right: 1px solid var(--color-divider); border-bottom: 1px solid var(--color-divider); }
+.content-notfound-links a:hover { background: var(--color-neutral-100); }
+.content-notfound-links a span { font-size: 12.5px; color: var(--color-neutral-700); }
+
+/* ---------- RESULTS group: /records, /rankings, /new-records, /qualifying-times, home ---------- */
+/* the owner-tuned compact filter rows (.records-filters) sit inside the shared FilterBar:
+   the bar owns the gutter, the rows keep their 32px phone segments */
+.filterbar .results-filters { padding: 0 !important; flex: 1 1 320px; min-width: 0; }
+.filterbar .results-filters .select { background-color: var(--color-bg); }
+/* Chunking: stroke sub-heading rows inside a record table */
+.results-group-row td, .results-group-row { font-size: 11px !important; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-700); background: var(--color-neutral-100); padding-top: 6px !important; padding-bottom: 6px !important; }
+div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
+/* Working Memory: when/where a record was set, under the meet name */
+.results-sub { display: block; font-size: 12px; color: var(--color-neutral-700); font-weight: 500; }
+/* new records: progress through a long list + the button to continue */
+.results-more { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 16px 28px; font-size: 12px; color: var(--color-neutral-700); }
+.results-more-track { width: min(260px, 100%); height: 4px; background: var(--color-neutral-200); }
+.results-more-track span { display: block; height: 100%; background: var(--color-accent); }
+/* qualifying times: the same columns line up from one stroke table to the next */
+.results-qt-table { table-layout: fixed; width: 100%; }
+.results-qt-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
+.results-qt-status::before { content: ''; width: 8px; height: 8px; background: var(--color-neutral-400); }
+.results-qt-status.is-open::before { background: var(--asw-fast); }
+/* sign in / create account */
+.content-pw { position: relative; }
+.content-pw .input { padding-right: 64px; }
+.content-pw .btn { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); min-height: 32px; padding: 0 10px; font-size: 12px; }
+.content-fielderr { margin-top: 5px; font-size: 12.5px; color: var(--asw-slow); }
+.content-fieldhint { margin-top: 5px; font-size: 12px; color: var(--color-neutral-700); }
+.content-authnote { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--color-divider); font-size: 13px; line-height: 1.6; color: var(--color-neutral-700); }
+/* admin dashboard tool tiles */
+.content-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.content-tools a { display: flex; flex-direction: column; gap: 4px; padding: 14px 32px; min-height: 64px; color: inherit; text-decoration: none; border-right: 1px solid var(--color-divider); }
+.content-tools a:last-child { border-right: none; }
+.content-tools a:hover { background: var(--color-neutral-100); }
+.content-tools a span { font-size: 12.5px; color: var(--color-neutral-700); }
+@media (max-width: 900px) { .content-tools a { padding: 12px 16px; border-right: none; border-bottom: 1px solid var(--color-divider); } .content-tools a:last-child { border-bottom: none; } }
+
+/* ---------- FEDERATIONS group (Countries list, federation profile, medal tables) ---------- */
+/* Chunking: federations with no swimmers yet are a compact chip group, not table rows */
+.fed-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.fed-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 12px; border: 1px solid var(--color-divider); font-size: 13px; font-weight: 600; color: var(--color-text); text-decoration: none; }
+.fed-chip:hover { background: var(--color-neutral-100); }
+/* Law of Similarity: a clickable table row reacts on hover like a link */
+.table tr.row-link:hover td { background: var(--color-neutral-100); }
+/* Selective Attention: the record-holder ticker stops moving for people who ask for less motion; it scrolls by hand instead */
+@media (prefers-reduced-motion: reduce) {
+  .asw-ticker { overflow-x: auto !important; }
+  .asw-ticker-track { animation: none !important; }
+}
+
+/* ---------- SWIMMERS group: /lab ---------- */
+.lab-intro { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.lab-intro > div { border: 1px solid var(--color-divider); background: var(--color-surface); padding: 12px 14px; }
+.lab-eventbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; background: var(--color-neutral-100); border: 1px solid var(--color-divider); }
+@media (max-width: 900px) {
+  .lab-bar { padding: 12px 16px !important; }
+  .lab-modes { padding: 12px 16px 0 !important; }
+}
+/* importer */
+.content-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.content-method { display: flex; flex-direction: column; gap: 6px; padding: 24px; text-align: left; font: inherit; color: inherit; cursor: pointer; background: var(--color-surface); border: 1px solid var(--color-divider); }
+.content-method strong { font-family: var(--font-heading); font-weight: 800; font-size: 18px; }
+.content-method span:last-child { font-size: 13px; color: var(--color-neutral-700); }
+.content-method:hover, .content-method:focus-visible { border-color: var(--color-accent); background: var(--color-neutral-100); }
+.content-busy { margin-bottom: 16px; padding: 12px 14px; border: 1px solid var(--color-divider); border-left: 4px solid var(--color-accent-2); background: var(--color-neutral-100); }
+.content-busy .loading::before { margin-right: 8px; }
+
+/* ---------- SWIMMERS group: swimmer profile ---------- */
+.swimmer-back { padding: 6px 32px 0; }
+.swimmer-tab-count { margin-left: 6px; font-size: 11px; font-weight: 700; opacity: 0.65; }
+.swimmer-more-tabs { margin-top: 10px; }
+.swimmer-stat-link { border: 0; font: inherit; cursor: pointer; }
+.swimmer-stat-link:hover { background: var(--color-accent) !important; }
+.swimmer-stat-link:focus-visible { outline: 2px solid var(--color-accent-2); outline-offset: 2px; }
+.swimmer-top-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 28px 32px; align-items: start; }
+.swimmer-top-grid > * { min-width: 0; }
+@media (max-width: 900px) {
+  .swimmer-back { padding: 2px 16px 0; }
+  .swimmer-more-tabs { margin: 0; padding: 8px 16px; border-top: 1px solid var(--color-divider); overflow-x: auto; }
+  .swimmer-top-grid { grid-template-columns: 1fr; }
+}
+/* SWIMMERS group: progression chart points are keyboard-focusable */
+.asw-chart-pt:focus { outline: none; }
+.asw-chart-pt:focus-visible { outline: 2px solid var(--color-accent-2); outline-offset: 2px; }
+
+/* ═══ CONTENT group (restored) — News, Article, Media, Album viewer, shared to-do strip ═══ */
+/* 404 page wrapper */
+.content-notfound { max-width: 1100px; }
+/* news cards — Similarity: the whole card is one link (title underlines on hover);
+   admin tools live in the meta row outside it. Cards share one height so the
+   date rows line up across the grid. */
+.content-newscard { display: flex; flex-direction: column; min-width: 0; }
+.content-newscard > a { display: block; color: inherit; text-decoration: none; flex: 1; }
+.content-newscard > a.grid-2 { display: grid; }
+.content-news-title { margin: 10px 0 6px; color: var(--color-accent-800); }
+.content-newscard > a:hover .content-news-title, .content-newscard > a:focus-visible .content-news-title { text-decoration: underline; text-underline-offset: 3px; }
+.content-news-more { display: inline-flex; align-items: center; min-height: 32px; font-size: 13px; font-weight: 700; color: var(--color-accent); }
+.content-news-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-height: 32px; padding-top: 8px; border-top: 1px solid var(--color-divider); color: var(--color-neutral-700); }
+.content-newslead .content-news-meta { margin-top: 16px; gap: 4px 10px; }
+.content-news-admin { display: inline-flex; gap: 6px; margin-left: auto; }
+/* article reader */
+.content-article-admin { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; margin-bottom: 16px; background: var(--color-neutral-100); border: 1px solid var(--color-divider); }
+.content-article-more { display: flex; align-items: center; gap: 14px; padding: 12px 0; min-height: 64px; border-bottom: 1px solid var(--color-divider); color: inherit; text-decoration: none; }
+.content-article-more img, .content-article-more-ph { width: 112px; aspect-ratio: 16 / 9; object-fit: cover; flex: none; background: var(--color-neutral-200); }
+.content-article-more strong { display: block; font-size: 15px; line-height: 1.3; color: var(--color-accent-800); }
+.content-article-more:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.content-article-more-date { display: block; margin-top: 4px; font-size: 12px; color: var(--color-neutral-700); }
+@media (max-width: 640px) { .content-article-more img, .content-article-more-ph { width: 88px; } }
+/* media albums */
+.content-albums { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 28px 20px; }
+.content-album { min-width: 0; }
+.content-album > a { display: block; color: inherit; text-decoration: none; }
+.content-album-cover { aspect-ratio: 1 / 1; overflow: hidden; background: var(--color-neutral-200); display: flex; align-items: center; justify-content: center; }
+.content-album-cover img { width: 100%; height: 100%; object-fit: cover; }
+.content-album-ph { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--color-neutral-700); }
+.content-album-title { font-family: var(--font-heading); font-weight: 800; font-size: 15px; line-height: 1.2; margin: 10px 0 4px; }
+.content-album > a:hover .content-album-title { text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 640px) { .content-albums { grid-template-columns: 1fr 1fr; gap: 20px 12px; } }
+/* Zeigarnik Effect: unfinished admin work is stated, with a gold edge (Media, Marketplace, Dashboard) */
+.content-todo { margin-bottom: 20px; padding: 10px 14px; font-size: 13px; border: 1px solid var(--color-divider); border-left: 4px solid var(--asw-gold); background: var(--color-neutral-100); }
+/* album photo viewer — Fitts's Law: 48px controls at the screen edges */
+.content-lightbox { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 56px 64px; background: color-mix(in srgb, var(--color-accent-900) 94%, transparent); }
+.content-lightbox-btn { position: absolute; width: 48px; height: 48px; display: grid; place-items: center; background: color-mix(in srgb, var(--color-accent-900) 60%, transparent); border: none; color: var(--color-bg); cursor: pointer; }
+.content-lightbox-btn:hover, .content-lightbox-btn:focus-visible { background: var(--color-accent-600); }
+.content-lightbox-prev { left: 8px; top: 50%; transform: translateY(-50%); }
+.content-lightbox-next { right: 8px; top: 50%; transform: translateY(-50%); }
+.content-lightbox-caption { position: absolute; bottom: 16px; left: 0; right: 0; display: flex; justify-content: center; gap: 14px; padding: 0 16px; font-size: 14px; color: var(--color-bg); text-align: center; }
+@media (max-width: 640px) { .content-lightbox { padding: 56px 8px; } }

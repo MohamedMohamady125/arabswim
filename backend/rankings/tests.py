@@ -66,3 +66,37 @@ class SplitRankingTests(TestCase):
     def test_splits_respect_year_filter(self):
         rows = self.rows(year=2024)
         self.assertEqual(rows, [])
+
+
+class RankingPagingTests(TestCase):
+    """The pager must be able to trust count / page size / rank numbers."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        cls.e50 = Event.objects.create(name='50 M Freestyle', distance=50,
+                                       stroke='Freestyle', sort_order=1)
+        cls.champ = Championship.objects.create(
+            name='Test Meet', date='2026-01-10', pool='LCM', country=cls.tun)
+        for i in range(7):
+            s = Swimmer.objects.create(name=f'Swimmer {i}', sex='M',
+                                       nationality=cls.tun, birth_year=2000)
+            Result.objects.create(championship=cls.champ, event=cls.e50,
+                                  swimmer=s, nationality=cls.tun,
+                                  time_centiseconds=2500 + i, round_type='Finals')
+
+    def get(self, **params):
+        params.update(event=self.e50.id, scope='arab')
+        resp = APIClient().get('/api/v1/rankings/', params)
+        self.assertEqual(resp.status_code, 200)
+        return resp.json()
+
+    def test_page_size_param_is_honoured_like_limit(self):
+        for name in ('page_size', 'limit'):
+            d = self.get(**{name: 3})
+            self.assertEqual(d['count'], 7)
+            self.assertEqual(len(d['results']), 3)
+
+    def test_rank_continues_from_the_real_page_size(self):
+        d = self.get(page_size=3, page=2)
+        self.assertEqual([r['rank'] for r in d['results']], [4, 5, 6])

@@ -531,6 +531,10 @@ export default function FederationProgressionTab({ countryId }) {
   const [intlMode, setIntlMode] = useState('heatmap')
   const [intlOverview, setIntlOverview] = useState(null)
   const [intlEventData, setIntlEventData] = useState(null)
+  // A failed request is not "no results": show an error with a retry instead
+  const [failed, setFailed] = useState(false)
+  const [tryKey, setTryKey] = useState(0)
+  useEffect(() => { setFailed(false) }, [countryId, sub, sex, pool, cls, intlMode, eventId, tryKey])
 
   // Overview data doubles as the event-picker source (only events with data)
   useEffect(() => {
@@ -540,9 +544,9 @@ export default function FederationProgressionTab({ countryId }) {
     let alive = true
     getCountryProgression(countryId, { view: 'overview', sex, pool })
       .then((r) => { if (alive) { cache.current[key] = r.data; setOverview(r.data) } })
-      .catch(() => alive && setOverview({ years: [], events: [] }))
+      .catch(() => { if (alive) { setOverview({ years: [], events: [] }); setFailed(true) } })
     return () => { alive = false }
-  }, [countryId, sex, pool])
+  }, [countryId, sex, pool, tryKey])
 
   const events = overview?.events || []
   // Keep a valid event selected whenever the list changes
@@ -561,9 +565,9 @@ export default function FederationProgressionTab({ countryId }) {
     let alive = true
     getCountryProgression(countryId, { view: 'event', event: eventId, sex, pool })
       .then((r) => { if (alive) { cache.current[key] = r.data; setEventData(r.data) } })
-      .catch(() => alive && setEventData({ seasons: [], benchmarks: {} }))
+      .catch(() => { if (alive) { setEventData({ seasons: [], benchmarks: {} }); setFailed(true) } })
     return () => { alive = false }
-  }, [countryId, sub, eventId, sex, pool])
+  }, [countryId, sub, eventId, sex, pool, tryKey])
 
   // International overview (also feeds the intl event picker)
   useEffect(() => {
@@ -574,9 +578,9 @@ export default function FederationProgressionTab({ countryId }) {
     let alive = true
     getCountryProgression(countryId, { view: 'overview', sex, pool, classification: cls })
       .then((r) => { if (alive) { cache.current[key] = r.data; setIntlOverview(r.data) } })
-      .catch(() => alive && setIntlOverview({ years: [], events: [] }))
+      .catch(() => { if (alive) { setIntlOverview({ years: [], events: [] }); setFailed(true) } })
     return () => { alive = false }
-  }, [countryId, sub, cls, sex, pool])
+  }, [countryId, sub, cls, sex, pool, tryKey])
 
   const intlEvents = intlOverview?.events || []
   useEffect(() => {
@@ -594,9 +598,9 @@ export default function FederationProgressionTab({ countryId }) {
     let alive = true
     getCountryProgression(countryId, { view: 'event', event: eventId, sex, pool, classification: cls })
       .then((r) => { if (alive) { cache.current[key] = r.data; setIntlEventData(r.data) } })
-      .catch(() => alive && setIntlEventData({ seasons: [], benchmarks: {} }))
+      .catch(() => { if (alive) { setIntlEventData({ seasons: [], benchmarks: {} }); setFailed(true) } })
     return () => { alive = false }
-  }, [countryId, sub, intlMode, cls, eventId, sex, pool])
+  }, [countryId, sub, intlMode, cls, eventId, sex, pool, tryKey])
 
   useEffect(() => {
     if (sub !== 'records' || !eventId) return
@@ -606,9 +610,9 @@ export default function FederationProgressionTab({ countryId }) {
     let alive = true
     getCountryProgression(countryId, { view: 'records', event: eventId, sex, pool })
       .then((r) => { if (alive) { cache.current[key] = r.data; setRecordsData(r.data) } })
-      .catch(() => alive && setRecordsData({ timeline: [] }))
+      .catch(() => { if (alive) { setRecordsData({ timeline: [] }); setFailed(true) } })
     return () => { alive = false }
-  }, [countryId, sub, eventId, sex, pool])
+  }, [countryId, sub, eventId, sex, pool, tryKey])
 
   const grouped = useMemo(() => {
     const g = {}
@@ -629,7 +633,7 @@ export default function FederationProgressionTab({ countryId }) {
         <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0, textAlign: 'center' }}>Progression</h2>
         <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
       </div>
-      <div style={{ textAlign: 'center', fontSize: 12.5, color: '#6b7d94', marginBottom: 4 }}>
+      <div style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--color-neutral-700)', marginBottom: 4 }}>
         Season-best analysis — how the federation moves year over year
       </div>
       <SubTabs value={sub} onChange={setSub}
@@ -663,15 +667,20 @@ export default function FederationProgressionTab({ countryId }) {
           </select>
         )}
         <Seg options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]} value={sex} onChange={setSex} />
-        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
+        <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={setPool} />
       </div>
 
-      {sub === 'overview' && (
+      {failed && (
+        <Empty label="Could not load progression data" hint="Check your connection and try again.">
+          <button type="button" className="btn btn-secondary" onClick={() => setTryKey((k) => k + 1)}>Try again</button>
+        </Empty>
+      )}
+      {!failed && sub === 'overview' && (
         <OverviewHeatmap data={overview} onPickEvent={(id) => { setEventId(String(id)); setSub('event') }} />
       )}
-      {sub === 'event' && (overview && !events.length ? <Empty label="No results for this selection" hint="Try the other gender or pool length." /> : <EventView data={eventData} />)}
-      {sub === 'records' && (overview && !events.length ? <Empty label="No results for this selection" hint="Try the other gender or pool length." /> : <RecordsView data={recordsData} />)}
-      {sub === 'intl' && (intlMode === 'heatmap'
+      {!failed && sub === 'event' && (overview && !events.length ? <Empty label="No results for this selection" hint="Try the other gender or pool length." /> : <EventView data={eventData} />)}
+      {!failed && sub === 'records' && (overview && !events.length ? <Empty label="No results for this selection" hint="Try the other gender or pool length." /> : <RecordsView data={recordsData} />)}
+      {!failed && sub === 'intl' && (intlMode === 'heatmap'
         ? (intlOverview && !intlEvents.length
             ? <Empty label="No international results for this selection" hint="Try another meet level, gender or pool length." />
             : <OverviewHeatmap data={intlOverview} onPickEvent={(id) => { setEventId(String(id)); setIntlMode('event') }} />)

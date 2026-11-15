@@ -114,28 +114,33 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
     e.dataTransfer.setData('text/plain', card.id)
   }, [])
 
-  const onDrop = useCallback((e, dayNo, timeOfDay) => {
-    e.preventDefault()
-    if (!dragItem) return
+  // place a card in a day — shared by drop and by the "Add to…" menu
+  const place = (card, dayNo, timeOfDay) => {
+    if (!card) return
     // Check not already in this slot
     const exists = items.some((it) =>
-      it.event_name === dragItem.event_name && it.gender === dragItem.gender
-      && (it.session || '') === (dragItem.session || '')
-      && (it.age_category || '') === (dragItem.age_category || '')
+      it.event_name === card.event_name && it.gender === card.gender
+      && (it.session || '') === (card.session || '')
+      && (it.age_category || '') === (card.age_category || '')
       && it.day === dayNo)
     if (exists) return
-    const evId = resolveEventId(dragItem.event_name)
+    const evId = resolveEventId(card.event_name)
     onChange([...items, {
       day: dayNo,
       event: evId,
-      event_name: dragItem.event_name,
-      gender: dragItem.gender,
-      session: dragItem.session || '',
+      event_name: card.event_name,
+      gender: card.gender,
+      session: card.session || '',
       time_of_day: timeOfDay || '',
-      age_category: dragItem.age_category || '',
+      age_category: card.age_category || '',
     }])
+  }
+  const onDrop = (e, dayNo, timeOfDay) => {
+    e.preventDefault()
+    place(dragItem, dayNo, timeOfDay)
     setDragItem(null)
-  }, [dragItem, items, onChange])
+  }
+  const moveItem = (from, to) => onChange(swapItems(items, from, to))
 
   const onDragOver = useCallback((e) => {
     e.preventDefault()
@@ -175,7 +180,7 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
     <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }}>
       <div className="kicker" style={{ marginBottom: 4 }}>Build meet program</div>
       <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0 }}>
-        Drag each event from the left panel into the correct day. The program is saved automatically when you confirm the import.
+        Drag each event from the left panel into the correct day, or pick the day from its "Add to" menu. Use the arrows to reorder. The program is saved automatically when you confirm the import.
       </div>
 
       {/* Morning/evening toggle */}
@@ -221,6 +226,7 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
                     {card.age_category}
                   </span>
                 )}
+                <PlaceMenu card={card} days={days} hasSessions={hasSessions} onPlace={place} />
               </div>
             ))}
           </div>
@@ -276,7 +282,7 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
                         allItems={items}
                         onDrop={(e) => onDrop(e, d.day, 'MORNING')}
                         onDragOver={onDragOver}
-                        onRemove={removeItem}
+                        onRemove={removeItem} onMove={moveItem}
                         style={dropZoneStyle}
                       />
                     </div>
@@ -290,7 +296,7 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
                         allItems={items}
                         onDrop={(e) => onDrop(e, d.day, 'EVENING')}
                         onDragOver={onDragOver}
-                        onRemove={removeItem}
+                        onRemove={removeItem} onMove={moveItem}
                         style={dropZoneStyle}
                       />
                     </div>
@@ -304,7 +310,7 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
                           allItems={items}
                           onDrop={() => {}}
                           onDragOver={(e) => e.preventDefault()}
-                          onRemove={removeItem}
+                          onRemove={removeItem} onMove={moveItem}
                           style={dropZoneStyle}
                         />
                       </div>
@@ -317,7 +323,7 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
                       allItems={items}
                       onDrop={(e) => onDrop(e, d.day, '')}
                       onDragOver={onDragOver}
-                      onRemove={removeItem}
+                      onRemove={removeItem} onMove={moveItem}
                       style={dropZoneStyle}
                     />
                   </div>
@@ -414,26 +420,35 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
     e.dataTransfer.setData('text/plain', card.id)
   }, [])
 
-  const onDrop = useCallback((e, dayNo, timeOfDay) => {
-    e.preventDefault()
-    if (!dragItem) return
+  // place a card in a day — shared by drop and by the "Add to…" menu
+  const place = (card, dayNo, timeOfDay) => {
+    if (!card) return
     const exists = items.some((it) =>
-      String(it.event) === String(dragItem.event) && it.gender === dragItem.gender
+      String(it.event) === String(card.event) && it.gender === card.gender
       && it.day === dayNo)
     if (exists) return
     setItems((prev) => [...prev, {
       day: dayNo,
-      event: dragItem.event,
-      event_name: dragItem.event_name,
-      gender: dragItem.gender,
-      session: dragItem.session || '',
+      event: card.event,
+      event_name: card.event_name,
+      gender: card.gender,
+      session: card.session || '',
       time_of_day: timeOfDay || '',
-      age_category: dragItem.age_category || '',
+      age_category: card.age_category || '',
     }])
-    setDragItem(null)
     setDirty(true)
     setMsg('')
-  }, [dragItem, items])
+  }
+  const onDrop = (e, dayNo, timeOfDay) => {
+    e.preventDefault()
+    place(dragItem, dayNo, timeOfDay)
+    setDragItem(null)
+  }
+  const moveItem = (from, to) => {
+    setItems((prev) => swapItems(prev, from, to))
+    setDirty(true)
+    setMsg('')
+  }
 
   const onDragOver = useCallback((e) => {
     e.preventDefault()
@@ -498,7 +513,7 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
     <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }}>
       <div className="kicker" style={{ marginBottom: 4 }}>Drag &amp; drop program editor</div>
       <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0 }}>
-        Drag events from the left panel into the correct day. Click Save when done.
+        Drag events from the left panel into the correct day, or pick the day from an event's "Add to" menu. Use the arrows to reorder. Click Save when done.
       </div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14 }}>
@@ -528,6 +543,7 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
               <div key={card.id} draggable onDragStart={(e) => onDragStart(e, card)} style={cardStyle(dragItem?.id === card.id)}>
                 <span style={{ fontWeight: 600, flex: 1 }}>{card.event_name}</span>
                 <span className="micro" style={{ textTransform: 'none', letterSpacing: 0, flexShrink: 0 }}>{GENDER_LABEL[card.gender] || card.gender}</span>
+                <PlaceMenu card={card} days={days} hasSessions={hasSessions} onPlace={place} />
               </div>
             ))}
           </div>
@@ -551,16 +567,16 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
                   <>
                     <div style={{ padding: '6px 8px' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4, color: 'var(--color-neutral-500)' }}>MORNING</div>
-                      <DropZone items={morningItems} allItems={items} onDrop={(e) => onDrop(e, d.day, 'MORNING')} onDragOver={onDragOver} onRemove={removeItem} style={dropZoneStyle} />
+                      <DropZone items={morningItems} allItems={items} onDrop={(e) => onDrop(e, d.day, 'MORNING')} onDragOver={onDragOver} onRemove={removeItem} onMove={moveItem} style={dropZoneStyle} />
                     </div>
                     <div style={{ padding: '6px 8px' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4, color: 'var(--color-neutral-500)' }}>EVENING</div>
-                      <DropZone items={eveningItems} allItems={items} onDrop={(e) => onDrop(e, d.day, 'EVENING')} onDragOver={onDragOver} onRemove={removeItem} style={dropZoneStyle} />
+                      <DropZone items={eveningItems} allItems={items} onDrop={(e) => onDrop(e, d.day, 'EVENING')} onDragOver={onDragOver} onRemove={removeItem} onMove={moveItem} style={dropZoneStyle} />
                     </div>
                   </>
                 ) : (
                   <div style={{ padding: '6px 8px' }}>
-                    <DropZone items={dayItems} allItems={items} onDrop={(e) => onDrop(e, d.day, '')} onDragOver={onDragOver} onRemove={removeItem} style={dropZoneStyle} />
+                    <DropZone items={dayItems} allItems={items} onDrop={(e) => onDrop(e, d.day, '')} onDragOver={onDragOver} onRemove={removeItem} onMove={moveItem} style={dropZoneStyle} />
                   </div>
                 )}
               </div>
@@ -573,7 +589,42 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
 }
 
 
-function DropZone({ items, allItems, onDrop, onDragOver, onRemove, style }) {
+// swap two entries of the flat item list (used by the move up / down buttons)
+function swapItems(list, from, to) {
+  if (from < 0 || to < 0 || from === to) return list
+  const next = [...list]
+  ;[next[from], next[to]] = [next[to], next[from]]
+  return next
+}
+
+// Keyboard and touch alternative to dragging: choose the day from a menu.
+function PlaceMenu({ card, days, hasSessions, onPlace }) {
+  return (
+    <select
+      className="select"
+      aria-label={`Add ${card.event_name} to a day`}
+      value=""
+      onChange={(e) => {
+        if (!e.target.value) return
+        const [day, tod] = e.target.value.split('|')
+        onPlace(card, Number(day), tod || '')
+      }}
+      style={{ flex: 'none', width: 84, minWidth: 0, height: 28, minHeight: 28, fontSize: 11, padding: '0 20px 0 6px' }}
+    >
+      <option value="">Add to…</option>
+      {days.map((d) => (hasSessions ? (
+        <optgroup key={d.day} label={`Day ${d.day}`}>
+          <option value={`${d.day}|MORNING`}>Day {d.day} morning</option>
+          <option value={`${d.day}|EVENING`}>Day {d.day} evening</option>
+        </optgroup>
+      ) : (
+        <option key={d.day} value={`${d.day}|`}>Day {d.day}</option>
+      )))}
+    </select>
+  )
+}
+
+function DropZone({ items, allItems, onDrop, onDragOver, onRemove, onMove, style }) {
   const [isOver, setIsOver] = useState(false)
 
   return (
@@ -588,8 +639,10 @@ function DropZone({ items, allItems, onDrop, onDragOver, onRemove, style }) {
           Drop events here
         </div>
       )}
-      {items.map((it) => {
+      {items.map((it, zi) => {
         const globalIdx = allItems.indexOf(it)
+        const prevIdx = zi > 0 ? allItems.indexOf(items[zi - 1]) : -1
+        const nextIdx = zi < items.length - 1 ? allItems.indexOf(items[zi + 1]) : -1
         return (
           <div
             key={`${it.event_name}-${it.gender}-${it.session}-${it.age_category}`}
@@ -612,6 +665,12 @@ function DropZone({ items, allItems, onDrop, onDragOver, onRemove, style }) {
             {it.age_category && (
               <span className="tag tag-neutral" style={{ fontSize: 11, flexShrink: 0 }}>
                 {it.age_category}
+              </span>
+            )}
+            {onMove && items.length > 1 && (
+              <span className="meets-move">
+                <button type="button" disabled={prevIdx < 0} onClick={() => onMove(globalIdx, prevIdx)} aria-label={`Move ${it.event_name} up`} title="Move up">↑</button>
+                <button type="button" disabled={nextIdx < 0} onClick={() => onMove(globalIdx, nextIdx)} aria-label={`Move ${it.event_name} down`} title="Move down">↓</button>
               </span>
             )}
             <button

@@ -113,3 +113,41 @@ class SplitRecordTests(_Fixture):
         self.assertEqual(
             Record.objects.filter(event=self.e50).order_by(
                 'time_centiseconds').first().time_centiseconds, 2540)
+
+
+class RecordListPagingTests(_Fixture):
+    """The record list is read whole by the site: page size is selectable,
+    the order is stable, and a national book can be narrowed to a country."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        for i in range(30):
+            Record.objects.create(
+                swimmer=cls.swimmer, event=cls.e50, record_type='NATIONAL',
+                pool='LCM', time_centiseconds=2500 + i, is_new=True,
+                country=cls.egy if i < 4 else cls.tun, result_date='2026-01-10')
+
+    def get(self, **params):
+        from rest_framework.test import APIClient
+        resp = APIClient().get('/api/v1/records/', params)
+        self.assertEqual(resp.status_code, 200)
+        return resp.json()
+
+    def test_page_size_param(self):
+        d = self.get(is_new='true', page_size=500)
+        self.assertEqual(d['count'], 30)
+        self.assertEqual(len(d['results']), 30)
+        self.assertEqual(len(self.get(is_new='true')['results']), 25)
+
+    def test_pages_do_not_overlap_when_dates_tie(self):
+        a = [r['id'] for r in self.get(page_size=15)['results']]
+        b = [r['id'] for r in self.get(page_size=15, page=2)['results']]
+        self.assertEqual(len(set(a) | set(b)), 30)
+
+    def test_country_filter_and_country_ordering(self):
+        self.assertEqual(self.get(country=self.egy.id)['count'], 4)
+        d = self.get(ordering='country__name,-result_date', page_size=500)
+        names = [r['country_detail']['name'] for r in d['results']]
+        self.assertEqual(names, sorted(names))

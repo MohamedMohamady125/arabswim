@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
 import Layout from './components/Layout'
 import PageTracker from './components/PageTracker'
 import { useAuth } from './context/AuthContext'
@@ -40,10 +40,11 @@ import Countries from './pages/Countries'
 import Reports from './pages/Reports'
 import Lab from './pages/Lab'
 import CountryProfile from './pages/CountryProfile'
+import { Loading } from './components/ui'
 
 function RequireAdmin({ children }) {
   const { isAdmin, authLoading } = useAuth()
-  if (authLoading) return <div className="loading">Loading…</div>
+  if (authLoading) return <Loading />
   return isAdmin ? children : <Navigate to="/login" replace />
 }
 
@@ -53,6 +54,39 @@ function RequireFeature({ flag, children }) {
   const { features } = useFeatures()
   if (features[flag] === false && !isAdmin) return <Navigate to="/" replace />
   return children
+}
+
+// Paradox of the Active User: a wrong link says what happened and offers the
+// few places most people are looking for (Hick's Law: five, not the whole menu).
+function NotFound() {
+  const { pathname } = useLocation()
+  const { features } = useFeatures()
+  const links = [
+    ['Championships', '/championships', 'Meets and full results'],
+    ['Swimmers', '/swimmers', 'Find a swimmer by name', 'swimmers'],
+    ['Records', '/records', 'Arab and national records', 'records'],
+    ['Rankings', '/rankings', 'Fastest times by event', 'rankings'],
+    ['News', '/news', 'Latest stories', 'news'],
+  ].filter(([, , , flag]) => !flag || features[flag] !== false)
+  return (
+    <div className="pad-lg content-notfound">
+      <div className="kicker" style={{ marginBottom: 6 }}>Error 404</div>
+      <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>Page not found</h1>
+      <p style={{ fontSize: 14, color: 'var(--color-neutral-700)', margin: '10px 0 20px', maxWidth: 520 }}>
+        There is no page at <strong style={{ overflowWrap: 'anywhere' }}>{pathname}</strong>. The link may be old or mistyped.
+        Use the search at the top of the page, or start from one of these.
+      </p>
+      <Link to="/" className="btn btn-primary" style={{ textDecoration: 'none' }}>Go to the home page</Link>
+      <div className="content-notfound-links">
+        {links.map(([label, to, hint]) => (
+          <Link key={to} to={to}>
+            <strong>{label} →</strong>
+            <span>{hint}</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function App() {
@@ -103,7 +137,7 @@ export default function App() {
         {/* virtual pan-Arab federation: the federation dashboard aggregated
             over every Arab + GCC nation */}
         <Route path="/arab-federation" element={<CountryProfile arabFed />} />
-        <Route path="*" element={<div className="empty">Page not found</div>} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
     </>

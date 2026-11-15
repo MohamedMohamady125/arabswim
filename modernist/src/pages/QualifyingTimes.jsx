@@ -24,6 +24,20 @@ function compLabel(value) {
 const STROKE_ORDER = { Freestyle: 0, Backstroke: 1, Breaststroke: 2, Butterfly: 3, 'Individual Medley': 4 }
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
+const POOLS = [{ value: 'LCM', label: 'LCM 50m' }, { value: 'SCM', label: 'SCM 25m' }]
+const todayIso = () => new Date().toISOString().slice(0, 10)
+
+// Goal-Gradient: where the qualifying window stands today, in plain words
+function periodStatus(start, end) {
+  if (!start || !end) return null
+  const today = todayIso()
+  const days = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000)
+  const n = (d) => `${d} day${d === 1 ? '' : 's'}`
+  if (today < start) return { open: false, text: `Qualifying opens in ${n(days(today, start))}` }
+  if (today > end) return { open: false, text: 'Qualifying period closed' }
+  const left = days(today, end)
+  return { open: true, text: left === 0 ? 'Qualifying closes today' : `Qualifying open · ${n(left)} left` }
+}
 
 function StandardTables({ times, gender, pool, isAdmin, onDeleteTime }) {
   // event rows for the selection, cut categories (A/B/C…) as separate columns
@@ -72,11 +86,12 @@ function StandardTables({ times, gender, pool, isAdmin, onDeleteTime }) {
         <div key={stroke} style={{ marginBottom: 18 }}>
           <div className="kicker" style={{ marginBottom: 8 }}>{stroke}</div>
           <div className="table-scroll">
-            <table className="table">
+            {/* Prägnanz: fixed columns, so the A and B times line up from one stroke table to the next */}
+            <table className="table results-qt-table">
               <thead>
                 <tr>
                   <th>Event</th>
-                  {cutKeys.map((c) => <th key={c} className="time">{c} standard</th>)}
+                  {cutKeys.map((c) => <th key={c} className="time" style={{ width: `${Math.min(25, 56 / cutKeys.length)}%` }}>{c} standard</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -143,7 +158,10 @@ function StandardModal({ standard, onClose, onSaved }) {
         {error && <div className="error-box" role="alert">{error}</div>}
         <div className="field"><label>Name *</label><input className="input" aria-label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div className="field"><label>Competition type</label><input className="input" aria-label="Competition type" value={form.competition_type} onChange={(e) => setForm({ ...form, competition_type: e.target.value })} placeholder="e.g. world_championships" /></div>
+          <div className="field"><label>Competition type</label><input className="input" aria-label="Competition type" value={form.competition_type} onChange={(e) => setForm({ ...form, competition_type: e.target.value })} placeholder="e.g. world_championships" list="qt-comp-types" />
+            {/* Hick's Law: the two usual types are offered, anything else can still be typed */}
+            <datalist id="qt-comp-types">{Object.entries(COMP_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</datalist>
+          </div>
           <div className="field"><label>Year</label><input className="input" aria-label="Year" type="number" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} /></div>
         </div>
         <div className="field">
@@ -205,7 +223,7 @@ function AddTimeModal({ standardId, onClose, onSaved }) {
           </div>
           <div className="field"><label>Pool</label>
             <select className="select" aria-label="Pool" value={form.pool} onChange={(e) => setForm({ ...form, pool: e.target.value })}>
-              <option value="LCM">LCM</option><option value="SCM">SCM</option>
+              <option value="LCM">LCM (50m)</option><option value="SCM">SCM (25m)</option>
             </select>
           </div>
           <div className="field"><label>Cut</label><input className="input" aria-label="Cut" value={form.cut} onChange={(e) => setForm({ ...form, cut: e.target.value })} placeholder="A" /></div>
@@ -383,7 +401,12 @@ export default function QualifyingTimes() {
         setStandards(all)
         // Keep the current selection across reloads (admin edits); only
         // fall back to the first standard when none is selected or it's gone.
-        if (all.length > 0) setSelectedId((cur) => (cur && all.some((s) => s.id === cur) ? cur : all[0].id))
+        // Tesler's Law: with nothing chosen, open the competition people are
+        // qualifying for now — the first whose window has not closed — instead
+        // of the oldest one.
+        const today = todayIso()
+        const current = all.find((s) => !s.qualifying_period_end || s.qualifying_period_end >= today) || all[all.length - 1]
+        if (all.length > 0) setSelectedId((cur) => (cur && all.some((s) => s.id === cur) ? cur : current.id))
       } catch {
         if (alive) setStandards([])
       } finally {
@@ -405,6 +428,16 @@ export default function QualifyingTimes() {
       .finally(() => alive && setDetailLoading(false))
     return () => { alive = false }
   }, [selectedId, reloadKey])
+
+  // Tesler's Law: only offer the pools / genders this standard actually has
+  // times for, and never land on an empty combination when another has data.
+  const pools = useMemo(() => POOLS.filter((p) => (detail?.times || []).some((t) => t.pool === p.value)), [detail])
+  const genders = useMemo(() => ['M', 'F'].filter((g) => (detail?.times || []).some((t) => t.gender === g)), [detail])
+  useEffect(() => {
+    if (pools.length > 0 && !pools.some((p) => p.value === pool)) setPool(pools[0].value)
+    if (genders.length > 0 && !genders.includes(gender)) setGender(genders[0])
+  }, [pools, genders, pool, gender])
+  const status = periodStatus(detail?.qualifying_period_start, detail?.qualifying_period_end)
 
   if (loading) return <Loading label="Loading qualifying standards" />
 
@@ -445,7 +478,8 @@ export default function QualifyingTimes() {
                       fontSize: active ? 22 : 15,
                       padding: 0, lineHeight: 1.2,
                       background: 'none', border: 'none',
-                      color: active ? 'var(--color-accent-800)' : 'var(--color-neutral-500)',
+                      // neutral-700 (not 500): readable, and still clearly a tab to tap
+                      color: active ? 'var(--color-accent-800)' : 'var(--color-neutral-700)',
                       borderBottom: active ? '3px solid var(--asw-gold)' : '3px solid transparent',
                       paddingBottom: 4,
                       transition: 'font-size 0.15s ease, color 0.15s ease',
@@ -462,11 +496,10 @@ export default function QualifyingTimes() {
                 value={gender}
                 onChange={setGender}
               />
-              <Seg
-                options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
-                value={pool}
-                onChange={setPool}
-              />
+              {/* a standard published for one pool only needs no pool switch */}
+              {pools.length > 1
+                ? <Seg options={pools} value={pool} onChange={setPool} />
+                : pools.length === 1 && <span className="micro">{pools[0].value === 'LCM' ? 'LCM · 50m pool' : 'SCM · 25m pool'}</span>}
             </div>
           </div>
 
@@ -485,6 +518,7 @@ export default function QualifyingTimes() {
                     Qualifying period: {formatDate(detail.qualifying_period_start)} — {formatDate(detail.qualifying_period_end)}
                   </span>
                 )}
+                {status && <span className={`results-qt-status${status.open ? ' is-open' : ''}`}>{status.text}</span>}
               </div>
               {isAdmin && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>

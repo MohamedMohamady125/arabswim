@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 export function Loading({ label = 'Loading' }) {
@@ -174,4 +174,81 @@ export function Pager({ page, pageSize = 25, count, onPage }) {
       <button type="button" className="btn btn-secondary" disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label="Next page">Next →</button>
     </div>
   )
+}
+
+/* ---------- Laws of UX shared patterns (use these, do not re-invent per page) ---------- */
+
+// Common Region + Working Memory: every filter of a list lives in one bar, with
+// the result count and a way back to the default. `count` is a number or null,
+// `noun` e.g. "swimmers". `onClear` shows only when `active` (filters changed).
+export function FilterBar({ children, count, noun = 'results', active = false, onClear }) {
+  return (
+    <div className="filterbar" role="group" aria-label="Filters">
+      <div className="filterbar-controls">{children}</div>
+      {(count != null || (active && onClear)) && (
+        <div className="filterbar-meta">
+          {count != null && <span className="asw-num" aria-live="polite">{Number(count).toLocaleString('en-US')} {noun}</span>}
+          {active && onClear && <button type="button" className="btn btn-ghost filterbar-clear" onClick={onClear}>Clear filters</button>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Hick's Law: show the few options most people need, reveal the rest on request.
+// <ShowMore label="More filters">…</ShowMore>
+export function ShowMore({ label = 'Show more', lessLabel, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <>
+      {open && children}
+      <button type="button" className="btn btn-ghost showmore" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {open ? (lessLabel || 'Show less') : label} {open ? '↑' : '↓'}
+      </button>
+    </>
+  )
+}
+
+// Goal-Gradient + Zeigarnik + Uniform Connectedness: numbered steps joined by a
+// line; done steps are filled, the current one is outlined. steps: ['Upload', …]
+export function Stepper({ steps, current = 0 }) {
+  return (
+    <ol className="stepper" aria-label={`Step ${current + 1} of ${steps.length}`}>
+      {steps.map((s, i) => (
+        <li key={s} className={i < current ? 'done' : i === current ? 'now' : ''} aria-current={i === current ? 'step' : undefined}>
+          <span className="stepper-dot asw-num">{i < current ? '✓' : i + 1}</span>
+          <span className="stepper-label">{s}</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+// Doherty Threshold: placeholder rows in the shape of the content while it loads.
+export function Skeleton({ rows = 6, height = 18 }) {
+  return (
+    <div className="skeleton" role="status" aria-label="Loading">
+      {Array.from({ length: rows }).map((_, i) => (
+        <span key={i} style={{ height, width: `${[100, 92, 96, 84, 98, 88][i % 6]}%` }} />
+      ))}
+    </div>
+  )
+}
+
+// Peak-End Rule: a clear finished state for the last step of a task.
+export function Done({ title, children }) {
+  return (
+    <div className="done-state" role="status">
+      <span className="done-mark" aria-hidden="true">✓</span>
+      <div>
+        <div className="done-title">{title}</div>
+        {children && <div className="done-body">{children}</div>}
+      </div>
+    </div>
+  )
+}
+
+// Jakob's Law: one back link, top-left, same look everywhere.
+export function BackLink({ to, children }) {
+  return <Link to={to} className="backlink">← {children}</Link>
 }

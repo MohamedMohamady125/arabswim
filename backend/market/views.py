@@ -11,12 +11,17 @@ class ListingViewSet(viewsets.ModelViewSet):
     queryset = Listing.objects.select_related('country').prefetch_related('images')
     serializer_class = ListingSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['title', 'seller_name']
+    search_fields = ['title', 'description', 'seller_name']
     ordering_fields = ['created_at', 'price', 'title']
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         qs = super().get_queryset()
+        # Listings awaiting review (or rejected) carry seller contact details
+        # and are not public: only admins see anything that is not approved.
+        from core.permissions import is_admin
+        if not is_admin(self.request.user):
+            qs = qs.filter(status='APPROVED')
         status_param = self.request.query_params.get('status')
         category = self.request.query_params.get('category')
         if status_param:

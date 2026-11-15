@@ -1,18 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getRecords, getComputedRecords } from '../api/records'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Seg } from '../components/ui'
-import { AGE_GROUPS } from '../utils'
+import { PageHead, Loading, Empty, Seg, FilterBar } from '../components/ui'
+import { AGE_GROUPS, formatDate } from '../utils'
 
 // Computed scopes are calculated live from the results database;
 // the rest are curated manual record books.
 const COMPUTED_SCOPES = ['arab', 'gcc', 'national']
-const SCOPE_OPTIONS = [
+// Hick's Law + Pareto: the three books this site computes itself are one tap
+// away; the continental and world books sit behind "More record books".
+const MAIN_SCOPES = [
   { value: 'arab', label: 'Arab' },
   { value: 'gcc', label: 'GCC' },
   { value: 'national', label: 'National' },
+]
+const SCOPE_OPTIONS = [
+  ...MAIN_SCOPES,
   { value: 'AFRICAN', label: 'African' },
   { value: 'ASIAN', label: 'Asian' },
   { value: 'MEDITERRANEAN', label: 'Mediterranean' },
@@ -72,13 +77,33 @@ function normalizeManual(r) {
   }
 }
 
+// "50 M Freestyle" / "4x100 M Medley Relay" → the stroke it belongs to
+const strokeOf = (name) => String(name || '').replace(/^\s*(\d+\s*x\s*)?\d+\s*M\s+/i, '') || 'Other'
+// Chunking: a long book reads as stroke blocks (Freestyle, Backstroke…), not 17 loose rows
+function byStroke(rows, grouped) {
+  if (!grouped || rows.length <= 9) return [{ stroke: null, rows }]
+  const out = []
+  rows.forEach((r) => {
+    const stroke = strokeOf(r.eventName)
+    const last = out[out.length - 1]
+    if (last && last.stroke === stroke) last.rows.push(r)
+    else out.push({ stroke, rows: [r] })
+  })
+  return out.length > 1 ? out : [{ stroke: null, rows }]
+}
+const whereWhen = (r) => [r.location, r.date ? formatDate(r.date) : ''].filter(Boolean).join(' · ')
+
 // Jakob's Law: a row that opens a swim behaves like a link (Enter/Space, focus ring)
 const rowKeyNav = (go) => (e) => {
   if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go() }
 }
 
-export function RecordTable({ rows }) {
+// `grouped` adds stroke sub-headings; `detail` adds where/when the record was
+// set (both opt-in so other pages that reuse the table keep their layout)
+export function RecordTable({ rows, grouped = false, detail = false }) {
   const navigate = useNavigate()
+  const groups = byStroke(rows, grouped)
+  const allRelay = rows.length > 0 && rows.every((r) => r.isRelay)
   return (
     <>
       {/* Desktop table */}
@@ -87,13 +112,18 @@ export function RecordTable({ rows }) {
           <thead>
             <tr>
               <th>Event</th>
-              <th>Swimmer</th>
+              <th>{allRelay ? 'Team' : 'Swimmer'}</th>
               <th className="time">Time</th>
               <th>Meet</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {groups.map((g) => (
+              <Fragment key={g.stroke || 'all'}>
+              {g.stroke && (
+                <tr className="results-group-row"><td colSpan={4}>{g.stroke}</td></tr>
+              )}
+              {g.rows.map((r) => (
               <tr
                 key={r.key}
                 onClick={() => { if (r.link) navigate(r.link) }}
@@ -115,8 +145,18 @@ export function RecordTable({ rows }) {
                   </div>
                 </td>
                 <td className="time asw-time">{r.time}</td>
-                <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>{r.meet || '—'}</td>
+                <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>
+                  {r.meet || '—'}
+                  {detail && (whereWhen(r) || r.fromSplit) && (
+                    <span className="results-sub">
+                      {whereWhen(r)}
+                      {r.fromSplit && r.sourceEvent ? `${whereWhen(r) ? ' · ' : ''}opening split of the ${r.sourceEvent}` : ''}
+                    </span>
+                  )}
+                </td>
               </tr>
+              ))}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -124,7 +164,10 @@ export function RecordTable({ rows }) {
 
       {/* Phone: compact 2-line cards */}
       <div className="show-mobile" style={{ display: 'flex', flexDirection: 'column' }}>
-        {rows.map((r) => (
+        {groups.map((g) => (
+          <Fragment key={g.stroke || 'all'}>
+          {g.stroke && <div className="results-group-row">{g.stroke}</div>}
+          {g.rows.map((r) => (
           <div
             key={r.key}
             className={r.link ? 'hair-b row-link' : 'hair-b'}
@@ -141,37 +184,59 @@ export function RecordTable({ rows }) {
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-neutral-700)', marginTop: 1 }}>
                 {r.eventName}
+                {detail && r.date ? <span style={{ fontWeight: 500 }}> · {String(r.date).slice(0, 4)}</span> : null}
               </div>
             </div>
             <div style={{ flex: 'none', textAlign: 'right' }}>
               <div className="asw-time" style={{ fontSize: 15 }}>{r.time}</div>
             </div>
           </div>
+          ))}
+          </Fragment>
         ))}
       </div>
     </>
   )
 }
 
-export function Section({ label, pool, rows, last }) {
+export function Section({ label, pool, rows, last, grouped = false, detail = false }) {
   return (
     <div className={last ? 'pad' : 'rule-b pad'}>
       <div className="kicker" style={{ marginBottom: 12 }}>{label} · {pool}</div>
       {rows.length === 0 ? (
         <div className="text-muted" style={{ fontSize: 14 }}>No records yet.</div>
       ) : (
-        <RecordTable rows={rows} />
+        <RecordTable rows={rows} grouped={grouped} detail={detail} />
       )}
     </div>
   )
 }
 
+const DEFAULTS = { scope: 'arab', pool: 'LCM', gender: 'M', age: 'OPEN', country: '' }
+
 export default function Records() {
-  const [scope, setScope] = useState('arab')
-  const [pool, setPool] = useState('LCM')
-  const [gender, setGender] = useState('M')
-  const [ageGroup, setAgeGroup] = useState('OPEN')
-  const [country, setCountry] = useState('')
+  // Working Memory: the chosen book lives in the address bar, so returning
+  // from a swim or a profile (or opening a shared link) shows the same book
+  const [sp, setSp] = useSearchParams()
+  const param = (k) => sp.get(k) || DEFAULTS[k]
+  const scope = SCOPE_OPTIONS.some((o) => o.value === param('scope')) ? param('scope') : DEFAULTS.scope
+  const pool = param('pool') === 'SCM' ? 'SCM' : 'LCM'
+  const gender = param('gender') === 'F' ? 'F' : 'M'
+  const ageGroup = AGE_GROUPS.includes(param('age')) ? param('age') : DEFAULTS.age
+  const country = param('country')
+  const update = (patch) => setSp((prev) => {
+    const next = new URLSearchParams(prev)
+    Object.entries(patch).forEach(([k, v]) => {
+      if (v === '' || v == null || v === DEFAULTS[k]) next.delete(k)
+      else next.set(k, String(v))
+    })
+    return next
+  }, { replace: true })
+  const setScope = (v) => update({ scope: v })
+  const setPool = (v) => update({ pool: v })
+  const setGender = (v) => update({ gender: v })
+  const setAgeGroup = (v) => update({ age: v })
+  const setCountry = (v) => update({ country: v })
   const [countries, setCountries] = useState([])
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -226,6 +291,12 @@ export default function Records() {
     }
   }, [rows])
 
+  const filtersChanged = Object.keys(DEFAULTS).some((k) => param(k) !== DEFAULTS[k])
+  const showRows = !(needsCountry && !country) && rows.length > 0
+  const bookName = scope === 'national'
+    ? (countries.find((c) => String(c.id) === country)?.name || 'National')
+    : SCOPE_OPTIONS.find((o) => o.value === scope)?.label
+
   const showMen = !gender || gender === 'M'
   const showWomen = !gender || gender === 'F'
 
@@ -240,61 +311,70 @@ export default function Records() {
     <div className="records-page">
       <PageHead title="Records" />
 
-      {/* filter bar: two fixed lines — segments on top, dropdowns below
-          (same idiom as Rankings; keeps the phone bar from clipping) */}
-      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Seg
-            options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]}
-            value={pool}
-            onChange={setPool}
-          />
-          <Seg
-            options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
-            value={gender}
-            onChange={setGender}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select className="select" aria-label="Record book" style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 180 }} value={scope} onChange={(e) => setScope(e.target.value)}>
-            {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          {needsCountry && (
-            <select className="select" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
-              <option value="">Select country…</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          )}
-          {isComputed && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span className="hide-mobile" style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
-                Age category
-              </span>
-              <select className="select" aria-label="Age category" style={{ width: 110 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-                {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'Open' : g}</option>)}
+      {/* Common Region: one bar — which book (first, it decides everything
+          else), whose, which pool; then the narrowing dropdowns. Same order
+          as Rankings so the two pages are learned once. */}
+      <FilterBar count={showRows ? rows.length : null} noun={rows.length === 1 ? 'record' : 'records'} active={filtersChanged} onClear={() => setSp({}, { replace: true })}>
+        <div className="records-filters results-filters" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Seg options={MAIN_SCOPES} value={scope} onChange={setScope} />
+            <Seg
+              options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+              value={gender}
+              onChange={setGender}
+            />
+            <Seg
+              options={[{ value: 'LCM', label: 'LCM 50m' }, { value: 'SCM', label: 'SCM 25m' }]}
+              value={pool}
+              onChange={setPool}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {needsCountry && (
+              <select className="select" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+                <option value="">Select country…</option>
+                {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-            </div>
-          )}
+            )}
+            {isComputed && (
+              <select className="select" aria-label="Age category" style={{ flex: '0 1 120px', width: 'auto', minWidth: 0 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+                {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'All ages' : g}</option>)}
+              </select>
+            )}
+            <select className="select" aria-label="More record books" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 210 }} value={isComputed ? '' : scope} onChange={(e) => setScope(e.target.value || DEFAULTS.scope)}>
+              <option value="">More record books…</option>
+              {SCOPE_OPTIONS.filter((o) => !COMPUTED_SCOPES.includes(o.value)).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
         </div>
-      </div>
+      </FilterBar>
 
       {needsCountry && !country ? (
-        <Empty label="Select a country to view national records" hint="Pick a federation from the country list above." />
-      ) : loading ? (
+        <Empty label="Select a country to view national records" hint="Pick a federation from the country list above, or switch to the Arab book." />
+      ) : loading && rows.length === 0 ? (
         <Loading label="Loading records" />
       ) : rows.length === 0 ? (
-        <Empty label={`No ${pool} records for this scope yet`} hint="Try switching the pool or the age group." />
+        <Empty
+          label={`No ${bookName} ${gender === 'F' ? "women's" : "men's"} ${pool} records${isComputed && ageGroup !== 'OPEN' ? ` for ${ageGroup}` : ''} yet`}
+          hint={isComputed ? 'Try the other pool or another age category.' : 'This book has not been published here yet. The Arab, GCC and National books are always available.'}
+        >
+          {filtersChanged && <button type="button" className="btn btn-secondary" onClick={() => setSp({}, { replace: true })}>Back to Arab records</button>}
+        </Empty>
       ) : (
-        sections.map((s, i) => (
-          <Section
-            key={s.label}
-            label={s.label}
-            pool={pool}
-            rows={s.rows}
-            showFina={isComputed}
-            last={i === sections.length - 1}
-          />
-        ))
+        // Doherty Threshold: the current book stays (dimmed) while the next one loads
+        <div aria-busy={loading} style={{ opacity: loading ? 0.45 : 1, transition: 'opacity 0.15s ease' }}>
+          {sections.map((s, i) => (
+            <Section
+              key={s.label}
+              label={`${bookName} · ${s.label}${isComputed && ageGroup !== 'OPEN' ? ` · ${ageGroup}` : ''}`}
+              pool={pool}
+              rows={s.rows}
+              grouped
+              detail
+              last={i === sections.length - 1}
+            />
+          ))}
+        </div>
       )}
     </div>
   )

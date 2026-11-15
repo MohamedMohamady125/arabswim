@@ -4,11 +4,13 @@ import { Trash2, Plus } from 'lucide-react'
 import { getInductees, createInductee, deleteInductee } from '../api/fame'
 import { searchSwimmers } from '../api/swimmers'
 import Flag from '../components/Flag'
-import { PageHead, Loading, notify, Empty, Seg } from '../components/ui'
+import { PageHead, notify, Empty, Seg, FilterBar, Skeleton } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
-const GOLD = '#b8860b'
+const GOLD = 'var(--asw-gold)'
+// Postel's Law: search ignores case, accents and punctuation
+const fold = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-_.'’]/g, ' ').replace(/\s+/g, ' ').trim()
 
 const CATEGORIES = [
   { value: 'LEGEND', label: 'Legends' },
@@ -19,40 +21,42 @@ const CATEGORIES = [
 export default function HallOfFame() {
   const { isAdmin } = useAuth()
   const [inductees, setInductees] = useState([])
-  const [category, setCategory] = useState('LEGEND')
+  const [picked, setPicked] = useState(null) // null until the visitor chooses a tab
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
 
+  // The whole hall loads once; search then filters in the browser, so results
+  // follow every keystroke (Doherty Threshold) with no request per letter
   const load = () => {
-    getInductees({ search: search.trim() || undefined })
+    getInductees()
       .then((res) => {
-        const d = res.data
-        setInductees(Array.isArray(d) ? d : d?.results || [])
-      })
-      .catch(() => setInductees([]))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => {
-    let alive = true
-    getInductees({ search: search.trim() || undefined })
-      .then((res) => {
-        if (!alive) return
         const d = res.data
         setInductees(Array.isArray(d) ? d : d?.results || [])
         setFailed(false)
       })
-      .catch(() => { if (alive) { setInductees([]); setFailed(true) } })
-      .finally(() => { if (alive) setLoading(false) })
-    return () => { alive = false }
-  }, [search])
+      .catch(() => { setInductees([]); setFailed(true) })
+      .finally(() => setLoading(false))
+  }
+  useEffect(load, [])
+
+  const q = fold(search)
+  const matches = useMemo(
+    () => (q ? inductees.filter((p) => fold([p.name, p.country_detail?.name, p.achievements, p.era, p.inducted_year].join(' ')).includes(q)) : inductees),
+    [inductees, q]
+  )
+  const countOf = (cat) => matches.filter((p) => (p.category || 'LEGEND') === cat).length
+  // Tesler's Law: open on the first category that has someone in it, and
+  // follow the search to wherever the match is, unless the visitor chose a tab
+  const firstFilled = CATEGORIES.find((c) => countOf(c.value) > 0)?.value || 'LEGEND'
+  const category = picked && (!q || countOf(picked) > 0) ? picked : firstFilled
+  const setCategory = setPicked
 
   const sorted = useMemo(
-    () => inductees
+    () => matches
       .filter((p) => (p.category || 'LEGEND') === category)
       .sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999)),
-    [inductees, category]
+    [matches, category]
   )
 
   const handleDelete = async (p) => {
@@ -71,51 +75,59 @@ export default function HallOfFame() {
         kicker="Legacy"
         title="Hall of Fame"
         sub="The swimmers who defined Arab swimming."
-      >
-        <input
-          className="input"
-          type="search"
-          aria-label="Search inductees"
-          style={{ maxWidth: 320, marginTop: 14 }}
-          placeholder="Search inductees…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </PageHead>
+      />
 
-      <div className="rule-b" style={{ padding: '10px 32px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Seg options={CATEGORIES} value={category} onChange={setCategory} tabs />
-      </div>
+      {/* Common Region: category and search narrow the same list, so they
+          share one bar. Each category shows how many it holds, so nobody
+          opens an empty one to find out. */}
+      <FilterBar count={loading ? null : sorted.length} noun={sorted.length === 1 ? 'inductee' : 'inductees'} active={!!q} onClear={() => setSearch('')}>
+        <Seg options={CATEGORIES.map((c) => ({ value: c.value, label: loading ? c.label : `${c.label} (${countOf(c.value)})` }))} value={category} onChange={setCategory} tabs />
+        {(inductees.length > 6 || q) && (
+          <input
+            className="input"
+            type="search"
+            aria-label="Search inductees"
+            style={{ flex: '1 1 200px', width: 'auto', minWidth: 0, maxWidth: 280 }}
+            placeholder="Search by name or country…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        )}
+      </FilterBar>
 
       {isAdmin && <AddInductee category={category} onAdded={load} />}
 
       {loading ? (
-        <Loading label="Loading the Hall of Fame" />
+        <div className="pad"><Skeleton rows={3} height={90} /></div>
       ) : sorted.length === 0 ? (
         failed ? (
           <Empty label="Could not load the Hall of Fame" hint="Check your connection and reload the page." />
         ) : (
           <Empty
-            label={`No ${CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} ${search.trim() ? 'match your search' : 'yet'}`}
-            hint={search.trim() ? 'Try a different name, or look in another category.' : undefined}
-          />
+            label={q ? 'No inductee matches your search' : `No ${CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} yet`}
+            hint={q ? 'Check the spelling or clear the search.' : 'Inductees are added by the Arab Swim team. The other categories show who is already in.'}
+          >
+            {q && <button type="button" className="btn btn-secondary" onClick={() => setSearch('')}>Clear search</button>}
+          </Empty>
         )
       ) : (
-        <div className="grid-2 pad" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+        <div className="grid-2 pad" style={{ display: 'grid', gridTemplateColumns: sorted.length === 1 ? 'minmax(0, 640px)' : '1fr 1fr', gap: 32 }}>
           {sorted.map((p) => {
             const photo = p.photo || p.swimmer_detail?.photo
             return (
               <article key={p.id} className="hair-b" style={{ paddingBottom: 28, borderLeft: `2px solid ${GOLD}`, paddingLeft: 18 }}>
                 {photo && (
                   <div className="grayscale" style={{ width: '100%', height: 320, overflow: 'hidden', marginBottom: 16 }}>
-                    <img src={mediaUrl(photo)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={mediaUrl(photo)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                   {p.inducted_year && <span className="tag tag-dark">Class of {p.inducted_year}</span>}
                   {p.era && <span className="micro">{p.era}</span>}
                 </div>
-                <h2 style={{ margin: '0 0 8px', letterSpacing: '-0.02em' }}>{p.name}</h2>
+                <h2 style={{ margin: '0 0 8px', letterSpacing: '-0.02em' }}>
+                  {p.swimmer ? <Link to={`/swimmers/${p.swimmer}`} style={{ color: 'inherit', textDecoration: 'none' }}>{p.name}</Link> : p.name}
+                </h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, fontSize: 13, color: 'var(--color-neutral-700)' }}>
                   <Flag code={p.country_detail?.code} name={p.country_detail?.name} />
                   <span>{p.country_detail?.name}</span>
@@ -125,13 +137,12 @@ export default function HallOfFame() {
                     {p.achievements}
                   </p>
                 )}
+                {(p.swimmer || isAdmin) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--color-divider)' }}>
-                  {p.swimmer ? (
-                    <Link to={`/swimmers/${p.swimmer}`} style={{ fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
-                      View swimmer profile →
+                  {p.swimmer && (
+                    <Link to={`/swimmers/${p.swimmer}`} style={{ fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 40 }}>
+                      Results, records and medals →
                     </Link>
-                  ) : (
-                    <span className="micro">Standalone legend</span>
                   )}
                   <span style={{ flex: 1 }} />
                   {isAdmin && (
@@ -145,6 +156,7 @@ export default function HallOfFame() {
                     </button>
                   )}
                 </div>
+                )}
               </article>
             )
           })}

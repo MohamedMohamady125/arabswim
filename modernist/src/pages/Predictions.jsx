@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   getPredictions, getPrediction, recomputePrediction,
   getPredictionEntries, addPredictionEntry, updatePredictionEntry,
@@ -11,8 +11,12 @@ import { searchSwimmers } from '../api/swimmers'
 import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
 import Flag from '../components/Flag'
 import { useAuth } from '../context/AuthContext'
+import { useFeatures } from '../context/FeaturesContext'
 import { formatDate, formatDateRange, formatTime, parseTime, mediaUrl } from '../utils'
 
+// Mental Model: pools in swimmers' words
+const POOL_WORDS = { LCM: '50m pool', SCM: '25m pool', OW: 'Open water' }
+const poolWord = (p) => POOL_WORDS[p] || p
 const STROKE_ORDER = { Freestyle: 0, Backstroke: 1, Breaststroke: 2, Butterfly: 3, 'Individual Medley': 4 }
 
 // tier → visual treatment: gold tint for favorites, navy for strong, neutral otherwise
@@ -742,7 +746,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
           )}
           <div style={{ position: 'relative' }}>
             <div className="kicker" style={{ color: 'var(--asw-gold)', marginBottom: 6 }}>
-              {champ.classification || 'Championship'}{champ.pool ? ` · ${champ.pool}` : ''}
+              {champ.classification || 'Championship'}{champ.pool ? ` · ${poolWord(champ.pool)}` : ''}
             </div>
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1.15 }}>
               {champ.name}
@@ -1025,6 +1029,7 @@ function shortEvent(name) {
 // ---- Page -----------------------------------------------------------------
 export default function Predictions() {
   const { isAdmin } = useAuth()
+  const { flag } = useFeatures()
   const [champs, setChamps] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [snap, setSnap] = useState(null)
@@ -1033,17 +1038,30 @@ export default function Predictions() {
   const [gender, setGender] = useState('M')
   const [eventKey, setEventKey] = useState('')
   const [view, setView] = useState('overview')
+  const [listFailed, setListFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [adminOpen, setAdminOpen] = useState(false)
+  // Working Memory: the open championship is in the URL (?meet=), so a link or Back lands on it
+  const [searchParams, setSearchParams] = useSearchParams()
+  const pickChamp = (id) => {
+    setSelectedId(id)
+    setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set('meet', String(id)); return next }, { replace: true })
+  }
 
   useEffect(() => {
+    setLoading(true)
+    setListFailed(false)
     getPredictions()
       .then((res) => {
         const list = res.data || []
         setChamps(list)
-        if (list.length > 0) setSelectedId(list[0].id)
+        const wanted = Number(searchParams.get('meet'))
+        if (list.length > 0) setSelectedId((list.find((c) => c.id === wanted) || list[0]).id)
       })
-      .catch(() => setChamps([]))
+      .catch(() => { setChamps([]); setListFailed(true) })
       .finally(() => setLoading(false))
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey])
 
   const loadDetail = (id) => {
     setDetailLoading(true)
@@ -1086,20 +1104,34 @@ export default function Predictions() {
     <div>
       <PageHead title="Medal Predictions" />
 
-      {champs.length === 0 ? (
-        <Empty label="No upcoming Arab, GCC or national championships to predict yet" hint="Predictions appear once an upcoming meet is on the calendar. Check back soon." />
+      {listFailed ? (
+        <Empty label="Predictions could not be loaded" hint="Check your connection and try again.">
+          <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+        </Empty>
+      ) : champs.length === 0 ? (
+        // Paradox of the Active User: an empty page still leads somewhere
+        <Empty label="No upcoming championships to predict yet" hint="Predictions open when an Arab, GCC or national championship is on the calendar.">
+          {flag('calendar') && <Link to="/calendar" className="btn btn-secondary" style={{ marginRight: 8 }}>See the calendar</Link>}
+          <Link to="/championships" className="btn btn-secondary">Past championships</Link>
+        </Empty>
       ) : (
         <>
           {/* championship tab bar */}
           <div className="rule-b records-filters" style={{ padding: '10px 32px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            {champs.map((c) => {
+            {/* Hick's Law: a handful of meets are buttons; a long season is one list, soonest first */}
+            {champs.length > 6 ? (
+              <select className="select" aria-label="Championship" style={{ width: 'auto', maxWidth: '100%' }} value={selectedId || ''} onChange={(e) => pickChamp(Number(e.target.value))}>
+                {champs.map((c) => <option key={c.id} value={c.id}>{c.name} · {formatDate(c.date)}</option>)}
+              </select>
+            ) : champs.map((c) => {
               const active = c.id === selectedId
               return (
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => pickChamp(c.id)}
                   aria-pressed={active}
+                  title={formatDateRange(c.date, c.end_date)}
                   style={{
                     cursor: 'pointer', whiteSpace: 'nowrap', minHeight: 36,
                     fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5,
@@ -1119,7 +1151,9 @@ export default function Predictions() {
           {detailLoading ? (
             <Loading label="Computing prediction" />
           ) : !snap ? (
-            <Empty label="Prediction unavailable" hint="Pick another championship above, or reload the page." />
+            <Empty label="This prediction could not be loaded" hint="Try again, or pick another championship above.">
+              <button type="button" className="btn btn-secondary" onClick={() => loadDetail(selectedId)}>Try again</button>
+            </Empty>
           ) : (
             <div style={{ padding: '18px 32px 28px' }}>
               {/* header: dates + stage + confidence + updated
@@ -1130,7 +1164,7 @@ export default function Predictions() {
                 <span className="kicker">
                   {formatDateRange(champ?.date, champ?.end_date)}
                   {champ?.country ? ` · ${champ.country}` : ''}
-                  {champ?.pool ? ` · ${champ.pool}` : ''}
+                  {champ?.pool ? ` · ${poolWord(champ.pool)}` : ''}
                 </span>
                 <span style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
                   <Chip tone={snap.stage === 'OFFICIAL' ? 'navy' : 'warn'}>
@@ -1159,7 +1193,7 @@ export default function Predictions() {
                 <Seg
                   options={[
                     { value: 'overview', label: 'Overview' },
-                    { value: 'original', label: 'Original' },
+                    { value: 'original', label: 'Full breakdown' },
                   ]}
                   value={view}
                   onChange={setView}
@@ -1204,12 +1238,23 @@ export default function Predictions() {
               </>
               )}
 
-              <div className="micro" style={{ borderTop: '1px solid var(--color-divider)', paddingTop: 12, marginTop: 20 }}>
-                These are probabilities, not certainties. Predictions are simulated from recent verified results
-                and update as entry lists, new times and withdrawals come in.
-              </div>
+              {/* the Overview already carries this note in "About the prediction" */}
+              {view !== 'overview' && (
+                <div className="micro" style={{ borderTop: '1px solid var(--color-divider)', paddingTop: 12, marginTop: 20 }}>
+                  These are probabilities, not certainties. Predictions are simulated from recent verified results
+                  and update as entry lists, new times and withdrawals come in.
+                </div>
+              )}
 
+              {/* Cognitive Load: three admin panels stay folded until needed */}
               {isAdmin && (
+                <div style={{ borderTop: '2px solid var(--color-text)', marginTop: 28, paddingTop: 12 }}>
+                  <button type="button" className="btn btn-secondary" aria-expanded={adminOpen} onClick={() => setAdminOpen((o) => !o)}>
+                    {adminOpen ? 'Hide admin tools ↑' : 'Admin tools: exclusions, age categories, entries ↓'}
+                  </button>
+                </div>
+              )}
+              {isAdmin && adminOpen && (
                 <>
                   <ExclusionsAdmin champId={selectedId} onChanged={() => loadDetail(selectedId)} refreshKey={snap?.updated_at} />
                   <AgeGroupsAdmin champId={selectedId} onChanged={() => loadDetail(selectedId)} />

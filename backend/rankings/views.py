@@ -23,6 +23,19 @@ class RankingPagination(PageNumberPagination):
     page_size_query_param = 'limit'
     max_page_size = 100
 
+    def get_page_size(self, request):
+        # The site sends ?page_size= (as it does to every other list); accept
+        # it alongside ?limit= so the pager's page count matches the rows.
+        for name in ('limit', 'page_size'):
+            raw = request.query_params.get(name)
+            try:
+                n = int(raw) if raw else 0
+            except (TypeError, ValueError):
+                n = 0
+            if n > 0:
+                return min(n, self.max_page_size)
+        return self.page_size
+
 
 class RankingView(APIView):
     def get(self, request):
@@ -171,7 +184,9 @@ class RankingView(APIView):
                 split_by_swimmer.setdefault(it.result.swimmer_id, it)
 
         data = []
-        start_rank = (paginator.page.number - 1) * paginator.page_size + 1 if page else 1
+        # rank offset uses the page size actually applied (?limit / ?page_size),
+        # not the class default — otherwise page 2 of a 25-row page starts at 51
+        start_rank = paginator.page.start_index() if page is not None else 1
         for row in page_rows:
             if row['from_split']:
                 it = split_by_swimmer.get(row['swimmer_id'])

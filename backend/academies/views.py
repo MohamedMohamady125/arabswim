@@ -20,8 +20,9 @@ class AcademyViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         country = self.request.query_params.get('country')
+        # Postel's Law: a malformed id matches nothing instead of a 500
         if country:
-            qs = qs.filter(country_id=country)
+            qs = qs.filter(country_id=country) if country.isdigit() else qs.none()
         return qs
 
     @action(detail=True, methods=['post'], url_path='upload-logo')

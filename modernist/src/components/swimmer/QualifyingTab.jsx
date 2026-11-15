@@ -3,6 +3,7 @@ import { getQualifyingStandards } from '../../api/qualifyingTimes'
 import { getSwimmerQualifyingGaps } from '../../api/swimmers'
 import { Loading, Empty, Seg } from '../ui'
 import { GapBar } from './RecordsTab'
+import LoadFailed from './LoadFailed'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
@@ -12,9 +13,14 @@ export default function QualifyingTab({ swimmerId }) {
   const [qualifyingGaps, setQualifyingGaps] = useState([])
   const [gapPool, setGapPool] = useState('LCM')
   const [gapCut, setGapCut] = useState('A')
+  const [failed, setFailed] = useState(false)
+  const [gapsFailed, setGapsFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
+    setFailed(false)
+    setStandards(null)
     getQualifyingStandards()
       .then((res) => {
         if (!alive) return
@@ -22,21 +28,23 @@ export default function QualifyingTab({ swimmerId }) {
         setStandards(l)
         if (l.length > 0) setGapStandard((prev) => prev ?? l[0].id)
       })
-      .catch(() => { if (alive) setStandards([]) })
+      .catch(() => { if (alive) { setStandards([]); setFailed(true) } })
     return () => { alive = false }
-  }, [])
+  }, [reloadKey])
 
   useEffect(() => {
     if (!swimmerId || !gapStandard) return
     let alive = true
+    setGapsFailed(false)
     getSwimmerQualifyingGaps(swimmerId, { standard: gapStandard })
       .then((res) => { if (alive) setQualifyingGaps(res.data || []) })
-      .catch(() => { if (alive) setQualifyingGaps([]) })
+      .catch(() => { if (alive) { setQualifyingGaps([]); setGapsFailed(true) } })
     return () => { alive = false }
-  }, [swimmerId, gapStandard])
+  }, [swimmerId, gapStandard, reloadKey])
 
   if (standards === null) return <Loading label="Loading standards" />
-  if (standards.length === 0) return <Empty label="No qualifying standards available" hint="Standards appear here once a qualifying list is published, or they could not be loaded." />
+  if (failed) return <LoadFailed what="Qualifying standards" onRetry={() => setReloadKey((k) => k + 1)} />
+  if (standards.length === 0) return <Empty label="No qualifying standards yet" hint="Standards appear here once a qualifying list is published." />
 
   const filteredGaps = (qualifyingGaps || []).filter((g) => g.pool === gapPool && g.cut === gapCut)
   const activeStandard = standards.find((s) => s.id === gapStandard)

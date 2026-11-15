@@ -192,7 +192,10 @@ const gapStr = (cs) => (cs <= 0 ? '' : `+${cs >= 6000 ? formatTime(cs) : (cs / 1
 
 export function DepthTab({ id, kind = 'club' }) {
   const [pool, setPool] = useState(null) // decided once both pools are known
-  const [gender, setGender] = useState('')
+  // Mental Model: swimming ranks men and women separately, so the tab opens
+  // on Men (Women when the squad has no men's times); "Everyone" comes last
+  const [gender, setGender] = useState('M')
+  const [genderPicked, setGenderPicked] = useState(false)
   const [data, setData] = useState(null) // { LCM: [], SCM: [] }
   const [focus, setFocus] = useState(null)
 
@@ -204,6 +207,7 @@ export function DepthTab({ id, kind = 'club' }) {
       .then((r) => (Array.isArray(r.data) ? r.data : [])).catch(() => { fails += 1; return [] })
     Promise.all([q('LCM'), q('SCM')]).then(([LCM, SCM]) => {
       if (!alive) return
+      if (!genderPicked && gender === 'M' && fails < 2 && !LCM.length && !SCM.length) { setGender('F'); setGenderPicked(true); return }
       setData({ LCM, SCM, failed: fails === 2 })
       // land on the pool the squad actually races in most
       const entries = (rows) => rows.reduce((n, e) => n + e.swimmer_count, 0)
@@ -243,13 +247,13 @@ export function DepthTab({ id, kind = 'club' }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', margin: '16px 0 20px' }}>
-        <Seg options={[{ value: 'LCM', label: `LCM · 50m${data ? ` (${data.LCM.length})` : ''}` }, { value: 'SCM', label: `SCM · 25m${data ? ` (${data.SCM.length})` : ''}` }]} value={pool || 'LCM'} onChange={(v) => { setPool(v); setFocus(null) }} />
-        <Seg options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={(v) => { setGender(v); setFocus(null) }} />
+        <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }, { value: '', label: 'Everyone' }]} value={gender} onChange={(v) => { setGender(v); setGenderPicked(true); setFocus(null) }} />
+        <Seg options={[{ value: 'LCM', label: `50m pool${data ? ` · ${data.LCM.length} events` : ''}` }, { value: 'SCM', label: `25m pool${data ? ` · ${data.SCM.length} events` : ''}` }]} value={pool || 'LCM'} onChange={(v) => { setPool(v); setFocus(null) }} />
       </div>
 
       {!rows ? <Loading label="Loading squad depth" /> : rows.length === 0 ? (data.failed
         ? <Empty label="Could not load squad depth" hint="Check your connection and reload the page." />
-        : <Empty label="No times for this selection" hint="Try the other pool, or choose All." />
+        : <Empty label="No times for this selection" hint="Try the other pool or the other gender." />
       ) : (<>
         {/* Headline numbers */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 16 }}>
@@ -304,18 +308,13 @@ export function DepthTab({ id, kind = 'club' }) {
           {rows.map((e) => {
             const [label, tone] = depthLevel(e.swimmer_count)
             const lead = e.top[0]?.time_cs || 0
-            const full = `/teams/${id}/depth/${e.event_id}?pool=${pool}${gender ? `&gender=${gender}` : ''}`
+            const full = `/teams/${id}/depth/${e.event_id}?pool=${pool}&gender=${gender || 'ALL'}`
             return (
               <div key={e.event_id} id={`depth-ev-${e.event_id}`} style={{ background: '#fff', border: `1px solid ${focus === e.event_id ? INK : LINE}`, borderRadius: 12, padding: '14px 16px', boxShadow: focus === e.event_id ? '0 0 0 3px var(--color-accent-200)' : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 15, color: INK, flex: 1, minWidth: 0 }}>{e.event_name}</span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: MUTED }}><span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: tone }} />{label}</span>
                   <span className="asw-num" style={{ fontSize: 12.5, fontWeight: 800, color: INK }}>{e.swimmer_count} {e.swimmer_count === 1 ? 'swimmer' : 'swimmers'}</span>
-                  {/* expand: this event on a page of its own */}
-                  <Link to={full} aria-label={`Open ${e.event_name} on its own page`} title="Open full view"
-                    style={{ width: 40, height: 40, margin: '-8px -8px -8px 0', borderRadius: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: INK, flex: 'none' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="m21 3-7 7" /><path d="m3 21 7-7" /></svg>
-                  </Link>
                 </div>
                 <div style={{ height: 6, borderRadius: 3, background: 'var(--color-neutral-200)', margin: '10px 0 8px', overflow: 'hidden' }}>
                   <div style={{ width: `${Math.max((e.swimmer_count / summary.max) * 100, 4)}%`, height: '100%', background: tone, borderRadius: 3 }} />
@@ -363,6 +362,13 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
   const filtered = ofType.filter((r) => (
     (!gender || sexOf(r) === gender) && (!pool || r.pool === pool) && (!age || (r.age_category || 'OPEN') === age)
   ))
+  const groups = gender ? [['', filtered]] : [
+    ["Men's records", filtered.filter((r) => sexOf(r) === 'M')],
+    ["Women's records", filtered.filter((r) => sexOf(r) === 'F')],
+    ['Mixed and other', filtered.filter((r) => !['M', 'F'].includes(sexOf(r)))],
+  ].filter(([, rows]) => rows.length)
+  // Mental Model: a "national record" belongs to a nation — name it
+  const scopeLabel = (r) => (r.record_type === 'NATIONAL' && r.country_name ? r.country_name : (typeLabels[r.record_type] || r.record_type))
   const pillBase = { padding: '9px 18px', minHeight: 40, borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }
 
   return (
@@ -390,19 +396,26 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
         )}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
           <Seg options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={setGender} />
-          <Seg options={[{ value: '', label: 'Both pools' }, { value: 'LCM', label: 'LCM · 50m' }, { value: 'SCM', label: 'SCM · 25m' }]} value={pool} onChange={setPool} />
+          <Seg options={[{ value: '', label: 'Both pools' }, { value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={setPool} />
           {agesPresent.length > 1 && (
             <Seg options={[{ value: '', label: 'All ages' }, ...agesPresent.map((a) => ({ value: a, label: ageLabel(a) }))]} value={age} onChange={setAge} />
           )}
         </div>
-        <div className="asw-num" style={{ textAlign: 'center', fontSize: 12.5, color: MUTED, marginBottom: 18 }}>
-          {filtered.length} {filtered.length === 1 ? 'record' : 'records'}
+        {/* Working Memory: the count, and one way back to everything */}
+        <div className="asw-num" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 32, fontSize: 12.5, color: MUTED, marginBottom: 18 }}>
+          <span aria-live="polite">{filtered.length} of {ofType.length} {ofType.length === 1 ? 'record' : 'records'}</span>
+          {(gender || pool || age) && <button type="button" className="btn btn-ghost" style={{ fontSize: 12, minHeight: 32 }} onClick={() => { setGender(''); setPool(''); setAge('') }}>Clear filters</button>}
         </div>
 
         {filtered.length === 0 ? <Empty label="No records for this selection" hint="Try All, Both pools or All ages." /> : (
-          /* The site's standard record card (same markup as New Records) */
+          /* Chunking: with both genders showing, men's and women's records sit
+             under their own heading instead of one mixed run of cards */
+          groups.map(([heading, rows]) => (
+          <div key={heading || 'all'} style={{ marginBottom: 26 }}>
+          {heading && <div style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: INK, borderBottom: `1px solid ${LINE}`, paddingBottom: 8, marginBottom: 14 }}>{heading} <span className="asw-num" style={{ color: MUTED }}>· {rows.length}</span></div>}
+          {/* The site's standard record card (same markup as New Records) */}
           <div className="record-cards">
-            {filtered.map((r, i) => {
+            {rows.map((r, i) => {
               const photo = r.photo || photoById[r.swimmer_id]
               const sex = sexOf(r)
               const time = typeof r.time === 'number' ? formatTime(r.time) : r.time
@@ -418,7 +431,7 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
                   )}
                   {/* 1 — scope + age category */}
                   <div className="card-kicker" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span>{typeLabels[r.record_type] || r.record_type} record</span>
+                    <span>{scopeLabel(r)} record</span>
                     <span style={{ opacity: 0.5 }}>·</span>
                     <span>{ageLabel(r.age_category)}</span>
                   </div>
@@ -428,7 +441,7 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
                   </div>
                   {/* 3 — pool badge in front of the time */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
-                    <span className="tag tag-accent-2" style={{ fontSize: 10, padding: '2px 8px', fontWeight: 700 }}>{r.pool}</span>
+                    <span className="tag tag-accent-2" title={r.pool === 'SCM' ? 'Short course (25m pool)' : 'Long course (50m pool)'} style={{ fontSize: 10, padding: '2px 8px', fontWeight: 700 }}>{r.pool === 'SCM' ? '25m' : r.pool === 'LCM' ? '50m' : r.pool}</span>
                     <span className="asw-num rec-time" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 22 }}>{time}</span>
                   </div>
                   {/* 4 — swimmer name + flag */}
@@ -454,6 +467,8 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
               )
             })}
           </div>
+          </div>
+          ))
         )}
       </>)}
     </div>

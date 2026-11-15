@@ -83,7 +83,7 @@ const ASPECTS = [
  *   onDone      — (croppedFile: File) => void
  *   onCancel    — () => void
  */
-export default function ImageCropper({ file, aspect = 1, lockAspect = false, smart = false, onDone, onCancel, title = 'Adjust photo', extraAction = null }) {
+export default function ImageCropper({ file, aspect = 1, lockAspect = false, smart = false, onDone, onCancel, title = 'Adjust photo', extraAction = null, applyLabel = 'Apply' }) {
   const [imageSrc, setImageSrc] = useState(null)
   const [naturalAspect, setNaturalAspect] = useState(1)
   const [aspectKey, setAspectKey] = useState(aspect)
@@ -210,13 +210,14 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
         </button>
       </div>
 
-      <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+      {/* Serial Position: Cancel first, the one solid action last */}
+      <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-secondary" style={{ marginRight: 'auto' }} onClick={onCancel}>Cancel</button>
         {extraAction && (
           <button type="button" className="btn btn-secondary" onClick={extraAction.onClick}>{extraAction.label}</button>
         )}
         <button type="button" className="btn btn-primary" onClick={handleDone} disabled={saving}>
-          {saving ? 'Applying…' : 'Apply'}
+          {saving ? 'Applying…' : applyLabel}
         </button>
       </div>
     </Modal>
@@ -258,20 +259,28 @@ export function CropQueue({ files, aspect = 'original', onDone, onCancel }) {
   const [idx, setIdx] = useState(0)
   const [out, setOut] = useState([])
   if (!files?.length) return null
+  const last = idx + 1 >= files.length
   const advance = (f) => {
     const acc = [...out, f]
-    if (idx + 1 < files.length) { setOut(acc); setIdx(idx + 1) }
+    if (!last) { setOut(acc); setIdx(idx + 1) }
     else onDone(acc)
+  }
+  // Flow: cancelling part-way would silently throw away the photos already adjusted
+  const cancel = () => {
+    if (out.length > 0 && !window.confirm(`Stop and discard the ${out.length} photo${out.length === 1 ? '' : 's'} you already adjusted? Nothing will be uploaded.`)) return
+    onCancel()
   }
   return (
     <ImageCropper
       key={idx}
       file={files[idx]}
       aspect={aspect}
+      // Goal-Gradient: the title counts the photos; the button says what happens next
       title={files.length > 1 ? `Adjust photo ${idx + 1} of ${files.length}` : 'Adjust photo'}
+      applyLabel={last ? (files.length > 1 ? 'Apply and upload all' : 'Apply and upload') : 'Apply · next photo →'}
       extraAction={{ label: 'Use original', onClick: () => advance(files[idx]) }}
       onDone={advance}
-      onCancel={onCancel}
+      onCancel={cancel}
     />
   )
 }

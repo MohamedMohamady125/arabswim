@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMe, login as loginApi } from '../api/core'
@@ -8,8 +8,15 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const [show, setShow] = useState(false)
+  const { login, isAuthed, user: me } = useAuth()
   const navigate = useNavigate()
+
+  // Flow: someone already signed in is not shown the form again
+  useEffect(() => {
+    if (!isAuthed || loading || !me) return
+    navigate(me.role === 'ADMIN' ? '/admin' : '/', { replace: true })
+  }, [isAuthed, me, loading, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -24,8 +31,11 @@ export default function Login() {
       else if (user.role === 'CLUB' && user.team) navigate(`/teams/${user.team}`)
       else if (user.role === 'ATHLETE' && user.swimmer) navigate(`/swimmers/${user.swimmer}`)
       else navigate('/')
-    } catch {
-      setError('Invalid username or password')
+    } catch (err) {
+      // plain words, and a different message when the server (not the password) is the problem
+      setError(err?.response && err.response.status < 500
+        ? 'That username and password do not match. Check for capital letters, then try again.'
+        : 'We could not reach the server. Check your connection and try again.')
     } finally {
       setLoading(false)
     }
@@ -52,14 +62,19 @@ export default function Login() {
         </div>
         <div className="field">
           <label htmlFor="login-password">Password</label>
-          <input id="login-password" name="password" autoComplete="current-password" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          {/* Postel's Law: let people check what they typed */}
+          <div className="content-pw">
+            <input id="login-password" name="password" autoComplete="current-password" className="input" type={show ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <button type="button" className="btn btn-ghost" aria-pressed={show} onClick={() => setShow((v) => !v)}>{show ? 'Hide' : 'Show'}</button>
+          </div>
         </div>
-        <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 40 }}>
+        <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: 44 }}>
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-      <div style={{ marginTop: 18, fontSize: 13, color: 'var(--color-neutral-700)' }}>
-        Are you an athlete? <Link to="/register">Create an account</Link> to claim your profile.
+      <div className="content-authnote">
+        <strong>Are you a swimmer?</strong> <Link to="/register">Create an account</Link> to claim your profile — it takes about a minute.
+        <br />Clubs and federations: your username and password are sent to you by Arab Swim.
       </div>
     </div>
   )

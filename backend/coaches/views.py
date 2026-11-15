@@ -21,13 +21,14 @@ class CoachViewSet(viewsets.ModelViewSet):
         country = self.request.query_params.get('country')
         level = self.request.query_params.get('level')
         available = self.request.query_params.get('is_available')
+        # Postel's Law: a malformed id matches nothing instead of a 500
         if country:
-            qs = qs.filter(nationality_id=country)
+            qs = qs.filter(nationality_id=country) if country.isdigit() else qs.none()
         if level:
             qs = qs.filter(level=level)
         if available is not None:
             qs = qs.filter(is_available=available.lower() == 'true')
         team = self.request.query_params.get('team')
         if team:
-            qs = qs.filter(team_id=team)
+            qs = qs.filter(team_id=team) if team.isdigit() else qs.none()
         return qs

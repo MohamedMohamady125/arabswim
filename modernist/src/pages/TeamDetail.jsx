@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { getTeamProfile, getTeamMedals, getTeamTimes, updateTeam, getBoardMembers, createBoardMember, updateBoardMember, deleteBoardMember, getTeams } from '../api/teams'
@@ -70,22 +70,94 @@ const REC_TYPE_COLORS = {
   ASIAN: 'var(--asw-bronze)', MEDITERRANEAN: 'var(--color-accent-2)', ISLAMIC: 'var(--asw-fast)', WORLD: 'var(--color-accent-800)',
 }
 
+// Chunking + Serial Position: 14 tabs read as three groups — the squad and
+// what it has won, the analysis, then club life — with Overview first.
+// `g` is the group; a thin rule separates groups in the tab bar.
 const TABS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'news', label: 'News' },
-  { value: 'board', label: 'Board' },
-  { value: 'team', label: 'Team' },
-  { value: 'training', label: 'Training' },
-  { value: 'statistics', label: 'Statistics' },
-  { value: 'progression', label: 'Progression' },
-  { value: 'depth', label: 'Squad Depth' },
-  { value: 'records', label: 'Records' },
-  { value: 'ranking', label: 'Ranking' },
-  { value: 'medals', label: 'Medals' },
-  { value: 'compare', label: 'Compare' },
-  { value: 'prediction', label: 'Prediction' },
-  { value: 'multimedia', label: 'Multimedia' },
+  { value: 'overview', label: 'Overview', g: 0 },
+  { value: 'team', label: 'Team', g: 0 },
+  { value: 'records', label: 'Records', g: 0 },
+  { value: 'medals', label: 'Medals', g: 0 },
+  { value: 'ranking', label: 'Ranking', g: 0 },
+  { value: 'statistics', label: 'Statistics', g: 1 },
+  { value: 'progression', label: 'Progression', g: 1 },
+  { value: 'depth', label: 'Squad Depth', g: 1 },
+  { value: 'compare', label: 'Compare', g: 1 },
+  { value: 'prediction', label: 'Prediction', g: 1 },
+  { value: 'news', label: 'News', g: 2 },
+  { value: 'board', label: 'Board', g: 2 },
+  { value: 'training', label: 'Training', g: 2 },
+  { value: 'multimedia', label: 'Multimedia', g: 2 },
 ]
+
+// Postel's Law: the roster search ignores case and accents
+const fold = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+const ROSTER_FIRST = 24
+
+/* Team tab → Swimmers. A big squad (200+) is found by name or narrowed by
+   gender, and opens on the first 24 cards instead of one endless grid
+   (Miller's Law, Working Memory: the count always shows what is on screen). */
+function RosterGrid({ roster, isAdmin }) {
+  const [q, setQ] = useState('')
+  const [sex, setSex] = useState('')
+  const [all, setAll] = useState(false)
+  const men = roster.filter((s) => s.sex === 'M').length
+  const women = roster.filter((s) => s.sex === 'F').length
+  const matched = roster.filter((s) => (!sex || s.sex === sex) && (!q.trim() || fold(s.name).includes(fold(q))))
+  const shown = all || q.trim() ? matched : matched.slice(0, ROSTER_FIRST)
+  return (
+    <>
+      {roster.length > 12 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+          <input className="input" type="search" aria-label="Find a swimmer in this squad" placeholder="Find a swimmer…" value={q} onChange={(e) => setQ(e.target.value)}
+            style={{ width: 'auto', flex: '0 1 260px', minWidth: 0, minHeight: 40 }} />
+          {men > 0 && women > 0 && (
+            <Seg options={[{ value: '', label: `All (${roster.length})` }, { value: 'M', label: `Men (${men})` }, { value: 'F', label: `Women (${women})` }]} value={sex} onChange={setSex} />
+          )}
+          <span className="asw-num" aria-live="polite" style={{ fontSize: 12.5, color: 'var(--color-neutral-700)' }}>Showing {shown.length} of {matched.length}</span>
+        </div>
+      )}
+      {matched.length === 0 ? (
+        <Empty label="No swimmer matches" hint="Check the spelling or clear the search.">
+          <button type="button" className="btn btn-secondary" onClick={() => { setQ(''); setSex('') }}>Show the whole squad</button>
+        </Empty>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+          {shown.map((s) => (
+            <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(180deg, var(--color-accent-100), var(--color-neutral-400))', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
+                {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+              </div>
+              <div style={{ padding: '10px 2px 0' }}>
+                <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
+                  <SwimmerLink id={s.id} name={s.name} />
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--color-neutral-800)', fontWeight: 500, lineHeight: 1.5 }}>
+                  {s.sex === 'F' ? "Women's" : "Men's"}{s.birth_year ? ` · ${s.birth_year}` : ''}
+                </div>
+              </div>
+              <div style={{ marginTop: 'auto', paddingTop: 2, borderTop: '1px solid var(--color-neutral-200)' }}>
+                <Link to={`/swimmers/${s.id}`} aria-label={`View profile of ${s.name}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
+                  <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
+                </Link>
+                {isAdmin && (
+                  <Link to={`/swimmers/${s.id}?edit=1`} className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8, display: 'inline-block', textDecoration: 'none' }}>Edit</Link>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {!q.trim() && matched.length > ROSTER_FIRST && (
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40, padding: '0 18px' }} aria-expanded={all} onClick={() => setAll((v) => !v)}>
+            {all ? `Show the first ${ROSTER_FIRST} only` : `Show all ${matched.length} swimmers`}
+          </button>
+        </div>
+      )}
+    </>
+  )
+}
 
 function SwimmerLink({ id, name, pad = true }) {
   if (!id) return <span style={{ fontWeight: 600 }}>{name}</span>
@@ -464,7 +536,7 @@ function PredictionTab({ id }) {
         Linear trend over each swimmer's seasonal bests — a forecast, not a promise
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={(v) => { setAutoPool(false); setPool(v) }} />
+        <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={(v) => { setAutoPool(false); setPool(v) }} />
       </div>
       {data === null ? (
         <Loading label="Crunching seasons" />
@@ -599,7 +671,7 @@ function ProgressionTab({ id }) {
       <TabHeading title="Time Progression" />
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
         <Seg options={STROKES} value={stroke} onChange={setStroke} />
-        <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={(v) => { setAutoPool(false); setPool(v) }} />
+        <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={(v) => { setAutoPool(false); setPool(v) }} />
       </div>
       {lines === null ? <Loading label="Loading progression" /> : <TeamProgressionChart lines={lines} />}
     </div>
@@ -944,9 +1016,17 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
 
 // ── Compare tab (club vs club, fed VS table) ─────────────────
 
-function CompareTab({ team, profile, stats, records }) {
+function CompareTab({ team, profile, stats, records, ranking = [] }) {
   const [clubs, setClubs] = useState([])
-  const [otherId, setOtherId] = useState('')
+  // Tesler's Law: open on the nearest rival in the medal ranking (the club
+  // just above, else just below) instead of an empty "choose a club" screen
+  const [otherId, setOtherId] = useState(() => {
+    const i = ranking.findIndex((r) => r.team_id === team.id)
+    const rival = i > 0 ? ranking[i - 1] : ranking[i + 1]
+    return rival && i >= 0 ? String(rival.team_id) : ''
+  })
+  // same roster count as the Overview and Team tabs (relay "swimmers" left out)
+  const rosterN = (p, fallback) => (p?.roster ? p.roster.filter((x) => !x.is_relay_team).length : (fallback ?? 0))
   const [other, setOther] = useState(null) // {profile, stats, records}
   const [loadingOther, setLoadingOther] = useState(false)
 
@@ -978,7 +1058,7 @@ function CompareTab({ team, profile, stats, records }) {
   }, [otherId])
 
   const rows = other ? [
-    ['Swimmers', stats?.swimmers ?? 0, other.stats?.swimmers ?? 0],
+    ['Swimmers', rosterN(profile, stats?.swimmers), rosterN(other.profile, other.stats?.swimmers)],
     ['Race Swims', stats?.results ?? 0, other.stats?.results ?? 0],
     ['Championships', stats?.championships ?? 0, other.stats?.championships ?? 0],
     ['Gold Medals', stats?.medals?.gold ?? 0, other.stats?.medals?.gold ?? 0],
@@ -1012,7 +1092,7 @@ function CompareTab({ team, profile, stats, records }) {
         </select>
       </div>
       {loadingOther && <Loading label="Loading club" />}
-      {!loadingOther && !other && <Empty label="Pick a club to compare against" />}
+      {!loadingOther && !other && <Empty label="Pick a club to compare against" hint={clubs.length ? 'Choose one from the list above. Clubs from the same country are listed.' : 'No other club from this country is in the database yet.'} />}
       {!loadingOther && other && (
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-accent-800)', color: '#fff', borderRadius: '8px 8px 0 0', fontWeight: 800, fontSize: 14, gap: 10 }}>
@@ -1064,7 +1144,8 @@ export default function TeamDetail() {
   const [albums, setAlbums] = useState([])
   const [countries, setCountries] = useState([])
   const [loading, setLoading] = useState(true)
-  const [teamSub, setTeamSub] = useState('coaches')
+  const [teamSubPicked, setTeamSub] = useState(null) // null → Coaches when there are any, else Swimmers
+  const tabBarRef = useRef(null)
   const [modal, setModal] = useState(null) // {type, payload}
   const [countryNews, setCountryNews] = useState([])
   const [medalistsAll, setMedalistsAll] = useState(false) // Medals tab: full list vs top 15
@@ -1127,6 +1208,15 @@ export default function TeamDetail() {
   }, [canManage])
 
   const refresh = () => { setModal(null); flash('Saved'); load() }
+  // Tesler's Law: with no coaches listed, the Team tab opens on the swimmers
+  const teamSub = teamSubPicked || (coaches.length ? 'coaches' : 'swimmers')
+  // Flow: a jump from an Overview card lands at the top of the tab it opens,
+  // not halfway down it
+  const goTab = (t, sub) => {
+    if (sub) setTeamSub(sub)
+    setTab(t)
+    requestAnimationFrame(() => tabBarRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
+  }
 
   const team = profile?.team
   const roster = useMemo(() => (profile?.roster || []).filter((s) => !s.is_relay_team), [profile])
@@ -1254,6 +1344,7 @@ export default function TeamDetail() {
   )
 
   const medalBadge = (type) => <MedalIcon type={type} size={20} />
+  const emptyTabs = { news: articles.length === 0, board: board.length === 0, multimedia: albums.length === 0 }
 
   return (
     <div className="m-zoom">
@@ -1304,9 +1395,10 @@ export default function TeamDetail() {
                     target="_blank" rel="noreferrer" style={{ color: navy, textDecoration: 'none', padding: '6px 0', margin: '-6px 0' }}>
                     {team.website.replace(/^https?:\/\//, '')}
                   </a>)}
-                {contactRow(
+                {/* Occam's Razor: the country is already in the line above — the pin row is for a real address */}
+                {team.address && contactRow(
                   heroIcon(<><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></>),
-                  <span>{team.address || team.country_detail?.name || '—'}</span>)}
+                  <span>{team.address}</span>)}
               </div>
               {canManage && (
                 <button className="btn btn-secondary" style={{ fontSize: 12, marginTop: 14 }} onClick={() => setModal({ type: 'club' })}>Edit {kind}</button>
@@ -1316,21 +1408,27 @@ export default function TeamDetail() {
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="rule-b" style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto' }}>
-        {TABS.filter((t) => (t.value !== 'training' || !team?.is_national_team) && (isAdmin || !tabHidden(t.value))).map((t) => (
-          <button key={t.value} type="button" onClick={() => setTab(t.value)}
+      {/* Tab bar. Cognitive Load: News, Board and Multimedia stay out of a
+          visitor's way until they hold something (managers always see them,
+          and a direct link still opens them). */}
+      <div ref={tabBarRef} className="rule-b" role="tablist" aria-label={`${team.name} sections`} style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto', scrollMarginTop: 0 }}>
+        {TABS.filter((t) => (t.value !== 'training' || !team?.is_national_team) && (isAdmin || !tabHidden(t.value))
+          && (canManage || t.value === tab || !(t.value in emptyTabs) || !emptyTabs[t.value])).map((t, i, arr) => (
+          <Fragment key={t.value}>
+          {i > 0 && arr[i - 1].g !== t.g && <span aria-hidden="true" style={{ flex: 'none', width: 1, margin: '12px 10px', background: 'var(--color-neutral-300)' }} />}
+          <button type="button" role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}
             aria-current={tab === t.value ? 'page' : undefined}
             title={tabHidden(t.value) ? 'Hidden from visitors (admin visibility settings)' : undefined}
             style={{
               minHeight: 48, // Fitts's Law: 36px after the phone zoom (0.75)
               padding: '12px 16px', background: 'none', border: 'none', borderBottom: tab === t.value ? '3px solid var(--color-accent)' : '3px solid transparent',
               cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: tab === t.value ? 800 : 600,
-              fontSize: 13, color: tab === t.value ? 'var(--color-accent)' : 'var(--color-text)', whiteSpace: 'nowrap',
+              fontSize: 13, color: tab === t.value ? 'var(--color-accent)' : 'var(--color-text)', whiteSpace: 'nowrap', flex: 'none',
               opacity: tabHidden(t.value) ? 0.4 : 1,
             }}>
             {t.label}
           </button>
+          </Fragment>
         ))}
       </div>
 
@@ -1382,11 +1480,13 @@ export default function TeamDetail() {
         )
         const mg = stats?.medals?.gold || 0, ms = stats?.medals?.silver || 0, mb = stats?.medals?.bronze || 0
         // The four numbers a visitor wants first — one glance, top of the page
+        // (4th item: the tab the tile opens — Similarity: a tile that goes
+        // somewhere shows an arrow, one that does not stays plain)
         const statTiles = [
-          ['Swimmers', formatNumber(roster.length), 'on the roster'],
-          ['Medals', formatNumber(stats?.medals?.total ?? medals.length), `${mg} gold · ${ms} silver · ${mb} bronze`],
-          ['Records held', formatNumber(records.length), newestRecord?.date ? `latest ${usDate(newestRecord.date)}` : 'none yet'],
-          ['Championships', formatNumber(stats?.championships ?? 0), 'raced'],
+          ['Swimmers', formatNumber(roster.length), 'on the roster', roster.length ? () => goTab('team', 'swimmers') : null],
+          ['Medals', formatNumber(stats?.medals?.total ?? medals.length), `${mg} gold · ${ms} silver · ${mb} bronze`, medals.length ? () => goTab('medals') : null],
+          ['Records held', formatNumber(records.length), newestRecord?.date ? `latest ${usDate(newestRecord.date)}` : 'none yet', records.length ? () => goTab('records') : null],
+          ['Championships', formatNumber(stats?.championships ?? 0), 'raced', null],
         ]
         // Left-column leaderboards: the squad's five best swims and five most
         // decorated swimmers (one row per swimmer)
@@ -1414,41 +1514,48 @@ export default function TeamDetail() {
           </div>
         )
         const moreLink = (label, target) => (
-          <button type="button" onClick={() => setTab(target)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', padding: '12px 0 0', minHeight: 40 }}>{label} →</button>
+          <button type="button" onClick={() => goTab(target)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', padding: '12px 0 0', minHeight: 40 }}>{label} →</button>
         )
-        const facts = [
-          ['Type', kickerText],
-          ['Country', team.country_detail?.name],
-          ['Founded', team.founded_year],
-          ['Best performance', bestPerf?.fina_points ? `${bestPerf.fina_points} FINA pts` : null],
-        ].filter(([, v]) => v)
+        // Occam's Razor: type, country and founding year are in the header, and
+        // the best performance leads the list below — the About card is for
+        // the club's own words (and, for a manager, the prompt to add them)
+        const showAbout = !!team.description || canManage
         return (
           <div className="m-pad" style={{ padding: '18px 28px 32px', background: 'var(--color-accent-100)' }}>
             {/* Key numbers */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
-              {statTiles.map(([label, value, sub]) => (
-                <div key={label} style={{ ...cardBox, padding: '16px 20px', borderTop: '3px solid var(--color-box-top)' }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</div>
+              {statTiles.map(([label, value, sub, open]) => {
+                const Tag = open ? 'button' : 'div'
+                return (
+                <Tag key={label} {...(open ? { type: 'button', onClick: open, 'aria-label': `${label}: ${value}. Open` } : {})}
+                  style={{ ...cardBox, padding: '16px 20px', border: 'none', borderTop: '3px solid var(--color-box-top)', textAlign: 'left', fontFamily: 'inherit', cursor: open ? 'pointer' : 'default', display: 'block', width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}><span>{label}</span>{open && <span aria-hidden="true" style={{ color: 'var(--color-accent-800)' }}>→</span>}</div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, lineHeight: 1.1, letterSpacing: '-0.02em', color: 'var(--color-accent-800)', marginTop: 4 }}>{value}</div>
                   <div className="asw-num" style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', marginTop: 3 }}>{sub}</div>
-                </div>
-              ))}
+                </Tag>
+                )
+              })}
             </div>
 
             <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
               {/* LEFT: About, then news and trophies only when they exist */}
               <div style={{ display: 'grid', gap: 14 }}>
+                {showAbout && (
                 <div style={cardBox}>
                   {cardTitle(`About ${team.name}`)}
                   {team.description
-                    ? <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.7, color: 'var(--color-neutral-800)', whiteSpace: 'pre-line', maxWidth: '70ch' }}>{team.description}</p>
-                    : canManage
-                      ? <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40, marginBottom: 16 }} onClick={() => setModal({ type: 'club' })}>+ Add a description</button>
-                      : null}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }}>
-                    {facts.map(([label, value]) => infoCell(label, value))}
-                  </div>
+                    ? <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--color-neutral-800)', whiteSpace: 'pre-line', maxWidth: '70ch' }}>{team.description}</p>
+                    : (
+                      /* Zeigarnik Effect: an unfinished profile shows what is missing */
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                        <div style={{ fontSize: 13.5, color: 'var(--color-neutral-700)' }}>
+                          Profile {[team.description, team.logo, team.founded_year, team.address || team.website || team.phone || team.email].filter(Boolean).length} of 4 complete: description, logo, founding year, contact details.
+                        </div>
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40 }} onClick={() => setModal({ type: 'club' })}>Complete the profile</button>
+                      </div>
+                    )}
                 </div>
+                )}
 
                 {(topPerf.length > 0 || topMedal.length > 0) && (
                   <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: topPerf.length && topMedal.length ? '1fr 1fr' : '1fr', gap: 14 }}>
@@ -1473,7 +1580,7 @@ export default function TeamDetail() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, margin: '6px 2px 10px' }}>
                       {cardTitle('Latest news')}
-                      <button type="button" onClick={() => setTab('news')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', padding: '8px 0', minHeight: 32 }}>All news →</button>
+                      <button type="button" onClick={() => goTab('news')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', padding: '8px 0', minHeight: 32 }}>All news →</button>
                     </div>
                     <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                       {newsItems.map(newsCard)}
@@ -1482,7 +1589,7 @@ export default function TeamDetail() {
                 ) : canManage ? (
                   <div style={{ ...cardBox, border: '1.5px dashed var(--color-neutral-400)', boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
                     <div style={{ fontSize: 13.5, color: 'var(--color-neutral-700)' }}>No news yet. Articles you publish appear here.</div>
-                    <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40 }} onClick={() => setTab('news')}>Go to news</button>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40 }} onClick={() => goTab('news')}>Go to news</button>
                   </div>
                 ) : null}
 
@@ -1583,12 +1690,12 @@ export default function TeamDetail() {
                       <div style={{ fontSize: 13.5, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <span>{String(r.event_name || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
                         <span style={{ color: 'var(--color-neutral-400)' }}>|</span>
-                        <span>{r.pool === 'SCM' ? 'SCM' : 'LCM'}</span>
+                        <span>{r.pool === 'SCM' ? '25m pool' : '50m pool'}</span>
                       </div>
                     </div>
                     <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 8 }}>
                       <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '-0.01em' }}>{typeof r.time === 'number' ? formatTime(r.time) : r.time}</div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 3, opacity: 0.92 }}>{REC_TYPE_LABELS[r.record_type] || r.record_type} Record</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 3, opacity: 0.92 }}>{r.record_type === 'NATIONAL' && r.country_name ? r.country_name : (REC_TYPE_LABELS[r.record_type] || r.record_type)} Record</div>
                     </div>
                   </div>
                 ))}
@@ -1663,9 +1770,11 @@ export default function TeamDetail() {
               <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'board' })}>+ Add member</button>
             </div>
           )}
+          {board.length === 0 ? (
+            <Empty label="No board members listed yet" hint={canManage ? 'Use “Add member” above to list the president, treasurer and the rest of the board.' : `${team.name} has not published its board.`} />
+          ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 18 }}>
-            {(board.length
-              ? board.map((m) => ({
+            {(board.map((m) => ({
                   role: m.role || 'Member', name: m.name, photo: m.photo,
                   actions: canManage ? (<>
                     <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setModal({ type: 'board', payload: m })}>Edit</button>
@@ -1675,16 +1784,16 @@ export default function TeamDetail() {
                     }}>Remove</button>
                   </>) : null,
                 }))
-              : ['President', 'Vice President', 'Treasurer', 'Secretary General'].map((role) => ({ role, name: '—', photo: null }))
             ).map(personCard)}
           </div>
+          )}
         </div>
       )}
 
       {/* ===== TEAM (Coaches / Swimmers) ===== */}
       {tab === 'team' && (
         <div className="m-pad" style={{ padding: '0 28px 28px', background: 'var(--color-accent-100)' }}>
-          <SubTabs options={[['coaches', 'Coaches'], ['swimmers', 'Swimmers']]} value={teamSub} onChange={setTeamSub} />
+          <SubTabs options={[['coaches', `Coaches · ${coaches.length}`], ['swimmers', `Swimmers · ${roster.length}`]]} value={teamSub} onChange={setTeamSub} />
           {teamSub === 'coaches' && (<>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '10px 0 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1699,9 +1808,13 @@ export default function TeamDetail() {
                 <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ type: 'coach' })}>+ Add coach</button>
               </div>
             )}
+            {coaches.length === 0 ? (
+              <Empty label="No coaches listed yet" hint={canManage ? 'Use “Add coach” above to list the coaching staff.' : `${team.name} has not published its coaching staff. The swimmers are listed.`}>
+                {!canManage && roster.length > 0 && <button type="button" className="btn btn-secondary" onClick={() => setTeamSub('swimmers')}>See the swimmers</button>}
+              </Empty>
+            ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 18 }}>
-              {(coaches.length
-                ? coaches.map((c) => ({
+              {(coaches.map((c) => ({
                     role: COACH_LEVELS[c.level] || c.level || 'Coach', name: c.name, photo: c.photo,
                     actions: canManage ? (<>
                       <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => setModal({ type: 'coach', payload: c })}>Edit</button>
@@ -1711,9 +1824,9 @@ export default function TeamDetail() {
                       }}>Remove</button>
                     </>) : null,
                   }))
-                : ['Head Coach', 'Assistant Coach', 'Swimming Coach', 'Conditioning Coach'].map((role) => ({ role, name: '—', photo: null }))
               ).map(personCard)}
             </div>
+            )}
           </>)}
           {teamSub === 'swimmers' && (<>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '10px 0 22px' }}>
@@ -1755,31 +1868,7 @@ export default function TeamDetail() {
                   </div>
                 )
               })()}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-                {roster.map((s) => (
-                  <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(180deg, var(--color-accent-100), var(--color-neutral-400))', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
-                      {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
-                    </div>
-                    <div style={{ padding: '10px 2px 0' }}>
-                      <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
-                        <SwimmerLink id={s.id} name={s.name} />
-                      </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--color-neutral-800)', fontWeight: 500, lineHeight: 1.5 }}>
-                        {s.sex === 'F' ? "Women's" : "Men's"}{s.birth_year ? ` · ${s.birth_year}` : ''}
-                      </div>
-                    </div>
-                    <div style={{ marginTop: 'auto', paddingTop: 2, borderTop: '1px solid var(--color-neutral-200)' }}>
-                      <Link to={`/swimmers/${s.id}`} aria-label={`View profile of ${s.name}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
-                        <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
-                      </Link>
-                      {isAdmin && (
-                        <Link to={`/swimmers/${s.id}?edit=1`} className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8, display: 'inline-block', textDecoration: 'none' }}>Edit</Link>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <RosterGrid roster={roster} isAdmin={isAdmin} />
               </>
             )}
           </>)}
@@ -1940,7 +2029,7 @@ export default function TeamDetail() {
       )}
 
       {/* ===== COMPARE ===== */}
-      {tab === 'compare' && <CompareTab team={team} profile={profile} stats={stats} records={records} />}
+      {tab === 'compare' && <CompareTab team={team} profile={profile} stats={stats} records={records} ranking={rankingRows} />}
 
       {/* ===== PREDICTION ===== */}
       {tab === 'prediction' && <PredictionTab id={id} />}

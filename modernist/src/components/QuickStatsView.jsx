@@ -12,7 +12,6 @@ const NAVY = 'var(--color-accent)'
 const NAVY_DARK = 'var(--color-accent-800)'
 const BLUE = 'var(--color-accent-2)'
 const GOLD = 'var(--asw-gold)'
-const SILVER = 'var(--asw-silver)'
 const BRONZE = 'var(--asw-bronze)'
 
 /* ── Tiny chart primitives (flat SVG/CSS, site palette) ─────────────── */
@@ -117,7 +116,8 @@ function MedalStack({ rows, wide = false }) {
           <span title={r.name} style={{ width: wide ? 96 : 34, flex: 'none', fontSize: 11, fontWeight: 800, color: NAVY_DARK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.code || r.name}</span>
           <div style={{ flex: 1, display: 'flex', height: 15 }}>
             <div style={{ display: 'flex', width: `${(r.total / max) * 100}%`, minWidth: 8 }}>
-              {[['gold', GOLD, '#3a2e07'], ['silver', SILVER, '#fff'], ['bronze', BRONZE, '#fff']].map(([k, bg, fg]) => (
+              {/* contrast (WCAG AA): white 11px numerals on the silver bar failed — silver segment is the pale neutral with navy numerals */}
+              {[['gold', GOLD, '#3a2e07'], ['silver', 'var(--color-neutral-400)', NAVY_DARK], ['bronze', BRONZE, '#fff']].map(([k, bg, fg]) => (
                 r[k] > 0 ? (
                   <div key={k} title={`${k}: ${r[k]}`}
                     style={{ flex: r[k], background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0, overflow: 'hidden' }}>
@@ -280,16 +280,16 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                 </div>
                 <Donut segments={[
                   { label: 'Male', value: participation.male, color: NAVY },
-                  { label: 'Female', value: participation.female, color: GOLD },
+                  { label: 'Female', value: participation.female, color: BLUE },
                 ]} centerTop={counts.swimmers} centerBot="SWIMMERS" />
                 <div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: GOLD }}>{femalePct}%</div>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: NAVY_DARK }}>{femalePct}%</div>
                   <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-700)' }}>{participation.female}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 10 }}>
                 <LegendDot color={NAVY}>Male ({participation.male})</LegendDot>
-                <LegendDot color={GOLD}>Female ({participation.female})</LegendDot>
+                <LegendDot color={BLUE}>Female ({participation.female})</LegendDot>
               </div>
             </>
           )}
@@ -361,7 +361,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
         <Panel title={`Medals by ${medalEntity} (Top 10)`}>
           <div style={{ display: 'flex', gap: 14, marginBottom: 10 }}>
             <LegendDot color={GOLD}>Gold</LegendDot>
-            <LegendDot color={SILVER}>Silver</LegendDot>
+            <LegendDot color="var(--color-neutral-400)">Silver</LegendDot>
             <LegendDot color={BRONZE}>Bronze</LegendDot>
           </div>
           <MedalStack rows={medals.table.slice(0, 10)} wide={medalsByClub} />
@@ -442,7 +442,9 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
           <div className="qs-rec-counters">
             {recCounters.map((c) => (
               <div key={c.label} className="qs-panel" style={{ padding: '12px 8px', textAlign: 'center' }}>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: c.color }}>{c.count}</div>
+                {/* contrast: numerals are navy; the series colour is a marker under the number */}
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: NAVY_DARK }}>{c.count}</div>
+                <div aria-hidden="true" style={{ width: 22, height: 3, background: c.color, margin: '5px auto 4px' }} />
                 <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 2 }}>{c.label}</div>
               </div>
             ))}

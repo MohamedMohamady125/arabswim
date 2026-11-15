@@ -180,7 +180,7 @@ function Chart({ lines, title, showSwimmer = false }) {
   return (
     <div style={{ position: 'relative' }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }} fontFamily={FONT_STACK}
-        role="img"
+        role="group"
         aria-label={`${title ? `${title}: ` : ''}times over time for ${processedLines.map((l) => `${l.event_name} (${l.points.length} swim${l.points.length !== 1 ? 's' : ''}${l.points.length ? `, best ${formatCs(Math.min(...l.points.map((p) => p.time_cs)))}` : ''})`).join('; ')}. The table below lists best and latest times.`}
         onClick={() => setTooltip(null)}>
         {/* Flat white canvas */}
@@ -293,6 +293,15 @@ function Chart({ lines, title, showSwimmer = false }) {
                 onMouseEnter={() => setTooltip(tip)}
                 onMouseLeave={() => setTooltip((t) => (t && t.key === key ? null : t))}
                 onClick={(e) => { e.stopPropagation(); setTooltip((t) => (t && t.key === key ? null : tip)) }}
+                // keyboard: Tab moves point to point and shows the same details as hover
+                className="asw-chart-pt" tabIndex={0} role="button"
+                aria-label={`${line.event_name}: ${formatCs(p.time_cs)}`}
+                onFocus={() => setTooltip(tip)}
+                onBlur={() => setTooltip((t) => (t && t.key === key ? null : t))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setTooltip(null)
+                  else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTooltip((t) => (t && t.key === key ? null : tip)) }
+                }}
                 style={{ cursor: 'pointer' }}>
                 {/* generous invisible hit area so fingers can hit the point */}
                 <circle cx={px} cy={py} r={mobile ? 18 : 12} fill="transparent" />

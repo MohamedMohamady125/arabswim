@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, Fragment } from 'react'
-import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { X, BadgeCheck } from 'lucide-react'
 import { IconInstagram, IconFacebook, IconYoutube, IconTiktok, IconX } from '../components/SocialIcons'
 import {
@@ -23,7 +23,8 @@ import { getSwimmerDna, getSwimmerChase } from '../api/lab'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
 import Flag from '../components/Flag'
-import { Loading, notify, Empty, Seg, Modal } from '../components/ui'
+import { Loading, notify, Empty, Seg, Modal, BackLink } from '../components/ui'
+import LoadFailed from '../components/swimmer/LoadFailed'
 import ImageCropper from '../components/ImageCropper'
 import { formatDate, mediaUrl } from '../utils'
 import SplitsBreakdown from '../components/swimmer/SplitsBreakdown'
@@ -39,6 +40,10 @@ import GalleryTab from '../components/swimmer/GalleryTab'
 import { MiniHBars, CHART_COLORS } from '../components/MiniCharts'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
+
+// Mental Model: say the pool the way swimmers do, not the federation code
+const POOL_WORDS = { LCM: '50m pool', SCM: '25m pool', OW: 'Open water' }
+const poolWord = (p) => POOL_WORDS[p] || p
 
 // Modal imported from ui.jsx — shared component with Escape key + ARIA
 
@@ -431,8 +436,8 @@ function EventList({ events, selected, onSelect, detail }) {
 
   return (
     <div>
-      {section('Long course', lcm)}
-      {section('Short course', scm)}
+      {section('Long course · 50m pool', lcm)}
+      {section('Short course · 25m pool', scm)}
       {section('Open water', ow)}
       {section('Relay Splits', relays)}
       {events.length === 0 && <Empty label="No competition results yet" hint="Times appear here once this swimmer has results from an imported meet." />}
@@ -440,11 +445,12 @@ function EventList({ events, selected, onSelect, detail }) {
   )
 }
 
-function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
+function TimeHistoryPanel({ selectedEvent, history, loadingHistory, failed, onRetry }) {
   const [expandedSplits, setExpandedSplits] = useState(null)
 
   if (!selectedEvent) return <Empty label="Select an event to view full time history" hint="Pick an event from the list to see every race swum in it." />
   if (loadingHistory) return <Loading label="Loading history" />
+  if (failed) return <LoadFailed what={`${selectedEvent.event_name} history`} onRetry={onRetry} />
 
   // PB = fastest official swim; ignore HC rows and status rows (DNS/DQ/DNF
   // are stored with time 0 — without the >0 guard they'd win the min()).
@@ -457,7 +463,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
         <h4>{selectedEvent.event_name}</h4>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <span className="micro asw-num">{history.length} race{history.length !== 1 ? 's' : ''}</span>
-          <span className={`tag ${selectedEvent.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{selectedEvent.pool}</span>
+          <span className={`tag ${selectedEvent.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{poolWord(selectedEvent.pool)}</span>
           {selectedEvent.is_relay && <span className="tag tag-neutral">Relay</span>}
         </span>
       </div>
@@ -605,7 +611,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory }) {
               )
             })}
             {history.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24 }} className="text-muted">No times recorded for this event, or they could not be loaded. Pick another event.</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24 }} className="text-muted">No times recorded for this event. Pick another event.</td></tr>
             )}
           </tbody>
         </table>
@@ -883,7 +889,7 @@ function RankingsPreview({ swimmerId, onViewAll }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
                 <span className="tag tag-accent">{scopeLabel[r.scope] || r.scope}</span>
-                <span className="micro asw-num">{r.pool}{r.total ? ` · out of ${r.total}` : ''}</span>
+                <span className="micro asw-num">{poolWord(r.pool)}{r.total ? ` · out of ${Number(r.total).toLocaleString('en-US')}` : ''}</span>
               </div>
             </div>
             <span className="asw-time" style={{ fontSize: 16, flex: 'none' }}>{r.best_time}</span>
@@ -906,7 +912,7 @@ const PERFORMANCE_TIERS = [
   { min: 100, max: 200, label: 'Entry Level' },
 ]
 
-function OverallTab({ stats, swimmerId, onViewRankings }) {
+function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
   // Computed held records (same source as the Records tab) — the stats
   // endpoint only counts manually-stored Record rows, which many swimmers
   // don't have even though they hold computed national/GCC/Arab records.
@@ -918,7 +924,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
       .catch(() => { if (alive) setHeldRecords([]) })
     return () => { alive = false }
   }, [swimmerId])
-  if (!stats) return <Empty label="No stats available" hint="This swimmer's statistics could not be loaded. Reload the page, or open the Times tab." />
+  if (!stats) return <LoadFailed what="This swimmer's statistics" onRetry={onRetry} />
   const {
     medals, total_championships, total_records, best_fina,
     season_best_fina, best_event, top_personal_bests, records, fina_distribution,
@@ -945,23 +951,25 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       {/* Stat cards lead the Overall tab — same gradient style as home page */}
       <div className="swimmer-stat-cards">
-        <div style={cardStyle}>
+        {/* Similarity + Flow: the three counts that have a tab of their own open it */}
+        <button type="button" className="swimmer-stat-link" style={cardStyle} onClick={() => onGoTab('meets')} aria-label={`${total_championships ?? 0} meets, open the Meets tab`}>
           <span className="asw-num" style={cardNum}>{total_championships ?? 0}</span>
-          <span style={cardLabel}>Meets</span>
-        </div>
-        <div style={cardStyle}>
+          <span style={cardLabel}>Meets →</span>
+        </button>
+        <button type="button" className="swimmer-stat-link" style={cardStyle} onClick={() => onGoTab('medals')} aria-label={`${md.total} medals, open the Medals tab`}>
           <span className="asw-num" style={{ ...cardNum, color: 'var(--asw-gold)' }}>{md.total}</span>
-          <span style={cardLabel}>Medals</span>
+          <span style={cardLabel}>Medals →</span>
           <span className="asw-num" style={{ fontSize: 11, display: 'flex', gap: 6 }}>
             <span style={{ color: 'var(--asw-gold)', fontWeight: 700 }}>{md.gold}G</span>
             <span style={{ color: 'var(--asw-silver)', fontWeight: 700 }}>{md.silver}S</span>
             <span style={{ color: 'var(--asw-bronze)', fontWeight: 700 }}>{md.bronze}B</span>
           </span>
-        </div>
-        <div style={cardStyle}>
-          <span className="asw-num" style={cardNum}>{recordsTotal}</span>
-          <span style={cardLabel}>Records</span>
-        </div>
+        </button>
+        <button type="button" className="swimmer-stat-link" style={cardStyle} onClick={() => onGoTab('records')} aria-label={`${recordsTotal} records, open the Records tab`}>
+          {/* the held-records count arrives after the stats: show a dash, not a 0 that jumps */}
+          <span className="asw-num" style={cardNum}>{heldRecords === null ? '–' : recordsTotal}</span>
+          <span style={cardLabel}>Records →</span>
+        </button>
         <div style={cardStyle}>
           <span className="asw-num" style={cardNum}>{best_fina?.points || '—'}</span>
           <span style={cardLabel}>Best FINA</span>
@@ -979,6 +987,41 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
           <span style={cardLabel}>Fastest Event</span>
           {bestEventPb && <span className="asw-time" style={{ fontSize: 13, color: '#fff' }}>{bestEventPb.time}</span>}
         </div>
+      </div>
+
+      {/* Serial Position: what visitors come for — best times and rankings — sits
+          right under the headline numbers, side by side on wide screens */}
+      <div className="swimmer-top-grid">
+        {/* Top personal bests */}
+        {top_personal_bests?.length > 0 && (
+          <div>
+            <div className="sect-head"><h4>Top Personal Bests</h4></div>
+            <div className="rule-t">
+              {top_personal_bests.map((pb, i) => (
+                <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
+                  <span className="asw-num" style={{ width: 30, height: 30, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13 }}>
+                    {i + 1}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase' }}>{pb.event_name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {pb.meet_name}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      {pb.meet_date && <span style={{ fontSize: 11, color: 'var(--color-neutral-700)' }}>{formatDate(pb.meet_date)}</span>}
+                      {pb.pool && <span className="tag tag-accent-2" style={{ fontSize: 11, padding: '1px 6px' }}>{poolWord(pb.pool)}</span>}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flex: 'none' }}>
+                    <div className="asw-time" style={{ fontSize: 16 }}>{pb.time}</div>
+                    <div className="micro asw-num" style={{ color: 'var(--color-accent)' }}>{pb.fina_points} pts</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <RankingsPreview swimmerId={swimmerId} onViewAll={onViewRankings} />
       </div>
 
       {/* Career summary — only substantive career facts, each tile gated so
@@ -1069,7 +1112,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
       {/* Performance index */}
       {(best_fina?.points || 0) > 0 && (
         <div>
-          <div className="sect-head"><h4>Performance Index</h4><span className="micro">FINA points · career best {best_fina.points}</span></div>
+          <div className="sect-head"><h4>Performance Index</h4><span className="micro">FINA points · career best {best_fina.points} · swims per level</span></div>
           <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {PERFORMANCE_TIERS.map((t) => {
               const isCurrent = best_fina.points >= t.min && (t.max == null || best_fina.points < t.max)
@@ -1079,6 +1122,8 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                 .filter((d) => d.low >= t.min && (t.max == null || d.low < t.max))
                 .reduce((n, d) => n + (d.count || 0), 0)
               const reached = best_fina.points >= t.min
+              // Goal-Gradient: the next tier up shows how close it is
+              const toGo = !reached && t.max != null && best_fina.points >= t.min - 100 ? t.min - best_fina.points : null
               return (
                 <div key={t.min} style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '7px 10px',
@@ -1090,40 +1135,11 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                   <span style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: reached ? 1 : 0.5 }}>{t.label}</span>
                   {isCurrent && <span className="tag" style={{ background: 'var(--asw-gold)', color: '#fff', border: 0 }}>CAREER BEST</span>}
                   {isSeason && <span className="tag tag-accent">THIS SEASON</span>}
-                  {count > 0 && <span className="asw-num micro" style={{ opacity: isCurrent ? 1 : 0.6, color: isCurrent ? 'rgba(255,255,255,0.9)' : undefined }}>{count} PB{count !== 1 ? 's' : ''}</span>}
+                  {toGo != null && <span className="asw-num micro" style={{ color: 'var(--color-accent)', fontWeight: 800 }}>Next · {toGo} pts to go</span>}
+                  {count > 0 && <span className="asw-num micro" style={{ opacity: isCurrent ? 1 : 0.6, color: isCurrent ? 'rgba(255,255,255,0.9)' : undefined }}>{count} swim{count !== 1 ? 's' : ''}</span>}
                 </div>
               )
             })}
-          </div>
-        </div>
-      )}
-
-      {/* Top personal bests */}
-      {top_personal_bests?.length > 0 && (
-        <div>
-          <div className="sect-head"><h4>Top Personal Bests</h4></div>
-          <div className="rule-t">
-            {top_personal_bests.map((pb, i) => (
-              <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
-                <span className="asw-num" style={{ width: 30, height: 30, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13 }}>
-                  {i + 1}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase' }}>{pb.event_name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {pb.meet_name}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    {pb.meet_date && <span style={{ fontSize: 11, color: 'var(--color-neutral-700)' }}>{formatDate(pb.meet_date)}</span>}
-                    {pb.pool && <span className="tag tag-accent-2" style={{ fontSize: 11, padding: '1px 6px' }}>{pb.pool}</span>}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right', flex: 'none' }}>
-                  <div className="asw-time" style={{ fontSize: 16 }}>{pb.time}</div>
-                  <div className="micro asw-num" style={{ color: 'var(--color-accent)' }}>{pb.fina_points} pts</div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}
@@ -1176,9 +1192,6 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
         )
       })()}
 
-      {/* Best rankings preview */}
-      <RankingsPreview swimmerId={swimmerId} onViewAll={onViewRankings} />
-
       {/* International records */}
       {intlRecords.length > 0 && (
         <div>
@@ -1197,7 +1210,7 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     {r.date && <span style={{ fontSize: 11, color: 'var(--color-neutral-700)' }}>{formatDate(r.date)}</span>}
-                    {r.pool && <span className="tag tag-accent-2" style={{ fontSize: 11, padding: '1px 6px' }}>{r.pool}</span>}
+                    {r.pool && <span className="tag tag-accent-2" style={{ fontSize: 11, padding: '1px 6px' }}>{poolWord(r.pool)}</span>}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flex: 'none' }}>
@@ -1217,29 +1230,49 @@ function OverallTab({ stats, swimmerId, onViewRankings }) {
 function ProgressionTab({ swimmerId }) {
   const [pool, setPool] = useState('LCM')
   const [lines, setLines] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  // Tesler's Law: if the default pool has nothing, open the other one once
+  // instead of making the visitor find it
+  const autoSwitched = useRef(false)
+
+  useEffect(() => { autoSwitched.current = false }, [swimmerId])
 
   useEffect(() => {
     let alive = true
     setLines(null)
+    setFailed(false)
     getSwimmerProgression(swimmerId, pool)
-      .then((res) => { if (alive) setLines(list(res.data)) })
-      .catch(() => { if (alive) setLines([]) })
+      .then((res) => {
+        if (!alive) return
+        const rows = list(res.data)
+        if (rows.length === 0 && !autoSwitched.current) {
+          autoSwitched.current = true
+          setPool(pool === 'LCM' ? 'SCM' : 'LCM')
+          return
+        }
+        autoSwitched.current = true
+        setLines(rows)
+      })
+      .catch(() => { if (alive) { setLines([]); setFailed(true) } })
     return () => { alive = false }
-  }, [swimmerId, pool])
+  }, [swimmerId, pool, reloadKey])
 
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
         <Seg
-          options={[{ value: 'LCM', label: 'Long Course' }, { value: 'SCM', label: 'Short Course' }]}
+          options={[{ value: 'LCM', label: 'Long course · 50m pool' }, { value: 'SCM', label: 'Short course · 25m pool' }]}
           value={pool}
-          onChange={setPool}
+          onChange={(v) => { autoSwitched.current = true; setPool(v) }}
         />
       </div>
       {lines === null ? (
         <Loading label="Loading progression" />
+      ) : failed ? (
+        <LoadFailed what="The progression chart" onRetry={() => setReloadKey((k) => k + 1)} />
       ) : lines.length === 0 ? (
-        <Empty label={`No ${pool === 'LCM' ? 'long course' : 'short course'} progression data`} hint={`Try ${pool === 'LCM' ? 'Short Course' : 'Long Course'} above.`} />
+        <Empty label="No progression data yet" hint="The chart appears once this swimmer has dated times in an event." />
       ) : (
         <ProgressionChart lines={lines} />
       )}
@@ -1262,6 +1295,8 @@ const TABS = [
   { value: 'transfers', label: 'Representations' },
   { value: 'gallery', label: 'Gallery' },
 ]
+// Hick's Law: the tabs most visitors open stay in the bar; the rest sit behind More
+const MORE_TABS = ['qualifying', 'compare', 'transfers', 'gallery']
 
 /* ── Main page ─────────────────────────────────────────────────────────── */
 
@@ -1372,8 +1407,11 @@ export default function SwimmerProfile() {
   const { isAdmin, isAuthed, mySwimmerId, refreshUser } = useAuth()
   const { flag } = useFeatures()
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  // Working Memory: Back returns to the list as it was left (search, filters, page)
+  const listSearch = location.state?.list ? `?${location.state.list}` : ''
   const activeTab = searchParams.get('tab') || 'overall'
-  const setActiveTab = (tab) => setSearchParams({ tab }, { replace: true })
+  const setActiveTab = (tab) => setSearchParams({ tab }, { replace: true, state: location.state })
 
   const [swimmer, setSwimmer] = useState(null)
   const [claimOpen, setClaimOpen] = useState(false)
@@ -1388,6 +1426,10 @@ export default function SwimmerProfile() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [historyFailed, setHistoryFailed] = useState(false)
+  const [eventsFailed, setEventsFailed] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   // Peak-End Rule: confirm a finished save in plain words
   const [notice, setNotice] = useState('')
 
@@ -1407,6 +1449,7 @@ export default function SwimmerProfile() {
     setNotice('')
     setSelectedEvent(null)
     setHistory([])
+    setHistoryFailed(false)
     Promise.allSettled([
       getSwimmer(id),
       getSwimmerEvents(id),
@@ -1418,6 +1461,7 @@ export default function SwimmerProfile() {
       const evts = list(val(eRes))
       setSwimmer(val(sRes))
       setEvents(evts)
+      setEventsFailed(eRes.status !== 'fulfilled')
       setStats(val(stRes))
       setClubHistory(val(tRes)?.clubs || [])
       setLoaded(true)
@@ -1431,40 +1475,48 @@ export default function SwimmerProfile() {
         setLoadingHistory(true)
         getSwimmerEventHistory(id, first.event_id, first.pool)
           .then((res) => { if (alive) setHistory(list(res.data)) })
-          .catch(() => { if (alive) setHistory([]) })
+          .catch(() => { if (alive) { setHistory([]); setHistoryFailed(true) } })
           .finally(() => { if (alive) setLoadingHistory(false) })
       }
     })
     return () => { alive = false }
-  }, [id])
+  }, [id, reloadKey])
 
   useEffect(() => {
     if (!isAuthed || isAdmin || mySwimmerId) { setMyClaims([]); return }
     getMyClaims().then((res) => setMyClaims(list(res.data))).catch(() => setMyClaims([]))
   }, [id, isAuthed, isAdmin, mySwimmerId])
 
-  const handleEventClick = async (event) => {
-    // clicking the open event again collapses it
-    if (selectedEvent?.event_id === event.event_id && selectedEvent?.pool === event.pool) {
-      setSelectedEvent(null)
-      setHistory([])
-      return
-    }
+  const loadHistory = async (event) => {
     setSelectedEvent(event)
     setLoadingHistory(true)
+    setHistoryFailed(false)
     try {
       const res = await getSwimmerEventHistory(id, event.event_id, event.pool)
       setHistory(list(res.data))
     } catch {
       setHistory([])
+      setHistoryFailed(true)
     } finally {
       setLoadingHistory(false)
     }
   }
 
+  const handleEventClick = (event) => {
+    // clicking the open event again collapses it
+    if (selectedEvent?.event_id === event.event_id && selectedEvent?.pool === event.pool) {
+      setSelectedEvent(null)
+      setHistory([])
+      setHistoryFailed(false)
+      return
+    }
+    loadHistory(event)
+  }
+
   if (!loaded) return <Loading label="Loading swimmer" />
   if (!swimmer) return (
     <Empty label="Swimmer not found" hint="This profile may have been merged or removed, or it could not be loaded.">
+      <button type="button" className="btn btn-secondary" style={{ marginRight: 8 }} onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
       <Link to="/swimmers" className="btn btn-secondary">Browse all swimmers</Link>
     </Empty>
   )
@@ -1483,6 +1535,20 @@ export default function SwimmerProfile() {
     return visibleTabs.some((t) => t.value === activeTab) ? activeTab : 'overall'
   })()
 
+  // tab labels carry their count where one is known (Working Memory)
+  const tabCount = { meets: stats?.total_championships, medals: stats?.medals?.total, times: events.length }
+  const tabOption = (t) => {
+    const n = tabCount[t.value]
+    const label = <>{t.label}{n > 0 && <span className="swimmer-tab-count asw-num">{Number(n).toLocaleString('en-US')}</span>}</>
+    return tabHidden(t.value)
+      ? { ...t, label: <span style={{ opacity: 0.4 }} title="Hidden from visitors (admin visibility settings)">{label}</span> }
+      : { ...t, label }
+  }
+  const mainTabs = visibleTabs.filter((t) => !MORE_TABS.includes(t.value))
+  const moreTabs = visibleTabs.filter((t) => MORE_TABS.includes(t.value))
+  const inMore = moreTabs.some((t) => t.value === effectiveTab)
+  const showMore = moreOpen || inMore
+
   const chip = (label, value) => (
     <span className="tag tag-neutral" style={{ gap: 6 }}>
       {label && <span className="micro" style={{ letterSpacing: '0.06em' }}>{label}</span>}
@@ -1492,6 +1558,8 @@ export default function SwimmerProfile() {
 
   return (
     <div>
+      {/* Jakob's Law: the way back to the list is top-left, as everywhere else */}
+      <div className="swimmer-back"><BackLink to={`/swimmers${listSearch}`}>{listSearch ? 'Back to swimmers' : 'All swimmers'}</BackLink></div>
       {/* ── Header ── */}
       <div className="pad-lg rule-b" style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap', position: 'relative' }}>
         <HeaderPhoto swimmer={swimmer} />
@@ -1679,34 +1747,46 @@ export default function SwimmerProfile() {
       <div className="rule-b tabbar tabbar-sticky" style={{ padding: '14px 32px', overflowX: 'auto' }}>
         <Seg
           tabs
-          options={visibleTabs.map((t) => tabHidden(t.value)
-            ? { ...t, label: <span style={{ opacity: 0.4 }} title="Hidden from visitors (admin visibility settings)">{t.label}</span> }
-            : t)}
-          value={effectiveTab}
-          onChange={setActiveTab}
+          options={[
+            ...mainTabs.map(tabOption),
+            ...(moreTabs.length > 0 ? [{ value: '__more', label: <span aria-expanded={showMore}>More {showMore ? '↑' : '↓'}</span> }] : []),
+          ]}
+          value={inMore ? '__more' : effectiveTab}
+          onChange={(v) => {
+            if (v === '__more') {
+              // closing More while one of its tabs is open goes back to Overall
+              if (inMore) { setMoreOpen(false); setActiveTab('overall') } else setMoreOpen((o) => !o)
+            } else { setMoreOpen(false); setActiveTab(v) }
+          }}
         />
+        {showMore && moreTabs.length > 0 && (
+          <div className="swimmer-more-tabs">
+            <Seg options={moreTabs.map(tabOption)} value={effectiveTab} onChange={setActiveTab} />
+          </div>
+        )}
       </div>
 
       {/* ── Tab content ── */}
       <div className="pad">
         {effectiveTab === 'overall' && (
-          <OverallTab stats={stats} swimmerId={id} onViewRankings={() => setActiveTab('rankings')} />
+          <OverallTab stats={stats} swimmerId={id} onViewRankings={() => setActiveTab('rankings')} onGoTab={setActiveTab} onRetry={() => setReloadKey((k) => k + 1)} />
         )}
-        {effectiveTab === 'times' && (
+        {effectiveTab === 'times' && eventsFailed && <LoadFailed what="Times" onRetry={() => setReloadKey((k) => k + 1)} />}
+        {effectiveTab === 'times' && !eventsFailed && (
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 32, alignItems: 'start' }}>
             <EventList
               events={events}
               selected={selectedEvent}
               onSelect={handleEventClick}
-              detail={<TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} />}
+              detail={<TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} failed={historyFailed} onRetry={() => loadHistory(selectedEvent)} />}
             />
             <div className="hide-mobile">
-              <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} />
+              <TimeHistoryPanel selectedEvent={selectedEvent} history={history} loadingHistory={loadingHistory} failed={historyFailed} onRetry={() => loadHistory(selectedEvent)} />
             </div>
           </div>
         )}
-        {effectiveTab === 'meets' && <MeetsTab stats={stats} />}
-        {effectiveTab === 'medals' && <MedalsTab stats={stats} />}
+        {effectiveTab === 'meets' && (stats ? <MeetsTab stats={stats} /> : <LoadFailed what="Meet history" onRetry={() => setReloadKey((k) => k + 1)} />)}
+        {effectiveTab === 'medals' && (stats ? <MedalsTab stats={stats} /> : <LoadFailed what="Medals" onRetry={() => setReloadKey((k) => k + 1)} />)}
         {effectiveTab === 'rankings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
             <RankingsTab swimmerId={id} swimmer={swimmer} />

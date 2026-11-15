@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { getSwimmerRankings, getSwimmerEvents, getSwimmerRankingHistory } from '../../api/swimmers'
 import { Loading, Empty, Seg } from '../ui'
+import LoadFailed from './LoadFailed'
 
 /* Season-by-season rank in one event: where each year's season best placed
    among that season's field (national/arab). Rank 1 = tallest column. */
 function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
   const [histEvent, setHistEvent] = useState(null)
   const [hist, setHist] = useState(null)
+  const [histFailed, setHistFailed] = useState(false)
+  const [histKey, setHistKey] = useState(0)
 
   const options = rankings
     .filter((r, i, arr) => arr.findIndex((x) => x.event_id === r.event_id && x.pool === r.pool) === i)
@@ -20,11 +23,12 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
     if (!sel) return
     let alive = true
     setHist(null)
+    setHistFailed(false)
     getSwimmerRankingHistory(swimmerId, { event: sel.event_id, pool: sel.pool })
       .then((r) => { if (alive) setHist(r.data) })
-      .catch(() => { if (alive) setHist({ seasons: [] }) })
+      .catch(() => { if (alive) { setHist({ seasons: [] }); setHistFailed(true) } })
     return () => { alive = false }
-  }, [swimmerId, sel?.event_id, sel?.pool])
+  }, [swimmerId, sel?.event_id, sel?.pool, histKey])
 
   if (!sel) return null
   const seasons = hist?.seasons || []
@@ -51,7 +55,9 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
         </select>
       </div>
       <div className="rule-t" style={{ paddingTop: 12 }}>
-        {!hist ? <Loading label="Loading history" /> : scoped.length === 0 ? (
+        {!hist ? <Loading label="Loading history" /> : histFailed ? (
+          <LoadFailed what="Season history" onRetry={() => setHistKey((k) => k + 1)} />
+        ) : scoped.length === 0 ? (
           <div className="text-muted" style={{ fontSize: 13 }}>No season history for this event yet. Pick another event above.</div>
         ) : (
           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -108,18 +114,23 @@ export default function RankingsTab({ swimmerId, swimmer }) {
   const [loading, setLoading] = useState(true)
   const [activeScope, setActiveScope] = useState(null)
   const [selectedEventId, setSelectedEventId] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
+    setLoading(true)
+    setFailed(false)
     Promise.all([getSwimmerRankings(swimmerId), getSwimmerEvents(swimmerId)])
       .then(([r, e]) => { if (alive) { setRankings(r.data); setEvents(e.data || []) } })
-      .catch(() => { if (alive) setRankings([]) })
+      .catch(() => { if (alive) { setRankings([]); setFailed(true) } })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [swimmerId])
+  }, [swimmerId, reloadKey])
 
   if (loading) return <Loading label="Loading rankings" />
-  if (!rankings || rankings.length === 0) return <Empty label="No ranking data available" hint="Rankings appear once this swimmer has official times, or they could not be loaded." />
+  if (failed) return <LoadFailed what="Rankings" onRetry={() => setReloadKey((k) => k + 1)} />
+  if (!rankings || rankings.length === 0) return <Empty label="No rankings yet" hint="Rankings appear once this swimmer has official times in a ranked event." />
 
   const eventMap = {}
   for (const e of events) {

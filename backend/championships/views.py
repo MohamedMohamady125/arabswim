@@ -796,7 +796,9 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'event__sort_order', 'effective_gender'
         ).annotate(
             results_count=Count('id'),
-            best_time=Min('time_centiseconds'),
+            # DQ/DNS/DNF rows are stored with a zero time — they must not win
+            # "best time" (it used to come back as "0.00" for such events).
+            best_time=Min('time_centiseconds', filter=Q(time_centiseconds__gt=0)),
             # How many of this event/gender's results carry an age category —
             # drives the "Boys/Girls" age-category filter on the frontend.
             categorized_count=Count(
@@ -805,12 +807,14 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
         events_list = []
         for e in events:
-            cs = e['best_time']
+            cs = e['best_time'] or 0
             hrs = cs // 360000
             mins = (cs % 360000) // 6000
             secs = (cs % 6000) // 100
             cent = cs % 100
-            if hrs:
+            if not cs:
+                best = ''
+            elif hrs:
                 best = f'{hrs}:{mins:02d}:{secs:02d}.{cent:02d}'
             elif mins:
                 best = f'{mins}:{secs:02d}.{cent:02d}'

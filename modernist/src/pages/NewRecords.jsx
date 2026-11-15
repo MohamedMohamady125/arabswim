@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getRecords, createRecord, importRecordsExcel, getRecordsImportTemplate } from '../api/records'
 import { searchSwimmers } from '../api/swimmers'
-import { getEvents } from '../api/core'
+import { getEvents, getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty } from '../components/ui'
+import { PageHead, Loading, Empty, Seg, FilterBar } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, RECORD_TYPES, mediaUrl, parseTime } from '../utils'
 
@@ -19,6 +19,9 @@ const SCOPE_OPTIONS = [
   { value: 'ARAB', label: 'Arab' },
   { value: 'GCC', label: 'GCC' },
 ]
+// cards fetched per step; older API builds answer with 25 regardless, so the
+// page always trusts `count` and `next` from the response, never this number
+const PAGE_SIZE = 60
 
 function AddRecordModal({ onClose, onCreated }) {
   const [events, setEvents] = useState([])
@@ -195,6 +198,12 @@ function AddRecordModal({ onClose, onCreated }) {
 
         <div className="rule-t" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          {/* Paradox of the Active User: a greyed-out Save says what is still missing */}
+          {!canSave && !saving && (
+            <span className="micro" style={{ marginRight: 'auto', alignSelf: 'center' }}>
+              Still needed: {[!sel && 'swimmer', !form.event && 'event', !(cs > 0) && 'time', !form.result_date && 'date'].filter(Boolean).join(', ')}
+            </span>
+          )}
           <button type="submit" className="btn btn-primary" disabled={!canSave}>{saving ? 'Saving…' : 'Save record'}</button>
         </div>
       </form>
@@ -320,6 +329,12 @@ export default function NewRecords() {
   const { isAdmin } = useAuth()
   const [records, setRecords] = useState([])
   const [scope, setScope] = useState('NATIONAL')
+  const [country, setCountry] = useState('')
+  const [countries, setCountries] = useState([])
+  const [total, setTotal] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [pageNo, setPageNo] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -332,25 +347,70 @@ export default function NewRecords() {
     return () => clearTimeout(t)
   }, [saved])
 
+  // National books are per country: the country list narrows them to one federation
+  useEffect(() => {
+    getCountries({ has_swimmers: true })
+      .then((res) => {
+        const all = Array.isArray(res.data) ? res.data : res.data?.results || []
+        setCountries(all.filter((c) => c.region === 'ARAB' || c.region === 'GCC'))
+      })
+      .catch(() => setCountries([]))
+  }, [])
+
+  const isNational = scope === 'NATIONAL'
+  const fetchPage = (page) => {
+    const params = { is_new: 'true', page, page_size: PAGE_SIZE }
+    if (scope) params.record_type = scope
+    // country by country, newest first inside each — so "Show more" appends
+    // whole federations instead of reshuffling the groups already on screen
+    if (isNational) params.ordering = 'country__name,-result_date,-id'
+    if (isNational && country) params.country = country
+    return getRecords(params).then((res) => {
+      const d = res.data
+      const rows = Array.isArray(d) ? d : d?.results || []
+      return { rows, total: Array.isArray(d) ? rows.length : d?.count ?? rows.length, more: !Array.isArray(d) && !!d?.next }
+    })
+  }
+
   useEffect(() => {
     let alive = true
     setLoading(true)
-    const params = { is_new: 'true' }
-    if (scope) params.record_type = scope
-    getRecords(params)
-      .then((res) => {
+    fetchPage(1)
+      .then((r) => {
         if (!alive) return
-        const d = res.data
-        setRecords(Array.isArray(d) ? d : d?.results || [])
+        setRecords(r.rows); setTotal(r.total); setHasMore(r.more); setPageNo(1)
       })
-      .catch(() => { if (alive) setRecords([]) })
+      .catch(() => { if (alive) { setRecords([]); setTotal(0); setHasMore(false) } })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [scope, refresh])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, country, refresh])
+
+  const loadMore = () => {
+    if (loadingMore) return
+    setLoadingMore(true)
+    fetchPage(pageNo + 1)
+      .then((r) => {
+        setRecords((cur) => {
+          const seen = new Set(cur.map((x) => x.id))
+          return cur.concat(r.rows.filter((x) => !seen.has(x.id)))
+        })
+        setTotal(r.total); setHasMore(r.more); setPageNo((n) => n + 1)
+      })
+      .catch(() => setHasMore(false))
+      .finally(() => setLoadingMore(false))
+  }
+
+  // the country filter also applies to rows already loaded (older API builds ignore ?country=)
+  const shown = useMemo(() => (
+    isNational && country ? records.filter((r) => String(r.country ?? r.swimmer_detail?.nationality ?? '') === String(country)) : records
+  ), [records, isNational, country])
+  const allLoaded = !hasMore
+  const shownTotal = allLoaded ? shown.length : total
 
   const groups = useMemo(() => {
     const map = new Map()
-    records.forEach((r) => {
+    shown.forEach((r) => {
       const key = r.record_type || 'OTHER'
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(r)
@@ -361,28 +421,41 @@ export default function NewRecords() {
       const bi = SCOPE_ORDER.indexOf(b)
       return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
     })
-  }, [records])
+  }, [shown])
 
   return (
     <div>
-      <PageHead title="New Records" />
-
-      {/* scope filter */}
-      <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <select className="select" aria-label="Record scope" style={{ width: 170 }} value={scope} onChange={(e) => setScope(e.target.value)}>
-          {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label === 'All' ? 'All scopes' : o.label}</option>)}
-        </select>
+      <PageHead title="New Records" sub="National, Arab and GCC records broken at the most recent meets.">
+        {/* admin actions sit with the page title, away from the public filters (Common Region) */}
         {isAdmin && (
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
-            <button type="button" className="btn btn-secondary" onClick={() => setImportOpen(true)}>
-              ⬆ Import Excel
-            </button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-primary" onClick={() => setAddOpen(true)}>
               + Add Record
             </button>
+            <button type="button" className="btn btn-secondary" onClick={() => setImportOpen(true)}>
+              ⬆ Import Excel
+            </button>
           </div>
         )}
-      </div>
+      </PageHead>
+
+      {/* Hick's Law + Fitts's Law: three books, all visible, one tap each */}
+      <FilterBar
+        count={loading ? null : shownTotal}
+        noun={shownTotal === 1 ? 'new record' : 'new records'}
+        active={scope !== 'NATIONAL' || !!country}
+        onClear={() => { setScope('NATIONAL'); setCountry('') }}
+      >
+        <div className="records-filters results-filters" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Seg options={SCOPE_OPTIONS} value={scope} onChange={(v) => { setScope(v); if (v !== 'NATIONAL') setCountry('') }} />
+          {isNational && (
+            <select className="select" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+              <option value="">All countries</option>
+              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+        </div>
+      </FilterBar>
 
       {addOpen && (
         <AddRecordModal
@@ -404,26 +477,38 @@ export default function NewRecords() {
 
       {loading ? (
         <Loading label="Loading new records" />
-      ) : records.length === 0 ? (
-        <Empty label="No new records match this scope" hint="Try another scope from the list above." />
+      ) : shown.length === 0 ? (
+        <Empty
+          label={country ? `No new national records for ${countries.find((c) => String(c.id) === String(country))?.name || 'this country'}` : `No new ${TYPE_LABEL[scope] || ''} records right now`}
+          hint={country ? 'Pick another country, or see every federation.' : 'Records appear here as soon as one is broken at a meet.'}
+        >
+          {country
+            ? <button type="button" className="btn btn-secondary" onClick={() => setCountry('')}>All countries</button>
+            : <Link to="/records" className="btn btn-secondary">Open the record books</Link>}
+        </Empty>
       ) : (
-        groups.map(([type, rows]) => (
+        <>
+        {groups.map(([type, rows]) => (
           <div key={type} className="rule-b pad">
             <div className="sect-head">
               <h4 style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {TYPE_LABEL[type] || type} records
               </h4>
-              <span className="micro asw-num">{rows.length} record{rows.length !== 1 ? 's' : ''}</span>
+              {/* Working Memory: say how much of the list is on screen */}
+              <span className="micro asw-num">
+                {allLoaded ? `${rows.length} record${rows.length !== 1 ? 's' : ''}` : `Showing ${rows.length} of ${total.toLocaleString('en-US')}`}
+              </span>
             </div>
             {/* National records are per-country books: sub-group them so each
                 country's new records sit under their own flag heading */}
             {type === 'NATIONAL' ? (
-              subGroupByCountry(rows).map(([country, sub]) => (
-                <div key={country} style={{ marginBottom: 18 }}>
+              subGroupByCountry(rows).map(([countryName, sub], gi, arr) => (
+                <div key={countryName} style={{ marginBottom: 18 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 10px' }}>
-                    <Flag code={sub[0].swimmer_detail?.nationality_detail?.code} name={country} />
-                    <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{country}</strong>
-                    <span className="micro asw-num">{sub.length}</span>
+                    <Flag code={(sub[0].country_detail || sub[0].swimmer_detail?.nationality_detail)?.code} name={countryName} />
+                    <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{countryName}</strong>
+                    {/* the last federation may still be loading — no count until it is whole */}
+                    {(allLoaded || gi < arr.length - 1) && <span className="micro asw-num">{sub.length}</span>}
                   </div>
                   <RecordCards rows={sub} />
                 </div>
@@ -432,7 +517,18 @@ export default function NewRecords() {
               <RecordCards rows={rows} />
             )}
           </div>
-        ))
+        ))}
+        {/* Goal-Gradient: how far through the list, and one large target to go on */}
+        {hasMore && (
+          <div className="results-more">
+            <span className="asw-num">Showing {records.length.toLocaleString('en-US')} of {total.toLocaleString('en-US')} new records</span>
+            <div className="results-more-track" aria-hidden="true"><span style={{ width: `${Math.min(100, (records.length / Math.max(total, 1)) * 100)}%` }} /></div>
+            <button type="button" className="btn btn-secondary" style={{ minWidth: 200 }} disabled={loadingMore} onClick={loadMore}>
+              {loadingMore ? 'Loading…' : 'Show more records'}
+            </button>
+          </div>
+        )}
+        </>
       )}
     </div>
   )
@@ -441,11 +537,13 @@ export default function NewRecords() {
 function subGroupByCountry(rows) {
   const map = new Map()
   rows.forEach((r) => {
-    const key = r.swimmer_detail?.nationality_detail?.name || 'Other'
+    // the record's own book (a national record belongs to a federation), then the swimmer's flag
+    const key = r.country_detail?.name || r.swimmer_detail?.nationality_detail?.name || 'Other'
     if (!map.has(key)) map.set(key, [])
     map.get(key).push(r)
   })
-  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b))
+  // alphabetical, records without a federation last
+  return [...map.entries()].sort(([a], [b]) => (a === 'Other') - (b === 'Other') || a.localeCompare(b))
 }
 
 function RecordCards({ rows }) {

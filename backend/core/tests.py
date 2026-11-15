@@ -66,6 +66,18 @@ class CountryProfileTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         return resp.json()
 
+    def test_lite_matches_full_participation_counts(self):
+        # ?lite=1 drops the per-championship athlete lists but keeps the counts
+        full = self.get_profile()['championships_participated']
+        resp = self.client.get(f'/api/v1/countries/{self.egy.id}/profile/?lite=1')
+        self.assertEqual(resp.status_code, 200)
+        lite = resp.json()['championships_participated']
+        self.assertEqual(len(lite), len(full))
+        for a, b in zip(lite, full):
+            self.assertNotIn('swimmers', a)
+            for k in ('id', 'name', 'results_count', 'swimmers_count', 'medals', 'classification'):
+                self.assertEqual(a[k], b[k])
+
     def test_stats(self):
         d = self.get_profile()
         self.assertEqual(d['country']['code'], 'EGY')

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { searchSwimmers } from '../api/swimmers'
+import { Link, useSearchParams } from 'react-router-dom'
+import { searchSwimmers, getSwimmer, getSwimmerEvents } from '../api/swimmers'
 import { getEvents } from '../api/core'
 import {
   getSwimmerDna, getSwimmerChase, getSwimmerRivals, getSwimmerConsistency,
@@ -12,17 +12,28 @@ import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
 
-// "mm:ss.hh" / "ss.hh" -> centiseconds
+// Postel's Law: accept a time however people type it — "51.20", "51,20",
+// "1:52.30", "1.52.30", "1 52 30", "1'52\"30" — and return centiseconds.
 function parseTime(s) {
   if (!s) return null
-  const parts = String(s).trim().split(':')
-  let sec
-  if (parts.length === 1) sec = parseFloat(parts[0])
-  else if (parts.length === 2) sec = parseInt(parts[0], 10) * 60 + parseFloat(parts[1])
-  else if (parts.length === 3) sec = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2])
-  else return null
-  if (isNaN(sec)) return null
-  return Math.round(sec * 100)
+  const nums = String(s).trim().split(/[^0-9]+/).filter(Boolean)
+  if (nums.length === 0 || nums.length > 4) return null
+  let hundredths = 0
+  // the last group is hundredths whenever there is more than one group,
+  // unless it follows a colon ("2:05" is two minutes five)
+  const lastSep = (String(s).trim().match(/[^0-9]+(?=[0-9]+[^0-9]*$)/) || [''])[0]
+  if (nums.length > 1 && !lastSep.includes(':')) {
+    const frac = nums.pop()
+    hundredths = Math.round(parseFloat(`0.${frac}`) * 100)
+  }
+  const [sec = 0, min = 0, hr = 0] = nums.map((n) => parseInt(n, 10)).reverse()
+  const total = (hr * 3600 + min * 60 + sec) * 100 + hundredths
+  return total > 0 ? total : null
+}
+const fmtCs = (cs) => {
+  const m = Math.floor(cs / 6000)
+  const rest = (cs - m * 6000) / 100
+  return m ? `${m}:${rest.toFixed(2).padStart(5, '0')}` : rest.toFixed(2)
 }
 
 /* ---- DNA radar (custom SVG, brand tokens only) ---- */
@@ -174,66 +185,123 @@ function Stat({ label, value, sub }) {
 }
 
 /* =================== Swimmer Lab =================== */
-function SwimmerLab() {
+function SwimmerLab({ swimmerId, onPickSwimmer, onOpenEvents }) {
   const [swimmer, setSwimmer] = useState(null)
   const [dna, setDna] = useState(null)
   const [chase, setChase] = useState(null)
   const [rivals, setRivals] = useState(null)
   const [consistency, setConsistency] = useState(null)
+  const [allEvents, setAllEvents] = useState([])
   const [eventId, setEventId] = useState('')
   const [loading, setLoading] = useState(false)
+  const [eventLoading, setEventLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  // the picked swimmer lives in the URL (?swimmer=), so the Lab can be shared and survives Back
+  useEffect(() => {
+    if (!swimmerId) { setSwimmer(null); return }
+    if (swimmer && String(swimmer.id) === String(swimmerId)) return
+    let alive = true
+    setLoading(true)
+    getSwimmer(swimmerId)
+      .then((r) => { if (alive) setSwimmer(r.data) })
+      .catch(() => { if (alive) { setSwimmer(null); setLoading(false); onPickSwimmer(null) } })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swimmerId])
 
   // load DNA (sets the default event from the swimmer's specialty)
   useEffect(() => {
-    if (!swimmer) { setDna(null); return }
+    if (!swimmer) { setDna(null); setRivals(null); setAllEvents([]); return }
+    let alive = true
     setLoading(true)
+    setFailed(false)
     getSwimmerDna(swimmer.id)
       .then((r) => {
+        if (!alive) return
         setDna(r.data)
         const specialty = r.data.axes.find((a) => a.stroke === r.data.specialty && a.event_id)
         const firstEv = specialty || r.data.axes.find((a) => a.event_id)
         setEventId(firstEv ? String(firstEv.event_id) : '')
       })
-      .catch(() => setDna(null))
-      .finally(() => setLoading(false))
-    getSwimmerRivals(swimmer.id).then((r) => setRivals(r.data)).catch(() => setRivals(null))
-  }, [swimmer])
+      .catch(() => { if (alive) { setDna(null); setFailed(true) } })
+      .finally(() => { if (alive) setLoading(false) })
+    getSwimmerRivals(swimmer.id).then((r) => { if (alive) setRivals(r.data) }).catch(() => { if (alive) setRivals(null) })
+    // every individual event this swimmer has raced, not only the best one per stroke
+    getSwimmerEvents(swimmer.id)
+      .then((r) => {
+        if (!alive) return
+        const seen = new Map()
+        list(r.data).filter((e) => !e.is_relay && e.pool !== 'OW').forEach((e) => { if (!seen.has(e.event_id)) seen.set(e.event_id, e) })
+        setAllEvents([...seen.values()].sort((a, b) => STROKE_ORDER.indexOf(a.stroke) - STROKE_ORDER.indexOf(b.stroke) || a.distance - b.distance))
+      })
+      .catch(() => { if (alive) setAllEvents([]) })
+    return () => { alive = false }
+  }, [swimmer, reloadKey])
 
   // load event-scoped panels when the event changes
   useEffect(() => {
     if (!swimmer || !eventId) { setChase(null); setConsistency(null); return }
+    let alive = true
     const p = { event: eventId }
-    getSwimmerChase(swimmer.id, p).then((r) => setChase(r.data)).catch(() => setChase(null))
-    getSwimmerConsistency(swimmer.id, p).then((r) => setConsistency(r.data)).catch(() => setConsistency(null))
+    setEventLoading(true)
+    Promise.allSettled([getSwimmerChase(swimmer.id, p), getSwimmerConsistency(swimmer.id, p)]).then(([c, k]) => {
+      if (!alive) return
+      setChase(c.status === 'fulfilled' ? c.value.data : null)
+      setConsistency(k.status === 'fulfilled' ? k.value.data : null)
+      setEventLoading(false)
+    })
+    return () => { alive = false }
   }, [swimmer, eventId])
 
-  const eventOptions = (dna?.axes || []).filter((a) => a.event_id)
+  const eventOptions = allEvents.length > 0
+    ? allEvents
+    : (dna?.axes || []).filter((a) => a.event_id)
 
   return (
     <div>
-      <div className="rule-b" style={{ padding: '16px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SwimmerPicker onPick={setSwimmer} />
+      <div className="rule-b lab-bar" style={{ padding: '16px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <SwimmerPicker onPick={(sw) => { setSwimmer(sw); onPickSwimmer(sw.id) }} />
         {swimmer && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} />
-            <span style={{ fontWeight: 700 }}>{swimmer.name}</span>
+            <Link to={`/swimmers/${swimmer.id}`} style={{ fontWeight: 700, color: 'inherit' }}>{swimmer.name}</Link>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 12, minHeight: 32 }} onClick={() => { setSwimmer(null); onPickSwimmer(null) }}>Clear</button>
           </div>
-        )}
-        {eventOptions.length > 0 && (
-          <select className="select" aria-label="Event" style={{ width: 'auto', marginLeft: 'auto' }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
-            {eventOptions.map((a) => <option key={a.event_id} value={a.event_id}>{a.event_name}</option>)}
-          </select>
         )}
       </div>
 
-      {!swimmer ? (
-        <Empty label="Search a swimmer to open their Lab" hint="Type a name in the search box above and pick a swimmer from the list." />
-      ) : loading ? (
+      {!swimmer && !loading ? (
+        // Paradox of the Active User: say what the Lab gives before asking for a name
+        <div className="pad">
+          <div className="lab-intro">
+            {[
+              ['Swimmer DNA', 'Strength in each stroke against the Arab field.'],
+              ['The Chase', 'Current rank, who is next ahead and who is closing in.'],
+              ['Consistency', 'How steady the times are, and what happens in finals.'],
+              ['Rivals', 'Win and loss record against the swimmers raced most.'],
+            ].map(([t, d]) => (
+              <div key={t}>
+                <div className="kicker">{t}</div>
+                <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 4 }}>{d}</div>
+              </div>
+            ))}
+          </div>
+          <Empty label="Search a swimmer to open their Lab" hint="Type a name in the search box above and pick a swimmer from the list.">
+            <button type="button" className="btn btn-secondary" onClick={onOpenEvents}>Or explore an event</button>
+          </Empty>
+        </div>
+      ) : loading || !swimmer ? (
         <Loading label="Crunching numbers" />
+      ) : failed ? (
+        <Empty label="The Lab could not be loaded" hint="Check your connection and try again.">
+          <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+        </Empty>
       ) : (
         <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
           {!dna && !(chase && chase.my_rank) && !consistency && !(rivals && rivals.rivals.length > 0) && (
-            <Empty label="No Lab numbers for this swimmer" hint="There is not enough race data yet, or it could not be loaded. Try another swimmer." />
+            <Empty label="No Lab numbers for this swimmer yet" hint="There is not enough race data. Try another swimmer." />
           )}
           {/* DNA */}
           {dna && (
@@ -261,12 +329,23 @@ function SwimmerLab() {
             </section>
           )}
 
+          {/* Proximity: the event picker sits right above the two sections it changes */}
+          {eventOptions.length > 0 && (
+            <div className="lab-eventbar">
+              <label htmlFor="lab-swimmer-event" className="kicker">The Chase and Consistency for</label>
+              <select id="lab-swimmer-event" className="select" style={{ width: 'auto', maxWidth: '100%' }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
+                {eventOptions.map((a) => <option key={a.event_id} value={a.event_id}>{a.event_name}</option>)}
+              </select>
+              {eventLoading && <span className="text-muted" role="status" style={{ fontSize: 12 }}>Updating…</span>}
+            </div>
+          )}
+
           {/* Chase */}
           {chase && chase.my_rank && (
             <section>
               <SectHead title="The Chase" />
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
-                <Stat label="Current rank" value={`#${chase.my_rank}`} sub={`of ${chase.field_size}`} />
+                <Stat label="Current rank" value={`#${chase.my_rank}`} sub={`of ${Number(chase.field_size).toLocaleString('en-US')} swimmers`} />
                 <Stat label="Best time" value={chase.my_time} />
               </div>
               <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
@@ -322,6 +401,9 @@ function SwimmerLab() {
           {consistency && (
             <section>
               <SectHead title="Consistency & Pressure" />
+              <div className="text-muted" style={{ fontSize: 13, marginBottom: 10 }}>
+                Consistency index: 100 means the same time every race, 0 means very uneven. Finals effect: how much faster (+) or slower (−) the final is than the heat.
+              </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <Stat label="Consistency index" value={consistency.consistency_index ?? '—'} sub={`${consistency.swim_count} swims`} />
                 <Stat
@@ -381,6 +463,8 @@ function EventLab() {
   const [whatifState, setWhatifState] = useState('') // '' | 'loading' | 'bad' | 'failed'
   const [club, setClub] = useState(null)
   const [depth, setDepth] = useState(null)
+  const [fieldState, setFieldState] = useState('loading') // 'loading' | '' | 'failed'
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!eventId && groups.length) setEventId(String(groups[0].events[0].id))
@@ -389,28 +473,34 @@ function EventLab() {
   const params = useMemo(() => ({ event: eventId, scope, gender, pool }), [eventId, scope, gender, pool])
 
   useEffect(() => {
+    // a projection belongs to the field it was made in: clear it when the field changes
+    setWhatif(null)
+    setWhatifState('')
     if (!eventId) { setClub(null); setDepth(null); return }
-    getOnePercentClub(params).then((r) => setClub(r.data)).catch(() => setClub(null))
-    getDepthRanking(params).then((r) => setDepth(r.data)).catch(() => setDepth(null))
-  }, [params, eventId])
+    let alive = true
+    setFieldState('loading')
+    Promise.allSettled([getOnePercentClub(params), getDepthRanking(params)]).then(([c, d]) => {
+      if (!alive) return
+      setClub(c.status === 'fulfilled' ? c.value.data : null)
+      setDepth(d.status === 'fulfilled' ? d.value.data : null)
+      setFieldState(c.status === 'fulfilled' || d.status === 'fulfilled' ? '' : 'failed')
+    })
+    return () => { alive = false }
+  }, [params, eventId, reloadKey])
 
   const runWhatIf = () => {
     const cs = parseTime(timeStr)
     if (!cs || !eventId) { setWhatif(null); setWhatifState('bad'); return }
     setWhatifState('loading')
     getWhatIf({ ...params, time_centiseconds: cs })
-      .then((r) => { setWhatif(r.data); setWhatifState('') })
+      .then((r) => { setWhatif({ ...r.data, typed_cs: cs }); setWhatifState('') })
       .catch(() => { setWhatif(null); setWhatifState('failed') })
   }
 
   return (
     <div>
-      <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Seg options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }]} value={scope} onChange={setScope} />
-          <Seg options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]} value={gender} onChange={setGender} />
-          <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
-        </div>
+      {/* Common Region: the event and the field it is measured in share one bar; the event leads */}
+      <div className="rule-b lab-bar" style={{ padding: '14px 32px', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <select className="select" aria-label="Event" style={{ width: 'auto', maxWidth: 260 }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
           {groups.map((g) => (
             <optgroup key={g.stroke} label={g.stroke}>
@@ -418,6 +508,9 @@ function EventLab() {
             </optgroup>
           ))}
         </select>
+        <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={setGender} />
+        <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={setPool} />
+        <Seg options={[{ value: 'arab', label: 'All Arab' }, { value: 'gcc', label: 'GCC only' }]} value={scope} onChange={setScope} />
       </div>
 
       {!eventId ? <Empty label="Select an event" hint="Choose an event from the list above to see its numbers." /> : (
@@ -425,6 +518,9 @@ function EventLab() {
           {/* What-if */}
           <section>
             <SectHead title="What If — project a time" />
+            <div className="text-muted" style={{ fontSize: 13, marginBottom: 10 }}>
+              Type any time to see where it would rank in this event today.
+            </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 className="input"
@@ -441,20 +537,30 @@ function EventLab() {
               </button>
               {(whatifState === 'bad' || whatifState === 'failed') && (
                 <span role="alert" style={{ fontSize: 13, color: 'var(--asw-slow)' }}>
-                  {whatifState === 'bad' ? 'Enter a time like 51.20 or 1:52.30.' : 'The projection could not be loaded. Try again.'}
+                  {whatifState === 'bad' ? 'That does not look like a time. Try 51.20 or 1:52.30.' : 'The projection could not be loaded. Try again.'}
                 </span>
               )}
               {whatif && (
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <Stat label="Projected rank" value={`#${whatif.projected_rank}`} sub={`of ${whatif.field_size}`} />
-                  <Stat label="Percentile" value={whatif.percentile == null ? '—' : `${whatif.percentile}%`} />
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flexBasis: '100%' }} role="status">
+                  <Stat label={`${fmtCs(whatif.typed_cs)} would rank`} value={`#${whatif.projected_rank}`} sub={`of ${Number(whatif.field_size).toLocaleString('en-US')} swimmers`} />
+                  <Stat label="Faster than" value={whatif.percentile == null ? '—' : `${whatif.percentile}%`} sub="of the field" />
                 </div>
               )}
             </div>
           </section>
 
+          {fieldState === 'loading' && <Loading label="Loading the field" />}
+          {fieldState === 'failed' && (
+            <Empty label="This event's numbers could not be loaded" hint="Check your connection and try again.">
+              <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+            </Empty>
+          )}
+          {fieldState === '' && !(club && club.members.length > 0) && !(depth && depth.countries.length > 0) && (
+            <Empty label="No times in this field yet" hint="Try the other pool, the other gender, or All Arab." />
+          )}
+
           {/* 1% Club */}
-          {club && club.members.length > 0 && (
+          {fieldState === '' && club && club.members.length > 0 && (
             <section>
               <SectHead title="The 1% Club" />
               <div className="text-muted" style={{ fontSize: 13, marginBottom: 8 }}>
@@ -481,7 +587,7 @@ function EventLab() {
           )}
 
           {/* Depth ranking */}
-          {depth && depth.countries.length > 0 && (
+          {fieldState === '' && depth && depth.countries.length > 0 && (
             <section>
               <SectHead title="Depth Ranking — strongest nations" />
               <div className="text-muted" style={{ fontSize: 13, marginBottom: 8 }}>
@@ -513,18 +619,28 @@ function EventLab() {
 }
 
 export default function Lab() {
-  const [mode, setMode] = useState('swimmer')
+  // Working Memory: view and swimmer live in the URL (shareable, survive Back)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const mode = searchParams.get('view') === 'event' ? 'event' : 'swimmer'
+  const swimmerId = searchParams.get('swimmer') || ''
+  const setParam = (changes) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev)
+    Object.entries(changes).forEach(([k, v]) => { if (v) next.set(k, String(v)); else next.delete(k) })
+    return next
+  }, { replace: true })
   return (
     <div>
       <PageHead kicker="Experimental" title="ArabSwim Lab" sub="Dig into the numbers behind every swim." />
-      <div style={{ padding: '12px 32px 0' }}>
+      <div className="lab-modes" style={{ padding: '12px 32px 0' }}>
         <Seg
-          options={[{ value: 'swimmer', label: 'Swimmer' }, { value: 'event', label: 'Event' }]}
+          options={[{ value: 'swimmer', label: 'By swimmer' }, { value: 'event', label: 'By event' }]}
           value={mode}
-          onChange={setMode}
+          onChange={(v) => setParam({ view: v === 'event' ? 'event' : '' })}
         />
       </div>
-      {mode === 'swimmer' ? <SwimmerLab /> : <EventLab />}
+      {mode === 'swimmer'
+        ? <SwimmerLab swimmerId={swimmerId} onPickSwimmer={(id) => setParam({ swimmer: id || '' })} onOpenEvents={() => setParam({ view: 'event' })} />
+        : <EventLab />}
     </div>
   )
 }

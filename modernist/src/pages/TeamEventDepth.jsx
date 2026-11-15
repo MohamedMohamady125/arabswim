@@ -3,10 +3,10 @@
    where the squad's quality falls away. Opened from the expand button on
    a Squad Depth event card. Colours are theme.css tokens only. */
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import api from '../api/client'
-import { Loading, Empty, Seg } from '../components/ui'
+import { Empty, Seg, Skeleton, BackLink } from '../components/ui'
 import { formatDate, formatTime, mediaUrl } from '../utils'
 
 const INK = 'var(--color-accent-800)'
@@ -17,6 +17,9 @@ const HEAD = 'var(--font-heading)'
 
 const initials = (name) => String(name || '?').split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
 const fmt = (cs) => (cs >= 6000 ? formatTime(cs) : (cs / 100).toFixed(2))
+// Postel's Law: the name search ignores case and accents
+const fold = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+const FIRST = 24 // rows shown before "Show all" — three heats of eight
 const gap = (cs) => (cs <= 0 ? '—' : `+${fmt(cs)}`)
 
 function Avatar({ s, size = 40 }) {
@@ -64,15 +67,28 @@ export default function TeamEventDepth() {
   const { id, eventId } = useParams()
   const [params, setParams] = useSearchParams()
   const pool = params.get('pool') === 'SCM' ? 'SCM' : 'LCM'
-  const gender = ['M', 'F'].includes(params.get('gender')) ? params.get('gender') : ''
+  // Mental Model: swimming ranks men and women separately, so the page opens
+  // on one gender (Men, or Women when the squad has no men in this event).
+  // "Everyone" stays available as the last option.
+  const gParam = params.get('gender')
+  const gender = gParam === 'F' ? 'F' : gParam === 'ALL' ? '' : 'M'
   const [data, setData] = useState(null)
   const [q, setQ] = useState('')
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     let alive = true
     setData(null)
     api.get(`/teams/${id}/depth/`, { params: { event: eventId, pool, ...(gender ? { gender } : {}) } })
-      .then((r) => alive && setData(r.data))
+      .then((r) => {
+        if (!alive) return
+        // no explicit choice and no men with a time → show the women instead
+        if (!gParam && !(r.data?.swimmers || []).length) {
+          const next = new URLSearchParams(params); next.set('gender', 'F'); setParams(next, { replace: true })
+          return
+        }
+        setData(r.data)
+      })
       .catch(() => alive && setData({ swimmers: [], failed: true }))
     return () => { alive = false }
   }, [id, eventId, pool, gender])
@@ -96,7 +112,9 @@ export default function TeamEventDepth() {
       avgPts: pts.length ? Math.round(pts.reduce((n, s) => n + s.fina_points, 0) / pts.length) : null,
     }
   }, [swimmers])
-  const shown = q.trim() ? swimmers.filter((s) => s.name.toLowerCase().includes(q.trim().toLowerCase())) : swimmers
+  const matched = q.trim() ? swimmers.filter((s) => fold(s.name).includes(fold(q))) : swimmers
+  // Miller's Law: three heats first, the rest on request (a search looks through everyone)
+  const shown = q.trim() || showAll ? matched : matched.slice(0, FIRST)
   const rankOf = useMemo(() => new Map(swimmers.map((s, i) => [s.swimmer_id, i + 1])), [swimmers])
 
   const team = data?.team
@@ -115,9 +133,7 @@ export default function TeamEventDepth() {
     <div className="m-zoom" style={{ background: 'var(--color-neutral-100)', minHeight: '60vh' }}>
       {/* Header */}
       <div className="rule-b m-pad" style={{ background: '#fff', padding: '18px 32px 20px' }}>
-        <Link to={back} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, fontSize: 12.5, fontWeight: 700, color: INK, textDecoration: 'none' }}>
-          ← {team?.name ? `${team.name} squad depth` : 'Squad depth'}
-        </Link>
+        <BackLink to={back}>{team?.name ? `${team.name} squad depth` : 'Squad depth'}</BackLink>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginTop: 4 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: SOFT }}>Squad depth · event</div>
@@ -125,21 +141,26 @@ export default function TeamEventDepth() {
               {data?.event?.name || 'Event'}
             </h1>
             <div style={{ fontSize: 13.5, color: MUTED, marginTop: 6 }}>
-              {swimmers.length ? `${swimmers.length} ${swimmers.length === 1 ? 'swimmer' : 'swimmers'} of this ${kind} with a time · best swim each` : ' '}
+              {swimmers.length ? `${swimmers.length} ${gender === 'M' ? (swimmers.length === 1 ? 'man' : 'men') : gender === 'F' ? (swimmers.length === 1 ? 'woman' : 'women') : (swimmers.length === 1 ? 'swimmer' : 'swimmers')} of this ${kind} with a time · ${pool === 'SCM' ? '25m pool' : '50m pool'} · best swim each` : ' '}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Seg options={[{ value: 'LCM', label: 'LCM · 50m' }, { value: 'SCM', label: 'SCM · 25m' }]} value={pool} onChange={(v) => set('pool', v)} />
-            <Seg options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={(v) => set('gender', v)} />
+            <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }, { value: '', label: 'Everyone' }]} value={gender} onChange={(v) => { setShowAll(false); set('gender', v || 'ALL') }} />
+            <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={(v) => { setShowAll(false); set('pool', v) }} />
           </div>
         </div>
       </div>
 
       <div className="m-pad" style={{ padding: '20px 32px 40px', maxWidth: 1180, margin: '0 auto' }}>
-        {!data ? <Loading label="Loading event depth" /> : !stats ? (data.failed
+        {!data ? <Skeleton rows={8} height={44} /> : !stats ? (data.failed
           ? <Empty label="Could not load this event" hint="Check your connection and reload the page."><Link to={back} className="btn btn-secondary">Back to squad depth</Link></Empty>
-          : <Empty label="No times in this event for this selection" hint="Try the other pool, or choose All." />
+          : <Empty label={`No ${gender === 'M' ? "men's " : gender === 'F' ? "women's " : ''}times in this event in the ${pool === 'SCM' ? '25m' : '50m'} pool`} hint="Try the other pool or the other gender.">
+              <button type="button" className="btn btn-secondary" onClick={() => set('pool', pool === 'SCM' ? 'LCM' : 'SCM')}>Show the {pool === 'SCM' ? '50m' : '25m'} pool</button>
+            </Empty>
         ) : (<>
+          {!gender && (
+            <div style={{ fontSize: 12.5, color: MUTED, marginBottom: 10 }}>Men and women are ranked together by time here. Choose Men or Women for a ranking of one gender.</div>
+          )}
           {/* Headline numbers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
             {tile('Swimmers', swimmers.length, 'with a time in this event')}
@@ -179,7 +200,7 @@ export default function TeamEventDepth() {
           <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 12, marginTop: 14, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '14px 16px', borderBottom: `1px solid ${LINE}` }}>
               <div style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: INK }}>
-                Full ranking · {shown.length}{q.trim() ? ` of ${swimmers.length}` : ''}
+                Full ranking · {q.trim() ? `${matched.length} of ${swimmers.length}` : swimmers.length}
               </div>
               {swimmers.length > 10 && (
                 <input className="input" type="search" aria-label="Find a swimmer" placeholder="Find a swimmer…" value={q} onChange={(e) => setQ(e.target.value)}
@@ -204,10 +225,14 @@ export default function TeamEventDepth() {
                   <tbody>
                     {shown.map((s) => {
                       const rank = rankOf.get(s.swimmer_id)
-                      // a rule under #8 and #16: the final and B-final cut-offs
-                      const cut = !q.trim() && (rank === 8 || rank === 16) && rank < swimmers.length
-                      return (
-                        <tr key={s.swimmer_id} style={cut ? { boxShadow: 'inset 0 -2px 0 var(--color-accent-300)' } : undefined}>
+                      // Chunking: the ranking reads in heats of eight — a final,
+                      // a B final, then the rest of the squad
+                      const head = !q.trim() && swimmers.length > 8 && (rank === 1 ? 'Top 8 · a full final' : rank === 9 ? '9 to 16 · the B final' : rank === 17 ? `17 to ${swimmers.length} · the rest of the squad` : null)
+                      return (<Fragment key={s.swimmer_id}>
+                        {head && (
+                          <tr><td colSpan={8} style={{ background: 'var(--color-neutral-100)', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: SOFT, padding: '8px 12px' }}>{head}</td></tr>
+                        )}
+                        <tr>
                           <td className="asw-num" style={{ fontWeight: 800, color: rank <= 3 ? INK : SOFT }}>{rank}</td>
                           <td>
                             <Link to={`/swimmers/${s.swimmer_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: INK, fontWeight: 600, textDecoration: 'none', minHeight: 40 }}>
@@ -224,10 +249,17 @@ export default function TeamEventDepth() {
                             {s.date ? <span className="asw-num"> · {formatDate(s.date)}</span> : null}
                           </td>
                         </tr>
-                      )
+                      </Fragment>)
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {!q.trim() && matched.length > FIRST && (
+              <div style={{ textAlign: 'center', padding: '12px 16px', borderTop: `1px solid ${LINE}` }}>
+                <button type="button" className="btn btn-secondary" style={{ minHeight: 40, padding: '0 18px' }} aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
+                  {showAll ? `Show the top ${FIRST} only` : `Show all ${matched.length} swimmers`}
+                </button>
               </div>
             )}
           </div>

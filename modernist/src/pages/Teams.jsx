@@ -2,11 +2,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { GitMerge, Sparkles, Trash2, X, ArrowLeftRight } from 'lucide-react'
 import { getTeams, deleteTeam, bulkDeleteTeams, mergeTeams, findDuplicateTeams, autoDedupeTeams } from '../api/teams'
-import { PageHead, Loading, notify, Empty, Pager, Modal } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Pager, Modal, FilterBar, Seg } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
-const PAGE_SIZE = 25
+const PAGE_SIZE = 24 // fills whole rows at 2, 3 and 4 columns
+
+// Postel's Law: search ignores case, accents, hyphens and the "Al-" article,
+// so "al ahli", "Al-Ahli" and "ahli" all find the same club
+const fold = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-_.'’]/g, ' ').replace(/\s+/g, ' ').trim()
+const foldName = (v) => fold(v).replace(/\bal /g, '')
+const letterOf = (name) => {
+  const c = foldName(name).replace(/\s/g, '')[0] || '#'
+  return /[a-z]/.test(c) ? c.toUpperCase() : '#'
+}
 
 function acronym(name) {
   // drop the "Al-" article and treat hyphens as spaces, otherwise every
@@ -367,6 +376,7 @@ export default function Teams() {
   const [teams, setTeams] = useState([])
   const [search, setSearch] = useState('')
   const [country, setCountry] = useState('')
+  const [sort, setSort] = useState('size') // Pareto: the clubs most people look for are the big ones
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(new Set())
@@ -404,15 +414,25 @@ export default function Teams() {
   }, [teams])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return teams.filter((t) => {
-      if (q && !String(t.name || '').toLowerCase().includes(q)) return false
+    const q = foldName(search)
+    const rows = teams.filter((t) => {
+      if (q && !foldName(t.name).includes(q) && !fold(t.country_detail?.name).includes(q)) return false
       if (country && String(t.country) !== String(country)) return false
       return true
     })
-  }, [teams, search, country])
+    const byName = (a, b) => foldName(a.name).localeCompare(foldName(b.name))
+    return rows.sort(sort === 'size' ? (a, b) => (b.swimmers_count || 0) - (a.swimmers_count || 0) || byName(a, b) : byName)
+  }, [teams, search, country, sort])
+  const filtersOn = !!(search.trim() || country)
+  const clearFilters = () => { setSearch(''); setCountry(''); setPage(1) }
 
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const groups = useMemo(() => {
+    if (sort !== 'name') return [['', pageRows]]
+    const m = new Map()
+    pageRows.forEach((t) => { const l = letterOf(t.name); if (!m.has(l)) m.set(l, []); m.get(l).push(t) })
+    return [...m.entries()]
+  }, [pageRows, sort])
 
   const toggleOne = (id) => {
     setSelected((prev) => {
@@ -464,21 +484,22 @@ export default function Teams() {
     <div>
       <PageHead title="Clubs" />
 
-      {/* filter bar: one line, scrolls sideways on phone */}
-      <div className="rule-b records-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, flexWrap: 'nowrap', alignItems: 'center' }}>
+      {/* Common Region: everything that narrows or orders the list sits in one
+          bar with the result count; admin tools get a bar of their own */}
+      <FilterBar count={filtered.length} noun={filtered.length === 1 ? 'club' : 'clubs'} active={filtersOn} onClear={clearFilters}>
         <input
           className="input"
           type="search"
           aria-label="Search clubs"
-          style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
-          placeholder="Search clubs…"
+          style={{ flex: '2 1 200px', width: 'auto', minWidth: 0, maxWidth: 320 }}
+          placeholder="Search by club or country…"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1) }}
         />
         <select
           className="select"
           aria-label="Filter by country"
-          style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 220 }}
+          style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }}
           value={country}
           onChange={(e) => { setCountry(e.target.value); setPage(1) }}
         >
@@ -487,40 +508,47 @@ export default function Teams() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        {isAdmin && (
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'nowrap' }}>
-            {selected.size > 0 && (
-              <button className="btn btn-primary" disabled={bulkDeleting} onClick={handleBulkDelete} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Trash2 size={14} /> {bulkDeleting ? 'Deleting…' : `Delete (${selected.size})`}
-              </button>
-            )}
-            <button className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowAutoClean(true)}>
-              <Sparkles size={14} /> Auto-clean
+        <Seg options={[{ value: 'size', label: 'Largest first' }, { value: 'name', label: 'A–Z' }]} value={sort} onChange={(v) => { setSort(v); setPage(1) }} />
+      </FilterBar>
+      {isAdmin && (
+        <div className="rule-b" style={{ padding: '10px 32px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span className="kicker" style={{ marginRight: 4 }}>Admin</span>
+          <button className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowAutoClean(true)}>
+            <Sparkles size={14} /> Auto-clean duplicates
+          </button>
+          <button className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowMerge(true)}>
+            <GitMerge size={14} /> Merge two clubs
+          </button>
+          <label className="micro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, marginLeft: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={allOnPage} onChange={toggleAll} aria-label="Select all clubs on this page" style={{ cursor: 'pointer' }} />
+            Select page
+          </label>
+          {selected.size > 0 && (<>
+            <button className="btn btn-secondary" disabled={bulkDeleting} onClick={handleBulkDelete} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--asw-slow)' }}>
+              <Trash2 size={14} /> {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} selected`}
             </button>
-            <button className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowMerge(true)}>
-              <GitMerge size={14} /> Merge
-            </button>
-          </div>
-        )}
-      </div>
+            <button className="btn btn-ghost" onClick={() => setSelected(new Set())}>Clear selection</button>
+          </>)}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         failed && teams.length === 0 ? (
           <Empty label="Could not load clubs" hint="Check your connection and reload the page." />
         ) : (
-          <Empty label="No clubs found" hint={(search.trim() || country) ? 'Try a different name or choose All countries.' : undefined} />
+          <Empty label="No clubs found" hint={filtersOn ? 'Check the spelling, or clear the filters to see every club.' : undefined}>
+            {filtersOn && <button type="button" className="btn btn-secondary" onClick={clearFilters}>Clear filters</button>}
+          </Empty>
         )
       ) : (
         <div className="pad">
-          {isAdmin && (
-            <label className="micro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 12, cursor: 'pointer' }}>
-              <input type="checkbox" checked={allOnPage} onChange={toggleAll} aria-label="Select all teams" style={{ cursor: 'pointer' }} />
-              Select page
-            </label>
-          )}
-          {/* card grid matching the federation Clubs tab: circular logo + name */}
+          {/* Chunking: A–Z order is broken into letter groups; "largest first"
+              is one ranked run and needs no headings */}
+          {groups.map(([letter, rows]) => (
+          <div key={letter} style={{ marginBottom: 18 }}>
+          {letter && <div className="kicker rule-b" style={{ paddingBottom: 6, marginBottom: 12 }}>{letter}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
-            {pageRows.map((t) => (
+            {rows.map((t) => (
               <Link
                 key={t.id}
                 to={`/teams/${t.id}`}
@@ -553,12 +581,14 @@ export default function Teams() {
                 <span style={{ minWidth: 0 }}>
                   <span style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--color-accent-800)', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
                   <span className="text-muted" style={{ fontSize: 12 }}>
-                    {[t.country_detail?.name, t.swimmers_count > 0 ? `${t.swimmers_count} swimmer${t.swimmers_count === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
+                    {[t.is_academy ? 'Academy' : null, t.country_detail?.name, t.swimmers_count > 0 ? `${t.swimmers_count} swimmer${t.swimmers_count === 1 ? '' : 's'}` : 'No swimmers yet'].filter(Boolean).join(' · ')}
                   </span>
                 </span>
               </Link>
             ))}
           </div>
+          </div>
+          ))}
           <Pager page={page} pageSize={PAGE_SIZE} count={filtered.length} onPage={setPage} />
         </div>
       )}

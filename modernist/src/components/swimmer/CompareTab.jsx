@@ -4,6 +4,7 @@ import { searchSwimmers, compareSwimmers } from '../../api/swimmers'
 import Flag from '../Flag'
 import { Loading, Empty, Seg } from '../ui'
 import { formatTime, mediaUrl } from '../../utils'
+import LoadFailed from './LoadFailed'
 
 const FAST = 'var(--asw-fast)'
 const MAX_TOTAL = 5 // this swimmer + up to 4 opponents
@@ -33,6 +34,7 @@ export default function CompareTab({ swimmerId }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [pool, setPool] = useState('ALL')
+  const [reloadKey, setReloadKey] = useState(0)
   const searchTimer = useRef(null)
 
   // Debounced opponent search
@@ -61,7 +63,7 @@ export default function CompareTab({ swimmerId }) {
       .catch(() => { if (alive) setData(null) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [swimmerId, opponents])
+  }, [swimmerId, opponents, reloadKey])
 
   const swimmers = data?.swimmers || []
 
@@ -168,7 +170,7 @@ export default function CompareTab({ swimmerId }) {
       ) : loading ? (
         <Loading label="Comparing" />
       ) : swimmers.length < 2 ? (
-        <Empty label="Comparison unavailable" hint="The comparison could not be loaded. Remove a swimmer and add them again." />
+        <LoadFailed what="The comparison" onRetry={() => setReloadKey((k) => k + 1)} />
       ) : (
         <>
           {/* Scoreboard strip — one cell per swimmer */}

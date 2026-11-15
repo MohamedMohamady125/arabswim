@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Check, X, Trash2 } from 'lucide-react'
 import { getListings, updateListing, deleteListing } from '../api/market'
 import Flag from '../components/Flag'
-import { PageHead, Loading, notify, Empty, Seg } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Seg, FilterBar } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
@@ -13,6 +13,9 @@ const STATUS_TABS = [
   { value: 'SOLD', label: 'Sold' },
   { value: 'REJECTED', label: 'Rejected' },
 ]
+
+// swimmers' words instead of database codes
+const STATUS_LABEL = { PENDING: 'Waiting for review', APPROVED: 'Live', SOLD: 'Sold', REJECTED: 'Rejected' }
 
 const STATUS_TAG = {
   PENDING: 'tag-neutral',
@@ -48,10 +51,20 @@ function contactHref(contact) {
 export default function Market() {
   const { isAdmin } = useAuth()
   const [listings, setListings] = useState([])
+  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [category, setCategory] = useState('')
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  const [busyId, setBusyId] = useState(null)
   const [reloadKey, setReloadKey] = useState(0)
+
+  // Doherty Threshold: search after a pause in typing; Postel's Law: spaces ignored
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim().replace(/\s+/g, ' ')), 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
   useEffect(() => {
     let alive = true
@@ -68,18 +81,25 @@ export default function Market() {
         let list = Array.isArray(d) ? d : d?.results || []
         if (!isAdmin) list = list.filter((l) => !l.status || l.status === 'APPROVED')
         setListings(list)
+        setFailed(false)
       })
-      .catch(() => alive && setListings([]))
+      .catch(() => { if (alive) { setListings([]); setFailed(true) } })
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [search, statusFilter, isAdmin, reloadKey])
 
   const setStatus = async (l, status) => {
+    setBusyId(l.id)
     try {
       await updateListing(l.id, { status })
+      // Doherty Threshold: the card changes at once; the list is then re-read
+      setListings((prev) => prev.map((x) => (x.id === l.id ? { ...x, status } : x)))
+      notify({ APPROVED: 'Listing approved. It is now public.', REJECTED: 'Listing rejected. It stays hidden.', SOLD: 'Marked as sold. It is no longer public.' }[status] || 'Listing updated.')
       setReloadKey((k) => k + 1)
     } catch {
       notify('Failed to update listing')
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -88,36 +108,65 @@ export default function Market() {
     try {
       await deleteListing(l.id)
       setListings((prev) => prev.filter((x) => x.id !== l.id))
+      notify('Listing deleted.')
     } catch {
       notify('Failed to delete listing')
     }
   }
 
+  // Hick's Law: only the categories that have listings are offered
+  const categories = useMemo(() => [...new Set(listings.map((l) => l.category).filter(Boolean))], [listings])
+  const shown = category ? listings.filter((l) => l.category === category) : listings
+  const pendingCount = isAdmin ? listings.filter((l) => l.status === 'PENDING').length : 0
+  const filtered = !!(search || statusFilter || category)
+  const clearFilters = () => { setSearchInput(''); setSearch(''); setStatusFilter(''); setCategory('') }
+
   return (
     <div>
-      <PageHead kicker="Community" title="Market" sub="Swim gear bought and sold across the region">
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 14 }}>
-          <input
-            className="input"
-            style={{ maxWidth: 320 }}
-            inputMode="search"
-            placeholder="Search listings…"
-            aria-label="Search listings"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {isAdmin && <Seg options={STATUS_TABS} value={statusFilter} onChange={setStatusFilter} />}
-        </div>
-      </PageHead>
+      {/* Mental Model: the page carries the same name and group as the menu link */}
+      <PageHead kicker="Content" title="Marketplace" sub="Swim gear bought and sold across the region" />
 
-      {loading ? (
+      <FilterBar count={loading || failed ? null : shown.length} noun={shown.length === 1 ? 'listing' : 'listings'} active={filtered} onClear={clearFilters}>
+        <input
+          className="input"
+          style={{ width: 260, maxWidth: '100%' }}
+          type="search"
+          placeholder="Search listings…"
+          aria-label="Search listings"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+        />
+        {categories.length > 1 && (
+          <select className="select" style={{ width: 'auto', maxWidth: '100%' }} aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">All categories</option>
+            {categories.map((c) => <option key={c} value={c}>{catLabel(c)}</option>)}
+          </select>
+        )}
+        {isAdmin && <Seg options={STATUS_TABS} value={statusFilter} onChange={setStatusFilter} />}
+      </FilterBar>
+
+      {/* Zeigarnik Effect: work waiting for the admin is stated up front */}
+      {isAdmin && pendingCount > 0 && statusFilter !== 'PENDING' && (
+        <div className="content-todo" role="status" style={{ margin: '16px 32px 0' }}>
+          <strong>{pendingCount} listing{pendingCount === 1 ? '' : 's'} waiting for review.</strong>{' '}
+          <button type="button" className="btn btn-ghost" style={{ minHeight: 32 }} onClick={() => setStatusFilter('PENDING')}>Review now →</button>
+        </div>
+      )}
+
+      {loading && listings.length === 0 ? (
         <Loading label="Loading listings" />
-      ) : listings.length === 0 ? (
-        <Empty label="No listings found" hint={search ? 'Try a shorter or different search.' : (isAdmin && statusFilter ? 'No listings have this status. Choose "All" to see every listing.' : 'Listings will appear here once they are approved.')} />
+      ) : failed ? (
+        <Empty label="Listings could not be loaded" hint="Check your connection and try again.">
+          <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+        </Empty>
+      ) : shown.length === 0 ? (
+        <Empty label={filtered ? 'No listings match' : 'No listings yet'} hint={filtered ? 'Nothing matches these filters. Try a shorter search or clear the filters.' : 'Swim gear for sale will appear here once a listing is approved.'}>
+          {filtered && <button type="button" className="btn btn-secondary" onClick={clearFilters}>Show all listings</button>}
+        </Empty>
       ) : (
-        <div className="pad-lg">
+        <div className="pad-lg" aria-busy={loading} style={{ opacity: loading ? 0.55 : 1 }}>
           <div className="cellgrid grid-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-            {listings.map((l) => {
+            {shown.map((l) => {
               const img = l.images?.[0]?.image
               const href = contactHref(l.seller_contact)
               return (
@@ -133,7 +182,7 @@ export default function Market() {
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                     {isAdmin && l.status && (
-                      <span className={`tag ${STATUS_TAG[l.status] || 'tag-neutral'}`}>{l.status}</span>
+                      <span className={`tag ${STATUS_TAG[l.status] || 'tag-neutral'}`}>{STATUS_LABEL[l.status] || l.status}</span>
                     )}
                     {l.category && <span className="tag tag-accent">{catLabel(l.category)}</span>}
                     {l.condition && (
@@ -153,18 +202,18 @@ export default function Market() {
                       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-neutral-700)' }}>Price on request</span>
                     )}
                   </div>
-                  <p style={{ fontSize: 13, color: 'var(--color-neutral-800)', margin: '0 0 12px', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  <p title={l.description || undefined} style={{ fontSize: 13, color: 'var(--color-neutral-800)', margin: '0 0 12px', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {l.description}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 10, borderTop: '1px solid var(--color-divider)', fontSize: 12, color: 'var(--color-neutral-700)' }}>
                     {l.country_detail && <Flag code={l.country_detail.code} name={l.country_detail.name} />}
-                    <span style={{ flex: 1 }}>{l.seller_name}</span>
+                    <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{l.seller_name || 'Seller'}</span>
                     <span>{formatDate(l.created_at)}</span>
                   </div>
                   {l.seller_contact && (
-                    <div style={{ fontSize: 12, marginTop: 6 }}>
+                    <div style={{ fontSize: 12, marginTop: 10 }}>
                       {href ? (
-                        <a href={href} target={href.startsWith('mailto:') ? undefined : '_blank'} rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
+                        <a className="btn btn-secondary" href={href} target={href.startsWith('mailto:') ? undefined : '_blank'} rel="noreferrer" style={{ width: '100%', textDecoration: 'none' }}>
                           Contact seller →
                         </a>
                       ) : (
@@ -179,17 +228,17 @@ export default function Market() {
                       {l.status === 'PENDING' && (
                         <>
                           {/* Von Restorff: many cards on screen, so Approve is not a solid primary on each one */}
-                          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} onClick={() => setStatus(l, 'APPROVED')}>
+                          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} disabled={busyId === l.id} onClick={() => setStatus(l, 'APPROVED')}>
                             <Check size={13} /> Approve
                           </button>
-                          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setStatus(l, 'REJECTED')}>
+                          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} disabled={busyId === l.id} onClick={() => setStatus(l, 'REJECTED')}>
                             <X size={13} /> Reject
                           </button>
                         </>
                       )}
                       {l.status === 'APPROVED' && (
-                        <button type="button" className="btn btn-secondary" onClick={() => setStatus(l, 'SOLD')}>
-                          Mark Sold
+                        <button type="button" className="btn btn-secondary" disabled={busyId === l.id} onClick={() => setStatus(l, 'SOLD')}>
+                          Mark as sold
                         </button>
                       )}
                       <span style={{ flex: 1 }} />

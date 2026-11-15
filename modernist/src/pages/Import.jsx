@@ -17,7 +17,7 @@ import EditableResultsTable from '../components/import/EditableResultsTable'
 import ManualEntryForm from '../components/import/ManualEntryForm'
 import MeetProgramEditor, { LocalProgramEditor } from '../components/MeetProgramEditor'
 import DragDropProgramEditor from '../components/DragDropProgramEditor'
-import { PageHead, Loading, notify, Empty, Seg } from '../components/ui'
+import { PageHead, Loading, notify, Empty, Seg, Stepper, ShowMore, Done } from '../components/ui'
 
 const MAX_FILES = 200
 
@@ -85,6 +85,26 @@ function DetectedProgram({ program, startDate }) {
   )
 }
 
+// Doherty Threshold + Goal-Gradient: anything the importer is busy with is
+// announced in one place; "3 / 12" in the message becomes a progress bar.
+function BusyLine({ msg }) {
+  const m = /(\d+)\s*\/\s*(\d+)/.exec(msg || '')
+  const pct = m && Number(m[2]) > 0 ? Math.min(100, Math.round((Number(m[1]) / Number(m[2])) * 100)) : null
+  return (
+    <div className="content-busy" role="status" aria-live="polite">
+      <div className="loading" style={{ padding: 0, textAlign: 'left', textTransform: 'none', letterSpacing: 0, color: 'var(--color-text)', fontWeight: 600 }}>{msg || 'Working'}</div>
+      {pct !== null && (
+        <div className="bar" style={{ marginTop: 8 }} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+          <div style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      <div className="micro" style={{ marginTop: 6, textTransform: 'none', letterSpacing: 0 }}>
+        Keep this tab open. Large files and big meets can take a few minutes.
+      </div>
+    </div>
+  )
+}
+
 function StatCells({ items }) {
   return (
     <div className="cellgrid" style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)`, border: '1px solid var(--color-divider)', marginBottom: 20 }}>
@@ -113,6 +133,7 @@ export default function Import() {
   const [batchResult, setBatchResult] = useState(null) // special-excel batch confirm summary
   const [specialSearch, setSpecialSearch] = useState('') // filter in "Upload Special" match step
   const [step, setStep] = useState(0) // 0=method, 1=upload, 2=details+edit, 3=match, 4=done
+  const [matchView, setMatchView] = useState('auto') // match step: auto | review | all
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
   const [error, setError] = useState('')
@@ -683,7 +704,7 @@ export default function Import() {
     setError('')
   }
 
-  const stepLabels = ['Method', 'Upload file', 'Review & edit', 'Match swimmers', 'Done']
+  const stepLabels = ['Choose type', 'Upload', 'Review & edit', 'Match swimmers', 'Done']
 
   const acceptTypes = importMethod === 'pdf' ? '.pdf' : importMethod === 'excel' ? '.xlsx,.xls,.csv' : importMethod === 'html' ? '.html,.htm' : importMethod === 'special_excel' ? '.xlsx,.xls' : '.pdf,.html,.htm,.xlsx,.xls,.csv'
   const allowMultiple = true
@@ -693,6 +714,11 @@ export default function Import() {
   // across many meets; meets are created UNPUBLISHED (profile-only) and the
   // review is per-athlete (merge/create) across every meet at once.
   const specialExcel = importMethod === 'special_excel'
+
+  // Match step: a fuzzy candidate is the only case where the admin's eye adds something
+  const needsReview = (m) => m.match_type === 'fuzzy' && !!m.matched_swimmer
+  const reviewCount = step === 3 && meets[active]?.matches ? meets[active].matches.filter(needsReview).length : 0
+  const effMatchView = matchView === 'auto' ? (reviewCount > 0 ? 'review' : 'all') : (reviewCount > 0 ? matchView : 'all')
 
   // Tab bar for switching between uploaded meets (steps 2-4)
   const meetTabs = meets.length > 1 && (
@@ -737,51 +763,42 @@ export default function Import() {
       {presetLiveDay && (
         <div style={{
           margin: '16px 32px 0', padding: '10px 14px', fontSize: 13, fontWeight: 600,
-          border: '1px solid #c0392b', color: '#c0392b',
+          border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)',
         }}>
           Live session upload — Day {presetLiveDay}. Import into the pre-selected meet; the session will be logged on the live panel.
         </div>
       )}
 
       {/* Top-level tool switcher */}
-      <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="tabbar rule-b">
         <Seg
+          tabs
           options={[
-            { value: 'file', label: 'Import File' },
-            { value: 'scrape', label: 'Scrape ESF' },
-            { value: 'saudi', label: 'Scrape SSF' },
-            { value: 'manual', label: 'Manual Entry' },
+            { value: 'file', label: 'Import file' },
+            { value: 'manual', label: 'Manual entry' },
+            { value: 'scrape', label: 'Scrape Egypt (ESF)' },
+            { value: 'saudi', label: 'Scrape Saudi (SSF)' },
             { value: 'duplicates', label: 'Duplicates' },
             { value: 'history', label: 'History' },
           ]}
           value={tab}
           onChange={switchTab}
         />
-        {tab === 'file' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {stepLabels.map((label, i) => (
-              <span
-                key={i}
-                className="micro"
-                aria-current={step === i ? 'step' : undefined}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  color: step === i ? 'var(--color-accent)' : step > i ? 'var(--asw-fast)' : undefined,
-                  fontWeight: step === i ? 700 : undefined,
-                }}
-              >
-                <span className="asw-num">{step > i ? '✓' : i + 1}</span>
-                {label}
-                {step > i && <span className="sr-only"> (done)</span>}
-                {i < stepLabels.length - 1 && <span aria-hidden="true" style={{ color: 'var(--color-neutral-400)' }}>—</span>}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Goal-Gradient / Zeigarnik / Uniform Connectedness: the five steps of a
+          file import on one connected track, on a row of their own */}
+      {tab === 'file' && (
+        <div className="rule-b" style={{ padding: '18px 32px 0' }}>
+          <div style={{ maxWidth: 760 }}>
+            <Stepper steps={stepLabels} current={step === 4 ? stepLabels.length : step} />
+          </div>
+        </div>
+      )}
 
       <div className="pad">
         {error && <div role="alert" style={errorBox}>{error}</div>}
+        {tab === 'file' && loading && step > 0 && step < 4 && <BusyLine msg={loadingMsg} />}
 
         {tab === 'manual' && <ManualEntryForm onComplete={() => switchTab('manual')} />}
         {tab === 'duplicates' && <DuplicatesTab />}
@@ -792,42 +809,48 @@ export default function Import() {
         {tab === 'file' && (
           <>
             {/* Step 0: Method selection */}
-            {step === 0 && (
-              <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-                {[
-                  { key: 'pdf', title: 'Upload PDF', desc: 'Import from PDF files (Splash, HY-TEK, FRMN)' },
-                  { key: 'excel', title: 'Upload Excel', desc: `Import from Excel or CSV files — up to ${MAX_FILES} files at once` },
-                  { key: 'html', title: 'Upload HTML', desc: "Import from HTML files (Nat'2i Tunisia format)" },
-                  { key: 'special', title: 'Upload Special', desc: 'Any file (PDF/Excel/HTML) — keep only the specific athletes you pick' },
-                  { key: 'special_excel', title: 'Upload Special Excel', desc: 'Excel of past swims across many meets → onto swimmer profiles, without publishing the meets' },
-                ].map((m) => (
-                  <button
-                    key={m.key}
-                    type="button"
-                    onClick={() => selectMethod(m.key)}
-                    style={{
-                      border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
-                      padding: 28, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-accent)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-divider)' }}
-                  >
-                    <div className="kicker" style={{ marginBottom: 8 }}>{m.key}</div>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, marginBottom: 6 }}>{m.title}</div>
-                    <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{m.desc}</div>
-                  </button>
-                ))}
-              </div>
-            )}
+            {step === 0 && (() => {
+              const METHODS = [
+                { key: 'pdf', kicker: 'PDF', title: 'Results PDF', desc: 'Splash, HY-TEK and FRMN result sheets' },
+                { key: 'excel', kicker: 'Excel · CSV', title: 'Excel or CSV', desc: `Spreadsheets of results — up to ${MAX_FILES} files at once` },
+                { key: 'html', kicker: 'HTML', title: 'Web page (HTML)', desc: "Saved Nat'2i pages (Tunisia)" },
+              ]
+              const SPECIAL = [
+                { key: 'special', kicker: 'Any file', title: 'Only chosen athletes', desc: 'Any PDF, Excel or HTML file — keep only the athletes you tick' },
+                { key: 'special_excel', kicker: 'Excel', title: 'Past swims onto profiles', desc: 'A workbook of old swims across many meets, added to swimmer profiles without publishing the meets' },
+              ]
+              const tile = (m) => (
+                <button key={m.key} type="button" className="content-method" onClick={() => selectMethod(m.key)}>
+                  <span className="kicker">{m.kicker}</span>
+                  <strong>{m.title}</strong>
+                  <span>{m.desc}</span>
+                </button>
+              )
+              return (
+                <div>
+                  {/* Parkinson's Law: say how long and how many steps before starting */}
+                  <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', margin: '0 0 16px', maxWidth: 720 }}>
+                    <strong style={{ color: 'var(--color-text)' }}>What kind of file do you have?</strong> Four short steps follow. Nothing is saved to the site until you press Confirm at the end, and you can go back at any point.
+                  </p>
+                  <div className="content-methods">{METHODS.map(tile)}</div>
+                  {/* Hick's Law / Pareto: the two rare import types stay out of the way */}
+                  <div style={{ marginTop: 14 }}>
+                    <ShowMore label="Special imports (2)" lessLabel="Hide special imports">
+                      <div className="content-methods" style={{ marginBottom: 10 }}>{SPECIAL.map(tile)}</div>
+                    </ShowMore>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Step 1: Upload */}
             {step === 1 && (
               <div style={{ border: '1px solid var(--color-divider)', padding: '48px 32px', textAlign: 'center' }}>
                 <div className="kicker" style={{ marginBottom: 8 }}>
-                  {importMethod === 'pdf' ? 'PDF' : importMethod === 'html' ? 'HTML' : special ? 'Special' : 'Excel / CSV'}
+                  {importMethod === 'pdf' ? 'PDF' : importMethod === 'html' ? 'HTML' : special ? 'Only chosen athletes' : specialExcel ? 'Past swims onto profiles' : 'Excel / CSV'}
                 </div>
                 <h3 style={{ marginBottom: 8 }}>
-                  Upload {importMethod === 'pdf' ? 'PDF' : importMethod === 'html' ? 'HTML' : special ? '' : 'Excel/CSV'} file{allowMultiple ? 's' : ''}
+                  {importMethod === 'pdf' ? 'Upload PDF files' : importMethod === 'html' ? 'Upload HTML files' : special ? 'Upload the results files' : specialExcel ? 'Upload the Excel workbook' : 'Upload Excel or CSV files'}
                 </h3>
                 <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 24 }}>
                   {importMethod === 'pdf'
@@ -878,13 +901,16 @@ export default function Import() {
                   </div>
                 )}
                 <label className="btn btn-primary" style={{ opacity: loading ? 0.5 : 1, pointerEvents: loading ? 'none' : 'auto' }}>
-                  {loading ? (loadingMsg || 'Parsing…') : `Choose file${allowMultiple ? 's' : ''}`}
+                  {loading ? 'Reading files…' : `Choose file${allowMultiple ? 's' : ''}`}
                   <input type="file" accept={acceptTypes} multiple={allowMultiple} onChange={handleUpload}
                     style={{ display: 'none' }} disabled={loading} />
                 </label>
+                <div className="micro" style={{ marginTop: 12, textTransform: 'none', letterSpacing: 0 }}>
+                  Next: you check the meet details and results before anything is saved.
+                </div>
                 <div style={{ marginTop: 16 }}>
-                  <button type="button" className="btn btn-ghost" style={{ fontSize: 13 }} onClick={resetAll}>
-                    ← Back to method selection
+                  <button type="button" className="btn btn-ghost" style={{ fontSize: 13 }} disabled={loading} onClick={resetAll}>
+                    ← Choose another file type
                   </button>
                 </div>
               </div>
@@ -1339,6 +1365,29 @@ export default function Import() {
                   )}
                 </div>
 
+                {/* Selective Attention / Pareto: exact matches need no decision, so
+                    the table opens on the few close-but-not-exact names */}
+                {!special && reviewCount > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <Seg
+                      value={effMatchView}
+                      onChange={setMatchView}
+                      options={[
+                        { value: 'review', label: `Worth a look (${reviewCount})` },
+                        { value: 'all', label: `All swimmers (${meet.matches.length})` },
+                      ]}
+                    />
+                    <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                      Close but not exact name matches. Everything else was decided automatically — you can still change it under All swimmers.
+                    </span>
+                  </div>
+                )}
+                {!special && reviewCount === 0 && meet.matches.length > 0 && (
+                  <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, marginBottom: 12, color: 'var(--asw-fast)' }}>
+                    ✓ No uncertain matches in this meet — every swimmer is an exact match or new.
+                  </div>
+                )}
+
                 {/* Matches table */}
                 <div style={{ border: '1px solid var(--color-divider)', marginBottom: 16 }}>
                   <div className="table-scroll" style={{ maxHeight: 500, overflowY: 'auto' }}>
@@ -1354,8 +1403,9 @@ export default function Import() {
                       </thead>
                       <tbody>
                         {meet.matches
-                          .filter((m) => !special || !specialSearch
-                            || m.parsed_name.toLowerCase().includes(specialSearch.toLowerCase()))
+                          .filter((m) => (special
+                            ? (!specialSearch || m.parsed_name.toLowerCase().includes(specialSearch.trim().toLowerCase()))
+                            : (effMatchView === 'all' || needsReview(m))))
                           .map((m, i) => (
                           <tr key={i}>
                             {special && (
@@ -1448,7 +1498,9 @@ export default function Import() {
                 (2,000+ per-meet tabs would be unusable) */}
             {step === 4 && specialExcel && batchResult && (
               <div style={{ border: '1px solid var(--color-divider)', padding: 24 }}>
-                <div className="kicker" role="status" style={{ marginBottom: 14 }}>Batch import complete</div>
+                <div style={{ marginBottom: 18 }}>
+                  <Done title="Batch import complete">The swims are on the swimmers' profiles now.</Done>
+                </div>
                 <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', marginBottom: 16 }}>
                   {[['Meets imported', batchResult.meets_done],
                     ['Meets failed', batchResult.meets_failed],
@@ -1915,8 +1967,16 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
         >
           {m.result ? (
             <>
-              <div className="kicker" role="status" style={{ color: 'var(--asw-fast)', marginBottom: 14 }}>
-                Import complete{meets.length > 1 ? `: ${m.result.championship_name}` : ''}
+              {/* Peak-End Rule: a clear finish, and the natural next step — look at the meet */}
+              <div style={{ maxWidth: 640, margin: '0 auto 18px', textAlign: 'left' }}>
+                <Done title={`Import complete — ${m.result.championship_name}`}>
+                  {(m.result.created_results ?? 0).toLocaleString('en-US')} results saved.
+                  {m.result.championship_id && (
+                    <div style={{ marginTop: 10 }}>
+                      <Link className="btn btn-secondary" style={{ textDecoration: 'none' }} to={`/meets/${m.result.championship_id}`} target="_blank" rel="noreferrer">View the meet page ↗</Link>
+                    </div>
+                  )}
+                </Done>
               </div>
               <div style={{ maxWidth: 640, margin: '0 auto 20px' }}>
                 <StatCells items={[
@@ -1926,9 +1986,6 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
                   [m.result.skipped_results, 'Skipped (duplicates)'],
                 ]} />
               </div>
-              <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 16 }}>
-                Championship: {m.result.championship_name}
-              </p>
 
               {m.result.skipped_details && m.result.skipped_details.length > 0 && (
                 <details style={{ textAlign: 'left', maxWidth: 640, margin: '0 auto 16px' }}>
@@ -2081,7 +2138,8 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
               <div className="kicker" role="alert" style={{ color: 'var(--asw-slow)', marginBottom: 8 }}>
                 Import failed: {m.champForm.name || m.fileName}
               </div>
-              <p style={{ fontSize: 13, color: 'var(--asw-slow)', marginBottom: 8 }}>{m.confirmError}</p>
+              <p style={{ fontSize: 13, color: 'var(--asw-slow)', marginBottom: 8 }}>{m.confirmError || 'The server did not say why.'}</p>
+              <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 8 }}>Nothing from this file was saved. Start again with "Import another file" below, or check History.</p>
             </>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { Menu, Search, X } from 'lucide-react'
 
@@ -6,6 +6,8 @@ import { IconInstagram, IconFacebook, IconYoutube, IconTiktok, IconX } from './S
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
 import Partners from './Partners'
+import api from '../api/client'
+import Flag from './Flag'
 
 // nav path → launch-toggle key (sections the admin can hide)
 const FEATURE_PATHS = {
@@ -44,29 +46,37 @@ function useNav() {
     .filter((group) => group.links.length > 0)
 }
 
+// Miller's Law / Hick's Law: no group is longer than 7. "Competition" used to
+// hold 9 links; meets and the tables built from them are now two groups.
+// Serial Position: the most used page opens each group.
 const NAV = [
   {
     label: 'Competition',
     links: [
       ['Championships', '/championships'],
       ['Live Results', '/live'],
-      ['Records', '/records'],
       ['Calendar', '/calendar'],
+      ['Qualifying Times', '/qualifying-times'],
+      ['Predictions', '/predictions'],
+    ],
+  },
+  {
+    label: 'Records & Rankings',
+    links: [
+      ['Records', '/records'],
       ['New Records', '/new-records'],
       ['Rankings', '/rankings'],
       ['Medals', '/medals'],
-      ['Qualifying Times', '/qualifying-times'],
-      ['Predictions', '/predictions'],
     ],
   },
   {
     label: 'People',
     links: [
       ['Swimmers', '/swimmers'],
-      ['Coaches', '/coaches'],
-      ['Referees', '/referees'],
       ['Clubs', '/teams'],
       ['Academies', '/academies'],
+      ['Coaches', '/coaches'],
+      ['Referees', '/referees'],
       ['Compare', '/compare'],
       ['Hall of Fame', '/hall-of-fame'],
     ],
@@ -90,29 +100,105 @@ const NAV = [
   },
 ]
 
+// Working Memory: detail pages keep their section highlighted in the nav
+const ALSO_ACTIVE = { '/championships': /^\/meets\// }
+function navClass(to, pathname) {
+  return ({ isActive }) => (isActive || ALSO_ACTIVE[to]?.test(pathname) ? 'active' : undefined)
+}
+
+const asList = (d) => (Array.isArray(d) ? d : d?.results || [])
+
+// Mental Model: the box promises "swimmers, meets, clubs", so it searches all
+// three. Chunking: suggestions are grouped by kind. Doherty Threshold: results
+// appear while typing. Enter still opens the full swimmer search.
 function SearchBox({ compact = false, onDone }) {
   const [q, setQ] = useState('')
+  const [hits, setHits] = useState(null) // null = closed
+  const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
+  const boxRef = useRef(null)
+  const term = q.trim().replace(/\s+/g, ' ') // Postel's Law: stray spaces are ignored
+
+  useEffect(() => {
+    if (term.length < 2) { setHits(null); setBusy(false); return undefined }
+    let alive = true
+    setBusy(true)
+    const t = setTimeout(() => {
+      Promise.allSettled([
+        api.get('/swimmers/', { params: { search: term, page_size: 4 } }),
+        api.get('/championships/', { params: { search: term, page_size: 4 } }),
+        api.get('/teams/', { params: { search: term, page_size: 4 } }),
+      ]).then(([sw, ch, tm]) => {
+        if (!alive) return
+        const val = (r) => (r.status === 'fulfilled' ? asList(r.value.data).slice(0, 4) : [])
+        setHits({ swimmers: val(sw), meets: val(ch), clubs: val(tm) })
+        setBusy(false)
+      })
+    }, 250)
+    return () => { alive = false; clearTimeout(t) }
+  }, [term])
+
+  // Jakob's Law: click outside or Escape closes the suggestions
+  useEffect(() => {
+    if (!hits) return undefined
+    const away = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setHits(null) }
+    const esc = (e) => { if (e.key === 'Escape') setHits(null) }
+    document.addEventListener('mousedown', away)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc) }
+  }, [hits])
+
+  const go = (to) => { setHits(null); setQ(''); navigate(to); onDone?.() }
   const submit = (e) => {
     e.preventDefault()
-    if (!q.trim()) return
-    navigate(`/swimmers?search=${encodeURIComponent(q.trim())}`)
-    onDone?.()
+    if (!term) return
+    go(`/swimmers?search=${encodeURIComponent(term)}`)
   }
+  const groups = hits ? [
+    ['Swimmers', hits.swimmers, (x) => `/swimmers/${x.id}`, (x) => x.nationality_detail],
+    ['Meets', hits.meets, (x) => `/meets/${x.id}`, (x) => x.country_detail],
+    ['Clubs', hits.clubs, (x) => `/teams/${x.id}`, (x) => x.country_detail],
+  ].filter(([, rows]) => rows.length > 0) : []
+
   return (
-    <form role="search" onSubmit={submit} style={{ display: 'flex', alignItems: 'center', gap: 8, width: compact ? '100%' : 320 }}>
+    <form ref={boxRef} role="search" onSubmit={submit} className="content-search" style={{ width: compact ? '100%' : 320 }}>
       <input
         className="input"
         type="search"
         aria-label="Search swimmers, meets, clubs"
         style={{ height: 36, minHeight: 36 }}
         placeholder="Search swimmers, meets, clubs"
+        autoComplete="off"
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
       <button className="btn btn-primary" style={{ height: 36 }} type="submit" aria-label="Search">
         {compact ? <Search size={15} /> : 'Search'}
       </button>
+      {term.length >= 2 && (hits || busy) && (
+        <div className="content-search-panel" role="listbox" aria-label="Search suggestions">
+          {!hits ? (
+            <div className="content-search-note" role="status">Searching…</div>
+          ) : groups.length === 0 ? (
+            <div className="content-search-note" role="status">Nothing found for “{term}”. Check the spelling or try fewer letters.</div>
+          ) : (
+            <>
+              {groups.map(([label, rows, to, country]) => (
+                <div key={label} className="content-search-group">
+                  <div className="kicker">{label}</div>
+                  {rows.map((x) => (
+                    <button key={x.id} type="button" role="option" aria-selected="false" className="content-search-hit" onClick={() => go(to(x))}>
+                      {country(x)?.code && <Flag code={country(x).code} name={country(x).name} />}
+                      <span>{x.name}</span>
+                    </button>
+                  ))}
+                </div>
+              ))}
+              <button type="submit" className="content-search-all">All swimmers matching “{term}” →</button>
+            </>
+          )}
+        </div>
+      )}
     </form>
   )
 }
@@ -128,15 +214,18 @@ function Header() {
   return (
     <header>
       {isAuthed && (
-        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '8px 32px', background: 'var(--color-surface)' }}>
+        <div className="rule-b content-userbar">
           <span className="kicker">{isAdmin ? 'Admin' : user?.username || 'Account'}</span>
-          {isAdmin && <Link to="/import" style={{ fontSize: 13, fontWeight: 600 }}>Import data</Link>}
-          {isAdmin && <Link to="/admin" style={{ fontSize: 13, fontWeight: 600 }}>Dashboard</Link>}
+          {isAdmin && <NavLink to="/admin" end>Dashboard</NavLink>}
+          {isAdmin && <NavLink to="/import">Import data</NavLink>}
+          {isAdmin && <NavLink to="/admin/name-match">Name matching</NavLink>}
+          {isAdmin && <NavLink to="/admin/analytics">Analytics</NavLink>}
+          {isAdmin && <NavLink to="/reports">Reports</NavLink>}
           {user?.role === 'ATHLETE' && user?.swimmer && (
-            <Link to={`/swimmers/${user.swimmer}`} style={{ fontSize: 13, fontWeight: 600 }}>My profile</Link>
+            <NavLink to={`/swimmers/${user.swimmer}`}>My profile</NavLink>
           )}
           {(user?.role === 'CLUB' || user?.role === 'FEDERATION') && user?.team && (
-            <Link to={`/teams/${user.team}`} style={{ fontSize: 13, fontWeight: 600 }}>My club</Link>
+            <NavLink to={`/teams/${user.team}`}>My club</NavLink>
           )}
           <button
             className="btn btn-secondary"
@@ -161,6 +250,8 @@ function Header() {
           <span className="micro hide-mobile" style={{ color: 'var(--color-accent-2-300)' }}>Arab Swimming Database</span>
         </Link>
         <div className="hide-mobile"><SearchBox /></div>
+        {/* Jakob's Law: account entry sits top right; Serial Position: last item in the bar */}
+        {!isAuthed && <Link to="/login" className="hide-mobile content-signin">Sign in</Link>}
         <button
           className="btn btn-icon show-mobile-flex"
           style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.4)', color: '#fff' }}
@@ -170,35 +261,42 @@ function Header() {
         </button>
       </div>
 
-      {/* four-area nav grid (desktop) */}
-      <div className="hide-mobile rule-b" style={{ display: 'grid', gridTemplateColumns: nav.length === 4 ? '1.4fr 1.2fr 1fr 0.8fr' : `repeat(${nav.length}, 1fr)` }}>
-        {nav.map((group, i) => (
-          <div key={group.label} className="asw-navcol" style={{ padding: '16px 32px', borderRight: i < nav.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
-            <div className="kicker" style={{ marginBottom: 6 }}>{group.label}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-              {group.links.map(([label, to]) => (
-                <NavLink key={to} to={to}>{label}</NavLink>
-              ))}
+      {/* nav areas (desktop). Proximity: each group is one column; groups with
+          more than four links use two sub-columns read top to bottom */}
+      <nav aria-label="Sections" className="hide-mobile rule-b content-nav">
+        {nav.map((group) => {
+          const cols = group.links.length > 4 ? 2 : 1
+          return (
+            <div key={group.label} className="asw-navcol content-nav-group" style={{ flexGrow: cols === 2 ? 1.7 : 1 }}>
+              <div className="kicker" style={{ marginBottom: 6 }}>{group.label}</div>
+              <div style={{ display: 'grid', gridAutoFlow: 'column', gridTemplateRows: `repeat(${Math.ceil(group.links.length / cols)}, auto)`, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: '0 16px' }}>
+                {group.links.map(([label, to]) => (
+                  <NavLink key={to} to={to} className={navClass(to, location.pathname)}>{label}</NavLink>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          )
+        })}
+      </nav>
 
       {/* mobile drawer */}
       {open && (
-        <div className="show-mobile rule-b" style={{ padding: '16px' }}>
+        <nav aria-label="Sections" className="show-mobile rule-b" style={{ padding: '16px' }}>
           <div style={{ marginBottom: 14 }}><SearchBox compact onDone={() => setOpen(false)} /></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="content-drawer">
             {nav.map((group) => (
               <div key={group.label} className="asw-navcol">
                 <div className="kicker" style={{ marginBottom: 6 }}>{group.label}</div>
                 {group.links.map(([label, to]) => (
-                  <NavLink key={to} to={to} style={{ fontSize: 14 }}>{label}</NavLink>
+                  <NavLink key={to} to={to} className={navClass(to, location.pathname)} style={{ fontSize: 14 }}>{label}</NavLink>
                 ))}
               </div>
             ))}
           </div>
-        </div>
+          {!isAuthed && (
+            <Link to="/login" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 16, textDecoration: 'none' }}>Sign in</Link>
+          )}
+        </nav>
       )}
     </header>
   )

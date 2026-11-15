@@ -17,7 +17,7 @@ import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary
 import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
 import AthleteMeetCard from '../components/meets/AthleteMeetCard'
-import { Loading, notify, Empty, Seg, MedalIcon } from '../components/ui'
+import { Loading, notify, Empty, Seg, MedalIcon, BackLink, ShowMore } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES } from '../utils'
@@ -25,6 +25,16 @@ import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakd
 
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
+
+// A failed fetch is not "no data": say it failed and offer the way out
+// (Paradox of the Active User — the next step is in the message itself).
+function LoadFailed({ what = 'This section', onRetry }) {
+  return (
+    <Empty label={`${what} could not be loaded`} hint="Check your connection and try again.">
+      {onRetry && <button type="button" className="btn btn-secondary" onClick={onRetry}>Try again</button>}
+    </Empty>
+  )
+}
 
 // Jakob's Law: a clickable row/card acts like a link from the keyboard too
 // (Enter/Space; keys bubbling up from links and buttons inside are ignored).
@@ -249,8 +259,8 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
 
   const medalSelect = (label, key) => (
     <div className="field">
-      <label>{label}</label>
-      <select className="select" value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })}>
+      <label htmlFor="meet-f1">{label}</label>
+      <select id="meet-f1" className="select" value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })}>
         <option value="">No medal</option>
         <option value="GOLD">Gold</option>
         <option value="SILVER">Silver</option>
@@ -302,31 +312,31 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
             )}
           </div>
           <div className="field">
-            <label>Event *</label>
-            <select className="select" value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })}>
+            <label htmlFor="meet-f2">Event *</label>
+            <select id="meet-f2" className="select" value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })}>
               <option value="">Select event</option>
               {allEvents.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="field">
-              <label>{openWaterMode ? 'Time * (e.g. 1:52:34.10)' : 'Time * (e.g. 1:02.30)'}</label>
-              <input className="input asw-num" type="text" placeholder={openWaterMode ? 'H:MM:SS.hh' : '0:00.00'} value={form.time}
+              <label htmlFor="meet-f3">{openWaterMode ? 'Time * (e.g. 1:52:34.10)' : 'Time * (e.g. 1:02.30)'}</label>
+              <input id="meet-f3" className="input asw-num" type="text" placeholder={openWaterMode ? 'H:MM:SS.hh' : '0:00.00'} value={form.time}
                 onChange={(e) => setForm({ ...form, time: e.target.value })} />
             </div>
             <div className="field">
-              <label>FINA (auto)</label>
-              <input className="input asw-num" type="number" value={form.fina}
+              <label htmlFor="meet-f4">FINA (auto)</label>
+              <input id="meet-f4" className="input asw-num" type="number" value={form.fina}
                 style={{ background: 'var(--color-accent-100)', fontWeight: 600 }}
                 onChange={(e) => setForm({ ...form, fina: e.target.value })} />
             </div>
             <div className="field">
-              <label>Team / club</label>
-              <input className="input" type="text" value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} />
+              <label htmlFor="meet-f5">Team / club</label>
+              <input id="meet-f5" className="input" type="text" value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} />
             </div>
             <div className="field">
-              <label>Round</label>
-              <select className="select" value={form.round_type} onChange={(e) => setForm({ ...form, round_type: e.target.value })}>
+              <label htmlFor="meet-f6">Round</label>
+              <select id="meet-f6" className="select" value={form.round_type} onChange={(e) => setForm({ ...form, round_type: e.target.value })}>
                 <option value="Finals">Final A</option>
                 <option value="Consolation">Final B</option>
                 <option value="Final C">Final C</option>
@@ -340,8 +350,8 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
               </select>
             </div>
             <div className="field">
-              <label>Category (optional)</label>
-              <input className="input" type="text" placeholder="e.g. Cadets" value={form.category}
+              <label htmlFor="meet-f7">Category (optional)</label>
+              <input id="meet-f7" className="input" type="text" placeholder="e.g. Cadets" value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })} />
             </div>
             {medalSelect('Medal — category podium', 'medal')}
@@ -499,18 +509,18 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="field" style={{ gridColumn: '1 / -1' }}>
-              <label>Event</label>
-              <select className="select" value={form.event} onChange={set('event')}>
+              <label htmlFor="meet-f8">Event</label>
+              <select id="meet-f8" className="select" value={form.event} onChange={set('event')}>
                 {allEvents.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
             </div>
             <div className="field">
-              <label>Time (e.g. 1:02.30)</label>
-              <input className="input asw-num" type="text" value={form.time} onChange={set('time')} />
+              <label htmlFor="meet-f9">Time (e.g. 1:02.30)</label>
+              <input id="meet-f9" className="input asw-num" type="text" value={form.time} onChange={set('time')} />
             </div>
             <div className="field">
-              <label>Round</label>
-              <select className="select" value={form.round_type} onChange={set('round_type')}>
+              <label htmlFor="meet-f10">Round</label>
+              <select id="meet-f10" className="select" value={form.round_type} onChange={set('round_type')}>
                 <option value="">Unknown</option>
                 <option value="Finals">Finals</option>
                 <option value="Semifinals">Semi-Final</option>
@@ -520,32 +530,32 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
               </select>
             </div>
             <div className="field">
-              <label>Team / club</label>
-              <input className="input" type="text" value={form.team} onChange={set('team')} />
+              <label htmlFor="meet-f11">Team / club</label>
+              <input id="meet-f11" className="input" type="text" value={form.team} onChange={set('team')} />
             </div>
             <div className="field">
-              <label>Category</label>
-              <input className="input" type="text" placeholder="e.g. Cadets" value={form.category} onChange={set('category')} />
+              <label htmlFor="meet-f12">Category</label>
+              <input id="meet-f12" className="input" type="text" placeholder="e.g. Cadets" value={form.category} onChange={set('category')} />
             </div>
             <div className="field">
-              <label>Age at competition</label>
-              <input className="input asw-num" type="number" value={form.age} onChange={set('age')} />
+              <label htmlFor="meet-f13">Age at competition</label>
+              <input id="meet-f13" className="input asw-num" type="number" value={form.age} onChange={set('age')} />
             </div>
             <div className="field">
-              <label>Original rank (from PDF)</label>
-              <input className="input asw-num" type="number" value={form.original_rank} onChange={set('original_rank')} />
+              <label htmlFor="meet-f14">Original rank (from PDF)</label>
+              <input id="meet-f14" className="input asw-num" type="number" value={form.original_rank} onChange={set('original_rank')} />
             </div>
             <div className="field">
-              <label>Ranking status</label>
-              <select className="select" value={form.hc} onChange={set('hc')}>
+              <label htmlFor="meet-f15">Ranking status</label>
+              <select id="meet-f15" className="select" value={form.hc} onChange={set('hc')}>
                 <option value="">Ranked normally</option>
                 <option value="HC">HC — hors concours</option>
                 <option value="TLD">TLD — time limit exceeded</option>
               </select>
             </div>
             <div className="field">
-              <label>FINA points</label>
-              <input className="input asw-num" value={result.fina_points ?? '—'} disabled title="Recomputed automatically from time and event" />
+              <label htmlFor="meet-f16">FINA points</label>
+              <input id="meet-f16" className="input asw-num" value={result.fina_points ?? '—'} disabled title="Recomputed automatically from time and event" />
             </div>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
@@ -554,8 +564,8 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
           </label>
           {isRelay ? (
             <div className="field">
-              <label>Relay legs — one per line: Name | leg time (time optional)</label>
-              <textarea className="input" rows={4} value={form.relayText} onChange={set('relayText')}
+              <label htmlFor="meet-f17">Relay legs — one per line: Name | leg time (time optional)</label>
+              <textarea id="meet-f17" className="input" rows={4} value={form.relayText} onChange={set('relayText')}
                 placeholder={'Abdallah TARAWNEH | 1:03.63\nHaya AL MASSARWEH | 1:09.79'} style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }} />
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginTop: 8 }}>
                 <input type="checkbox" checked={form.firstLeg} onChange={(e) => setForm((f) => ({ ...f, firstLeg: e.target.checked }))} />
@@ -564,8 +574,8 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
             </div>
           ) : (
             <div className="field">
-              <label>Splits — one per line: distance then cumulative time</label>
-              <textarea className="input" rows={4} value={form.splitsText} onChange={set('splitsText')}
+              <label htmlFor="meet-f18">Splits — one per line: distance then cumulative time</label>
+              <textarea id="meet-f18" className="input" rows={4} value={form.splitsText} onChange={set('splitsText')}
                 placeholder={'50 31.36\n100 1:05.20'} style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }} />
             </div>
           )}
@@ -1099,20 +1109,67 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
 
       {/* filters row */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 16 }}>
+        {/* Gender comes first: it decides which events the next menu lists.
+            Occam: with a single gender in the meet the switch is not shown. */}
+        {(() => {
+          const genderOptions = (() => {
+            const has = (g) => events.some((e) => e.gender === g && (discipline === 'OW') === (e.stroke === 'Open Water'))
+            if (isAllMode) {
+              const opts = []
+              if (has('M')) opts.push({ value: 'M_MEN', label: "Men's" })
+              if (has('F')) opts.push({ value: 'F_WOMEN', label: "Women's" })
+              if (has('M')) opts.push({ value: 'M_BOYS', label: 'Boys' })
+              if (has('F')) opts.push({ value: 'F_GIRLS', label: 'Girls' })
+              if (has('X')) opts.push({ value: 'X', label: 'Mixed' })
+              return opts
+            }
+            return [
+              { value: 'M', label: showingBoys ? 'Boys' : "Men's" },
+              { value: 'F', label: showingBoys ? 'Girls' : "Women's" },
+              { value: 'X', label: 'Mixed' },
+            ].filter((o) => has(o.value))
+          })()
+          if (genderOptions.length < 2) return null
+          return (
+        <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 38 }}>
+        <Seg
+          options={genderOptions}
+          value={isAllMode ? `${genderFilter}_${ageView === 'boys' ? (genderFilter === 'M' ? 'BOYS' : 'GIRLS') : (genderFilter === 'M' ? 'MEN' : genderFilter === 'F' ? 'WOMEN' : '')}` : genderFilter}
+          onChange={(v) => {
+            if (v === 'M_MEN') { setGenderFilter('M'); setAgeView('men') }
+            else if (v === 'F_WOMEN') { setGenderFilter('F'); setAgeView('men') }
+            else if (v === 'M_BOYS') { setGenderFilter('M'); setAgeView('boys') }
+            else if (v === 'F_GIRLS') { setGenderFilter('F'); setAgeView('boys') }
+            else { setGenderFilter(v); setAgeView('men') }
+          }}
+        />
+        </div>
+          )
+        })()}
         <div className="field" style={{ width: 320, maxWidth: '100%' }}>
-          <label>{discipline === 'OW' ? 'Open water event' : 'Event'}</label>
-          <select className="select" value={eventKey} onChange={(e) => setEventKey(e.target.value)}>
-            {filteredEvents.map((ev) => (
-              <option key={`${ev.event_id}|${ev.gender}`} value={`${ev.event_id}|${ev.gender}`}>
-                {(ev.display_name || ev.event_name || '').replace(/\s*[—–-]\s*(Men|Women|Mixed)\s*$/i, '')}
-              </option>
-            ))}
+          <label htmlFor="meet-f19">{discipline === 'OW' ? 'Open water event' : 'Event'}</label>
+          <select id="meet-f19" className="select" value={eventKey} onChange={(e) => setEventKey(e.target.value)}>
+            {/* Chunking: a long event list is grouped by stroke */}
+            {(() => {
+              const opt = (ev) => (
+                <option key={`${ev.event_id}|${ev.gender}`} value={`${ev.event_id}|${ev.gender}`}>
+                  {(ev.display_name || ev.event_name || '').replace(/\s*[—–-]\s*(Men|Women|Mixed)\s*$/i, '')}
+                </option>
+              )
+              const strokes = [...new Set(filteredEvents.map((ev) => ev.stroke || 'Other'))]
+              if (filteredEvents.length <= 9 || strokes.length < 2) return filteredEvents.map(opt)
+              return strokes.map((st) => (
+                <optgroup key={st} label={st}>
+                  {filteredEvents.filter((ev) => (ev.stroke || 'Other') === st).map(opt)}
+                </optgroup>
+              ))
+            })()}
           </select>
         </div>
         {hasCategories && (
           <div className="field" style={{ width: 180, maxWidth: '100%' }}>
-            <label>Category</label>
-            <select
+            <label htmlFor="meet-f20">Category</label>
+            <select id="meet-f20"
               className="select"
               value={selectedCategory}
               onChange={(e) => { setSelectedCategory(e.target.value); setExpandedRow(null) }}
@@ -1135,37 +1192,6 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             </select>
           </div>
         )}
-        {/* stretch wrapper: the segmented control matches the 38px outer
-            height of the adjacent selects instead of floating shorter */}
-        <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 38 }}>
-        <Seg
-          options={(() => {
-            const has = (g) => events.some((e) => e.gender === g && (discipline === 'OW') === (e.stroke === 'Open Water'))
-            if (isAllMode) {
-              const opts = []
-              if (has('M')) opts.push({ value: 'M_MEN', label: "Men's" })
-              if (has('F')) opts.push({ value: 'F_WOMEN', label: "Women's" })
-              if (has('M')) opts.push({ value: 'M_BOYS', label: 'Boys' })
-              if (has('F')) opts.push({ value: 'F_GIRLS', label: 'Girls' })
-              if (has('X')) opts.push({ value: 'X', label: 'Mixed' })
-              return opts
-            }
-            return [
-              { value: 'M', label: showingBoys ? 'Boys' : "Men's" },
-              { value: 'F', label: showingBoys ? 'Girls' : "Women's" },
-              { value: 'X', label: 'Mixed' },
-            ].filter((o) => has(o.value))
-          })()}
-          value={isAllMode ? `${genderFilter}_${ageView === 'boys' ? (genderFilter === 'M' ? 'BOYS' : 'GIRLS') : (genderFilter === 'M' ? 'MEN' : genderFilter === 'F' ? 'WOMEN' : '')}` : genderFilter}
-          onChange={(v) => {
-            if (v === 'M_MEN') { setGenderFilter('M'); setAgeView('men') }
-            else if (v === 'F_WOMEN') { setGenderFilter('F'); setAgeView('men') }
-            else if (v === 'M_BOYS') { setGenderFilter('M'); setAgeView('boys') }
-            else if (v === 'F_GIRLS') { setGenderFilter('F'); setAgeView('boys') }
-            else { setGenderFilter(v); setAgeView('men') }
-          }}
-        />
-        </div>
         {isAdmin && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <button
@@ -1264,6 +1290,24 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           </table>
         </div>
       )}
+
+      {/* Flow + Peak-End: the table ends with the next event, so browsing a
+          meet does not mean scrolling back up to the menu each time */}
+      {(() => {
+        const idx = filteredEvents.findIndex((e) => `${e.event_id}|${e.gender}` === eventKey)
+        if (loading || idx < 0 || filteredEvents.length < 2) return null
+        const name = (ev) => (ev.display_name || ev.event_name || '').replace(/\s*[—–-]\s*(Men|Women|Mixed)\s*$/i, '')
+        const go = (ev) => { setEventKey(`${ev.event_id}|${ev.gender}`); window.scrollTo({ top: 0 }) }
+        const prev = filteredEvents[idx - 1]
+        const next = filteredEvents[idx + 1]
+        return (
+          <div className="meets-eventnav">
+            {prev ? <button type="button" className="btn btn-ghost" onClick={() => go(prev)}>← {name(prev)}</button> : <span />}
+            <span className="micro asw-num">Event {idx + 1} of {filteredEvents.length}</span>
+            {next ? <button type="button" className="btn btn-secondary" onClick={() => go(next)}>{name(next)} →</button> : <span />}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -1433,6 +1477,8 @@ function MedalsTab({ meetId, isNational }) {
   const [swimmer, setSwimmer] = useState([])
   const [scope, setScope] = useState(isNational ? 'club' : 'country')
   const [swimmerGender, setSwimmerGender] = useState('ALL')
+  const [failed, setFailed] = useState(false)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -1443,6 +1489,7 @@ function MedalsTab({ meetId, isNational }) {
       getMedalSwimmerSummary({ championship: meetId, limit: 'all' }),
     ]).then(([m, c, cl, s]) => {
       if (!alive) return
+      setFailed([m, c, cl, s].every((r) => r.status !== 'fulfilled'))
       setMedals(list(val(m)))
       setCountry(list(val(c)))
       setClub(list(val(cl)))
@@ -1450,16 +1497,17 @@ function MedalsTab({ meetId, isNational }) {
       setLoaded(true)
     })
     return () => { alive = false }
-  }, [meetId])
+  }, [meetId, retry])
 
   if (!loaded) return <Loading label="Loading medals" />
+  if (failed) return <LoadFailed what="The medals" onRetry={() => { setLoaded(false); setRetry((n) => n + 1) }} />
 
   const goldCount = medals.filter((m) => m.medal_type === 'GOLD').length
   const silverCount = medals.filter((m) => m.medal_type === 'SILVER').length
   const bronzeCount = medals.filter((m) => m.medal_type === 'BRONZE').length
 
   if (medals.length === 0 && country.length === 0 && club.length === 0 && swimmer.length === 0) {
-    return <Empty label="No medals yet — medals are computed from results" />
+    return <Empty label="No medals yet" hint="Medals are worked out from the final results, so they appear once finals are in." />
   }
 
   // International meets NEVER show a club tally — only country + swimmer.
@@ -1607,8 +1655,9 @@ function MedalsTab({ meetId, isNational }) {
 
 /* ────────────────────────── Statistics tab ────────────────────────── */
 
-function PersonalBestsTab({ stats }) {
+function PersonalBestsTab({ stats, onRetry }) {
   const navigate = useNavigate()
+  if (!stats) return <LoadFailed what="Personal bests" onRetry={onRetry} />
 
   // Only swims that actually improved a previous best — first-ever swims
   // in an event are not "personal bests achieved".
@@ -1687,12 +1736,13 @@ function PersonalBestsTab({ stats }) {
 
 /* ──────────────────────── Top performances tab ─────────────────────── */
 
-function TopPerformancesTab({ stats }) {
+function TopPerformancesTab({ stats, onRetry }) {
   const navigate = useNavigate()
   const [perfGender, setPerfGender] = useState('overall')
   const [perfScope, setPerfScope] = useState('all')
 
   const raw = stats?.top_performers || []
+  if (!stats) return <LoadFailed what="Top performances" onRetry={onRetry} />
   if (raw.length === 0) return <Empty label="No top performances yet" hint="The highest FINA-point swims appear here once results are in." />
 
   // Arab-only scope narrows everything below it, featured cards included
@@ -1775,22 +1825,32 @@ function OverviewTab({ meetId, stats }) {
   const [comparison, setComparison] = useState([])
   const [qs, setQs] = useState(null)
   const [qsLoading, setQsLoading] = useState(true)
+  const [qsFailed, setQsFailed] = useState(false)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     let alive = true
     setQsLoading(true)
+    setQsFailed(false)
     getQuickStats(meetId)
       .then((res) => { if (alive) setQs(res.data) })
-      .catch(() => { if (alive) setQs(null) })
+      .catch(() => { if (alive) { setQs(null); setQsFailed(true) } })
       .finally(() => { if (alive) setQsLoading(false) })
     getChampionshipComparison(meetId)
       .then((res) => { if (alive) setComparison(list(res.data)) })
       .catch(() => {})
     return () => { alive = false }
-  }, [meetId])
+  }, [meetId, retry])
 
   if (qsLoading) return <Loading label="Loading overview" />
-  if (!qs?.championship) return <Empty label="No overview available yet" hint="Open the Results tab to see the swims from this meet." />
+  if (qsFailed) return <LoadFailed what="The overview" onRetry={() => setRetry((n) => n + 1)} />
+  if (!qs?.championship) {
+    return (
+      <Empty label="No overview available yet" hint="The overview is built from results. See the events and swims in the Results tab.">
+        <Link className="btn btn-secondary" to={`/meets/${meetId}?tab=results`}>Open results</Link>
+      </Empty>
+    )
+  }
 
   return (
     <div>
@@ -1950,18 +2010,22 @@ function OverviewTab({ meetId, stats }) {
 function MostImprovedTab({ meetId }) {
   const navigate = useNavigate()
   const [rows, setRows] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [retry, setRetry] = useState(0)
   const [gender, setGender] = useState('overall')
   const [scope, setScope] = useState('all')
 
   useEffect(() => {
     let alive = true
+    setFailed(false)
     getMostImproved(meetId)
       .then((res) => { if (alive) setRows(list(res.data)) })
-      .catch(() => { if (alive) setRows([]) })
+      .catch(() => { if (alive) { setRows([]); setFailed(true) } })
     return () => { alive = false }
-  }, [meetId])
+  }, [meetId, retry])
 
   if (rows === null) return <Loading label="Loading most improved" />
+  if (failed) return <LoadFailed what="Most improved swims" onRetry={() => { setRows(null); setRetry((n) => n + 1) }} />
 
   // Only genuine improvements — swimmers with no previous time never appear
   const allImprovements = rows.filter((s) => !s.is_new_entry)
@@ -2078,17 +2142,21 @@ const BROKEN_SCOPE_COLOR = { arab: 'var(--color-accent-800)', gcc: '#7d8a99', na
 function RecordsBrokenTab({ meetId }) {
   const navigate = useNavigate()
   const [rows, setRows] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [retry, setRetry] = useState(0)
   const [gender, setGender] = useState('ALL')
 
   useEffect(() => {
     let alive = true
+    setFailed(false)
     getRecordsBroken(meetId)
       .then((res) => { if (alive) setRows(list(res.data)) })
-      .catch(() => { if (alive) setRows([]) })
+      .catch(() => { if (alive) { setRows([]); setFailed(true) } })
     return () => { alive = false }
-  }, [meetId])
+  }, [meetId, retry])
 
   if (rows === null) return <Loading label="Computing broken records" />
+  if (failed) return <LoadFailed what="Broken records" onRetry={() => { setRows(null); setRetry((n) => n + 1) }} />
   if (rows.length === 0) return <Empty label="No records were broken at this meet" hint="Open the Results tab to see every swim." />
 
   const genderOptions = [
@@ -2196,15 +2264,18 @@ const SESSION_SORT = ['HEATS', 'SEMIS', 'FINALS', '']
 function ProgramTab({ meetId, isAdmin, resultEvents }) {
   const [, setSearchParams] = useSearchParams()
   const [days, setDays] = useState(null)
+  const [failed, setFailed] = useState(false)
 
   const load = () => {
+    setFailed(false)
     getMeetProgram(meetId)
       .then((res) => setDays(res.data?.days || []))
-      .catch(() => setDays([]))
+      .catch(() => { setDays([]); setFailed(true) })
   }
   useEffect(load, [meetId])
 
   if (days === null) return <Loading label="Loading program" />
+  if (failed) return <LoadFailed what="The program" onRetry={() => { setDays(null); load() }} />
   const hasItems = days.some((d) => d.items.length > 0)
 
   // an item links to Results only when that event+gender actually has results
@@ -2273,7 +2344,11 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
           ))}
         </div>
       ) : (
-        !isAdmin && <Empty label="The day-by-day program has not been published for this meet" hint="Open the Results tab to browse the events that were swum." />
+        !isAdmin && (
+          <Empty label="The day-by-day program has not been published for this meet" hint="The events that were swum are listed in the Results tab.">
+            <button type="button" className="btn btn-secondary" onClick={() => setSearchParams({ tab: 'results' }, { replace: true })}>Open results</button>
+          </Empty>
+        )
       )}
       {isAdmin && (
         <ProgramEditorToggle meetId={meetId} resultEvents={resultEvents} onSaved={load} />
@@ -2411,64 +2486,64 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
       )}
       <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxWidth: 760 }}>
         <div className="field" style={{ gridColumn: '1 / -1' }}>
-          <label>Meet name *</label>
-          <input className="input" type="text" value={form.name} onChange={set('name')} />
+          <label htmlFor="meet-f21">Meet name *</label>
+          <input id="meet-f21" className="input" type="text" value={form.name} onChange={set('name')} />
         </div>
         <div className="field">
-          <label>Start date *</label>
-          <input className="input" type="date" value={form.date} onChange={set('date')} />
+          <label htmlFor="meet-f22">Start date *</label>
+          <input id="meet-f22" className="input" type="date" value={form.date} onChange={set('date')} />
         </div>
         <div className="field">
-          <label>End date</label>
-          <input className="input" type="date" value={form.end_date} min={form.date || undefined} onChange={set('end_date')} />
+          <label htmlFor="meet-f23">End date</label>
+          <input id="meet-f23" className="input" type="date" value={form.end_date} min={form.date || undefined} onChange={set('end_date')} />
         </div>
         <div className="field">
-          <label>Pool</label>
-          <select className="select" value={form.pool} onChange={set('pool')}>
+          <label htmlFor="meet-f24">Pool</label>
+          <select id="meet-f24" className="select" value={form.pool} onChange={set('pool')}>
             {POOL_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
         <div className="field">
-          <label>Country</label>
-          <select className="select" value={form.country} onChange={set('country')}>
+          <label htmlFor="meet-f25">Country</label>
+          <select id="meet-f25" className="select" value={form.country} onChange={set('country')}>
             <option value="">—</option>
             {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div className="field" style={{ gridColumn: '1 / -1' }}>
-          <label>Location (city / venue)</label>
-          <input className="input" type="text" value={form.location} onChange={set('location')} />
+          <label htmlFor="meet-f26">Location (city / venue)</label>
+          <input id="meet-f26" className="input" type="text" value={form.location} onChange={set('location')} />
         </div>
         <div className="field">
-          <label>Classification</label>
-          <select className="select" value={form.classification}
+          <label htmlFor="meet-f27">Classification</label>
+          <select id="meet-f27" className="select" value={form.classification}
             onChange={(e) => setForm((f) => ({ ...f, classification: e.target.value, sub_classification: '' }))}>
             <option value="">—</option>
             {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div className="field">
-          <label>Sub classification</label>
-          <select className="select" value={form.sub_classification} disabled={!subClassifications.length} onChange={set('sub_classification')}>
+          <label htmlFor="meet-f28">Sub classification</label>
+          <select id="meet-f28" className="select" value={form.sub_classification} disabled={!subClassifications.length} onChange={set('sub_classification')}>
             <option value="">—</option>
             {subClassifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div className="field">
-          <label>Website</label>
-          <input className="input" type="url" value={form.website} onChange={set('website')} placeholder="https://…" />
+          <label htmlFor="meet-f29">Website</label>
+          <input id="meet-f29" className="input" type="url" value={form.website} onChange={set('website')} placeholder="https://…" />
         </div>
         <div className="field">
-          <label>Live results URL</label>
-          <input className="input" type="url" value={form.live_results_url} onChange={set('live_results_url')} placeholder="https://…" />
+          <label htmlFor="meet-f30">Live results URL</label>
+          <input id="meet-f30" className="input" type="url" value={form.live_results_url} onChange={set('live_results_url')} placeholder="https://…" />
         </div>
         <div className="field">
-          <label>Registration URL</label>
-          <input className="input" type="url" value={form.registration_url} onChange={set('registration_url')} placeholder="https://…" />
+          <label htmlFor="meet-f31">Registration URL</label>
+          <input id="meet-f31" className="input" type="url" value={form.registration_url} onChange={set('registration_url')} placeholder="https://…" />
         </div>
         <div className="field">
-          <label>Meet photo {meet.meet_photo ? '(replace)' : ''}</label>
-          <input className="input" type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
+          <label htmlFor="meet-f32">Meet photo {meet.meet_photo ? '(replace)' : ''}</label>
+          <input id="meet-f32" className="input" type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
           {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready</div>}
         </div>
         {cropFile && (
@@ -2511,8 +2586,8 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
 
         {/* Gender display control */}
         <div className="field" style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-          <label>Gender display</label>
-          <select className="select" value={form.gender_display}
+          <label htmlFor="meet-f33">Gender display</label>
+          <select id="meet-f33" className="select" value={form.gender_display}
             onChange={(e) => {
               const v = e.target.value
               const patch = { gender_display: v }
@@ -3048,16 +3123,19 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
   const [results, setResults] = useState(null)
   const [heats, setHeats] = useState(null)
   const [hasHeats, setHasHeats] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const loadResults = () => {
-    if (results) { setOpen((v) => !v); return }
+    if (results && !loadFailed) { setOpen((v) => !v); return }
     setOpen(true)
+    setLoadFailed(false)
+    if (loadFailed) setResults(null)
     getChampionshipResults(meetId, { event: p.event, gender: p.gender })
       .then((res) => {
         const data = filterByCategory(Array.isArray(res.data) ? res.data : res.data?.results || [], p.age_category)
         setResults(sinkStatusRows(data))
       })
-      .catch(() => setResults([]))
+      .catch(() => { setResults([]); setLoadFailed(true) })
     // Check if heats exist
     getChampionshipResults(meetId, { event: p.event, gender: p.gender, round_type: 'Prelims' })
       .then((res) => {
@@ -3211,6 +3289,11 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
 
           {activeData === null ? (
             <Loading label="Loading results" />
+          ) : loadFailed && tab !== 'heats' ? (
+            <div role="alert" style={{ padding: '8px 0', fontSize: 13, color: 'var(--color-neutral-700)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              These results could not be loaded.
+              <button type="button" className="btn btn-secondary" onClick={(e) => { e.stopPropagation(); loadResults() }}>Try again</button>
+            </div>
           ) : activeData.length === 0 ? (
             <div className="micro" style={{ padding: '8px 0', color: 'var(--color-neutral-700)' }}>
               {tab === 'heats' ? 'No heats uploaded yet' : 'No results uploaded yet for this event'}
@@ -3372,13 +3455,14 @@ export default function MeetDetail() {
   const rawTab = searchParams.get('tab') || 'statistics'
   const tab = ['results', 'program', 'medals', 'records', 'pbs', 'top', 'statistics', 'improved', 'gallery'].includes(rawTab) ? rawTab : 'statistics'
   const setTab = (t) => setSearchParams({ tab: t }, { replace: true })
+  const isHighlights = ['pbs', 'top', 'improved'].includes(tab)
 
   // ?tab=compare opens the edition-compare modal (it is a modal, not a tab),
   // so deep links land on the comparison instead of silently showing Overview
   useEffect(() => { if (rawTab === 'compare') setComparing(true) }, [rawTab])
 
   const refreshStats = () => {
-    getChampionshipStats(id).then((res) => setStats(res.data)).catch(() => {})
+    getChampionshipStats(id).then((res) => setStats(res.data)).catch(() => { if (!stats) notify('Still could not load. Check your connection.') })
   }
 
   useEffect(() => {
@@ -3420,8 +3504,10 @@ export default function MeetDetail() {
 
   return (
     <div>
+      {/* Jakob's Law: the way back to the list sits top-left, above the title */}
+      <div className="meets-back"><BackLink to="/championships">All meets</BackLink></div>
       {/* header */}
-      <div className="pad-lg rule-b">
+      <div className="pad-lg rule-b meets-head">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <MeetLogo photo={meet.meet_photo} name={meet.name} />
           {/* minWidth 0 keeps the title beside the logo on phones; long names
@@ -3431,18 +3517,40 @@ export default function MeetDetail() {
               style={{ margin: 0, letterSpacing: '-0.03em' }}>{meet.name}</h1>
             <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span>{formatDateRange(meet.date, meet.end_date)}</span>
-              <span className="tag tag-dark" style={{ fontSize: 11 }}>{meet.pool}</span>
+              {/* Mental Model: say the pool length in swimmers' words, keep the code as a hint */}
+              <span className="tag tag-dark" style={{ fontSize: 11 }} title={meet.pool === 'LCM' ? 'Long course (LCM)' : meet.pool === 'SCM' ? 'Short course (SCM)' : undefined}>
+                {meet.pool === 'LCM' ? '50m pool' : meet.pool === 'SCM' ? '25m pool' : meet.pool}
+              </span>
               {meet.country_detail && <><span style={{ color: 'var(--color-neutral-400)' }}>·</span><span>{meet.country_detail.name}</span></>}
               {meet.is_live && LIVE_BADGE}
+              {isAdmin && meet.is_published === false && <span className="tag tag-neutral" style={{ fontSize: 11 }}>Unpublished</span>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Similarity: Compare opens a dialog, so it is a button here and
+                no longer sits among the tabs looking like one */}
+            {!(isLiveMode && !isFinished) && (
+              <button type="button" className="btn btn-secondary" onClick={() => setComparing(true)}>Compare meets</button>
+            )}
             {isAdmin && (
               <>
                 <button type="button" className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>
                   {editing ? 'Close editor' : 'Edit meet'}
                 </button>
                 <Link className="btn btn-secondary" to={`/import?championship=${id}`}>Import results</Link>
+                <button type="button" className={`btn ${meet.is_published ? 'btn-secondary' : 'btn-primary'}`}
+                  style={{ fontSize: 12 }}
+                  onClick={async () => {
+                    try {
+                      await updateChampionship(id, { is_published: !meet.is_published })
+                      setMeet({ ...meet, is_published: !meet.is_published })
+                    } catch { notify('Failed to update') }
+                  }}>
+                  {meet.is_published ? 'Unpublish' : 'Publish'}
+                </button>
+                {/* Hick's Law: the everyday actions stay visible; rare and
+                    destructive ones wait behind "More actions" (Delete last) */}
+                <ShowMore label="More actions" lessLabel="Fewer actions">
                 {meet.classification_name === 'National' && meet.country_detail?.code === 'TUN' && !meet.b_final_no_medals && (
                   <button type="button" className="btn btn-secondary" onClick={async () => {
                     if (!window.confirm('Apply TC rules?\n\n• No medals for Final B (only Final A)\n• Open podium across all categories (fastest 3 overall)\n• Relays unaffected\n\nMedals will be recomputed.')) return
@@ -3473,16 +3581,6 @@ export default function MeetDetail() {
                     {meet.has_double_podium ? 'Double podium: ON' : 'Double podium'}
                   </button>
                 )}
-                <button type="button" className={`btn ${meet.is_published ? 'btn-secondary' : 'btn-primary'}`}
-                  style={{ fontSize: 12 }}
-                  onClick={async () => {
-                    try {
-                      await updateChampionship(id, { is_published: !meet.is_published })
-                      setMeet({ ...meet, is_published: !meet.is_published })
-                    } catch { notify('Failed to update') }
-                  }}>
-                  {meet.is_published ? 'Unpublish' : 'Publish'}
-                </button>
                 <button type="button" className="btn btn-secondary" onClick={async () => {
                   if (!window.confirm('Swap first/last names for all swimmers in this meet?\n\nThis converts "Family GIVEN" → "Given FAMILY" (surname uppercase).')) return
                   try {
@@ -3504,6 +3602,7 @@ export default function MeetDetail() {
                 }}>
                   Delete meet
                 </button>
+                </ShowMore>
               </>
             )}
           </div>
@@ -3540,20 +3639,35 @@ export default function MeetDetail() {
                 { value: 'statistics', label: 'Overview' },
                 { value: 'results', label: 'Results' },
                 { value: 'medals', label: 'Medals' },
-                { value: 'records', label: 'Broken Records' },
-                { value: 'pbs', label: 'Personal Bests' },
-                { value: 'top', label: 'Top Performances' },
-                { value: 'improved', label: 'Most Improved' },
+                { value: 'records', label: 'Records' },
+                { value: 'highlights', label: 'Highlights' },
                 { value: 'program', label: 'Program' },
-                { value: 'compare', label: 'Compare' },
                 { value: 'gallery', label: 'Gallery' },
               ]}
-              value={tab}
-              onChange={(v) => { if (v === 'compare') setComparing(true); else setTab(v) }}
+              value={isHighlights ? 'highlights' : tab}
+              onChange={(v) => setTab(v === 'highlights' ? 'top' : v)}
             />
           </div>
 
-          {tab === 'results' && (
+          {/* Chunking + Hick's Law: three ranking lists live under one
+              "Highlights" tab (7 tabs instead of 10); old ?tab=pbs|top|improved
+              links still land on the right list */}
+          {isHighlights && (
+            <div className="rule-b meets-subtabs">
+              <Seg
+                options={[
+                  { value: 'top', label: 'Top performances' },
+                  { value: 'pbs', label: 'Personal bests' },
+                  { value: 'improved', label: 'Most improved' },
+                ]}
+                value={tab}
+                onChange={setTab}
+              />
+            </div>
+          )}
+
+          {tab === 'results' && !stats && <LoadFailed what="The results" onRetry={refreshStats} />}
+          {tab === 'results' && stats && (
             <ResultsTab meetId={id} events={events} isNational={isNational} isAdmin={isAdmin} hasOpenPodium={!!meet.has_open_podium}
               hasDoublePodium={!!meet.has_double_podium} hostCode={meet.country_detail?.code}
               bFinalNoMedals={!!meet.b_final_no_medals} heatsCategoryMedals={!!meet.heats_category_medals}
@@ -3563,8 +3677,8 @@ export default function MeetDetail() {
           {tab === 'program' && <ProgramTab meetId={id} isAdmin={isAdmin} resultEvents={events} />}
           {tab === 'medals' && <MedalsTab meetId={id} isNational={isNational} />}
           {tab === 'records' && <RecordsBrokenTab meetId={id} />}
-          {tab === 'pbs' && <PersonalBestsTab stats={stats} />}
-          {tab === 'top' && <TopPerformancesTab stats={stats} />}
+          {tab === 'pbs' && <PersonalBestsTab stats={stats} onRetry={refreshStats} />}
+          {tab === 'top' && <TopPerformancesTab stats={stats} onRetry={refreshStats} />}
           {tab === 'statistics' && <OverviewTab meetId={id} stats={stats} />}
           {tab === 'improved' && <MostImprovedTab meetId={id} />}
           {tab === 'gallery' && <MeetGallery meetId={id} isAdmin={isAdmin} />}

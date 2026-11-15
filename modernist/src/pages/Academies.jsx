@@ -5,12 +5,14 @@ import { getAcademies, createAcademy, updateAcademy, deleteAcademy } from '../ap
 import { getTeams } from '../api/teams'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Modal } from '../components/ui'
+import { PageHead, Loading, Empty, Modal, FilterBar } from '../components/ui'
 import { CropUpload } from '../components/ImageCropper'
 import { useAuth } from '../context/AuthContext'
 import { mediaUrl } from '../utils'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
+// Postel's Law: search ignores case, accents and punctuation
+const fold = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-_.'’]/g, ' ').replace(/\s+/g, ' ').trim()
 
 function acronym(name) {
   const words = String(name || '').split(/\s+/).filter(Boolean)
@@ -172,14 +174,25 @@ export default function Academies() {
   }, [reloadKey])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = fold(search)
     return academies.filter((a) => {
       if (a.is_active === false && !isAdmin) return false
-      if (q && !String(a.name || '').toLowerCase().includes(q)) return false
+      if (q && !fold([a.name, a.city, a.country_detail?.name].join(' ')).includes(q)) return false
       if (country && String(a.country) !== String(country)) return false
       return true
     })
   }, [academies, search, country, isAdmin])
+
+  // Hick's Law: the country list holds only countries that have an academy,
+  // so every option returns something (the full list is kept for the admin form)
+  const listCountries = useMemo(() => {
+    const m = new Map()
+    academies.forEach((a) => { if (a.country_detail && (isAdmin || a.is_active !== false)) m.set(a.country_detail.id, a.country_detail) })
+    const arab = (c) => (c.region === 'ARAB' || c.region === 'GCC' ? 0 : 1)
+    return [...m.values()].sort((x, y) => arab(x) - arab(y) || x.name.localeCompare(y.name))
+  }, [academies, isAdmin])
+  const filtersOn = !!(search.trim() || country)
+  const clearFilters = () => { setSearch(''); setCountry('') }
 
   if (loading) return <Loading label="Loading academies" />
 
@@ -187,93 +200,103 @@ export default function Academies() {
     <div>
       <PageHead title="Academies" />
 
-      {/* filter bar: one line, scrolls sideways on phone */}
-      <div className="rule-b records-filters" style={{ padding: '12px 32px', display: 'flex', gap: 10, flexWrap: 'nowrap', alignItems: 'center' }}>
+      <FilterBar count={filtered.length} noun={filtered.length === 1 ? 'academy' : 'academies'} active={filtersOn} onClear={clearFilters}>
         <input
           className="input"
           type="search"
           aria-label="Search academies"
-          style={{ flex: '2 1 160px', width: 'auto', minWidth: 0, maxWidth: 320 }}
-          placeholder="Search academies…"
+          style={{ flex: '2 1 200px', width: 'auto', minWidth: 0, maxWidth: 320 }}
+          placeholder="Search by academy, city or country…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          className="select"
-          aria-label="Filter by country"
-          style={{ flex: '1 1 130px', width: 'auto', minWidth: 0, maxWidth: 220 }}
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-        >
-          <option value="">All countries</option>
-          {countries.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        {/* Occam's Razor: a country filter only when there is more than one country to choose */}
+        {(listCountries.length > 1 || country) && (
+          <select
+            className="select"
+            aria-label="Filter by country"
+            style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }}
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+          >
+            <option value="">All countries</option>
+            {listCountries.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        )}
         {isAdmin && (
           <button className="btn btn-primary" style={{ flex: 'none', fontSize: 12 }} onClick={() => setModal({ academy: null })}>+ Add academy</button>
         )}
         {/* Peak-End Rule: confirm the save once the dialog has closed */}
         {notice && <span role="status" style={{ flex: 'none', fontSize: 12, color: 'var(--asw-fast)' }}>{notice} ✓</span>}
-      </div>
+      </FilterBar>
 
       {filtered.length === 0 ? (
         failed ? (
           <Empty label="Could not load academies" hint="Check your connection and reload the page." />
         ) : (
-          <Empty label="No academies found" hint={(search.trim() || country) ? 'Try a different name or choose All countries.' : undefined} />
+          <Empty label="No academies found" hint={filtersOn ? 'Check the spelling, or clear the filters to see every academy.' : 'Academies appear here once they are added. Clubs are listed separately.'}>
+            {filtersOn
+              ? <button type="button" className="btn btn-secondary" onClick={clearFilters}>Clear filters</button>
+              : <Link to="/teams" className="btn btn-secondary">Browse clubs</Link>}
+          </Empty>
         )
       ) : (
         <div className="pad">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-            {filtered.map((a) => (
-              <Link key={a._team ? `team-${a.id}` : a.id} to={a._team ? `/teams/${a.id}` : `/academies/${a.id}`} style={{
-                background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12,
-                boxShadow: 'var(--shadow-sm)', padding: '14px 16px',
-                display: 'flex', flexDirection: 'column', gap: 12,
-                color: 'inherit', textDecoration: 'none',
+            {filtered.map((a) => {
+              const to = a._team ? `/teams/${a.id}` : `/academies/${a.id}`
+              const contacts = !a._team && (a.phone || a.email || a.website || a.instagram)
+              return (
+              <div key={a._team ? `team-${a.id}` : a.id} style={{
+                position: 'relative', background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12,
+                boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <AcademyLogo logo={a.logo} name={a.name} />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>
-                      {a.name}{a.is_active === false && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>Inactive</span>}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, fontSize: 12, color: 'var(--color-neutral-800)' }}>
-                      {a.country_detail && <Flag code={a.country_detail.code} name={a.country_detail.name} />}
-                      <span>{a.country_detail?.name}{a.city ? ` · ${a.city}` : ''}</span>
+                {/* one destination per card: the whole upper block opens the profile */}
+                <Link to={to} style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1, color: 'inherit', textDecoration: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingRight: isAdmin && !a._team ? 52 : 0 }}>
+                    <AcademyLogo logo={a.logo} name={a.name} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>
+                        {a.name}{a.is_active === false && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>Inactive</span>}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, fontSize: 12, color: 'var(--color-neutral-800)' }}>
+                        {a.country_detail && <Flag code={a.country_detail.code} name={a.country_detail.name} />}
+                        <span>{[a.country_detail?.name, a.city, a._team && a.swimmers_count > 0 ? `${a.swimmers_count} swimmer${a.swimmers_count === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}</span>
+                      </div>
                     </div>
                   </div>
-                  {isAdmin && !a._team && (
-                    <button className="btn btn-secondary" style={{ flex: 'none', fontSize: 11 }}
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setModal({ academy: a }) }}>Edit</button>
+                  {a.description && (
+                    <div className="text-muted" style={{ fontSize: 13, lineHeight: 1.5 }}>{a.description}</div>
                   )}
-                </div>
-                {a.description && (
-                  <div className="text-muted" style={{ fontSize: 13, lineHeight: 1.5 }}>{a.description}</div>
+                  {a.address && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: 'var(--color-neutral-800)' }}>
+                      <MapPin size={13} style={{ flex: 'none', marginTop: 2 }} /> {a.address}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--color-neutral-200)', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)' }}>
+                    {a._team ? 'Swimmers, results and records →' : 'View academy →'}
+                  </div>
+                </Link>
+                {isAdmin && !a._team && (
+                  <button className="btn btn-secondary" style={{ position: 'absolute', top: 12, right: 12, fontSize: 11 }}
+                    onClick={() => setModal({ academy: a })}>Edit</button>
                 )}
-                {a.address && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: 'var(--color-neutral-800)' }}>
-                    <MapPin size={13} style={{ flex: 'none', marginTop: 2 }} /> {a.address}
+                {contacts && (
+                  <div style={{ display: 'flex', gap: 6, padding: '0 16px 14px' }}>
+                    <ContactLink href={a.phone ? `tel:${a.phone}` : ''} icon={Phone} label="Phone" />
+                    <ContactLink href={a.email ? `mailto:${a.email}` : ''} icon={Mail} label="Email" />
+                    <ContactLink href={a.website ? (/^https?:\/\//i.test(a.website) ? a.website : `https://${a.website}`) : ''} icon={Globe} label="Website" />
+                    <ContactLink
+                      href={a.instagram ? `https://instagram.com/${String(a.instagram).replace(/^@/, '')}` : ''}
+                      icon={AtSign} label="Instagram"
+                    />
                   </div>
                 )}
-                {a._team && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--color-neutral-200)', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)' }}>
-                    <span>Full profile</span>
-                    <span>Results, records &amp; rankings →</span>
-                  </div>
-                )}
-                <div style={{ display: a._team ? 'none' : 'flex', gap: 6, marginTop: 'auto' }}>
-                  <ContactLink href={a.phone ? `tel:${a.phone}` : ''} icon={Phone} label="Phone" />
-                  <ContactLink href={a.email ? `mailto:${a.email}` : ''} icon={Mail} label="Email" />
-                  <ContactLink href={a.website ? (/^https?:\/\//i.test(a.website) ? a.website : `https://${a.website}`) : ''} icon={Globe} label="Website" />
-                  <ContactLink
-                    href={a.instagram ? `https://instagram.com/${String(a.instagram).replace(/^@/, '')}` : ''}
-                    icon={AtSign} label="Instagram"
-                  />
-                </div>
-              </Link>
-            ))}
+              </div>
+              )
+            })}
           </div>
         </div>
       )}

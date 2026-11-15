@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ImagePlus, Video, Play, Trash2, X } from 'lucide-react'
+import { ImagePlus, Video, Play, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   getAlbum, getMediaItems, uploadPhotos, createMediaItem,
   updateMediaItem, deleteMediaItem,
 } from '../api/media'
-import { Loading, notify, Empty } from '../components/ui'
+import { Loading, notify, Empty, BackLink } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import { CropQueue } from '../components/ImageCropper'
@@ -31,13 +31,27 @@ export default function Album() {
   const [lightbox, setLightbox] = useState(null)
   const [addingVideo, setAddingVideo] = useState(false)
 
-  // Jakob's Law: Escape closes the photo viewer
+  // Jakob's Law: the photo viewer behaves like every gallery — Escape closes,
+  // the arrow keys (and on-screen arrows) move to the previous / next photo.
+  const photos = items.filter((it) => !(it.media_type === 'VIDEO' || (!!it.video_url && !it.image)) && it.image)
+  const lightIdx = lightbox ? photos.findIndex((p) => p.id === lightbox.id) : -1
+  const step = (d) => {
+    if (lightIdx < 0 || photos.length < 2) return
+    setLightbox(photos[(lightIdx + d + photos.length) % photos.length])
+  }
   useEffect(() => {
     if (!lightbox) return undefined
-    const onKey = (e) => { if (e.key === 'Escape') setLightbox(null) }
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLightbox(null)
+      else if (e.key === 'ArrowRight') step(1)
+      else if (e.key === 'ArrowLeft') step(-1)
+    }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [lightbox])
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightbox, photos.length])
 
   const load = () => {
     return Promise.allSettled([getAlbum(id), getMediaItems({ album: id })])
@@ -77,8 +91,10 @@ export default function Album() {
       files.forEach((f) => fd.append('images', f))
       await uploadPhotos(fd)
       await load()
-    } catch {
-      notify('Upload failed')
+      // Peak-End Rule: confirm the upload landed
+      notify(`${files.length} photo${files.length === 1 ? '' : 's'} added to the album.`)
+    } catch (err) {
+      notify(err.response?.data?.error ? `Upload failed — ${err.response.data.error}` : 'Upload failed. Check your connection and try again.')
     } finally {
       setUploading(false)
     }
@@ -92,6 +108,7 @@ export default function Album() {
       await createMediaItem({ album: id, media_type: 'VIDEO', video_url: videoUrl.trim() })
       setVideoUrl('')
       await load()
+      notify('Video added to the album.')
     } catch {
       notify('Failed to add video (check the URL)')
     } finally {
@@ -141,19 +158,19 @@ export default function Album() {
   return (
     <div>
       <div className="pad-lg rule-b">
-        {/* Fitts's Law: 32px tall back link (kicker margin reduced so the header keeps its height) */}
-        <Link to="/media" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 12, textDecoration: 'none' }}>← All albums</Link>
+        <BackLink to="/media">All albums</BackLink>
         <div className="kicker" style={{ margin: '8px 0 6px' }}>Album</div>
         <h1 style={{ margin: 0, letterSpacing: '-0.03em' }}>{album.title}</h1>
         <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8 }}>
-          <span className="asw-num">{items.length || album.items_count || 0}</span> item{(items.length || album.items_count || 0) === 1 ? '' : 's'} · {formatDate(album.created_at)}
+          <span className="asw-num">{items.length}</span> item{items.length === 1 ? '' : 's'} · {formatDate(album.created_at)}
           {album.description ? ` — ${album.description}` : ''}
         </div>
 
         {isAdmin && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 16 }}>
+            {/* Von Restorff: adding photos is the main job here, so it is the one solid button */}
             <label
-              className="btn btn-secondary"
+              className="btn btn-primary"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: uploading ? 0.5 : 1, pointerEvents: uploading ? 'none' : 'auto' }}
             >
               <ImagePlus size={14} /> {uploading ? 'Uploading…' : 'Add photos'}
@@ -178,7 +195,9 @@ export default function Album() {
       </div>
 
       {items.length === 0 ? (
-        <Empty label="No photos or videos in this album" hint={isAdmin ? 'Use "Add photos" or paste a video link above.' : undefined} />
+        <Empty label="No photos or videos in this album yet" hint={isAdmin ? 'Use "Add photos" or paste a video link above. Visitors cannot see the album until it has something in it.' : 'They will appear here once they are uploaded.'}>
+          {!isAdmin && <Link to="/media" className="btn btn-secondary" style={{ textDecoration: 'none' }}>See other albums</Link>}
+        </Empty>
       ) : (
         <div className="pad-lg">
           <div className="gallery-grid" style={{ gap: 8 }}>
@@ -269,7 +288,7 @@ export default function Album() {
 
       {lightbox && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(10, 15, 25, 0.92)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}
+          className="content-lightbox"
           onClick={() => setLightbox(null)}
           role="dialog"
           aria-modal="true"
@@ -278,22 +297,36 @@ export default function Album() {
           <button
             type="button"
             aria-label="Close"
-            title="Close"
+            title="Close (Esc)"
             autoFocus
-            style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'rgba(255,255,255,0.75)', cursor: 'pointer', padding: 8, minWidth: 40, minHeight: 40 }}
+            className="content-lightbox-btn"
+            style={{ top: 12, right: 12 }}
           >
             <X size={24} />
           </button>
+          {photos.length > 1 && lightIdx >= 0 && (
+            <>
+              <button type="button" aria-label="Previous photo" className="content-lightbox-btn content-lightbox-prev"
+                onClick={(e) => { e.stopPropagation(); step(-1) }}>
+                <ChevronLeft size={28} />
+              </button>
+              <button type="button" aria-label="Next photo" className="content-lightbox-btn content-lightbox-next"
+                onClick={(e) => { e.stopPropagation(); step(1) }}>
+                <ChevronRight size={28} />
+              </button>
+            </>
+          )}
           <img
             src={photoSrc(lightbox)}
             alt={lightbox.caption || ''}
+            onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
           />
-          {lightbox.caption && (
-            <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.85)', fontSize: 14, padding: '0 16px' }}>
-              {lightbox.caption}
-            </div>
-          )}
+          {/* Working Memory: where you are in the album, with the caption */}
+          <div className="content-lightbox-caption">
+            {photos.length > 1 && lightIdx >= 0 && <span className="asw-num">{lightIdx + 1} / {photos.length}</span>}
+            {lightbox.caption && <span>{lightbox.caption}</span>}
+          </div>
         </div>
       )}
 

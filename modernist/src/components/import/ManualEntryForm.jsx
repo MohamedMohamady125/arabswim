@@ -7,6 +7,8 @@ import {
 import { getCountries, getEvents, getFinaPointsPreview } from '../../api/core'
 import { POOL_TYPES, parseTime, formatDate } from '../../utils'
 import MeetProgramEditor from '../MeetProgramEditor'
+import { Link } from 'react-router-dom'
+import { Done } from '../ui'
 
 const dropdownStyle = {
   position: 'absolute', zIndex: 10, width: '100%', background: 'var(--color-bg)',
@@ -259,6 +261,8 @@ export default function ManualEntryForm({ onComplete }) {
       }
       await addChampionshipResult(selectedChamp.id, payload)
       setSuccess({
+        swimmer_id: selectedSwimmer.id,
+        championship_id: selectedChamp.id,
         swimmer_name: selectedSwimmer.name,
         championship_name: selectedChamp.name,
         event_name: events.find((e) => e.id === parseInt(resultForm.event))?.name || '',
@@ -278,26 +282,43 @@ export default function ManualEntryForm({ onComplete }) {
     setSuccess(null)
   }
 
+  // "Done" used to do nothing visible (it only re-selected the same tab and
+  // left the success panel up). It now clears everything for a fresh entry.
   const handleDone = () => {
+    handleAddAnother()
+    setSelectedSwimmer(null)
+    setSelectedChamp(null)
+    setSwimmerQuery('')
+    setChampQuery('')
     if (onComplete) onComplete()
   }
 
   if (success) {
+    // Peak-End Rule: a clear finish, what was saved, and the three things people do next
     return (
-      <div role="status" style={{ border: '1px solid var(--asw-fast)', padding: 32, textAlign: 'center' }}>
-        <div className="kicker" style={{ color: 'var(--asw-fast)', marginBottom: 12 }}>Result added</div>
-        <div style={{ fontSize: 13, marginBottom: 20 }}>
-          <p style={{ fontWeight: 700, margin: '0 0 4px' }}>{success.swimmer_name}</p>
-          <p style={{ margin: '0 0 4px' }}>{success.event_name} — <span className="asw-time">{success.time}</span></p>
-          <p className="text-muted" style={{ margin: 0 }}>{success.championship_name}</p>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-          <button type="button" className="btn btn-primary" onClick={handleAddAnother}>Add another result</button>
-          <button type="button" className="btn btn-secondary" onClick={handleDone}>Done</button>
+      <div style={{ maxWidth: 640 }}>
+        <Done title="Result added">
+          <strong style={{ color: 'var(--color-text)' }}>{success.swimmer_name}</strong> — {success.event_name}{' '}
+          <span className="asw-time">{success.time}</span>
+          <br />{success.championship_name}
+        </Done>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
+          <button type="button" className="btn btn-primary" onClick={handleAddAnother}>Add another for this swimmer and meet</button>
+          <button type="button" className="btn btn-secondary" onClick={handleDone}>Start a new entry</button>
+          {success.swimmer_id && <Link className="btn btn-ghost" style={{ textDecoration: 'none' }} to={`/swimmers/${success.swimmer_id}`}>View swimmer profile →</Link>}
+          {success.championship_id && <Link className="btn btn-ghost" style={{ textDecoration: 'none' }} to={`/meets/${success.championship_id}`}>View meet →</Link>}
         </div>
       </div>
     )
   }
+
+  // Zeigarnik Effect: the disabled button says what is still missing
+  const missing = [
+    !selectedSwimmer && 'swimmer',
+    !selectedChamp && 'championship',
+    !resultForm.event && 'event',
+    !resultForm.time && 'time',
+  ].filter(Boolean)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -679,7 +700,10 @@ export default function ManualEntryForm({ onComplete }) {
 
       {/* Submit — the error is repeated here because the top of this long form may be off screen */}
       {error && <div className="error-box">{error}</div>}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        {missing.length > 0 && (
+          <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>Still needed: {missing.join(', ')}</span>
+        )}
         <button type="button" className="btn btn-primary" onClick={handleSubmit}
           disabled={loading || !selectedSwimmer || !selectedChamp || !resultForm.event || !resultForm.time}>
           {loading ? 'Adding result…' : 'Add result'}

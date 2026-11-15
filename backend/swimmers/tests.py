@@ -418,3 +418,95 @@ class SwimmerListOrderingTests(TestCase):
         resp = APIClient().get('/api/v1/swimmers/')
         names = [s['name'] for s in resp.data['results']]
         self.assertEqual(names, ['Aly Known', 'Zein Known', 'Adam Unknown'])
+
+
+class SwimmerSearchTests(TestCase):
+    """Search forgives case, spacing, accents, word order and split surnames."""
+
+    @classmethod
+    def setUpTestData(cls):
+        tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        Swimmer.objects.create(name='Ahmed Ayoub HAFNAOUI', nationality=tun, sex='M')
+        Swimmer.objects.create(name='Marwan ELKAMASH', nationality=tun, sex='M')
+        Swimmer.objects.create(name='Sara OTHER', nationality=tun, sex='F')
+
+    def names(self, url, **params):
+        resp = APIClient().get(url, params)
+        rows = resp.data['results'] if isinstance(resp.data, dict) else resp.data
+        return [s['name'] for s in rows]
+
+    def test_list_search_is_forgiving(self):
+        for q in ('hafnaoui ahmed', '  AHMED   hafnaoui ', 'hafnaóui', 'el kamash', 'marwan el kamash'):
+            self.assertEqual(len(self.names('/api/v1/swimmers/', search=q)), 1, q)
+        self.assertEqual(self.names('/api/v1/swimmers/', search='zzz'), [])
+        self.assertEqual(len(self.names('/api/v1/swimmers/', search='')), 3)
+
+    def test_quick_search_is_forgiving(self):
+        self.assertEqual(self.names('/api/v1/swimmers/search/', q='hafnaoui ahmed'), ['Ahmed Ayoub HAFNAOUI'])
+        self.assertEqual(self.names('/api/v1/swimmers/search/', q='el kamash'), ['Marwan ELKAMASH'])
+
+    def test_letter_filter(self):
+        self.assertEqual(self.names('/api/v1/swimmers/', letter='m'), ['Marwan ELKAMASH'])
+
+
+class SwimmerRankingsTests(TestCase):
+    """rankings/ ranks the swimmer's best per event in national, GCC and Arab
+    scopes (one field query), with an age-band rank for juniors."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Event
+        from championships.models import Championship, Result
+        ksa = Country.objects.create(name='Saudi Arabia', code='KSA', region='GCC')
+        uae = Country.objects.create(name='UAE', code='UAE', region='GCC')
+        egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        fra = Country.objects.create(name='France', code='FRA', region='OTHER')
+        free = Event.objects.create(name='100 M Freestyle', distance=100,
+                                    stroke='Freestyle', is_relay=False)
+        year = date.today().year
+        cls.sw = Swimmer.objects.create(name='Me KSA', nationality=ksa, sex='M', birth_year=year - 13)
+        mates = [
+            Swimmer.objects.create(name='Older KSA', nationality=ksa, sex='M', birth_year=year - 20),
+            Swimmer.objects.create(name='Fast UAE', nationality=uae, sex='M', birth_year=year - 13),
+            Swimmer.objects.create(name='Fast EGY', nationality=egy, sex='M', birth_year=year - 12),
+            Swimmer.objects.create(name='Fast FRA', nationality=fra, sex='M', birth_year=year - 13),
+            Swimmer.objects.create(name='Girl KSA', nationality=ksa, sex='F', birth_year=year - 13),
+            Swimmer.objects.create(name='Slow KSA', nationality=ksa, sex='M', birth_year=year - 13),
+        ]
+        meet = Championship.objects.create(name='M', date=date(year, 1, 5), pool='LCM', country=ksa)
+        mk = lambda s, t, **kw: Result.objects.create(
+            swimmer=s, championship=meet, event=free, round_type='Finals', time_centiseconds=t, **kw)
+        mk(cls.sw, 6000); mk(cls.sw, 6200)
+        for s, t in zip(mates, (5500, 5600, 5700, 5000, 5100, 6500)):
+            mk(s, t)
+        mk(mates[5], 5000, is_hc=True)  # hors concours never counts
+
+    def test_scopes_and_age_band(self):
+        resp = APIClient().get(f'/api/v1/swimmers/{self.sw.id}/rankings/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        row = resp.data[0]
+        self.assertEqual(row['best_time'], '1:00.00')
+        r = row['rankings']
+        self.assertEqual({k: (v['rank'], v['total']) for k, v in r.items()},
+                         {'national': (2, 3), 'gcc': (3, 4), 'arab': (4, 5)})
+        self.assertEqual({k: (v['age']['rank'], v['age']['total']) for k, v in r.items()},
+                         {'national': (1, 2), 'gcc': (2, 3), 'arab': (3, 4)})
+        self.assertEqual(r['national']['age']['label'], 'U14')
+
+
+class BadParamTests(TestCase):
+    """Hand-edited query strings answer cleanly instead of a server error."""
+
+    @classmethod
+    def setUpTestData(cls):
+        egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        cls.sw = Swimmer.objects.create(name='Aly Known', nationality=egy, sex='M')
+
+    def test_no_server_errors(self):
+        c = APIClient()
+        self.assertEqual(c.get('/api/v1/swimmers/?nationality=abc').data['count'], 0)
+        self.assertEqual(c.get('/api/v1/swimmers/search/?q=a&nationality=abc').data, [])
+        self.assertEqual(c.get('/api/v1/swimmers/compare/?ids=abc,1').status_code, 400)
+        self.assertEqual(c.get(f'/api/v1/swimmers/{self.sw.id}/ranking-history/?event=abc').status_code, 200)
+        self.assertEqual(c.get(f'/api/v1/swimmers/{self.sw.id}/qualifying-gaps/?standard=abc').status_code, 200)

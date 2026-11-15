@@ -9,6 +9,10 @@ import { mediaUrl } from '../utils'
 
 const MAX = 5
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
+// Mental Model: pools in swimmers' words
+const POOL_WORDS = { LCM: '50m pool', SCM: '25m pool', OW: 'Open water' }
+const poolWord = (p) => POOL_WORDS[p] || p
+const gapText = (cs) => `${(cs / 100).toFixed(2)}s`
 
 export default function Compare() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -19,6 +23,7 @@ export default function Compare() {
   const [data, setData] = useState(null) // { swimmers, rows }
   const [loading, setLoading] = useState(false)
   const [shuffling, setShuffling] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const debounceRef = useRef(null)
   const boxRef = useRef(null)
   const hydratedRef = useRef(false)
@@ -87,13 +92,15 @@ export default function Compare() {
     debounceRef.current = setTimeout(() => {
       searchSwimmers(q.trim())
         .then((res) => {
-          const l = list(res.data).filter((s) => !s.is_relay_team)
+          // already-picked swimmers are left out, so every row in the list can be added
+          const l = list(res.data).filter((s) => !s.is_relay_team && !selected.some((x) => x.id === s.id))
           setResults(l.slice(0, 8))
           setOpen(true)
         })
         .catch(() => setResults([]))
     }, 350)
     return () => clearTimeout(debounceRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q])
 
   useEffect(() => {
@@ -170,7 +177,7 @@ export default function Compare() {
     }
     load()
     return () => { alive = false }
-  }, [selected])
+  }, [selected, reloadKey])
 
   // only events every selected swimmer has actually swum
   const sharedRows = useMemo(
@@ -180,7 +187,7 @@ export default function Compare() {
 
   return (
     <div>
-      <PageHead kicker="People" title="Compare Swimmers" sub={`Pick up to ${MAX} swimmers to compare personal bests side by side.`} />
+      <PageHead kicker="People" title="Compare Swimmers" sub={`Pick 2 to ${MAX} swimmers to compare personal bests side by side.`} />
 
       {/* picker */}
       {/* phone: match the 16px page gutter so the picker aligns with the face-off card below */}
@@ -231,7 +238,7 @@ export default function Compare() {
           disabled={shuffling}
           onClick={() => { setSelected([]); randomMatchup() }}
         >
-          {shuffling ? 'Drawing…' : '⚡ Random face-off'}
+          {shuffling ? 'Drawing…' : 'Random face-off'}
         </button>
         </div>
         {selected.length > 0 && (
@@ -256,11 +263,20 @@ export default function Compare() {
       </div>
 
       {selected.length < 2 ? (
-        shuffling ? <Loading label="Drawing a face-off" /> : <Empty label="Select at least two swimmers" hint="Search for a swimmer above to add them, or draw a random face-off." />
+        shuffling ? <Loading label="Drawing a face-off" /> : selected.length === 1 ? (
+          // Goal-Gradient: one picked, one to go
+          <Empty label="Add one more swimmer" hint={`${selected[0].name} is in. Search above for a swimmer to compare with.`} />
+        ) : (
+          <Empty label="Pick two swimmers to compare" hint="Search for a swimmer above to add them, or draw a random face-off.">
+            <button type="button" className="btn btn-secondary" onClick={randomMatchup}>Random face-off</button>
+          </Empty>
+        )
       ) : loading ? (
         <Loading label="Comparing" />
       ) : !data || data.swimmers.length === 0 ? (
-        <Empty label="Comparison unavailable" hint="The comparison could not be loaded. Check your connection, or remove a swimmer and add them again." />
+        <Empty label="The comparison could not be loaded" hint="Check your connection and try again.">
+          <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+        </Empty>
       ) : (
         <div className="pad">
           {/* face-off header — the marketable bit: faces, flags, gold VS */}
@@ -305,6 +321,12 @@ export default function Compare() {
                 {pb?.best_time || <span className="text-muted">—</span>}
               </div>
             )
+            // Serial Position + Peak-End: the verdict (events won) leads the board
+            const wins = sharedRows.reduce((w, row) => {
+              const x = row.times[a.id]?.best_cs, y = row.times[b.id]?.best_cs
+              if (x != null && y != null && x !== y) w[x < y ? 0 : 1] += 1
+              return w
+            }, [0, 0])
             return (
               <div className="vs-board">
                 {/* header: names anchored to their side, matching the face-off above */}
@@ -319,6 +341,16 @@ export default function Compare() {
                     <Flag code={b.nationality_code} name={b.nationality} />
                   </div>
                 </div>
+                {sharedRows.length > 0 && (
+                  <div className="vs-row">
+                    <div className={`vs-left asw-num ${wins[0] > wins[1] ? 'vs-win' : ''}`} style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{wins[0]}</div>
+                    <div className="vs-mid">
+                      <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 12 }}>Events won</div>
+                      <div className="micro">of {sharedRows.length} in common</div>
+                    </div>
+                    <div className={`vs-right asw-num ${wins[1] > wins[0] ? 'vs-win' : ''}`} style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{wins[1]}</div>
+                  </div>
+                )}
                 {(a.best_fina != null || b.best_fina != null) && (
                   <div className="vs-row">
                     <div className={`vs-left asw-num ${a.best_fina != null && a.best_fina >= (b.best_fina ?? -1) ? 'vs-win' : ''}`}>{a.best_fina ?? '—'}</div>
@@ -337,14 +369,14 @@ export default function Compare() {
                       {timeCell(pa, aWin, 'left')}
                       <div className="vs-mid">
                         <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 12 }}>{row.event_name}</div>
-                        <div className="micro">{row.pool}</div>
+                        <div className="micro">{poolWord(row.pool)}{both && pa.best_cs !== pbb.best_cs ? ` · gap ${gapText(Math.abs(pa.best_cs - pbb.best_cs))}` : ''}</div>
                       </div>
                       {timeCell(pbb, bWin, 'right')}
                     </div>
                   )
                 })}
                 {sharedRows.length === 0 && (
-                  <div className="vs-row"><div /><div className="vs-mid">No shared events — these swimmers have not swum the same events</div><div /></div>
+                  <div className="vs-row"><div /><div className="vs-mid" style={{ maxWidth: 'none' }}>No events in common yet. Swap one swimmer, or draw a random face-off.</div><div /></div>
                 )}
               </div>
             )
@@ -375,13 +407,25 @@ export default function Compare() {
                     ))}
                   </tr>
                 )}
+                {sharedRows.length > 0 && (
+                  <tr>
+                    <td className="micro">Events won</td>
+                    {data.swimmers.map((sw) => {
+                      const n = sharedRows.filter((row) => {
+                        const vals = data.swimmers.map((x) => row.times[x.id]?.best_cs).filter((v) => v != null)
+                        return vals.length > 1 && row.times[sw.id]?.best_cs === Math.min(...vals)
+                      }).length
+                      return <td key={sw.id} className="time asw-num" style={{ fontWeight: 800 }}>{n}</td>
+                    })}
+                  </tr>
+                )}
                 {sharedRows.map((row) => {
                   const values = data.swimmers.map((sw) => row.times[sw.id]?.best_cs).filter((v) => v != null)
                   const best = values.length ? Math.min(...values) : null
                   return (
                     <tr key={row.key}>
                       <td style={{ fontWeight: 600 }}>
-                        {row.event_name} <span className="text-muted" style={{ fontWeight: 400, fontSize: 12 }}>{row.pool}</span>
+                        {row.event_name} <span className="text-muted" style={{ fontWeight: 400, fontSize: 12 }}>{poolWord(row.pool)}</span>
                       </td>
                       {data.swimmers.map((sw) => {
                         const pb = row.times[sw.id]
@@ -401,7 +445,7 @@ export default function Compare() {
                   )
                 })}
                 {sharedRows.length === 0 && (
-                  <tr><td colSpan={1 + data.swimmers.length} className="text-muted" style={{ textAlign: 'center', padding: 24 }}>No shared events — these swimmers have not swum the same events</td></tr>
+                  <tr><td colSpan={1 + data.swimmers.length} className="text-muted" style={{ textAlign: 'center', padding: 24 }}>No event has been swum by all {data.swimmers.length} swimmers. Remove one to see more.</td></tr>
                 )}
               </tbody>
             </table>

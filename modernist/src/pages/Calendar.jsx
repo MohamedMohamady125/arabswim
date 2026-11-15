@@ -11,7 +11,7 @@ import { getCountries } from '../api/core'
 import { getSwimmerBirthdays } from '../api/swimmers'
 import Flag from '../components/Flag'
 import MeetProgramEditor from '../components/MeetProgramEditor'
-import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
+import { PageHead, Loading, Empty, Seg, SectHead, FilterBar, ShowMore } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { CropUpload } from '../components/ImageCropper'
 import { formatDate, formatDateRange, mediaUrl, MONTHS_FULL } from '../utils'
@@ -168,30 +168,30 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
     <Modal open title="Edit Meet" onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="field">
-          <label>Meet name *</label>
-          <input className="input" aria-label="Meet name" type="text" required value={form.name} onChange={set('name')} />
+          <label htmlFor="cal-f1">Meet name *</label>
+          <input id="cal-f1" className="input" aria-label="Meet name" type="text" required value={form.name} onChange={set('name')} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
-            <label>Start date *</label>
-            <input className="input" aria-label="Start date" type="date" required value={form.date} onChange={set('date')} />
+            <label htmlFor="cal-f2">Start date *</label>
+            <input id="cal-f2" className="input" aria-label="Start date" type="date" required value={form.date} onChange={set('date')} />
           </div>
           <div className="field">
-            <label>End date</label>
-            <input className="input" aria-label="End date" type="date" value={form.end_date} min={form.date || undefined} onChange={set('end_date')} />
+            <label htmlFor="cal-f3">End date</label>
+            <input id="cal-f3" className="input" aria-label="End date" type="date" value={form.end_date} min={form.date || undefined} onChange={set('end_date')} />
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
-            <label>Country</label>
-            <select className="select" aria-label="Country" value={form.country} onChange={set('country')}>
+            <label htmlFor="cal-f4">Country</label>
+            <select id="cal-f4" className="select" aria-label="Country" value={form.country} onChange={set('country')}>
               <option value="">Select country</option>
               {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="field">
-            <label>Pool</label>
-            <select className="select" aria-label="Pool" value={form.pool} onChange={set('pool')}>
+            <label htmlFor="cal-f5">Pool</label>
+            <select id="cal-f5" className="select" aria-label="Pool" value={form.pool} onChange={set('pool')}>
               <option value="LCM">Long Course (50m)</option>
               <option value="SCM">Short Course (25m)</option>
             </select>
@@ -199,30 +199,30 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
-            <label>Open / Age Group</label>
-            <select className="select" aria-label="Open / Age Group" value={form.meet_category} onChange={set('meet_category')}>
+            <label htmlFor="cal-f6">Open / Age Group</label>
+            <select id="cal-f6" className="select" aria-label="Open / Age Group" value={form.meet_category} onChange={set('meet_category')}>
               <option value="">Not set</option>
               <option value="OPEN">Open</option>
               <option value="AGE_GROUP">Age Group</option>
             </select>
           </div>
           <div className="field">
-            <label>Location</label>
-            <input className="input" aria-label="Location" type="text" value={form.location} onChange={set('location')} placeholder="City / venue" />
+            <label htmlFor="cal-f7">Location</label>
+            <input id="cal-f7" className="input" aria-label="Location" type="text" value={form.location} onChange={set('location')} placeholder="City / venue" />
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
-            <label>Category</label>
-            <select className="select" aria-label="Category" value={form.classification_category}
+            <label htmlFor="cal-f8">Category</label>
+            <select id="cal-f8" className="select" aria-label="Category" value={form.classification_category}
               onChange={(e) => setForm({ ...form, classification_category: e.target.value, classification: '', sub_classification: '' })}>
               <option value="">Select category</option>
               {classCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="field">
-            <label>Classification</label>
-            <select className="select" aria-label="Classification" value={form.classification}
+            <label htmlFor="cal-f9">Classification</label>
+            <select id="cal-f9" className="select" aria-label="Classification" value={form.classification}
               onChange={(e) => setForm({ ...form, classification: e.target.value, sub_classification: '' })}>
               <option value="">Select classification</option>
               {classifications
@@ -233,28 +233,28 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
         </div>
         {subClassifications.length > 0 && (
           <div className="field">
-            <label>Sub-classification</label>
-            <select className="select" aria-label="Sub-classification" value={form.sub_classification} onChange={set('sub_classification')}>
+            <label htmlFor="cal-f10">Sub-classification</label>
+            <select id="cal-f10" className="select" aria-label="Sub-classification" value={form.sub_classification} onChange={set('sub_classification')}>
               <option value="">None</option>
               {subClassifications.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
         )}
         <div className="field">
-          <label>Website</label>
-          <input className="input" aria-label="Website" type="url" value={form.website} onChange={set('website')} placeholder="https://…" />
+          <label htmlFor="cal-f11">Website</label>
+          <input id="cal-f11" className="input" aria-label="Website" type="url" value={form.website} onChange={set('website')} placeholder="https://…" />
         </div>
         <div className="field">
-          <label>Live results URL</label>
-          <input className="input" aria-label="Live results URL" type="url" value={form.live_results_url} onChange={set('live_results_url')} placeholder="https://…" />
+          <label htmlFor="cal-f12">Live results URL</label>
+          <input id="cal-f12" className="input" aria-label="Live results URL" type="url" value={form.live_results_url} onChange={set('live_results_url')} placeholder="https://…" />
         </div>
         <div className="field">
-          <label>Registration link</label>
-          <input className="input" aria-label="Registration link" type="url" value={form.registration_url} onChange={set('registration_url')} placeholder="https://…" />
+          <label htmlFor="cal-f13">Registration link</label>
+          <input id="cal-f13" className="input" aria-label="Registration link" type="url" value={form.registration_url} onChange={set('registration_url')} placeholder="https://…" />
         </div>
         <div className="field">
-          <label>Entry pack (PDF{meet.meet_guide_pdf ? ' — uploaded, choose a file to replace' : ''})</label>
-          <input className="input" type="file" aria-label="Entry pack PDF" accept=".pdf,application/pdf" onChange={(e) => setPackFile(e.target.files?.[0] || null)} />
+          <label htmlFor="cal-f14">Entry pack (PDF{meet.meet_guide_pdf ? ' — uploaded, choose a file to replace' : ''})</label>
+          <input id="cal-f14" className="input" type="file" aria-label="Entry pack PDF" accept=".pdf,application/pdf" onChange={(e) => setPackFile(e.target.files?.[0] || null)} />
         </div>
         <div className="field">
           <label>Meet photo{meet.meet_photo ? ' (uploaded, choose a file to replace)' : ''}</label>
@@ -355,6 +355,52 @@ function BirthdaysTab() {
     pool.filter((s) => s.day === d.getDate()).forEach((s) => upcoming.push({ ...s, when: d }))
   }
 
+  const todayChip = (s) => (
+    <Link key={s.id} to={`/swimmers/${s.id}`} className="btn btn-secondary">
+      {s.name}{s.age > 0 ? ` · turns ${s.age}` : ''}
+    </Link>
+  )
+  const weekChip = (s, i) => (
+    <Link key={`${s.id}-${i}`} to={`/swimmers/${s.id}`} className="btn btn-secondary">
+      {s.name}
+      <span className="micro" style={{ marginLeft: 6 }}>{s.when.getDate()} {MONTH_SHORT[s.when.getMonth()]}</span>
+    </Link>
+  )
+  // month list: grouped by day, names A–Z inside a day
+  const byDay = new Map()
+  thisMonth.forEach((b) => { if (!byDay.has(b.day)) byDay.set(b.day, []); byDay.get(b.day).push(b) })
+  byDay.forEach((arr) => arr.sort((x, y) => String(x.name).localeCompare(String(y.name))))
+  const allDays = [...byDay.keys()].sort((x, y) => x - y)
+  const daysAhead = allDays.filter((d) => d >= now.getDate())
+  const daysEarlier = allDays.filter((d) => d < now.getDate())
+  const birthdayRow = (b) => (
+    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 32 }}>
+      <Link to={`/swimmers/${b.id}`} style={{ padding: '7px 0', color: 'inherit', textDecoration: 'none', fontSize: 13, flex: 1, minWidth: 0 }}>{b.name}</Link>
+      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', flex: 'none' }}>
+        {b.nationality}{b.age > 0 ? ` · ${b.age}` : ''}
+      </span>
+    </div>
+  )
+  const dayBlock = (day) => {
+    const arr = byDay.get(day)
+    return (
+      <div key={day} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--color-divider)' }}>
+        <div style={{ width: 40, flex: 'none', textAlign: 'center' }}>
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1.1, color: 'var(--color-accent)' }}>{day}</div>
+          <div className="micro" style={{ fontSize: 10.5 }}>{day === now.getDate() ? 'Today' : MONTH_SHORT[now.getMonth()]}</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {arr.slice(0, 6).map(birthdayRow)}
+          {arr.length > 6 && (
+            <ShowMore label={`${arr.length - 6} more`}>
+              {arr.slice(6).map(birthdayRow)}
+            </ShowMore>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 380px' }}>
       <div className="rule-r">
@@ -364,11 +410,9 @@ function BirthdaysTab() {
             <div className="text-muted" style={{ fontSize: 13 }}>No birthdays today.</div>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {today.map((s) => (
-                <Link key={s.id} to={`/swimmers/${s.id}`} className="btn btn-secondary">
-                  {s.name}{s.age > 0 ? ` · turns ${s.age}` : ''}
-                </Link>
-              ))}
+              {/* Miller's Law: a dozen names up front, the rest on request */}
+              {today.slice(0, 12).map(todayChip)}
+              {today.length > 12 && <ShowMore label={`${today.length - 12} more today`}>{today.slice(12).map(todayChip)}</ShowMore>}
             </div>
           )}
         </div>
@@ -378,12 +422,8 @@ function BirthdaysTab() {
             <div className="text-muted" style={{ fontSize: 13 }}>No birthdays in the coming week.</div>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {upcoming.map((s, i) => (
-                <Link key={`${s.id}-${i}`} to={`/swimmers/${s.id}`} className="btn btn-secondary">
-                  {s.name}
-                  <span className="micro" style={{ marginLeft: 6 }}>{s.when.getDate()} {MONTH_SHORT[s.when.getMonth()]}</span>
-                </Link>
-              ))}
+              {upcoming.slice(0, 12).map(weekChip)}
+              {upcoming.length > 12 && <ShowMore label={`${upcoming.length - 12} more this week`}>{upcoming.slice(12).map(weekChip)}</ShowMore>}
             </div>
           )}
         </div>
@@ -393,20 +433,20 @@ function BirthdaysTab() {
         {thisMonth.length === 0 ? (
           <div className="text-muted" style={{ fontSize: 13 }}>No birthdays this month.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {thisMonth.map((b, i) => (
-              <div
-                key={b.id}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10, borderBottom: i < thisMonth.length - 1 ? '1px solid var(--color-divider)' : 'none' }}
-              >
-                <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, width: 24, textAlign: 'center', flex: 'none' }}>{b.day}</span>
-                <Link to={`/swimmers/${b.id}`} style={{ padding: '7px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, same row height */, color: 'inherit', textDecoration: 'none', fontSize: 13, flex: 1 }}>{b.name}</Link>
-                <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                  {b.nationality}{b.age > 0 ? ` · ${b.age}` : ''}
-                </span>
-              </div>
-            ))}
-          </div>
+          <>
+            {/* Chunking: one block per day, in date order, starting today;
+                days already gone wait behind "Earlier this month" */}
+            <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
+              <span className="asw-num">{thisMonth.length}</span> swimmers · from today to the end of the month
+            </div>
+            {daysAhead.length === 0 && <div className="text-muted" style={{ fontSize: 13, marginBottom: 12 }}>No more birthdays this month.</div>}
+            {daysAhead.map(dayBlock)}
+            {daysEarlier.length > 0 && (
+              <ShowMore label={`Earlier this month (${daysEarlier.reduce((n, d) => n + byDay.get(d).length, 0)})`} lessLabel="Hide earlier days">
+                {daysEarlier.map(dayBlock)}
+              </ShowMore>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -432,7 +472,9 @@ export default function Calendar() {
   const [calEvents, setCalEvents] = useState([])
   const [countries, setCountries] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()))
+  const thisYear = String(new Date().getFullYear())
+  const [filterYear, setFilterYear] = useState(thisYear)
+  const [meetsFailed, setMeetsFailed] = useState(false)
   const [filterCountry, setFilterCountry] = useState('')
   const [expandedMeetId, setExpandedMeetId] = useState(null)
   const [editLinksMeet, setEditLinksMeet] = useState(null)
@@ -482,8 +524,12 @@ export default function Calendar() {
     const params = { page_size: 500, ordering: 'date', include_calendar_only: 1, calendar_linked: 1 }
     if (filterYear) params.year = filterYear
     if (filterCountry) params.country = filterCountry
-    getChampionships(params).then((res) => setMeets(list(res.data))).catch(() => {})
+    setMeetsFailed(false)
+    getChampionships(params).then((res) => setMeets(list(res.data))).catch(() => setMeetsFailed(true))
   }
+  // "Clear" goes back to the default view (this year, every country)
+  const filtersActive = filterYear !== thisYear || !!filterCountry
+  const clearFilters = () => { setFilterYear(thisYear); setFilterCountry('') }
 
   const loadFeatured = () => {
     getChampionships({ upcoming: 1, ordering: 'date', page_size: 1, include_calendar_only: 1, calendar_linked: 1 })
@@ -534,10 +580,17 @@ export default function Calendar() {
 
   // Meets tab: championships + non-duplicate meet-type calendar events, grouped by month (latest first)
   const meetGroups = useMemo(() => {
+    // Mental Model + Serial Position: a calendar leads with what is coming,
+    // soonest first; what already happened follows, latest first.
     const grouped = {}
+    const day0 = new Date()
+    day0.setHours(0, 0, 0, 0)
     const push = (key, y, mo, entry) => {
-      if (!grouped[key]) grouped[key] = { year: y, month: mo, items: [] }
-      grouped[key].items.push(entry)
+      const end = parseMeetDate(entry.item.end_date) || entry.d
+      const part = end >= day0 ? 'u' : 'p'
+      const k = `${part}-${key}`
+      if (!grouped[k]) grouped[k] = { year: y, month: mo, part, items: [] }
+      grouped[k].items.push(entry)
     }
     meets.forEach((c) => {
       const d = parseMeetDate(c.date)
@@ -556,10 +609,20 @@ export default function Calendar() {
       if (filterYear && String(d.getFullYear()) !== filterYear && d < todayStart) return
       push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, d.getFullYear(), d.getMonth(), { kind: 'event', item: ev, d })
     })
-    return Object.entries(grouped)
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([key, g]) => ({ key, ...g, items: g.items.sort((a, b) => b.d - a.d) }))
+    const all = Object.entries(grouped).map(([key, g]) => ({ key, ...g }))
+    const upcoming = all.filter((g) => g.part === 'u')
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((g) => ({ ...g, items: g.items.sort((a, b) => a.d - b.d) }))
+    const past = all.filter((g) => g.part === 'p')
+      .sort((a, b) => b.key.localeCompare(a.key))
+      .map((g) => ({ ...g, items: g.items.sort((a, b) => b.d - a.d) }))
+    const count = (gs) => gs.reduce((n, g) => n + g.items.length, 0)
+    if (upcoming[0]) upcoming[0] = { ...upcoming[0], section: 'Upcoming', sectionCount: count(upcoming) }
+    // the "Past" heading is only needed to separate it from an Upcoming block
+    if (past[0] && upcoming.length) past[0] = { ...past[0], section: 'Past', sectionCount: count(past) }
+    return [...upcoming, ...past]
   }, [meets, calEvents, filterYear])
+  const meetCount = meetGroups.reduce((n, g) => n + g.items.length, 0)
 
   // Other events tab: CUSTOM calendar events (future always visible, past filtered by year)
   const otherEvents = useMemo(() => {
@@ -714,7 +777,7 @@ export default function Calendar() {
               {featured.kind === 'meet' && featured.item.country_detail ? `${featured.item.location ? ', ' : ''}${featured.item.country_detail.name}` : ''}
               {featured.kind === 'meet' && (featured.item.location || featured.item.country_detail) ? ' · ' : ''}
               {formatDateRange(featured.item.date, featured.item.end_date)}
-              {featured.kind === 'meet' && featured.item.pool ? ` · ${featured.item.pool}` : ''}
+              {featured.kind === 'meet' && featured.item.pool ? ` · ${featured.item.pool === 'LCM' ? '50m pool' : featured.item.pool === 'SCM' ? '25m pool' : featured.item.pool}` : ''}
               {featured.kind === 'event' && featured.item.description ? ` · ${featured.item.description}` : ''}
             </div>
             {isUpcomingFeatured && <Countdown target={featured.d.getTime()} />}
@@ -722,20 +785,29 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* tabs + filters */}
-      <div className="rule-b records-filters cal-filters" style={{ padding: '14px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Similarity: section tabs look like tabs; the filters get a bar of
+          their own (Common Region) with the count and a way back to the default */}
+      <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>
         <Seg
+          tabs
           options={[
             { value: 'meets', label: 'Meets' },
             { value: 'birthdays', label: 'Birthdays' },
-            { value: 'events', label: 'Other Events' },
+            { value: 'events', label: 'Other events' },
           ]}
           value={tab}
           onChange={setTab}
         />
-        {tab !== 'birthdays' && (
-          <>
-            <select className="select" aria-label="Year" style={{ width: 120 }} value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+      </div>
+      {tab !== 'birthdays' && (
+        <div className="meets-fb">
+          <FilterBar
+            count={tab === 'meets' ? (meetsFailed ? null : meetCount) : otherEvents.length}
+            noun={tab === 'meets' ? (meetCount === 1 ? 'meet' : 'meets') : (otherEvents.length === 1 ? 'event' : 'events')}
+            active={filtersActive}
+            onClear={clearFilters}
+          >
+            <select className="select" aria-label="Year" style={{ width: 130 }} value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
               <option value="">All years</option>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
@@ -745,25 +817,39 @@ export default function Calendar() {
                 {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             )}
-            {(filterYear || filterCountry) && (
-              <button type="button" className="btn btn-ghost" style={{ minHeight: 36 }} onClick={() => { setFilterYear(''); setFilterCountry('') }}>Clear</button>
-            )}
-          </>
-        )}
-      </div>
+          </FilterBar>
+        </div>
+      )}
 
       {/* ── Meets tab ── */}
       {tab === 'meets' && (
         <div>
-          {meetGroups.length === 0 && (
-            <Empty label="No competitions found" hint="Try a different year or country.">
-              {(filterYear || filterCountry) && (
-                <button type="button" className="btn btn-secondary" onClick={() => { setFilterYear(''); setFilterCountry('') }}>Show all years and countries</button>
-              )}
+          {/* Paradox of the Active User: every empty state names the next step */}
+          {meetGroups.length === 0 && (meetsFailed ? (
+            <Empty label="The calendar could not be loaded" hint="Check your connection and try again.">
+              <button type="button" className="btn btn-secondary" onClick={loadMeets}>Try again</button>
             </Empty>
-          )}
+          ) : (
+            <Empty
+              label={filterCountry ? 'No meets on the calendar for this country' : filterYear ? `No meets on the calendar for ${filterYear}` : 'No meets on the calendar yet'}
+              hint={isAdmin ? 'Add the next meet so swimmers can see what is coming.' : 'Upcoming meets appear here as soon as they are announced. Finished meets and their results are under Championships.'}
+            >
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {isAdmin && <button type="button" className="btn btn-secondary" onClick={() => setShowAddEvent(true)}>Add event</button>}
+                {(filterYear || filterCountry) && (
+                  <button type="button" className="btn btn-secondary" onClick={() => { setFilterYear(''); setFilterCountry('') }}>Show all years and countries</button>
+                )}
+                <Link className="btn btn-secondary" to="/championships">See meets and results</Link>
+              </div>
+            </Empty>
+          ))}
           {meetGroups.map((g) => (
             <div key={g.key} className="rule-b">
+              {g.section && (
+                <div className="pad" style={{ paddingBottom: 0 }}>
+                  <h2 className="kicker" style={{ margin: 0 }}>{g.section} <span className="asw-num" style={{ marginLeft: 6 }}>{g.sectionCount}</span></h2>
+                </div>
+              )}
               <div className="pad" style={{ paddingBottom: 10, display: 'flex', alignItems: 'baseline', gap: 12 }}>
                 <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.09em', textTransform: 'uppercase', padding: '6px 14px', display: 'inline-block' }}>
                   {MONTHS_FULL[g.month]} {g.year}
@@ -795,7 +881,7 @@ export default function Calendar() {
                             {' · '}{formatDateRange(c.date, c.end_date)}
                           </div>
                         </div>
-                        {c.pool && <span className="tag tag-neutral hide-mobile">{c.pool}</span>}
+                        {c.pool && <span className="tag tag-neutral hide-mobile" title={c.pool === 'LCM' ? 'Long course (50m pool)' : c.pool === 'SCM' ? 'Short course (25m pool)' : undefined}>{c.pool === 'LCM' ? '50m' : c.pool === 'SCM' ? '25m' : c.pool}</span>}
                         <span className="micro" aria-hidden="true" style={{ fontSize: 11, width: 12, textAlign: 'center' }}>{isExpanded ? '▴' : '▾'}</span>
                       </div>
                       {isExpanded && (
@@ -853,7 +939,11 @@ export default function Calendar() {
       {/* ── Other events tab ── */}
       {tab === 'events' && (
         <div>
-          {otherEvents.length === 0 && <Empty label="No custom events" hint={filterYear ? 'Try another year, or clear the year filter.' : 'Nothing has been added here yet.'} />}
+          {otherEvents.length === 0 && (
+            <Empty label={filterYear ? `No other events for ${filterYear}` : 'No other events yet'} hint="Camps, clinics, deadlines and other dates that are not meets appear here.">
+              {filterYear && <button type="button" className="btn btn-secondary" onClick={() => setFilterYear('')}>Show all years</button>}
+            </Empty>
+          )}
           {otherEvents.map(({ ev, d }, i) => (
             <div
               key={ev.id}
@@ -867,7 +957,7 @@ export default function Calendar() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{ev.title}</span>
-                  <span className="tag tag-outline">{ev.event_type}</span>
+                  {ev.event_type && ev.event_type !== 'CUSTOM' && <span className="tag tag-outline">{ev.event_type}</span>}
                 </div>
                 {ev.description && <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{ev.description}</div>}
                 {ev.end_date && ev.end_date !== ev.date && (
@@ -923,8 +1013,8 @@ export default function Calendar() {
         ) : (
         <form onSubmit={handleAddEvent} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="field">
-            <label>Type</label>
-            <select className="select" aria-label="Type" value={newEvent.event_type}
+            <label htmlFor="cal-f15">Type</label>
+            <select id="cal-f15" className="select" aria-label="Type" value={newEvent.event_type}
               onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}>
               <option value="MEET">Meet / Championship</option>
               <option value="BIRTHDAY">Birthday</option>
@@ -932,8 +1022,8 @@ export default function Calendar() {
             </select>
           </div>
           <div className="field">
-            <label>{newEvent.event_type === 'MEET' ? 'Meet name *' : newEvent.event_type === 'BIRTHDAY' ? 'Name *' : 'Title *'}</label>
-            <input className="input" type="text" required value={newEvent.title}
+            <label htmlFor="cal-f16">{newEvent.event_type === 'MEET' ? 'Meet name *' : newEvent.event_type === 'BIRTHDAY' ? 'Name *' : 'Title *'}</label>
+            <input id="cal-f16" className="input" type="text" required value={newEvent.title}
               aria-label={newEvent.event_type === 'MEET' ? 'Meet name' : newEvent.event_type === 'BIRTHDAY' ? 'Name' : 'Title'}
               onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
               placeholder={newEvent.event_type === 'MEET' ? 'e.g. Arab Swimming Championships 2026'
@@ -942,8 +1032,8 @@ export default function Calendar() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="field">
-              <label>Start date *</label>
-              <input className="input" aria-label="Start date" type="date" required value={newEvent.date}
+              <label htmlFor="cal-f17">Start date *</label>
+              <input id="cal-f17" className="input" aria-label="Start date" type="date" required value={newEvent.date}
                 onChange={(e) => {
                   const d = e.target.value
                   const updates = { date: d }
@@ -952,8 +1042,8 @@ export default function Calendar() {
                 }} />
             </div>
             <div className="field">
-              <label>End date</label>
-              <input className="input" aria-label="End date" type="date" value={newEvent.end_date} min={newEvent.date || undefined}
+              <label htmlFor="cal-f18">End date</label>
+              <input id="cal-f18" className="input" aria-label="End date" type="date" value={newEvent.end_date} min={newEvent.date || undefined}
                 onChange={(e) => setNewEvent({ ...newEvent, end_date: e.target.value })} />
             </div>
           </div>
@@ -961,16 +1051,16 @@ export default function Calendar() {
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="field">
-                  <label>Country *</label>
-                  <select className="select" aria-label="Country" required value={newEvent.country}
+                  <label htmlFor="cal-f19">Country *</label>
+                  <select id="cal-f19" className="select" aria-label="Country" required value={newEvent.country}
                     onChange={(e) => setNewEvent({ ...newEvent, country: e.target.value })}>
                     <option value="">Select country</option>
                     {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div className="field">
-                  <label>Pool</label>
-                  <select className="select" aria-label="Pool" value={newEvent.pool}
+                  <label htmlFor="cal-f20">Pool</label>
+                  <select id="cal-f20" className="select" aria-label="Pool" value={newEvent.pool}
                     onChange={(e) => setNewEvent({ ...newEvent, pool: e.target.value })}>
                     <option value="LCM">Long Course (50m)</option>
                     <option value="SCM">Short Course (25m)</option>
@@ -978,8 +1068,8 @@ export default function Calendar() {
                 </div>
               </div>
               <div className="field">
-                <label>Open / Age Group</label>
-                <select className="select" aria-label="Open / Age Group" value={newEvent.meet_category}
+                <label htmlFor="cal-f21">Open / Age Group</label>
+                <select id="cal-f21" className="select" aria-label="Open / Age Group" value={newEvent.meet_category}
                   onChange={(e) => setNewEvent({ ...newEvent, meet_category: e.target.value })}>
                   <option value="">Not set</option>
                   <option value="OPEN">Open</option>
@@ -987,23 +1077,23 @@ export default function Calendar() {
                 </select>
               </div>
               <div className="field">
-                <label>Location</label>
-                <input className="input" aria-label="Location" type="text" value={newEvent.location}
+                <label htmlFor="cal-f22">Location</label>
+                <input id="cal-f22" className="input" aria-label="Location" type="text" value={newEvent.location}
                   onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
                   placeholder="City / venue" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="field">
-                  <label>Category</label>
-                  <select className="select" aria-label="Category" value={newEvent.classification_category}
+                  <label htmlFor="cal-f23">Category</label>
+                  <select id="cal-f23" className="select" aria-label="Category" value={newEvent.classification_category}
                     onChange={(e) => setNewEvent({ ...newEvent, classification_category: e.target.value, classification: '', sub_classification: '' })}>
                     <option value="">Select category</option>
                     {classCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div className="field">
-                  <label>Classification</label>
-                  <select className="select" aria-label="Classification" value={newEvent.classification}
+                  <label htmlFor="cal-f24">Classification</label>
+                  <select id="cal-f24" className="select" aria-label="Classification" value={newEvent.classification}
                     onChange={(e) => setNewEvent({ ...newEvent, classification: e.target.value, sub_classification: '' })}>
                     <option value="">Select classification</option>
                     {classifications
@@ -1014,8 +1104,8 @@ export default function Calendar() {
               </div>
               {subClassifications.length > 0 && (
                 <div className="field">
-                  <label>Sub-classification</label>
-                  <select className="select" aria-label="Sub-classification" value={newEvent.sub_classification}
+                  <label htmlFor="cal-f25">Sub-classification</label>
+                  <select id="cal-f25" className="select" aria-label="Sub-classification" value={newEvent.sub_classification}
                     onChange={(e) => setNewEvent({ ...newEvent, sub_classification: e.target.value })}>
                     <option value="">None</option>
                     {subClassifications.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1030,8 +1120,8 @@ export default function Calendar() {
             </>
           )}
           <div className="field">
-            <label>Description</label>
-            <textarea className="input" aria-label="Description" rows={2} value={newEvent.description}
+            <label htmlFor="cal-f26">Description</label>
+            <textarea id="cal-f26" className="input" aria-label="Description" rows={2} value={newEvent.description}
               onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
               placeholder="Optional details…" style={{ resize: 'vertical' }} />
           </div>

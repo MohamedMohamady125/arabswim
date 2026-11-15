@@ -45,6 +45,8 @@ export default function MedalStandings({
   rowKey,                 // (row, i) => key
   onRowClick,             // optional (row) => void — row becomes clickable
   expandContent,          // optional (row) => node — rows toggle a dropdown panel
+  rankOf,                 // optional (row, i) => rank shown in the first column (default i + 1),
+                          // for filtered lists that must keep each row's real position
 }) {
   const [openKey, setOpenKey] = useState(null)
   if (!rows || rows.length === 0) return null
@@ -121,7 +123,7 @@ export default function MedalStandings({
                     } : undefined}
                     style={{ background: '#fff', cursor: (onRowClick || expandContent) ? 'pointer' : 'default' }}
                   >
-                    <td className="asw-num" style={{ ...td, fontWeight: 600, paddingRight: 4 }}>{i + 1}</td>
+                    <td className="asw-num" style={{ ...td, fontWeight: 600, paddingRight: 4 }}>{rankOf ? rankOf(r, i) : i + 1}</td>
                     {/* entity absorbs the leftover width; long names ellipsize
                         instead of forcing a horizontal scroll (same trick as
                         the results table's swimmer cell) */}

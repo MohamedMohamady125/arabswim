@@ -795,7 +795,38 @@ class CountryViewSet(viewsets.ModelViewSet):
                                .select_related('country', 'classification')
                                .order_by('-date'))
         championships_participated = []
-        for c in participated_champs:
+        # ?lite=1 → counts only, no per-championship athlete lists. Three
+        # grouped queries instead of three per championship; the pan-Arab
+        # profile drops from ~2.6 MB to a few KB here. Default (no param)
+        # keeps the full payload for clients that list the athletes.
+        lite = bool(request.query_params.get('lite'))
+        if lite:
+            res_by_champ = {
+                r['championship_id']: r for r in results_qs.values('championship_id').annotate(
+                    n=Count('id'),
+                    sw=Count('swimmer_id', filter=Q(swimmer__is_relay_team=False), distinct=True),
+                )
+            }
+            med_by_champ = {
+                m['championship_id']: m for m in medals_qs.values('championship_id').annotate(
+                    gold=Count('id', filter=Q(medal_type='GOLD')),
+                    silver=Count('id', filter=Q(medal_type='SILVER')),
+                    bronze=Count('id', filter=Q(medal_type='BRONZE')),
+                    total=Count('id'),
+                )
+            }
+            for c in participated_champs:
+                r = res_by_champ.get(c.id, {})
+                m = med_by_champ.get(c.id, {})
+                championships_participated.append({
+                    'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,
+                    'location': c.location,
+                    'classification': c.classification.name if c.classification else None,
+                    'results_count': r.get('n', 0),
+                    'swimmers_count': r.get('sw', 0),
+                    'medals': {k: m.get(k, 0) for k in ('gold', 'silver', 'bronze', 'total')},
+                })
+        for c in ([] if lite else participated_champs):
             c_medals = medals_qs.filter(championship=c)
             c_medal_counts = c_medals.aggregate(
                 gold=Count('id', filter=Q(medal_type='GOLD')),

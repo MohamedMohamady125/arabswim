@@ -1,12 +1,13 @@
 /* Referees directory — the same experience as the Coaches section
    (user rule 2026-11-08: "exactly like the coaches"), with officiating
    roles instead of coaching levels and an organization instead of a club. */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapPin, Briefcase, Award, Mail, Phone, AtSign, ExternalLink, FileText, ChevronDown } from 'lucide-react'
 import { getReferees, createReferee, updateReferee, deleteReferee } from '../api/referees'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Modal } from '../components/ui'
+import { Link } from 'react-router-dom'
+import { PageHead, Empty, Modal, FilterBar, Skeleton } from '../components/ui'
 import { CropUpload } from '../components/ImageCropper'
 import { useAuth } from '../context/AuthContext'
 import { mediaUrl } from '../utils'
@@ -169,6 +170,12 @@ export default function Referees() {
   const [failed, setFailed] = useState(false)
   const [notice, setNotice] = useState('')
   const debounceRef = useRef(null)
+  // The unfiltered directory, kept so the country list only offers countries
+  // that have someone in them and an empty directory is told apart from an
+  // empty search (Hick's Law, Paradox of the Active User)
+  const [directory, setDirectory] = useState(null)
+  const filtersOn = !!(search.trim() || country || level)
+  const clearFilters = () => { setSearch(''); setQuery(''); setCountry(''); setLevel('') }
 
   useEffect(() => {
     let alive = true
@@ -202,7 +209,9 @@ export default function Referees() {
       .then((res) => {
         if (!alive) return
         const d = res.data
-        setRows(Array.isArray(d) ? d : d?.results || [])
+        const got = Array.isArray(d) ? d : d?.results || []
+        setRows(got)
+        if (!query && !country && !level) setDirectory(got)
         setFailed(false)
       })
       .catch(() => { if (alive) { setRows([]); setFailed(true) } })
@@ -210,72 +219,84 @@ export default function Referees() {
     return () => { alive = false }
   }, [query, country, level, reloadKey])
 
+  const directoryEmpty = !filtersOn && !loading && !failed && rows.length === 0
+  // countries and roles that actually occur, Arab countries first
+  const countryOptions = useMemo(() => {
+    const have = new Set((directory || []).map((r) => r.nationality || r.nationality_detail?.id).filter(Boolean).map(String))
+    return directory && have.size ? countries.filter((c) => have.has(String(c.id))) : countries
+  }, [directory, countries])
+  const levelOptions = useMemo(() => Object.entries(ROLE_LABELS)
+    .map(([k, v]) => [k, v, (directory || []).filter((r) => r.level === k).length])
+    .filter(([, , n]) => n > 0 || !directory), [directory])
+
   return (
     <div>
-      <PageHead kicker="People" title="Referees" sub={`${rows.length} officials across Arab swimming.`} />
+      <PageHead kicker="People" title="Referees" sub="Officials working across Arab swimming." />
 
-      {/* filter bar */}
-      <div className="rule-b" style={{ padding: '16px 32px', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* Common Region: search, country and role in one bar with the result
+          count. Occam's Razor: no filters at all while the directory is empty. */}
+      {(directoryEmpty && !isAdmin) ? null : (
+      <FilterBar count={loading || directoryEmpty ? null : rows.length} noun={rows.length === 1 ? 'referee' : 'referees'} active={filtersOn} onClear={clearFilters}>
+        {!directoryEmpty && (<>
         <input
           className="input"
           type="search"
           aria-label="Search referees"
-          style={{ maxWidth: 320 }}
+          style={{ flex: '2 1 220px', width: 'auto', minWidth: 0, maxWidth: 320 }}
           placeholder="Search by name, organization, specialty…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          className="select"
-          aria-label="Filter by country"
-          style={{ maxWidth: 220 }}
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-        >
-          <option value="">All countries</option>
-          {countries.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        {(countryOptions.length > 1 || country) && (
+          <select
+            className="select"
+            aria-label="Filter by country"
+            style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }}
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+          >
+            <option value="">All countries</option>
+            {countryOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        )}
+        {(levelOptions.length > 1 || level) && (
+          <select
+            className="select"
+            aria-label="Filter by role"
+            style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }}
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+          >
+            <option value="">All roles</option>
+            {levelOptions.map(([k, v, n]) => (
+              <option key={k} value={k}>{v} ({n})</option>
+            ))}
+          </select>
+        )}
+        </>)}
         {isAdmin && (
           <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setModal({ referee: null })}>+ Add referee</button>
         )}
         {/* Peak-End Rule: confirm the save once the dialog has closed */}
         {notice && <span role="status" style={{ fontSize: 12, color: 'var(--asw-fast)' }}>{notice} ✓</span>}
-      </div>
-
-      {/* role filter chips */}
-      <div className="rule-b" style={{ padding: '12px 32px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <button
-          type="button"
-          className={level === '' ? 'tag tag-dark' : 'tag tag-neutral'}
-          aria-pressed={level === ''}
-          style={{ cursor: 'pointer', border: 0, font: 'inherit', minHeight: 32, display: 'inline-flex', alignItems: 'center' }}
-          onClick={() => setLevel('')}
-        >
-          All roles
-        </button>
-        {Object.entries(ROLE_LABELS).map(([k, v]) => (
-          <button
-            key={k}
-            type="button"
-            className={level === k ? 'tag tag-dark' : 'tag tag-neutral'}
-            aria-pressed={level === k}
-            style={{ cursor: 'pointer', border: 0, font: 'inherit', minHeight: 32, display: 'inline-flex', alignItems: 'center' }}
-            onClick={() => setLevel(level === k ? '' : k)}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
+      </FilterBar>
+      )}
 
       {loading ? (
-        <Loading label="Loading referees" />
+        <div className="pad"><Skeleton rows={4} height={64} /></div>
       ) : rows.length === 0 ? (
         failed ? (
           <Empty label="Could not load referees" hint="Check your connection and reload the page." />
+        ) : filtersOn ? (
+          <Empty label="No referees match" hint="Check the spelling, or clear the filters to see everyone.">
+            <button type="button" className="btn btn-secondary" onClick={clearFilters}>Clear filters</button>
+          </Empty>
         ) : (
-          <Empty label="No referees found" hint={(query || country || level) ? 'Try a different search or clear the filters.' : undefined} />
+          <Empty label="No referee profiles yet" hint={isAdmin ? 'Use “Add referee” above to create the first profile.' : 'Referees are being added. In the meantime, clubs and academies list their own staff.'}>
+            {!isAdmin && <Link to="/teams" className="btn btn-secondary">Browse clubs</Link>}
+          </Empty>
         )
       ) : (
         <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

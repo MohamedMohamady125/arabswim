@@ -32,6 +32,10 @@ class AlbumViewSet(viewsets.ModelViewSet):
         team = self.request.query_params.get('team')
         if team:
             qs = qs.filter(team_id=team)
+        # /media?championship=<id> (linked from meet pages) was ignored before
+        championship = self.request.query_params.get('championship')
+        if championship and str(championship).isdigit():
+            qs = qs.filter(championship_id=championship)
         return qs
 
     @action(detail=False, methods=['post'], url_path='for-championship')

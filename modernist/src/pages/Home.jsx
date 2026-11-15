@@ -5,7 +5,8 @@ import { getQuickStats, getLiveMeets } from '../api/championships'
 import { getNewRecords } from '../api/records'
 import QuickStatsView from '../components/QuickStatsView'
 import Flag from '../components/Flag'
-import { Loading, Empty } from '../components/ui'
+import { Loading, Empty, SectHead } from '../components/ui'
+import { useFeatures } from '../context/FeaturesContext'
 import { formatDate, formatDateRange } from '../utils'
 
 const GOLD = 'var(--asw-gold)'
@@ -16,6 +17,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [liveMeets, setLiveMeets] = useState([])
   const [newRecords, setNewRecords] = useState([])
+  const { flag } = useFeatures()
 
   useEffect(() => {
     getQuickStats()
@@ -74,6 +76,11 @@ export default function Home() {
               <Droplets size={13} /> {champ.pool === 'SCM' ? 'SCM (25m)' : 'LCM (50m)'}
             </span>
           </div>
+          {/* Von Restorff + Pareto: the one thing most visitors came for is the
+              single standout action; the gold title above reads as a heading, not a link */}
+          <Link to={`/meets/${champ.id}?tab=results`} className="btn" style={{ marginTop: 10, minHeight: 40, padding: '0 18px', background: '#fff', color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none' }}>
+            View full results →
+          </Link>
         </div>
       </header>
 
@@ -82,15 +89,22 @@ export default function Home() {
       {/* ── Latest records broken across the platform ── */}
       {newRecords.length > 0 && (
         <div className="container" style={{ padding: '4px 16px 44px' }}>
-          <div className="sect-head"><h4>Latest Records Broken</h4><span className="micro">Most recent national &amp; regional records across Arab swimming</span></div>
+          {/* Paradox of the Active User: the preview leads on to the full list */}
+          <SectHead title="Latest Records Broken" to={flag('new_records') ? '/new-records' : undefined} linkLabel="All new records">
+            <span className="micro hide-mobile" style={{ marginRight: 'auto' }}>Most recent national &amp; regional records across Arab swimming</span>
+          </SectHead>
           <div className="rule-t" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, paddingTop: 14 }}>
             {newRecords.slice(0, 8).map((r) => {
               const sw = r.swimmer_detail || {}
               const code = sw.nationality_detail?.code || r.country_detail?.code
-              const rtColor = r.record_type === 'ARAB' ? 'var(--color-accent-800)' : r.record_type === 'GCC' ? 'var(--color-accent)' : 'var(--color-accent-2)'
+              // contrast (WCAG AA) + Similarity: three books, three distinct pills —
+              // Arab navy, GCC mid blue (both white text), National pale blue with navy text
+              const pill = r.record_type === 'ARAB' ? { background: 'var(--color-accent-800)', color: '#fff' }
+                : r.record_type === 'GCC' ? { background: 'var(--color-accent-500)', color: '#fff' }
+                : { background: 'var(--color-accent-2-200)', color: 'var(--color-accent-800)' }
               return (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: '1px solid var(--color-divider)', borderRadius: 8, background: '#fff' }}>
-                  <span style={{ flex: 'none', minWidth: 42, textAlign: 'center', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em', color: '#fff', background: rtColor, borderRadius: 4, padding: '3px 5px' }}>{r.record_type}</span>
+                  <span style={{ flex: 'none', minWidth: 42, textAlign: 'center', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em', ...pill, borderRadius: 4, padding: '3px 5px' }}>{r.record_type}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13 }}>
                       <Flag code={code} name={sw.nationality_detail?.name} />
@@ -98,8 +112,9 @@ export default function Home() {
                         ? <Link to={`/swimmers/${sw.id}`} style={{ padding: '6px 0', margin: '-6px 0' /* Fitts's Law: 32px hit area, card height unchanged */, color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</Link>
                         : <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</span>}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.event_detail?.name}{r.pool ? ` · ${r.pool}` : ''}{r.result_date ? ` · ${formatDate(r.result_date)}` : ''}
+                    {/* wraps instead of cutting the date off on narrow cards */}
+                    <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 2, lineHeight: 1.35 }}>
+                      {r.swimmer_detail?.sex === 'F' ? "Women's " : r.swimmer_detail?.sex === 'M' ? "Men's " : ''}{r.event_detail?.name}{r.pool ? ` · ${r.pool}` : ''}{r.result_date ? ` · ${formatDate(r.result_date)}` : ''}
                     </div>
                   </div>
                   <div className="asw-time" style={{ flex: 'none', fontSize: 15, fontWeight: 800, color: 'var(--color-accent-800)' }}>{r.formatted_time}</div>

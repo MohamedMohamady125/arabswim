@@ -60,9 +60,9 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
         ) : scoped.length === 0 ? (
           <div className="text-muted" style={{ fontSize: 13 }}>No season history for this event yet. Pick another event above.</div>
         ) : (
-          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             {/* rank-per-season columns: rank 1 = full height */}
-            <div style={{ flex: '1 1 300px', display: 'flex', alignItems: 'flex-end', gap: 14, height: 150, borderBottom: '2px solid var(--color-divider)' }}>
+            <div style={{ flex: '1 1 300px', display: 'flex', alignItems: 'flex-end', gap: 16, height: 150, borderBottom: '2px solid var(--color-divider)' }}>
               {scoped.map((s) => {
                 const rk = s[scope]
                 const h = Math.max(22, 140 * (bestRank / Math.max(1, rk.rank)))
@@ -172,16 +172,16 @@ export default function RankingsTab({ swimmerId, swimmer }) {
           return (
             <div key={pool}>
               {/* Header bar */}
-              <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '8px 12px', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center' }}>
+              <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '8px 12px', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', textAlign: 'center' }}>
                 {scopeLabel[scope]} · {genderLabel} {eventName(selected)} · {pool}
               </div>
 
               {/* Hero rank + time */}
               <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '20px 0' }}>
-                <div style={{ background: 'var(--color-accent)', color: '#fff', padding: '10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <div style={{ background: 'var(--color-accent)', color: '#fff', padding: '10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <span style={{ display: 'flex', alignItems: 'flex-start' }}>
-                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 52, lineHeight: 1 }}>{sel.rank}</span>
-                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, marginLeft: 2, marginTop: 4 }}>{ordSuffix(sel.rank)}</span>
+                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 48, lineHeight: 1 }}>{sel.rank}</span>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, marginLeft: 2, marginTop: 4 }}>{ordSuffix(sel.rank)}</span>
                   </span>
                   {sel.total ? (
                     <span className="asw-num" style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
@@ -189,7 +189,7 @@ export default function RankingsTab({ swimmerId, swimmer }) {
                     </span>
                   ) : null}
                 </div>
-                <span className="asw-time" style={{ fontSize: 52, lineHeight: 1, color: 'var(--color-accent)' }}>{selected.best_time}</span>
+                <span className="asw-time" style={{ fontSize: 48, lineHeight: 1, color: 'var(--color-accent)' }}>{selected.best_time}</span>
               </div>
 
               {/* Event rows */}
@@ -202,12 +202,12 @@ export default function RankingsTab({ swimmerId, swimmer }) {
                       onClick={() => setSelectedEventId(r.event_id)}
                       className="hair-b"
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                        display: 'flex', alignItems: 'center', gap: 12, width: '100%',
                         padding: '10px 8px', border: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left',
                         background: isSel ? 'var(--color-accent-100)' : 'transparent',
                         color: isSel ? 'var(--color-accent)' : 'inherit',
                       }}>
-                      <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.08em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {eventName(r)}
                       </span>
                       <span className="asw-num" style={{ flex: 'none', fontSize: 12, fontWeight: 600, color: isSel ? 'var(--color-accent)' : 'var(--color-neutral-700)' }}>

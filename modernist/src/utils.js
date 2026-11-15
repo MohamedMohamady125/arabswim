@@ -151,3 +151,17 @@ export function formatNumber(n) {
   if (n == null) return '—'
   return Number(n).toLocaleString('en-US')
 }
+
+// Avatar letters for a person or club name. Arabic letters join into ligatures,
+// so several initials read as a broken word: an Arabic name shows one letter
+// (skipping the article "ال"). One word gives its first letters instead.
+export function nameInitials(name, max = 2) {
+  const words = String(name || '').replace(/[\u064B-\u065F\u0670]/g, '').trim().split(/\s+/).filter(Boolean)
+  if (!words.length) return '?'
+  if (/[\u0600-\u06FF]/.test(words[0])) {
+    const w = words.find((x) => !/^(نادي|اكاديمية|أكاديمية)$/.test(x)) || words[0]
+    return w.replace(/^ال/, '')[0] || w[0]
+  }
+  if (words.length === 1 && max > 2) return words[0].slice(0, max).toUpperCase()
+  return words.slice(0, max).map((w) => w[0]).join('').toUpperCase()
+}

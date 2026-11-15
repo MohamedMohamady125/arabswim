@@ -6,20 +6,12 @@ import { getCountries } from '../api/core'
 import { mergeSwimmers } from '../api/importer'
 import Flag from '../components/Flag'
 import { PageHead, notify, Empty, Pager, Seg, Modal, FilterBar, Skeleton, Stepper } from '../components/ui'
-import { mediaUrl } from '../utils'
+import { mediaUrl, nameInitials } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
 const PAGE_SIZE = 50
 
-function initials(name) {
-  return String(name || '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-}
+const initials = (name) => nameInitials(name)
 
 function Avatar({ photo, name, size = 34 }) {
   // portrait 4:5 box — the natural shape of a headshot, so faces are not
@@ -98,7 +90,7 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
   }
 
   const card = (swimmer, extra) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <Avatar photo={swimmer.photo} name={swimmer.name} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 13 }}>{swimmer.name}</div>
@@ -181,7 +173,7 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
                   key={s.id}
                   type="button"
                   onClick={() => pick(s)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-divider)', cursor: 'pointer', font: 'inherit' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-divider)', cursor: 'pointer', font: 'inherit' }}
                 >
                   <Avatar photo={s.photo} name={s.name} size={28} />
                   <span style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</span>
@@ -201,11 +193,11 @@ function MergeSwimmersModal({ onClose, onMerged, countries = [] }) {
       </div>
 
       {error && (
-        <div role="alert" style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
+        <div role="alert" style={{ marginTop: 12, border: '1px solid var(--asw-slow, var(--asw-slow))', color: 'var(--asw-slow, var(--asw-slow))', padding: '8px 12px', fontSize: 13 }}>{error}</div>
       )}
 
       {confirming ? (
-        <div style={{ marginTop: 16, border: '2px solid var(--color-text)', padding: 14 }}>
+        <div style={{ marginTop: 16, border: '2px solid var(--color-text)', padding: 16 }}>
           <div style={{ fontSize: 13, marginBottom: 12 }}>
             Merge {dupNames} into “{primary?.name}”? All results, records and medals will be transferred,
             and {duplicates.length > 1 ? 'these profiles' : dupNames} will be deleted. This cannot be undone.

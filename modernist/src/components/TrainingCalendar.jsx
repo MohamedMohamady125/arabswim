@@ -107,9 +107,9 @@ function SessionModal({ session, teamId, academyId, onClose, onSaved }) {
           Repeat weekly on this weekday for the rest of the month
         </label>
       )}
-      {err && <div role="alert" style={{ color: '#a8402f', fontSize: 12.5, marginBottom: 10 }}>{err}</div>}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-        {!isNew && <button type="button" className="btn" onClick={remove} disabled={busy} style={{ marginRight: 'auto', color: '#a8402f' }}>Delete</button>}
+      {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 13, marginBottom: 10 }}>{err}</div>}
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+        {!isNew && <button type="button" className="btn" onClick={remove} disabled={busy} style={{ marginRight: 'auto', color: 'var(--asw-slow)' }}>Delete</button>}
         <button type="button" className="btn" onClick={onClose} disabled={busy}>Cancel</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
       </div>
@@ -118,21 +118,21 @@ function SessionModal({ session, teamId, academyId, onClose, onSaved }) {
 }
 
 function DayWidget({ dateISO, sessions, canEdit, onClose, onEdit, onAdd }) {
-  const dayLabel = new Date(dateISO + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const dayLabel = new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', month: 'long', day: 'numeric' })
   return (
     <Modal title={dayLabel} onClose={onClose} width={440}>
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'grid', gap: 12 }}>
         {sessions.map((s) => (
           <div key={s.id} style={{
-            background: '#f2f7fc', border: '1px solid #dbe6f2', borderLeft: '4px solid var(--color-accent-800)',
-            borderRadius: 10, padding: '12px 14px',
+            background: 'var(--color-accent-2-100)', border: '1px solid var(--color-accent-2-200)', borderLeft: '4px solid var(--color-accent-800)',
+            borderRadius: 0, padding: '12px 16px',
           }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              <span className="asw-num" style={{ fontWeight: 900, fontSize: 17, color: NAVY }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+              <span className="asw-num" style={{ fontWeight: 800, fontSize: 16, color: NAVY }}>
                 {fmtTime(s.start_time)}{s.end_time ? ` – ${fmtTime(s.end_time)}` : ''}
               </span>
               {canEdit && (
-                <button type="button" className="btn" style={{ marginLeft: 'auto', padding: '2px 12px', fontSize: 11.5 }}
+                <button type="button" className="btn" style={{ marginLeft: 'auto', padding: '2px 12px', fontSize: 12 }}
                   aria-label={`Edit session at ${fmtTime(s.start_time)}`}
                   onClick={() => onEdit(s)}>Edit</button>
               )}
@@ -142,7 +142,7 @@ function DayWidget({ dateISO, sessions, canEdit, onClose, onEdit, onAdd }) {
                 {s.group_name}{s.age_group ? ` (${s.age_group})` : ''}
               </div>
             )}
-            <div style={{ fontSize: 12.5, color: '#4a5b70', marginTop: 4, display: 'grid', gap: 2 }}>
+            <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 4, display: 'grid', gap: 2 }}>
               {s.coach_name && <div>Coach: <span style={{ fontWeight: 700, color: NAVY }}>{s.coach_name}</span></div>}
               {s.location && <div>Location: <span style={{ fontWeight: 700, color: NAVY }}>{s.location}</span></div>}
               {s.notes && <div style={{ marginTop: 2 }}>{s.notes}</div>}
@@ -196,24 +196,24 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
   const todayISO = new Date().toISOString().slice(0, 10)
   const iso = (d) => `${month.getFullYear()}-${pad(month.getMonth() + 1)}-${pad(d)}`
 
-  const monthLabel = month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const monthLabel = month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
   const shift = (n) => { setNotice(''); setMonth((m) => new Date(m.getFullYear(), m.getMonth() + n, 1)) }
 
-  const navBtn = { border: '1px solid #cdd9e6', background: '#fff', borderRadius: 8, width: 34, height: 34, cursor: 'pointer', fontWeight: 800, color: NAVY, fontSize: 15 }
+  const navBtn = { border: '1px solid var(--color-accent-200)', background: '#fff', borderRadius: 0, width: 34, height: 34, cursor: 'pointer', fontWeight: 800, color: NAVY, fontSize: 16 }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, padding: '18px 18px 20px', boxShadow: '0 1px 6px rgba(11,41,72,.06)' }}>
+    <div style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0, padding: '16px 16px 20px',  }}>
       {/* Header: month nav + add */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         <button type="button" style={navBtn} onClick={() => shift(-1)} aria-label="Previous month" title="Previous month">‹</button>
-        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 19, color: NAVY, minWidth: 170, textAlign: 'center' }}>{monthLabel}</div>
+        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, color: NAVY, minWidth: 170, textAlign: 'center' }}>{monthLabel}</div>
         <button type="button" style={navBtn} onClick={() => shift(1)} aria-label="Next month" title="Next month">›</button>
         <div style={{ flex: 1 }} />
         {canEdit && (
           <button type="button" className="btn btn-primary" onClick={() => setModal({ session: null })}>+ Add session</button>
         )}
       </div>
-      {notice && <div role="status" style={{ fontSize: 12.5, fontWeight: 700, color: NAVY, marginBottom: 10 }}>{notice}.</div>}
+      {notice && <div role="status" style={{ fontSize: 13, fontWeight: 700, color: NAVY, marginBottom: 10 }}>{notice}.</div>}
 
       {loading ? <Loading label="Loading training calendar" /> : failed ? (
         <Empty label="Could not load the training calendar" hint="Check your connection, then change the month or reload the page to try again." />
@@ -222,10 +222,10 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
           <div style={{ overflowX: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(96px, 1fr))', gap: 6, minWidth: 720 }}>
               {WEEKDAYS.map((w) => (
-                <div key={w} style={{ textAlign: 'center', fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#7a8aa0', padding: '2px 0 6px' }}>{w}</div>
+                <div key={w} style={{ textAlign: 'center', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', padding: '2px 0 6px' }}>{w}</div>
               ))}
               {cells.map((d, i) => {
-                if (d === null) return <div key={`e${i}`} style={{ background: '#f4f7fb', borderRadius: 8, minHeight: 84 }} />
+                if (d === null) return <div key={`e${i}`} style={{ background: 'var(--color-neutral-100)', borderRadius: 0, minHeight: 84 }} />
                 const dISO = iso(d)
                 const dSessions = byDate[dISO] || []
                 const isToday = dISO === todayISO
@@ -239,18 +239,18 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
                     // Jakob's Law: a clickable day behaves like a button for keyboard and screen readers
                     {...(open ? {
                       role: 'button', tabIndex: 0, className: 'row-link',
-                      'aria-label': `${new Date(dISO + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}: ${hasPractice ? `${dSessions.length} training session${dSessions.length === 1 ? '' : 's'}, view details` : 'add a training session'}`,
+                      'aria-label': `${new Date(dISO + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', month: 'long', day: 'numeric' })}: ${hasPractice ? `${dSessions.length} training session${dSessions.length === 1 ? '' : 's'}, view details` : 'add a training session'}`,
                       onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open() } },
                     } : {})}
                     style={{
-                      background: hasPractice ? '#eaf3fb' : '#fff',
-                      border: isToday ? '2px solid var(--color-accent)' : (hasPractice ? '1px solid #c9ddf0' : '1px solid #e2e9f2'),
-                      borderRadius: 8, minHeight: 84, padding: '5px 6px',
+                      background: hasPractice ? 'var(--color-accent-100)' : '#fff',
+                      border: isToday ? '2px solid var(--color-accent)' : (hasPractice ? '1px solid var(--color-accent-200)' : '1px solid var(--color-neutral-300)'),
+                      borderRadius: 0, minHeight: 84, padding: '4px 6px',
                       cursor: (hasPractice || canEdit) ? 'pointer' : 'default',
                     }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: isToday ? 'var(--color-accent)' : NAVY, marginBottom: 4 }}>{d}</div>
                     {hasPractice && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8 }}>
                         <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-accent-800)', flexShrink: 0 }} />
                         <span style={{ fontSize: 11, fontWeight: 700, color: NAVY }}>
                           {dSessions.length === 1 ? 'Practice' : `${dSessions.length} sessions`}
@@ -268,7 +268,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
             <div style={{ marginTop: 14 }}><Empty label="No training sessions scheduled this month" hint={canEdit ? 'Use “Add session”, or click a day, to schedule one.' : 'Use the arrows above to check another month.'} /></div>
           ) : (
             <div style={{ marginTop: 16, overflowX: 'auto' }}>
-              <table className="table" style={{ width: '100%', fontSize: 12.5 }}>
+              <table className="table" style={{ width: '100%', fontSize: 13 }}>
                 <thead>
                   <tr>
                     <th style={{ textAlign: 'left' }}>Date</th>
@@ -283,7 +283,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
                 <tbody>
                   {sessions.map((s) => (
                     <tr key={s.id}>
-                      <td className="asw-num">{new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                      <td className="asw-num">{new Date(s.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
                       <td className="asw-num">{fmtTime(s.start_time)}{s.end_time ? ` – ${fmtTime(s.end_time)}` : ''}</td>
                       <td style={{ fontWeight: 700 }}>{s.group_name || '—'}</td>
                       <td>{s.age_group || '—'}</td>
@@ -291,7 +291,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
                       <td>{s.location || '—'}</td>
                       {canEdit && (
                         <td style={{ textAlign: 'right' }}>
-                          <button type="button" className="btn" style={{ padding: '2px 10px', fontSize: 11.5 }} aria-label={`Edit session on ${s.date} at ${fmtTime(s.start_time)}`} onClick={() => setModal({ session: s })}>Edit</button>
+                          <button type="button" className="btn" style={{ padding: '2px 10px', fontSize: 12 }} aria-label={`Edit session on ${s.date} at ${fmtTime(s.start_time)}`} onClick={() => setModal({ session: s })}>Edit</button>
                         </td>
                       )}
                     </tr>

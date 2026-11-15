@@ -120,7 +120,7 @@ export default function Article() {
 
         {/* ── Date + country ── */}
         <div dir={textDir} style={{
-          display: 'flex', alignItems: 'center', gap: 10,
+          display: 'flex', alignItems: 'center', gap: 12,
           paddingBottom: 18, marginBottom: 24,
           borderBottom: '1px solid var(--color-divider)',
           fontSize: 14, color: 'var(--color-neutral-700)',
@@ -128,7 +128,7 @@ export default function Article() {
         }}>
           {article.country_detail && (
             <>
-              <Link to={`/countries/${article.country_detail.id}?tab=news`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 32, color: 'inherit', textDecoration: 'none' }}>
+              <Link to={`/countries/${article.country_detail.id}?tab=news`} style={{ display: 'inline-flex', alignItems: 'center', gap: 12, minHeight: 32, color: 'inherit', textDecoration: 'none' }}>
                 <Flag code={article.country_detail.code} name={article.country_detail.name} />
                 <span style={{ fontWeight: 600 }}>{article.country_detail.name}</span>
               </Link>
@@ -142,7 +142,7 @@ export default function Article() {
         {article.cover_image && (
           <div style={{
             position: 'relative', margin: '0 0 28px', aspectRatio: '16 / 9',
-            overflow: 'hidden', borderRadius: 2, background: 'var(--color-accent-800)',
+            overflow: 'hidden', borderRadius: 0, background: 'var(--color-accent-800)',
           }}>
             <img
               src={mediaUrl(article.cover_image)} alt=""
@@ -177,10 +177,10 @@ export default function Article() {
             <a
               href={mediaUrl(article.attachment)} target="_blank" rel="noreferrer"
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-                padding: '12px 18px', textDecoration: 'none',
+                display: 'inline-flex', alignItems: 'center', gap: 12,
+                padding: '12px 16px', textDecoration: 'none',
                 background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', minHeight: 44,
-                color: 'var(--color-accent-800)', fontWeight: 600, fontSize: 15,
+                color: 'var(--color-accent-800)', fontWeight: 600, fontSize: 16,
                 fontFamily: isRTL ? AJ_FONTS : 'var(--font-body)',
               }}
             >

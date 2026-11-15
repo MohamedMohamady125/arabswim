@@ -72,7 +72,6 @@ export default function HallOfFame() {
   return (
     <div>
       <PageHead
-        kicker="Legacy"
         title="Hall of Fame"
         sub="The swimmers who defined Arab swimming."
       />
@@ -121,14 +120,14 @@ export default function HallOfFame() {
                     <img src={mediaUrl(photo)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
                   {p.inducted_year && <span className="tag tag-dark">Class of {p.inducted_year}</span>}
                   {p.era && <span className="micro">{p.era}</span>}
                 </div>
                 <h2 style={{ margin: '0 0 8px', letterSpacing: '-0.02em' }}>
                   {p.swimmer ? <Link to={`/swimmers/${p.swimmer}`} style={{ color: 'inherit', textDecoration: 'none' }}>{p.name}</Link> : p.name}
                 </h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, fontSize: 13, color: 'var(--color-neutral-700)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, fontSize: 13, color: 'var(--color-neutral-700)' }}>
                   <Flag code={p.country_detail?.code} name={p.country_detail?.name} />
                   <span>{p.country_detail?.name}</span>
                 </div>
@@ -149,7 +148,7 @@ export default function HallOfFame() {
                     <button
                       type="button"
                       className="btn btn-ghost"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                       onClick={() => handleDelete(p)}
                     >
                       <Trash2 size={13} /> Remove
@@ -215,7 +214,7 @@ function AddInductee({ category, onAdded }) {
 
   return (
     <div className="rule-b" style={{ padding: '12px 32px' }}>
-      <form onSubmit={submit} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <form onSubmit={submit} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div ref={boxRef} style={{ position: 'relative', flex: '1 1 260px', minWidth: 0 }}>
           <input
             className="input"
@@ -230,7 +229,7 @@ function AddInductee({ category, onAdded }) {
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
               background: 'var(--color-surface, #fff)', border: '1px solid var(--color-neutral-200)',
-              borderRadius: 6, maxHeight: 260, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+              borderRadius: 0, maxHeight: 260, overflowY: 'auto', border: '1px solid var(--color-divider)',
             }}>
               {results.map((s) => (
                 <button
@@ -238,7 +237,7 @@ function AddInductee({ category, onAdded }) {
                   key={s.id}
                   onClick={() => { setPicked(s); setResults([]) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 14, width: '100%', minHeight: 36, border: 0, background: 'transparent', color: 'inherit', font: 'inherit', textAlign: 'left' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-neutral-100, #f4f4f4)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-neutral-100, var(--color-neutral-200))' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                 >
                   <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
@@ -258,7 +257,7 @@ function AddInductee({ category, onAdded }) {
           <Plus size={14} /> {saving ? 'Adding…' : `Add to ${catLabel}`}
         </button>
       </form>
-      {error && <div role="alert" style={{ marginTop: 6, fontSize: 13, color: 'var(--color-danger, #c0392b)' }}>{error}</div>}
+      {error && <div role="alert" style={{ marginTop: 6, fontSize: 13, color: 'var(--color-danger, var(--asw-slow))' }}>{error}</div>}
       {added && !error && <div role="status" style={{ marginTop: 6, fontSize: 13, color: 'var(--asw-fast)' }}>{added} ✓</div>}
     </div>
   )

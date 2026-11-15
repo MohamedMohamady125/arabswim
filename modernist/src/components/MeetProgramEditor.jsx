@@ -80,10 +80,10 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
       }))
   }, [events, usedByGender, gender])
 
-  const inputStyle = { padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
+  const inputStyle = { padding: '8px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
 
   return (
-    <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }}>
+    <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 16px' }}>
       <div className="kicker" style={{ marginBottom: 4 }}>Day-by-day program</div>
       <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0 }}>
         {hint || 'Days follow the meet dates — pick which events were swum on each day.'}
@@ -101,7 +101,7 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint }) {
               onClick={() => { setActiveDay(d.day); setMsg('') }}
               style={{
                 cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: 700,
-                fontSize: 12, padding: '6px 11px', lineHeight: 1.2, textAlign: 'left',
+                fontSize: 12, padding: '6px 12px', lineHeight: 1.2, textAlign: 'left',
                 background: active ? 'var(--color-accent)' : '#fff',
                 color: active ? '#fff' : 'var(--color-accent-800)',
                 border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-neutral-300)'}`,

@@ -31,7 +31,7 @@ export default function MeetsTab({ stats }) {
   const years = Object.keys(byYear).sort((a, b) => b - a)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {/* Participation grid */}
       <div>
         <div className="sect-head">
@@ -39,19 +39,19 @@ export default function MeetsTab({ stats }) {
           <span className="micro asw-num">{championships.length} meets</span>
         </div>
         {/* self-sized cards — no grid filler tracks behind them */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
           {CLASSIFICATIONS.filter((cls) => (counts[cls] || 0) > 0).map((cls) => (
             <div
               key={cls}
               style={{
                 border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
-                borderTop: '3px solid var(--asw-gold)', padding: '10px 18px 12px',
+                borderTop: '3px solid var(--asw-gold)', padding: '10px 16px 12px',
                 minWidth: 108, flex: '0 1 auto',
               }}
             >
               <div className="card-kicker">{cls}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 3 }}>
-                <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1.1 }}>
+                <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1.1 }}>
                   {counts[cls]}
                 </span>
                 <span className="micro">meet{counts[cls] !== 1 ? 's' : ''}</span>

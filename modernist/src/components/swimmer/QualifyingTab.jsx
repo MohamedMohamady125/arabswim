@@ -85,8 +85,8 @@ export default function QualifyingTab({ swimmerId }) {
             const maxGap = Math.max(...filteredGaps.map((x) => Math.abs(parseFloat(x.gap_pct) || 0)))
             const barPct = maxGap > 0 ? (Math.abs(parseFloat(g.gap_pct) || 0) / maxGap) * 100 : 0
             return (
-              <div key={g.event_id} className="hair-b" style={{ padding: '14px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+              <div key={g.event_id} className="hair-b" style={{ padding: '16px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase' }}>{g.event_name}</span>
                     {g.pool && <span className={`tag ${g.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{g.pool}</span>}
@@ -100,11 +100,11 @@ export default function QualifyingTab({ swimmerId }) {
                 </div>
                 <GapBar done={g.qualified} barPct={barPct} leftLabel="Your best" rightLabel="Qualifying" />
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 6 }}>
-                  <span className="asw-time" style={{ fontSize: 15, color: 'var(--color-accent)' }}>{g.swimmer_best}</span>
+                  <span className="asw-time" style={{ fontSize: 16, color: 'var(--color-accent)' }}>{g.swimmer_best}</span>
                   <span className="asw-num" style={{ fontWeight: 700, fontSize: 13, color: g.qualified ? 'var(--asw-fast)' : 'var(--asw-slow)' }}>
                     {g.qualified ? '-' : '+'}{g.gap_time}
                   </span>
-                  <span className="asw-time" style={{ fontSize: 15 }}>{g.qualifying_time}</span>
+                  <span className="asw-time" style={{ fontSize: 16 }}>{g.qualifying_time}</span>
                 </div>
               </div>
             )

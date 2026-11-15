@@ -143,7 +143,7 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
   const chip = (active) => ({
     // Fitts's Law: 32px tall chips
     display: 'inline-flex', alignItems: 'center', minHeight: 32,
-    padding: '4px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+    padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer',
     border: `1px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
     background: active ? 'var(--color-accent-800)' : '#fff',
     color: active ? '#fff' : 'var(--color-neutral-700)',
@@ -153,7 +153,7 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
     <Modal title={title} onClose={onCancel} width={520}>
       <div style={{ position: 'relative', width: '100%', height: 340, background: '#111', borderRadius: 8, overflow: 'hidden' }}>
         {smartPending ? (
-          <div role="status" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '0.04em' }}>
+          <div role="status" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '0.08em' }}>
             Framing the subject…
           </div>
         ) : (
@@ -172,7 +172,7 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
         )}
       </div>
       {smart && smartArea && !smartPending && (
-        <div className="micro" style={{ marginTop: 8, textTransform: 'none', letterSpacing: 0, fontSize: 11.5, color: 'var(--color-neutral-700)' }}>
+        <div className="micro" style={{ marginTop: 8, textTransform: 'none', letterSpacing: 0, fontSize: 12, color: 'var(--color-neutral-700)' }}>
           Auto-framed on the subject — drag or zoom to adjust before applying.
         </div>
       )}
@@ -203,7 +203,7 @@ export default function ImageCropper({ file, aspect = 1, lockAspect = false, sma
           onChange={(e) => setRotation(Number(e.target.value))}
           style={{ flex: 1 }}
         />
-        <button type="button" className="btn btn-secondary" style={{ fontSize: 11.5, padding: '4px 10px' }}
+        <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }}
           aria-label="Rotate 90 degrees" title="Rotate 90 degrees"
           onClick={() => setRotation((r) => (r + 90) % 360)}>
           90°

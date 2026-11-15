@@ -43,7 +43,7 @@ function CountryTable({ countries, cols, startRank = 1 }) {
             <tr key={c.id} className="row-link" onClick={() => navigate(`/countries/${c.id}`)}>
               <td className="asw-num" style={{ color: 'var(--color-neutral-700)' }}>{startRank + i}</td>
               <td>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <Flag code={c.code} name={c.name} flagUrl={c.flag_url} placeholder large />
                   <Link to={`/countries/${c.id}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
                     {c.name}

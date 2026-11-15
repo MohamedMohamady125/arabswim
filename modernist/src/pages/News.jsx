@@ -118,7 +118,7 @@ export function ArticleModal({ article, onClose, onSaved }) {
 
   return (
     <Modal title={article ? 'Edit Article' : 'Create Article'} onClose={onClose} width={640}>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {error && <div className="error-box" role="alert">{error}</div>}
         <div className="field">
           <label htmlFor="article-title">Title *</label>
@@ -345,7 +345,7 @@ export default function News() {
 
   return (
     <div>
-      <PageHead kicker="Content" title="News" sub="Stories and reports from around Arab swimming">
+      <PageHead title="News" sub="Stories and reports from around Arab swimming">
         {isAdmin && (
           <div style={{ marginTop: 14 }}>
             <button type="button" className="btn btn-primary" onClick={() => setEditArticle({})}>Create article</button>
@@ -386,7 +386,7 @@ export default function News() {
         <div className="pad-lg" aria-busy={loading} style={{ opacity: loading ? 0.55 : 1 }}>
           {lead && (
             <article className="content-newscard content-newslead">
-              <Link to={`/news/${lead.id}`} className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 28, alignItems: 'start' }}>
+              <Link to={`/news/${lead.id}`} className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 32, alignItems: 'start' }}>
                 {lead.cover_image && (
                   <div className="news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
                     <img className="news-cover-img" src={mediaUrl(lead.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -397,7 +397,7 @@ export default function News() {
                   <h2 className="content-news-title" dir={leadRtlT ? 'rtl' : 'ltr'} style={{
                     fontFamily: leadRtlT ? AR_FONT : 'var(--font-heading)',
                     fontWeight: leadRtlT ? 700 : 800,
-                    fontSize: 29,
+                    fontSize: 28,
                     lineHeight: leadRtlT ? 1.7 : 1.06,
                     letterSpacing: leadRtlT ? 0 : '-0.025em',
                     margin: '8px 0 12px',

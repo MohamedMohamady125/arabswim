@@ -123,7 +123,7 @@ export function Modal({ title, onClose, children, width = 580 }) {
         style={{ outline: 'none', background: 'var(--color-bg)', border: '2px solid var(--color-text)', width: '100%', maxWidth: width }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
           <div className="kicker">{title}</div>
           <button type="button" className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close" style={{ fontSize: 18 }}>×</button>
         </div>

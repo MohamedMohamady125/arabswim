@@ -6,7 +6,7 @@ import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Empty, Seg, FilterBar, Skeleton } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
-import { mediaUrl } from '../utils'
+import { mediaUrl, nameInitials } from '../utils'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 // Postel's Law: name search ignores case, accents and extra spaces
@@ -15,8 +15,7 @@ const FIRST_ROWS = 25 // Miller's Law / Pareto: the top of the table first, the 
 
 function ClubLogo({ logo, name, size = 24 }) {
   const [failed, setFailed] = useState(false)
-  const initials = (name || '')
-    .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?'
+  const initials = nameInitials(name)
   const base = {
     width: size, height: size, flex: 'none', borderRadius: '50%',
     border: '1px solid var(--color-neutral-300)',
@@ -246,7 +245,7 @@ export default function Medals() {
 
       {/* Classification tab bar — same 32px gutter as the rest of the page;
           phone keeps the edge-to-edge swipe strip via the mobile .tabbar rule */}
-      <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="rule-b tabbar" style={{ padding: '16px 32px', overflowX: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
         <Seg tabs options={classificationTabs} value={category} onChange={(v) => { touched.current = true; setCategory(v); setCountry('') }} />
         {hiddenCats > 0 && (
           <button type="button" className="btn btn-ghost showmore" style={{ flex: 'none', whiteSpace: 'nowrap' }} aria-expanded={moreCats} onClick={() => setMoreCats((o) => !o)}>
@@ -338,7 +337,7 @@ export default function Medals() {
               )
             )}
             renderEntity={(row) => (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
                 {scope === 'country' && (
                   <>
                     <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />

@@ -41,7 +41,7 @@ function Countdown({ target }) {
   const sec = Math.floor((diff % 60000) / 1000)
   const cells = [[days, 'Days'], [String(hrs).padStart(2, '0'), 'Hrs'], [String(min).padStart(2, '0'), 'Min'], [String(sec).padStart(2, '0'), 'Sec']]
   return (
-    <div style={{ display: 'flex', gap: 1, background: 'var(--color-divider)', border: '1px solid var(--color-divider)', marginTop: 14, maxWidth: 420 }}>
+    <div style={{ display: 'flex', gap: 2, background: 'var(--color-divider)', border: '1px solid var(--color-divider)', marginTop: 14, maxWidth: 420 }}>
       {cells.map(([v, l]) => (
         <div key={l} style={{ flex: 1, background: 'var(--color-bg)', padding: '8px 10px' }}>
           <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{v}</div>
@@ -274,8 +274,8 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
 function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
   const showAny = c.live_results_url || c.meet_guide_pdf || c.registration_url || c.website || c.policy_pdf
   return (
-    <div className="cal-row" style={{ padding: '14px 32px 20px', background: 'var(--color-surface)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: showAny || isAdmin ? 16 : 0 }}>
+    <div className="cal-row" style={{ padding: '16px 32px 20px', background: 'var(--color-surface)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: showAny || isAdmin ? 16 : 0 }}>
         <div>
           <div className="micro" style={{ marginBottom: 3 }}>Country</div>
           <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -287,7 +287,7 @@ function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
           <div style={{ fontSize: 13, fontWeight: 600 }}>{c.pool === 'SCM' ? 'Short Course (25m)' : 'Long Course (50m)'}</div>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {c.live_results_url && (
           <a className="btn btn-primary" style={LINK_STYLE} href={c.live_results_url} target="_blank" rel="noopener noreferrer">Live results</a>
         )}
@@ -374,8 +374,8 @@ function BirthdaysTab() {
   const daysAhead = allDays.filter((d) => d >= now.getDate())
   const daysEarlier = allDays.filter((d) => d < now.getDate())
   const birthdayRow = (b) => (
-    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 32 }}>
-      <Link to={`/swimmers/${b.id}`} style={{ padding: '7px 0', color: 'inherit', textDecoration: 'none', fontSize: 13, flex: 1, minWidth: 0 }}>{b.name}</Link>
+    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 32 }}>
+      <Link to={`/swimmers/${b.id}`} style={{ padding: '8px 0', color: 'inherit', textDecoration: 'none', fontSize: 13, flex: 1, minWidth: 0 }}>{b.name}</Link>
       <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', flex: 'none' }}>
         {b.nationality}{b.age > 0 ? ` · ${b.age}` : ''}
       </span>
@@ -386,8 +386,8 @@ function BirthdaysTab() {
     return (
       <div key={day} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--color-divider)' }}>
         <div style={{ width: 40, flex: 'none', textAlign: 'center' }}>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1.1, color: 'var(--color-accent)' }}>{day}</div>
-          <div className="micro" style={{ fontSize: 10.5 }}>{day === now.getDate() ? 'Today' : MONTH_SHORT[now.getMonth()]}</div>
+          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1.1, color: 'var(--color-accent)' }}>{day}</div>
+          <div className="micro" style={{ fontSize: 11 }}>{day === now.getDate() ? 'Today' : MONTH_SHORT[now.getMonth()]}</div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {arr.slice(0, 6).map(birthdayRow)}
@@ -787,7 +787,7 @@ export default function Calendar() {
 
       {/* Similarity: section tabs look like tabs; the filters get a bar of
           their own (Common Region) with the count and a way back to the default */}
-      <div className="rule-b tabbar" style={{ padding: '14px 32px', overflowX: 'auto' }}>
+      <div className="rule-b tabbar" style={{ padding: '16px 32px', overflowX: 'auto' }}>
         <Seg
           tabs
           options={[
@@ -851,7 +851,7 @@ export default function Calendar() {
                 </div>
               )}
               <div className="pad" style={{ paddingBottom: 10, display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.09em', textTransform: 'uppercase', padding: '6px 14px', display: 'inline-block' }}>
+                <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 16px', display: 'inline-block' }}>
                   {MONTHS_FULL[g.month]} {g.year}
                 </div>
               </div>
@@ -866,15 +866,15 @@ export default function Calendar() {
                         onClick={() => setExpandedMeetId(isExpanded ? null : c.id)}
                         role="button" tabIndex={0} aria-expanded={isExpanded}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedMeetId(isExpanded ? null : c.id) } }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px', background: isExpanded ? 'var(--color-surface)' : undefined }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 32px', background: isExpanded ? 'var(--color-surface)' : undefined }}
                       >
                         {/* mini calendar tile: navy month strip over the day */}
                         <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
-                          <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 10.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
-                          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
+                          <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11, letterSpacing: '0.08em', padding: '4px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
+                          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1, color: 'var(--color-accent)', padding: '4px 0 6px' }}>{d.getDate()}</div>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{c.name}</span>
+                          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>{c.name}</span>
                           <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
                             {c.location}
                             {c.country_detail ? `${c.location ? ', ' : ''}${c.country_detail.name}` : ''}
@@ -896,7 +896,7 @@ export default function Calendar() {
                   <div
                     key={`ev-${ev.id}`}
                     className={`cal-row ${ev.championship ? 'row-link ' : ''}${i < g.items.length - 1 ? 'hair-b' : ''}`}
-                    style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 32px' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 32px' }}
                     onClick={() => { if (ev.championship) navigate(`/meets/${ev.championship}`) }}
                     role={ev.championship ? 'link' : undefined}
                     tabIndex={ev.championship ? 0 : undefined}
@@ -905,11 +905,11 @@ export default function Calendar() {
                     } : undefined}
                   >
                     <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
-                      <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 10.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
-                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
+                      <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11, letterSpacing: '0.08em', padding: '4px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
+                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1, color: 'var(--color-accent)', padding: '4px 0 6px' }}>{d.getDate()}</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{ev.title}</span>
+                      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>{ev.title}</span>
                       <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
                         {ev.description ? `${ev.description} · ` : ''}
                         {formatDateRange(ev.date, ev.end_date)}
@@ -948,15 +948,15 @@ export default function Calendar() {
             <div
               key={ev.id}
               className={`cal-row ${i < otherEvents.length - 1 ? 'hair-b' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 32px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 32px' }}
             >
               <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
-                <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 8.5, letterSpacing: '0.12em', padding: '3px 0 2px' }}>{MONTH_SHORT[d.getMonth()]} {String(d.getFullYear()).slice(2)}</div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1, color: 'var(--color-accent)', padding: '5px 0 6px' }}>{d.getDate()}</div>
+                <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 8.5, letterSpacing: '0.08em', padding: '4px 0 2px' }}>{MONTH_SHORT[d.getMonth()]} {String(d.getFullYear()).slice(2)}</div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1, color: 'var(--color-accent)', padding: '4px 0 6px' }}>{d.getDate()}</div>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>{ev.title}</span>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>{ev.title}</span>
                   {ev.event_type && ev.event_type !== 'CUSTOM' && <span className="tag tag-outline">{ev.event_type}</span>}
                 </div>
                 {ev.description && <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{ev.description}</div>}
@@ -1126,7 +1126,7 @@ export default function Calendar() {
               placeholder="Optional details…" style={{ resize: 'vertical' }} />
           </div>
           {addError && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{addError}</div>}
-          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
             <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddEvent(false)}>Cancel</button>
             <button
               type="submit"

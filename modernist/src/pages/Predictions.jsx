@@ -36,8 +36,8 @@ function StatusBadge({ status, pct }) {
     <span style={{
       ...statusStyle(status),
       display: 'inline-block', fontFamily: 'var(--font-heading)', fontWeight: 700,
-      fontSize: 10.5, letterSpacing: '0.05em', textTransform: 'uppercase',
-      padding: '3px 8px', lineHeight: 1.4, whiteSpace: 'nowrap',
+      fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase',
+      padding: '4px 8px', lineHeight: 1.4, whiteSpace: 'nowrap',
     }}>
       {status}{pct != null ? ` — ${Math.round(pct)}%` : ''}
     </span>
@@ -53,8 +53,8 @@ function Chip({ children, tone }) {
   return (
     <span style={{
       ...(tones[tone] || tones.plain),
-      fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 10.5,
-      letterSpacing: '0.05em', textTransform: 'uppercase', padding: '3px 8px', lineHeight: 1.4,
+      fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 11,
+      letterSpacing: '0.08em', textTransform: 'uppercase', padding: '4px 8px', lineHeight: 1.4,
     }}>
       {children}
     </span>
@@ -70,7 +70,7 @@ function SwimmerCard({ c, showDelta }) {
       </div>
       <div className="rec-name" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
         <Flag code={c.country_code} name={c.country_name} />
-        <Link to={`/swimmers/${c.swimmer_id}`} style={{ padding: '7px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, same layout */ }}>{c.name}</Link>
+        <Link to={`/swimmers/${c.swimmer_id}`} style={{ padding: '8px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, same layout */ }}>{c.name}</Link>
       </div>
       <div className="rec-meta micro" style={{ marginTop: 5 }}>
         Seed <span className="asw-time">{c.seed}</span>
@@ -129,7 +129,7 @@ function TallyTable({ table, isNational }) {
               <tr key={r.name}>
                 <td className="asw-num">{i + 1}</td>
                 <td style={{ fontWeight: 600 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     {r.code && <Flag code={r.code} name={r.name} />}
                     {r.name}
                   </span>
@@ -185,7 +185,7 @@ function EventDetail({ ev, champId, onChanged }) {
             {ev.field.map((r) => (
               <tr key={r.swimmer_id}>
                 <td style={{ fontWeight: 600 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     <Flag code={r.country_code} name={r.country_name} />
                     <Link to={`/swimmers/${r.swimmer_id}`}>{r.name}</Link>
                   </span>
@@ -218,7 +218,7 @@ function EventDetail({ ev, champId, onChanged }) {
           </tbody>
         </table>
       </div>
-      <div className="micro" style={{ marginTop: 10, display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+      <div className="micro" style={{ marginTop: 10, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         <span>Projected gold standard: <span className="asw-time" style={{ fontWeight: 700 }}>{ev.standards.gold}</span></span>
         <span>Projected silver: <span className="asw-time">{ev.standards.silver}</span></span>
         <span>Projected bronze: <span className="asw-time">{ev.standards.bronze}</span></span>
@@ -267,10 +267,10 @@ function AgeGroupsAdmin({ champId, onChanged }) {
     }), 'Category added — prediction recomputed').then(() => { setLabel(''); setMinAge(''); setMaxAge('') })
   }
 
-  const inputStyle = { padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
+  const inputStyle = { padding: '8px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
 
   return (
-    <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 18px' }}>
+    <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 16px' }}>
       <SectHead title="Age Categories (Admin)" />
       <div className="micro" style={{ margin: '-4px 0 12px', textTransform: 'none', letterSpacing: 0 }}>
         For age-group / youth meets. Each category is predicted as its own race; swimmers are placed
@@ -286,7 +286,7 @@ function AgeGroupsAdmin({ champId, onChanged }) {
       {groups.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {groups.map((g) => (
-            <span key={g.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-neutral-300)', background: '#fff', padding: '5px 10px', fontSize: 13 }}>
+            <span key={g.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-neutral-300)', background: '#fff', padding: '4px 10px', fontSize: 13 }}>
               <b>{g.label}</b>
               <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
                 {g.min_age != null && g.max_age != null ? `${g.min_age}–${g.max_age}`
@@ -359,10 +359,10 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
     }), 'Excluded — prediction recomputed').then(() => { setSwimmer(null); setQuery(''); setReason('') })
   }
 
-  const inputStyle = { padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
+  const inputStyle = { padding: '8px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
 
   return (
-    <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 18px' }}>
+    <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 16px' }}>
       <SectHead title="Excluded Athletes (Admin)" />
       <div className="micro" style={{ margin: '-4px 0 12px', textTransform: 'none', letterSpacing: 0 }}>
         Athletes you know won't compete (injury, retirement, not selected…). They are removed from
@@ -384,7 +384,7 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
                   key={s.id}
                   type="button"
                   onClick={() => { setSwimmer(s); setResults([]) }}
-                  style={{ display: 'block', width: '100%', minHeight: 32, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '7px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
+                  style={{ display: 'block', width: '100%', minHeight: 32, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '8px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
                 >
                   {s.name} {s.nationality_code ? `(${s.nationality_code})` : ''}
                 </button>
@@ -405,7 +405,7 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
       {exclusions.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {exclusions.map((x) => (
-            <span key={x.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-neutral-300)', background: '#fff', padding: '5px 10px', fontSize: 13 }}>
+            <span key={x.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-neutral-300)', background: '#fff', padding: '4px 10px', fontSize: 13 }}>
               <b>{x.swimmer_name}</b>
               {x.nationality_code && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{x.nationality_code}</span>}
               {x.reason && <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>— {x.reason}</span>}
@@ -477,10 +477,10 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
     }), 'Entry added').then(() => { setSwimmer(null); setQuery(''); setEntryTime('') })
   }
 
-  const inputStyle = { padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
+  const inputStyle = { padding: '8px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }
 
   return (
-    <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 18px' }}>
+    <div style={{ marginTop: 30, border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 16px' }}>
       <SectHead title="Entry List (Admin)" />
       <div className="micro" style={{ margin: '-4px 0 12px' }}>
         Stage: <b>{stage}</b> — adding official entries upgrades the prediction to Official / High confidence after recompute.
@@ -502,7 +502,7 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
                   key={s.id}
                   type="button"
                   onClick={() => { setSwimmer(s); setResults([]) }}
-                  style={{ display: 'block', width: '100%', minHeight: 32, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '7px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
+                  style={{ display: 'block', width: '100%', minHeight: 32, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '8px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
                 >
                   {s.name} {s.nationality_code ? `(${s.nationality_code})` : ''}
                 </button>
@@ -588,8 +588,8 @@ const TIER_LEGEND = [
   { label: 'Gold Favorite', range: '\u2265 50% gold', color: 'var(--asw-gold)' },
   { label: 'Medal Favorite', range: '80 – 100%', color: 'var(--asw-fast)' },
   { label: 'Strong Medal Chance', range: '65 – 79%', color: 'var(--color-accent-2)' },
-  { label: 'Medal Contender', range: '45 – 64%', color: '#8b6cc9' },
-  { label: 'Podium Challenger', range: '25 – 44%', color: '#e08b3c' },
+  { label: 'Medal Contender', range: '45 – 64%', color: 'var(--color-neutral-600)' },
+  { label: 'Podium Challenger', range: '25 – 44%', color: 'var(--asw-gold)' },
   { label: 'Outside Chance', range: '10 – 24%', color: 'var(--asw-slow)' },
 ]
 
@@ -599,10 +599,10 @@ function StatCard({ label, value, sub, accent }) {
   return (
     <div style={{
       border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
-      borderTop: `3px solid ${accent || 'var(--color-accent)'}`, padding: '14px 16px', minWidth: 0,
+      borderTop: `3px solid ${accent || 'var(--color-accent)'}`, padding: '16px 16px', minWidth: 0,
     }}>
       <div className="micro" style={{ marginBottom: 6 }}>{label}</div>
-      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30, lineHeight: 1 }}>{value}</div>
+      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, lineHeight: 1 }}>{value}</div>
       {sub && <div className="micro" style={{ marginTop: 7, textTransform: 'none', letterSpacing: 0 }}>{sub}</div>}
     </div>
   )
@@ -636,11 +636,11 @@ function CandidateCard({ c, rank }) {
     <div style={{
       border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
       borderTop: `3px solid ${rank === 1 ? 'var(--asw-gold)' : 'var(--color-accent)'}`,
-      padding: '14px 14px 12px', textAlign: 'center', position: 'relative', minWidth: 0,
+      padding: '16px 16px 12px', textAlign: 'center', position: 'relative', minWidth: 0,
     }}>
       <span className="asw-num" style={{
         position: 'absolute', top: 8, left: 10, fontFamily: 'var(--font-heading)',
-        fontWeight: 800, fontSize: 15,
+        fontWeight: 800, fontSize: 16,
         color: rank === 1 ? 'var(--asw-gold)' : 'var(--color-neutral-300)',
       }}>
         {rank}
@@ -650,7 +650,7 @@ function CandidateCard({ c, rank }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minWidth: 0 }}>
         <Flag code={c.country_code} name={c.country_name} />
-        <Link to={`/swimmers/${c.swimmer_id}`} style={{ padding: '7px 0', margin: '-7px 0', fontWeight: 700, fontSize: 13.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <Link to={`/swimmers/${c.swimmer_id}`} style={{ padding: '8px 0', margin: '-7px 0', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {c.name}
         </Link>
       </div>
@@ -660,15 +660,15 @@ function CandidateCard({ c, rank }) {
       <div style={{ marginTop: 8 }}>
         <StatusBadge status={isGold ? c.gold_status : c.status} />
       </div>
-      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, marginTop: 8, lineHeight: 1 }}>
+      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, marginTop: 8, lineHeight: 1 }}>
         {Math.round(c.p_medal)}%
       </div>
       <div className="micro" style={{ fontSize: 11, marginTop: 2 }}>Medal chance</div>
       <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 9, borderTop: '1px solid var(--color-divider)', paddingTop: 8 }}>
         {[['Gold', c.eg], ['Silver', c.es], ['Bronze', c.eb]].map(([lab, v]) => (
           <div key={lab}>
-            <div className="asw-num" style={{ fontWeight: 700, fontSize: 12.5 }}>{Math.round(v)}%</div>
-            <div className="micro" style={{ fontSize: 10.5, letterSpacing: '0.04em' }}>{lab}</div>
+            <div className="asw-num" style={{ fontWeight: 700, fontSize: 13 }}>{Math.round(v)}%</div>
+            <div className="micro" style={{ fontSize: 11, letterSpacing: '0.08em' }}>{lab}</div>
           </div>
         ))}
       </div>
@@ -724,7 +724,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
   const pageUrl = typeof window !== 'undefined' ? window.location.href : ''
   const shareText = `Medal predictions — ${champ.name}`
 
-  const panelStyle = { border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }
+  const panelStyle = { border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 16px' }
 
   return (
     <div>
@@ -748,7 +748,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
             <div className="kicker" style={{ color: 'var(--asw-gold)', marginBottom: 6 }}>
               {champ.classification || 'Championship'}{champ.pool ? ` · ${poolWord(champ.pool)}` : ''}
             </div>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1.15 }}>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1.15 }}>
               {champ.name}
             </div>
             <div style={{ marginTop: 8, fontSize: 13, opacity: 0.92 }}>
@@ -759,12 +759,12 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
         </div>
         <div style={{
           flex: '0 1 250px', minWidth: 210, borderLeft: '1px solid var(--color-divider)',
-          padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center',
+          padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center',
           background: 'var(--color-surface)',
         }}>
           <div>
             <div className="micro" style={{ marginBottom: 3 }}>Prediction updated</div>
-            <div style={{ fontWeight: 700, fontSize: 13.5 }}>{formatDate(snap.updated_at?.slice(0, 10))}</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{formatDate(snap.updated_at?.slice(0, 10))}</div>
           </div>
           <div>
             <div className="micro" style={{ marginBottom: 4 }}>Prediction stage</div>
@@ -780,7 +780,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
       </div>
 
       {/* projection overview */}
-      <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 22 }}>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
         <div style={{ flex: '1 1 460px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
             <SectHead title="Medal Projection Overview" />
@@ -789,7 +789,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                 aria-label={snap.is_national ? 'Club' : 'Country'}
                 value={selectedCountry?.name || ''}
                 onChange={(e) => setCountryKey(e.target.value)}
-                style={{ minHeight: 32, padding: '5px 8px', border: '1px solid var(--color-neutral-300)', fontSize: 12.5, background: '#fff', marginLeft: 'auto' }}
+                style={{ minHeight: 32, padding: '4px 8px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff', marginLeft: 'auto' }}
               >
                 {table.map((r) => <option key={r.name} value={r.name}>{r.name}</option>)}
               </select>
@@ -813,7 +813,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
         </div>
         <div style={{ flex: '0 1 280px', minWidth: 230, ...panelStyle }}>
           <div className="kicker" style={{ marginBottom: 8 }}>About the prediction</div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-neutral-700)' }}>
+          <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-neutral-700)' }}>
             Predictions are calculated from current season best times, recent form, progression and
             thousands of simulated race outcomes. They are probabilities, not certainties, and update
             as entry lists, new times and withdrawals come in.
@@ -822,7 +822,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
       </div>
 
       {/* top candidates + legend */}
-      <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 22 }}>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
         <div style={{ flex: '1 1 520px', minWidth: 0 }}>
           <SectHead title="Top Medal Candidates" />
           {candidates.length === 0 ? (
@@ -837,7 +837,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
           <div className="kicker" style={{ marginBottom: 10 }}>Medal chance status</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {TIER_LEGEND.map((t) => (
-              <div key={t.label} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 12.5 }}>
+              <div key={t.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: t.color, flex: 'none' }} />
                 <span style={{ fontWeight: 600 }}>{t.label}</span>
                 <span className="asw-num" style={{ marginLeft: 'auto', color: 'var(--color-neutral-700)', fontSize: 12 }}>{t.range}</span>
@@ -851,7 +851,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
       </div>
 
       {/* by event + medal table */}
-      <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 22, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 22, alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 520px', minWidth: 0 }}>
           <SectHead title="Medal Predictions by Event" />
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '8px 0 12px' }}>
@@ -862,7 +862,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                   key={s} type="button" aria-pressed={active} onClick={() => { setStroke(s); setOpenKey('') }}
                   style={{
                     cursor: 'pointer', minHeight: 32, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 11,
-                    padding: '5px 10px', lineHeight: 1, whiteSpace: 'nowrap',
+                    padding: '4px 10px', lineHeight: 1, whiteSpace: 'nowrap',
                     background: active ? 'var(--color-accent)' : 'var(--color-bg)',
                     color: active ? '#fff' : 'var(--color-accent-800)',
                     border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-neutral-300)'}`,
@@ -911,7 +911,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                             {shortEvent(ev.event)}{ev.age_group ? ` · ${ev.age_group}` : ''} {open ? '▲' : '▾'}
                           </td>
                           <td>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                               <Flag code={top.country_code} name={top.country_name} />
                               <Link to={`/swimmers/${top.swimmer_id}`} onClick={(e) => e.stopPropagation()}>{top.name}</Link>
                             </span>
@@ -923,7 +923,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                               <div style={{ flex: 1, height: 7, background: 'var(--color-bg)', border: '1px solid var(--color-divider)', minWidth: 60 }}>
                                 <div style={{ width: `${Math.min(100, top.p_medal)}%`, height: '100%', background: top.p_gold >= 50 ? 'var(--asw-gold)' : 'var(--color-accent)' }} />
                               </div>
-                              <span className="asw-num" style={{ fontWeight: 700, fontSize: 12.5, width: 34, textAlign: 'right' }}>{Math.round(top.p_medal)}%</span>
+                              <span className="asw-num" style={{ fontWeight: 700, fontSize: 13, width: 34, textAlign: 'right' }}>{Math.round(top.p_medal)}%</span>
                             </div>
                           </td>
                         </tr>
@@ -950,7 +950,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
           {table.length === 0 ? (
             <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>Not available yet</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr className="micro">
                   <th style={{ textAlign: 'left', paddingBottom: 6 }}>{snap.is_national ? 'Club' : 'Country'}</th>
@@ -963,7 +963,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
               <tbody>
                 {table.slice(0, 10).map((r) => (
                   <tr key={r.name} style={{ borderTop: '1px solid var(--color-divider)' }}>
-                    <td style={{ padding: '5px 0', fontWeight: 600 }}>
+                    <td style={{ padding: '4px 0', fontWeight: 600 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         {r.code && <Flag code={r.code} name={r.name} />}
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120, display: 'inline-block' }}>{r.name}</span>
@@ -985,11 +985,11 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
       </div>
 
       {/* improvements + share */}
-      <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         {rising.length > 0 && (
           <div style={{ flex: '1 1 320px', minWidth: 0, ...panelStyle }}>
             <div className="kicker" style={{ marginBottom: 10 }}>Biggest improvements</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {rising.slice(0, 6).map((c, i) => (
                 <div key={`${c.swimmer_id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                   <Flag code={c.country_code} name={c.country_name} />
@@ -1134,8 +1134,8 @@ export default function Predictions() {
                   title={formatDateRange(c.date, c.end_date)}
                   style={{
                     cursor: 'pointer', whiteSpace: 'nowrap', minHeight: 36,
-                    fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5,
-                    padding: '7px 13px', lineHeight: 1,
+                    fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13,
+                    padding: '8px 13px', lineHeight: 1,
                     background: active ? 'var(--color-accent)' : 'var(--color-bg)',
                     color: active ? '#fff' : 'var(--color-accent-800)',
                     border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-neutral-300)'}`,
@@ -1155,12 +1155,12 @@ export default function Predictions() {
               <button type="button" className="btn btn-secondary" onClick={() => loadDetail(selectedId)}>Try again</button>
             </Empty>
           ) : (
-            <div style={{ padding: '18px 32px 28px' }}>
+            <div style={{ padding: '16px 32px 28px' }}>
               {/* header: dates + stage + confidence + updated
                   (Overview has its own hero card with all of this) */}
               {view !== 'overview' && (
               <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
                 <span className="kicker">
                   {formatDateRange(champ?.date, champ?.end_date)}
                   {champ?.country ? ` · ${champ.country}` : ''}
@@ -1224,7 +1224,7 @@ export default function Predictions() {
                     aria-label="Event"
                     value={selectedEvent ? evKey(selectedEvent) : ''}
                     onChange={(e) => setEventKey(e.target.value)}
-                    style={{ minHeight: 36, padding: '7px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }}
+                    style={{ minHeight: 36, padding: '8px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }}
                   >
                     {genderEvents.map((e) => (
                       <option key={evKey(e)} value={evKey(e)}>

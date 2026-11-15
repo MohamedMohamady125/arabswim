@@ -51,7 +51,7 @@ function ClaimsQueue({ onCount }) {
   return (
     <div>
       {claims.map((c) => (
-        <div key={c.id} className="hair-b" style={{ display: 'flex', gap: 16, alignItems: 'center', padding: '14px 0', flexWrap: 'wrap' }}>
+        <div key={c.id} className="hair-b" style={{ display: 'flex', gap: 16, alignItems: 'center', padding: '16px 0', flexWrap: 'wrap' }}>
           <img
             src={mediaUrl(c.id_document)}
             alt={`ID document from ${c.username}`}
@@ -71,7 +71,7 @@ function ClaimsQueue({ onCount }) {
             <div style={{ fontSize: 13, marginTop: 3 }}>
               claims <Link to={`/swimmers/${c.swimmer}`}>{c.swimmer_name}</Link>
             </div>
-            <div className="micro" style={{ marginTop: 3 }}>{new Date(c.created_at).toLocaleDateString('en-GB')}</div>
+            <div className="micro" style={{ marginTop: 3 }}>{new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {/* Von Restorff: one row per claim, so Approve is outlined instead of a solid primary on every row */}
@@ -146,7 +146,7 @@ function OrgAccountForm() {
 
   return (
     <div style={{ maxWidth: 520 }}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Seg
           options={[{ value: 'CLUB', label: 'Club' }, { value: 'ACADEMY', label: 'Academy' }, { value: 'FEDERATION', label: 'Federation' }]}
           value={kind}
@@ -209,13 +209,13 @@ function OrgAccountForm() {
       </form>
 
       {result && (
-        <div role="status" style={{ marginTop: 18, border: '2px solid var(--asw-gold)', padding: '14px 16px' }}>
+        <div role="status" style={{ marginTop: 18, border: '2px solid var(--asw-gold)', padding: '16px 16px' }}>
           <div className="kicker" style={{ marginBottom: 8 }}>Account created — send these credentials</div>
           <div className="asw-num" style={{ fontSize: 14, lineHeight: 1.8 }}>
             Username: <strong>{result.username}</strong><br />
             Password: <strong>{result.password}</strong>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 10 }}>
             <button type="button" className="btn btn-secondary" onClick={copy}>{copied ? 'Copied ✓' : 'Copy credentials'}</button>
             <span className="micro" style={{ color: 'var(--asw-slow)' }}>The password is shown only once.</span>
           </div>
@@ -265,14 +265,14 @@ function SiteFeatures() {
                 aria-label={`Hide all in ${group.label}`} onClick={() => setGroup(group, false)}>Hide all</button>
             </div>
             <div className="micro" style={{ marginBottom: 10, color: 'var(--color-neutral-700)' }}>{group.hint}</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
               {group.items.map(([key, label]) => {
                 const on = features[key] !== false
                 return (
                   <div key={key} className="hair" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', border: '1px solid var(--color-divider)', minWidth: 190, opacity: on ? 1 : 0.75 }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13.5 }}>{label}</div>
-                      <div className="micro" style={{ color: on ? 'var(--asw-fast, #0d7a52)' : 'var(--color-neutral-700)' }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{label}</div>
+                      <div className="micro" style={{ color: on ? 'var(--asw-fast, var(--asw-fast))' : 'var(--color-neutral-700)' }}>
                         {on ? 'Visible' : 'Hidden'}
                       </div>
                     </div>
@@ -360,7 +360,7 @@ function PhotoQueue({ onCount }) {
         <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} disabled={!selected.size} onClick={bulkReject}>Reject {selected.size || ''}</button>
         <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} disabled={!selected.size} onClick={bulkApprove}>Approve {selected.size || ''}</button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
         {requests.map((r) => (
           <div key={r.id} style={{
             border: selected.has(r.id) ? '2px solid var(--color-accent)' : '1px solid var(--color-divider)',
@@ -507,14 +507,14 @@ function PartnersManager() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {partners.map((p, i) => (
-            <div key={p.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', flexWrap: 'wrap' }}>
+            <div key={p.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', flexWrap: 'wrap' }}>
               <div style={{ width: 120, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-divider)', background: '#fff', flex: 'none' }}>
                 {p.logo ? <img src={mediaUrl(p.logo)} alt={p.name} style={{ maxHeight: 34, maxWidth: 104, objectFit: 'contain' }} /> : <span className="micro">no logo</span>}
               </div>
               <div style={{ flex: 1, minWidth: 160 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
                 {p.website && <a href={p.website} target="_blank" rel="noreferrer" className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{p.website} ↗</a>}
-                <div className="micro" style={{ color: p.is_active ? 'var(--asw-fast, #0d7a52)' : 'var(--color-neutral-700)' }}>
+                <div className="micro" style={{ color: p.is_active ? 'var(--asw-fast, var(--asw-fast))' : 'var(--color-neutral-700)' }}>
                   {p.is_active ? 'Visible on site' : 'Hidden'}
                 </div>
               </div>
@@ -604,7 +604,7 @@ function EditHistory() {
             {dayOf(e.created_at) !== dayOf(log[i - 1]?.created_at) && (
               <div className="kicker" style={{ margin: i ? '18px 0 2px' : '0 0 2px' }}>{dayLabel(e.created_at)}</div>
             )}
-            <div className="hair-b" style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 0', flexWrap: 'wrap' }}>
+            <div className="hair-b" style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '12px 0', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 220 }}>
                 <div style={{ fontSize: 13 }}>
                   <span style={{ fontWeight: 700 }}>{ACTION_LABELS[e.action] || e.action}</span>

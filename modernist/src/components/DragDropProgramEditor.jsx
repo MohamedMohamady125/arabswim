@@ -170,14 +170,14 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
   const dropZoneStyle = (isOver) => ({
     minHeight: 48,
     padding: '6px',
-    background: isOver ? 'var(--color-accent-50, #e8f4f8)' : 'var(--color-surface)',
+    background: isOver ? 'var(--color-accent-50, var(--color-accent-100))' : 'var(--color-surface)',
     border: '2px dashed var(--color-neutral-300)',
-    borderRadius: 4,
+    borderRadius: 0,
     transition: 'background 0.15s',
   })
 
   return (
-    <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }}>
+    <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 16px' }}>
       <div className="kicker" style={{ marginBottom: 4 }}>Build meet program</div>
       <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0 }}>
         Drag each event from the left panel into the correct day, or pick the day from its "Add to" menu. Use the arrows to reorder. The program is saved automatically when you confirm the import.
@@ -257,7 +257,7 @@ export default function DragDropProgramEditor({ preview, startDate, endDate, ite
                   color: '#fff',
                   fontFamily: 'var(--font-heading)',
                   fontWeight: 700,
-                  fontSize: 12.5,
+                  fontSize: 13,
                 }}>
                   Day {d.day}
                   <span style={{ fontWeight: 400, fontSize: 11, marginLeft: 6, opacity: 0.85 }}>
@@ -504,19 +504,19 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
 
   const dropZoneStyle = (isOver) => ({
     minHeight: 48, padding: '6px',
-    background: isOver ? 'var(--color-accent-50, #e8f4f8)' : 'var(--color-surface)',
-    border: '2px dashed var(--color-neutral-300)', borderRadius: 4,
+    background: isOver ? 'var(--color-accent-50, var(--color-accent-100))' : 'var(--color-surface)',
+    border: '2px dashed var(--color-neutral-300)', borderRadius: 0,
     transition: 'background 0.15s',
   })
 
   return (
-    <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }}>
+    <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 16px' }}>
       <div className="kicker" style={{ marginBottom: 4 }}>Drag &amp; drop program editor</div>
       <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0 }}>
         Drag events from the left panel into the correct day, or pick the day from an event's "Add to" menu. Use the arrows to reorder. Click Save when done.
       </div>
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
           <input type="checkbox" checked={hasSessions} onChange={(e) => setHasSessions(e.target.checked)} />
           Morning &amp; evening sessions
@@ -558,7 +558,7 @@ export function DragDropMeetProgramEditor({ champId, resultEvents, onSaved }) {
 
             return (
               <div key={d.day} style={{ minWidth: 200, flex: '1 0 200px', border: '1px solid var(--color-neutral-300)', background: '#fff' }}>
-                <div style={{ padding: '8px 10px', background: 'var(--color-accent)', color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5 }}>
+                <div style={{ padding: '8px 10px', background: 'var(--color-accent)', color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13 }}>
                   Day {d.day}
                   <span style={{ fontWeight: 400, fontSize: 11, marginLeft: 6, opacity: 0.85 }}>{formatDate(d.date)}</span>
                   {dayItems.length > 0 && <span style={{ fontWeight: 400, fontSize: 11, marginLeft: 6, opacity: 0.85 }}>· {dayItems.length}</span>}
@@ -676,7 +676,7 @@ function DropZone({ items, allItems, onDrop, onDragOver, onRemove, onMove, style
             <button
               type="button"
               onClick={() => onRemove(globalIdx)}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 3px', minWidth: 32, minHeight: 32, flex: 'none', color: 'var(--asw-slow)', fontSize: 14, lineHeight: 1 }}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 4px', minWidth: 32, minHeight: 32, flex: 'none', color: 'var(--asw-slow)', fontSize: 14, lineHeight: 1 }}
               aria-label={`Remove ${it.event_name}`}
               title="Remove"
             >

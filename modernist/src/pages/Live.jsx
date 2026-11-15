@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getLiveMeets, getChampionships, getMeetProgram, getMeetLive, getChampionshipStats, getChampionshipResults, getMeetDocuments, uploadMeetDocument, deleteMeetDocument } from '../api/championships'
 import { useAuth } from '../context/AuthContext'
 import { getMedalSummary, getMedalClubSummary } from '../api/medals'
-import { formatDateRange, formatNumber, formatDate, mediaUrl } from '../utils'
+import { formatDateRange, formatNumber, formatDate, mediaUrl, nameInitials } from '../utils'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, MedalIcon, Seg } from '../components/ui'
 import MeetProgramEditor from '../components/MeetProgramEditor'
@@ -34,8 +34,8 @@ function LivePill({ small = false }) {
   return (
     <span style={{
       background: LIVE_RED, color: '#fff', display: 'inline-flex', alignItems: 'center',
-      gap: 6, fontSize: small ? 10.5 : 11, fontWeight: 800, letterSpacing: '0.1em',
-      padding: small ? '3px 9px' : '4px 12px', borderRadius: 999,
+      gap: 6, fontSize: small ? 10.5 : 11, fontWeight: 800, letterSpacing: '0.08em',
+      padding: small ? '3px 9px' : '4px 12px', borderRadius: 0,
     }}>
       <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite' }} />
       LIVE
@@ -82,14 +82,14 @@ function InlineResults({ meetId, meet, item }) {
   // a failed load is not "no results yet"
   if (failed) {
     return (
-      <div role="alert" style={{ padding: '12px 16px', fontSize: 12.5, color: 'var(--color-neutral-700)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <div role="alert" style={{ padding: '12px 16px', fontSize: 13, color: 'var(--color-neutral-700)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         These results could not be loaded.
         <button type="button" className="btn btn-secondary" onClick={() => { setRows(null); setRetry((n) => n + 1) }}>Try again</button>
       </div>
     )
   }
   if (rows.length === 0) {
-    return <div style={{ padding: '12px 16px', fontSize: 12.5, color: 'var(--color-neutral-700)' }}>No results uploaded yet.</div>
+    return <div style={{ padding: '12px 16px', fontSize: 13, color: 'var(--color-neutral-700)' }}>No results uploaded yet.</div>
   }
   return (
     <div className="live-fade-in" style={{ background: 'var(--color-surface)', borderTop: '1px solid var(--color-neutral-200)' }}>
@@ -108,18 +108,18 @@ function InlineResults({ meetId, meet, item }) {
               onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && clickable) { e.preventDefault(); setAthlete(r.swimmer_detail) } }}
               className={clickable ? 'live-result-row row-link' : undefined}
               style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px',
+                display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px',
                 borderBottom: '1px solid var(--color-neutral-200)', background: '#fff',
                 cursor: clickable ? 'pointer' : 'default',
               }}
             >
               <span style={{ width: 24, flex: 'none', display: 'flex', justifyContent: 'center' }}>
                 {r.is_hc ? (
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
                 ) : isFinal && i <= 2 ? (
                   <MedalIcon type={['GOLD', 'SILVER', 'BRONZE'][i]} size={18} style={{ display: 'block' }} />
                 ) : (
-                  <span className="asw-num" style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--color-neutral-500)' }}>
+                  <span className="asw-num" style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-neutral-500)' }}>
                     {r.original_rank || i + 1}
                   </span>
                 )}
@@ -136,7 +136,7 @@ function InlineResults({ meetId, meet, item }) {
                   RT {Number(r.reaction_time).toFixed(2)}
                 </span>
               )}
-              <span className="asw-time" style={{ fontWeight: 800, fontSize: 13.5, flex: 'none' }}>
+              <span className="asw-time" style={{ fontWeight: 800, fontSize: 14, flex: 'none' }}>
                 {r.formatted_time}
               </span>
               <span className="asw-num hide-mobile" style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-500)', width: 34, textAlign: 'right', flex: 'none' }}>
@@ -149,7 +149,7 @@ function InlineResults({ meetId, meet, item }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 16px' }}>
         <Link
           to={`/meets/${meetId}?tab=results&event=${item.event}&gender=${item.gender}&day=${item.day}&session=${item.session}`}
-          style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 /* Fitts's Law; strip stays the same height */, fontSize: 11.5, fontWeight: 800, textDecoration: 'none', color: 'var(--color-accent)' }}
+          style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 /* Fitts's Law; strip stays the same height */, fontSize: 12, fontWeight: 800, textDecoration: 'none', color: 'var(--color-accent)' }}
         >
           Heats, splits & more ›
         </Link>
@@ -171,7 +171,7 @@ function ProgramRow({ item, seq, meetId, meet, hasResults, last }) {
     }}>
       <span className="asw-num" style={{
         width: 30, height: 30, borderRadius: '50%', flex: 'none', display: 'inline-flex', alignItems: 'center',
-        justifyContent: 'center', fontSize: 12.5, fontWeight: 800,
+        justifyContent: 'center', fontSize: 13, fontWeight: 800,
         background: isFinal ? 'var(--color-accent-800)' : '#fff',
         color: isFinal ? '#fff' : 'var(--color-neutral-700)',
         border: isFinal ? 'none' : '1.5px solid var(--color-neutral-300)',
@@ -184,21 +184,21 @@ function ProgramRow({ item, seq, meetId, meet, hasResults, last }) {
             {item.event_name}
           </span>
           <span style={{
-            fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
-            padding: '2px 8px', borderRadius: 4, background: g.bg, color: g.color, flex: 'none',
+            fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+            padding: '2px 8px', borderRadius: 0, background: g.bg, color: g.color, flex: 'none',
           }}>
             {g.label}
           </span>
         </div>
-        <div style={{ fontSize: 11.5, color: 'var(--color-neutral-700)', marginTop: 3, fontWeight: 600 }}>
+        <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 3, fontWeight: 600 }}>
           {SESSION_LABEL[item.session] || item.session}
           {item.age_category ? ` · ${item.age_category}` : ''}
         </div>
       </div>
       {isFinal && (
         <span className="hide-mobile" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 800,
-          letterSpacing: '0.05em', padding: '4px 11px', borderRadius: 999,
+          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800,
+          letterSpacing: '0.08em', padding: '4px 12px', borderRadius: 0,
           border: '1px solid color-mix(in srgb, var(--asw-gold) 55%, #fff)', color: 'var(--color-accent-900)',
           background: 'color-mix(in srgb, var(--asw-gold) 18%, #fff)', flex: 'none',
         }}>
@@ -208,7 +208,7 @@ function ProgramRow({ item, seq, meetId, meet, hasResults, last }) {
       {hasResults ? (
         <span style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, flex: 'none',
-          fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', padding: '4px 11px', borderRadius: 999,
+          fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', padding: '4px 12px', borderRadius: 0,
           background: 'var(--color-accent-800)', color: '#fff',
         }}>
           OFFICIAL
@@ -216,7 +216,7 @@ function ProgramRow({ item, seq, meetId, meet, hasResults, last }) {
         </span>
       ) : (
         <span style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', padding: '4px 11px', borderRadius: 999, flex: 'none',
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', padding: '4px 12px', borderRadius: 0, flex: 'none',
           border: '1px solid var(--color-neutral-300)', color: 'var(--color-neutral-500)', background: '#fff',
         }}>
           SCHEDULED
@@ -263,14 +263,14 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
     groups.push([allFinals ? 'Finals' : 'Program', allFinals ? 'Medal events' : 'All events', rest, allFinals])
   }
   return (
-    <div className="live-fade-in" style={{ display: 'grid', gap: 18 }}>
+    <div className="live-fade-in" style={{ display: 'grid', gap: 16 }}>
       {groups.map(([label, sub, items, isFinals]) => (
         <div key={label} style={{
-          border: '1px solid var(--color-neutral-200)', borderRadius: 14, overflow: 'hidden',
-          boxShadow: '0 1px 4px rgba(12,35,64,.05)',
+          border: '1px solid var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden',
+          border: '1px solid var(--color-divider)',
         }}>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px',
+            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
             background: isFinals ? 'var(--color-accent-800)' : 'var(--color-surface)',
             borderBottom: '1px solid var(--color-neutral-200)',
           }}>
@@ -281,7 +281,7 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
             }}>
               {label}
             </span>
-            <span style={{ fontSize: 11.5, fontWeight: 600, color: isFinals ? 'rgba(255,255,255,.65)' : 'var(--color-neutral-600)' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: isFinals ? 'rgba(255,255,255,.65)' : 'var(--color-neutral-600)' }}>
               {sub}
             </span>
             {isFinals && <span style={{ marginLeft: 'auto' }}><MedalDots size={13} /></span>}
@@ -314,7 +314,7 @@ function ClubBadge({ logo, name, size = 22 }) {
   if (logo) {
     return <img src={mediaUrl(logo)} alt="" style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', background: '#fff', border: '1px solid var(--color-neutral-200)' }} />
   }
-  const initials = String(name || '?').split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+  const initials = nameInitials(name)
   return (
     <span style={{
       width: size, height: size, minWidth: size, borderRadius: '50%', display: 'inline-flex',
@@ -391,7 +391,7 @@ function MedalsPanel({ rows, clubRows }) {
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <Flag code={r.swimmer__nationality__code} />
               <span style={{ fontWeight: 800 }}>{r.swimmer__nationality__code}</span>
-              <span className="hide-mobile" style={{ color: 'var(--color-neutral-700)', fontSize: 12.5 }}>{r.swimmer__nationality__name}</span>
+              <span className="hide-mobile" style={{ color: 'var(--color-neutral-700)', fontSize: 13 }}>{r.swimmer__nationality__name}</span>
             </span>
           )}
         />
@@ -438,19 +438,19 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
     <div className="live-fade-in" style={{ display: 'grid', gap: 12 }}>
       {rows.length === 0 && <Empty label={`No ${label} published yet.`} />}
       {rows.length > 0 && (
-        <div style={{ border: '1px solid var(--color-neutral-200)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(12,35,64,.05)', background: '#fff' }}>
+        <div style={{ border: '1px solid var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden', background: '#fff' }}>
           {rows.map((d, i) => (
             <div key={d.id} style={{
               display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
               borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--color-neutral-200)',
             }}>
               <span style={{
-                width: 34, height: 34, borderRadius: 9, flex: 'none', display: 'inline-flex',
-                alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 800,
+                width: 34, height: 34, borderRadius: 0, flex: 'none', display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800,
                 background: 'var(--color-accent-100)', color: 'var(--color-accent-800)',
               }}>PDF</span>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontWeight: 800, fontFamily: 'var(--font-heading)', fontSize: 13.5, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontWeight: 800, fontFamily: 'var(--font-heading)', fontSize: 14, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {d.title}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', fontWeight: 600, marginTop: 2 }}>
@@ -462,8 +462,8 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
                 aria-label={`Open ${d.title}`}
                 style={{
                   display: 'inline-flex', alignItems: 'center', minHeight: 32,
-                  flex: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
-                  padding: '7px 14px', borderRadius: 999, textDecoration: 'none',
+                  flex: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+                  padding: '8px 16px', borderRadius: 0, textDecoration: 'none',
                   background: 'var(--color-accent-800)', color: '#fff',
                 }}
               >
@@ -479,7 +479,7 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
                     setErr(''); setOk('')
                     deleteMeetDocument(meetId, d.id).then(() => { setOk('Deleted.'); onChanged() }).catch(() => setErr('Could not delete the file. Try again.'))
                   }}
-                  style={{ minHeight: 32, flex: 'none', border: '1px solid var(--color-neutral-300)', background: '#fff', color: 'var(--asw-slow)', borderRadius: 999, padding: '6px 12px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+                  style={{ minHeight: 32, flex: 'none', border: '1px solid var(--color-neutral-300)', background: '#fff', color: 'var(--asw-slow)', borderRadius: 0, padding: '6px 12px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
                 >
                   Delete
                 </button>
@@ -489,7 +489,7 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
         </div>
       )}
       {isAdmin && (
-        <div style={{ border: '1px dashed var(--color-neutral-300)', borderRadius: 14, padding: '12px 16px', background: 'var(--color-surface)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ border: '1px dashed var(--color-neutral-300)', borderRadius: 0, padding: '12px 16px', background: 'var(--color-surface)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <input type="file" aria-label="PDF file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
           <input className="input" aria-label="Title (optional)" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} style={{ flex: '1 1 140px', width: 'auto' }} />
           <input className="input" aria-label="Day" placeholder="Day" type="number" min="1" value={day} onChange={(e) => setDay(e.target.value)} style={{ flex: '0 1 70px', width: 'auto' }} />
@@ -589,21 +589,21 @@ function LiveHub({ meet }) {
     <div style={{ marginTop: 20 }}>
       {/* ── hero card ── */}
       <div style={{
-        borderRadius: 16, overflow: 'hidden', marginBottom: 18,
-        boxShadow: '0 4px 18px rgba(12,35,64,.14)',
+        borderRadius: 0, overflow: 'hidden', marginBottom: 18,
+        border: '1px solid var(--color-divider)',
       }}>
         <div style={{
           background: 'var(--color-accent-800)',
-          color: '#fff', padding: '20px 22px 18px',
+          color: '#fff', padding: '20px 22px 16px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <LivePill />
             {prog && (
-              <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,.7)', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: 'rgba(255,255,255,.7)', textTransform: 'uppercase' }}>
                 Day {prog.current} of {prog.total}
               </span>
             )}
-            <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>
               <span className="asw-num" style={{ fontWeight: 800, color: '#fff', fontSize: 14 }}>{formatNumber(live?.total_results ?? meet.results_count ?? 0)}</span>
               {' '}results in
             </span>
@@ -611,7 +611,7 @@ function LiveHub({ meet }) {
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(19px, 3.4vw, 26px)', marginTop: 10, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             {meet.name}
           </div>
-          <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.75)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', fontWeight: 600 }}>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,.75)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontWeight: 600 }}>
             {meet.country_detail && <Flag code={meet.country_detail.code} />}
             {meet.location || meet.country_detail?.name}
             <span style={{ opacity: 0.5 }}>·</span>
@@ -622,7 +622,7 @@ function LiveHub({ meet }) {
             <div style={{ display: 'flex', gap: 4, marginTop: 14 }}>
               {Array.from({ length: prog.total }, (_, i) => (
                 <span key={i} style={{
-                  flex: 1, height: 4, borderRadius: 2,
+                  flex: 1, height: 4, borderRadius: 0,
                   background: i + 1 < prog.current ? 'rgba(255,255,255,.85)'
                     : i + 1 === prog.current ? LIVE_RED
                     : 'rgba(255,255,255,.22)',
@@ -643,8 +643,8 @@ function LiveHub({ meet }) {
                 onClick={() => setTab(key)}
                 className={`live-tabpill${active ? ' active' : ''}`}
                 style={{
-                  padding: '9px 22px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer',
-                  letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                  padding: '8px 22px', borderRadius: 0, fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                  letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
                   background: active ? 'var(--color-accent-800)' : '#fff',
                   color: active ? '#fff' : 'var(--color-neutral-600)',
                   border: `1.5px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
@@ -654,7 +654,7 @@ function LiveHub({ meet }) {
               </button>
             )
           })}
-          <div className="live-tabmeta" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14, flex: 'none' }}>
+          <div className="live-tabmeta" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16, flex: 'none' }}>
             {updatedAt && (
               <span className="hide-mobile" style={{ fontSize: 11, color: 'var(--color-neutral-500)', fontWeight: 600 }}>
                 Updated {updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · auto-refreshes
@@ -694,7 +694,7 @@ function LiveHub({ meet }) {
                 </div>
               )}
               {/* day chips */}
-              <div ref={chipsRef} style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '10px 2px 12px', marginBottom: 14 }}>
+              <div ref={chipsRef} style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '10px 2px 12px', marginBottom: 14 }}>
                 {days.map((d) => {
                   const active = d.day === (selectedDay ?? todayNum)
                   const isToday = d.day === todayNum
@@ -707,7 +707,7 @@ function LiveHub({ meet }) {
                       onClick={() => setSelectedDay(d.day)}
                       className={`live-daychip${active ? ' active' : ''}`}
                       style={{
-                        flex: 'none', minWidth: 84, padding: '10px 12px 9px', borderRadius: 12, cursor: 'pointer',
+                        flex: 'none', minWidth: 84, padding: '10px 12px 8px', borderRadius: 0, cursor: 'pointer',
                         textAlign: 'center', position: 'relative',
                         background: active ? 'var(--color-accent-800)' : '#fff',
                         color: active ? '#fff' : 'inherit',
@@ -718,19 +718,19 @@ function LiveHub({ meet }) {
                       {isToday && (
                         <span style={{
                           position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)',
-                          fontSize: 10.5, lineHeight: 1.2, fontWeight: 800, letterSpacing: '0.1em', padding: '1px 8px',
-                          borderRadius: 999, background: LIVE_RED, color: '#fff',
+                          fontSize: 11, lineHeight: 1.2, fontWeight: 800, letterSpacing: '0.08em', padding: '1px 8px',
+                          borderRadius: 0, background: LIVE_RED, color: '#fff',
                         }}>
                           TODAY
                         </span>
                       )}
-                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
                         {weekday(d.date) || `Day ${d.day}`}
                       </div>
-                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 800, marginTop: 2, lineHeight: 1 }}>
+                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, marginTop: 2, lineHeight: 1 }}>
                         {d.date ? Number(d.date.slice(8, 10)) : d.day}
                       </div>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.06em' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.08em' }}>
                         DAY {d.day}
                       </div>
                       <div style={{ marginTop: 4, height: 11 }}>
@@ -767,7 +767,7 @@ function MeetCard({ meet, active, onSelect }) {
       style={{
         textAlign: 'left', cursor: 'pointer', display: 'block', width: '100%',
         border: `2px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-200)'}`,
-        borderRadius: 14, padding: '14px 16px', background: '#fff',
+        borderRadius: 0, padding: '16px 16px', background: '#fff',
         boxShadow: active ? '0 4px 14px rgba(12,35,64,.16)' : '0 1px 4px rgba(12,35,64,.05)',
       }}
     >
@@ -775,7 +775,7 @@ function MeetCard({ meet, active, onSelect }) {
         <LivePill small />
         {prog && <span className="micro">Day {prog.current} of {prog.total}</span>}
       </div>
-      <div style={{ fontWeight: 800, fontFamily: 'var(--font-heading)', fontSize: 15, lineHeight: 1.25, marginBottom: 6 }}>
+      <div style={{ fontWeight: 800, fontFamily: 'var(--font-heading)', fontSize: 16, lineHeight: 1.25, marginBottom: 6 }}>
         {meet.name}
       </div>
       <div className="micro" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -819,7 +819,6 @@ export default function Live() {
   return (
     <div>
       <PageHead
-        kicker="Live"
         title="Live results"
         sub="Meets happening right now — program, results and medal standings, session by session."
       />
@@ -843,11 +842,11 @@ export default function Live() {
                     key={m.id}
                     to={`/meets/${m.id}?tab=results`}
                     className="row-link"
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', minHeight: 48, color: 'inherit', textDecoration: 'none', borderTop: i ? '1px solid var(--color-divider)' : 'none' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', minHeight: 48, color: 'inherit', textDecoration: 'none', borderTop: i ? '1px solid var(--color-divider)' : 'none' }}
                   >
                     <Flag code={m.country_detail?.code} name={m.country_detail?.name} />
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, lineHeight: 1.25 }}>{m.name}</span>
+                      <span style={{ display: 'block', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.25 }}>{m.name}</span>
                       <span style={{ display: 'block', fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{formatDateRange(m.date, m.end_date)}</span>
                     </span>
                     <span aria-hidden="true" style={{ color: 'var(--color-neutral-700)' }}>→</span>

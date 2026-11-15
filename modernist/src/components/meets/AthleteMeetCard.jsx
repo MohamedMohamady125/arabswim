@@ -6,7 +6,7 @@ import { getResults } from '../../api/championships'
 import { getMedals } from '../../api/medals'
 import Flag from '../Flag'
 import { Loading, MedalIcon } from '../ui'
-import { mediaUrl } from '../../utils'
+import { mediaUrl, nameInitials } from '../../utils'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
@@ -78,7 +78,7 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
   }, [rows])
 
   const nat = swimmer.nationality_detail
-  const initials = (swimmer.name || '?').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+  const initials = nameInitials(swimmer.name)
 
   return createPortal(
     <div
@@ -98,14 +98,14 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 480, maxHeight: 'min(84vh, 720px)', display: 'flex', flexDirection: 'column',
-          borderRadius: 18, overflow: 'hidden', background: '#fff',
-          boxShadow: '0 24px 64px rgba(4, 12, 24, .45)',
+          borderRadius: 0, overflow: 'hidden', background: '#fff',
+          border: '1px solid var(--color-divider)',
         }}
       >
         {/* ── header ── */}
         <div style={{
           background: 'var(--color-accent-800)',
-          color: '#fff', padding: '18px 20px 16px', position: 'relative', flex: 'none',
+          color: '#fff', padding: '16px 20px 16px', position: 'relative', flex: 'none',
         }}>
           <button
             type="button"
@@ -120,7 +120,7 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
           >
             <X size={16} />
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {swimmer.photo ? (
               <img
                 src={mediaUrl(swimmer.photo)}
@@ -137,10 +137,10 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
               </span>
             )}
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
                 {swimmer.name}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5, fontSize: 12.5, color: 'rgba(255,255,255,.78)', fontWeight: 600, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5, fontSize: 13, color: 'rgba(255,255,255,.78)', fontWeight: 600, flexWrap: 'wrap' }}>
                 {nat && <Flag code={nat.code} />}
                 {nat?.name}
                 {swimmer.age ? <><span style={{ opacity: .5 }}>·</span>{swimmer.age} yrs</> : null}
@@ -153,8 +153,8 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
             <div style={{ display: 'flex', gap: 8, marginTop: 13 }}>
               {['GOLD', 'SILVER', 'BRONZE'].map((t) => counts[t] > 0 && (
                 <span key={t} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3.5px 11px 3.5px 6px',
-                  borderRadius: 999, background: 'rgba(255,255,255,.13)', fontSize: 12.5, fontWeight: 800,
+                  display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3.4px 12px 3.4px 6px',
+                  borderRadius: 0, background: 'rgba(255,255,255,.13)', fontSize: 13, fontWeight: 800,
                 }}>
                   <MedalIcon type={t} size={17} style={{ display: 'block' }} />
                   <span className="asw-num">{counts[t]}</span>
@@ -186,16 +186,16 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
                 const isBest = r.id === bestId
                 return (
                   <div key={r.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px',
-                    background: '#fff', borderRadius: 11,
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+                    background: '#fff', borderRadius: 0,
                     border: `1px solid ${isBest ? 'var(--asw-gold)' : 'var(--color-neutral-200)'}`,
-                    boxShadow: '0 1px 3px rgba(12,35,64,.04)',
+                    border: '1px solid var(--color-divider)',
                   }}>
                     <span style={{ width: 26, flex: 'none', display: 'flex', justifyContent: 'center' }}>
                       {medal ? (
                         <MedalIcon type={medal} size={21} style={{ display: 'block' }} />
                       ) : r.is_hc ? (
-                        <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
                       ) : (
                         <span className="asw-num" style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-neutral-500)' }}>
                           {r.original_rank || '–'}
@@ -203,13 +203,13 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
                       )}
                     </span>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13.5, lineHeight: 1.25 }}>
+                      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, lineHeight: 1.25 }}>
                         {r.event_detail?.name || '—'}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                         <span style={{
-                          fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
-                          padding: '1.5px 7px', borderRadius: 4,
+                          fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+                          padding: '1.4px 8px', borderRadius: 0,
                           background: (r.round_type === 'Finals' || !r.round_type) ? 'var(--color-accent-100)' : 'var(--color-neutral-200)',
                           color: (r.round_type === 'Finals' || !r.round_type) ? 'var(--color-accent)' : 'var(--color-neutral-600)',
                         }}>
@@ -219,14 +219,14 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
                           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-500)' }}>{r.category}</span>
                         )}
                         {isBest && (
-                          <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--asw-gold)', textTransform: 'uppercase' }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--asw-gold)', textTransform: 'uppercase' }}>
                             Top swim
                           </span>
                         )}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', flex: 'none' }}>
-                      <div className="asw-time" style={{ fontWeight: 800, fontSize: 15 }}>
+                      <div className="asw-time" style={{ fontWeight: 800, fontSize: 16 }}>
                         {r.time_centiseconds > 0 ? r.formatted_time : (r.hc_type || '—')}
                       </div>
                       {r.fina_points ? (
@@ -244,16 +244,16 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
 
         {/* ── footer ── */}
         <div style={{
-          flex: 'none', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+          flex: 'none', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
           background: '#fff', borderTop: '1px solid var(--color-neutral-200)',
         }}>
-          <span style={{ fontSize: 11.5, color: 'var(--color-neutral-500)', fontWeight: 600 }}>
+          <span style={{ fontSize: 12, color: 'var(--color-neutral-500)', fontWeight: 600 }}>
             {sorted ? `${sorted.length} swim${sorted.length === 1 ? '' : 's'} at this meet` : ''}
           </span>
           <Link
             to={`/swimmers/${swimmer.id}`}
             className="btn btn-primary"
-            style={{ marginLeft: 'auto', fontSize: 12.5 }}
+            style={{ marginLeft: 'auto', fontSize: 13 }}
           >
             Full profile ›
           </Link>

@@ -88,8 +88,8 @@ function AddRecordModal({ onClose, onCreated }) {
     }
   }
 
-  const label = { display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }
-  const input = { width: '100%', padding: '9px 10px', border: '1px solid var(--color-neutral-300)', background: 'var(--color-bg)', fontSize: 14, fontFamily: 'inherit' }
+  const label = { display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }
+  const input = { width: '100%', padding: '8px 10px', border: '1px solid var(--color-neutral-300)', background: 'var(--color-bg)', fontSize: 14, fontFamily: 'inherit' }
 
   return (
     <div
@@ -97,8 +97,8 @@ function AddRecordModal({ onClose, onCreated }) {
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <form onSubmit={submit} role="dialog" aria-modal="true" aria-label="Add record" style={{ width: 520, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
-        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
-          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Add Record</strong>
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
+          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 16 }}>Add Record</strong>
           <button type="button" className="btn-ghost" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 36, minHeight: 36 }}>×</button>
         </div>
 
@@ -121,7 +121,7 @@ function AddRecordModal({ onClose, onCreated }) {
                       <button
                         key={s.id} type="button"
                         onClick={() => { setSel(s); setResults([]) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 10px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 14 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 14 }}
                       >
                         <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
                         <span style={{ fontWeight: 600, flex: 1 }}>{s.name}</span>
@@ -196,7 +196,7 @@ function AddRecordModal({ onClose, onCreated }) {
           {error && <div role="alert" style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
         </div>
 
-        <div className="rule-t" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <div className="rule-t" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           {/* Paradox of the Active User: a greyed-out Save says what is still missing */}
           {!canSave && !saving && (
@@ -256,7 +256,7 @@ function ImportRecordsModal({ onClose, onImported }) {
     }
   }
 
-  const label = { display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }
+  const label = { display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }
 
   return (
     <div
@@ -264,8 +264,8 @@ function ImportRecordsModal({ onClose, onImported }) {
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div role="dialog" aria-modal="true" aria-label="Import records from Excel" style={{ width: 560, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
-        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
-          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Import Records from Excel</strong>
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
+          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 16 }}>Import Records from Excel</strong>
           <button type="button" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 36, minHeight: 36 }}>×</button>
         </div>
 
@@ -292,7 +292,7 @@ function ImportRecordsModal({ onClose, onImported }) {
           </div>
 
           {result && (
-            <div role="status" style={{ border: '1px solid var(--color-divider)', padding: '12px 14px', fontSize: 13 }}>
+            <div role="status" style={{ border: '1px solid var(--color-divider)', padding: '12px 16px', fontSize: 13 }}>
               <div style={{ fontWeight: 800, color: result.created > 0 ? 'var(--asw-fast)' : 'var(--color-text)' }}>
                 {result.created} record{result.created !== 1 ? 's' : ''} imported
                 {result.duplicates > 0 && ` · ${result.duplicates} duplicate${result.duplicates !== 1 ? 's' : ''} skipped`}
@@ -302,7 +302,7 @@ function ImportRecordsModal({ onClose, onImported }) {
                   <div style={{ fontWeight: 700, color: 'var(--asw-slow)', marginBottom: 4 }}>
                     {result.errors.length} row{result.errors.length !== 1 ? 's' : ''} need fixing:
                   </div>
-                  <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {result.errors.map((e, i) => (
                       <li key={i}>Row {e.row}: {e.error}</li>
                     ))}
@@ -314,7 +314,7 @@ function ImportRecordsModal({ onClose, onImported }) {
           {error && <div role="alert" style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
         </div>
 
-        <div className="rule-t" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <div className="rule-t" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>{result ? 'Done' : 'Cancel'}</button>
           <button type="button" className="btn btn-primary" disabled={!file || busy} onClick={upload}>
             {busy ? 'Importing…' : 'Import records'}
@@ -446,7 +446,7 @@ export default function NewRecords() {
         active={scope !== 'NATIONAL' || !!country}
         onClear={() => { setScope('NATIONAL'); setCountry('') }}
       >
-        <div className="records-filters results-filters" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="records-filters results-filters" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <Seg options={SCOPE_OPTIONS} value={scope} onChange={(v) => { setScope(v); if (v !== 'NATIONAL') setCountry('') }} />
           {isNational && (
             <select className="select" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
@@ -491,7 +491,7 @@ export default function NewRecords() {
         {groups.map(([type, rows]) => (
           <div key={type} className="rule-b pad">
             <div className="sect-head">
-              <h4 style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <h4 style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 {TYPE_LABEL[type] || type} records
               </h4>
               {/* Working Memory: say how much of the list is on screen */}
@@ -506,7 +506,7 @@ export default function NewRecords() {
                 <div key={countryName} style={{ marginBottom: 18 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 10px' }}>
                     <Flag code={(sub[0].country_detail || sub[0].swimmer_detail?.nationality_detail)?.code} name={countryName} />
-                    <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{countryName}</strong>
+                    <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{countryName}</strong>
                     {/* the last federation may still be loading — no count until it is whole */}
                     {(allLoaded || gi < arr.length - 1) && <span className="micro asw-num">{sub.length}</span>}
                   </div>
@@ -563,7 +563,7 @@ function RecordCards({ rows }) {
                       style={{
                         width: '100%', aspectRatio: '1 / 1', marginBottom: 10,
                         background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30, color: 'var(--color-accent)',
+                        fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, color: 'var(--color-accent)',
                       }}
                     >
                       {(r.swimmer_detail?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')}
@@ -582,7 +582,7 @@ function RecordCards({ rows }) {
                   {/* 3 — pool badge in front of the time */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
                     <span className="tag tag-accent-2" style={{ fontSize: 11, padding: '2px 8px', fontWeight: 700 }}>{r.pool}</span>
-                    <span className="asw-num rec-time" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>
+                    <span className="asw-num rec-time" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>
                       {r.formatted_time}
                     </span>
                   </div>
@@ -590,7 +590,7 @@ function RecordCards({ rows }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                     <Flag code={r.swimmer_detail?.nationality_detail?.code} name={r.swimmer_detail?.nationality_detail?.name} />
                     {r.swimmer && !r.swimmer_detail?.is_relay_team ? (
-                      <Link to={`/swimmers/${r.swimmer}`} className="rec-name" style={{ padding: '7px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, same card height */, color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                      <Link to={`/swimmers/${r.swimmer}`} className="rec-name" style={{ padding: '8px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, same card height */, color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
                         {r.swimmer_detail?.name}
                       </Link>
                     ) : (

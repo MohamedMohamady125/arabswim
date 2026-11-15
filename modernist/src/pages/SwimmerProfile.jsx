@@ -26,7 +26,7 @@ import Flag from '../components/Flag'
 import { Loading, notify, Empty, Seg, Modal, BackLink } from '../components/ui'
 import LoadFailed from '../components/swimmer/LoadFailed'
 import ImageCropper from '../components/ImageCropper'
-import { formatDate, mediaUrl } from '../utils'
+import { formatDate, mediaUrl, nameInitials } from '../utils'
 import SplitsBreakdown from '../components/swimmer/SplitsBreakdown'
 import CompareTab from '../components/swimmer/CompareTab'
 import ProgressionChart from '../components/charts/ProgressionChart'
@@ -77,7 +77,7 @@ function ClaimModal({ swimmer, onClose, onSubmitted }) {
         passport or national ID. Our team reviews every claim manually — the document is
         only visible to admins.
       </div>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {error && (
           <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>{error}</div>
         )}
@@ -346,11 +346,7 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
   )
 }
 
-function initials(name) {
-  return String(name || '')
-    .split(/\s+/).filter(Boolean).slice(0, 2)
-    .map((w) => w[0]).join('').toUpperCase()
-}
+const initials = (name) => nameInitials(name)
 
 // Header photo with graceful fallback: a broken/missing upload never shows
 // as raw alt text — it falls back to the navy initials block.
@@ -403,7 +399,7 @@ function EventList({ events, selected, onSelect, detail }) {
     if (!rows.length) return null
     return (
       <div style={{ marginBottom: 16 }}>
-        <div style={{ background: 'var(--color-accent-800)', padding: '7px 10px', marginBottom: 2 }}>
+        <div style={{ background: 'var(--color-accent-800)', padding: '8px 10px', marginBottom: 2 }}>
           <span className="kicker" style={{ color: '#ffffff' }}>{label}</span>
         </div>
         {rows.map((e) => {
@@ -413,8 +409,8 @@ function EventList({ events, selected, onSelect, detail }) {
             <button type="button" onClick={() => onSelect(e)} aria-pressed={isSel}
               className="hair-b"
               style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                padding: '9px 10px', border: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left',
+                display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                padding: '8px 10px', border: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left',
                 background: isSel ? 'var(--color-accent-100)' : 'transparent',
               }}>
               <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 13, color: isSel ? 'var(--color-accent)' : 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -574,7 +570,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, failed, onRe
                             const order = leg.order || li + 1
                             const mine = h.leg_order && order === h.leg_order
                             return (
-                              <div key={li} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: mine ? 700 : 400 }}>
+                              <div key={li} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, fontWeight: mine ? 700 : 400 }}>
                                 <span className="asw-num" style={{ width: 44, color: mine ? 'var(--color-accent)' : 'var(--color-neutral-700)' }}>Leg {order}</span>
                                 <span style={{ flex: 1, color: mine ? 'var(--color-accent)' : 'inherit' }}>{leg.name || '—'}</span>
                                 <span className="asw-time" style={{ fontSize: 13 }}>{leg.split_time || '—'}</span>
@@ -598,7 +594,7 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, failed, onRe
                     ) : null
                     return (
                       <tr>
-                        <td colSpan={7} style={{ background: 'var(--color-neutral-100)', padding: '14px 16px' }}>
+                        <td colSpan={7} style={{ background: 'var(--color-neutral-100)', padding: '16px 16px' }}>
                           <SplitsBreakdown splits={splits} eventName={selectedEvent.event_name}
                             roundType={h.round_type} totalCs={h.time_centiseconds}
                             compareSplits={sibling?.splits} compareRoundType={sibling?.round_type}
@@ -664,10 +660,10 @@ function DnaRadar({ axes, size = 260 }) {
 
 function ChaseStat({ label, value, sub }) {
   return (
-    <div style={{ border: '1px solid var(--color-divider)', padding: '12px 14px', flex: '1 1 120px' }}>
+    <div style={{ border: '1px solid var(--color-divider)', padding: '12px 16px', flex: '1 1 120px' }}>
       <div className="kicker">{label}</div>
       <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1.1 }}>{value}</div>
-      {sub && <div className="text-muted" style={{ fontSize: 11.5, marginTop: 2 }}>{sub}</div>}
+      {sub && <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>{sub}</div>}
     </div>
   )
 }
@@ -699,7 +695,7 @@ function DnaSection({ swimmerId }) {
           <DnaRadar axes={dna.axes} />
           <div style={{ flex: '1 1 240px' }}>
             {dna.axes.map((a) => (
-              <div key={a.stroke} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', borderBottom: '1px solid var(--color-neutral-200)' }}>
+              <div key={a.stroke} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0', borderBottom: '1px solid var(--color-neutral-200)' }}>
                 <span style={{ flex: '0 0 130px', fontWeight: 600, fontSize: 13 }}>{a.stroke}</span>
                 <div style={{ flex: 1, height: 8, background: 'var(--color-neutral-200)' }}>
                   <div style={{ width: `${Math.max(0, a.percentile)}%`, height: '100%', background: 'var(--color-accent)' }} />
@@ -762,7 +758,7 @@ export function ChaseSection({ swimmerId }) {
             )}
           </div>
           <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <ChaseStat label="Arab rank" value={`#${chase.my_rank}`} sub={`of ${chase.field_size}`} />
               {chase.national_rank && (
                 <ChaseStat label="National rank" value={`#${chase.national_rank}`} sub={`of ${chase.national_field_size}`} />
@@ -878,7 +874,7 @@ function RankingsPreview({ swimmerId, onViewAll }) {
       </div>
       <div className="rule-t">
         {top.map((r, i) => (
-          <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
+          <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0' }}>
             <div style={{ background: 'var(--color-accent)', color: '#fff', minWidth: 48, height: 48, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px' }}>
               <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: r.rank >= 1000 ? 14 : r.rank >= 100 ? 16 : 22, lineHeight: 1 }}>{r.rank}</span>
               <span style={{ fontSize: 11, fontWeight: 800, marginTop: 1 }}>{ordSuffix(r.rank)}</span>
@@ -940,15 +936,15 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
 
   const cardStyle = {
     background: 'var(--color-accent-800)',
-    color: '#fff', padding: '14px 12px', textAlign: 'center',
+    color: '#fff', padding: '16px 12px', textAlign: 'center',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
   }
-  const cardNum = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color: '#fff', lineHeight: 1.1 }
-  const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }
+  const cardNum = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: '#fff', lineHeight: 1.1 }
+  const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }
   const cardSub = { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {/* Stat cards lead the Overall tab — same gradient style as home page */}
       <div className="swimmer-stat-cards">
         {/* Similarity + Flow: the three counts that have a tab of their own open it */}
@@ -981,7 +977,7 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
           {season_best_fina?.event_name && <span style={cardSub}>{season_best_fina.event_name}</span>}
         </div>
         <div style={cardStyle}>
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: '#fff', lineHeight: 1.2, textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: '#fff', lineHeight: 1.2, textTransform: 'uppercase' }}>
             {best_event || '—'}
           </span>
           <span style={cardLabel}>Fastest Event</span>
@@ -998,7 +994,7 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
             <div className="sect-head"><h4>Top Personal Bests</h4></div>
             <div className="rule-t">
               {top_personal_bests.map((pb, i) => (
-                <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
+                <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0' }}>
                   <span className="asw-num" style={{ width: 30, height: 30, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13 }}>
                     {i + 1}
                   </span>
@@ -1031,9 +1027,9 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
         // parse date-only strings as local time ('2023-09-08' via new Date()
         // is UTC midnight and renders as the previous day west of UTC)
         const fmtDate = (d) => d ? new Date(`${d}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
-        const tile = { border: '1px solid var(--color-divider)', background: '#fff', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }
-        const tLabel = { fontSize: 11, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-500)' }
-        const tVal = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }
+        const tile = { border: '1px solid var(--color-divider)', background: '#fff', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }
+        const tLabel = { fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-500)' }
+        const tVal = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2 }
         const tSub = { fontSize: 11, color: 'var(--color-neutral-700)' }
         // Biggest title: most prestigious classification with golds (else the
         // best medal colour at the highest level), from the medal hierarchy
@@ -1057,7 +1053,7 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
               <h4>Career Summary</h4>
               {multiYear && <span className="micro">{fmtDate(cs.first_date)} → {fmtDate(cs.last_date)}</span>}
             </div>
-            <div className="rule-t" style={{ paddingTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: 10 }}>
+            <div className="rule-t" style={{ paddingTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: 12 }}>
               <div style={tile}>
                 <span style={tLabel}>Debut</span>
                 <span style={tVal}>{fmtDate(cs.debut?.date)}</span>
@@ -1126,13 +1122,13 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
               const toGo = !reached && t.max != null && best_fina.points >= t.min - 100 ? t.min - best_fina.points : null
               return (
                 <div key={t.min} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '7px 10px',
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px',
                   background: isCurrent ? 'var(--color-accent)' : 'transparent',
                   color: isCurrent ? '#fff' : 'inherit',
                   borderLeft: `4px solid ${isCurrent ? 'var(--asw-gold)' : reached ? 'var(--color-accent)' : 'var(--color-divider)'}`,
                 }}>
                   <span className="asw-num" style={{ width: 52, flex: 'none', fontWeight: 800, fontSize: 14, opacity: reached ? 1 : 0.5 }}>{t.min}+</span>
-                  <span style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: reached ? 1 : 0.5 }}>{t.label}</span>
+                  <span style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: reached ? 1 : 0.5 }}>{t.label}</span>
                   {isCurrent && <span className="tag" style={{ background: 'var(--asw-gold)', color: '#fff', border: 0 }}>CAREER BEST</span>}
                   {isSeason && <span className="tag tag-accent">THIS SEASON</span>}
                   {toGo != null && <span className="asw-num micro" style={{ color: 'var(--color-accent)', fontWeight: 800 }}>Next · {toGo} pts to go</span>}
@@ -1162,7 +1158,7 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
               {years.map((y) => (
                 <div key={y} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
                   <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 4 }}>{byYear[y]}</span>
-                  <div style={{ width: '70%', maxWidth: 36, height: `${Math.max(4, (byYear[y] / maxY) * 110)}px`, background: 'linear-gradient(180deg, var(--color-accent-500), var(--color-accent-800))', borderRadius: '3px 3px 0 0' }} />
+                  <div style={{ width: '70%', maxWidth: 36, height: `${Math.max(4, (byYear[y] / maxY) * 110)}px`, background: 'linear-gradient(180deg, var(--color-accent-500), var(--color-accent-800))', borderRadius: 0 }} />
                   <span className="asw-num" style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 6 }}>{y}</span>
                 </div>
               ))}
@@ -1201,7 +1197,7 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
           </div>
           <div className="rule-t">
             {intlRecords.map((r) => (
-              <div key={r.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0' }}>
+              <div key={r.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0' }}>
                 <span className={`tag ${r.record_type === 'ARAB' ? 'tag-dark' : r.record_type === 'GCC' ? 'tag-accent' : 'tag-outline'}`} style={{ flex: 'none', minWidth: 40, textAlign: 'center' }}>{r.record_type}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase' }}>{r.event_name}</div>
@@ -1352,9 +1348,9 @@ function MergeModal({ swimmer, onClose, onMerged }) {
       {results.length > 0 && !selected && (
         <div style={{ border: '1px solid var(--color-divider)', maxHeight: 250, overflowY: 'auto', marginBottom: 12 }}>
           {results.map((s) => (
-            <button key={s.id} type="button" style={{ width: '100%', textAlign: 'left', padding: '10px 14px', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', font: 'inherit', fontSize: 13 }}
+            <button key={s.id} type="button" style={{ width: '100%', textAlign: 'left', padding: '10px 16px', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', font: 'inherit', fontSize: 13 }}
               onClick={() => setSelected(s)}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
                 <div>
                   <div style={{ fontWeight: 700 }}>{s.name}</div>
@@ -1377,13 +1373,13 @@ function MergeModal({ swimmer, onClose, onMerged }) {
           <div className="kicker" style={{ marginBottom: 10 }}>Merge preview</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'center' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontWeight: 800, fontSize: 15 }}>{swimmer.name}</div>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>{swimmer.name}</div>
               <div className="micro">{swimmer.nationality_detail?.name}{swimmer.birth_year ? ` · ${swimmer.birth_year}` : ''}</div>
               <span className="tag tag-accent" style={{ marginTop: 6 }}>Keep this profile</span>
             </div>
             <div aria-hidden="true" style={{ fontSize: 20, color: 'var(--color-neutral-500)' }}>←</div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontWeight: 800, fontSize: 15 }}>{selected.name}</div>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>{selected.name}</div>
               <div className="micro">{selected.nationality_detail?.name}{selected.birth_year ? ` · ${selected.birth_year}` : ''}</div>
               <span className="tag" style={{ marginTop: 6, background: 'var(--asw-slow)', color: '#fff' }}>Will be deleted</span>
             </div>
@@ -1551,7 +1547,7 @@ export default function SwimmerProfile() {
 
   const chip = (label, value) => (
     <span className="tag tag-neutral" style={{ gap: 6 }}>
-      {label && <span className="micro" style={{ letterSpacing: '0.06em' }}>{label}</span>}
+      {label && <span className="micro" style={{ letterSpacing: '0.08em' }}>{label}</span>}
       <span className="asw-num" style={{ fontWeight: 700 }}>{value}</span>
     </span>
   )
@@ -1568,7 +1564,7 @@ export default function SwimmerProfile() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <h1 style={{ margin: 0, letterSpacing: '-0.03em', overflowWrap: 'anywhere', fontSize: (swimmer.name || '').length > 25 ? 'clamp(20px, 4vw, 32px)' : undefined }}>{swimmer.name}</h1>
             {swimmer.is_verified && (
-              <span className="tag tag-accent-2" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span className="tag tag-accent-2" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <BadgeCheck size={14} /> Verified athlete
               </span>
             )}
@@ -1744,7 +1740,7 @@ export default function SwimmerProfile() {
       )}
 
       {/* ── Tabs ── */}
-      <div className="rule-b tabbar tabbar-sticky" style={{ padding: '14px 32px', overflowX: 'auto' }}>
+      <div className="rule-b tabbar tabbar-sticky" style={{ padding: '16px 32px', overflowX: 'auto' }}>
         <Seg
           tabs
           options={[
@@ -1788,7 +1784,7 @@ export default function SwimmerProfile() {
         {effectiveTab === 'meets' && (stats ? <MeetsTab stats={stats} /> : <LoadFailed what="Meet history" onRetry={() => setReloadKey((k) => k + 1)} />)}
         {effectiveTab === 'medals' && (stats ? <MedalsTab stats={stats} /> : <LoadFailed what="Medals" onRetry={() => setReloadKey((k) => k + 1)} />)}
         {effectiveTab === 'rankings' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             <RankingsTab swimmerId={id} swimmer={swimmer} />
             <ChaseSection swimmerId={id} />
           </div>

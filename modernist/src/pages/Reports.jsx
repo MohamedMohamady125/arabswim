@@ -50,7 +50,7 @@ const POOL_OPTS = [{ value: '', label: 'All pools' }, { value: 'LCM', label: '50
 
 const CTRL = { flex: '0 1 auto', width: 'auto', minWidth: 0, height: 36 }
 // standard navy box (same as the swimmer Overall tiles — site-wide box rule)
-const statCard = { background: 'var(--color-accent-800)', color: '#fff', borderRadius: 8, padding: '14px 16px' }
+const statCard = { background: 'var(--color-accent-800)', color: '#fff', borderRadius: 0, padding: '16px 16px' }
 
 function list(d) { return Array.isArray(d) ? d : d?.results || [] }
 function yearRange(year) {
@@ -185,7 +185,7 @@ function usePager(rows) {
 function Pager({ page, pages, onPage }) {
   if (pages <= 1) return null
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '18px 0 4px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '16px 0 4px' }}>
       <button type="button" className="btn btn-secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>← Prev</button>
       <span className="asw-num" style={{ fontWeight: 700, fontSize: 13 }}>Page {page} of {pages}</span>
       <button type="button" className="btn btn-secondary" disabled={page >= pages} onClick={() => onPage(page + 1)}>Next →</button>
@@ -231,7 +231,7 @@ function SwimmerSearch({ country, gender, onPick }) {
         <div style={{
           position: 'absolute', top: 40, left: 0, right: 0, zIndex: 20,
           background: 'var(--color-surface, #fff)', border: '1px solid var(--color-neutral-200)',
-          borderRadius: 8, maxHeight: 320, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          borderRadius: 0, maxHeight: 320, overflowY: 'auto', border: '1px solid var(--color-divider)',
         }}>
           {results.map((s) => (
             <div
@@ -301,7 +301,7 @@ function SwimmersReport({ countries }) {
         <Loading label="Loading swimmer" />
       ) : (
         <div>
-          <div className="rule-b" style={{ padding: '14px 32px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div className="rule-b" style={{ padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             {data.swimmer.country_code && <Flag code={data.swimmer.country_code} name={data.swimmer.name} />}
             <Link to={`/swimmers/${data.swimmer.id}`} style={{ color: 'inherit', fontWeight: 800, fontSize: 20, fontFamily: 'var(--font-heading)' }}>
               {data.swimmer.name}
@@ -389,7 +389,7 @@ function SwimmerStats({ stats }) {
         {items.map(([label, value]) => (
           <div key={label} style={statCard}>
             <div className="kicker" style={{ marginBottom: 4, color: 'rgba(255,255,255,0.7)' }}>{label}</div>
-            <div className="asw-num" style={{ fontSize: 26, fontWeight: 800, fontFamily: 'var(--font-heading)', color: '#fff' }}>
+            <div className="asw-num" style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-heading)', color: '#fff' }}>
               {value === null || value === undefined ? '—' : Number(value).toLocaleString('en-US')}
             </div>
           </div>
@@ -466,7 +466,7 @@ function MedalsReport({ countries }) {
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><ExportButton onClick={exportCsv} /></div>
           <div className="table-scroll">
             <table className="table">
-              <thead><tr><th style={{ width: 34 }}>#</th><th>{label}</th>{group === 'championship' && <th className="hide-mobile">Date</th>}<th className="num" aria-label="Gold" title="Gold">🥇</th><th className="num" aria-label="Silver" title="Silver">🥈</th><th className="num" aria-label="Bronze" title="Bronze">🥉</th><th className="num">Total</th></tr></thead>
+              <thead><tr><th style={{ width: 34 }}>#</th><th>{label}</th>{group === 'championship' && <th className="hide-mobile">Date</th>}<th className="num" aria-label="Gold" title="Gold">G</th><th className="num" aria-label="Silver" title="Silver">S</th><th className="num" aria-label="Bronze" title="Bronze">B</th><th className="num">Total</th></tr></thead>
               <tbody>
                 {pager.pageRows.map((r, i) => (
                   <tr key={`${r.name}-${i}`}>
@@ -847,10 +847,10 @@ function AgeReport({ countries, championships }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 24 }}>
             {data.distribution.map((d) => (
-              <div key={d.age} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div key={d.age} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span className="asw-num" style={{ width: 40, textAlign: 'right', fontWeight: 700 }}>{d.age}</span>
-                <div style={{ flex: 1, background: 'var(--color-neutral-100, #f1f1f1)', borderRadius: 4, height: 20, position: 'relative' }}>
-                  <div style={{ width: `${(d.swimmers / maxSwimmers) * 100}%`, background: 'var(--color-primary, var(--color-accent-800))', height: '100%', borderRadius: 4, minWidth: 2 }} />
+                <div style={{ flex: 1, background: 'var(--color-neutral-100, var(--color-neutral-200))', borderRadius: 0, height: 20, position: 'relative' }}>
+                  <div style={{ width: `${(d.swimmers / maxSwimmers) * 100}%`, background: 'var(--color-primary, var(--color-accent-800))', height: '100%', borderRadius: 0, minWidth: 2 }} />
                 </div>
                 <span className="asw-num text-muted" style={{ width: 90, fontSize: 13 }}>{d.swimmers} swimmers</span>
               </div>
@@ -1071,7 +1071,7 @@ function ImprovementReport({ countries, eventGroups }) {
                     <td style={{ whiteSpace: 'nowrap' }}>{r.event_name}</td>
                     <td className="time asw-time hide-mobile">{r.from_time}</td>
                     <td className="time asw-time hide-mobile">{r.to_time}</td>
-                    <td className="time asw-time" style={{ fontWeight: 800, color: 'var(--color-success, #2e7d32)' }}>−{(r.drop_cs / 100).toFixed(2)}</td>
+                    <td className="time asw-time" style={{ fontWeight: 800, color: 'var(--color-success, var(--asw-fast))' }}>−{(r.drop_cs / 100).toFixed(2)}</td>
                     <td className="num asw-num">{r.drop_pct}%</td>
                   </tr>
                 ))}
@@ -1136,7 +1136,6 @@ export default function Reports() {
     <div className="reports-page">
       <PageHead
         title="Reports"
-        kicker="Data"
         sub="Pick a report, then narrow it with the filters below. Every view exports to CSV."
       />
 

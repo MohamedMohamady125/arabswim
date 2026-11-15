@@ -15,11 +15,11 @@ export const CHART_COLORS = { NAVY, NAVY_DARK, BLUE, GOLD }
 /* Card wrapper with a kicker title + optional sub-caption. */
 export function MiniPanel({ title, subtitle, children, style }) {
   return (
-    <div style={{ border: '1px solid var(--color-divider)', borderRadius: 10, padding: '14px 16px', background: '#fff', ...style }}>
+    <div style={{ border: '1px solid var(--color-divider)', borderRadius: 0, padding: '16px 16px', background: '#fff', ...style }}>
       {title && (
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: NAVY_DARK }}>{title}</div>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: NAVY_DARK }}>{title}</div>
       )}
-      {subtitle && <div style={{ fontSize: 11.5, color: MUTED, marginTop: 2 }}>{subtitle}</div>}
+      {subtitle && <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{subtitle}</div>}
       <div style={{ marginTop: title ? 12 : 0 }}>{children}</div>
     </div>
   )
@@ -34,7 +34,7 @@ export function MiniBars({ data, color = NAVY, height = 130 }) {
       {data.map((d, i) => (
         <div key={i} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: NAVY_DARK }}>{d.value}</span>
-          <div style={{ width: '100%', maxWidth: 30, height: Math.max(3, Math.round((d.value / max) * height)), background: d.color || color, borderRadius: '3px 3px 0 0' }} />
+          <div style={{ width: '100%', maxWidth: 30, height: Math.max(3, Math.round((d.value / max) * height)), background: d.color || color, borderRadius: 0 }} />
           <span style={{ fontSize: 11, fontWeight: 600, color: MUTED, textAlign: 'center', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{d.label}</span>
         </div>
       ))}
@@ -47,14 +47,14 @@ export function MiniHBars({ rows, color = NAVY, labelWidth = 140 }) {
   if (!rows || !rows.length) return null
   const max = Math.max(...rows.map((r) => r.value), 1)
   return (
-    <div style={{ display: 'grid', gap: 9 }}>
+    <div style={{ display: 'grid', gap: 8 }}>
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: labelWidth, flex: 'none', fontSize: 11, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.label}>{r.label}</span>
-          <div style={{ flex: 1, background: TRACK, borderRadius: 3 }}>
-            <div style={{ width: `${Math.max((r.value / max) * 100, 2)}%`, height: 14, background: r.color || color, borderRadius: 3 }} />
+          <div style={{ flex: 1, background: TRACK, borderRadius: 0 }}>
+            <div style={{ width: `${Math.max((r.value / max) * 100, 2)}%`, height: 14, background: r.color || color, borderRadius: 0 }} />
           </div>
-          <span className="asw-num" style={{ width: 40, flex: 'none', textAlign: 'right', fontSize: 11.5, fontWeight: 800, color: NAVY_DARK }}>{r.sub || r.value}</span>
+          <span className="asw-num" style={{ width: 40, flex: 'none', textAlign: 'right', fontSize: 12, fontWeight: 800, color: NAVY_DARK }}>{r.sub || r.value}</span>
         </div>
       ))}
     </div>
@@ -90,7 +90,7 @@ export function MiniDonut({ segments, size = 150, thickness = 26, centerTop, cen
       {centerBot && (
         <text x="50%" y="61%" textAnchor="middle"
           /* legibility: 10.5px floor; tracking tightened so the label still fits inside the ring */
-          style={{ fontWeight: 700, fontSize: 10.5, letterSpacing: '0.02em', fill: MUTED }}>{centerBot}</text>
+          style={{ fontWeight: 700, fontSize: 11, letterSpacing: '0.02em', fill: MUTED }}>{centerBot}</text>
       )}
     </svg>
   )
@@ -132,7 +132,7 @@ export function AgePyramid({ rows }) {
   const max = Math.max(...rows.map((r) => Math.max(r.male, r.female)), 1)
   return (
     <div style={{ display: 'grid', gap: 6 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10.5, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         <span style={{ flex: 1, textAlign: 'right', color: NAVY_DARK }}>Men</span>
         <span style={{ width: 54, flex: 'none' }} />
         <span style={{ flex: 1, color: BLUE }}>Women</span>
@@ -140,11 +140,11 @@ export function AgePyramid({ rows }) {
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-            <div style={{ width: `${(r.male / max) * 100}%`, minWidth: r.male ? 3 : 0, height: 14, background: NAVY, borderRadius: '3px 0 0 3px' }} title={`Men ${r.label}: ${r.male}`} />
+            <div style={{ width: `${(r.male / max) * 100}%`, minWidth: r.male ? 3 : 0, height: 14, background: NAVY, borderRadius: 0 }} title={`Men ${r.label}: ${r.male}`} />
           </div>
           <span style={{ width: 54, flex: 'none', textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--color-text)' }}>{r.label}</span>
           <div style={{ flex: 1 }}>
-            <div style={{ width: `${(r.female / max) * 100}%`, minWidth: r.female ? 3 : 0, height: 14, background: BLUE, borderRadius: '0 3px 3px 0' }} title={`Women ${r.label}: ${r.female}`} />
+            <div style={{ width: `${(r.female / max) * 100}%`, minWidth: r.female ? 3 : 0, height: 14, background: BLUE, borderRadius: 0 }} title={`Women ${r.label}: ${r.female}`} />
           </div>
         </div>
       ))}

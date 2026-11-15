@@ -240,13 +240,13 @@ function Header() {
       <div
         className="rule-b"
         style={{
-          display: 'flex', alignItems: 'center', gap: 24, padding: '14px 32px',
+          display: 'flex', alignItems: 'center', gap: 24, padding: '16px 32px',
           background: 'var(--color-accent-800)',
         }}
       >
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto', textDecoration: 'none', color: 'inherit' }}>
           <img src="/logo.png" alt="ArabSwiM" style={{ width: 44, height: 44, objectFit: 'contain' }} />
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, letterSpacing: '0.02em', color: '#ffffff' }}>ARABSWIM</span>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, letterSpacing: '0.02em', color: '#ffffff' }}>ARABSWIM</span>
           <span className="micro hide-mobile" style={{ color: 'var(--color-accent-2-300)' }}>Arab Swimming Database</span>
         </Link>
         <div className="hide-mobile"><SearchBox /></div>
@@ -316,7 +316,7 @@ function Footer() {
       </p>
       {/* social row — one place to edit the handles */}
       <div className="kicker" style={{ color: 'var(--color-accent-2-400)', margin: '14px 0 10px' }}>Follow Arab Swim</div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {[
           ['Instagram', 'https://instagram.com/arab.swim', IconInstagram],
           ['Facebook', 'https://facebook.com/arab.swim', IconFacebook],

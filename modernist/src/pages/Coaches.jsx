@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import { PageHead, Empty, Modal, FilterBar, Skeleton } from '../components/ui'
 import { CropUpload } from '../components/ImageCropper'
 import { useAuth } from '../context/AuthContext'
-import { mediaUrl } from '../utils'
+import { mediaUrl, nameInitials } from '../utils'
 
 const LEVEL_LABELS = {
   HEAD: 'Head Coach',
@@ -18,15 +18,7 @@ const LEVEL_LABELS = {
   PRIVATE: 'Private Coach',
 }
 
-function initials(name) {
-  return String(name || '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-}
+const initials = (name) => nameInitials(name)
 
 const splitLines = (v) => (v ? String(v).split('\n').map((s) => s.trim()).filter(Boolean) : [])
 const splitComma = (v) => (v ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : [])
@@ -228,7 +220,7 @@ export default function Coaches() {
 
   return (
     <div>
-      <PageHead kicker="People" title="Coaches" sub="Coaches working across Arab swimming." />
+      <PageHead title="Coaches" sub="Coaches working across Arab swimming." />
 
       {/* Common Region: search, country and level in one bar with the result
           count. Occam's Razor: no filters at all while the directory is empty. */}
@@ -329,13 +321,13 @@ export default function Coaches() {
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 700, fontSize: 15 }}>{c.name}</span>
+                      <span style={{ fontWeight: 700, fontSize: 16 }}>{c.name}</span>
                       {c.level && <span className="tag tag-dark">{LEVEL_LABELS[c.level] || c.level}</span>}
                       {c.is_available && <span className="tag tag-accent">Open to offers</span>}
                       {c.is_active === false && <span className="tag tag-neutral">Inactive</span>}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 6, fontSize: 13, color: 'var(--color-neutral-700)', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 6, fontSize: 13, color: 'var(--color-neutral-700)', flexWrap: 'wrap' }}>
                       {c.nationality_detail && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           <Flag code={c.nationality_detail.code} name={c.nationality_detail.name} />
@@ -362,7 +354,7 @@ export default function Coaches() {
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 'none', alignSelf: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 'none', alignSelf: 'center' }}>
                     {isAdmin && (
                       <button className="btn btn-secondary" style={{ fontSize: 11 }}
                         onClick={(e) => { e.stopPropagation(); setModal({ coach: c }) }}>Edit</button>

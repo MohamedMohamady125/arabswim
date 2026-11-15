@@ -110,7 +110,7 @@ export default function Media() {
 
   return (
     <div>
-      <PageHead kicker="Content" title="Media" sub="Photo and video albums from championships and events">
+      <PageHead title="Media" sub="Photo and video albums from championships and events">
         {isAdmin && (
           <div style={{ marginTop: 14 }}>
             <button type="button" className="btn btn-primary" onClick={() => setShowForm(true)}>
@@ -123,7 +123,7 @@ export default function Media() {
       {/* Flow: the three-field form opens in a dialog instead of pushing the page down */}
       {showForm && (
         <Modal title="New album" onClose={closeForm} width={480}>
-          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {formError && <div role="alert" className="error-box">{formError}</div>}
             <div className="field">
               <label htmlFor="album-title">Title *</label>

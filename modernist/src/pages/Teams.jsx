@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { GitMerge, Sparkles, Trash2, X, ArrowLeftRight } from 'lucide-react'
 import { getTeams, deleteTeam, bulkDeleteTeams, mergeTeams, findDuplicateTeams, autoDedupeTeams } from '../api/teams'
 import { PageHead, Loading, notify, Empty, Pager, Modal, FilterBar, Seg } from '../components/ui'
-import { mediaUrl } from '../utils'
+import { mediaUrl, nameInitials } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
 const PAGE_SIZE = 24 // fills whole rows at 2, 3 and 4 columns
@@ -18,6 +18,7 @@ const letterOf = (name) => {
 }
 
 function acronym(name) {
+  if (/[\u0600-\u06FF]/.test(String(name || ''))) return nameInitials(name)
   // drop the "Al-" article and treat hyphens as spaces, otherwise every
   // Saudi club badge reads "AL-" ("Al-Hilal" → HIL, "Al-Ahli Club" → AC)
   const cleaned = String(name || '').replace(/^al-?\s*/i, '').replace(/-/g, ' ')
@@ -30,7 +31,7 @@ function acronym(name) {
 function TeamLogo({ logo, name, size = 42 }) {
   if (logo) {
     return (
-      <div style={{ width: size, height: size, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)', background: '#fff', padding: 3 }}>
+      <div style={{ width: size, height: size, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)', background: '#fff', padding: 4 }}>
         <img src={mediaUrl(logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       </div>
     )
@@ -47,7 +48,7 @@ function TeamLogo({ logo, name, size = 42 }) {
 
 function ConfirmBox({ message, confirmLabel = 'Confirm', busy, onConfirm, onCancel }) {
   return (
-    <div style={{ marginTop: 16, border: '2px solid var(--color-text)', padding: 14 }}>
+    <div style={{ marginTop: 16, border: '2px solid var(--color-text)', padding: 16 }}>
       <div style={{ fontSize: 13, marginBottom: 12 }}>{message}</div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button className="btn btn-secondary" onClick={onCancel} disabled={busy}>Back</button>
@@ -100,9 +101,9 @@ function AutoCleanModal({ onClose, onCleaned }) {
           <div style={{ border: '1px solid var(--color-divider)', padding: 16, textAlign: 'center' }}>
             <div className="kicker" style={{ marginBottom: 12 }}>Cleanup complete</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap' }}>
-              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26 }}>{result.teams_merged}</div><div className="micro">Teams merged</div></div>
-              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26 }}>{result.results_updated}</div><div className="micro">Results moved</div></div>
-              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26 }}>{result.swimmers_updated}</div><div className="micro">Swimmers updated</div></div>
+              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{result.teams_merged}</div><div className="micro">Teams merged</div></div>
+              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{result.results_updated}</div><div className="micro">Results moved</div></div>
+              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{result.swimmers_updated}</div><div className="micro">Swimmers updated</div></div>
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
@@ -140,7 +141,7 @@ function AutoCleanModal({ onClose, onCleaned }) {
           )}
 
           {error && (
-            <div role="alert" style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
+            <div role="alert" style={{ marginTop: 12, border: '1px solid var(--asw-slow, var(--asw-slow))', color: 'var(--asw-slow, var(--asw-slow))', padding: '8px 12px', fontSize: 13 }}>{error}</div>
           )}
 
           {confirming ? (
@@ -227,7 +228,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
           key={t.id}
           type="button"
           onClick={() => onPick(t.id)}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-divider)', cursor: 'pointer', font: 'inherit' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-divider)', cursor: 'pointer', font: 'inherit' }}
         >
           <TeamLogo logo={t.logo} name={t.name} size={28} />
           <span style={{ minWidth: 0 }}>
@@ -242,7 +243,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
 
   const slot = (team, label, onClear, note) => (
     <div style={{ border: '1px solid var(--color-divider)', padding: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <TeamLogo logo={team.logo} name={team.name} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 13 }}>{team.name}</div>
@@ -250,7 +251,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
         </div>
         <button className="btn btn-secondary btn-icon" onClick={onClear} aria-label={`Clear ${label}`}><X size={13} /></button>
       </div>
-      {note && <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: 'var(--asw-slow, #b3261e)' }}>{note}</div>}
+      {note && <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: 'var(--asw-slow, var(--asw-slow))' }}>{note}</div>}
     </div>
   )
 
@@ -267,9 +268,9 @@ function MergeTeamsModal({ onClose, onMerged }) {
           <div style={{ border: '1px solid var(--color-divider)', padding: 16, textAlign: 'center' }}>
             <div className="kicker" style={{ marginBottom: 12 }}>{result.message || 'Merge complete'}</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap' }}>
-              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26 }}>{result.results_updated}</div><div className="micro">Results moved</div></div>
-              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26 }}>{result.swimmers_updated}</div><div className="micro">Swimmers updated</div></div>
-              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26 }}>{result.trophies_transferred}</div><div className="micro">Trophies moved</div></div>
+              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{result.results_updated}</div><div className="micro">Results moved</div></div>
+              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{result.swimmers_updated}</div><div className="micro">Swimmers updated</div></div>
+              <div><div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{result.trophies_transferred}</div><div className="micro">Trophies moved</div></div>
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
@@ -294,7 +295,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
             <option value="">All countries</option>
             {countryOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 14, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 16, alignItems: 'start' }}>
             {/* KEEP */}
             <div>
               <div className="micro" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Keep (primary)</div>
@@ -347,7 +348,7 @@ function MergeTeamsModal({ onClose, onMerged }) {
           )}
 
           {error && (
-            <div role="alert" style={{ marginTop: 12, border: '1px solid var(--asw-slow, #b3261e)', color: 'var(--asw-slow, #b3261e)', padding: '8px 12px', fontSize: 13 }}>{error}</div>
+            <div role="alert" style={{ marginTop: 12, border: '1px solid var(--asw-slow, var(--asw-slow))', color: 'var(--asw-slow, var(--asw-slow))', padding: '8px 12px', fontSize: 13 }}>{error}</div>
           )}
 
           {confirming ? (
@@ -547,15 +548,15 @@ export default function Teams() {
           {groups.map(([letter, rows]) => (
           <div key={letter} style={{ marginBottom: 18 }}>
           {letter && <div className="kicker rule-b" style={{ paddingBottom: 6, marginBottom: 12 }}>{letter}</div>}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
             {rows.map((t) => (
               <Link
                 key={t.id}
                 to={`/teams/${t.id}`}
                 style={{
-                  position: 'relative', display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
-                  background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
-                  boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'inherit', textDecoration: 'none',
+                  position: 'relative', display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px',
+                  background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0,
+                  border: '1px solid var(--color-divider)', color: 'inherit', textDecoration: 'none',
                 }}
               >
                 {isAdmin && (
@@ -569,17 +570,17 @@ export default function Teams() {
                 )}
                 <span style={{
                   width: 52, height: 52, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
-                  background: '#eef3f9', border: '1px solid #dbe4ef',
+                  background: 'var(--color-accent-100)', border: '1px solid var(--color-neutral-300)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {t.logo ? (
                     <img src={mediaUrl(t.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)' }}>{acronym(t.name)}</span>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>{acronym(t.name)}</span>
                   )}
                 </span>
                 <span style={{ minWidth: 0 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--color-accent-800)', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-accent-800)', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
                   <span className="text-muted" style={{ fontSize: 12 }}>
                     {[t.is_academy ? 'Academy' : null, t.country_detail?.name, t.swimmers_count > 0 ? `${t.swimmers_count} swimmer${t.swimmers_count === 1 ? '' : 's'}` : 'No swimmers yet'].filter(Boolean).join(' · ')}
                   </span>

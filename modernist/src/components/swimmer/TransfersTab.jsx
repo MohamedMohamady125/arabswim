@@ -55,11 +55,11 @@ function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved 
         role="dialog" aria-modal="true" aria-label="Change nationality"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
           <div className="kicker">Change nationality</div>
           <button type="button" className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close" title="Close"><X size={14} /></button>
         </div>
-        <form onSubmit={submit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <form onSubmit={submit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="field">
             <label htmlFor="natl-from">Old nationality</label>
             <select id="natl-from" className="select" value={fromCountry} onChange={(e) => setFromCountry(e.target.value)}>
@@ -79,7 +79,7 @@ function ChangeNationalityModal({ swimmerId, currentCountryId, onClose, onSaved 
             <input id="natl-date" className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className="field">
-            <div style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', lineHeight: 1.5 }}>
               The swimmer's current nationality always follows the latest change in effect:
               if the effective date is today or in the past, the profile switches to the new
               country immediately (swims before that date keep the old flag). A future-dated
@@ -187,7 +187,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {isAdmin && notice && (
         <div role="status" style={{ fontSize: 13, fontWeight: 600, color: 'var(--asw-fast)' }}>{notice}</div>
       )}
@@ -299,7 +299,7 @@ export default function TransfersTab({ swimmerId, currentCountryId }) {
           <div className="sect-head"><h4>Nationality Changes</h4></div>
           <div className="rule-t">
             {changes.map((ch, i) => (
-              <div key={ch.id ?? i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', flexWrap: 'wrap', fontSize: 13 }}>
+              <div key={ch.id ?? i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', flexWrap: 'wrap', fontSize: 13 }}>
                 {ch.from_country && (
                   <>
                     <Flag code={ch.from_country_code} name={ch.from_country} flagUrl={ch.from_country_flag} />

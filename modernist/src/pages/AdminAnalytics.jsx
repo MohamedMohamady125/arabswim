@@ -44,14 +44,14 @@ function HBars({ rows, color = NAVY, labelWidth = 170 }) {
   if (rows.length === 0) return <Empty label="No data yet" />
   const max = Math.max(...rows.map((r) => r.value), 1)
   return (
-    <div style={{ display: 'grid', gap: 9 }}>
+    <div style={{ display: 'grid', gap: 8 }}>
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: labelWidth, flex: 'none', fontSize: 11.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.label}>{r.label}</span>
+          <span style={{ width: labelWidth, flex: 'none', fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.label}>{r.label}</span>
           <div style={{ flex: 1, background: 'var(--color-neutral-100)' }}>
             <div style={{ width: `${Math.max((r.value / max) * 100, 2)}%`, height: 14, background: r.color || color }} />
           </div>
-          <span className="asw-num" style={{ width: 48, flex: 'none', textAlign: 'right', fontSize: 11.5, fontWeight: 800, color: NAVY_DARK }}>{formatNumber(r.value)}</span>
+          <span className="asw-num" style={{ width: 48, flex: 'none', textAlign: 'right', fontSize: 12, fontWeight: 800, color: NAVY_DARK }}>{formatNumber(r.value)}</span>
         </div>
       ))}
     </div>
@@ -82,7 +82,7 @@ function Donut({ segments, size = 150, thickness = 26, centerTop, centerBot }) {
         style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, fill: 'var(--color-accent-800)' }}>{centerTop}</text>
       {centerBot && (
         <text x="50%" y="61%" textAnchor="middle"
-          style={{ fontWeight: 700, fontSize: 10.5, letterSpacing: '0.09em', fill: 'var(--color-neutral-600)' }}>{centerBot}</text>
+          style={{ fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', fill: 'var(--color-neutral-600)' }}>{centerBot}</text>
       )}
     </svg>
   )
@@ -92,14 +92,14 @@ function Funnel({ rows }) {
   if (!rows || rows.length === 0) return <Empty label="No visitor data yet" />
   const top = rows[0]?.visitors || 0
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
+    <div style={{ display: 'grid', gap: 12 }}>
       {rows.map((r, i) => {
         const ofTop = top ? Math.round((r.visitors / top) * 100) : 0
         const prev = i > 0 ? rows[i - 1].visitors : r.visitors
         const ofPrev = prev ? Math.round((r.visitors / prev) * 100) : 100
         return (
-          <div key={r.stage} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 150, flex: 'none', fontSize: 11.5, fontWeight: 700 }}>{r.stage}</span>
+          <div key={r.stage} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ width: 150, flex: 'none', fontSize: 12, fontWeight: 700 }}>{r.stage}</span>
             <div style={{ flex: 1, background: 'var(--color-neutral-100)' }}>
               <div style={{ width: `${Math.max(ofTop, 2)}%`, height: 20, background: NAVY, display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
                 <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>{formatNumber(r.visitors)}</span>
@@ -129,7 +129,7 @@ function Growth({ pct }) {
   const up = pct >= 0
   const Icon = up ? TrendingUp : TrendingDown
   return (
-    <span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 800, color: up ? 'var(--asw-fast, #0d7a52)' : 'var(--asw-slow, #b3261e)' }}>
+    <span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: up ? 'var(--asw-fast, var(--asw-fast))' : 'var(--asw-slow, var(--asw-slow))' }}>
       <Icon size={12} /> {up ? '+' : ''}{pct}%
     </span>
   )
@@ -137,10 +137,10 @@ function Growth({ pct }) {
 
 function StatChip({ icon: Icon, value, label, growth, color = NAVY }) {
   return (
-    <div className="qs-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '14px 8px', textAlign: 'center' }}>
+    <div className="qs-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '16px 8px', textAlign: 'center' }}>
       <Icon size={20} style={{ color }} />
-      <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, color: NAVY_DARK, lineHeight: 1.1 }}>{value}</span>
-      <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</span>
+      <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: NAVY_DARK, lineHeight: 1.1 }}>{value}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</span>
       {growth !== undefined && <Growth pct={growth} />}
     </div>
   )
@@ -204,10 +204,10 @@ export default function AdminAnalytics() {
       {/* Doherty Threshold: dim the old numbers while a new range loads */}
       <div className="pad" aria-busy={loading} style={{ display: 'grid', gap: 16, opacity: loading ? 0.55 : 1 }}>
         {/* Range picker + live */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <Seg options={RANGES} value={days} onChange={(v) => setDays(Number(v))} />
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginLeft: 'auto', fontSize: 12.5, fontWeight: 700 }}>
-            <Radio size={14} style={{ color: 'var(--asw-fast, #0d7a52)' }} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>
+            <Radio size={14} style={{ color: 'var(--asw-fast, var(--asw-fast))' }} />
             <span className="asw-num" style={{ fontWeight: 800, color: NAVY_DARK }}>{t.live_visitors}</span>
             online now (last 5 min)
           </span>
@@ -228,7 +228,7 @@ export default function AdminAnalytics() {
 
         {/* Daily traffic */}
         <Panel title={`Daily Traffic — Last ${data.days} Days`}>
-          <div style={{ display: 'flex', gap: 16, marginBottom: 6, fontSize: 11.5, fontWeight: 600 }}>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 6, fontSize: 12, fontWeight: 600 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: NAVY }} /> Views</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: GOLD }} /> Visitors</span>
           </div>
@@ -266,9 +266,9 @@ export default function AdminAnalytics() {
               <Donut
                 segments={data.devices.map((d) => ({ label: d.device, value: d.views, color: deviceColors[d.device] || BLUE }))}
                 centerTop={formatNumber(t.views)} centerBot="VIEWS" />
-              <div style={{ display: 'grid', gap: 7 }}>
+              <div style={{ display: 'grid', gap: 8 }}>
                 {data.devices.map((d) => (
-                  <span key={d.device} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, textTransform: 'capitalize' }}>
+                  <span key={d.device} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>
                     <span style={{ width: 9, height: 9, borderRadius: '50%', background: deviceColors[d.device] || BLUE }} />
                     {d.device}
                     <span className="asw-num" style={{ marginLeft: 6, fontWeight: 800, color: NAVY_DARK }}>
@@ -291,11 +291,11 @@ export default function AdminAnalytics() {
 
         {/* Hourly */}
         <Panel title="Traffic by Hour of Day">
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4 }}>
             {(() => {
               const max = Math.max(...hourly.map((h) => h.views), 1)
               return hourly.map((h) => (
-                <div key={h.hour} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <div key={h.hour} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <div title={`${h.hour}:00 — ${h.views} views`}
                     style={{ width: '100%', maxWidth: 20, height: Math.max(3, Math.round((h.views / max) * 110)), background: h.views ? NAVY : 'var(--color-neutral-200)' }} />
                   <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-neutral-700)' }}>{h.hour % 3 === 0 ? h.hour : ''}</span>

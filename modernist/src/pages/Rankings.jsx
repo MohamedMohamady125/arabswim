@@ -170,7 +170,7 @@ export default function Rankings() {
           (who / which pool), dropdowns below (what / when) — same order as Records. */}
       <FilterBar count={showTable ? count : null} noun={count === 1 ? 'swimmer' : 'swimmers'} active={filtersChanged} onClear={clearFilters}>
         <div className="records-filters results-filters" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <Seg
               options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }, { value: 'national', label: 'National' }]}
               value={scope}
@@ -187,7 +187,7 @@ export default function Rankings() {
               onChange={setPool}
             />
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             {scope === 'national' && (
               <select className="select" aria-label="Country" style={{ flex: '2 1 140px', width: 'auto', minWidth: 0, maxWidth: 260 }} value={country} onChange={(e) => setCountry(e.target.value)}>
                 <option value="">Select country…</option>

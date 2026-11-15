@@ -19,7 +19,7 @@ const dropdownStyle = {
 const dropdownItemStyle = {
   width: '100%', textAlign: 'left', padding: '8px 12px', border: 0, cursor: 'pointer',
   background: 'transparent', font: 'inherit', fontSize: 13,
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
 }
 
 function Section({ n, title, children, done = false }) {
@@ -37,7 +37,7 @@ function Section({ n, title, children, done = false }) {
 
 function SelectedBox({ title, sub, onChange }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-accent-100)', padding: '10px 14px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-accent-100)', padding: '10px 16px' }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 700, fontSize: 14 }}>{title}</div>
         <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{sub}</div>
@@ -302,7 +302,7 @@ export default function ManualEntryForm({ onComplete }) {
           <span className="asw-time">{success.time}</span>
           <br />{success.championship_name}
         </Done>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
           <button type="button" className="btn btn-primary" onClick={handleAddAnother}>Add another for this swimmer and meet</button>
           <button type="button" className="btn btn-secondary" onClick={handleDone}>Start a new entry</button>
           {success.swimmer_id && <Link className="btn btn-ghost" style={{ textDecoration: 'none' }} to={`/swimmers/${success.swimmer_id}`}>View swimmer profile →</Link>}
@@ -500,7 +500,7 @@ export default function ManualEntryForm({ onComplete }) {
                 </select>
               </div>
             </div>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, cursor: 'pointer', fontSize: 13 }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginTop: 14, cursor: 'pointer', fontSize: 13 }}>
               <input type="checkbox" checked={newChamp.is_published} style={{ marginTop: 2 }}
                 onChange={(e) => setNewChamp({ ...newChamp, is_published: e.target.checked })} />
               <span>
@@ -653,7 +653,7 @@ export default function ManualEntryForm({ onComplete }) {
                       aria-label={`Split time at ${dist}m`}
                       placeholder={dist === selectedEvent.distance ? 'final' : '0:00.00'}
                       value={splitTimes[dist] || ''}
-                      style={{ padding: '7px 8px', fontSize: 13 }}
+                      style={{ padding: '8px 8px', fontSize: 13 }}
                       onChange={(e) => setSplitTimes((s) => ({ ...s, [dist]: e.target.value }))}
                     />
                   </div>
@@ -672,14 +672,14 @@ export default function ManualEntryForm({ onComplete }) {
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span className="asw-num" style={{ width: 20, textAlign: 'center', fontWeight: 700, fontSize: 13, color: 'var(--color-neutral-700)' }}>{i + 1}</span>
                     <input className="input" type="text" aria-label={`Relay swimmer ${i + 1} name`} placeholder="Swimmer name"
-                      value={leg.name} style={{ flex: 2, padding: '7px 8px', fontSize: 13 }}
+                      value={leg.name} style={{ flex: 2, padding: '8px 8px', fontSize: 13 }}
                       onChange={(e) => {
                         const next = [...relayLegs]
                         next[i] = { ...next[i], name: e.target.value }
                         setRelayLegs(next)
                       }} />
                     <input className="input asw-num" type="text" aria-label={`Relay swimmer ${i + 1} split time`} placeholder="Split time"
-                      value={leg.split_time} style={{ flex: 1, padding: '7px 8px', fontSize: 13, maxWidth: 110 }}
+                      value={leg.split_time} style={{ flex: 1, padding: '8px 8px', fontSize: 13, maxWidth: 110 }}
                       onChange={(e) => {
                         const next = [...relayLegs]
                         next[i] = { ...next[i], split_time: e.target.value }
@@ -700,7 +700,7 @@ export default function ManualEntryForm({ onComplete }) {
 
       {/* Submit — the error is repeated here because the top of this long form may be off screen */}
       {error && <div className="error-box">{error}</div>}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         {missing.length > 0 && (
           <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>Still needed: {missing.join(', ')}</span>
         )}

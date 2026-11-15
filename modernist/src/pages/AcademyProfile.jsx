@@ -21,7 +21,7 @@ const heroIcon = {
 
 function HeroContact({ icon, children, href }) {
   const body = (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--color-accent-800)' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--color-accent-800)' }}>
       <span style={heroIcon} aria-hidden="true">{icon}</span>
       <span style={{ wordBreak: 'break-word' }}>{children}</span>
     </span>
@@ -45,10 +45,10 @@ const svg = {
 }
 
 const infoCell = {
-  background: '#fff', border: '1px solid #e2e9f2', borderRadius: 10,
-  padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4,
+  background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0,
+  padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 4,
 }
-const infoLabel = { fontSize: 10.5, fontWeight: 800, letterSpacing: '.09em', textTransform: 'uppercase', color: '#7a8aa0' }
+const infoLabel = { fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }
 const infoValue = { fontSize: 14, fontWeight: 700, color: 'var(--color-accent-800)' }
 
 export default function AcademyProfile() {
@@ -81,18 +81,18 @@ export default function AcademyProfile() {
     <div className="m-zoom">
       {/* Hero */}
       <div className="rule-b m-pad" style={{
-        background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)',
+        background: 'var(--color-bg)',
         padding: '30px 32px 28px',
       }}>
-        <Link to="/academies" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
+        <Link to="/academies" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
           ← All academies
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 16, flexWrap: 'wrap' }}>
           <span style={{
             width: 148, height: 148, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
-            background: '#fff', border: '4px solid #0c2340',
+            background: '#fff', border: '4px solid var(--color-accent-800)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 6px 18px rgba(11,41,72,.18)',
+            border: '1px solid var(--color-divider)',
           }}>
             {a.logo ? (
               <img src={mediaUrl(a.logo)} alt="" style={{ width: '84%', height: '84%', objectFit: 'contain' }} />
@@ -106,15 +106,15 @@ export default function AcademyProfile() {
             <h1 style={{
               margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 800,
               fontSize: 'clamp(24px, 4vw, 40px)', lineHeight: 1.1,
-              textTransform: 'uppercase', letterSpacing: '.01em', color: 'var(--color-accent-800)',
+              color: 'var(--color-accent-800)',
             }}>
               {a.name}
             </h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 13.5, fontWeight: 600, color: '#37567a', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14, fontWeight: 600, color: 'var(--color-accent-2-700)', flexWrap: 'wrap' }}>
               {country && <Flag code={country.code} name={country.name} />}
               <span>Swimming Academy{country ? ` · ${country.name}` : ''}{a.city ? ` · ${a.city}` : ''}</span>
             </div>
-            <div style={{ display: 'flex', gap: 18, marginTop: 16, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 16, marginTop: 16, flexWrap: 'wrap' }}>
               {a.phone && <HeroContact icon={svg.phone} href={`tel:${a.phone}`}>{a.phone}</HeroContact>}
               {a.email && <HeroContact icon={svg.mail} href={`mailto:${a.email}`}>{a.email}</HeroContact>}
               {a.website && <HeroContact icon={svg.globe} href={/^https?:\/\//i.test(a.website) ? a.website : `https://${a.website}`}>{String(a.website).replace(/^https?:\/\//, '')}</HeroContact>}
@@ -129,17 +129,17 @@ export default function AcademyProfile() {
       </div>
 
       {/* Overview */}
-      <div className="m-pad" style={{ background: '#eaf1f9', padding: '26px 32px 40px' }}>
+      <div className="m-pad" style={{ padding: '24px 32px 40px' }}>
         <div style={{ maxWidth: 860 }}>
           {a.description && (
             <div style={{
-              background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
-              boxShadow: '0 1px 6px rgba(11,41,72,.06)', padding: '18px 20px', marginBottom: 16,
+              background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0,
+              border: '1px solid var(--color-divider)', padding: '16px 20px', marginBottom: 16,
             }}>
-              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', marginBottom: 8 }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)', marginBottom: 8 }}>
                 About the Academy
               </div>
-              <div className="text-muted" style={{ fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-line' }}>
+              <div className="text-muted" style={{ fontSize: 14, lineHeight: 1.65, whiteSpace: 'pre-line' }}>
                 {a.description}
               </div>
             </div>
@@ -150,13 +150,13 @@ export default function AcademyProfile() {
               header does not — the address */}
           {a.address && (
             <div style={{
-              background: '#fff', border: '1px solid #e2e9f2', borderRadius: 12,
-              boxShadow: '0 1px 6px rgba(11,41,72,.06)', padding: '18px 20px',
+              background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0,
+              border: '1px solid var(--color-divider)', padding: '16px 20px',
             }}>
-              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', marginBottom: 4 }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)', marginBottom: 4 }}>
                 Where to find us
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 13.5, color: '#37567a' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: 'var(--color-accent-2-700)' }}>
                 <span style={heroIcon} aria-hidden="true">{svg.pin}</span>
                 <span style={{ paddingTop: 5 }}>{a.address}</span>
               </div>
@@ -168,7 +168,7 @@ export default function AcademyProfile() {
 
           {/* Training calendar */}
           <div style={{ marginTop: 16 }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', marginBottom: 10 }}>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)', marginBottom: 10 }}>
               Training Calendar
             </div>
             <TrainingCalendar academyId={Number(id)} canEdit={isAdmin || (user?.role === 'ACADEMY' && user?.academy === a.id)} />

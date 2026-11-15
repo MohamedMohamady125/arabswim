@@ -7,7 +7,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import api from '../api/client'
 import { Empty, Seg, Skeleton, BackLink } from '../components/ui'
-import { formatDate, formatTime, mediaUrl } from '../utils'
+import { formatDate, formatTime, mediaUrl, nameInitials } from '../utils'
 
 const INK = 'var(--color-accent-800)'
 const MUTED = 'var(--color-neutral-700)'
@@ -15,7 +15,7 @@ const SOFT = 'var(--color-neutral-700)'
 const LINE = 'var(--color-neutral-300)'
 const HEAD = 'var(--font-heading)'
 
-const initials = (name) => String(name || '?').split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+const initials = (name) => nameInitials(name)
 const fmt = (cs) => (cs >= 6000 ? formatTime(cs) : (cs / 100).toFixed(2))
 // Postel's Law: the name search ignores case and accents
 const fold = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
@@ -122,29 +122,29 @@ export default function TeamEventDepth() {
   const back = `/teams/${id}?tab=depth`
 
   const tile = (label, value, sub) => (
-    <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderTop: '3px solid var(--color-box-top)', borderRadius: 10, padding: '14px 16px', minWidth: 0 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: SOFT }}>{label}</div>
-      <div className="asw-num" style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 28, color: INK, lineHeight: 1.15, marginTop: 4 }}>{value}</div>
-      <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>
+    <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderTop: '3px solid var(--color-box-top)', borderRadius: 0, padding: '16px 16px', minWidth: 0 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: SOFT }}>{label}</div>
+      <div className="asw-num" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 28, color: INK, lineHeight: 1.15, marginTop: 4 }}>{value}</div>
+      <div style={{ fontSize: 13, color: MUTED, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>
     </div>
   )
 
   return (
     <div className="m-zoom" style={{ background: 'var(--color-neutral-100)', minHeight: '60vh' }}>
       {/* Header */}
-      <div className="rule-b m-pad" style={{ background: '#fff', padding: '18px 32px 20px' }}>
+      <div className="rule-b m-pad" style={{ background: '#fff', padding: '16px 32px 20px' }}>
         <BackLink to={back}>{team?.name ? `${team.name} squad depth` : 'Squad depth'}</BackLink>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginTop: 4 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: SOFT }}>Squad depth · event</div>
-            <h1 style={{ margin: '2px 0 0', fontFamily: HEAD, fontWeight: 900, fontSize: 'clamp(26px, 4vw, 38px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: INK }}>
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: SOFT }}>Squad depth · event</div>
+            <h1 style={{ margin: '2px 0 0', fontFamily: HEAD, fontWeight: 800, fontSize: 'clamp(26px, 4vw, 38px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: INK }}>
               {data?.event?.name || 'Event'}
             </h1>
-            <div style={{ fontSize: 13.5, color: MUTED, marginTop: 6 }}>
+            <div style={{ fontSize: 14, color: MUTED, marginTop: 6 }}>
               {swimmers.length ? `${swimmers.length} ${gender === 'M' ? (swimmers.length === 1 ? 'man' : 'men') : gender === 'F' ? (swimmers.length === 1 ? 'woman' : 'women') : (swimmers.length === 1 ? 'swimmer' : 'swimmers')} of this ${kind} with a time · ${pool === 'SCM' ? '25m pool' : '50m pool'} · best swim each` : ' '}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }, { value: '', label: 'Everyone' }]} value={gender} onChange={(v) => { setShowAll(false); set('gender', v || 'ALL') }} />
             <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={(v) => { setShowAll(false); set('pool', v) }} />
           </div>
@@ -159,7 +159,7 @@ export default function TeamEventDepth() {
             </Empty>
         ) : (<>
           {!gender && (
-            <div style={{ fontSize: 12.5, color: MUTED, marginBottom: 10 }}>Men and women are ranked together by time here. Choose Men or Women for a ranking of one gender.</div>
+            <div style={{ fontSize: 13, color: MUTED, marginBottom: 10 }}>Men and women are ranked together by time here. Choose Men or Women for a ranking of one gender.</div>
           )}
           {/* Headline numbers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
@@ -173,33 +173,33 @@ export default function TeamEventDepth() {
           {/* Podium */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginTop: 14 }}>
             {swimmers.slice(0, 3).map((s, i) => (
-              <Link key={s.swimmer_id} to={`/swimmers/${s.swimmer_id}`} style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 12, padding: '14px 16px', textDecoration: 'none', color: INK, minWidth: 0 }}>
-                <span className="asw-num" style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 26, color: i === 0 ? 'var(--asw-gold)' : i === 1 ? 'var(--asw-silver)' : 'var(--asw-bronze)', width: 22, flex: 'none' }}>{i + 1}</span>
+              <Link key={s.swimmer_id} to={`/swimmers/${s.swimmer_id}`} style={{ display: 'flex', alignItems: 'center', gap: 16, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 0, padding: '16px 16px', textDecoration: 'none', color: INK, minWidth: 0 }}>
+                <span className="asw-num" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 24, color: i === 0 ? 'var(--asw-gold)' : i === 1 ? 'var(--asw-silver)' : 'var(--asw-bronze)', width: 22, flex: 'none' }}>{i + 1}</span>
                 <Avatar s={s} size={52} />
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontWeight: 800, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                  <span style={{ display: 'block', fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
                   <span className="asw-num" style={{ display: 'block', fontSize: 12, color: MUTED, marginTop: 2 }}>{[s.fina_points ? `${s.fina_points} pts` : null, i ? gap(s.time_cs - stats.lead.time_cs) : 'Squad best'].filter(Boolean).join(' · ')}</span>
                 </span>
-                <span className="asw-num asw-time" style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 22, flex: 'none' }}>{s.time}</span>
+                <span className="asw-num asw-time" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 24, flex: 'none' }}>{s.time}</span>
               </Link>
             ))}
           </div>
 
           {/* Depth curve */}
           {swimmers.length >= 4 && (
-            <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 12, padding: '16px 18px 10px', marginTop: 14 }}>
+            <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 0, padding: '16px 16px 10px', marginTop: 14 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-                <div style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: INK }}>Depth curve</div>
-                <div style={{ fontSize: 12.5, color: MUTED }}>Best time by squad rank · a flatter line means a deeper squad</div>
+                <div style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: INK }}>Depth curve</div>
+                <div style={{ fontSize: 13, color: MUTED }}>Best time by squad rank · a flatter line means a deeper squad</div>
               </div>
               <DepthCurve swimmers={swimmers} />
             </div>
           )}
 
           {/* Full ranking */}
-          <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 12, marginTop: 14, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '14px 16px', borderBottom: `1px solid ${LINE}` }}>
-              <div style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: INK }}>
+          <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 0, marginTop: 14, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '16px 16px', borderBottom: `1px solid ${LINE}` }}>
+              <div style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: INK }}>
                 Full ranking · {q.trim() ? `${matched.length} of ${swimmers.length}` : swimmers.length}
               </div>
               {swimmers.length > 10 && (
@@ -235,7 +235,7 @@ export default function TeamEventDepth() {
                         <tr>
                           <td className="asw-num" style={{ fontWeight: 800, color: rank <= 3 ? INK : SOFT }}>{rank}</td>
                           <td>
-                            <Link to={`/swimmers/${s.swimmer_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: INK, fontWeight: 600, textDecoration: 'none', minHeight: 40 }}>
+                            <Link to={`/swimmers/${s.swimmer_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 12, color: INK, fontWeight: 600, textDecoration: 'none', minHeight: 40 }}>
                               <Avatar s={s} size={30} />{s.name}
                             </Link>
                           </td>
@@ -244,7 +244,7 @@ export default function TeamEventDepth() {
                           <td className="asw-num asw-time" style={{ textAlign: 'right', fontWeight: 800, color: INK }}>{s.time}</td>
                           <td className="asw-num" style={{ textAlign: 'right', color: MUTED }}>{gap(s.time_cs - stats.lead.time_cs)}</td>
                           <td className="asw-num hide-mobile" style={{ textAlign: 'right', color: MUTED }}>{s.fina_points || '—'}</td>
-                          <td className="hide-mobile text-muted" style={{ fontSize: 12.5 }}>
+                          <td className="hide-mobile text-muted" style={{ fontSize: 13 }}>
                             {s.meet_id ? <Link to={`/championships/${s.meet_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{s.meet_name}</Link> : s.meet_name}
                             {s.date ? <span className="asw-num"> · {formatDate(s.date)}</span> : null}
                           </td>
@@ -257,7 +257,7 @@ export default function TeamEventDepth() {
             )}
             {!q.trim() && matched.length > FIRST && (
               <div style={{ textAlign: 'center', padding: '12px 16px', borderTop: `1px solid ${LINE}` }}>
-                <button type="button" className="btn btn-secondary" style={{ minHeight: 40, padding: '0 18px' }} aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
+                <button type="button" className="btn btn-secondary" style={{ minHeight: 40, padding: '0 16px' }} aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
                   {showAll ? `Show the top ${FIRST} only` : `Show all ${matched.length} swimmers`}
                 </button>
               </div>

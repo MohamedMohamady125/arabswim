@@ -121,7 +121,7 @@ export default function EditableResultsTable({ preview, onPreviewChange }) {
               }}
               onClick={() => toggleEvent(eventIdx)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <span className="micro" aria-hidden="true" style={{ width: 12 }}>{expandedEvents[eventIdx] ? '▼' : '▶'}</span>
                 <span style={{ fontWeight: 700, fontSize: 13 }}>{ev.event_name}</span>
                 <span className="micro">
@@ -140,7 +140,7 @@ export default function EditableResultsTable({ preview, onPreviewChange }) {
                     if (!window.confirm(`Remove "${ev.event_name}" and its ${ev.results.length} results from this import?`)) return
                     deleteEvent(eventIdx)
                   }}
-                  style={{ border: 0, background: 'transparent', cursor: 'pointer', minHeight: 32, padding: '0 6px', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--asw-slow)', fontFamily: 'inherit' }}
+                  style={{ border: 0, background: 'transparent', cursor: 'pointer', minHeight: 32, padding: '0 6px', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--asw-slow)', fontFamily: 'inherit' }}
                 >
                   Remove event
                 </button>
@@ -183,7 +183,7 @@ export default function EditableResultsTable({ preview, onPreviewChange }) {
                               title="Delete row"
                               aria-label={`Delete row ${ri + 1}${r.swimmer_name ? `: ${r.swimmer_name}` : ''}`}
                               // Fitts's Law: wider target; height kept so the dense row does not grow
-                              style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'var(--asw-slow)', fontSize: 15, lineHeight: 1, padding: '4px 2px', minWidth: 32 }}
+                              style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'var(--asw-slow)', fontSize: 16, lineHeight: 1, padding: '4px 2px', minWidth: 32 }}
                             >
                               ×
                             </button>
@@ -201,7 +201,7 @@ export default function EditableResultsTable({ preview, onPreviewChange }) {
                                     const sName = parts ? parts[1] : s
                                     const sTime = parts ? parts[2] : ''
                                     return (
-                                      <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: '1px solid var(--color-divider)', background: 'var(--color-bg)', padding: '1px 6px' }}>
+                                      <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--color-divider)', background: 'var(--color-bg)', padding: '1px 6px' }}>
                                         <span style={{ fontWeight: 600, color: 'var(--color-neutral-800)' }}>{sName}</span>
                                         {sTime && <span className="asw-time" style={{ fontSize: 12, color: 'var(--color-accent)' }}>{sTime}</span>}
                                       </span>

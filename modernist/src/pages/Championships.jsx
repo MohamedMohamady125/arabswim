@@ -259,7 +259,7 @@ export default function Championships() {
                   to={`/meets/${m.id}`}
                   className="meet-row"
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 14, padding: '14px 32px',
+                    display: 'flex', alignItems: 'center', gap: 16, padding: '16px 32px',
                     flexWrap: 'wrap', cursor: 'pointer',
                     color: 'inherit', textDecoration: 'none',
                   }}
@@ -268,7 +268,7 @@ export default function Championships() {
                       logo/photo lives inside the meet page header. */}
                   <Flag code={m.country_detail?.code} name={m.country_detail?.name} large placeholder />
                   <div style={{ flex: 1, minWidth: 160 }}>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>
                       {m.name}
                       {isAdmin && m.is_published === false && <span className="tag tag-neutral" style={{ marginLeft: 8, fontSize: 11, verticalAlign: 'middle' }}>Unpublished</span>}
                     </div>

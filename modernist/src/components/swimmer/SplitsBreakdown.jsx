@@ -195,7 +195,7 @@ export default function SplitsBreakdown({ splits, eventName, roundType, totalCs,
                 <circle cx={x(i)} cy={y(r.lapCs)} r="4" fill={st.color} stroke="#ffffff" strokeWidth="1.5" />
               )}
               <text x={x(i)} y={labelAbove ? y(r.lapCs) - 9 : y(r.lapCs) + 16} textAnchor="middle" fill={st.color}
-                style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                 {fmtSplitComma(r.lapCs)}
               </text>
             </g>
@@ -218,7 +218,7 @@ export default function SplitsBreakdown({ splits, eventName, roundType, totalCs,
         <div className="seg">
           {[50, 100].map((v) => (
             <button key={v} type="button" className={`seg-opt${by === v ? ' on' : ''}`} onClick={() => setBy(v)} aria-pressed={by === v}
-              style={{ fontSize: 11, padding: '3px 8px' }}>
+              style={{ fontSize: 11, padding: '4px 8px' }}>
               By {v}
             </button>
           ))}

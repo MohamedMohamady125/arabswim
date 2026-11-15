@@ -27,11 +27,11 @@ function NewProfileForm({ sw, countryId, allCountries, onSubmit, busy }) {
   }
 
   const fld = { fontSize: 13 }
-  const label = { fontSize: 11, textTransform: 'uppercase', letterSpacing: '.04em', opacity: 0.7, marginBottom: 3, display: 'block' }
+  const label = { fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.7, marginBottom: 3, display: 'block' }
 
   return (
     <div style={{ marginTop: 10, padding: 12, border: '1px solid var(--color-divider)', background: 'var(--color-neutral-100)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={label} htmlFor={`nm-name-${sw.id}`}>English name *</label>
           <input id={`nm-name-${sw.id}`} type="text" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)}
@@ -122,10 +122,10 @@ function Row({ sw, countryId, allCountries, onDone }) {
   }
 
   return (
-    <div className="hair-b" style={{ padding: '14px 0' }}>
-      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+    <div className="hair-b" style={{ padding: '16px 0' }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 240px', minWidth: 200 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }} dir="rtl">{sw.name}</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }} dir="rtl">{sw.name}</div>
           <div className="micro" style={{ marginTop: 3 }}>
             {[sw.club, sw.date_of_birth || sw.birth_year, sw.sex, `${sw.result_count} swims`]
               .filter(Boolean).join(' · ')}
@@ -246,7 +246,7 @@ export default function NameMatch() {
                 aria-pressed={country === String(c.id)}
                 className={`btn ${country === String(c.id) ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => pickCountry(String(c.id))}
-                style={{ height: 34, padding: '0 14px', fontSize: 13 }}
+                style={{ height: 34, padding: '0 16px', fontSize: 13 }}
               >
                 {c.name} <span className="micro" style={{ marginInlineStart: 6 }}>{c.arabic_count}</span>
               </button>
@@ -257,7 +257,7 @@ export default function NameMatch() {
 
       {country && (
         <div className="pad">
-          <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
             <input
               type="text"
               value={q}

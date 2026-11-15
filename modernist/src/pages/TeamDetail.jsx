@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { X, Camera, Landmark, Medal, Star, Trophy, User, Users, Waves } from 'lucide-react'
 import { getTeamProfile, getTeamMedals, getTeamTimes, updateTeam, getBoardMembers, createBoardMember, updateBoardMember, deleteBoardMember, getTeams } from '../api/teams'
 import { getArticles, createArticle } from '../api/news'
 import { getAlbums, createAlbum } from '../api/media'
@@ -57,7 +57,7 @@ const COACH_LEVELS = {
 const CLASS_COLORS = {
   Arab: 'var(--color-accent-800)', GCC: 'var(--color-neutral-700)', African: 'var(--asw-slow)', Asian: 'var(--asw-bronze)',
   Mediterranean: 'var(--color-accent-2)', Islamic: 'var(--asw-fast)', World: 'var(--asw-gold)', Olympic: 'var(--color-accent-800)',
-  National: '#2e6b4f', University: '#6b4f8a', Other: 'var(--color-neutral-700)',
+  National: 'var(--asw-fast)', University: 'var(--color-neutral-700)', Other: 'var(--color-neutral-700)',
 }
 
 const REC_TYPE_LABELS = {
@@ -108,13 +108,13 @@ function RosterGrid({ roster, isAdmin }) {
   return (
     <>
       {roster.length > 12 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
           <input className="input" type="search" aria-label="Find a swimmer in this squad" placeholder="Find a swimmer…" value={q} onChange={(e) => setQ(e.target.value)}
             style={{ width: 'auto', flex: '0 1 260px', minWidth: 0, minHeight: 40 }} />
           {men > 0 && women > 0 && (
             <Seg options={[{ value: '', label: `All (${roster.length})` }, { value: 'M', label: `Men (${men})` }, { value: 'F', label: `Women (${women})` }]} value={sex} onChange={setSex} />
           )}
-          <span className="asw-num" aria-live="polite" style={{ fontSize: 12.5, color: 'var(--color-neutral-700)' }}>Showing {shown.length} of {matched.length}</span>
+          <span className="asw-num" aria-live="polite" style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>Showing {shown.length} of {matched.length}</span>
         </div>
       )}
       {matched.length === 0 ? (
@@ -124,20 +124,20 @@ function RosterGrid({ roster, isAdmin }) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
           {shown.map((s) => (
-            <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(180deg, var(--color-accent-100), var(--color-neutral-400))', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
-                {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+            <div key={s.id} style={{ borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', padding: '16px 10px 12px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'var(--color-accent-100)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', overflow: 'hidden' }}>
+                {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
               </div>
               <div style={{ padding: '10px 2px 0' }}>
-                <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
                   <SwimmerLink id={s.id} name={s.name} />
                 </div>
-                <div style={{ fontSize: 11.5, color: 'var(--color-neutral-800)', fontWeight: 500, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-neutral-800)', fontWeight: 600, lineHeight: 1.5 }}>
                   {s.sex === 'F' ? "Women's" : "Men's"}{s.birth_year ? ` · ${s.birth_year}` : ''}
                 </div>
               </div>
               <div style={{ marginTop: 'auto', paddingTop: 2, borderTop: '1px solid var(--color-neutral-200)' }}>
-                <Link to={`/swimmers/${s.id}`} aria-label={`View profile of ${s.name}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
+                <Link to={`/swimmers/${s.id}`} aria-label={`View profile of ${s.name}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
                   <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
                 </Link>
                 {isAdmin && (
@@ -150,7 +150,7 @@ function RosterGrid({ roster, isAdmin }) {
       )}
       {!q.trim() && matched.length > ROSTER_FIRST && (
         <div style={{ textAlign: 'center', marginTop: 16 }}>
-          <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40, padding: '0 18px' }} aria-expanded={all} onClick={() => setAll((v) => !v)}>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: 13, minHeight: 40, padding: '0 16px' }} aria-expanded={all} onClick={() => setAll((v) => !v)}>
             {all ? `Show the first ${ROSTER_FIRST} only` : `Show all ${matched.length} swimmers`}
           </button>
         </div>
@@ -532,7 +532,7 @@ function PredictionTab({ id }) {
   return (
     <div className="pad-lg">
       <TabHeading title="Next-Season Projection" />
-      <div style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--color-neutral-700)', margin: '-8px 0 16px' }}>
+      <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)', margin: '-8px 0 16px' }}>
         Linear trend over each swimmer's seasonal bests — a forecast, not a promise
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
@@ -550,23 +550,23 @@ function PredictionTab({ id }) {
             const color = improving ? 'var(--asw-fast)' : declining ? 'var(--asw-slow)' : 'var(--color-neutral-500)'
             return (
               <div key={`${p.swimmer_id}-${p.event_id}`} className="hair-b asw-fade-up" style={{ padding: '13px 0', borderLeft: `4px solid ${color}`, paddingLeft: 12, animationDelay: `${Math.min(i * 40, 400)}ms` }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
-                    <Link to={`/swimmers/${p.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700, fontSize: 14, padding: '7px 0' }}>{p.swimmer_name}</Link>
+                    <Link to={`/swimmers/${p.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700, fontSize: 14, padding: '8px 0' }}>{p.swimmer_name}</Link>
                     <span className="text-muted" style={{ fontSize: 13 }}> · {p.event_name}</span>
                   </div>
                   <span className="tag" style={{ background: color, color: '#fff', border: 0 }}>
                     {improving ? 'IMPROVING' : declining ? 'AT RISK' : 'STEADY'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, marginTop: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
                   <span>
                     <span className="micro" style={{ display: 'block' }}>Current best</span>
-                    <span className="asw-time" style={{ fontSize: 17 }}>{p.current_best}</span>
+                    <span className="asw-time" style={{ fontSize: 16 }}>{p.current_best}</span>
                   </span>
                   <span>
                     <span className="micro" style={{ display: 'block' }}>Projected {p.target_year}</span>
-                    <span className="asw-time" style={{ fontSize: 17, fontWeight: 800, color }}>{p.predicted}</span>
+                    <span className="asw-time" style={{ fontSize: 16, fontWeight: 800, color }}>{p.predicted}</span>
                   </span>
                   <span className="asw-num" style={{ fontSize: 12, fontWeight: 700, color }}>
                     {p.delta_cs <= 0 ? '−' : '+'}{formatTime(Math.abs(p.delta_cs))} ({Math.abs(p.delta_pct)}%)
@@ -669,7 +669,7 @@ function ProgressionTab({ id }) {
   return (
     <div className="pad-lg">
       <TabHeading title="Time Progression" />
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
         <Seg options={STROKES} value={stroke} onChange={setStroke} />
         <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={(v) => { setAutoPool(false); setPool(v) }} />
       </div>
@@ -745,18 +745,18 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
   // Fed card helpers
   const cardHeader = (title, sub) => (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-        <span style={{ width: 4, height: 17, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{title}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 4, height: 17, background: 'var(--color-accent-800)', borderRadius: 0, flexShrink: 0 }} />
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{title}</span>
       </div>
       <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
     </div>
   )
   const card = (children, extra = {}) => (
-    <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', ...extra }}>{children}</div>
+    <div style={{ background: '#fff', borderRadius: 0, padding: '16px 16px', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', ...extra }}>{children}</div>
   )
-  const thStyle = { fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-700)', paddingBottom: 6, borderBottom: '2px solid var(--color-neutral-300)' }
-  const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-neutral-200)', fontSize: 12.5, background: i % 2 === 1 ? 'var(--color-neutral-100)' : 'transparent' })
+  const thStyle = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-700)', paddingBottom: 6, borderBottom: '2px solid var(--color-neutral-300)' }
+  const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-neutral-200)', fontSize: 13, background: i % 2 === 1 ? 'var(--color-neutral-100)' : 'transparent' })
   const badge = { width: 24, height: 24, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }
   const mc = (color) => ({ width: 26, height: 26, borderRadius: '50%', background: `color-mix(in srgb, ${color} 24%, #fff)`, border: `1.5px solid ${color}`, color: 'var(--color-accent-800)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 })
 
@@ -772,10 +772,10 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       {rows.map((t, i) => (
         <div key={t.swimmer_id} style={rowStyle(i)}>
           <span style={badge}>{i + 1}</span>
-          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: 'var(--color-accent-800)' }}><SwimmerLink id={t.swimmer_id} name={t.swimmer_name} /></span>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: 'var(--color-accent-800)' }}><SwimmerLink id={t.swimmer_id} name={t.swimmer_name} /></span>
           <span style={{ width: 120, color: 'var(--color-neutral-700)', fontSize: 11 }}>{t.event_name}</span>
-          <span className="asw-num" style={{ width: 60, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 12.5 }}>{t.time}</span>
-          <span className="asw-num" style={{ width: 36, textAlign: 'right', fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 13 }}>{t.fina_points ?? '—'}</span>
+          <span className="asw-num" style={{ width: 60, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13 }}>{t.time}</span>
+          <span className="asw-num" style={{ width: 36, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13 }}>{t.fina_points ?? '—'}</span>
         </div>
       ))}
     </>
@@ -786,30 +786,30 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
         <span style={{ width: 24 }}>#</span>
         <span style={{ flex: 1 }}>Swimmer</span>
-        <span style={{ width: 28, textAlign: 'center', color: 'var(--color-neutral-700)', fontWeight: 900, borderBottom: '2px solid var(--asw-gold)' }}>G</span>
-        <span style={{ width: 28, textAlign: 'center', color: 'var(--color-neutral-700)', fontWeight: 900, borderBottom: '2px solid var(--asw-silver)' }}>S</span>
-        <span style={{ width: 28, textAlign: 'center', color: 'var(--color-neutral-700)', fontWeight: 900, borderBottom: '2px solid var(--asw-bronze)' }}>B</span>
+        <span style={{ width: 28, textAlign: 'center', color: 'var(--color-neutral-700)', fontWeight: 800, borderBottom: '2px solid var(--asw-gold)' }}>G</span>
+        <span style={{ width: 28, textAlign: 'center', color: 'var(--color-neutral-700)', fontWeight: 800, borderBottom: '2px solid var(--asw-silver)' }}>S</span>
+        <span style={{ width: 28, textAlign: 'center', color: 'var(--color-neutral-700)', fontWeight: 800, borderBottom: '2px solid var(--asw-bronze)' }}>B</span>
         <span style={{ width: 40, textAlign: 'center' }}>Total</span>
       </div>
       {rows.map((m, i) => (
         <div key={m.id ?? i} style={rowStyle(i)}>
           <span style={badge}>{i + 1}</span>
-          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: 'var(--color-accent-800)' }}><SwimmerLink id={m.id} name={m.name} /></span>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: 'var(--color-accent-800)' }}><SwimmerLink id={m.id} name={m.name} /></span>
           <span style={mc('var(--asw-gold)')}>{m.gold}</span>
           <span style={mc('var(--asw-silver)')}>{m.silver}</span>
           <span style={mc('var(--asw-bronze)')}>{m.bronze}</span>
-          <span className="asw-num" style={{ width: 40, textAlign: 'center', fontWeight: 900, fontSize: 14, color: 'var(--color-accent-800)' }}>{m.total}</span>
+          <span className="asw-num" style={{ width: 40, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)' }}>{m.total}</span>
         </div>
       ))}
     </>
   )
 
   const recCard = (label, sub, content) => (
-    <div style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
-      <div style={{ padding: '10px 12px 7px', borderBottom: '1px solid var(--color-neutral-200)' }}>
+    <div style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0, overflow: 'hidden',  }}>
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid var(--color-neutral-200)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 4, height: 14, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{label}</span>
+          <span style={{ width: 4, height: 14, background: 'var(--color-accent-800)', borderRadius: 0, flexShrink: 0 }} />
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{label}</span>
         </div>
         <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
       </div>
@@ -818,15 +818,15 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
   )
   const recBody = (photo, name, id, subLabel, bigValue, dateStr) => (
     <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
-      <div style={{ width: 100, background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
-        {photo ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+      <div style={{ width: 100, background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
+        {photo ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
       </div>
       <div style={{ padding: '12px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <div style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--color-accent-800)', lineHeight: 1.2, marginBottom: 4 }}>
+        <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--color-accent-800)', lineHeight: 1.2, marginBottom: 4 }}>
           <SwimmerLink id={id} name={name} />
         </div>
         <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginBottom: 6 }}>{subLabel}</div>
-        <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1 }}>{bigValue}</div>
+        <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1 }}>{bigValue}</div>
         {dateStr && <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 5 }}>{dateStr}</div>}
       </div>
     </div>
@@ -848,22 +848,16 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
   const maxBattle = Math.max(...battle.map((r) => r.total), 1)
 
   return (
-    <div className="m-pad" style={{ background: 'var(--color-neutral-100)', padding: '28px 24px' }}>
-      <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 2, background: 'var(--color-accent-800)' }} />
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>Statistics</span>
-          <div style={{ width: 40, height: 2, background: 'var(--color-accent-800)' }} />
-        </div>
-      </div>
+    <div className="m-pad" style={{ padding: '24px 32px' }}>
+      <h2 className="prof-h">Statistics</h2>
 
       {/* Row 0: headline numbers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 10 }}>
         {[['Swimmers', Object.keys(sexById).length || stats?.swimmers, 'var(--color-accent-800)'], ['Race Swims', stats?.results, 'var(--color-accent-800)'], ['Championships', stats?.championships, 'var(--color-accent-800)'],
           ['Gold', stats?.medals?.gold, 'var(--asw-gold)'], ['Silver', stats?.medals?.silver, 'var(--asw-silver)'], ['Bronze', stats?.medals?.bronze, 'var(--asw-bronze)']].map(([label, v, color]) => (
-          <div key={label} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,.07)', padding: '14px 12px', textAlign: 'center' }}>
-            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, color: 'var(--color-accent-800)' }}>{formatNumber(v)}</div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <div key={label} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0, padding: '16px 12px', textAlign: 'center' }}>
+            <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--color-accent-800)' }}>{formatNumber(v)}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               {color !== 'var(--color-accent-800)' && <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flex: 'none' }} />}{label}
             </div>
           </div>
@@ -871,13 +865,13 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       </div>
 
       {/* Row 1: Top Performance Men | Women */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
         {card(<>{cardHeader('Top Performance · Men', `Best Performances by ${team.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No men's performances with FINA points yet" />}</>)}
         {card(<>{cardHeader('Top Performance · Women', `Best Performances by ${team.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No women's performances with FINA points yet" />}</>)}
       </div>
 
       {/* Row 2: Medals by competition | Most Decorated Men | Women */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: medalBoxes.length ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: medalBoxes.length ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12, marginBottom: 10 }}>
         {/* classification breakdown can be empty while the club still has
             medals (all from excluded classifications) — showing "No medals"
             next to real tallies would lie, so drop the card instead */}
@@ -891,16 +885,16 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
             ))}
           </div>
           {medalBoxes.length === 0 ? <Empty label="No medals" /> : medalBoxes.map((m) => (
-            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
-              <span style={{ width: 88, fontSize: 11.5, fontWeight: 700, flexShrink: 0, color: 'var(--color-neutral-800)' }}>{m.name}</span>
-              <div style={{ flex: 1, height: 20, display: 'flex', background: 'var(--color-accent-100)', borderRadius: 3, overflow: 'hidden' }}>
+            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
+              <span style={{ width: 88, fontSize: 12, fontWeight: 700, flexShrink: 0, color: 'var(--color-neutral-800)' }}>{m.name}</span>
+              <div style={{ flex: 1, height: 20, display: 'flex', background: 'var(--color-accent-100)', borderRadius: 0, overflow: 'hidden' }}>
                 <div style={{ width: `${(m.total / maxTotal) * 100}%`, display: 'flex', minWidth: m.total > 0 ? 20 : 0 }}>
                   {[['gold', 'var(--asw-gold)'], ['silver', 'var(--asw-silver)'], ['bronze', 'var(--asw-bronze)']].map(([key, color]) =>
                     m[key] > 0 && <div key={key} style={{ flex: m[key], background: `color-mix(in srgb, ${color} 45%, #fff)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-accent-800)', fontWeight: 800, fontSize: 11, minWidth: 14 }} className="asw-num">{m[key]}</div>
                   )}
                 </div>
               </div>
-              <span className="asw-num" style={{ width: 26, textAlign: 'right', fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{m.total}</span>
+              <span className="asw-num" style={{ width: 26, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{m.total}</span>
             </div>
           ))}
         </>)}
@@ -909,7 +903,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       </div>
 
       {/* Row 3: shuffled highlight boxes — random 4 from a wider pool per visit */}
-      <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
         {(() => {
           const fmtT = (t) => (typeof t === 'number' ? formatTime(t) : t) || '—'
           const goldTouch = [...medalists].sort((a, b) => b.gold - a.gold)[0]
@@ -937,15 +931,15 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       </div>
 
       {/* Row 4: Performance Index | Club Battle */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-        <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid var(--color-neutral-300)' }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+        <div style={{ background: '#fff', borderRadius: 0, padding: '16px 16px', border: '1px solid var(--color-neutral-300)' }}>
           {cardHeader('Performance Index', `Distribution of ${team.name} Swimmers by Performance Level`)}
           <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
             {perfDist.map((d, i) => (
               <div key={d.label} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ height: 165, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                  {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: 'var(--color-accent-800)' }}>{d.count}</div>}
-                  <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: '3px 3px 0 0' }} />
+                  {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 800, marginBottom: 4, color: 'var(--color-accent-800)' }}>{d.count}</div>}
+                  <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: 0 }} />
                 </div>
                 <div style={{ fontSize: 7.5, marginTop: 6, lineHeight: 1.2, minHeight: 19, color: 'var(--color-neutral-700)', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
                 <div style={{ fontSize: 6.5, color: 'var(--color-neutral-700)', marginTop: 1 }}>({d.range})</div>
@@ -960,9 +954,9 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
             return (
               <div key={r.team_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
                 <span className="asw-num" style={{ width: 18, fontSize: 11, fontWeight: 800, color: 'var(--color-neutral-700)', flexShrink: 0, textAlign: 'right' }}>{r.rank}</span>
-                <span style={{ width: 104, fontSize: 11.5, fontWeight: mine ? 900 : 600, flexShrink: 0, color: mine ? 'var(--color-accent-800)' : 'var(--color-neutral-800)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{r.team_name}</span>
-                <div style={{ flex: 1, height: 18, background: 'var(--color-accent-100)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ width: `${(r.total / maxBattle) * 100}%`, height: '100%', background: mine ? 'var(--color-accent-800)' : 'var(--color-accent-300)', borderRadius: 3, minWidth: r.total > 0 ? 8 : 0 }} />
+                <span style={{ width: 104, fontSize: 12, fontWeight: mine ? 900 : 600, flexShrink: 0, color: mine ? 'var(--color-accent-800)' : 'var(--color-neutral-800)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{r.team_name}</span>
+                <div style={{ flex: 1, height: 18, background: 'var(--color-accent-100)', borderRadius: 0, overflow: 'hidden' }}>
+                  <div style={{ width: `${(r.total / maxBattle) * 100}%`, height: '100%', background: mine ? 'var(--color-accent-800)' : 'var(--color-accent-300)', borderRadius: 0, minWidth: r.total > 0 ? 8 : 0 }} />
                 </div>
                 <span className="asw-num" style={{ width: 28, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{r.total}</span>
               </div>
@@ -972,7 +966,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       </div>
 
       {/* Row 5: Strongest Events | Squad by Gender (new analytics) */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginTop: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginTop: 10 }}>
         {card(<>
           {cardHeader('Strongest Events', `Where ${team.name} races most — by number of recorded swims`)}
           {(() => {
@@ -1074,7 +1068,7 @@ function CompareTab({ team, profile, stats, records, ranking = [] }) {
       <span style={{ width: 26, height: 26, borderRadius: '50%', background: '#fff', overflow: 'hidden', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         {t?.logo
           ? <img src={mediaUrl(t.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <span style={{ fontSize: 9, fontWeight: 900, color: 'var(--color-accent-800)' }}>{acronym(t?.name)}</span>}
+          : <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--color-accent-800)' }}>{acronym(t?.name)}</span>}
       </span>
       {t?.name}
     </span>
@@ -1083,10 +1077,10 @@ function CompareTab({ team, profile, stats, records, ranking = [] }) {
   return (
     <div className="pad-lg">
       <TabHeading title="Club Comparison" />
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, margin: '18px 0 26px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, margin: '18px 0 26px', flexWrap: 'wrap' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: 'var(--color-accent-800)' }}>{team.name}</span>
-        <span style={{ fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 15 }}>VS</span>
-        <select aria-label="Club to compare against" value={otherId} onChange={(e) => setOtherId(e.target.value)} style={{ padding: '9px 14px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', background: '#fff', fontFamily: 'inherit' }}>
+        <span style={{ fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 16 }}>VS</span>
+        <select aria-label="Club to compare against" value={otherId} onChange={(e) => setOtherId(e.target.value)} style={{ padding: '8px 16px', border: '2px solid var(--color-accent-800)', borderRadius: 0, fontSize: 14, fontWeight: 700, color: 'var(--color-accent-800)', background: '#fff', fontFamily: 'inherit' }}>
           <option value="">Choose a club…</option>
           {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -1095,17 +1089,17 @@ function CompareTab({ team, profile, stats, records, ranking = [] }) {
       {!loadingOther && !other && <Empty label="Pick a club to compare against" hint={clubs.length ? 'Choose one from the list above. Clubs from the same country are listed.' : 'No other club from this country is in the database yet.'} />}
       {!loadingOther && other && (
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-accent-800)', color: '#fff', borderRadius: '8px 8px 0 0', fontWeight: 800, fontSize: 14, gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--color-accent-800)', color: '#fff', borderRadius: 0, fontWeight: 800, fontSize: 14, gap: 12 }}>
             {clubBadge(team)}
             {clubBadge(other.profile?.team)}
           </div>
           {rows.map(([label, a, b], i) => {
             const winA = a > b; const winB = b > a
-            const numStyle = (win) => ({ width: 110, fontWeight: 900, fontSize: 16, color: win ? 'var(--color-accent-800)' : 'var(--color-neutral-700)' })
+            const numStyle = (win) => ({ width: 110, fontWeight: 800, fontSize: 16, color: win ? 'var(--color-accent-800)' : 'var(--color-neutral-700)' })
             return (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', background: i % 2 ? 'var(--color-neutral-100)' : '#fff', borderBottom: '1px solid var(--color-accent-100)' }}>
+              <div key={label} style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', background: i % 2 ? 'var(--color-neutral-100)' : '#fff', borderBottom: '1px solid var(--color-accent-100)' }}>
                 <span className="asw-num" style={{ ...numStyle(winA), textAlign: 'left' }}>{formatNumber(a)}</span>
-                <span style={{ flex: 1, textAlign: 'center', fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-neutral-800)' }}>{label}</span>
+                <span style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-800)' }}>{label}</span>
                 <span className="asw-num" style={{ ...numStyle(winB), textAlign: 'right' }}>{formatNumber(b)}</span>
               </div>
             )
@@ -1265,7 +1259,7 @@ export default function TeamDetail() {
   // one word for what this page is about — used in every label below
   const kind = team.is_national_team ? 'team' : team.is_academy ? 'academy' : 'club'
   const Kind = kind[0].toUpperCase() + kind.slice(1)
-  const usDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
+  const usDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 
   const heroIcon = (d) => (
     <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1273,20 +1267,14 @@ export default function TeamDetail() {
     </span>
   )
   const contactRow = (ic, content) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14.5, fontWeight: 600, color: navy }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: navy }}>
       {ic}{content}
     </div>
   )
 
   const secTitle = (text) => {
-    const taperL = { width: 130, height: 3, background: 'linear-gradient(to left, var(--color-accent-800), rgba(16,46,86,0))', transform: 'skewX(-30deg)' }
-    const taperR = { width: 130, height: 3, background: 'linear-gradient(to right, var(--color-accent-800), rgba(16,46,86,0))', transform: 'skewX(-30deg)' }
     return (
-      <div className="m-sectitle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, margin: '26px 0 22px' }}>
-        <div style={taperL} />
-        <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0, whiteSpace: 'nowrap' }}>{text}</h3>
-        <div style={taperR} />
-      </div>
+      <h3 className="m-sectitle prof-h">{text}</h3>
     )
   }
 
@@ -1294,14 +1282,14 @@ export default function TeamDetail() {
   const newsCard = (a, i) => {
     const inner = (
       <>
-        <div style={{ position: 'relative', margin: 10, aspectRatio: '16 / 9', borderRadius: 8, overflow: 'hidden', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, var(--color-accent-200), var(--color-neutral-300))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'var(--color-neutral-700)', flex: 'none' }}>
+        <div style={{ position: 'relative', margin: 10, aspectRatio: '16 / 9', borderRadius: 0, overflow: 'hidden', background: a?.cover_image ? 'var(--color-accent-800)' : 'var(--color-accent-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'var(--color-neutral-700)', flex: 'none' }}>
           {a?.cover_image ? (
             <>
               <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
             </>
-          ) : '📷'}
+          ) : <Camera size={22} aria-hidden="true" />}
         </div>
-        <div style={{ padding: '4px 14px 16px', display: 'flex', flexDirection: 'column', flex: 1, textAlign: 'left' }}>
+        <div style={{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1, textAlign: 'left' }}>
           <div style={{ fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 600, marginBottom: 9 }}>{a ? usDate(a.published_at || a.created_at) : 'Coming soon'}</div>
           {(() => {
             const rtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a?.title || '')
@@ -1317,13 +1305,13 @@ export default function TeamDetail() {
             )
           })()}
           <div style={{ marginTop: 'auto', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12.5, color: 'var(--color-accent-800)', fontWeight: 700 }}>Read more</span>
+            <span style={{ fontSize: 13, color: 'var(--color-accent-800)', fontWeight: 700 }}>Read more</span>
             <span style={{ color: 'var(--color-accent-800)', fontWeight: 800 }}>→</span>
           </div>
         </div>
       </>
     )
-    const cardStyle = { borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column', minHeight: 0, textDecoration: 'none' }
+    const cardStyle = { borderRadius: 0, overflow: 'hidden', background: '#fff', border: '1px solid var(--color-divider)', display: 'flex', flexDirection: 'column', minHeight: 0, textDecoration: 'none' }
     return a
       ? <Link key={a.id} to={`/news/${a.id}`} style={cardStyle}>{inner}</Link>
       : <div key={`ph-${i}`} style={cardStyle}>{inner}</div>
@@ -1331,11 +1319,11 @@ export default function TeamDetail() {
 
   // Person card (board + coaches)
   const personCard = ({ role, name, photo, actions }, i) => (
-    <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', }}>
-      <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: photo ? `url(${mediaUrl(photo)}) center/cover` : 'linear-gradient(180deg, var(--color-neutral-200), var(--color-neutral-300))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: 'var(--color-neutral-700)' }}>{photo ? '' : '👤'}</div>
+    <div key={i} style={{ borderRadius: 0, textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', padding: '16px 16px 20px', display: 'flex', flexDirection: 'column', }}>
+      <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 0, background: photo ? `url(${mediaUrl(photo)}) center/cover` : 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: 'var(--color-neutral-700)' }}>{photo ? '' : <User size={22} aria-hidden="true" />}</div>
       <div style={{ paddingTop: 16 }}>
-        <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}>{name}</div>
-        <div style={{ fontSize: 13.5, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{role}</div>
+        <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>{name}</div>
+        <div style={{ fontSize: 14, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{role}</div>
       </div>
       <div style={{ marginTop: 'auto' }}>
         {actions && <div style={{ display: 'flex', gap: 6, marginTop: 10, justifyContent: 'center' }}>{actions}</div>}
@@ -1349,7 +1337,7 @@ export default function TeamDetail() {
   return (
     <div className="m-zoom">
       {/* ===== ISF-style club header ===== */}
-      <div className="rule-b" style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)' }}>
+      <div className="rule-b" style={{ position: 'relative', overflow: 'hidden', background: 'var(--color-bg)' }}>
         <style>{`
           @media (max-width: 760px) {
             .fed-hero-photo { display: none; }
@@ -1367,22 +1355,22 @@ export default function TeamDetail() {
         />
         <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
           <Link to={team.is_academy ? '/academies' : '/teams'} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 12, textDecoration: 'none', fontWeight: 700, color: 'var(--color-accent-800)' }}>← All {team.is_academy ? 'academies' : 'clubs'}</Link>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, marginTop: 8, flexWrap: 'wrap' }}>
             {/* Circular logo — adapts to the artwork (solid or transparent) */}
             <ClubLogo src={team.logo} name={team.name} ring={navy} />
             <div style={{ minWidth: 260, maxWidth: 560 }}>
               <h1 style={{
-                margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 900,
-                fontSize: 'clamp(28px, 4vw, 42px)', lineHeight: 1.04, letterSpacing: '-0.02em',
-                color: navy, textTransform: 'uppercase',
+                margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 800,
+                fontSize: 'clamp(28px, 4vw, 40px)', lineHeight: 1.04, letterSpacing: '-0.02em',
+                color: navy,
               }}>
                 {team.name}
               </h1>
-              <div style={{ marginTop: 6, fontSize: 15, fontWeight: 700, color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ marginTop: 6, fontSize: 16, fontWeight: 700, color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <Flag code={team.country_detail?.code} name={team.country_detail?.name} />
                 <span>{kickerText}{team.country_detail?.name ? ` · ${team.country_detail.name}` : ''}{team.founded_year ? ` · Est. ${team.founded_year}` : ''}</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
                 {team.phone && contactRow(
                   heroIcon(<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />),
                   <span className="asw-num">{team.phone}</span>)}
@@ -1411,25 +1399,20 @@ export default function TeamDetail() {
       {/* Tab bar. Cognitive Load: News, Board and Multimedia stay out of a
           visitor's way until they hold something (managers always see them,
           and a direct link still opens them). */}
-      <div ref={tabBarRef} className="rule-b" role="tablist" aria-label={`${team.name} sections`} style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto', scrollMarginTop: 0 }}>
+      <div ref={tabBarRef} className="rule-b prof-tabs">
+        <div className="seg seg-tabs" role="tablist" aria-label={`${team.name} sections`}>
         {TABS.filter((t) => (t.value !== 'training' || !team?.is_national_team) && (isAdmin || !tabHidden(t.value))
           && (canManage || t.value === tab || !(t.value in emptyTabs) || !emptyTabs[t.value])).map((t, i, arr) => (
           <Fragment key={t.value}>
-          {i > 0 && arr[i - 1].g !== t.g && <span aria-hidden="true" style={{ flex: 'none', width: 1, margin: '12px 10px', background: 'var(--color-neutral-300)' }} />}
-          <button type="button" role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}
+                    <button type="button" role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}
             aria-current={tab === t.value ? 'page' : undefined}
             title={tabHidden(t.value) ? 'Hidden from visitors (admin visibility settings)' : undefined}
-            style={{
-              minHeight: 48, // Fitts's Law: 36px after the phone zoom (0.75)
-              padding: '12px 16px', background: 'none', border: 'none', borderBottom: tab === t.value ? '3px solid var(--color-accent)' : '3px solid transparent',
-              cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: tab === t.value ? 800 : 600,
-              fontSize: 13, color: tab === t.value ? 'var(--color-accent)' : 'var(--color-text)', whiteSpace: 'nowrap', flex: 'none',
-              opacity: tabHidden(t.value) ? 0.4 : 1,
-            }}>
+            className={`seg-opt${tab === t.value ? ' on' : ''}`} style={{ opacity: tabHidden(t.value) ? 0.4 : 1 }}>
             {t.label}
           </button>
           </Fragment>
         ))}
+        </div>
       </div>
 
       {/* ===== OVERVIEW ===== */}
@@ -1455,28 +1438,28 @@ export default function TeamDetail() {
           return out
         }
         const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 12)
-        const hCard = { background: '#fff', borderRadius: 14, display: 'flex', gap: 14, padding: 10, boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-box-top)' }
-        const hPhoto = { width: 150, height: 152, borderRadius: 10, background: 'linear-gradient(135deg, var(--color-accent-200), var(--color-accent-100))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: 'var(--color-neutral-700)', flexShrink: 0, overflow: 'hidden' }
+        const hCard = { background: '#fff', borderRadius: 0, display: 'flex', gap: 16, padding: 10, position: 'relative', borderTop: '3px solid var(--color-box-top)' }
+        const hPhoto = { width: 150, height: 152, borderRadius: 0, background: 'var(--color-accent-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', flexShrink: 0, overflow: 'hidden' }
         const hBody = { padding: '12px 8px 10px 2px', flex: 1, display: 'flex', flexDirection: 'column' }
-        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 7, lineHeight: 1.3 }
-        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 29, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1.1 }
-        const hSub = { fontSize: 12.5, color: 'var(--color-neutral-800)', marginTop: 4 }
+        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 7, lineHeight: 1.3 }
+        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1.1 }
+        const hSub = { fontSize: 13, color: 'var(--color-neutral-800)', marginTop: 4 }
         const barsIcon = (
           <span style={{ position: 'absolute', right: 16, bottom: 14, display: 'inline-flex', alignItems: 'flex-end', gap: 2.5 }}>
-            {[7, 12, 17, 22].map((h, k) => <span key={k} style={{ width: 4.5, height: h, background: 'var(--color-accent-800)', borderRadius: 1.5, display: 'inline-block' }} />)}
+            {[7, 12, 17, 22].map((h, k) => <span key={k} style={{ width: 4.5, height: h, background: 'var(--color-accent-800)', borderRadius: 0, display: 'inline-block' }} />)}
           </span>
         )
         const infoCell = (label, value) => (
           <div key={label}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', marginTop: 3, overflowWrap: 'anywhere' }}>{value || '—'}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-accent-800)', marginTop: 3, overflowWrap: 'anywhere' }}>{value || '—'}</div>
           </div>
         )
         const newsItems = articles.slice(0, 3)
-        const hIcon = { width: 56, height: 56, borderRadius: 12, background: 'var(--color-accent-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0, margin: '6px 0 6px 4px' }
-        const cardBox = { borderRadius: 12, background: '#fff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px' }
+        const hIcon = { width: 56, height: 56, borderRadius: 0, background: 'var(--color-accent-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, margin: '6px 0 6px 4px' }
+        const cardBox = { borderRadius: 0, background: '#fff', border: '1px solid var(--color-divider)', padding: '20px 22px' }
         const cardTitle = (text) => (
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 12 }}>{text}</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 12 }}>{text}</div>
         )
         const mg = stats?.medals?.gold || 0, ms = stats?.medals?.silver || 0, mb = stats?.medals?.bronze || 0
         // The four numbers a visitor wants first — one glance, top of the page
@@ -1500,38 +1483,38 @@ export default function TeamDetail() {
         })()
         const topMedal = medalists.slice(0, 5)
         const lbRow = (i, id2, name, sub, right, rightSub) => (
-          <div key={`${id2}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderTop: i ? '1px solid var(--color-neutral-200)' : 'none', minHeight: 44 }}>
+          <div key={`${id2}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderTop: i ? '1px solid var(--color-neutral-200)' : 'none', minHeight: 44 }}>
             <span className="asw-num" style={{ width: 22, height: 22, borderRadius: '50%', background: i === 0 ? 'var(--color-accent-800)' : 'var(--color-accent-100)', color: i === 0 ? '#fff' : 'var(--color-accent-800)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flex: 'none' }}>{i + 1}</span>
             <span style={{ flex: 1, minWidth: 0 }}>
               {/* Fitts's Law: padding (cancelled by the margin) gives the name a 32px target without moving the row */}
-              <span style={{ display: 'block', fontSize: 13.5, color: 'var(--color-accent-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '7px 0', margin: '-7px 0' }}><SwimmerLink id={id2} name={name} /></span>
-              {sub ? <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-neutral-700)', marginTop: 1 }}>{sub}</span> : null}
+              <span style={{ display: 'block', fontSize: 14, color: 'var(--color-accent-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '8px 0', margin: '-7px 0' }}><SwimmerLink id={id2} name={name} /></span>
+              {sub ? <span style={{ display: 'block', fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 1 }}>{sub}</span> : null}
             </span>
             <span style={{ textAlign: 'right', flex: 'none' }}>
-              <span className="asw-num" style={{ display: 'block', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)' }}>{right}</span>
-              {rightSub ? <span className="asw-num" style={{ display: 'block', fontSize: 11.5, color: 'var(--color-neutral-700)' }}>{rightSub}</span> : null}
+              <span className="asw-num" style={{ display: 'block', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>{right}</span>
+              {rightSub ? <span className="asw-num" style={{ display: 'block', fontSize: 12, color: 'var(--color-neutral-700)' }}>{rightSub}</span> : null}
             </span>
           </div>
         )
         const moreLink = (label, target) => (
-          <button type="button" onClick={() => goTab(target)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', padding: '12px 0 0', minHeight: 40 }}>{label} →</button>
+          <button type="button" onClick={() => goTab(target)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)', padding: '12px 0 0', minHeight: 40 }}>{label} →</button>
         )
         // Occam's Razor: type, country and founding year are in the header, and
         // the best performance leads the list below — the About card is for
         // the club's own words (and, for a manager, the prompt to add them)
         const showAbout = !!team.description || canManage
         return (
-          <div className="m-pad" style={{ padding: '18px 28px 32px', background: 'var(--color-accent-100)' }}>
+          <div className="m-pad" style={{ padding: '16px 32px 32px' }}>
             {/* Key numbers */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16 }}>
               {statTiles.map(([label, value, sub, open]) => {
                 const Tag = open ? 'button' : 'div'
                 return (
                 <Tag key={label} {...(open ? { type: 'button', onClick: open, 'aria-label': `${label}: ${value}. Open` } : {})}
                   style={{ ...cardBox, padding: '16px 20px', border: 'none', borderTop: '3px solid var(--color-box-top)', textAlign: 'left', fontFamily: 'inherit', cursor: open ? 'pointer' : 'default', display: 'block', width: '100%' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}><span>{label}</span>{open && <span aria-hidden="true" style={{ color: 'var(--color-accent-800)' }}>→</span>}</div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, lineHeight: 1.1, letterSpacing: '-0.02em', color: 'var(--color-accent-800)', marginTop: 4 }}>{value}</div>
-                  <div className="asw-num" style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', marginTop: 3 }}>{sub}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}><span>{label}</span>{open && <span aria-hidden="true" style={{ color: 'var(--color-accent-800)' }}>→</span>}</div>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, lineHeight: 1.1, letterSpacing: '-0.02em', color: 'var(--color-accent-800)', marginTop: 4 }}>{value}</div>
+                  <div className="asw-num" style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 3 }}>{sub}</div>
                 </Tag>
                 )
               })}
@@ -1539,7 +1522,7 @@ export default function TeamDetail() {
 
             <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 352px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
               {/* LEFT: About, then news and trophies only when they exist */}
-              <div style={{ display: 'grid', gap: 14 }}>
+              <div style={{ display: 'grid', gap: 16 }}>
                 {showAbout && (
                 <div style={cardBox}>
                   {cardTitle(`About ${team.name}`)}
@@ -1547,18 +1530,18 @@ export default function TeamDetail() {
                     ? <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--color-neutral-800)', whiteSpace: 'pre-line', maxWidth: '70ch' }}>{team.description}</p>
                     : (
                       /* Zeigarnik Effect: an unfinished profile shows what is missing */
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-                        <div style={{ fontSize: 13.5, color: 'var(--color-neutral-700)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                        <div style={{ fontSize: 14, color: 'var(--color-neutral-700)' }}>
                           Profile {[team.description, team.logo, team.founded_year, team.address || team.website || team.phone || team.email].filter(Boolean).length} of 4 complete: description, logo, founding year, contact details.
                         </div>
-                        <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40 }} onClick={() => setModal({ type: 'club' })}>Complete the profile</button>
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: 13, minHeight: 40 }} onClick={() => setModal({ type: 'club' })}>Complete the profile</button>
                       </div>
                     )}
                 </div>
                 )}
 
                 {(topPerf.length > 0 || topMedal.length > 0) && (
-                  <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: topPerf.length && topMedal.length ? '1fr 1fr' : '1fr', gap: 14 }}>
+                  <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: topPerf.length && topMedal.length ? '1fr 1fr' : '1fr', gap: 16 }}>
                     {topPerf.length > 0 && (
                       <div style={cardBox}>
                         {cardTitle('Top performances')}
@@ -1580,16 +1563,16 @@ export default function TeamDetail() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, margin: '6px 2px 10px' }}>
                       {cardTitle('Latest news')}
-                      <button type="button" onClick={() => goTab('news')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', padding: '8px 0', minHeight: 32 }}>All news →</button>
+                      <button type="button" onClick={() => goTab('news')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)', padding: '8px 0', minHeight: 32 }}>All news →</button>
                     </div>
-                    <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                    <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
                       {newsItems.map(newsCard)}
                     </div>
                   </div>
                 ) : canManage ? (
-                  <div style={{ ...cardBox, border: '1.5px dashed var(--color-neutral-400)', boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-                    <div style={{ fontSize: 13.5, color: 'var(--color-neutral-700)' }}>No news yet. Articles you publish appear here.</div>
-                    <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40 }} onClick={() => goTab('news')}>Go to news</button>
+                  <div style={{ ...cardBox, border: '1.5px dashed var(--color-neutral-400)', boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 14, color: 'var(--color-neutral-700)' }}>No news yet. Articles you publish appear here.</div>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: 13, minHeight: 40 }} onClick={() => goTab('news')}>Go to news</button>
                   </div>
                 ) : null}
 
@@ -1598,8 +1581,8 @@ export default function TeamDetail() {
                     {cardTitle(`Trophies · ${trophies.length}`)}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                       {trophies.map((t, i) => (
-                        <div key={t.id ?? i} style={{ border: '1px solid var(--color-neutral-300)', borderLeft: '4px solid var(--asw-gold)', borderRadius: 8, padding: '12px 14px', background: '#fff' }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-accent-800)' }}>🏆 {t.name}</div>
+                        <div key={t.id ?? i} style={{ border: '1px solid var(--color-neutral-300)', borderLeft: '4px solid var(--asw-gold)', borderRadius: 0, padding: '12px 16px', background: '#fff' }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-accent-800)' }}><Trophy size={20} aria-hidden="true" /> {t.name}</div>
                           <div className="asw-num" style={{ fontWeight: 800, fontSize: 13, marginTop: 4, color: 'var(--color-neutral-700)' }}>{t.year}</div>
                         </div>
                       ))}
@@ -1611,7 +1594,7 @@ export default function TeamDetail() {
               {/* RIGHT: Highlight cards — random 4 from a pool of ~11 ideas,
                   reshuffled every visit, distinct swimmers within a set */}
               {(() => {
-                const hl = ({ photo, emoji = '🏊', title, big, sub, name, extra, icon, badgeEl }) => (
+                const hl = ({ photo, emoji = <Waves size={22} aria-hidden="true" />, title, big, sub, name, extra, icon, badgeEl }) => (
                   <div style={{ ...hCard, alignItems: photo ? 'stretch' : 'flex-start' }}>
                     {photo
                       ? <div style={hPhoto}><img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /></div>
@@ -1647,15 +1630,15 @@ export default function TeamDetail() {
                 const latestTrophy = [...trophies].sort((a, b) => (b.year || 0) - (a.year || 0))[0]
                 const pool = [
                   { key: 'best-perf', person: bestPerf?.swimmer_id, valid: !!bestPerf, render: () => hl({ photo: photoById[bestPerf.swimmer_id], title: <>Best<br />Performance</>, big: bestPerf.time || '—', sub: bestPerf.event_name || '', name: bestPerf.swimmer_name, extra: bestPerf.fina_points ? `${bestPerf.fina_points} FINA pts` : null }) },
-                  { key: 'decorated', person: decorated?.id, valid: !!decorated, render: () => hl({ photo: photoById[decorated.id], title: <>Most Decorated<br />Swimmer</>, big: decorated.total || 0, sub: 'Total Medals', name: decorated.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🏆</span> }) },
-                  { key: 'new-record', person: newestRecord?.swimmer_id, valid: !!newestRecord, render: () => hl({ photo: photoById[newestRecord.swimmer_id], title: 'New Record', big: fmtRec(newestRecord), sub: newestRecord.event_name || '', name: newestRecord.swimmer_name, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span> }) },
-                  { key: 'golden', person: goldKing?.id, valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: photoById[goldKing.id], title: <>The Golden<br />Touch</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🥇</span> }) },
+                  { key: 'decorated', person: decorated?.id, valid: !!decorated, render: () => hl({ photo: photoById[decorated.id], title: <>Most Decorated<br />Swimmer</>, big: decorated.total || 0, sub: 'Total Medals', name: decorated.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Trophy size={20} aria-hidden="true" /></span> }) },
+                  { key: 'new-record', person: newestRecord?.swimmer_id, valid: !!newestRecord, render: () => hl({ photo: photoById[newestRecord.swimmer_id], title: 'New Record', big: fmtRec(newestRecord), sub: newestRecord.event_name || '', name: newestRecord.swimmer_name, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 12px', borderRadius: 0, letterSpacing: '0.08em' }}>NEW</span> }) },
+                  { key: 'golden', person: goldKing?.id, valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: photoById[goldKing.id], title: <>Most Gold<br />Medals</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Medal size={20} aria-hidden="true" /></span> }) },
                   { key: 'leading-woman', person: leadingWoman?.swimmer_id, valid: !!leadingWoman, render: () => hl({ photo: photoById[leadingWoman.swimmer_id], title: <>Leading<br />Woman</>, big: leadingWoman.time || '—', sub: leadingWoman.event_name || '', name: leadingWoman.swimmer_name, extra: leadingWoman.fina_points ? `${leadingWoman.fina_points} FINA pts` : null }) },
-                  { key: 'collector', person: collector?.rec.swimmer_id, valid: !!(collector && collector.n > 1), render: () => hl({ photo: photoById[collector.rec.swimmer_id], title: <>Record<br />Collector</>, big: collector.n, sub: 'Records Held', name: collector.rec.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>⏱️</span> }) },
-                  { key: 'oldest-record', person: oldestRecord?.swimmer_id, valid: !!oldestRecord, render: () => hl({ photo: photoById[oldestRecord.swimmer_id], title: <>Longest-Standing<br />Record</>, big: fmtRec(oldestRecord), sub: `${oldestRecord.event_name || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>🏛️</span> }) },
-                  { key: 'podium', valid: g + s + b > 0, render: () => hl({ emoji: '🏅', title: <>Podium<br />Power</>, big: formatNumber(g + s + b), sub: 'Medals Across All Competitions', name: <span className="asw-num"><span style={{ color: 'var(--asw-gold)' }}>{g}G</span> · <span style={{ color: 'var(--asw-silver)' }}>{s}S</span> · <span style={{ color: 'var(--asw-bronze)' }}>{b}B</span></span> }) },
-                  { key: 'rising-star', person: youngest?.id, valid: !!youngest, render: () => hl({ photo: youngest.photo, title: <>Rising<br />Star</>, big: youngest.age != null ? `${youngest.age} yrs` : youngest.birth_year, sub: 'Youngest Squad Member', name: youngest.name, extra: youngest.age != null ? `Born ${youngest.birth_year}` : null, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>🌟</span> }) },
-                  { key: 'trophies', valid: trophies.length > 0, render: () => hl({ emoji: '🏆', title: <>Trophy<br />Cabinet</>, big: trophies.length, sub: `Troph${trophies.length === 1 ? 'y' : 'ies'} Won`, name: latestTrophy?.name, extra: latestTrophy?.year ? `Latest · ${latestTrophy.year}` : null }) },
+                  { key: 'collector', person: collector?.rec.swimmer_id, valid: !!(collector && collector.n > 1), render: () => hl({ photo: photoById[collector.rec.swimmer_id], title: <>Most<br />Records</>, big: collector.n, sub: 'Records Held', name: collector.rec.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>⏱</span> }) },
+                  { key: 'oldest-record', person: oldestRecord?.swimmer_id, valid: !!oldestRecord, render: () => hl({ photo: photoById[oldestRecord.swimmer_id], title: <>Longest-Standing<br />Record</>, big: fmtRec(oldestRecord), sub: `${oldestRecord.event_name || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Landmark size={20} aria-hidden="true" /></span> }) },
+                  { key: 'podium', valid: g + s + b > 0, render: () => hl({ emoji: <Medal size={22} aria-hidden="true" />, title: <>Total<br />Medals</>, big: formatNumber(g + s + b), sub: 'Medals Across All Competitions', name: <span className="asw-num"><span style={{ color: 'var(--asw-gold)' }}>{g}G</span> · <span style={{ color: 'var(--asw-silver)' }}>{s}S</span> · <span style={{ color: 'var(--asw-bronze)' }}>{b}B</span></span> }) },
+                  { key: 'rising-star', person: youngest?.id, valid: !!youngest, render: () => hl({ photo: youngest.photo, title: <>Youngest<br />Swimmer</>, big: youngest.age != null ? `${youngest.age} yrs` : youngest.birth_year, sub: 'Youngest Squad Member', name: youngest.name, extra: youngest.age != null ? `Born ${youngest.birth_year}` : null, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Star size={20} aria-hidden="true" /></span> }) },
+                  { key: 'trophies', valid: trophies.length > 0, render: () => hl({ emoji: <Trophy size={22} aria-hidden="true" />, title: <>Trophies</>, big: trophies.length, sub: `Troph${trophies.length === 1 ? 'y' : 'ies'} Won`, name: latestTrophy?.name, extra: latestTrophy?.year ? `Latest · ${latestTrophy.year}` : null }) },
                   { key: 'quick-stats', valid: true, render: () => hl({ title: 'Quick Stats', big: formatNumber(roster.length), sub: 'Total Swimmers', name: `${formatNumber(stats?.medals?.total ?? medals.length)} Medals · ${formatNumber(records.length)} Records` }) },
                 ]
                 const picked = pickHighlights(pool, mulberry32(hlSeed))
@@ -1679,23 +1662,23 @@ export default function TeamDetail() {
                     ? { display: 'flex', width: 'max-content', animationDuration: `${Math.max(topRecords.length * 5, 25)}s` }
                     : { display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {(topRecords.length >= 4 ? [...topRecords, ...topRecords] : topRecords).map((r, i) => (
-                  <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
+                  <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-divider)', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '24px 0 8px' }}>
-                      <div style={{ width: photoById[r.swimmer_id] ? 165 : 96, height: photoById[r.swimmer_id] ? 165 : 96, borderRadius: '50%', background: 'linear-gradient(180deg, var(--color-accent-100), var(--color-neutral-400))', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: 'var(--color-neutral-700)', border: '4px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(0,0,0,.12)', overflow: 'hidden' }}>
-                        {photoById[r.swimmer_id] ? <img src={mediaUrl(photoById[r.swimmer_id])} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 28, color: 'var(--color-accent-800)' }}>{acronym(r.swimmer_name).slice(0, 2)}</span>}
+                      <div style={{ width: photoById[r.swimmer_id] ? 165 : 96, height: photoById[r.swimmer_id] ? 165 : 96, borderRadius: '50%', background: 'var(--color-accent-100)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '4px solid var(--color-accent-800)', overflow: 'hidden' }}>
+                        {photoById[r.swimmer_id] ? <img src={mediaUrl(photoById[r.swimmer_id])} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, color: 'var(--color-accent-800)' }}>{acronym(r.swimmer_name).slice(0, 2)}</span>}
                       </div>
                     </div>
                     <div style={{ padding: '12px 12px 0' }}>
-                      <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} pad={false} /></div>
-                      <div style={{ fontSize: 13.5, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} pad={false} /></div>
+                      <div style={{ fontSize: 14, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <span>{String(r.event_name || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
                         <span style={{ color: 'var(--color-neutral-400)' }}>|</span>
                         <span>{r.pool === 'SCM' ? '25m pool' : '50m pool'}</span>
                       </div>
                     </div>
-                    <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 8 }}>
-                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '-0.01em' }}>{typeof r.time === 'number' ? formatTime(r.time) : r.time}</div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 3, opacity: 0.92 }}>{r.record_type === 'NATIONAL' && r.country_name ? r.country_name : (REC_TYPE_LABELS[r.record_type] || r.record_type)} Record</div>
+                    <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 0 }}>
+                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, letterSpacing: '-0.01em' }}>{typeof r.time === 'number' ? formatTime(r.time) : r.time}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3, opacity: 0.92 }}>{r.record_type === 'NATIONAL' && r.country_name ? r.country_name : (REC_TYPE_LABELS[r.record_type] || r.record_type)} Record</div>
                     </div>
                   </div>
                 ))}
@@ -1718,7 +1701,7 @@ export default function TeamDetail() {
           {articles.length === 0 ? <Empty label={`No news from this ${kind} yet`} hint={canManage ? 'Use “Add news” above to publish the first article.' : undefined} /> : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
               {articles.map((a) => (
-                <Link key={a.id} to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+                <Link key={a.id} to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column',  }}>
                   <div style={{ position: 'relative', height: 175, overflow: 'hidden', background: 'var(--color-accent-800)', flex: 'none' }}>
                     {a.cover_image && (
                       <>
@@ -1726,7 +1709,7 @@ export default function TeamDetail() {
                       </>
                     )}
                   </div>
-                  <div style={{ padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <div style={{ padding: '16px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <div className="micro" style={{ marginBottom: 6 }}>{formatDate(a.published_at || a.created_at)}</div>
                     {(() => {
                       const rtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.title || '')
@@ -1741,7 +1724,7 @@ export default function TeamDetail() {
                         }}>{a.title}</div>
                       )
                     })()}
-                    <div dir={/[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.body || '') ? 'rtl' : 'ltr'} style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', lineHeight: 1.6, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
+                    <div dir={/[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.body || '') ? 'rtl' : 'ltr'} style={{ fontSize: 13, color: 'var(--color-neutral-700)', lineHeight: 1.6, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
                     <span style={{ marginTop: 'auto', color: 'var(--color-accent-800)', fontWeight: 700, fontSize: 13 }}>Read more →</span>
                   </div>
                 </Link>
@@ -1753,16 +1736,14 @@ export default function TeamDetail() {
 
       {/* ===== BOARD ===== */}
       {tab === 'board' && (
-        <div className="m-pad" style={{ padding: '0 28px 28px', background: '#fff' }}>
+        <div className="m-pad" style={{ padding: '0 32px 32px' }}>
           <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 4 }}>
-            <span style={{ fontSize: 24 }}>👥</span>
+            <span style={{ fontSize: 24 }}><Users size={20} aria-hidden="true" /></span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
-            <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 24, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Board of Directors</h2>
-            <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
+            <h2 className="prof-h" style={{ margin: 0 }}>Board of Directors</h2>
           </div>
-          <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)', maxWidth: 500, margin: '0 auto 18px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', maxWidth: 500, margin: '0 0 18px', lineHeight: 1.5 }}>
             The Board of Directors is responsible for the strategic direction, governance, and overall leadership of {team.name}.
           </p>
           {canManage && (
@@ -1773,7 +1754,7 @@ export default function TeamDetail() {
           {board.length === 0 ? (
             <Empty label="No board members listed yet" hint={canManage ? 'Use “Add member” above to list the president, treasurer and the rest of the board.' : `${team.name} has not published its board.`} />
           ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16 }}>
             {(board.map((m) => ({
                   role: m.role || 'Member', name: m.name, photo: m.photo,
                   actions: canManage ? (<>
@@ -1792,16 +1773,14 @@ export default function TeamDetail() {
 
       {/* ===== TEAM (Coaches / Swimmers) ===== */}
       {tab === 'team' && (
-        <div className="m-pad" style={{ padding: '0 28px 28px', background: 'var(--color-accent-100)' }}>
+        <div className="m-pad" style={{ padding: '0 32px 32px' }}>
           <SubTabs options={[['coaches', `Coaches · ${coaches.length}`], ['swimmers', `Swimmers · ${roster.length}`]]} value={teamSub} onChange={setTeamSub} />
           {teamSub === 'coaches' && (<>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '10px 0 22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '10px 0 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 22 }}>👤</span>
-                <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+                <span style={{ fontSize: 24 }}><User size={20} aria-hidden="true" /></span>
               </div>
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Coaches</h3>
-              <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+              <h3 className="prof-h" style={{ margin: 0 }}>Coaches</h3>
             </div>
             {canManage && (
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
@@ -1813,7 +1792,7 @@ export default function TeamDetail() {
                 {!canManage && roster.length > 0 && <button type="button" className="btn btn-secondary" onClick={() => setTeamSub('swimmers')}>See the swimmers</button>}
               </Empty>
             ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16 }}>
               {(coaches.map((c) => ({
                     role: COACH_LEVELS[c.level] || c.level || 'Coach', name: c.name, photo: c.photo,
                     actions: canManage ? (<>
@@ -1829,13 +1808,11 @@ export default function TeamDetail() {
             )}
           </>)}
           {teamSub === 'swimmers' && (<>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '10px 0 22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '10px 0 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 22 }}>🏊</span>
-                <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+                <span style={{ fontSize: 24 }}><Waves size={20} aria-hidden="true" /></span>
               </div>
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Swimmers</h3>
-              <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+              <h3 className="prof-h" style={{ margin: 0 }}>Swimmers</h3>
             </div>
             {isAdmin && (
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
@@ -1877,7 +1854,7 @@ export default function TeamDetail() {
 
       {/* ===== TRAINING ===== */}
       {tab === 'training' && !team?.is_national_team && (
-        <div className="m-pad" style={{ padding: '24px 32px 40px', background: 'var(--color-accent-100)' }}>
+        <div className="m-pad" style={{ padding: '24px 32px 40px' }}>
           <TabHeading kicker="Monthly Schedule" title="Training Calendar" />
           <TrainingCalendar teamId={Number(id)} canEdit={canManage} />
         </div>
@@ -1922,17 +1899,17 @@ export default function TeamDetail() {
                 renderPodiumChip={(r) => (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     {badge(r, 24)}
-                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.team_name}</span>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.team_name}</span>
                   </span>
                 )}
                 renderEntity={(r) => {
                   const mine = r.team_id === Number(id)
                   const label = (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                       {badge(r, 30)}
                       <span style={{ fontWeight: mine ? 800 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.team_name}</span>
                       {mine && (
-                        <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', background: 'var(--color-accent-100)', border: '1px solid var(--color-accent-300)', borderRadius: 999, padding: '3px 10px 3px 8px' }}>
+                        <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)', background: 'var(--color-accent-100)', border: '1px solid var(--color-accent-300)', borderRadius: 0, padding: '4px 10px 4px 8px' }}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent-800)' }} />
                           This {kind}
                         </span>
@@ -1953,12 +1930,12 @@ export default function TeamDetail() {
           <TabHeading title="Medals" />
           {/* Tally by competition classification */}
           {medalBoxes.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'center' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24, justifyContent: 'center' }}>
               {medalBoxes.map((m) => (
-                <div key={m.name} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'var(--color-accent-800)', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{m.name}</div>
+                <div key={m.name} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0, color: 'var(--color-accent-800)', padding: '12px 16px', minWidth: 150, flex: '1 1 150px', maxWidth: 240 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{m.name}</div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: 'var(--color-accent-800)' }}>{formatNumber(m.total)}</div>
-                  <div className="asw-num" style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, fontWeight: 800 }}>
+                  <div className="asw-num" style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 12, fontWeight: 800 }}>
                     <span style={{ color: 'var(--asw-gold)' }}>{m.gold}G</span>
                     <span style={{ color: 'var(--asw-silver)' }}>{m.silver}S</span>
                     <span style={{ color: 'var(--asw-bronze)' }}>{m.bronze}B</span>
@@ -1970,8 +1947,8 @@ export default function TeamDetail() {
 
           {/* Medalists — each row opens that swimmer's medals, meet by meet */}
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', margin: '8px 0 10px' }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 15, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>Medalists · {medalists.length}</div>
-            {medalists.length > 0 && <div style={{ fontSize: 12.5, color: 'var(--color-neutral-700)' }}>Open a swimmer to see every medal, meet by meet</div>}
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>Medalists · {medalists.length}</div>
+            {medalists.length > 0 && <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>Open a swimmer to see every medal, meet by meet</div>}
           </div>
           {medalists.length === 0 ? <Empty label={`No medals won by this ${kind} yet`} /> : (
             <div style={{ marginBottom: 26 }}>
@@ -1988,7 +1965,7 @@ export default function TeamDetail() {
               />
               {medalists.length > 15 && (
                 <div style={{ textAlign: 'center', marginTop: 12 }}>
-                  <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, minHeight: 40, padding: '0 18px' }} onClick={() => setMedalistsAll((v) => !v)}>
+                  <button type="button" className="btn btn-secondary" style={{ fontSize: 13, minHeight: 40, padding: '0 16px' }} onClick={() => setMedalistsAll((v) => !v)}>
                     {medalistsAll ? 'Show top 15 only' : `Show all ${medalists.length} medalists`}
                   </button>
                 </div>
@@ -1998,9 +1975,9 @@ export default function TeamDetail() {
 
           {/* Full medal log — collapsed by default so the page stays scannable */}
           {medals.length > 0 && (
-            <div style={{ border: '1px solid var(--color-neutral-300)', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--color-neutral-300)', borderRadius: 0, background: '#fff', overflow: 'hidden' }}>
               <button type="button" aria-expanded={medalLogOpen} onClick={() => setMedalLogOpen((v) => !v)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 16px', minHeight: 48, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 16px', minHeight: 48, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>
                 <span>All medals · {medals.length}</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transition: 'transform .18s ease', transform: medalLogOpen ? 'rotate(180deg)' : 'none' }}><path d="m6 9 6 6 6-6" /></svg>
               </button>
@@ -2046,11 +2023,11 @@ export default function TeamDetail() {
           {albums.length === 0 ? <Empty label="No photo or video albums yet" hint={canManage ? 'Use “Add album” above to create the first one.' : undefined} /> : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
               {albums.map((a) => (
-                <Link key={a.id} to={`/media/albums/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+                <Link key={a.id} to={`/media/albums/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit',  }}>
                   <div style={{ height: 160, background: a.cover ? `url(${mediaUrl(a.cover)}) center/cover` : 'var(--color-accent-800)', display: 'flex', alignItems: 'flex-end' }}>
-                    <span style={{ background: 'rgba(13,45,94,.85)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: '0 8px 0 0' }} className="asw-num">{a.items_count || 0} items</span>
+                    <span style={{ background: 'rgba(13,45,94,.85)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 0 }} className="asw-num">{a.items_count || 0} items</span>
                   </div>
-                  <div style={{ padding: '12px 14px' }}>
+                  <div style={{ padding: '12px 16px' }}>
                     <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>{a.title}</div>
                     <div className="micro" style={{ marginTop: 4 }}>{formatDate(a.created_at)}</div>
                   </div>
@@ -2069,7 +2046,7 @@ export default function TeamDetail() {
       {modal?.type === 'article' && <ArticleModal team={team} onClose={() => setModal(null)} onSaved={refresh} />}
       {modal?.type === 'album' && <AlbumModal team={team} onClose={() => setModal(null)} onSaved={refresh} />}
       {notice && (
-        <div role="status" style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 90, background: 'var(--color-accent-800)', color: 'var(--color-bg)', fontSize: 13, fontWeight: 700, padding: '10px 18px', borderRadius: 8 }}>
+        <div role="status" style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 90, background: 'var(--color-accent-800)', color: 'var(--color-bg)', fontSize: 13, fontWeight: 700, padding: '10px 16px', borderRadius: 0 }}>
           {notice} ✓
         </div>
       )}

@@ -99,7 +99,7 @@ export default function MeetGallery({ meetId, isAdmin }) {
           {' '}item{items.length === 1 ? '' : 's'}
         </div>
         {isAdmin && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <form onSubmit={handleAddVideo} style={{ display: 'flex', gap: 8 }}>
               <input
                 className="input"

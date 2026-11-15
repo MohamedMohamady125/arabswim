@@ -59,14 +59,14 @@ function DetectedProgram({ program, startDate }) {
     else byDate.push({ key: keyOf(row), date: row.date, day: row.day || 0, rows: [row] })
   }
   return (
-    <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '14px 16px' }}>
+    <div style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 16px' }}>
       <div className="kicker" style={{ marginBottom: 4 }}>Program detected from file</div>
       <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0 }}>
         Session dates and rounds read from the source file — review the quality here. Saved automatically with the import; you can adjust it afterwards on the Done step or the meet page.
       </div>
       {byDate.map((d) => (
         <div key={d.key} style={{ marginBottom: 10 }}>
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12.5, marginBottom: 4 }}>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
             {d.date
               ? `${dayNo(d.date) ? `Day ${dayNo(d.date)} · ` : ''}${formatDate(d.date)}`
               : `Day ${d.day}`}
@@ -731,7 +731,7 @@ export default function Import() {
           aria-pressed={i === active}
           className={i === active ? 'btn btn-primary' : 'btn btn-secondary'}
           style={{
-            fontSize: 12, padding: '5px 10px',
+            fontSize: 12, padding: '4px 10px',
             ...(m.excluded ? { opacity: 0.4, textDecoration: 'line-through' } : {}),
           }}
         >
@@ -762,7 +762,7 @@ export default function Import() {
 
       {presetLiveDay && (
         <div style={{
-          margin: '16px 32px 0', padding: '10px 14px', fontSize: 13, fontWeight: 600,
+          margin: '16px 32px 0', padding: '10px 16px', fontSize: 13, fontWeight: 600,
           border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)',
         }}>
           Live session upload — Day {presetLiveDay}. Import into the pre-selected meet; the session will be logged on the live panel.
@@ -789,7 +789,7 @@ export default function Import() {
       {/* Goal-Gradient / Zeigarnik / Uniform Connectedness: the five steps of a
           file import on one connected track, on a row of their own */}
       {tab === 'file' && (
-        <div className="rule-b" style={{ padding: '18px 32px 0' }}>
+        <div className="rule-b" style={{ padding: '16px 32px 0' }}>
           <div style={{ maxWidth: 760 }}>
             <Stepper steps={stepLabels} current={step === 4 ? stepLabels.length : step} />
           </div>
@@ -877,12 +877,12 @@ export default function Import() {
                 {importMethod === 'excel' && (
                   <div style={{
                     margin: '0 auto 24px', maxWidth: 520, padding: 16, textAlign: 'left',
-                    border: '1px dashed var(--color-divider)', background: 'var(--color-neutral-50, #fafafa)',
+                    border: '1px dashed var(--color-divider)', background: 'var(--color-neutral-50, var(--color-neutral-100))',
                   }}>
                     <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
                       Fix cut names (Egyptian meets) — optional
                     </div>
-                    <p style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', marginBottom: 10 }}>
+                    <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 10 }}>
                       Egyptian federation Excel exports cut swimmer names at 15 letters.
                       Attach the meet&apos;s results / meet-program PDFs and the full names
                       will be restored automatically before the preview.
@@ -956,7 +956,7 @@ export default function Import() {
                 {!meet.excluded && meet.preview?.name_repair && (
                   <div style={{
                     marginBottom: 20, padding: '12px 16px', fontSize: 13,
-                    border: '1px solid var(--color-divider)', background: 'var(--color-neutral-50, #fafafa)',
+                    border: '1px solid var(--color-divider)', background: 'var(--color-neutral-50, var(--color-neutral-100))',
                   }}>
                     <strong>Name repair:</strong>{' '}
                     {meet.preview.name_repair.repaired} of {meet.preview.name_repair.checked} cut
@@ -1002,7 +1002,7 @@ export default function Import() {
                         : w.type === 'different_pool' ? 'var(--color-accent)'
                         : 'var(--color-neutral-700)'
                       return (
-                        <div key={i} style={{ border: `1px solid ${color}`, padding: '12px 14px', fontSize: 13 }}>
+                        <div key={i} style={{ border: `1px solid ${color}`, padding: '12px 16px', fontSize: 13 }}>
                           <div style={{ fontWeight: 700, marginBottom: 4, color }}>
                             {w.type === 'exact_duplicate' ? 'Duplicate meet detected'
                               : w.type === 'partial_new' ? 'Existing meet — new events found'
@@ -1058,7 +1058,7 @@ export default function Import() {
 
                   {!meet.existingChampId && (
                     <>
-                      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div className="field" style={{ gridColumn: '1 / -1' }}>
                           <label htmlFor="imp-championship-name">Championship name *</label>
                           <input
@@ -1127,7 +1127,7 @@ export default function Import() {
                       {/* Classification section */}
                       <div className="rule-t" style={{ marginTop: 16, paddingTop: 16 }}>
                         <div className="micro" style={{ marginBottom: 10 }}>Classification</div>
-                        <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                        <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                           <div className="field">
                             <label htmlFor="imp-classification">Classification</label>
                             <select
@@ -1155,8 +1155,8 @@ export default function Import() {
                             type="button"
                             onClick={applyClassificationToAllIncluded}
                             style={{
-                              marginTop: 12, padding: '8px 14px', cursor: 'pointer',
-                              border: '1px solid var(--asw-fast)', borderRadius: 8,
+                              marginTop: 12, padding: '8px 16px', cursor: 'pointer',
+                              border: '1px solid var(--asw-fast)', borderRadius: 0,
                               background: 'transparent', color: 'var(--asw-fast)',
                               fontSize: 13, fontWeight: 600,
                             }}
@@ -1202,7 +1202,7 @@ export default function Import() {
                                 Assign each category to Men/Women or Boys/Girls:
                               </div>
                               {cats.map((cat) => (
-                                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
                                   <span style={{ fontWeight: 600, fontSize: 13, width: 140 }}>{cat}</span>
                                   <select
                                     className="select"
@@ -1251,7 +1251,7 @@ export default function Import() {
                       onChange={(items) => updateMeet(active, { programItems: items })}
                     />
                   ) : (
-                    <div className="micro" style={{ border: '1px solid var(--color-divider)', padding: '10px 14px', textTransform: 'none', letterSpacing: 0 }}>
+                    <div className="micro" style={{ border: '1px solid var(--color-divider)', padding: '10px 16px', textTransform: 'none', letterSpacing: 0 }}>
                       Set the meet start date above to plan the day-by-day program.
                     </div>
                   )}
@@ -1268,7 +1268,7 @@ export default function Import() {
 
                 </>}
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, alignItems: 'center' }}>
                   {meets.length > 1 && includedMeets.length === 0 && (
                     <span style={{ fontSize: 13, color: 'var(--asw-slow)' }}>
                       All meets are excluded — include at least one to continue
@@ -1474,7 +1474,7 @@ export default function Import() {
                 </div>
                 </>}
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                   <button type="button" className="btn btn-secondary" disabled={loading}
                     onClick={() => {
                       if (specialExcel) {
@@ -1501,7 +1501,7 @@ export default function Import() {
                 <div style={{ marginBottom: 18 }}>
                   <Done title="Batch import complete">The swims are on the swimmers' profiles now.</Done>
                 </div>
-                <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', marginBottom: 16 }}>
                   {[['Meets imported', batchResult.meets_done],
                     ['Meets failed', batchResult.meets_failed],
                     ['Results', batchResult.created_results],
@@ -1509,7 +1509,7 @@ export default function Import() {
                     ['Matched swimmers', batchResult.matched_swimmers],
                     ['Skipped results', batchResult.skipped_results]].map(([label, n]) => (
                     <div key={label}>
-                      <div className="asw-num" style={{ fontSize: 22, fontWeight: 700 }}>{(n ?? 0).toLocaleString()}</div>
+                      <div className="asw-num" style={{ fontSize: 24, fontWeight: 700 }}>{(n ?? 0).toLocaleString()}</div>
                       <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{label}</div>
                     </div>
                   ))}
@@ -1522,7 +1522,7 @@ export default function Import() {
                   <div style={{ marginBottom: 16 }}>
                     <div className="kicker" style={{ marginBottom: 8 }}>Failures</div>
                     {batchResult.failures.map((f, i) => (
-                      <div key={i} style={{ fontSize: 12.5, color: 'var(--asw-slow)', marginBottom: 4 }}>
+                      <div key={i} style={{ fontSize: 13, color: 'var(--asw-slow)', marginBottom: 4 }}>
                         {f.meet}: {f.error}
                       </div>
                     ))}
@@ -1719,10 +1719,10 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
           style={{ marginTop: 14, width: '100%', maxWidth: 420 }}
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-          <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={keepShown}>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 12px' }} onClick={keepShown}>
             Keep {query ? `shown (${filtered.length})` : `all (${athletes.length})`}
           </button>
-          <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={skipShown}>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 12px' }} onClick={skipShown}>
             Skip {query ? `shown (${filtered.length})` : `all (${athletes.length})`}
           </button>
           <span className="micro" style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--color-neutral-700)' }}>
@@ -1731,7 +1731,7 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
         {filtered.length === 0 && (
           <Empty label={query ? 'No athletes match this search' : 'No athletes found in this file'}
             hint={query ? 'Clear the search box to see every athlete.' : 'Go back and check that the file has an athlete on every row.'} />
@@ -1746,7 +1746,7 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
               border: '1px solid var(--color-divider)',
               opacity: skipped ? 0.6 : 1,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => setExpanded(isOpen ? null : a.name)}
@@ -1789,7 +1789,7 @@ function SpecialAthletesReview({ meets, setAthleteDecision, setAthleteDecisions 
               </div>
 
               {isOpen && (
-                <div style={{ borderTop: '1px solid var(--color-divider)', padding: 14 }}>
+                <div style={{ borderTop: '1px solid var(--color-divider)', padding: 16 }}>
                   {/* Editable swimmer details (applied when creating the profile) */}
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
@@ -2025,7 +2025,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
               )}
 
               {/* Action buttons row */}
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>
                 {m.result.championship_id && cleanupChampId !== m.result.championship_id && (
                   <button
                     type="button" className="btn btn-secondary"
@@ -2070,7 +2070,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
                     </div>
                   )}
                   <div style={{ border: '1px solid var(--color-divider)' }}>
-                    <div className="hair-b" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)' }}>
+                    <div className="hair-b" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)' }}>
                       <span className="kicker">Select swimmers to remove</span>
                       <div style={{ display: 'flex', gap: 12 }}>
                         <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={selectAllNonArab}>Select non-Arab</button>
@@ -2116,7 +2116,7 @@ function DoneStep({ meets, active, meetTabs, resetAll, backToMeetId, existingMee
                       </div>
                     )}
                     {selected.size > 0 && (
-                      <div className="rule-t" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div className="rule-t" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: 13, color: 'var(--asw-slow)' }}>
                           {selected.size} swimmer{selected.size !== 1 ? 's' : ''} selected for removal
                         </span>
@@ -2389,12 +2389,12 @@ function SaudiScrapePanel() {
                   </td>
                   <td className="num" style={{ whiteSpace: 'nowrap' }}>
                     {(job.status === 'done' || job.status === 'failed') && job.total_results > 0 && (
-                      <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5 }}
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: 13 }}
                         onClick={() => handleDownload(job)}>
                         Download{job.status === 'failed' ? ' partial' : ''} Excel
                       </button>
                     )}
-                    <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5, color: 'var(--color-accent)' }}
+                    <button type="button" className="btn btn-ghost" style={{ fontSize: 13, color: 'var(--color-accent)' }}
                       title={(job.status === 'pending' || job.status === 'running')
                         ? 'Stop this scrape and remove it from the list'
                         : 'Remove this scrape from the list'}
@@ -2485,7 +2485,7 @@ function ScrapeTab() {
           and every event will be scraped into one clean Excel file, ready to import
           via <strong>Import File → Upload Excel</strong>.
         </p>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <input
             type="url"
             inputMode="url"
@@ -2504,13 +2504,13 @@ function ScrapeTab() {
           </button>
         </div>
         <div style={{
-          marginTop: 14, padding: 14,
-          border: '1px dashed var(--color-divider)', background: 'var(--color-neutral-50, #fafafa)',
+          marginTop: 14, padding: 16,
+          border: '1px dashed var(--color-divider)', background: 'var(--color-neutral-50, var(--color-neutral-100))',
         }}>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
             Full names from heats PDFs — optional
           </div>
-          <p style={{ fontSize: 12.5, color: 'var(--color-neutral-700)', marginBottom: 10 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 10 }}>
             The federation site cuts swimmer names at 15 letters. Attach the meet&apos;s
             heats / meet-program PDFs and the full names will be merged into the
             scraped results, so the downloaded Excel already has complete names.
@@ -2579,7 +2579,7 @@ function ScrapeTab() {
                   </td>
                   <td className="num">
                     {job.status === 'done' && (
-                      <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5 }}
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: 13 }}
                         onClick={() => handleDownload(job)}>
                         Download Excel
                       </button>

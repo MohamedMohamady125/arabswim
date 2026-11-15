@@ -137,7 +137,7 @@ export function RecordTable({ rows, grouped = false, detail = false }) {
                   {r.eventName}
                 </td>
                 <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Flag code={r.natCode} name={r.natName} />
                     {r.swimmerId ? (
                       <Link to={`/swimmers/${r.swimmerId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmerName}</Link>
@@ -175,7 +175,7 @@ export function RecordTable({ rows, grouped = false, detail = false }) {
             role={r.link ? 'link' : undefined}
             tabIndex={r.link ? 0 : undefined}
             onKeyDown={r.link ? rowKeyNav(() => navigate(r.link)) : undefined}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}
           >
             <Flag code={r.natCode} name={r.natName} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -184,11 +184,11 @@ export function RecordTable({ rows, grouped = false, detail = false }) {
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-neutral-700)', marginTop: 1 }}>
                 {r.eventName}
-                {detail && r.date ? <span style={{ fontWeight: 500 }}> · {String(r.date).slice(0, 4)}</span> : null}
+                {detail && r.date ? <span style={{ fontWeight: 600 }}> · {String(r.date).slice(0, 4)}</span> : null}
               </div>
             </div>
             <div style={{ flex: 'none', textAlign: 'right' }}>
-              <div className="asw-time" style={{ fontSize: 15 }}>{r.time}</div>
+              <div className="asw-time" style={{ fontSize: 16 }}>{r.time}</div>
             </div>
           </div>
           ))}
@@ -316,7 +316,7 @@ export default function Records() {
           as Rankings so the two pages are learned once. */}
       <FilterBar count={showRows ? rows.length : null} noun={rows.length === 1 ? 'record' : 'records'} active={filtersChanged} onClear={() => setSp({}, { replace: true })}>
         <div className="records-filters results-filters" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <Seg options={MAIN_SCOPES} value={scope} onChange={setScope} />
             <Seg
               options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
@@ -329,7 +329,7 @@ export default function Records() {
               onChange={setPool}
             />
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             {needsCountry && (
               <select className="select" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
                 <option value="">Select country…</option>

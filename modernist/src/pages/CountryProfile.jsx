@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Camera, Landmark, Medal, TrendingDown, TrendingUp, Trophy, User, Users, Waves } from 'lucide-react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { getCountryProfile, getEvents, getCountries, updateCountry } from '../api/core'
 import { getArticles } from '../api/news'
@@ -29,9 +30,9 @@ const COACH_LEVELS = {
   FITNESS: 'Fitness / S&C Coach', YOUTH: 'Youth Development Coach', PRIVATE: 'Private Coach',
 }
 const CLASS_COLORS = {
-  Arab: 'var(--color-accent-800)', GCC: '#7d8a99', African: '#a8402f', Asian: '#a05f2c',
-  Mediterranean: '#4a8fc0', Islamic: '#0d7a52', World: '#b98a1e', Olympic: '#0c2340',
-  National: '#2e6b4f', University: '#6b4f8a', Other: '#5a6572',
+  Arab: 'var(--color-accent-800)', GCC: 'var(--asw-silver)', African: 'var(--asw-slow)', Asian: 'var(--asw-bronze)',
+  Mediterranean: 'var(--color-accent-2)', Islamic: 'var(--asw-fast)', World: 'var(--asw-gold)', Olympic: 'var(--color-accent-800)',
+  National: 'var(--asw-fast)', University: 'var(--color-neutral-700)', Other: 'var(--color-neutral-700)',
 }
 
 // Federation hero banner photo: probes every candidate swimmer photo's real
@@ -104,7 +105,7 @@ const STROKES = [
   { value: 'Individual Medley', label: 'IM' },
 ]
 
-const LINE_HEX = ['var(--color-accent-800)', '#4a8fc0', '#0c2340', '#72a4cf', 'var(--color-accent-800)', 'var(--color-accent-800)', '#aecae4', 'var(--color-accent-800)']
+const LINE_HEX = ['var(--color-accent-800)', 'var(--color-accent-2)', 'var(--color-accent-800)', 'var(--color-accent-400)', 'var(--color-accent-800)', 'var(--color-accent-800)', 'var(--color-accent-300)', 'var(--color-accent-800)']
 
 // A failed request is not "no data": say so and offer a retry (Paradox of
 // the Active User). useRetry() gives a tab its failed flag and a retry key.
@@ -135,7 +136,7 @@ function GSB({ gold, silver, bronze, size = 12 }) {
     </span>
   )
   return (
-    <span className="asw-num" style={{ display: 'inline-flex', gap: 10, fontSize: size, fontWeight: 800, whiteSpace: 'nowrap', color: 'var(--color-accent-800)', flex: 'none' }}>
+    <span className="asw-num" style={{ display: 'inline-flex', gap: 12, fontSize: size, fontWeight: 800, whiteSpace: 'nowrap', color: 'var(--color-accent-800)', flex: 'none' }}>
       {item(gold, '--asw-gold', 'gold')}{item(silver, '--asw-silver', 'silver')}{item(bronze, '--asw-bronze', 'bronze')}
     </span>
   )
@@ -168,9 +169,9 @@ const TABS = [
 const PRIMARY_TABS = ['overview', 'records', 'ranking', 'medals', 'statistics', 'team', 'clubs']
 
 export function SubTabs({ options, value, onChange }) {
-  const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', minHeight: 36 }
+  const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 0, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', minHeight: 36 }
   return (
-    <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', margin: '18px 0 24px' }}>
+    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', margin: '18px 0 24px' }}>
       {options.map(([val, label]) => (
         <button key={val} type="button" onClick={() => onChange(val)} aria-pressed={value === val}
           style={value === val ? { ...base, background: 'var(--color-accent-800)', color: '#fff' } : { ...base, background: '#fff', color: 'var(--color-accent-800)' }}>
@@ -182,13 +183,8 @@ export function SubTabs({ options, value, onChange }) {
 }
 
 export function TabHeading({ title }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '4px 0 24px' }}>
-      <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
-      <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0, textAlign: 'center' }}>{title}</h2>
-      <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
-    </div>
-  )
+  // Jakob's Law: same left-aligned section heading as the rest of the site
+  return <h2 className="prof-h">{title}</h2>
 }
 
 /* ===== NEWS TAB ===== */
@@ -214,7 +210,7 @@ function NewsTab({ countryId, countryName }) {
       {articles.length === 0 ? <Empty label="No news articles yet" hint="News about this federation will appear here once published." /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {articles.map((a) => (
-            <Link key={a.id} className="fed-news-card" to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+            <Link key={a.id} className="fed-news-card" to={`/news/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column',  }}>
               <div className="fed-news-img" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)', flex: 'none' }}>
                 {a.cover_image && (
                   <>
@@ -222,7 +218,7 @@ function NewsTab({ countryId, countryName }) {
                   </>
                 )}
               </div>
-              <div style={{ padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ padding: '16px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                 <div className="micro" style={{ marginBottom: 6 }}>{formatDate(a.published_at || a.created_at)}</div>
                 {(() => {
                   const rtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.title || '')
@@ -237,7 +233,7 @@ function NewsTab({ countryId, countryName }) {
                     }}>{a.title}</div>
                   )
                 })()}
-                <div dir={/[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.body || '') ? 'rtl' : 'ltr'} style={{ fontSize: 12.5, color: '#58687c', lineHeight: 1.6, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
+                <div dir={/[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a.body || '') ? 'rtl' : 'ltr'} style={{ fontSize: 13, color: 'var(--color-neutral-700)', lineHeight: 1.6, marginBottom: 12 }}>{(a.body || '').replace(/<[^>]+>/g, '').slice(0, 110)}{(a.body || '').length > 110 ? '…' : ''}</div>
                 <span style={{ marginTop: 'auto', color: 'var(--color-accent-800)', fontWeight: 700, fontSize: 13 }}>Read more →</span>
               </div>
             </Link>
@@ -377,29 +373,29 @@ function AcademiesTab({ countryId }) {
     <div className="pad-lg">
       <SectHead title={`Academies · ${academies.length}`} />
       {academies.length === 0 ? <Empty label="No academies registered" hint="Academies from this country will be listed here." /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
           {academies.map((a) => (
             <Link key={a.id} to={`/academies/${a.id}`} style={{
-              display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
-              background: '#fff', border: '1px solid #e2e9f2', borderTop: '3px solid var(--color-box-top)', borderRadius: 12,
-              boxShadow: '0 1px 6px rgba(11,41,72,.06)',
+              display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px',
+              background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0,
+              border: '1px solid var(--color-divider)',
               color: 'inherit', textDecoration: 'none',
             }}>
               <span style={{
                 width: 52, height: 52, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
-                background: '#eef3f9', border: '1px solid #dbe4ef',
+                background: 'var(--color-accent-100)', border: '1px solid var(--color-neutral-300)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {a.logo ? (
                   <img src={mediaUrl(a.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)' }}>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>
                     {a.name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
                   </span>
                 )}
               </span>
               <span style={{ minWidth: 0 }}>
-                <span style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--color-accent-800)', display: 'block', lineHeight: 1.3 }}>{a.name}</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-accent-800)', display: 'block', lineHeight: 1.3 }}>{a.name}</span>
                 {(a.city || a.phone) && (
                   <span className="text-muted" style={{ fontSize: 12 }}>{[a.city, a.phone].filter(Boolean).join(' · ')}</span>
                 )}
@@ -460,16 +456,16 @@ function ClubsTab({ countryId }) {
           <button type="button" className="btn btn-secondary" onClick={() => setQuery('')}>Clear search</button>
         </Empty>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
           {shown.map((t) => (
             <Link key={t.id} to={`/teams/${t.id}`} style={{
-              display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
-              background: '#fff', border: '1px solid #e2e9f2', borderTop: '3px solid var(--color-box-top)', borderRadius: 12,
-              boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'inherit', textDecoration: 'none',
+              display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px',
+              background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0,
+              border: '1px solid var(--color-divider)', color: 'inherit', textDecoration: 'none',
             }}>
               <span style={{
                 width: 52, height: 52, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
-                background: '#eef3f9', border: '1px solid #dbe4ef',
+                background: 'var(--color-accent-100)', border: '1px solid var(--color-neutral-300)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {t.logo ? (
@@ -481,7 +477,7 @@ function ClubsTab({ countryId }) {
                 )}
               </span>
               <span style={{ minWidth: 0 }}>
-                <span style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--color-accent-800)', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-accent-800)', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
                 {t.swimmers_count > 0 && (
                   <span className="text-muted" style={{ fontSize: 12 }}>
                     {t.swimmers_count} swimmer{t.swimmers_count === 1 ? '' : 's'}
@@ -564,7 +560,7 @@ function QualifyingTab({ countryId, qualSub, setQualSub }) {
       <TabHeading title="Qualifying" />
       <SubTabs options={[['standards', 'Qualifying times'], ['qualified', 'Swimmers who qualified']]} value={qualSub} onChange={setQualSub} />
       {standards.length === 0 ? <Empty label="No qualifying standards published yet" /> : (<>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
           <select className="select" aria-label="Qualifying standard" style={{ width: 'auto', minWidth: 220 }} value={standardId} onChange={(e) => setStandardId(e.target.value)}>
             {standards.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.year})</option>)}
           </select>
@@ -582,7 +578,7 @@ function QualifyingTab({ countryId, qualSub, setQualSub }) {
             </tbody></table></div>
           )
         ) : qualData === null ? <Loading label="Checking qualifying swims" /> : (<>
-          <div style={{ textAlign: 'center', fontSize: 12.5, color: '#5a6b80', fontWeight: 600, margin: '0 0 16px' }}>
+          <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)', fontWeight: 600, margin: '0 0 16px' }}>
             {qualWindow
               ? <>Qualification period{qualWindow.derived ? ' (estimated)' : ''}: <span className="asw-num" style={{ color: 'var(--color-accent-800)', fontWeight: 800 }}>{formatDate(qualWindow.start)} – {formatDate(qualWindow.end)}</span> — only swims in this window count</>
               : 'Qualification period not published yet — showing all-time best times'}
@@ -597,7 +593,7 @@ function QualifyingTab({ countryId, qualSub, setQualSub }) {
                   <td className="text-muted">{r.pool === 'SCM' ? '25m' : r.pool === 'LCM' ? '50m' : r.pool}</td>
                   <td className="time asw-time" style={{ fontWeight: 800, color: 'var(--color-accent-800)' }}>{r.time}</td>
                   <td className="time asw-time">{r.cut_time}</td>
-                  <td><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 800, background: r.cut === 'A' ? '#0d7a52' : '#b98a1e', color: '#fff' }}>{r.cut} Cut</span></td>
+                  <td><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 0, fontSize: 11, fontWeight: 800, background: r.cut === 'A' ? 'var(--asw-fast)' : 'var(--asw-gold)', color: '#fff' }}>{r.cut} Cut</span></td>
                   <td className="text-muted" style={{ fontSize: 12 }}>{r.championship || '—'}{r.date ? ` · ${formatDate(r.date)}` : ''}</td>
                 </tr>
               ))}
@@ -626,15 +622,15 @@ function PredictionTab({ countryName }) {
   const mine = preds.filter((p) => p.country === countryName)
   const others = preds.filter((p) => p.country !== countryName)
   const card = (p, hosted) => (
-    <Link key={p.id} to="/predictions" style={{ background: '#fff', border: hosted ? '2px solid var(--color-accent-800)' : '1px solid #e2e8f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, padding: '16px 18px', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 6, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+    <Link key={p.id} to="/predictions" style={{ background: '#fff', border: hosted ? '2px solid var(--color-accent-800)' : '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0, padding: '16px 16px', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 6,  }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: CLASS_COLORS[p.classification] || 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>{p.classification || 'Meet'}</span>
-        {hosted && <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>Hosted here</span>}
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: CLASS_COLORS[p.classification] || 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 0 }}>{p.classification || 'Meet'}</span>
+        {hosted && <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 0 }}>Hosted here</span>}
         {p.stage && <span className="micro" style={{ marginLeft: 'auto' }}>{p.stage === 'OFFICIAL' ? 'Official entries' : 'Early forecast'}</span>}
       </div>
-      <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>{p.name}</div>
-      <div className="text-muted" style={{ fontSize: 12.5 }}>{formatDate(p.date)}{p.end_date ? ` – ${formatDate(p.end_date)}` : ''} · {p.pool}{p.country ? ` · ${p.country}` : ''}</div>
-      <div style={{ display: 'flex', gap: 14, marginTop: 4, fontSize: 12 }}>
+      <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>{p.name}</div>
+      <div className="text-muted" style={{ fontSize: 13 }}>{formatDate(p.date)}{p.end_date ? ` – ${formatDate(p.end_date)}` : ''} · {p.pool}{p.country ? ` · ${p.country}` : ''}</div>
+      <div style={{ display: 'flex', gap: 16, marginTop: 4, fontSize: 12 }}>
         {p.event_count != null && <span className="asw-num text-muted">{p.event_count} events</span>}
         {p.confidence != null && <span className="asw-num" style={{ color: 'var(--color-accent-800)', fontWeight: 700 }}>{Math.round(p.confidence * 100)}% confidence</span>}
         <span style={{ marginLeft: 'auto', color: 'var(--color-accent-800)', fontWeight: 700 }}>View predictions →</span>
@@ -645,7 +641,7 @@ function PredictionTab({ countryName }) {
     <div className="pad-lg">
       <TabHeading title="Medal Predictions" />
       {preds.length === 0 ? <Empty label="No upcoming championships with predictions" hint="Predictions open once the next championship is announced." /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
           {mine.map((p) => card(p, true))}
           {others.map((p) => card(p, false))}
         </div>
@@ -681,11 +677,11 @@ function MultimediaTab({ champIds, champNames, countryName }) {
       {mine.length === 0 ? <Empty label="No photo or video albums yet" /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
           {mine.map((a) => (
-            <Link key={a.id} to={`/media/albums/${a.id}`} style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', color: 'inherit', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+            <Link key={a.id} to={`/media/albums/${a.id}`} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit',  }}>
               <div style={{ height: 160, background: a.cover ? `url(${a.cover}) center/cover` : 'var(--color-accent-800)', display: 'flex', alignItems: 'flex-end' }}>
-                <span style={{ background: 'rgba(13,45,94,.85)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: '0 8px 0 0' }} className="asw-num">{a.items_count} items</span>
+                <span style={{ background: 'rgba(13,45,94,.85)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 0 }} className="asw-num">{a.items_count} items</span>
               </div>
-              <div style={{ padding: '12px 14px' }}>
+              <div style={{ padding: '12px 16px' }}>
                 <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>{a.title}</div>
                 <div className="micro" style={{ marginTop: 4 }}>{formatDate(a.created_at)}</div>
               </div>
@@ -715,14 +711,14 @@ function PoolsTab({ hosted, countryName }) {
     <div className="pad-lg">
       <TabHeading title={`${countryName} Venues`} />
       {venues.length === 0 ? <Empty label="No venue data yet" /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
           {venues.map((v) => (
-            <div key={v.location} style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 12, padding: '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div style={{ fontSize: 22, marginBottom: 6 }}>🏊</div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-accent-800)' }}>{v.location}</div>
-              <div className="text-muted asw-num" style={{ fontSize: 12.5, marginTop: 6 }}>{v.meets} championship{v.meets > 1 ? 's' : ''} hosted</div>
+            <div key={v.location} style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0, padding: '16px 20px',  }}>
+              <div style={{ fontSize: 24, marginBottom: 6 }}><Waves size={20} aria-hidden="true" /></div>
+              <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>{v.location}</div>
+              <div className="text-muted asw-num" style={{ fontSize: 13, marginTop: 6 }}>{v.meets} championship{v.meets > 1 ? 's' : ''} hosted</div>
               <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                {[...v.pools].map((p) => <span key={p} style={{ fontSize: 10.5, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>{p}</span>)}
+                {[...v.pools].map((p) => <span key={p} style={{ fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '2px 8px', borderRadius: 0 }}>{p}</span>)}
                 <span className="micro asw-num" style={{ alignSelf: 'center' }}>{[...v.years].sort().join(' · ')}</span>
               </div>
             </div>
@@ -759,13 +755,13 @@ function ArchivesTab({ hosted, participated, countryName }) {
       {byYear.length === 0 ? <Empty label="No archived championships" /> : byYear.map(([year, meets]) => (
         <div key={year} style={{ marginBottom: 26 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-            <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 20, color: 'var(--color-accent-800)' }}>{year}</span>
-            <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, color: 'var(--color-accent-800)' }}>{year}</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--color-neutral-300)' }} />
             <span className="micro asw-num">{meets.length} meet{meets.length > 1 ? 's' : ''}</span>
           </div>
           {meets.map((c) => (
-            <Link key={`${c.kind}-${c.id}`} to={`/meets/${c.id}`} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', color: 'inherit', textDecoration: 'none', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, background: c.kind === 'Hosted' ? 'var(--color-accent-800)' : '#eef3f9', color: c.kind === 'Hosted' ? '#fff' : 'var(--color-accent-800)', flex: 'none' }}>{c.kind}</span>
+            <Link key={`${c.kind}-${c.id}`} to={`/meets/${c.id}`} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', color: 'inherit', textDecoration: 'none', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 0, background: c.kind === 'Hosted' ? 'var(--color-accent-800)' : 'var(--color-accent-100)', color: c.kind === 'Hosted' ? '#fff' : 'var(--color-accent-800)', flex: 'none' }}>{c.kind}</span>
               <span style={{ flex: 1, minWidth: 200 }}>
                 <span style={{ fontWeight: 600, display: 'block' }}>{c.name}</span>
                 <span className="text-muted" style={{ fontSize: 12 }}>{formatDate(c.date)} · {c.pool}{c.location ? ` · ${c.location}` : ''}{c.classification ? ` · ${c.classification}` : ''}</span>
@@ -805,10 +801,10 @@ function ProgressionChart({ lines }) {
           const cs = minCs + (range * i) / 3
           const yy = y(cs)
           const m = Math.floor(cs / 6000); const s = Math.floor((cs % 6000) / 100); const c = cs % 100
-          return <g key={i}><line x1={pL} x2={W - pR} y1={yy} y2={yy} stroke="#e5e9ed" /><text x={pL - 8} y={yy + 4} textAnchor="end" fill="#58687c" fontSize="11" style={{ fontVariantNumeric: 'tabular-nums' }}>{m ? `${m}:${String(s).padStart(2, '0')}` : `${s}.${String(c).padStart(2, '0')}`}</text></g>
+          return <g key={i}><line x1={pL} x2={W - pR} y1={yy} y2={yy} stroke="var(--color-neutral-300)" /><text x={pL - 8} y={yy + 4} textAnchor="end" fill="var(--color-neutral-700)" fontSize="11" style={{ fontVariantNumeric: 'tabular-nums' }}>{m ? `${m}:${String(s).padStart(2, '0')}` : `${s}.${String(c).padStart(2, '0')}`}</text></g>
         })}
         {years.filter((_, i) => i % Math.ceil(years.length / 8) === 0 || i === years.length - 1).map((yr) => (
-          <text key={yr} x={x(yr)} y={H - 4} textAnchor="middle" fill="#58687c" fontSize="11">{yr}</text>
+          <text key={yr} x={x(yr)} y={H - 4} textAnchor="middle" fill="var(--color-neutral-700)" fontSize="11">{yr}</text>
         ))}
         {lines.map((line, li) => {
           const pts = (line.points || []).filter((p) => p.cs)
@@ -853,27 +849,27 @@ function RecordsTable({ records }) {
 // ─── Statistics dashboard (blue-themed cards matching ISF design) ───
 const S = {
   bg: '#ffffff',
-  card: { background: '#fff', borderRadius: 6, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,.06)', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', position: 'relative' },
-  title: { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.2 },
-  sub: { fontSize: 11, color: '#7a8ca0', marginBottom: 14, marginTop: 3, lineHeight: 1.3 },
-  viewAll: { fontSize: 11, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', textDecoration: 'none', textTransform: 'none', letterSpacing: '0.03em' },
+  card: { background: '#fff', borderRadius: 0, padding: '16px 16px', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', position: 'relative' },
+  title: { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.2 },
+  sub: { fontSize: 11, color: 'var(--color-neutral-700)', marginBottom: 14, marginTop: 3, lineHeight: 1.3 },
+  viewAll: { fontSize: 11, color: 'var(--color-accent-500)', fontWeight: 700, marginLeft: 'auto', textDecoration: 'none', textTransform: 'none', letterSpacing: '0.03em' },
   rankBadge: (i) => ({
     width: 26, height: 26, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     fontSize: 12, fontWeight: 800, color: '#fff',
     background: 'var(--color-accent-800)',
-    flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+    flexShrink: 0, border: '1px solid var(--color-divider)',
   }),
   medalCircle: (color) => ({
     width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     fontSize: 12, fontWeight: 800, color: '#fff', background: color, flexShrink: 0,
-    boxShadow: '0 1px 3px rgba(0,0,0,.15)',
+    border: '1px solid var(--color-divider)',
   }),
-  th: { fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', padding: '8px 0', borderBottom: '2px solid #e2e8f0' },
-  row: (i) => ({ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid #f0f3f7', fontSize: 13, background: i % 2 === 1 ? '#fafbfd' : 'transparent' }),
-  photo: { width: 52, height: 52, borderRadius: '50%', background: '#e8ecf1', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#8a9bb5', border: '2px solid #d0d8e4', overflow: 'hidden' },
-  photoSmall: { width: 28, height: 28, borderRadius: '50%', background: '#e8ecf1', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#8a9bb5', border: '1.5px solid #d0d8e4', overflow: 'hidden' },
+  th: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-700)', padding: '8px 0', borderBottom: '2px solid var(--color-neutral-300)' },
+  row: (i) => ({ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--color-neutral-200)', fontSize: 13, background: i % 2 === 1 ? 'var(--color-neutral-100)' : 'transparent' }),
+  photo: { width: 52, height: 52, borderRadius: '50%', background: 'var(--color-neutral-200)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--color-neutral-700)', border: '2px solid var(--color-accent-200)', overflow: 'hidden' },
+  photoSmall: { width: 28, height: 28, borderRadius: '50%', background: 'var(--color-neutral-200)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--color-neutral-700)', border: '1.5px solid var(--color-accent-200)', overflow: 'hidden' },
 }
-const PERF_BAR_COLORS = ['#7d3c98', 'var(--color-accent-800)', '#3b9dd6', '#27ae60', '#52c78a', '#f5d547', '#f7b731', '#f4845f', '#e63946', '#b0bec5']
+const PERF_BAR_COLORS = ['var(--color-accent-900)', 'var(--color-accent-800)', 'var(--color-accent-700)', 'var(--color-accent-600)', 'var(--color-accent-500)', 'var(--color-accent-400)', 'var(--color-accent-300)', 'var(--color-accent-2-300)', 'var(--color-accent-200)', 'var(--color-neutral-400)']
 
 const DEMONYMS = {
   Algeria: 'Algerian', Bahrain: 'Bahraini', Comoros: 'Comorian', Djibouti: 'Djiboutian',
@@ -926,8 +922,8 @@ const REC_TYPE_LABELS = {
 }
 const REC_TYPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
 const REC_TYPE_COLORS = {
-  NATIONAL: 'var(--color-accent-800)', ARAB: '#b98a1e', GCC: '#0d7a52', AFRICAN: '#a8402f',
-  ASIAN: '#a05f2c', MEDITERRANEAN: '#4a8fc0', ISLAMIC: '#0d7a52', WORLD: '#0c2340',
+  NATIONAL: 'var(--color-accent-800)', ARAB: 'var(--asw-gold)', GCC: 'var(--asw-fast)', AFRICAN: 'var(--asw-slow)',
+  ASIAN: 'var(--asw-bronze)', MEDITERRANEAN: 'var(--color-accent-2)', ISLAMIC: 'var(--asw-fast)', WORLD: 'var(--color-accent-800)',
 }
 
 // Time parser for defensive client-side dedupe ("1:49.26" -> centiseconds)
@@ -970,19 +966,19 @@ function RecordsTab({ records, country }) {
     return true
   })
 
-  const selStyle = { padding: '10px 20px', border: '1px solid #c0cad8', borderRadius: 6, fontSize: 14, fontWeight: 600, color: 'var(--color-accent-800)', background: '#fff', cursor: 'pointer', minWidth: 180, appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%230b2948\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }
-  const pillBase = { padding: '8px 18px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', minHeight: 36 }
+  const selStyle = { padding: '10px 20px', border: '1px solid var(--color-neutral-400)', borderRadius: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-accent-800)', background: '#fff', cursor: 'pointer', minWidth: 180, appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%230b2948\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }
+  const pillBase = { padding: '8px 16px', border: '2px solid var(--color-accent-800)', borderRadius: 0, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', minHeight: 36 }
   const pillActive = { ...pillBase, background: 'var(--color-accent-800)', color: '#fff' }
   const pillInactive = { ...pillBase, background: '#fff', color: 'var(--color-accent-800)' }
 
   return (
-    <div className="m-pad" style={{ padding: '28px 28px', background: '#fff' }}>
+    <div className="m-pad" style={{ padding: '24px 32px' }}>
       {/* Title */}
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ fontSize: 28, marginBottom: 4 }}>🏅</div>
+        <div style={{ fontSize: 28, marginBottom: 4 }}><Medal size={20} aria-hidden="true" /></div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <div style={{ width: 60, height: 2, background: 'var(--color-accent-800)' }} />
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Records</h2>
+          <h2 className="prof-h" style={{ margin: 0 }}>Records</h2>
           <div style={{ width: 60, height: 2, background: 'var(--color-accent-800)' }} />
         </div>
       </div>
@@ -1004,8 +1000,8 @@ function RecordsTab({ records, country }) {
       {/* Filters: Men's/Women's pills (Men's default) + Pool dropdown */}
       <div style={{ display: 'flex', gap: 16, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" onClick={() => setGender('M')} aria-pressed={gender === 'M'} style={gender === 'M' ? pillActive : pillInactive}>♂ Men's</button>
-          <button type="button" onClick={() => setGender('F')} aria-pressed={gender === 'F'} style={gender === 'F' ? pillActive : pillInactive}>♀ Women's</button>
+          <button type="button" onClick={() => setGender('M')} aria-pressed={gender === 'M'} style={gender === 'M' ? pillActive : pillInactive}>Men's</button>
+          <button type="button" onClick={() => setGender('F')} aria-pressed={gender === 'F'} style={gender === 'F' ? pillActive : pillInactive}>Women's</button>
         </div>
         <select aria-label="Pool length" style={selStyle} value={pool} onChange={(e) => setPool(e.target.value)}>
           <option value="">All pools</option>
@@ -1032,22 +1028,22 @@ function RecordsTab({ records, country }) {
       )}
       {/* Record cards grid */}
       {filtered.length === 0 ? <Empty label="No records for this selection" hint="Try another gender, pool length or age category." /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 16 }}>
           {filtered.map((r, i) => (
-            <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', borderTop: '3px solid var(--color-box-top)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column' }}>
+            <div key={i} style={{ borderRadius: 0, textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', padding: '16px 16px 20px', display: 'flex', flexDirection: 'column' }}>
               {/* Large rounded photo */}
-              <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, overflow: 'hidden', background: 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>
-                {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+              <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 0, overflow: 'hidden', background: 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: 'var(--color-neutral-700)' }}>
+                {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
               </div>
               <div style={{ paddingTop: 16 }}>
-                <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}>
+                <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>
                   <SwimmerLink id={r.swimmer_id} name={r.swimmer} />
                 </div>
-                <div style={{ fontSize: 13.5, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{r.event} | {poolLabel(r.pool)}</div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 30, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', marginTop: 6 }}>{r.time}</div>
+                <div style={{ fontSize: 14, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{r.event} | {poolLabel(r.pool)}</div>
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', marginTop: 6 }}>{r.time}</div>
               </div>
               <div style={{ paddingTop: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#5b6b82' }}>{r.sex === 'F' ? "Women's" : "Men's"}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-neutral-700)' }}>{r.sex === 'F' ? "Women's" : "Men's"}</div>
               </div>
             </div>
           ))}
@@ -1147,12 +1143,12 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
     // navy letter on gold/silver, white on bronze: each pair passes WCAG AA
     const map = { GOLD: ['G', 'var(--asw-gold)', 'var(--wa-ink)'], SILVER: ['S', 'var(--asw-silver)', 'var(--wa-ink)'], BRONZE: ['B', 'var(--asw-bronze)', '#fff'] }
     const [letter, bg, fg] = map[type] || ['?', 'var(--color-neutral-700)', '#fff']
-    return <span className="asw-num" title={type ? type.charAt(0) + type.slice(1).toLowerCase() : undefined} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: bg, color: fg, fontWeight: 900, fontSize: 12 }}>{letter}</span>
+    return <span className="asw-num" title={type ? type.charAt(0) + type.slice(1).toLowerCase() : undefined} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: bg, color: fg, fontWeight: 800, fontSize: 12 }}>{letter}</span>
   }
   const statBox = (label, value, accent) => (
-    <div style={{ flex: '1 1 100px', maxWidth: 160, background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
-      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, color: accent }}>{formatNumber(value)}</div>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5a6b80', marginTop: 2 }}>{label}</div>
+    <div style={{ flex: '1 1 100px', maxWidth: 160, background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0, padding: '12px 16px', textAlign: 'center' }}>
+      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: accent }}>{formatNumber(value)}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 2 }}>{label}</div>
     </div>
   )
 
@@ -1161,14 +1157,14 @@ function MedalClassDetail({ countryId, className, box, onBack }) {
       <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--color-accent-800)', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: 40 }}>
         ← All competitions
       </button>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '14px 0 18px', flexWrap: 'wrap' }}>
-        <span style={{ background: color, color: '#fff', padding: '8px 18px', borderRadius: 6, fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 20, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{className}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '14px 0 18px', flexWrap: 'wrap' }}>
+        <span style={{ background: color, color: '#fff', padding: '8px 16px', borderRadius: 0, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{className}</span>
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, color: 'var(--color-accent-800)' }}>Medal Details</span>
       </div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
         {statBox('Gold', box?.gold ?? 0, 'var(--asw-gold)')}
-        {statBox('Silver', box?.silver ?? 0, '#8a94a3')}
-        {statBox('Bronze', box?.bronze ?? 0, '#c88a4d')}
+        {statBox('Silver', box?.silver ?? 0, 'var(--color-neutral-700)')}
+        {statBox('Bronze', box?.bronze ?? 0, 'var(--asw-gold)')}
         {statBox('Total', box?.total ?? 0, 'var(--color-accent-800)')}
       </div>
 
@@ -1338,13 +1334,13 @@ function CompareTab({ profile, country }) {
   return (
     <div className="pad-lg">
       <TabHeading title="Federation Comparison" />
-      <div style={{ textAlign: 'center', fontSize: 12.5, color: '#5a6b80', margin: '10px 0 0', fontWeight: 600 }}>
+      <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)', margin: '10px 0 0', fontWeight: 600 }}>
         International-level data only — domestic national championships are excluded
       </div>
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, margin: '18px 0 26px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, margin: '18px 0 26px', flexWrap: 'wrap' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: 'var(--color-accent-800)' }}><Flag code={country.code} /> {country.name}</span>
-        <span style={{ fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 15 }}>VS</span>
-        <select aria-label="Federation to compare against" value={otherId} onChange={(e) => { load.retry(); setOtherId(e.target.value) }} style={{ minHeight: 36, padding: '9px 14px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13.5, fontWeight: 700, color: 'var(--color-accent-800)', background: '#fff', fontFamily: 'inherit' }}>
+        <span style={{ fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 16 }}>VS</span>
+        <select aria-label="Federation to compare against" value={otherId} onChange={(e) => { load.retry(); setOtherId(e.target.value) }} style={{ minHeight: 36, padding: '8px 16px', border: '2px solid var(--color-accent-800)', borderRadius: 0, fontSize: 14, fontWeight: 700, color: 'var(--color-accent-800)', background: '#fff', fontFamily: 'inherit' }}>
           <option value="">Choose a federation…</option>
           {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -1354,17 +1350,17 @@ function CompareTab({ profile, country }) {
       {!loadingOther && !other && !load.failed && <Empty label="Pick a federation to compare against" hint="Choose one from the list above to see both side by side." />}
       {!loadingOther && other && (
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-accent-800)', color: '#fff', borderRadius: '8px 8px 0 0', fontWeight: 800, fontSize: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--color-accent-800)', color: '#fff', borderRadius: 0, fontWeight: 800, fontSize: 14 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Flag code={country.code} /> {country.name}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{other.country.name} <Flag code={other.country.code} /></span>
           </div>
           {rows.map(([label, a, b], i) => {
             const winA = a > b; const winB = b > a
-            const numStyle = (win) => ({ width: 110, fontWeight: 900, fontSize: 16, color: win ? 'var(--color-accent-800)' : '#6b7a90' })
+            const numStyle = (win) => ({ width: 110, fontWeight: 800, fontSize: 16, color: win ? 'var(--color-accent-800)' : 'var(--color-neutral-700)' })
             return (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', background: i % 2 ? '#f4f8fc' : '#fff', borderBottom: '1px solid #e3ecf5' }}>
+              <div key={label} style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', background: i % 2 ? 'var(--color-neutral-100)' : '#fff', borderBottom: '1px solid var(--color-accent-2-200)' }}>
                 <span className="asw-num" style={{ ...numStyle(winA), textAlign: 'left' }}>{formatNumber(a)}</span>
-                <span style={{ flex: 1, textAlign: 'center', fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#374151' }}>{label}</span>
+                <span style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-800)' }}>{label}</span>
                 <span className="asw-num" style={{ ...numStyle(winB), textAlign: 'right' }}>{formatNumber(b)}</span>
               </div>
             )
@@ -1379,37 +1375,37 @@ function CompareTab({ profile, country }) {
             const secs = (t) => String(t || '').split(':').reduce((acc, x) => acc * 60 + (parseFloat(x) || 0), 0)
             const aWins = secs(a.time) <= secs(b.time)
             const side = (t, cn, code, win, align) => (
-              <div style={{ flex: 1, textAlign: align, padding: '14px 18px', background: win ? '#eef6ef' : '#fff' }}>
+              <div style={{ flex: 1, textAlign: align, padding: '16px 16px', background: win ? 'var(--color-neutral-200)' : '#fff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: align === 'right' ? 'flex-end' : 'flex-start', fontWeight: 800, fontSize: 13, color: 'var(--color-accent-800)' }}>
                   {align === 'left' && <Flag code={code} />}{cn}{align === 'right' && <Flag code={code} />}
                 </div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 27, color: win ? '#0d7a52' : '#6b7a90', marginTop: 6, letterSpacing: '-0.01em' }}>
-                  {t.time}{win && <span style={{ fontSize: 10.5, fontWeight: 800, background: '#0d7a52', color: '#fff', padding: '3px 9px', borderRadius: 12, letterSpacing: '0.05em', margin: '0 8px', verticalAlign: 'middle' }}>FASTER</span>}
+                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, color: win ? 'var(--asw-fast)' : 'var(--color-neutral-700)', marginTop: 6, letterSpacing: '-0.01em' }}>
+                  {t.time}{win && <span style={{ fontSize: 11, fontWeight: 800, background: 'var(--asw-fast)', color: '#fff', padding: '4px 8px', borderRadius: 0, letterSpacing: '0.08em', margin: '0 8px', verticalAlign: 'middle' }}>FASTER</span>}
                 </div>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)', marginTop: 4 }}><SwimmerLink id={t.swimmer_id} name={t.swimmer} /></div>
-                <div style={{ fontSize: 11.5, color: '#5a6b80', marginTop: 2 }}>{t.fina ? `${t.fina} FINA pts` : ''}{t.date ? ` · ${formatDate(t.date)}` : ''}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)', marginTop: 4 }}><SwimmerLink id={t.swimmer_id} name={t.swimmer} /></div>
+                <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{t.fina ? `${t.fina} FINA pts` : ''}{t.date ? ` · ${formatDate(t.date)}` : ''}</div>
               </div>
             )
             return (
-              <div style={{ marginTop: 26, border: '1px solid #dde6f0', borderRadius: 10, overflow: 'hidden', boxShadow: '0 3px 12px rgba(11,41,72,.07)' }}>
-                <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ marginTop: 26, border: '1px solid var(--color-neutral-300)', borderRadius: 0, overflow: 'hidden',  }}>
+                <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
-                    <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8fb3dd' }}>Event Battle · Fastest of Each Country</div>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 17, marginTop: 2 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-2-400)' }}>Event Battle · Fastest of Each Country</div>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, marginTop: 2 }}>
                       {ev} · {sex === 'F' ? "Women" : "Men"} · {pool === 'SCM' ? 'Short Course' : 'Long Course'}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => commonEvents.length > 1 && setBattleKey(commonEvents.filter((k) => k !== battleKey)[Math.floor(Math.random() * (commonEvents.length - 1))])}
-                    style={{ background: 'var(--color-accent-800)', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 14px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', minHeight: 36 }}
+                    style={{ background: 'var(--color-accent-800)', color: '#fff', border: 'none', borderRadius: 0, padding: '8px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', minHeight: 36 }}
                   >
                     Another event
                   </button>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'stretch' }}>
                   {side(a, country.name, country.code, aWins, 'left')}
-                  <div style={{ width: 1, background: '#dde6f0' }} />
+                  <div style={{ width: 1, background: 'var(--color-neutral-300)' }} />
                   {side(b, other.country.name, other.country.code, !aWins, 'right')}
                 </div>
               </div>
@@ -1469,26 +1465,26 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
   // Helpers
   const cardHeader = (title, sub) => (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-        <span style={{ width: 4, height: 17, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 14.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{title}</span>
-        <span style={{ fontSize: 11, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 4, height: 17, background: 'var(--color-accent-800)', borderRadius: 0, flexShrink: 0 }} />
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{title}</span>
+        <span style={{ fontSize: 11, color: 'var(--color-accent-500)', fontWeight: 700, marginLeft: 'auto' }}>View All</span>
       </div>
-      <div style={{ fontSize: 11, color: '#7a8ca0', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
+      <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 4, lineHeight: 1.3, paddingLeft: 13 }}>{sub}</div>
     </div>
   )
   const card = (children, extra = {}) => (
-    <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', ...extra }}>{children}</div>
+    <div style={{ background: '#fff', borderRadius: 0, padding: '16px 16px', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', ...extra }}>{children}</div>
   )
-  const thStyle = { fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8a9bb5', paddingBottom: 6, borderBottom: '2px solid #e2e8f0' }
-  const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f0f4f8', fontSize: 12.5, background: i % 2 === 1 ? '#fafbfd' : 'transparent' })
+  const thStyle = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-700)', paddingBottom: 6, borderBottom: '2px solid var(--color-neutral-300)' }
+  const rowStyle = (i) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--color-accent-2-100)', fontSize: 13, background: i % 2 === 1 ? 'var(--color-neutral-100)' : 'transparent' })
   const badge = { width: 24, height: 24, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }
   const mc = (color) => ({ width: 26, height: 26, borderRadius: '50%', background: color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 })
   const barRow = (label, n, max) => (
     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
-      <span style={{ width: 130, fontSize: 11.5, fontWeight: 600, flexShrink: 0, color: '#374151' }}>{label}</span>
-      <div style={{ flex: 1, height: 18, background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${(n / max) * 100}%`, height: '100%', background: 'var(--color-accent-800)', borderRadius: 3, minWidth: n > 0 ? 8 : 0 }} />
+      <span style={{ width: 130, fontSize: 12, fontWeight: 600, flexShrink: 0, color: 'var(--color-neutral-800)' }}>{label}</span>
+      <div style={{ flex: 1, height: 18, background: 'var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden' }}>
+        <div style={{ width: `${(n / max) * 100}%`, height: '100%', background: 'var(--color-accent-800)', borderRadius: 0, minWidth: n > 0 ? 8 : 0 }} />
       </div>
       <span className="asw-num" style={{ width: 28, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{n}</span>
     </div>
@@ -1508,7 +1504,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       return seg
     })
     return (
-      <div className="m-donut" style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div className="m-donut" style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
         <div className="m-donut-pie" style={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
           <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}
             role="img" aria-label={`${total} ${centerLabel}: ${segs.map((s) => `${s.label} ${s.count} (${s.pct}%)`).join(', ')}`}>
@@ -1518,17 +1514,17 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
             ))}
           </svg>
           <span style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1, color: 'var(--color-accent-800)' }}>{total}</span>
-            <span style={{ fontSize: 10.5, color: '#7a8ca0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{centerLabel}</span>
+            <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1, color: 'var(--color-accent-800)' }}>{total}</span>
+            <span style={{ fontSize: 11, color: 'var(--color-neutral-700)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{centerLabel}</span>
           </span>
         </div>
-        <div className="m-donut-legend" style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 130 }}>
+        <div className="m-donut-legend" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 130 }}>
           {segs.map((s) => (
-            <span key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5 }}>
-              <span className="m-donut-dot" style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-              <span style={{ fontWeight: 600, color: '#374151', flex: 1, whiteSpace: 'nowrap' }}>{s.label}</span>
+            <span key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+              <span className="m-donut-dot" style={{ width: 11, height: 11, borderRadius: 0, background: s.color, flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, color: 'var(--color-neutral-800)', flex: 1, whiteSpace: 'nowrap' }}>{s.label}</span>
               <span className="asw-num" style={{ fontWeight: 800, color: 'var(--color-accent-800)' }}>{s.count}</span>
-              <span className="asw-num m-donut-pct" style={{ color: '#8a9bb5', width: 34, textAlign: 'right' }}>{s.pct}%</span>
+              <span className="asw-num m-donut-pct" style={{ color: 'var(--color-neutral-700)', width: 34, textAlign: 'right' }}>{s.pct}%</span>
             </span>
           ))}
         </div>
@@ -1536,12 +1532,12 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
     )
   }
 
-  const AGE_COLORS = ['#0c2340', 'var(--color-accent-800)', 'var(--color-accent-800)', '#72a4cf', '#aecae4', '#d5e4f2']
-  const STROKE_COLORS = { Freestyle: 'var(--color-accent-800)', Backstroke: '#4a8fc0', Breaststroke: '#0c2340', Butterfly: '#72a4cf', Medley: '#b98a1e', 'Open Water': '#7d8a99' }
+  const AGE_COLORS = ['var(--color-accent-800)', 'var(--color-accent-800)', 'var(--color-accent-800)', 'var(--color-accent-400)', 'var(--color-accent-300)', 'var(--color-accent-200)']
+  const STROKE_COLORS = { Freestyle: 'var(--color-accent-800)', Backstroke: 'var(--color-accent-2)', Breaststroke: 'var(--color-accent-800)', Butterfly: 'var(--color-accent-400)', Medley: 'var(--asw-gold)', 'Open Water': 'var(--asw-silver)' }
   const demo = profile.demographics || {}
   const genderSegs = [
     { label: 'Men', count: profile.stats?.swimmers_male || 0, color: 'var(--color-accent-800)' },
-    { label: 'Women', count: profile.stats?.swimmers_female || 0, color: '#4a8fc0' },
+    { label: 'Women', count: profile.stats?.swimmers_female || 0, color: 'var(--color-accent-2)' },
   ]
   const ageSegs = (demo.ages || []).map((a, i) => ({ label: a.label, count: a.count, color: AGE_COLORS[i % AGE_COLORS.length] }))
   const strokeSegs = (demo.strokes || []).map((s, i) => ({ label: s.label, count: s.count, color: STROKE_COLORS[s.label] || AGE_COLORS[i % AGE_COLORS.length] }))
@@ -1559,10 +1555,10 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         <div key={s.id} style={rowStyle(i)}>
           <span style={badge}>{i + 1}</span>
           <Flag code={s.nationality_code || country.code} />
-          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: 'var(--color-accent-800)' }}><SwimmerLink id={s.id} name={s.name} /></span>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: 'var(--color-accent-800)' }}><SwimmerLink id={s.id} name={s.name} /></span>
           <span style={{ width: 120, color: 'var(--color-neutral-700)', fontSize: 11 }}>{s.best_event}</span>
-          <span className="asw-num" style={{ width: 60, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 12.5 }}>{s.best_time}</span>
-          <span className="asw-num" style={{ width: 36, textAlign: 'right', fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 13 }}>{s.best_fina}</span>
+          <span className="asw-num" style={{ width: 60, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13 }}>{s.best_time}</span>
+          <span className="asw-num" style={{ width: 36, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13 }}>{s.best_fina}</span>
         </div>
       ))}
     </>
@@ -1573,85 +1569,79 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       <div style={{ display: 'flex', gap: 8, ...thStyle, padding: '0 0 6px' }}>
         <span style={{ width: 24 }}>#</span>
         <span style={{ flex: 1 }}>Swimmer</span>
-        <span style={{ width: 28, textAlign: 'center', color: '#d4af37', fontWeight: 900 }}>G</span>
-        <span style={{ width: 28, textAlign: 'center', color: '#a8a9ad', fontWeight: 900 }}>S</span>
-        <span style={{ width: 28, textAlign: 'center', color: '#cd7f32', fontWeight: 900 }}>B</span>
+        <span style={{ width: 28, textAlign: 'center', color: 'var(--asw-gold)', fontWeight: 800 }}>G</span>
+        <span style={{ width: 28, textAlign: 'center', color: 'var(--asw-silver)', fontWeight: 800 }}>S</span>
+        <span style={{ width: 28, textAlign: 'center', color: 'var(--asw-bronze)', fontWeight: 800 }}>B</span>
         <span style={{ width: 40, textAlign: 'center' }}>Total</span>
       </div>
       {list.map((m, i) => (
         <div key={m.id ?? i} style={rowStyle(i)}>
           <span style={badge}>{i + 1}</span>
-          <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 6 }}><Flag code={m.nationality_code || country.code} /><SwimmerLink id={m.id} name={m.name} /></span>
-          <span style={mc('#d4af37')}>{m.gold}</span>
-          <span style={mc('#a8a9ad')}>{m.silver}</span>
-          <span style={mc('#cd7f32')}>{m.bronze}</span>
-          <span className="asw-num" style={{ width: 40, textAlign: 'center', fontWeight: 900, fontSize: 14, color: 'var(--color-accent-800)' }}>{m.total}</span>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 6 }}><Flag code={m.nationality_code || country.code} /><SwimmerLink id={m.id} name={m.name} /></span>
+          <span style={mc('var(--asw-gold)')}>{m.gold}</span>
+          <span style={mc('var(--asw-silver)')}>{m.silver}</span>
+          <span style={mc('var(--asw-bronze)')}>{m.bronze}</span>
+          <span className="asw-num" style={{ width: 40, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)' }}>{m.total}</span>
         </div>
       ))}
     </>
   )
 
   const recCard4 = ({ label, sub, photo, id, name, line, big, date, bigSize = 30 }) => (
-    <div style={{ background: '#fff', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
-      <div className="m-hl4-head" style={{ padding: '10px 12px 7px', borderBottom: '1px solid #f0f3f7' }}>
+    <div style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0, overflow: 'hidden',  }}>
+      <div className="m-hl4-head" style={{ padding: '10px 12px 8px', borderBottom: '1px solid var(--color-neutral-200)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 4, height: 14, background: 'var(--color-accent-800)', borderRadius: 2, flexShrink: 0 }} />
-          <span className="m-hl4-label" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{label}</span>
-          <span className="m-hl4-va" style={{ fontSize: 9, color: '#4a90d9', fontWeight: 700, marginLeft: 'auto', whiteSpace: 'nowrap' }}>View All</span>
+          <span style={{ width: 4, height: 14, background: 'var(--color-accent-800)', borderRadius: 0, flexShrink: 0 }} />
+          <span className="m-hl4-label" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>{label}</span>
+          <span className="m-hl4-va" style={{ fontSize: 9, color: 'var(--color-accent-500)', fontWeight: 700, marginLeft: 'auto', whiteSpace: 'nowrap' }}>View All</span>
         </div>
-        <div className="m-hl4-sub" style={{ fontSize: 9.5, color: '#7a8ca0', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
+        <div className="m-hl4-sub" style={{ fontSize: 9.5, color: 'var(--color-neutral-700)', marginTop: 3, paddingLeft: 12 }}>{sub}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
         {/* Photo panel */}
-        <div className="m-hl4-photo" style={{ width: 100, background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
+        <div className="m-hl4-photo" style={{ width: 100, background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
           {photo
             ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-            : '🏊'}
+            : <Waves size={22} aria-hidden="true" />}
         </div>
         {/* Info */}
         <div className="m-hl4-info" style={{ padding: '12px 12px', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
             <Flag code={country.code} />
-            <span className="m-hl4-name" style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--color-accent-800)', lineHeight: 1.2, overflowWrap: 'anywhere', minWidth: 0 }}>
+            <span className="m-hl4-name" style={{ fontWeight: 800, fontSize: 13, color: 'var(--color-accent-800)', lineHeight: 1.2, overflowWrap: 'anywhere', minWidth: 0 }}>
               <SwimmerLink id={id} name={name} />
             </span>
           </div>
-          {line && <div className="m-hl4-line" style={{ fontSize: 11, color: '#7a8ca0', marginBottom: 6 }}>{line}</div>}
-          <div className="asw-num m-hl4-big" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: bigSize, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+          {line && <div className="m-hl4-line" style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginBottom: 6 }}>{line}</div>}
+          <div className="asw-num m-hl4-big" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: bigSize, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1 }}>
             {big}
           </div>
-          {date && <div className="m-hl4-date" style={{ fontSize: 11, color: '#9baab8', marginTop: 5 }}>{formatDate(date)}</div>}
+          {date && <div className="m-hl4-date" style={{ fontSize: 11, color: 'var(--color-neutral-500)', marginTop: 5 }}>{formatDate(date)}</div>}
         </div>
       </div>
     </div>
   )
 
   return (
-    <div className="m-pad" style={{ background: '#f8fafc', padding: '28px 24px' }}>
+    <div className="m-pad" style={{ padding: '24px 32px' }}>
       {/* Page title */}
-      <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 2, background: 'var(--color-accent-800)' }} />
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 26, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }}>Statistics</span>
-          <div style={{ width: 40, height: 2, background: 'var(--color-accent-800)' }} />
-        </div>
-      </div>
+      <h2 className="prof-h">Statistics</h2>
 
       {/* Row 1: Top Performance Male | Female */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
         {card(<>{cardHeader('Top Performance · Men', `Best Performances by ${country.name} Male Swimmers (FINA Points)`)}{maleTop.length ? topPerfTable(maleTop) : <Empty label="No data" />}</>)}
         {card(<>{cardHeader('Top Performance · Women', `Best Performances by ${country.name} Female Swimmers (FINA Points)`)}{femaleTop.length ? topPerfTable(femaleTop) : <Empty label="No data" />}</>)}
       </div>
 
       {/* Row 1b: Demographics pies — gender, ages, strokes */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
         {card(<>{cardHeader('Swimmers by Gender', `Proportion of ${country.name} Swimmers by Sex`)}{donut(genderSegs, 'Swimmers')}</>)}
         {card(<>{cardHeader('Swimmers by Age', `Distribution of ${country.name} Swimmers by Age`)}{donut(ageSegs, 'Swimmers')}</>)}
         {card(<>{cardHeader('Swimmers by Stroke', `Share of ${country.name} Swims by Stroke`)}{donut(strokeSegs, 'Swims')}</>)}
       </div>
 
       {/* Row 2: Participation | Championships Hosted | Most Participated */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
         {card(<>
           {cardHeader('Participation', 'Total Participation by International Competition')}
           {participationList.length === 0 ? <Empty label="No data" /> : participationList.map(([cls, n]) => barRow(cls, n, maxPart))}
@@ -1682,8 +1672,8 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           {profile.most_participated.slice(0, 5).map((s, i) => (
             <div key={s.id} style={rowStyle(i)}>
               <span style={badge}>{i + 1}</span>
-              <span style={{ flex: 1, fontWeight: 700, fontSize: 12.5, color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 6 }}><Flag code={s.nationality_code || country.code} /><SwimmerLink id={s.id} name={s.name} /></span>
-              <span className="asw-num" style={{ width: 90, textAlign: 'right', fontWeight: 900, fontSize: 14, color: 'var(--color-accent-800)' }}>{s.championships_count ?? '—'}</span>
+              <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', gap: 6 }}><Flag code={s.nationality_code || country.code} /><SwimmerLink id={s.id} name={s.name} /></span>
+              <span className="asw-num" style={{ width: 90, textAlign: 'right', fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)' }}>{s.championships_count ?? '—'}</span>
             </div>
           ))}
           </>)}
@@ -1691,7 +1681,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
       </div>
 
       {/* Row 3: Medals | Most Male Decorated | Most Female Decorated */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
         {card(<>
           {cardHeader('Medals', 'Total Medals by International Competition')}
           {(() => {
@@ -1702,23 +1692,23 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
             return (<>
             {/* Legend */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11 }}>
-              {[['Gold', '#d4af37'], ['Silver', '#a8a9ad'], ['Bronze', '#cd7f32']].map(([lbl, c]) => (
+              {[['Gold', 'var(--asw-gold)'], ['Silver', 'var(--asw-silver)'], ['Bronze', 'var(--asw-bronze)']].map(([lbl, c]) => (
                 <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ width: 11, height: 11, borderRadius: '50%', background: c, display: 'inline-block' }} />{lbl}
                 </span>
               ))}
             </div>
             {intl.map((m) => (
-              <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
-                <span style={{ width: 88, fontSize: 11.5, fontWeight: 700, flexShrink: 0, color: '#374151' }}>{m.name}</span>
-                <div style={{ flex: 1, height: 20, display: 'flex', background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
+              <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
+                <span style={{ width: 88, fontSize: 12, fontWeight: 700, flexShrink: 0, color: 'var(--color-neutral-800)' }}>{m.name}</span>
+                <div style={{ flex: 1, height: 20, display: 'flex', background: 'var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden' }}>
                   <div style={{ width: `${(m.total / maxTotal) * 100}%`, display: 'flex', minWidth: m.total > 0 ? 20 : 0 }}>
-                    {[['gold', '#d4af37'], ['silver', '#a8a9ad'], ['bronze', '#cd7f32']].map(([key, color]) =>
+                    {[['gold', 'var(--asw-gold)'], ['silver', 'var(--asw-silver)'], ['bronze', 'var(--asw-bronze)']].map(([key, color]) =>
                       m[key] > 0 && <div key={key} style={{ flex: m[key], background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 11, minWidth: 14 }} className="asw-num">{m[key]}</div>
                     )}
                   </div>
                 </div>
-                <span className="asw-num" style={{ width: 26, textAlign: 'right', fontWeight: 900, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{m.total}</span>
+                <span className="asw-num" style={{ width: 26, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{m.total}</span>
               </div>
             ))}
             </>)
@@ -1747,29 +1737,29 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         const show = cards.filter((c) => c.valid)
         if (!show.length) return null
         return (
-          <div className="m-col2 m-hl4" style={{ display: 'grid', gridTemplateColumns: `repeat(${show.length}, 1fr)`, gap: 10, marginBottom: 10 }}>
+          <div className="m-col2 m-hl4" style={{ display: 'grid', gridTemplateColumns: `repeat(${show.length}, 1fr)`, gap: 12, marginBottom: 10 }}>
             {show.map((c) => <div key={c.key}>{c.render()}</div>)}
           </div>
         )
       })()}
 
       {/* Row 5: Performance Index (dark bg) | Country Battle */}
-      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+      <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
         {/* Performance Index */}
-        <div style={{ background: '#fff', borderRadius: 6, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', border: '1px solid #dde3ea', borderTop: '3px solid var(--color-box-top)' }}>
+        <div style={{ background: '#fff', borderRadius: 0, padding: '16px 16px', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)' }}>
           {cardHeader('Performance Index', `Distribution of ${country.name} Swimmers by Performance Level`)}
           <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
             {perfDist.map((d, i) => (
               <div key={d.label} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 {/* bar area: fixed height so every bar sits on the same baseline */}
                 <div style={{ height: 165, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                  {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 900, marginBottom: 4, color: 'var(--color-accent-800)' }}>{d.count}</div>}
-                  <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: '3px 3px 0 0' }} />
+                  {d.count > 0 && <div className="asw-num" style={{ fontSize: 11, fontWeight: 800, marginBottom: 4, color: 'var(--color-accent-800)' }}>{d.count}</div>}
+                  <div style={{ width: '75%', height: `${Math.max(4, (d.count / maxPerf) * 140)}px`, background: PERF_BAR_COLORS[i], borderRadius: 0 }} />
                 </div>
                 {/* label area: fixed height so two-line labels don't push bars up */}
                 {/* legibility: 11px on desktop; scales down only where nine columns leave no room (phone) */}
-                <div style={{ fontSize: 'clamp(7.5px, 1.25vw, 11px)', marginTop: 6, lineHeight: 1.2, minHeight: 19, color: '#5a6b80', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
-                <div style={{ fontSize: 'clamp(6.5px, 1.15vw, 10.5px)', color: '#9baab8', marginTop: 1 }}>({d.range})</div>
+                <div style={{ fontSize: 'clamp(7.5px, 1.25vw, 11px)', marginTop: 6, lineHeight: 1.2, minHeight: 19, color: 'var(--color-neutral-700)', fontWeight: 700, wordBreak: 'break-word' }}>{d.label}</div>
+                <div style={{ fontSize: 'clamp(6.5px, 1.15vw, 10.5px)', color: 'var(--color-neutral-500)', marginTop: 1 }}>({d.range})</div>
               </div>
             ))}
           </div>
@@ -1784,11 +1774,11 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
               const mine = b.country_id === country.id
               return (
                 <div key={b.country_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
-                  <span style={{ width: 96, fontSize: 11.5, fontWeight: mine ? 900 : 600, flexShrink: 0, color: mine ? 'var(--color-accent-800)' : '#374151', display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  <span style={{ width: 96, fontSize: 12, fontWeight: mine ? 900 : 600, flexShrink: 0, color: mine ? 'var(--color-accent-800)' : 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     <Flag code={b.code} />{b.name}
                   </span>
-                  <div style={{ flex: 1, height: 18, background: '#e8eef6', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${(b.count / mx) * 100}%`, height: '100%', background: mine ? 'var(--color-accent-800)' : '#9db8d6', borderRadius: 3, minWidth: b.count > 0 ? 8 : 0 }} />
+                  <div style={{ flex: 1, height: 18, background: 'var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden' }}>
+                    <div style={{ width: `${(b.count / mx) * 100}%`, height: '100%', background: mine ? 'var(--color-accent-800)' : 'var(--color-accent-2-400)', borderRadius: 0, minWidth: b.count > 0 ? 8 : 0 }} />
                   </div>
                   <span className="asw-num" style={{ width: 24, textAlign: 'right', fontWeight: 800, color: 'var(--color-accent-800)', fontSize: 13, flexShrink: 0 }}>{b.count}</span>
                 </div>
@@ -1814,7 +1804,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
               <SwimmerLink id={t.swimmer_id} name={t.swimmer} />{t.fina ? ` · ${t.fina}` : ''}
             </div>
           </div>
-        ) : <span style={{ color: '#c1ccda', fontSize: 12 }}>—</span>
+        ) : <span style={{ color: 'var(--color-neutral-400)', fontSize: 12 }}>—</span>
         return (
           <div style={{ marginTop: 10 }}>
             {card(<>
@@ -1824,8 +1814,8 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
               </div>
               <div style={{ maxHeight: 440, overflowY: 'auto' }}>
                 {rows.map((r, i) => (
-                  <div key={r.event} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 8, alignItems: 'center', padding: '7px 0', borderBottom: '1px solid #f0f4f8', background: i % 2 === 1 ? '#fafbfd' : 'transparent' }}>
-                    <span style={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase', color: '#374151' }}>{r.event}</span>
+                  <div key={r.event} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 8, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--color-accent-2-100)', background: i % 2 === 1 ? 'var(--color-neutral-100)' : 'transparent' }}>
+                    <span style={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase', color: 'var(--color-neutral-800)' }}>{r.event}</span>
                     {cell(r.m)}
                     {cell(r.f)}
                   </div>
@@ -1854,7 +1844,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
           .map((c) => ({ label: c.name, value: c.swimmers_count, sub: `${c.swimmers_count}` }))
         if (!trend.length && !campaigns.length) return null
         return (
-          <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+          <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
             {card(<>
               {cardHeader('International Medal Trend', `${demonym(country.name)} Medals Won at International Meets by Year`)}
               {trend.length ? <MiniBars data={trend} color={CHART_COLORS.NAVY} /> : <Empty label="No international medals yet" />}
@@ -2118,7 +2108,7 @@ export default function CountryProfile({ arabFed = false }) {
           ...topMedalists.map((s) => s.photo),
           ...records.map((r) => r.swimmer_photo),
         ]
-        const navy = '#0c2340'
+        const navy = 'var(--color-accent-800)'
         const customFlag = flagImage(country.code)
         const alpha2 = flagAlpha2(country.code)
         const icon = (d) => (
@@ -2127,12 +2117,12 @@ export default function CountryProfile({ arabFed = false }) {
           </span>
         )
         const contactRow = (ic, content) => (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14.5, fontWeight: 600, color: navy }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: navy }}>
             {ic}{content}
           </div>
         )
         return (
-          <div className="rule-b" style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(120deg, #eef5fc 0%, #f6fafe 45%, #dcecf9 100%)' }}>
+          <div className="rule-b" style={{ position: 'relative', overflow: 'hidden', background: 'var(--color-bg)' }}>
             <style>{`
               @media (max-width: 760px) {
                 .fed-hero-photo { display: none; }
@@ -2143,11 +2133,11 @@ export default function CountryProfile({ arabFed = false }) {
                 falls back to high-res news action shots when swimmer photos are tiny */}
             <FedHeroPhoto candidates={photoCandidates} extras={ovNews.map((a) => a?.cover_image)} />
             <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 {/* Fitts's Law: back link is a 40px target (30px after the phone zoom) */}
                 <Link to="/countries" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, paddingRight: 12, fontSize: 12, textDecoration: 'none', fontWeight: 700, color: 'var(--color-accent-800)' }}>← All federations</Link>
                 {isAdmin && !arabFed && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
                     {fedNotice?.where === 'info' && <span role="status" style={{ fontSize: 12, fontWeight: 700, color: 'var(--asw-fast)' }}>{fedNotice.text}</span>}
                     {/* Zeigarnik Effect: an unfinished contact card says what is still missing (admins only) */}
                     {(() => {
@@ -2161,11 +2151,11 @@ export default function CountryProfile({ arabFed = false }) {
                   </span>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, marginTop: 16, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, marginTop: 16, flexWrap: 'wrap' }}>
                 {/* Circular federation logo = country flag */}
                 <div className="fed-hero-flag" style={{
                   width: 148, height: 148, borderRadius: '50%', background: '#fff', flexShrink: 0,
-                  border: `4px solid ${navy}`, boxShadow: '0 0 0 6px #fff, 0 6px 24px rgba(12,35,64,0.18)',
+                  border: `4px solid ${navy}`, 
                   display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                 }}>
                   {customFlag ? (
@@ -2176,21 +2166,21 @@ export default function CountryProfile({ arabFed = false }) {
                   ) : country.flag_url?.startsWith('http') ? (
                     <img src={country.flag_url} alt={country.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 34, color: navy }}>{country.code}</span>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, color: navy }}>{country.code}</span>
                   )}
                 </div>
                 <div style={{ minWidth: 260, maxWidth: 560 }}>
                   <h1 style={{
-                    margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 900,
-                    fontSize: 'clamp(28px, 4vw, 42px)', lineHeight: 1.04, letterSpacing: '-0.02em',
-                    color: navy, textTransform: 'uppercase',
+                    margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 800,
+                    fontSize: 'clamp(28px, 4vw, 40px)', lineHeight: 1.04, letterSpacing: '-0.02em',
+                    color: navy,
                   }}>
                     {arabFed ? <>Arab Swimming<br />Federation</> : <>{country.name}<br />Swimming Federation</>}
                   </h1>
-                  <div style={{ marginTop: 6, fontSize: 15, fontWeight: 700, color: 'var(--color-accent-800)' }}>
-                    {country.federation_tagline || 'Excellence in Water, Unity in Sport'}
+                  <div style={{ marginTop: 6, fontSize: 16, fontWeight: 700, color: 'var(--color-accent-800)' }}>
+                    {country.federation_tagline}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 16 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
                     {country.federation_phone && contactRow(
                       icon(<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />),
                       <span className="asw-num">{country.federation_phone}</span>)}
@@ -2224,25 +2214,20 @@ export default function CountryProfile({ arabFed = false }) {
         const hidden = visibleTabs.length - shownTabs.length
         const tabBtn = { minHeight: 48, padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-heading)', fontSize: 13, whiteSpace: 'nowrap', flex: 'none' }
         return (
-          <div className="rule-b fed-tabs" role="tablist" aria-label="Federation sections" style={{ padding: '0 32px', display: 'flex', gap: 0, overflowX: 'auto' }}>
+          <div className="rule-b prof-tabs">
+            <div className="seg seg-tabs" role="tablist" aria-label="Federation sections">
             {shownTabs.map((t) => (
               <button key={t.value} type="button" role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}
                 aria-current={tab === t.value ? 'page' : undefined}
                 title={tabHidden(t.value) ? 'Hidden from visitors (admin visibility settings)' : undefined}
-                style={{
-                  // Fitts's Law: 48px here = 36px after the phone zoom (0.75)
-                  ...tabBtn,
-                  borderBottom: tab === t.value ? '3px solid var(--color-accent)' : '3px solid transparent',
-                  fontWeight: tab === t.value ? 800 : 600,
-                  color: tab === t.value ? 'var(--color-accent)' : 'var(--color-text)',
-                  opacity: tabHidden(t.value) ? 0.4 : 1,
-                }}>
+                className={`seg-opt${tab === t.value ? ' on' : ''}`} style={{ opacity: tabHidden(t.value) ? 0.4 : 1 }}>
                 {t.label}
               </button>
             ))}
+            </div>
             {rest.length > 0 && (moreTabs || hidden > 0) && (
               <button type="button" aria-expanded={moreTabs} onClick={() => setMoreTabs((o) => !o)}
-                style={{ ...tabBtn, borderBottom: '3px solid transparent', fontWeight: 700, color: 'var(--color-neutral-700)', marginLeft: 'auto' }}>
+                className="btn btn-ghost" style={{ flex: 'none' }}>
                 {moreTabs ? 'Less ↑' : `More (${hidden}) ↓`}
               </button>
             )}
@@ -2281,33 +2266,27 @@ export default function CountryProfile({ arabFed = false }) {
           return out
         }
         const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 12)
-        const usDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
+        const usDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
         // compact sidebar cards: small square photo, tight text — no stretching
-        const hCard = { background: '#fff', borderRadius: 12, display: 'flex', gap: 12, padding: 10, alignItems: 'center', boxShadow: '0 3px 12px rgba(11,41,72,.08)', position: 'relative', borderTop: '3px solid var(--color-box-top)' }
-        const hPhoto = { width: 96, height: 96, borderRadius: 10, background: 'linear-gradient(135deg, #d6e4f0, #e2eaf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, color: '#8a9bb5', flexShrink: 0 }
+        const hCard = { background: '#fff', borderRadius: 0, display: 'flex', gap: 12, padding: 10, alignItems: 'center', position: 'relative', borderTop: '3px solid var(--color-box-top)' }
+        const hPhoto = { width: 96, height: 96, borderRadius: 0, background: 'var(--color-accent-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'var(--color-neutral-700)', flexShrink: 0 }
         const hBody = { padding: '4px 6px 4px 0', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }
-        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 12.5, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 4, lineHeight: 1.25 }
-        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 24, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1.1 }
-        const hSub = { fontSize: 12, color: '#33415c', marginTop: 3 }
+        const hTitle = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 4, lineHeight: 1.25 }
+        const hBig = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', lineHeight: 1.1 }
+        const hSub = { fontSize: 12, color: 'var(--color-neutral-800)', marginTop: 3 }
         // small blue bar-chart icon like the reference
         const barsIcon = (
           <span style={{ position: 'absolute', right: 16, bottom: 14, display: 'inline-flex', alignItems: 'flex-end', gap: 2.5 }}>
-            {[7, 12, 17, 22].map((h, k) => <span key={k} style={{ width: 4.5, height: h, background: 'var(--color-accent-800)', borderRadius: 1.5, display: 'inline-block' }} />)}
+            {[7, 12, 17, 22].map((h, k) => <span key={k} style={{ width: 4.5, height: h, background: 'var(--color-accent-800)', borderRadius: 0, display: 'inline-block' }} />)}
           </span>
         )
-        const taperL = { width: 130, height: 3, background: 'linear-gradient(to left, var(--color-accent-800), rgba(16,46,86,0))', transform: 'skewX(-30deg)' }
-        const taperR = { width: 130, height: 3, background: 'linear-gradient(to right, var(--color-accent-800), rgba(16,46,86,0))', transform: 'skewX(-30deg)' }
         const secTitle = (text) => (
-          <div className="m-sectitle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, margin: '26px 0 22px' }}>
-            <div style={taperL} />
-            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '0.02em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0, whiteSpace: 'nowrap' }}>{text}</h3>
-            <div style={taperR} />
-          </div>
+          <h3 className="m-sectitle prof-h">{text}</h3>
         )
         // Cognitive Load: no news → one quiet placeholder row, not four
         const newsItems = ovNews.length > 0 ? ovNews : [null]
         return (
-          <div className="m-pad" style={{ padding: '0 28px 32px', background: '#eaf1f9' }}>
+          <div className="m-pad" style={{ padding: '0 32px 32px' }}>
             {/* News + events left, compact highlights sidebar right. Natural
                 heights, fixed gaps — no stretching or cross-column matching. */}
             <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start', paddingTop: 18 }}>
@@ -2317,13 +2296,13 @@ export default function CountryProfile({ arabFed = false }) {
                   {newsItems.map((a, i) => {
                     const inner = (
                       <>
-                        <div style={{ width: 128, aspectRatio: '16 / 9', borderRadius: 8, overflow: 'hidden', flex: 'none', background: a?.cover_image ? 'var(--color-accent-800)' : 'linear-gradient(135deg, #c8d8e8, #dde6f0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, color: '#8a9bb5' }}>
+                        <div style={{ width: 128, aspectRatio: '16 / 9', borderRadius: 0, overflow: 'hidden', flex: 'none', background: a?.cover_image ? 'var(--color-accent-800)' : 'var(--color-neutral-400)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'var(--color-neutral-700)' }}>
                           {a?.cover_image
                             ? <img className="news-cover-img" src={a.cover_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : '📷'}
+                            : <Camera size={22} aria-hidden="true" />}
                         </div>
                         <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, textAlign: 'left' }}>
-                          <div style={{ fontSize: 11.5, color: '#5a6b80', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{a ? usDate(a.published_at || a.created_at) : 'No news yet'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{a ? usDate(a.published_at || a.created_at) : 'No news yet'}</div>
                           {(() => {
                             const rtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a?.title || '')
                             return (
@@ -2349,7 +2328,7 @@ export default function CountryProfile({ arabFed = false }) {
                       </>
                     )
                     // compact horizontal news row: thumbnail + headline
-                    const cardStyle = { display: 'flex', gap: 14, alignItems: 'center', padding: 10, borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', textDecoration: 'none' }
+                    const cardStyle = { display: 'flex', gap: 16, alignItems: 'center', padding: 10, borderRadius: 0, background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', textDecoration: 'none' }
                     return a
                       ? <Link key={a.id} to={`/news/${a.id}`} style={cardStyle}>{inner}</Link>
                       : <div key={`ph-${i}`} style={cardStyle}>{inner}</div>
@@ -2365,29 +2344,29 @@ export default function CountryProfile({ arabFed = false }) {
                   const daysUntil = upcoming ? Math.round((new Date(upcoming.date) - new Date(todayISO)) / 86400000) : 0
                   const dayNum = current ? Math.round((new Date(todayISO) - new Date(current.date)) / 86400000) + 1 : 0
                   const range = (e) => e.end_date && e.end_date !== e.date ? `${usDate(e.date)} – ${usDate(e.end_date)}` : usDate(e.date)
-                  const evCard = { borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120, position: 'relative' }
-                  const evKick = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }
-                  const evTitle = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, color: 'var(--color-accent-800)', lineHeight: 1.3 }
+                  const evCard = { borderRadius: 0, background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120, position: 'relative' }
+                  const evKick = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }
+                  const evTitle = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, color: 'var(--color-accent-800)', lineHeight: 1.3 }
                   const badge = (bg, text) => (
-                    <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 11, fontWeight: 800, background: bg, color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.05em' }}>{text}</span>
+                    <span style={{ position: 'absolute', right: 18, top: 18, fontSize: 11, fontWeight: 800, background: bg, color: '#fff', padding: '4px 12px', borderRadius: 0, letterSpacing: '0.08em' }}>{text}</span>
                   )
                   // Occam's Razor: only events that exist get a card. Nothing live
                   // and nothing scheduled → one line that points to the calendar.
                   if (!current && !upcoming) return (
-                    <div style={{ borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '14px 20px', marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ borderRadius: 0, background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', padding: '16px 20px', marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                       <span style={{ ...hSub, marginTop: 0, fontWeight: 600 }}>No event is running or scheduled right now.</span>
-                      <Link to="/calendar" style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--color-accent-800)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 40 }}>See the calendar →</Link>
+                      <Link to="/calendar" style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-accent-800)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 40 }}>See the calendar →</Link>
                     </div>
                   )
                   return (
-                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: current && upcoming ? '1fr 1fr' : '1fr', gap: 14, marginTop: 14 }}>
+                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: current && upcoming ? '1fr 1fr' : '1fr', gap: 16, marginTop: 14 }}>
                       {current && (
                         <div style={evCard}>
                           <div style={evKick}>Current Event</div>
                           {badge('var(--asw-fast)', `LIVE · DAY ${dayNum}`)}
                           <div style={evTitle}>{current.championship ? <Link to={`/meets/${current.championship}`} style={{ color: 'inherit' }}>{current.title}</Link> : current.title}</div>
                           <div style={hSub}>{range(current)}</div>
-                          {current.description && <div style={{ ...hSub, color: '#5a6b80' }}>{current.description}</div>}
+                          {current.description && <div style={{ ...hSub, color: 'var(--color-neutral-700)' }}>{current.description}</div>}
                         </div>
                       )}
                       {upcoming && (
@@ -2396,7 +2375,7 @@ export default function CountryProfile({ arabFed = false }) {
                           {badge('var(--color-accent-800)', daysUntil === 1 ? 'TOMORROW' : `IN ${daysUntil} DAYS`)}
                           <div style={evTitle}>{upcoming.championship ? <Link to={`/meets/${upcoming.championship}`} style={{ color: 'inherit' }}>{upcoming.title}</Link> : upcoming.title}</div>
                           <div style={hSub}>{range(upcoming)}</div>
-                          {upcoming.description && <div style={{ ...hSub, color: '#5a6b80' }}>{upcoming.description}</div>}
+                          {upcoming.description && <div style={{ ...hSub, color: 'var(--color-neutral-700)' }}>{upcoming.description}</div>}
                         </div>
                       )}
                     </div>
@@ -2405,16 +2384,16 @@ export default function CountryProfile({ arabFed = false }) {
 
                 {/* Compact data widgets under the events */}
                 {(() => {
-                  const panel = { borderRadius: 12, background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', padding: '18px 20px', display: 'flex', flexDirection: 'column' }
-                  const kick = { fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 8 }
-                  const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '7px 0', fontSize: 13.5, borderBottom: '1px solid #eef3f9' }
+                  const panel = { borderRadius: 0, background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', padding: '16px 20px', display: 'flex', flexDirection: 'column' }
+                  const kick = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 8 }
+                  const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 0', fontSize: 14, borderBottom: '1px solid var(--color-accent-100)' }
                   const tally = (medalBoxes || []).filter((m) => (m.total || 0) > 0).slice(0, 6)
                   const deco = [...(topMedalists || [])]
                     .sort((a, b) => (b.total ?? 0) - (a.total ?? 0)).slice(0, 6)
                   return (
-                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 14 }}>
                       <div style={panel}>
-                        <div style={{ ...kick, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ ...kick, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                           <span>Medal Tally by Competition</span>
                           {/* Law of Similarity: the summary leads to its detail, like every other card */}
                           {tally.length > 0 && visibleTabs.some((t) => t.value === 'medals') && (
@@ -2445,7 +2424,7 @@ export default function CountryProfile({ arabFed = false }) {
               {/* RIGHT: Highlight cards — random 4 from a pool of ~11 ideas,
                   reshuffled every visit, distinct swimmers within a set */}
               {(() => {
-                const hl = ({ photo, emoji = '🏊', title, big, sub, name, extra, icon, badgeEl }) => (
+                const hl = ({ photo, emoji = <Waves size={22} aria-hidden="true" />, title, big, sub, name, extra, icon, badgeEl }) => (
                   <div style={hCard}>
                     <div style={{ ...hPhoto, overflow: 'hidden' }}>
                       {photo ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : emoji}
@@ -2455,7 +2434,7 @@ export default function CountryProfile({ arabFed = false }) {
                       <div style={hBig}>{big}</div>
                       {sub ? <div style={hSub}>{sub}</div> : null}
                       {name ? <div style={{ ...hSub, fontWeight: 700, color: 'var(--color-accent-800)' }}>{name}</div> : null}
-                      {extra ? <div style={{ ...hSub, color: '#5a6b80' }}>{extra}</div> : null}
+                      {extra ? <div style={{ ...hSub, color: 'var(--color-neutral-700)' }}>{extra}</div> : null}
                     </div>
                     {icon === undefined ? barsIcon : icon}
                     {badgeEl}
@@ -2476,20 +2455,20 @@ export default function CountryProfile({ arabFed = false }) {
                 const lastHosted = [...hosted].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
                 const pool = [
                   { key: 'best-perf', person: seasonBest && nameKey(seasonBest.name), valid: !!seasonBest, render: () => hl({ photo: seasonBest.photo, title: <>Best Season<br />Performance</>, big: seasonBest.best_time || '—', sub: seasonBest.best_event ? `${seasonBest.best_event} · ${seasonBest.season}` : '', name: seasonBest.name, extra: seasonBest.championship }) },
-                  { key: 'decorated', person: topMedalist && nameKey(topMedalist.name), valid: !!topMedalist, render: () => hl({ photo: topMedalist.photo, title: <>Most Decorated<br />Swimmer</>, big: topMedalist.total || 0, sub: 'Total Medals', name: topMedalist.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🏆</span> }) },
-                  { key: 'new-record', person: newestRecord && nameKey(newestRecord.swimmer), valid: !!newestRecord, render: () => hl({ photo: newestRecord.swimmer_photo, title: 'New Record', big: newestRecord.time || '—', sub: newestRecord.event || '', name: newestRecord.swimmer, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 12px', borderRadius: 14, letterSpacing: '0.04em' }}>NEW</span> }) },
-                  { key: 'trending', person: t && nameKey(t.name), valid: !!t, render: () => hl({ photo: t.photo, title: <>Trending<br />Swimmer</>, big: (<span style={{ color: trendUp ? '#0d7a52' : '#a8402f', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}{!t.is_new && !t.is_hot && <span style={{ fontSize: 17, lineHeight: 1 }}>{trendUp ? '▲' : '▼'}</span>}</span>), sub: `Arab ranking #${t.rank}${t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}`, name: <SwimmerLink id={t.id} name={t.name} />, extra: t.best_event ? `${t.best_event} · ${t.best_time}${t.fina ? ` · ${t.fina} pts` : ''}` : null, icon: <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{trendUp ? '📈' : '📉'}</span> }) },
-                  { key: 'golden', person: goldKing && nameKey(goldKing.name), valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: goldKing.photo, title: <>The Golden<br />Touch</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>🥇</span> }) },
+                  { key: 'decorated', person: topMedalist && nameKey(topMedalist.name), valid: !!topMedalist, render: () => hl({ photo: topMedalist.photo, title: <>Most Decorated<br />Swimmer</>, big: topMedalist.total || 0, sub: 'Total Medals', name: topMedalist.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Trophy size={20} aria-hidden="true" /></span> }) },
+                  { key: 'new-record', person: newestRecord && nameKey(newestRecord.swimmer), valid: !!newestRecord, render: () => hl({ photo: newestRecord.swimmer_photo, title: 'New Record', big: newestRecord.time || '—', sub: newestRecord.event || '', name: newestRecord.swimmer, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 12px', borderRadius: 0, letterSpacing: '0.08em' }}>NEW</span> }) },
+                  { key: 'trending', person: t && nameKey(t.name), valid: !!t, render: () => hl({ photo: t.photo, title: <>Trending<br />Swimmer</>, big: (<span style={{ color: trendUp ? 'var(--asw-fast)' : 'var(--asw-slow)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}{!t.is_new && !t.is_hot && <span style={{ fontSize: 16, lineHeight: 1 }}>{trendUp ? '▲' : '▼'}</span>}</span>), sub: `Arab ranking #${t.rank}${t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}`, name: <SwimmerLink id={t.id} name={t.name} />, extra: t.best_event ? `${t.best_event} · ${t.best_time}${t.fina ? ` · ${t.fina} pts` : ''}` : null, icon: <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{trendUp ? <TrendingUp size={22} aria-hidden="true" /> : <TrendingDown size={22} aria-hidden="true" />}</span> }) },
+                  { key: 'golden', person: goldKing && nameKey(goldKing.name), valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: goldKing.photo, title: <>Most Gold<br />Medals</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Medal size={20} aria-hidden="true" /></span> }) },
                   { key: 'leading-woman', person: leadingWoman && nameKey(leadingWoman.name), valid: !!leadingWoman, render: () => hl({ photo: leadingWoman.photo, title: <>Leading<br />Woman</>, big: leadingWoman.best_time || '—', sub: leadingWoman.best_event || '', name: leadingWoman.name, extra: leadingWoman.championship }) },
-                  { key: 'collector', person: collector && nameKey(collector.rec.swimmer), valid: !!(collector && collector.n > 1), render: () => hl({ photo: collector.rec.swimmer_photo, title: <>Record<br />Collector</>, big: collector.n, sub: 'Records Held', name: collector.rec.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>⏱️</span> }) },
-                  { key: 'oldest-record', person: oldestRecord && nameKey(oldestRecord.swimmer), valid: !!oldestRecord, render: () => hl({ photo: oldestRecord.swimmer_photo, title: <>Longest-Standing<br />Record</>, big: oldestRecord.time || '—', sub: `${oldestRecord.event || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 22 }}>🏛️</span> }) },
-                  { key: 'podium', valid: gsb.g + gsb.s + gsb.b > 0, render: () => hl({ emoji: '🏅', title: <>Podium<br />Power</>, big: formatNumber(gsb.g + gsb.s + gsb.b), sub: 'Medals Across All Competitions', name: <GSB gold={gsb.g} silver={gsb.s} bronze={gsb.b} /> }) },
-                  { key: 'host', valid: hosted.length > 0, render: () => hl({ emoji: '🏟️', title: <>Championship<br />Host</>, big: hosted.length, sub: `Championship${hosted.length === 1 ? '' : 's'} Hosted`, name: lastHosted?.name, extra: lastHosted?.date ? `Most recent · ${lastHosted.date.slice(0, 4)}` : null }) },
+                  { key: 'collector', person: collector && nameKey(collector.rec.swimmer), valid: !!(collector && collector.n > 1), render: () => hl({ photo: collector.rec.swimmer_photo, title: <>Most<br />Records</>, big: collector.n, sub: 'Records Held', name: collector.rec.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>⏱</span> }) },
+                  { key: 'oldest-record', person: oldestRecord && nameKey(oldestRecord.swimmer), valid: !!oldestRecord, render: () => hl({ photo: oldestRecord.swimmer_photo, title: <>Longest-Standing<br />Record</>, big: oldestRecord.time || '—', sub: `${oldestRecord.event || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Landmark size={20} aria-hidden="true" /></span> }) },
+                  { key: 'podium', valid: gsb.g + gsb.s + gsb.b > 0, render: () => hl({ emoji: <Medal size={22} aria-hidden="true" />, title: <>Total<br />Medals</>, big: formatNumber(gsb.g + gsb.s + gsb.b), sub: 'Medals Across All Competitions', name: <GSB gold={gsb.g} silver={gsb.s} bronze={gsb.b} /> }) },
+                  { key: 'host', valid: hosted.length > 0, render: () => hl({ emoji: <Landmark size={22} aria-hidden="true" />, title: <>Championship<br />Host</>, big: hosted.length, sub: `Championship${hosted.length === 1 ? '' : 's'} Hosted`, name: lastHosted?.name, extra: lastHosted?.date ? `Most recent · ${lastHosted.date.slice(0, 4)}` : null }) },
                   { key: 'quick-stats', valid: !!profile.stats, render: () => hl({ title: 'Quick Stats', big: formatNumber(profile.stats?.swimmers), sub: 'Total Swimmers', name: `${formatNumber(profile.stats?.medals)} Medals · ${formatNumber(profile.stats?.records)} Records` }) },
                 ]
                 const picked = pickHighlights(pool, mulberry32(hlSeed), 5)
                 return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
                     {picked.map((c) => <div key={c.key} style={{ minWidth: 0 }}>{c.render()}</div>)}
                   </div>
                 )
@@ -2507,25 +2486,25 @@ export default function CountryProfile({ arabFed = false }) {
                   ? { display: 'flex', width: 'max-content', animationDuration: `${Math.max(topRecords.length * 5, 25)}s` }
                   : { display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
               {(topRecords.length >= 4 ? [...topRecords, ...topRecords] : topRecords).map((r, i) => (
-                <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fdfeff', boxShadow: '0 3px 12px rgba(11,41,72,.07)', display: 'flex', flexDirection: 'column' }}>
+                <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', display: 'flex', flexDirection: 'column' }}>
                   {/* Circular photo with navy ring */}
                   <div style={{ padding: '24px 0 8px' }}>
-                    <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, color: '#8a9bb5', border: '4px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(0,0,0,.12)', overflow: 'hidden' }}>
-                      {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+                    <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'var(--color-neutral-300)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '4px solid var(--color-accent-800)', overflow: 'hidden' }}>
+                      {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
                     </div>
                   </div>
                   <div style={{ padding: '12px 12px 0' }}>
-                    <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
-                    <div style={{ fontSize: 13.5, color: '#33415c', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
+                    <div style={{ fontSize: 14, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                       <span>{String(r.event || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
-                      <span style={{ color: '#c6d4e2' }}>|</span>
+                      <span style={{ color: 'var(--color-neutral-400)' }}>|</span>
                       <span>{poolLabel(r.pool)}</span>
                     </div>
                   </div>
                   {/* Navy footer with time */}
-                  <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 8 }}>
-                    <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 25, letterSpacing: '-0.01em' }}>{r.time}</div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 3, opacity: 0.92 }}>{REC_TYPE_LABELS[r.record_type] || 'National'} Record</div>
+                  <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 0 }}>
+                    <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, letterSpacing: '-0.01em' }}>{r.time}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3, opacity: 0.92 }}>{REC_TYPE_LABELS[r.record_type] || 'National'} Record</div>
                   </div>
                 </div>
               ))}
@@ -2538,17 +2517,15 @@ export default function CountryProfile({ arabFed = false }) {
 
       {/* ===== BOARD ===== */}
       {tab === 'board' && (
-        <div className="m-pad" style={{ padding: '0 28px 28px', background: '#fff' }}>
+        <div className="m-pad" style={{ padding: '0 32px 32px' }}>
           {/* Title */}
           <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 4 }}>
-            <span style={{ fontSize: 24 }}>👥</span>
+            <span style={{ fontSize: 24 }}><Users size={20} aria-hidden="true" /></span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
-            <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 24, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>Board of Directors</h2>
-            <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
+            <h2 className="prof-h" style={{ margin: 0 }}>Board of Directors</h2>
           </div>
-          <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)', maxWidth: 500, margin: '0 auto 28px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', maxWidth: 500, margin: '0 0 28px', lineHeight: 1.5 }}>
             The Board of Directors is responsible for the strategic direction, governance, and overall leadership of the {arabFed ? 'Arab Swimming Federation' : `${country.name} Swimming Federation`}.
           </p>
 
@@ -2564,26 +2541,26 @@ export default function CountryProfile({ arabFed = false }) {
 
           {/* Board member cards — real data when the national team has board
               members registered, ISF-style placeholders otherwise */}
-          <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
+          <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
             {(boardMembers.length
               ? boardMembers.map((m) => ({ role: m.role || 'Member', name: m.name, photo: m.photo, member: m }))
               : ['President', 'Vice President', 'Treasurer', 'Secretary General', 'Technical Director',
                  'Member', 'Member', 'Member', 'Member', 'Member'].map((role) => ({ role, name: '—', photo: null }))
             ).map(({ role, name, photo, member }, i) => (
-              <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', borderTop: '3px solid var(--color-box-top)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
-                <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: photo ? `url(${photo}) center/cover` : 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>{photo ? '' : '👤'}</div>
+              <div key={i} style={{ borderRadius: 0, textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', padding: '16px 16px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
+                <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 0, background: photo ? `url(${photo}) center/cover` : 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: 'var(--color-neutral-700)' }}>{photo ? '' : <User size={22} aria-hidden="true" />}</div>
                 <div style={{ paddingTop: 16 }}>
-                  <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}>{name}</div>
-                  <div style={{ fontSize: 13.5, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{role}</div>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>{name}</div>
+                  <div style={{ fontSize: 14, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{role}</div>
                 </div>
                 <div style={{ marginTop: 'auto', paddingTop: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,  }}>
                       <div style={{ width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '10px solid #fff', marginLeft: 3 }} />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 20 }}>
                       {[7, 12, 5, 15, 9, 17, 6, 13, 8, 16, 5, 11, 14, 7, 18, 10, 5, 13, 7, 15, 9, 6, 12, 8].map((h, k) => (
-                        <span key={k} style={{ width: 2, height: h, background: 'var(--color-accent-800)', borderRadius: 2, display: 'inline-block' }} />
+                        <span key={k} style={{ width: 2, height: h, background: 'var(--color-accent-800)', borderRadius: 0, display: 'inline-block' }} />
                       ))}
                     </div>
                   </div>
@@ -2610,32 +2587,30 @@ export default function CountryProfile({ arabFed = false }) {
       {/* ===== TEAM (Swimmers) ===== */}
       {tab === 'team' && (() => {
         const secTitle = (icon, text) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '28px 0 22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '28px 0 22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 22 }}>{icon}</span>
-              <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+              <span style={{ fontSize: 24 }}>{icon}</span>
             </div>
-            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0 }}>{text}</h3>
-            <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+            <h3 className="prof-h" style={{ margin: 0 }}>{text}</h3>
           </div>
         )
         const swimmerCard = (s) => (
-          <div key={s.id} style={{ borderRadius: 12, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', borderTop: '3px solid var(--color-box-top)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 10px 12px', display: 'flex', flexDirection: 'column' }}>
+          <div key={s.id} style={{ borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', padding: '16px 10px 12px', display: 'flex', flexDirection: 'column' }}>
             {/* Circular photo with navy ring */}
-            <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(180deg, #dfe8f1, #c6d4e2)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, color: '#8a9bb5', border: '3px solid var(--color-accent-800)', boxShadow: '0 3px 10px rgba(11,41,72,.14)', overflow: 'hidden' }}>
-              {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : '🏊'}
+            <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'var(--color-neutral-300)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', overflow: 'hidden' }}>
+              {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
             </div>
             {/* Info */}
             <div style={{ padding: '10px 2px 0' }}>
-              <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
+              <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
                 <SwimmerLink id={s.id} name={s.name} />
               </div>
-              <div style={{ fontSize: 11.5, color: '#33415c', fontWeight: 500, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-neutral-800)', fontWeight: 600, lineHeight: 1.5 }}>
                 {s.sex === 'F' ? "Women's" : "Men's"}
               </div>
             </div>
-            <div style={{ marginTop: 'auto', paddingTop: 9, borderTop: '1px solid #eef2f7' }}>
-              <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 11.5, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
+            <div style={{ marginTop: 'auto', paddingTop: 9, borderTop: '1px solid var(--color-neutral-200)' }}>
+              <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
                 <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
               </Link>
               {isAdmin && (
@@ -2646,20 +2621,20 @@ export default function CountryProfile({ arabFed = false }) {
         )
         const waveHeights = [7, 12, 5, 15, 9, 17, 6, 13, 8, 16, 5, 11, 14, 7, 18, 10, 5, 13, 7, 15, 9, 6, 12, 8]
         const coachCard = ({ role, name, photo }, i) => (
-          <div key={i} style={{ borderRadius: 16, textAlign: 'center', background: '#fff', border: '1px solid #e2e9f2', borderTop: '3px solid var(--color-box-top)', boxShadow: '0 2px 12px rgba(11,41,72,.08)', padding: '14px 14px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
-            <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 12, background: photo ? `url(${photo}) center/cover` : 'linear-gradient(180deg, #e9eef4, #d4dde8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#8a9bb5' }}>{photo ? '' : '👤'}</div>
+          <div key={i} style={{ borderRadius: 0, textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', padding: '16px 16px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
+            <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 0, background: photo ? `url(${photo}) center/cover` : 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: 'var(--color-neutral-700)' }}>{photo ? '' : <User size={22} aria-hidden="true" />}</div>
             <div style={{ paddingTop: 16 }}>
-              <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-accent-800)' }}>{name}</div>
-              <div style={{ fontSize: 13.5, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{role}</div>
+              <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>{name}</div>
+              <div style={{ fontSize: 14, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{role}</div>
             </div>
             <div style={{ marginTop: 'auto', paddingTop: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(11,41,72,.25)' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,  }}>
                   <div style={{ width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '10px solid #fff', marginLeft: 3 }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 20 }}>
                   {waveHeights.map((h, k) => (
-                    <span key={k} style={{ width: 2, height: h, background: 'var(--color-accent-800)', borderRadius: 2, display: 'inline-block' }} />
+                    <span key={k} style={{ width: 2, height: h, background: 'var(--color-accent-800)', borderRadius: 0, display: 'inline-block' }} />
                   ))}
                 </div>
               </div>
@@ -2668,11 +2643,11 @@ export default function CountryProfile({ arabFed = false }) {
           </div>
         )
         return (
-          <div className="m-pad" style={{ padding: '0 28px 28px', background: '#eef3f9' }}>
+          <div className="m-pad" style={{ padding: '0 32px 32px' }}>
             <SubTabs options={[['coaches', 'Coaches'], ['swimmers', 'Swimmers']]} value={teamSub} onChange={setTeamSub} />
             {teamSub === 'coaches' && (<>
-              {secTitle('👤', 'Coaches')}
-              <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
+              {secTitle(<User size={22} aria-hidden="true" />, 'Coaches')}
+              <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
                 {(countryCoaches.length
                   ? countryCoaches.map((c) => ({ role: COACH_LEVELS[c.level] || c.level || 'Coach', name: c.name, photo: c.photo }))
                   : ['Head Coach', 'Assistant Coach', 'Swimming Coach', 'Conditioning Coach'].map((role) => ({ role, name: '—', photo: null }))
@@ -2680,7 +2655,7 @@ export default function CountryProfile({ arabFed = false }) {
               </div>
             </>)}
             {teamSub === 'swimmers' && (<>
-              {secTitle('🏊', 'Swimmers')}
+              {secTitle(<Waves size={22} aria-hidden="true" />, 'Swimmers')}
               {topSwimmers.length === 0 ? <Empty label="No swimmers" hint="Swimmers appear here once this federation has results in the database." /> : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
                   {topSwimmers.map(swimmerCard)}
@@ -2794,7 +2769,7 @@ export default function CountryProfile({ arabFed = false }) {
                 .map((n) => ({ name: n, gold: 0, silver: 0, bronze: 0, total: 0 })),
             ]
             return (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
               {boxes.map((m) => (
                 <div
                   key={m.name}
@@ -2802,9 +2777,9 @@ export default function CountryProfile({ arabFed = false }) {
                   role="button" tabIndex={0} className="row-link"
                   aria-label={`${m.name}: ${m.total} medals, open details`}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSearchParams({ tab: 'medals', mclass: m.name }) } }}
-                  style={{ background: '#fff', border: '1px solid #dde6f0', borderTop: '3px solid var(--color-box-top)', borderRadius: 10, boxShadow: '0 1px 6px rgba(11,41,72,.06)', color: 'var(--color-accent-800)', padding: '12px 18px', minWidth: 150, flex: '1 1 150px', maxWidth: 240, cursor: 'pointer', position: 'relative' }}
+                  style={{ background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', borderRadius: 0, color: 'var(--color-accent-800)', padding: '12px 16px', minWidth: 150, flex: '1 1 150px', maxWidth: 240, cursor: 'pointer', position: 'relative' }}
                 >
-                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{m.name}</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>{m.name}</div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, lineHeight: 1.1, marginTop: 2, color: 'var(--color-accent-800)' }}>{formatNumber(m.total)}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                     <GSB gold={m.gold} silver={m.silver} bronze={m.bronze} />

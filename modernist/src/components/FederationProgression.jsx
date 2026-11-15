@@ -15,12 +15,12 @@ import { formatDate } from '../utils'
 
 const INK = 'var(--color-accent-800)'
 const NAVY = 'var(--color-accent-800)'
-const LIGHT_BLUE = '#4a8fc0'
-const GOLD = '#b98a1e'
-const GREEN = '#16a34a'
-const RED = '#dc2626'
-const GRID = '#dde4ec'
-const AXIS = '#78879a'
+const LIGHT_BLUE = 'var(--color-accent-2)'
+const GOLD = 'var(--asw-gold)'
+const GREEN = 'var(--asw-fast)'
+const RED = 'var(--asw-slow)'
+const GRID = 'var(--color-neutral-300)'
+const AXIS = 'var(--color-neutral-600)'
 const FONT = '"Archivo", system-ui, sans-serif'
 
 function useIsMobile() {
@@ -40,9 +40,9 @@ function Triangle({ x, y, color }) {
 }
 
 function SubTabs({ options, value, onChange }) {
-  const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', minHeight: 36 }
+  const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 0, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', minHeight: 36 }
   return (
-    <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', margin: '18px 0 24px' }}>
+    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', margin: '18px 0 24px' }}>
       {options.map(([val, label]) => (
         <button key={val} type="button" onClick={() => onChange(val)} aria-pressed={value === val}
           style={value === val ? { ...base, background: 'var(--color-accent-800)', color: '#fff' } : { ...base, background: '#fff', color: 'var(--color-accent-800)' }}>
@@ -62,8 +62,8 @@ function pctChange(prevCs, curCs) {
 }
 
 function cellBg(pct) {
-  if (pct == null) return '#f6f8fa'
-  if (pct === 0) return '#f6f8fa'
+  if (pct == null) return 'var(--color-neutral-100)'
+  if (pct === 0) return 'var(--color-neutral-100)'
   const mag = Math.min(Math.abs(pct), 3) / 3 // saturate at ±3 %
   const alpha = 0.1 + mag * 0.45
   return pct > 0 ? `rgba(22, 163, 74, ${alpha})` : `rgba(220, 38, 38, ${alpha})`
@@ -76,15 +76,15 @@ function OverviewHeatmap({ data, onPickEvent }) {
   if (!years.length || !events.length) return <Empty label="No results for this selection" hint="Try the other gender or pool length." />
   return (
     <div>
-      <div style={{ display: 'flex', gap: 18, justifyContent: 'center', flexWrap: 'wrap', fontSize: 11.5, color: '#58687c', marginBottom: 14 }}>
-        {[[cellBg(2), 'Faster than previous season'], [cellBg(-2), 'Slower than previous season'], ['#f6f8fa', 'First season / no change']].map(([bg, label]) => (
+      <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap', fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 14 }}>
+        {[[cellBg(2), 'Faster than previous season'], [cellBg(-2), 'Slower than previous season'], ['var(--color-neutral-100)', 'First season / no change']].map(([bg, label]) => (
           <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, height: 14, background: bg, border: '1px solid #d7dee7', display: 'inline-block' }} />{label}
+            <span style={{ width: 14, height: 14, background: bg, border: '1px solid var(--color-neutral-300)', display: 'inline-block' }} />{label}
           </span>
         ))}
       </div>
       <div className="table-scroll">
-        <table className="table" style={{ fontSize: 12.5 }}>
+        <table className="table" style={{ fontSize: 13 }}>
           <thead>
             <tr>
               <th>Event</th>
@@ -117,11 +117,11 @@ function OverviewHeatmap({ data, onPickEvent }) {
                       <td key={y} className="num asw-num"
                         title={c ? `${c.time} — ${c.swimmer}\n${c.meet}` : 'No swims this season'}
                         style={{ background: c ? cellBg(pct) : 'transparent', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                        {c ? c.time : <span style={{ color: '#c3ccd6' }}>·</span>}
+                        {c ? c.time : <span style={{ color: 'var(--color-neutral-400)' }}>·</span>}
                       </td>
                     )
                   })}
-                  <td className="num asw-num" style={{ fontWeight: 800, whiteSpace: 'nowrap', color: trend == null ? '#8a9bb5' : trend > 0 ? GREEN : trend < 0 ? RED : '#8a9bb5' }}>
+                  <td className="num asw-num" style={{ fontWeight: 800, whiteSpace: 'nowrap', color: trend == null ? 'var(--color-neutral-700)' : trend > 0 ? GREEN : trend < 0 ? RED : 'var(--color-neutral-700)' }}>
                     {trend == null ? '—' : `${trend > 0 ? '\u2193' : trend < 0 ? '\u2191' : ''} ${Math.abs(trend).toFixed(1)}%`}
                   </td>
                 </tr>
@@ -130,7 +130,7 @@ function OverviewHeatmap({ data, onPickEvent }) {
           </tbody>
         </table>
       </div>
-      <div style={{ textAlign: 'center', fontSize: 11.5, color: '#8a9bb5', marginTop: 10 }}>
+      <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 10 }}>
         Each cell is the federation's fastest swim of that season · hover a cell for the swimmer & meet · click a row for the full chart
       </div>
     </div>
@@ -148,7 +148,7 @@ function SeasonChart({ seasons, benchmarks }) {
   const benchLines = []
   if (benchmarks?.arab_record) benchLines.push({ cs: benchmarks.arab_record.time_cs, color: GOLD, label: `Arab Record ${benchmarks.arab_record.time}` })
   if (benchmarks?.cut_a) benchLines.push({ cs: benchmarks.cut_a.time_cs, color: GREEN, label: `A Cut ${benchmarks.cut_a.time}` })
-  if (benchmarks?.cut_b) benchLines.push({ cs: benchmarks.cut_b.time_cs, color: '#7d8a99', label: `B Cut ${benchmarks.cut_b.time}` })
+  if (benchmarks?.cut_b) benchLines.push({ cs: benchmarks.cut_b.time_cs, color: 'var(--asw-silver)', label: `B Cut ${benchmarks.cut_b.time}` })
 
   const allCs = [
     ...seasons.map((s) => s.best_cs),
@@ -202,7 +202,7 @@ function SeasonChart({ seasons, benchmarks }) {
               return (
                 <g key={it.label}>
                   <line x1={x} y1={y} x2={x + 24} y2={y} stroke={it.color} strokeWidth="2.6" strokeDasharray={it.dash || undefined} />
-                  <text x={x + 30} y={y + 4} fill={INK} fontSize="11.5" fontWeight="bold">{it.label}</text>
+                  <text x={x + 30} y={y + 4} fill={INK} fontSize="12" fontWeight="bold">{it.label}</text>
                 </g>
               )
             })
@@ -216,7 +216,7 @@ function SeasonChart({ seasons, benchmarks }) {
                 <line x1={x} y1={legendY} x2={x + 32} y2={legendY} stroke={it.color} strokeWidth="2.8" strokeDasharray={it.dash || undefined} />
                 {it.marker === 'tri' && <Triangle x={x + 16} y={legendY} color={it.color} />}
                 {it.marker === 'dot' && <circle cx={x + 16} cy={legendY} r={4.5} fill={it.color} stroke="#fff" strokeWidth="1.4" />}
-                <text x={x + 40} y={legendY + 4} fill={INK} fontSize="12.5" fontWeight="bold">{it.label}</text>
+                <text x={x + 40} y={legendY + 4} fill={INK} fontSize="13" fontWeight="bold">{it.label}</text>
               </g>
             )
           })
@@ -300,7 +300,7 @@ function SeasonChart({ seasons, benchmarks }) {
             <g style={{ pointerEvents: 'none' }}>
               <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke={INK} strokeWidth="1.5" />
               {rows.map((r, i) => (
-                <text key={i} x={tx + tw / 2} y={ty + 16 + i * 17} textAnchor="middle" fill={i <= 1 ? INK : '#58687c'} fontSize={i === 0 ? 12.5 : 11.5} fontWeight={i <= 1 ? 'bold' : 'normal'} style={{ fontVariantNumeric: 'tabular-nums' }}>{r}</text>
+                <text key={i} x={tx + tw / 2} y={ty + 16 + i * 17} textAnchor="middle" fill={i <= 1 ? INK : 'var(--color-neutral-700)'} fontSize={i === 0 ? 12.5 : 11.5} fontWeight={i <= 1 ? 'bold' : 'normal'} style={{ fontVariantNumeric: 'tabular-nums' }}>{r}</text>
               ))}
             </g>
           )
@@ -321,20 +321,20 @@ function EventView({ data }) {
   const gaps = []
   if (benchmarks.arab_record) gaps.push(['Arab Record', benchmarks.arab_record, GOLD])
   if (benchmarks.cut_a) gaps.push([`A Cut · ${benchmarks.cut_a.standard}`, benchmarks.cut_a, GREEN])
-  if (benchmarks.cut_b) gaps.push([`B Cut · ${benchmarks.cut_b.standard}`, benchmarks.cut_b, '#7d8a99'])
+  if (benchmarks.cut_b) gaps.push([`B Cut · ${benchmarks.cut_b.standard}`, benchmarks.cut_b, 'var(--asw-silver)'])
 
   return (
     <div>
       {gaps.length > 0 && (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
           {gaps.map(([label, b, color]) => {
             const diff = latest.best_cs - b.time_cs
             const ahead = diff <= 0
             return (
-              <div key={label} style={{ border: `2px solid ${color}`, borderRadius: 8, padding: '10px 18px', minWidth: 170, textAlign: 'center' }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color }}>{label}</div>
+              <div key={label} style={{ border: `2px solid ${color}`, borderRadius: 0, padding: '10px 16px', minWidth: 170, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color }}>{label}</div>
                 <div className="asw-num" style={{ fontWeight: 800, fontSize: 20, color: INK, marginTop: 2 }}>{b.time}</div>
-                <div className="asw-num" style={{ fontSize: 12.5, fontWeight: 700, marginTop: 2, color: ahead ? GREEN : RED }}>
+                <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, marginTop: 2, color: ahead ? GREEN : RED }}>
                   {ahead ? `\u2713 ${formatCs(Math.abs(diff))} under` : `${formatCs(diff)} to go`}
                 </div>
               </div>
@@ -362,7 +362,7 @@ function EventView({ data }) {
                   <td className="text-muted hide-mobile" style={{ maxWidth: 230, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.meet}</td>
                   <td className="time asw-num">{s.top8_avg || '—'}</td>
                   <td className="num asw-num" title="Swimmers who raced this event this season">{s.swimmers_count}</td>
-                  <td className="num asw-num" style={{ fontWeight: 700, color: diff == null ? '#8a9bb5' : diff > 0 ? GREEN : diff < 0 ? RED : '#8a9bb5' }}>
+                  <td className="num asw-num" style={{ fontWeight: 700, color: diff == null ? 'var(--color-neutral-700)' : diff > 0 ? GREEN : diff < 0 ? RED : 'var(--color-neutral-700)' }}>
                     {diff == null ? '—' : diff === 0 ? '=' : `${diff > 0 ? '\u2193' : '\u2191'} ${formatCs(Math.abs(diff))}`}
                   </td>
                 </tr>
@@ -371,7 +371,7 @@ function EventView({ data }) {
           </tbody>
         </table>
       </div>
-      <div style={{ textAlign: 'center', fontSize: 11.5, color: '#8a9bb5', marginTop: 10 }}>
+      <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 10 }}>
         Top-8 Avg = average of the federation's 8 fastest swimmers that season (depth of the system, not just the star) · Depth = swimmers who raced the event
       </div>
     </div>
@@ -407,7 +407,7 @@ function RecordsView({ data }) {
                 if (isCurrent) stood = `current · ${stood}`
               }
               return (
-                <tr key={i} style={isCurrent ? { background: '#f4f8fc' } : undefined}>
+                <tr key={i} style={isCurrent ? { background: 'var(--color-neutral-100)' } : undefined}>
                   <td className="asw-num">{i + 1}</td>
                   <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>{formatDate(t.date)}</td>
                   <td className="time asw-time" style={{ fontWeight: 800, color: isCurrent ? GOLD : NAVY }}>{t.time}</td>
@@ -421,7 +421,7 @@ function RecordsView({ data }) {
           </tbody>
         </table>
       </div>
-      <div style={{ textAlign: 'center', fontSize: 11.5, color: '#8a9bb5', marginTop: 10 }}>
+      <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 10 }}>
         Every swim that improved the federation's all-time best in this event, in chronological order
       </div>
     </div>
@@ -628,18 +628,16 @@ export default function FederationProgressionTab({ countryId }) {
 
   return (
     <div className="pad-lg">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, margin: '4px 0 8px' }}>
-        <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: 22, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-800)', margin: 0, textAlign: 'center' }}>Progression</h2>
-        <div style={{ width: 50, height: 2, background: 'var(--color-accent-800)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '4px 0 8px' }}>
+        <h2 className="prof-h" style={{ margin: 0 }}>Progression</h2>
       </div>
-      <div style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--color-neutral-700)', marginBottom: 4 }}>
+      <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 4 }}>
         Season-best analysis — how the federation moves year over year
       </div>
       <SubTabs value={sub} onChange={setSub}
         options={[['overview', 'Overview'], ['event', 'By Event'], ['records', 'Record History'], ['intl', 'International']]} />
 
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
         {sub === 'intl' && (
           <select className="select" aria-label="Meet level" style={{ width: 'auto', minWidth: 160 }} value={cls} onChange={(e) => setCls(e.target.value)}>
             {MEET_LEVELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}

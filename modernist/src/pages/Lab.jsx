@@ -136,7 +136,7 @@ function SwimmerPicker({ onPick }) {
               key={s.id}
               type="button"
               onClick={() => { onPick(s); setQ(''); setResults([]); setOpen(false) }}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-neutral-200)', cursor: 'pointer', font: 'inherit', fontSize: 13, textAlign: 'left' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-neutral-200)', cursor: 'pointer', font: 'inherit', fontSize: 13, textAlign: 'left' }}
             >
               <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
               <span style={{ flex: 1 }}>{s.name}</span>
@@ -176,9 +176,9 @@ function useEventGroups(pool) {
 
 function Stat({ label, value, sub }) {
   return (
-    <div style={{ border: '1px solid var(--color-divider)', padding: '14px 16px', flex: '1 1 130px' }}>
+    <div style={{ border: '1px solid var(--color-divider)', padding: '16px 16px', flex: '1 1 130px' }}>
       <div className="kicker">{label}</div>
-      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1.1 }}>{value}</div>
       {sub && <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>{sub}</div>}
     </div>
   )
@@ -299,7 +299,7 @@ function SwimmerLab({ swimmerId, onPickSwimmer, onOpenEvents }) {
           <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
         </Empty>
       ) : (
-        <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+        <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           {!dna && !(chase && chase.my_rank) && !consistency && !(rivals && rivals.rivals.length > 0) && (
             <Empty label="No Lab numbers for this swimmer yet" hint="There is not enough race data. Try another swimmer." />
           )}
@@ -314,7 +314,7 @@ function SwimmerLab({ swimmerId, onPickSwimmer, onOpenEvents }) {
                 <Radar axes={dna.axes} />
                 <div style={{ flex: '1 1 240px' }}>
                   {dna.axes.map((a) => (
-                    <div key={a.stroke} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', borderBottom: '1px solid var(--color-neutral-200)' }}>
+                    <div key={a.stroke} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0', borderBottom: '1px solid var(--color-neutral-200)' }}>
                       <span style={{ flex: '0 0 130px', fontWeight: 600, fontSize: 13 }}>{a.stroke}</span>
                       <div style={{ flex: 1, height: 8, background: 'var(--color-neutral-200)' }}>
                         <div style={{ width: `${Math.max(0, a.percentile)}%`, height: '100%', background: 'var(--color-accent)' }} />
@@ -344,7 +344,7 @@ function SwimmerLab({ swimmerId, onPickSwimmer, onOpenEvents }) {
           {chase && chase.my_rank && (
             <section>
               <SectHead title="The Chase" />
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
                 <Stat label="Current rank" value={`#${chase.my_rank}`} sub={`of ${Number(chase.field_size).toLocaleString('en-US')} swimmers`} />
                 <Stat label="Best time" value={chase.my_time} />
               </div>
@@ -404,7 +404,7 @@ function SwimmerLab({ swimmerId, onPickSwimmer, onOpenEvents }) {
               <div className="text-muted" style={{ fontSize: 13, marginBottom: 10 }}>
                 Consistency index: 100 means the same time every race, 0 means very uneven. Finals effect: how much faster (+) or slower (−) the final is than the heat.
               </div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <Stat label="Consistency index" value={consistency.consistency_index ?? '—'} sub={`${consistency.swim_count} swims`} />
                 <Stat
                   label="Finals effect"
@@ -500,7 +500,7 @@ function EventLab() {
   return (
     <div>
       {/* Common Region: the event and the field it is measured in share one bar; the event leads */}
-      <div className="rule-b lab-bar" style={{ padding: '14px 32px', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="rule-b lab-bar" style={{ padding: '16px 32px', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <select className="select" aria-label="Event" style={{ width: 'auto', maxWidth: 260 }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
           {groups.map((g) => (
             <optgroup key={g.stroke} label={g.stroke}>
@@ -514,14 +514,14 @@ function EventLab() {
       </div>
 
       {!eventId ? <Empty label="Select an event" hint="Choose an event from the list above to see its numbers." /> : (
-        <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+        <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           {/* What-if */}
           <section>
             <SectHead title="What If — project a time" />
             <div className="text-muted" style={{ fontSize: 13, marginBottom: 10 }}>
               Type any time to see where it would rank in this event today.
             </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 className="input"
                 style={{ width: 160 }}
@@ -541,7 +541,7 @@ function EventLab() {
                 </span>
               )}
               {whatif && (
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flexBasis: '100%' }} role="status">
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flexBasis: '100%' }} role="status">
                   <Stat label={`${fmtCs(whatif.typed_cs)} would rank`} value={`#${whatif.projected_rank}`} sub={`of ${Number(whatif.field_size).toLocaleString('en-US')} swimmers`} />
                   <Stat label="Faster than" value={whatif.percentile == null ? '—' : `${whatif.percentile}%`} sub="of the field" />
                 </div>
@@ -630,7 +630,7 @@ export default function Lab() {
   }, { replace: true })
   return (
     <div>
-      <PageHead kicker="Experimental" title="ArabSwim Lab" sub="Dig into the numbers behind every swim." />
+      <PageHead title="ArabSwim Lab" sub="Dig into the numbers behind every swim." />
       <div className="lab-modes" style={{ padding: '12px 32px 0' }}>
         <Seg
           options={[{ value: 'swimmer', label: 'By swimmer' }, { value: 'event', label: 'By event' }]}

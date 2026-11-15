@@ -4,10 +4,10 @@ import { smoothPath } from './lineUtils'
 
 /* ── Modernist chart palette (flat, no gradients) ─────────────────────── */
 export const CHART = {
-  grid: '#dde4ec',          // neutral-300 gridlines
-  axisText: '#78879a',      // neutral-600 tick labels
+  grid: 'var(--color-neutral-300)',          // neutral-300 gridlines
+  axisText: 'var(--color-neutral-600)',      // neutral-600 tick labels
   primary: 'var(--color-accent-800)',       // navy accent
-  series: ['var(--color-accent-800)', '#4a8fc0', '#b98a1e', '#0d7a52', '#a8402f', '#78879a'],
+  series: ['var(--color-accent-800)', 'var(--color-accent-2)', 'var(--asw-gold)', 'var(--asw-fast)', 'var(--asw-slow)', 'var(--color-neutral-600)'],
 }
 
 const INK = 'var(--color-accent-800)'
@@ -245,7 +245,7 @@ function Chart({ lines, title, showSwimmer = false }) {
             <g key={date}>
               <line x1={x} y1={plotT} x2={x} y2={plotB} stroke={CHART.grid} strokeWidth="1" />
               <text x={x} y={plotB + (mobile ? 20 : 22)} textAnchor="middle" fill={CHART.axisText} fontSize={mobile ? 12.5 : 12} fontWeight="bold">
-                {d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                {d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}
               </text>
             </g>
           )
@@ -332,7 +332,7 @@ function Chart({ lines, title, showSwimmer = false }) {
         {tooltip && (() => {
           const dt = tooltip.date ? new Date(tooltip.date) : null
           const dateLbl = dt && !Number.isNaN(dt.getTime())
-            ? dt.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+            ? dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
             : ''
           const line1 = tooltip.line || ''
           const line2 = `${formatCs(tooltip.time_cs)}${tooltip.fina ? ` · ${tooltip.fina} FINA` : ''}${dateLbl ? ` · ${dateLbl}` : ''}`
@@ -352,7 +352,7 @@ function Chart({ lines, title, showSwimmer = false }) {
               <rect x={tx} y={ty} width={tw} height={th} fill="#ffffff" stroke={INK} strokeWidth="1.5" />
               {rows.map((r, i) => (
                 <text key={i} x={tcx} y={ty + 17 + i * (mobile ? 17 : 16)} textAnchor="middle"
-                  fill={i === 0 ? INK : i === 1 ? 'var(--color-accent-800)' : '#58687c'}
+                  fill={i === 0 ? INK : i === 1 ? 'var(--color-accent-800)' : 'var(--color-neutral-700)'}
                   fontSize={i === 0 ? f1 : f2} fontWeight={i <= 1 ? 'bold' : 'normal'}
                   style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {r}
@@ -422,7 +422,7 @@ export default function ProgressionChart({ lines = [], title, showSwimmer = fals
   const coloredLines = lines.map((l, i) => ({ ...l, color: LINE_COLORS[i % LINE_COLORS.length] }))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {/* Collective chart — all events together */}
       {coloredLines.length > 1 && (
         <div className="rule-b" style={{ paddingBottom: 20 }}>

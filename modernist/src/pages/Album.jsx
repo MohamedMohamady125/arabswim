@@ -167,7 +167,7 @@ export default function Album() {
         </div>
 
         {isAdmin && (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 16 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 16 }}>
             {/* Von Restorff: adding photos is the main job here, so it is the one solid button */}
             <label
               className="btn btn-primary"

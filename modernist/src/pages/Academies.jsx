@@ -8,13 +8,14 @@ import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Modal, FilterBar } from '../components/ui'
 import { CropUpload } from '../components/ImageCropper'
 import { useAuth } from '../context/AuthContext'
-import { mediaUrl } from '../utils'
+import { mediaUrl, nameInitials } from '../utils'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 // Postel's Law: search ignores case, accents and punctuation
 const fold = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-_.'’]/g, ' ').replace(/\s+/g, ' ').trim()
 
 function acronym(name) {
+  if (/[\u0600-\u06FF]/.test(String(name || ''))) return nameInitials(name)
   const words = String(name || '').split(/\s+/).filter(Boolean)
   if (words.length === 1) return words[0].slice(0, 3).toUpperCase()
   return words.slice(0, 3).map((w) => w[0]).join('').toUpperCase()
@@ -30,7 +31,7 @@ function AcademyLogo({ logo, name, size = 52 }) {
       {logo ? (
         <img src={mediaUrl(logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--color-box-top)' }}>{acronym(name)}</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-box-top)' }}>{acronym(name)}</span>
       )}
     </span>
   )
@@ -244,21 +245,21 @@ export default function Academies() {
         )
       ) : (
         <div className="pad">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
             {filtered.map((a) => {
               const to = a._team ? `/teams/${a.id}` : `/academies/${a.id}`
               const contacts = !a._team && (a.phone || a.email || a.website || a.instagram)
               return (
               <div key={a._team ? `team-${a.id}` : a.id} style={{
-                position: 'relative', background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 12,
-                boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column',
+                position: 'relative', background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0,
+                display: 'flex', flexDirection: 'column',
               }}>
                 {/* one destination per card: the whole upper block opens the profile */}
-                <Link to={to} style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1, color: 'inherit', textDecoration: 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingRight: isAdmin && !a._team ? 52 : 0 }}>
+                <Link to={to} style={{ padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1, color: 'inherit', textDecoration: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingRight: isAdmin && !a._team ? 52 : 0 }}>
                     <AcademyLogo logo={a.logo} name={a.name} />
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-accent-800)', lineHeight: 1.3 }}>
                         {a.name}{a.is_active === false && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>Inactive</span>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, fontSize: 12, color: 'var(--color-neutral-800)' }}>
@@ -271,11 +272,11 @@ export default function Academies() {
                     <div className="text-muted" style={{ fontSize: 13, lineHeight: 1.5 }}>{a.description}</div>
                   )}
                   {a.address && (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: 'var(--color-neutral-800)' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 13, color: 'var(--color-neutral-800)' }}>
                       <MapPin size={13} style={{ flex: 'none', marginTop: 2 }} /> {a.address}
                     </div>
                   )}
-                  <div style={{ marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--color-neutral-200)', fontSize: 12.5, fontWeight: 700, color: 'var(--color-accent-800)' }}>
+                  <div style={{ marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--color-neutral-200)', fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)' }}>
                     {a._team ? 'Swimmers, results and records →' : 'View academy →'}
                   </div>
                 </Link>
@@ -284,7 +285,7 @@ export default function Academies() {
                     onClick={() => setModal({ academy: a })}>Edit</button>
                 )}
                 {contacts && (
-                  <div style={{ display: 'flex', gap: 6, padding: '0 16px 14px' }}>
+                  <div style={{ display: 'flex', gap: 6, padding: '0 16px 16px' }}>
                     <ContactLink href={a.phone ? `tel:${a.phone}` : ''} icon={Phone} label="Phone" />
                     <ContactLink href={a.email ? `mailto:${a.email}` : ''} icon={Mail} label="Email" />
                     <ContactLink href={a.website ? (/^https?:\/\//i.test(a.website) ? a.website : `https://${a.website}`) : ''} icon={Globe} label="Website" />

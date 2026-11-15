@@ -3,13 +3,13 @@ import { X } from 'lucide-react'
 import { searchSwimmers, compareSwimmers } from '../../api/swimmers'
 import Flag from '../Flag'
 import { Loading, Empty, Seg } from '../ui'
-import { formatTime, mediaUrl } from '../../utils'
+import { formatTime, mediaUrl, nameInitials } from '../../utils'
 import LoadFailed from './LoadFailed'
 
 const FAST = 'var(--asw-fast)'
 const MAX_TOTAL = 5 // this swimmer + up to 4 opponents
 
-const initials = (name) => (name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')
+const initials = (name) => nameInitials(name)
 
 function Portrait({ s, size = 56 }) {
   return s?.photo ? (
@@ -148,7 +148,7 @@ export default function CompareTab({ swimmerId }) {
                   <button key={s.id} type="button"
                     onClick={() => { setOpponents((l) => [...l, { id: s.id, name: s.name }]); setQuery(''); setResults([]) }}
                     className="hair-b"
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px', border: 0, background: 'transparent', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 12px', border: 0, background: 'transparent', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}>
                     <Flag code={s.nationality_detail?.code || s.nationality_code} name={s.nationality_detail?.name || s.nationality} />
                     <span style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</span>
                   </button>
@@ -185,10 +185,10 @@ export default function CompareTab({ swimmerId }) {
                     <Flag code={s.nationality_code} name={s.nationality} />
                     <span style={{ fontSize: 11, opacity: 0.75 }}>{s.age != null ? `Age ${s.age}` : ''}</span>
                   </div>
-                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 36, lineHeight: 1.15, marginTop: 6, color: wins[s.id] >= maxWins && maxWins > 0 ? 'var(--asw-gold)' : 'rgba(255,255,255,0.8)' }}>
+                  <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40, lineHeight: 1.15, marginTop: 6, color: wins[s.id] >= maxWins && maxWins > 0 ? 'var(--asw-gold)' : 'rgba(255,255,255,0.8)' }}>
                     {wins[s.id]}
                   </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6 }}>Event wins</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.6 }}>Event wins</div>
                   {leads && <span className="tag" style={{ background: 'var(--asw-gold)', color: '#fff', border: 0, marginTop: 6, display: 'inline-block' }}>LEADS H2H</span>}
                 </div>
               )
@@ -230,7 +230,7 @@ export default function CompareTab({ swimmerId }) {
                               <span className="text-muted">—</span>
                             ) : (
                               <>
-                                <span className="asw-time" style={{ fontSize: 15, fontWeight: isWin ? 800 : 400, color: isWin ? FAST : 'var(--color-neutral-700)' }}>
+                                <span className="asw-time" style={{ fontSize: 16, fontWeight: isWin ? 800 : 400, color: isWin ? FAST : 'var(--color-neutral-700)' }}>
                                   {e.best_time}
                                 </span>
                                 {soleWin ? (

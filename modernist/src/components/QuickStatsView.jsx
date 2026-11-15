@@ -53,11 +53,11 @@ function Donut({ segments, size = 156, thickness = 27, centerTop, centerBot }) {
         return el
       })}
       <text x="50%" y={centerBot ? '48%' : '54%'} textAnchor="middle"
-        style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, fill: 'var(--color-accent-800)' }}>{centerTop}</text>
+        style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, fill: 'var(--color-accent-800)' }}>{centerTop}</text>
       {centerBot && (
         <text x="50%" y="61%" textAnchor="middle"
           /* legibility: 10.5px floor; tracking tightened so the label still fits inside the ring */
-          style={{ fontWeight: 700, fontSize: 10.5, letterSpacing: '0.02em', fill: 'var(--color-neutral-700)' }}>{centerBot}</text>
+          style={{ fontWeight: 700, fontSize: 11, letterSpacing: '0.02em', fill: 'var(--color-neutral-700)' }}>{centerBot}</text>
       )}
     </svg>
   )
@@ -93,14 +93,14 @@ function LineChart({ points, color = NAVY }) {
 function HBars({ rows, color = NAVY }) {
   const max = Math.max(...rows.map((r) => r.value), 1)
   return (
-    <div style={{ display: 'grid', gap: 9 }}>
+    <div style={{ display: 'grid', gap: 8 }}>
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 150, flex: 'none', fontSize: 11, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.label}>{r.label}</span>
           <div style={{ flex: 1, background: 'var(--color-neutral-100)' }}>
             <div style={{ width: `${Math.max((r.value / max) * 100, 2)}%`, height: 14, background: r.color || color }} />
           </div>
-          <span className="asw-num" style={{ width: 34, flex: 'none', textAlign: 'right', fontSize: 11.5, fontWeight: 800, color: NAVY_DARK }}>{r.value}</span>
+          <span className="asw-num" style={{ width: 34, flex: 'none', textAlign: 'right', fontSize: 12, fontWeight: 800, color: NAVY_DARK }}>{r.value}</span>
         </div>
       ))}
     </div>
@@ -110,14 +110,14 @@ function HBars({ rows, color = NAVY }) {
 function MedalStack({ rows, wide = false }) {
   const max = Math.max(...rows.map((r) => r.total), 1)
   return (
-    <div style={{ display: 'grid', gap: 7 }}>
+    <div style={{ display: 'grid', gap: 8 }}>
       {rows.map((r) => (
         <div key={r.code || r.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span title={r.name} style={{ width: wide ? 96 : 34, flex: 'none', fontSize: 11, fontWeight: 800, color: NAVY_DARK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.code || r.name}</span>
           <div style={{ flex: 1, display: 'flex', height: 15 }}>
             <div style={{ display: 'flex', width: `${(r.total / max) * 100}%`, minWidth: 8 }}>
               {/* contrast (WCAG AA): white 11px numerals on the silver bar failed — silver segment is the pale neutral with navy numerals */}
-              {[['gold', GOLD, '#3a2e07'], ['silver', 'var(--color-neutral-400)', NAVY_DARK], ['bronze', BRONZE, '#fff']].map(([k, bg, fg]) => (
+              {[['gold', GOLD, 'var(--color-neutral-900)'], ['silver', 'var(--color-neutral-400)', NAVY_DARK], ['bronze', BRONZE, '#fff']].map(([k, bg, fg]) => (
                 r[k] > 0 ? (
                   <div key={k} title={`${k}: ${r[k]}`}
                     style={{ flex: r[k], background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0, overflow: 'hidden' }}>
@@ -127,7 +127,7 @@ function MedalStack({ rows, wide = false }) {
               ))}
             </div>
           </div>
-          <span className="asw-num" style={{ width: 30, flex: 'none', textAlign: 'right', fontSize: 11.5, fontWeight: 800, color: NAVY_DARK }}>{r.total}</span>
+          <span className="asw-num" style={{ width: 30, flex: 'none', textAlign: 'right', fontSize: 12, fontWeight: 800, color: NAVY_DARK }}>{r.total}</span>
         </div>
       ))}
     </div>
@@ -147,9 +147,9 @@ function Panel({ title, children, style }) {
 
 function SectionBar({ n, title }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '6px 0 2px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '6px 0 2px' }}>
       <span style={{ width: 24, height: 24, borderRadius: '50%', background: NAVY, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flex: 'none' }}>{n}</span>
-      <h2 style={{ margin: 0, fontSize: 16, letterSpacing: '0.06em', textTransform: 'uppercase', color: NAVY_DARK }}>{title}</h2>
+      <h2 style={{ margin: 0, fontSize: 16, letterSpacing: '0.08em', textTransform: 'uppercase', color: NAVY_DARK }}>{title}</h2>
       <span style={{ flex: 1, height: 1, background: 'var(--color-divider)' }} />
     </div>
   )
@@ -159,19 +159,19 @@ function StatChip({ icon: Icon, value, label }) {
   return (
     <div style={{
       background: 'var(--color-accent-800)',
-      color: '#fff', padding: '14px 8px', textAlign: 'center',
+      color: '#fff', padding: '16px 8px', textAlign: 'center',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
     }}>
       <Icon size={18} aria-hidden="true" style={{ color: 'rgba(255,255,255,0.7)' }} />
-      <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{value}</span>
-      <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{label}</span>
+      <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{value}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{label}</span>
     </div>
   )
 }
 
 function LegendDot({ color, children }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600 }}>
       <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flex: 'none' }} />
       {children}
     </span>
@@ -180,11 +180,11 @@ function LegendDot({ color, children }) {
 
 function PerfCard({ title, value, unit, name, code, event, gold = false }) {
   return (
-    <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 128 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>{title}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-        <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 800, color: gold ? GOLD : '#fff', lineHeight: 1 }}>{value}</span>
-        {unit && <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{unit}</span>}
+    <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 128 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>{title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+        <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 800, color: gold ? GOLD : '#fff', lineHeight: 1 }}>{value}</span>
+        {unit && <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{unit}</span>}
       </div>
       <div style={{ marginTop: 'auto', fontSize: 11, fontWeight: 700, lineHeight: 1.3 }}>
         {name}{code ? ` (${code})` : ''}
@@ -196,10 +196,10 @@ function PerfCard({ title, value, unit, name, code, event, gold = false }) {
 
 function ProgressRow({ icon: Icon, label, value }) {
   return (
-    <div className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0' }}>
+    <div className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
       <Icon size={15} aria-hidden="true" style={{ color: NAVY, flex: 'none' }} />
-      <span style={{ fontSize: 12.5, fontWeight: 600 }}>{label}</span>
-      <span className="asw-num" style={{ marginLeft: 'auto', fontSize: 13.5, fontWeight: 800, color: NAVY_DARK }}>{value}</span>
+      <span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>
+      <span className="asw-num" style={{ marginLeft: 'auto', fontSize: 14, fontWeight: 800, color: NAVY_DARK }}>{value}</span>
     </div>
   )
 }
@@ -243,7 +243,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
   return (
     // `pad` aligns the meet Overview tab with the other tabs' .pad gutters
     // (24/32 desktop, 18/16 phone); the home page keeps its own 16px gutters
-    <div className={pad ? 'container pad' : 'container'} style={{ display: 'grid', gap: 16, ...(pad ? { paddingBottom: 40 } : { padding: '18px 16px 40px' }) }}>
+    <div className={pad ? 'container pad' : 'container'} style={{ display: 'grid', gap: 16, ...(pad ? { paddingBottom: 40 } : { padding: '16px 16px 40px' }) }}>
       {/* ── Stat chips ── */}
       <div className="qs-cards-8">
         {chips.map(([Icon, value, label], i) => <StatChip key={label} icon={Icon} value={value} label={label} color={i % 2 ? GOLD : NAVY} />)}
@@ -287,7 +287,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                   <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-700)' }}>{participation.female}</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 10 }}>
                 <LegendDot color={NAVY}>Male ({participation.male})</LegendDot>
                 <LegendDot color={BLUE}>Female ({participation.female})</LegendDot>
               </div>
@@ -305,9 +305,9 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
       {(busiest || []).length > 0 && (
         <Panel title="Busiest Swimmers (Most Races)">
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-neutral-700)' }}>
+                <tr style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-700)' }}>
                   <th style={{ textAlign: 'left', paddingBottom: 6 }}>#</th>
                   <th style={{ textAlign: 'left', paddingBottom: 6 }}>Swimmer</th>
                   <th style={{ textAlign: 'center', paddingBottom: 6 }}>Swims</th>
@@ -318,10 +318,10 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
               <tbody>
                 {busiest.map((s, i) => (
                   <tr key={s.swimmer_id} className="hair-t">
-                    <td className="asw-num" style={{ padding: '7px 0', fontWeight: 700, color: 'var(--color-neutral-700)' }}>{i + 1}</td>
+                    <td className="asw-num" style={{ padding: '8px 0', fontWeight: 700, color: 'var(--color-neutral-700)' }}>{i + 1}</td>
                     {/* Fitts's Law: the link fills the row height (row itself is not taller) */}
                     <td style={{ padding: 0 }}>
-                      <Link to={`/swimmers/${s.swimmer_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 0', fontWeight: 700, color: 'inherit', textDecoration: 'none' }}>
+                      <Link to={`/swimmers/${s.swimmer_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 0', fontWeight: 700, color: 'inherit', textDecoration: 'none' }}>
                         <Flag code={s.nationality_code} name={s.nationality} /> {s.swimmer_name}
                       </Link>
                     </td>
@@ -349,7 +349,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
             renderEntity={(r) => medalsByClub ? (
               <span title={r.name} style={{ fontWeight: 800, display: 'inline-block', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'bottom' }}>{r.name}</span>
             ) : (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 800 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 800 }}>
                 <Flag code={r.code} name={r.name} /> {r.code}
               </span>
             )}
@@ -359,7 +359,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
           </div>
         </Panel>
         <Panel title={`Medals by ${medalEntity} (Top 10)`}>
-          <div style={{ display: 'flex', gap: 14, marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
             <LegendDot color={GOLD}>Gold</LegendDot>
             <LegendDot color="var(--color-neutral-400)">Silver</LegendDot>
             <LegendDot color={BRONZE}>Bronze</LegendDot>
@@ -369,7 +369,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
         <Panel title={`Medal Share by ${medalEntity}`}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Donut segments={shareSegs} centerTop={medals.total} centerBot="TOTAL MEDALS" />
-            <div style={{ display: 'grid', gap: 7 }}>
+            <div style={{ display: 'grid', gap: 8 }}>
               {shareSegs.map((s) => (
                 <LegendDot key={s.label} color={s.color}>
                   {s.label}
@@ -437,7 +437,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
 
       {/* ── 4 · Records + 5 · Progress ── */}
       <div className="qs-main-2">
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'grid', gap: 16 }}>
           <SectionBar n={4} title="Records" />
           <div className="qs-rec-counters">
             {recCounters.map((c) => (
@@ -445,7 +445,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                 {/* contrast: numerals are navy; the series colour is a marker under the number */}
                 <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: NAVY_DARK }}>{c.count}</div>
                 <div aria-hidden="true" style={{ width: 22, height: 3, background: c.color, margin: '5px auto 4px' }} />
-                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 2 }}>{c.label}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 2 }}>{c.label}</div>
               </div>
             ))}
           </div>
@@ -468,7 +468,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
             <Panel><Empty label="No records were broken at this meet" /></Panel>
           )}
         </div>
-        <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
+        <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
           <SectionBar n={5} title="Championship Progress" />
           <Panel>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>

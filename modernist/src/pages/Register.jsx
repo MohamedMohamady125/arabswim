@@ -48,7 +48,7 @@ export default function Register() {
     <div style={{ maxWidth: 420, margin: '0 auto', padding: '64px 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
         <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: 'contain' }} />
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em' }}>ARABSWIM</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, letterSpacing: '-0.02em' }}>ARABSWIM</span>
       </div>
       {/* real page heading for assistive tech; the kicker below keeps the look */}
       <h1 className="sr-only">Create account</h1>
@@ -58,7 +58,7 @@ export default function Register() {
       </div>
       {/* Goal-Gradient Effect: the whole path is visible from the first screen */}
       <Stepper steps={['Create account', 'Find your profile', 'Claim it']} current={0} />
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {error && (
           <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '10px 12px', fontSize: 13 }}>
             {error}

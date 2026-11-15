@@ -40,7 +40,7 @@ export default function GalleryTab({ swimmerId }) {
   if (!photos.length && !videos.length) return <Empty label="No media yet" hint="Photos and videos of this swimmer will appear here once they are added." />
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {photos.length > 0 && (
         <div>
           <div className="kicker" style={{ marginBottom: 12 }}>

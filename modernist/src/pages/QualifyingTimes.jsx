@@ -215,7 +215,7 @@ function AddTimeModal({ standardId, onClose, onSaved }) {
             {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
           </select>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
           <div className="field"><label>Gender</label>
             <select className="select" aria-label="Gender" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
               <option value="M">Men</option><option value="F">Women</option>
@@ -313,7 +313,7 @@ function BulkTimesModal({ standard, onClose, onSaved }) {
     <Modal title={`Times — ${standard.name}`} onClose={onClose} width={720}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {error && <div className="error-box" role="alert">{error}</div>}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span className="micro">Cut</span>
@@ -508,7 +508,7 @@ export default function QualifyingTimes() {
           ) : !detail ? (
             <Empty label="Standard unavailable" hint="Pick another competition above, or reload the page." />
           ) : (
-            <div style={{ padding: '18px 32px 28px' }}>
+            <div style={{ padding: '16px 32px 28px' }}>
               {/* the selected tab already names the standard — only show
                   what it doesn't: competition type + qualifying period */}
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>

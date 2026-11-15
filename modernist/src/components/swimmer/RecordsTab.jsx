@@ -29,19 +29,19 @@ export function gapMotivation(pct) {
   if (p <= 1) return { badge: 'RECORD IN SIGHT', color: 'var(--asw-fast)', msg: 'Less than 1% away — one great swim and it\u2019s yours!' }
   if (p <= 2) return { badge: 'SO CLOSE', color: 'var(--color-accent)', msg: 'Under 2% off the record — keep attacking!' }
   if (p <= 5) return { badge: 'CLOSING IN', color: 'var(--color-accent-2)', msg: 'Within 5% of the record — it\u2019s getting nervous.' }
-  if (p <= 10) return { badge: 'ON THE HUNT', color: '#a05f2c', msg: 'Within 10% — stay on this trajectory and it will fall.' }
+  if (p <= 10) return { badge: 'ON THE HUNT', color: 'var(--asw-bronze)', msg: 'Within 10% — stay on this trajectory and it will fall.' }
   return { badge: 'BUILDING', color: 'var(--color-neutral-500)', msg: 'Every swim closes the gap — keep pushing.' }
 }
 
 // Scope → signature color (flat theme palette)
 export const SCOPE_COLORS = {
-  WORLD: '#b98a1e',
-  ASIAN: '#a05f2c',
-  ISLAMIC: '#0d7a52',
-  MEDITERRANEAN: '#4a8fc0',
-  AFRICAN: '#a8402f',
+  WORLD: 'var(--asw-gold)',
+  ASIAN: 'var(--asw-bronze)',
+  ISLAMIC: 'var(--asw-fast)',
+  MEDITERRANEAN: 'var(--color-accent-2)',
+  AFRICAN: 'var(--asw-slow)',
   ARAB: 'var(--color-accent-800)',
-  GCC: '#7d8a99',
+  GCC: 'var(--asw-silver)',
   NATIONAL: 'var(--color-accent-800)',
 }
 
@@ -165,30 +165,30 @@ export default function RecordsTab({ swimmerId }) {
           <div className="rule-t">
             {filteredGaps.map((g, gi) => {
               const motiv = gapMotivation(g.gap_pct)
-              const tierColor = g.holds ? '#b98a1e' : motiv?.color || 'var(--color-accent)'
+              const tierColor = g.holds ? 'var(--asw-gold)' : motiv?.color || 'var(--color-accent)'
               const closeness = 100 - parseFloat(g.gap_pct || 0)
               return (
                 <div key={`${g.event_id}-${g.pool}`} className="hair-b asw-fade-up"
-                  style={{ padding: '16px 0 16px 14px', borderLeft: `4px solid ${tierColor}`, animationDelay: `${Math.min(gi * 60, 480)}ms` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                  style={{ padding: '16px 0 16px 16px', borderLeft: `4px solid ${tierColor}`, animationDelay: `${Math.min(gi * 60, 480)}ms` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, textTransform: 'uppercase' }}>{g.event_name}</span>
+                      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, textTransform: 'uppercase' }}>{g.event_name}</span>
                       <span className={`tag ${g.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`}>{g.pool}</span>
                       <span className="tag tag-neutral">{SCOPE_LABELS[g.scope]}</span>
                     </div>
                     {g.holds ? (
-                      <span className="tag" style={{ background: '#b98a1e', color: '#fff', border: 0 }}>RECORD HOLDER</span>
+                      <span className="tag" style={{ background: 'var(--asw-gold)', color: '#fff', border: 0 }}>RECORD HOLDER</span>
                     ) : (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                         {motiv && <span className="tag" style={{ background: tierColor, color: '#fff', border: 0 }}>{motiv.badge}</span>}
-                        <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, color: tierColor }}>+{g.gap_pct}%</span>
+                        <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: tierColor }}>+{g.gap_pct}%</span>
                       </span>
                     )}
                   </div>
                   <GapBar done={g.holds} pct={closeness} color={tierColor} leftLabel="Your best" rightLabel="Record" />
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 8 }}>
                     <span className="asw-time" style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-accent)' }}>{g.swimmer_best}</span>
-                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: g.holds ? 'var(--asw-fast)' : tierColor }}>
+                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: g.holds ? 'var(--asw-fast)' : tierColor }}>
                       {g.holds ? 'RECORD' : `+${g.gap_time} to break`}
                     </span>
                     <span className="asw-time" style={{ fontSize: 18 }}>{g.record_time}</span>
@@ -246,7 +246,7 @@ export default function RecordsTab({ swimmerId }) {
     <div>
       {subTabs}
       {/* Classification filter buttons */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 22 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 22 }}>
         {sections.map((type) => {
           const c = SCOPE_COLORS[type] || 'var(--color-accent)'
           const active = type === activeType
@@ -267,7 +267,7 @@ export default function RecordsTab({ swimmerId }) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                transition: 'background 0.2s, color 0.2s',
+                transition: 'background 0.15s, color 0.15s',
               }}>
               {type}
               <span className="asw-num" style={{
@@ -275,7 +275,7 @@ export default function RecordsTab({ swimmerId }) {
                 color: '#fff',
                 fontSize: 11,
                 fontWeight: 800,
-                padding: '1px 7px',
+                padding: '1px 8px',
               }}>{byType[type].length}</span>
             </button>
           )
@@ -283,7 +283,7 @@ export default function RecordsTab({ swimmerId }) {
       </div>
 
       {/* Record cards — key on scope so the fade-up replays on filter change */}
-      <div key={activeType} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+      <div key={activeType} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
         {activeRows.map((r, i) => (
           /* Arab Swim navy cards (same gradient as the profile stat cards) */
           <div key={i} className="card asw-fade-up"
@@ -300,12 +300,12 @@ export default function RecordsTab({ swimmerId }) {
             </div>
             {/* event name with the pool badge right beside it */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span className="card-title" style={{ textTransform: 'uppercase', fontSize: 15, color: '#fff' }}>
+              <span className="card-title" style={{ textTransform: 'uppercase', fontSize: 16, color: '#fff' }}>
                 {r.event_detail?.name || r.event_name}
               </span>
               <span className="tag" style={{ background: 'rgba(255,255,255,0.14)', color: r.pool === 'SCM' ? 'var(--asw-gold)' : '#fff', flex: 'none' }}>{r.pool}</span>
             </div>
-            <div className="asw-time" style={{ fontSize: 26, fontWeight: 800, color: '#fff', lineHeight: 1 }}>
+            <div className="asw-time" style={{ fontSize: 24, fontWeight: 800, color: '#fff', lineHeight: 1 }}>
               {r.formatted_time}
             </div>
             {/* date | meet country (no FINA, no meet name) */}

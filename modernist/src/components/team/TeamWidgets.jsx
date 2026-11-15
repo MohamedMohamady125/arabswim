@@ -73,13 +73,13 @@ export function ClubLogo({ src, name, size = 148, ring = 'var(--color-accent-900
   return (
     <div className="fed-hero-flag" style={{
       width: size, height: size, borderRadius: '50%', background: url ? fit.bg : '#fff', flexShrink: 0,
-      border: `4px solid ${ring}`, boxShadow: '0 0 0 6px #fff, 0 6px 24px color-mix(in srgb, var(--color-accent-900) 18%, transparent)',
+      border: `4px solid ${ring}`, 
       display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
     }}>
       {url ? (
         <img src={url} alt={name} style={{ width: `${fit.scale * 100}%`, height: `${fit.scale * 100}%`, objectFit: 'contain', display: 'block' }} />
       ) : (
-        <span style={{ fontFamily: HEAD, fontWeight: 900, fontSize: size * 0.23, color: INK }}>{acronym(name)}</span>
+        <span style={{ fontFamily: HEAD, fontWeight: 800, fontSize: size * 0.23, color: INK }}>{acronym(name)}</span>
       )}
     </div>
   )
@@ -114,25 +114,25 @@ export function SwimmerMedalsByMeet({ medals }) {
 
   if (!meets.length) return null
   return (
-    <div style={{ padding: '10px 14px 14px', display: 'grid', gap: 8 }}>
+    <div style={{ padding: '10px 16px 16px', display: 'grid', gap: 8 }}>
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: SOFT, padding: '2px 2px 0' }}>
         {meets.length} {meets.length === 1 ? 'meet' : 'meets'} · choose one to see the medals
       </div>
       {meets.map((g) => {
         const isOpen = open === g.key
         return (
-          <div key={g.key} style={{ border: `1px solid ${isOpen ? 'var(--color-accent-400)' : LINE}`, borderRadius: 10, background: '#fff', overflow: 'hidden' }}>
+          <div key={g.key} style={{ border: `1px solid ${isOpen ? 'var(--color-accent-400)' : LINE}`, borderRadius: 0, background: '#fff', overflow: 'hidden' }}>
             <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : g.key)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', minHeight: 48, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: INK }}>
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', minHeight: 48, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: INK }}>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name || 'Meet'}</span>
                 <span style={{ display: 'block', fontSize: 12, color: MUTED, marginTop: 2 }}>
                   {[formatDate(g.date), g.place, g.pool].filter(Boolean).join(' · ')}
                 </span>
               </span>
-              <span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12.5, fontWeight: 800, flex: 'none' }}>
+              <span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, fontSize: 13, fontWeight: 800, flex: 'none' }}>
                 {[['GOLD', g.gold], ['SILVER', g.silver], ['BRONZE', g.bronze]].filter(([, n]) => n > 0).map(([t, n]) => (
-                  <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><MedalIcon type={t} size={15} />{n}</span>
+                  <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MedalIcon type={t} size={15} />{n}</span>
                 ))}
               </span>
               <Chevron open={isOpen} />
@@ -140,20 +140,20 @@ export function SwimmerMedalsByMeet({ medals }) {
             {isOpen && (
               <div style={{ borderTop: `1px solid ${LINE}`, background: 'var(--color-neutral-100)' }}>
                 {g.items.map((m, i) => (
-                  <div key={m.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderTop: i ? `1px solid ${LINE}` : 'none' }}>
+                  <div key={m.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: i ? `1px solid ${LINE}` : 'none' }}>
                     <MedalIcon type={m.medal_type} size={20} />
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontWeight: 700, fontSize: 13.5, color: INK }}>{m.event_name || '—'}</span>
-                      <span style={{ display: 'block', fontSize: 11.5, color: MUTED, marginTop: 1 }}>
+                      <span style={{ display: 'block', fontWeight: 700, fontSize: 14, color: INK }}>{m.event_name || '—'}</span>
+                      <span style={{ display: 'block', fontSize: 12, color: MUTED, marginTop: 1 }}>
                         {[m.category, m.round_type, m.is_relay ? 'Relay' : null].filter(Boolean).join(' · ') || ' '}
                       </span>
                     </span>
-                    {m.fina_points ? <span className="asw-num" style={{ fontSize: 11.5, fontWeight: 700, color: MUTED, flex: 'none' }}>{m.fina_points} pts</span> : null}
-                    <span className="asw-num asw-time" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 15, color: INK, flex: 'none', minWidth: 64, textAlign: 'right' }}>{m.time || '—'}</span>
+                    {m.fina_points ? <span className="asw-num" style={{ fontSize: 12, fontWeight: 700, color: MUTED, flex: 'none' }}>{m.fina_points} pts</span> : null}
+                    <span className="asw-num asw-time" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 16, color: INK, flex: 'none', minWidth: 64, textAlign: 'right' }}>{m.time || '—'}</span>
                   </div>
                 ))}
                 {g.id ? (
-                  <div style={{ padding: '1px 14px', borderTop: `1px solid ${LINE}`, textAlign: 'right' }}>
+                  <div style={{ padding: '1px 16px', borderTop: `1px solid ${LINE}`, textAlign: 'right' }}>
                     <Link to={`/championships/${g.id}`} onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 12, fontWeight: 700, color: INK, textDecoration: 'none' }}>Open meet results →</Link>
                   </div>
                 ) : null}
@@ -231,9 +231,9 @@ export function DepthTab({ id, kind = 'club' }) {
   }, [rows])
 
   const tile = (label, value, sub) => (
-    <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderTop: '3px solid var(--color-box-top)', borderRadius: 10, padding: '14px 16px', minWidth: 0 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: SOFT }}>{label}</div>
-      <div className="asw-num" style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 26, color: INK, lineHeight: 1.15, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+    <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderTop: '3px solid var(--color-box-top)', borderRadius: 0, padding: '16px 16px', minWidth: 0 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: SOFT }}>{label}</div>
+      <div className="asw-num" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 24, color: INK, lineHeight: 1.15, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
       <div style={{ fontSize: 12, color: MUTED, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>
     </div>
   )
@@ -241,12 +241,12 @@ export function DepthTab({ id, kind = 'club' }) {
   return (
     <div className="pad-lg" style={{ background: 'var(--color-neutral-100)' }}>
       <div style={{ textAlign: 'center', marginBottom: 6 }}>
-        <h2 style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 24, letterSpacing: '0.1em', textTransform: 'uppercase', color: INK, margin: 0 }}>Squad Depth</h2>
+        <h2 style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 24, letterSpacing: '0.08em', textTransform: 'uppercase', color: INK, margin: 0 }}>Squad Depth</h2>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>
           How many swimmers stand behind the fastest in every event, and where the {kind} has gaps
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', margin: '16px 0 20px' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', margin: '16px 0 20px' }}>
         <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }, { value: '', label: 'Everyone' }]} value={gender} onChange={(v) => { setGender(v); setGenderPicked(true); setFocus(null) }} />
         <Seg options={[{ value: 'LCM', label: `50m pool${data ? ` · ${data.LCM.length} events` : ''}` }, { value: 'SCM', label: `25m pool${data ? ` · ${data.SCM.length} events` : ''}` }]} value={pool || 'LCM'} onChange={(v) => { setPool(v); setFocus(null) }} />
       </div>
@@ -264,24 +264,24 @@ export function DepthTab({ id, kind = 'club' }) {
         </div>
 
         {/* Depth map: stroke × distance */}
-        <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 12, padding: '16px 16px 14px', marginBottom: 16 }}>
+        <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 0, padding: '16px 16px 16px', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-            <div style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: INK }}>Depth map</div>
+            <div style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: INK }}>Depth map</div>
             <div style={{ fontSize: 12, color: MUTED }}>Swimmers with a time in each event · tap a cell to jump to it</div>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: `76px repeat(${DISTANCES.length}, minmax(64px, 1fr))`, gap: 6, minWidth: 520 }}>
               <span />
-              {DISTANCES.map((d) => <span key={d} className="asw-num" style={{ fontSize: 11.5, fontWeight: 800, color: SOFT, textAlign: 'center' }}>{d}m</span>)}
+              {DISTANCES.map((d) => <span key={d} className="asw-num" style={{ fontSize: 12, fontWeight: 800, color: SOFT, textAlign: 'center' }}>{d}m</span>)}
               {STROKES.map(([s, short]) => (
-                [<span key={`${s}-l`} style={{ fontSize: 12.5, fontWeight: 800, color: INK, alignSelf: 'center' }}>{short}</span>,
+                [<span key={`${s}-l`} style={{ fontSize: 13, fontWeight: 800, color: INK, alignSelf: 'center' }}>{short}</span>,
                   ...DISTANCES.map((d) => {
                     const valid = VALID[s].includes(d)
                     const e = summary.cell[`${s}|${d}`]
                     if (!valid && !e) return <span key={`${s}-${d}`} />
                     if (!e) {
                       return (
-                        <span key={`${s}-${d}`} title="No swimmer with a time" style={{ height: 44, borderRadius: 8, border: `1.5px dashed ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: SOFT }}>Gap</span>
+                        <span key={`${s}-${d}`} title="No swimmer with a time" style={{ height: 44, borderRadius: 0, border: `1.5px dashed ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: SOFT }}>Gap</span>
                       )
                     }
                     const pct = 14 + Math.round((e.swimmer_count / summary.max) * 78)
@@ -290,7 +290,7 @@ export function DepthTab({ id, kind = 'club' }) {
                       <button key={`${s}-${d}`} type="button" title={`${e.event_name}: ${e.swimmer_count} swimmers`} aria-label={`${e.event_name}: ${e.swimmer_count} swimmers`}
                         onClick={() => { setFocus(e.event_id); document.getElementById(`depth-ev-${e.event_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}
                         className="asw-num"
-                        style={{ height: 44, borderRadius: 8, cursor: 'pointer', fontFamily: HEAD, fontWeight: 900, fontSize: 16,
+                        style={{ height: 44, borderRadius: 0, cursor: 'pointer', fontFamily: HEAD, fontWeight: 800, fontSize: 16,
                           border: sel ? `2px solid ${INK}` : '1px solid transparent',
                           background: `color-mix(in srgb, var(--color-accent-400) ${pct}%, #fff)`,
                           color: INK }}>
@@ -310,25 +310,25 @@ export function DepthTab({ id, kind = 'club' }) {
             const lead = e.top[0]?.time_cs || 0
             const full = `/teams/${id}/depth/${e.event_id}?pool=${pool}&gender=${gender || 'ALL'}`
             return (
-              <div key={e.event_id} id={`depth-ev-${e.event_id}`} style={{ background: '#fff', border: `1px solid ${focus === e.event_id ? INK : LINE}`, borderRadius: 12, padding: '14px 16px', boxShadow: focus === e.event_id ? '0 0 0 3px var(--color-accent-200)' : 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 15, color: INK, flex: 1, minWidth: 0 }}>{e.event_name}</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: MUTED }}><span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: tone }} />{label}</span>
-                  <span className="asw-num" style={{ fontSize: 12.5, fontWeight: 800, color: INK }}>{e.swimmer_count} {e.swimmer_count === 1 ? 'swimmer' : 'swimmers'}</span>
+              <div key={e.event_id} id={`depth-ev-${e.event_id}`} style={{ background: '#fff', border: `1px solid ${focus === e.event_id ? INK : LINE}`, borderRadius: 0, padding: '16px 16px', boxShadow: focus === e.event_id ? '0 0 0 3px var(--color-accent-200)' : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 16, color: INK, flex: 1, minWidth: 0 }}>{e.event_name}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED }}><span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: tone }} />{label}</span>
+                  <span className="asw-num" style={{ fontSize: 13, fontWeight: 800, color: INK }}>{e.swimmer_count} {e.swimmer_count === 1 ? 'swimmer' : 'swimmers'}</span>
                 </div>
-                <div style={{ height: 6, borderRadius: 3, background: 'var(--color-neutral-200)', margin: '10px 0 8px', overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.max((e.swimmer_count / summary.max) * 100, 4)}%`, height: '100%', background: tone, borderRadius: 3 }} />
+                <div style={{ height: 6, borderRadius: 0, background: 'var(--color-neutral-200)', margin: '10px 0 8px', overflow: 'hidden' }}>
+                  <div style={{ width: `${Math.max((e.swimmer_count / summary.max) * 100, 4)}%`, height: '100%', background: tone, borderRadius: 0 }} />
                 </div>
                 {e.top.map((s, i) => (
-                  <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: i ? `1px solid var(--color-neutral-200)` : 'none', fontSize: 13 }}>
+                  <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0', borderTop: i ? `1px solid var(--color-neutral-200)` : 'none', fontSize: 13 }}>
                     <span className="asw-num" style={{ width: 16, fontWeight: 800, color: SOFT, flex: 'none' }}>{i + 1}</span>
                     {/* Fitts's Law: the name fills the row's height without making the row taller */}
-                    <Link to={`/swimmers/${s.swimmer_id}`} style={{ flex: 1, minWidth: 0, padding: '7px 0', margin: '-7px 0', color: INK, fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</Link>
-                    <span className="asw-num" style={{ width: 58, textAlign: 'right', fontSize: 11.5, color: MUTED, flex: 'none' }}>{i ? gapStr(s.time_cs - lead) : (s.fina_points ? `${s.fina_points} pts` : '')}</span>
+                    <Link to={`/swimmers/${s.swimmer_id}`} style={{ flex: 1, minWidth: 0, padding: '8px 0', margin: '-7px 0', color: INK, fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</Link>
+                    <span className="asw-num" style={{ width: 58, textAlign: 'right', fontSize: 12, color: MUTED, flex: 'none' }}>{i ? gapStr(s.time_cs - lead) : (s.fina_points ? `${s.fina_points} pts` : '')}</span>
                     <span className="asw-num asw-time" style={{ width: 66, textAlign: 'right', fontWeight: 800, color: INK, flex: 'none' }}>{s.time}</span>
                   </div>
                 ))}
-                <Link to={full} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 40, marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--color-neutral-200)', fontSize: 12.5, fontWeight: 700, color: INK, textDecoration: 'none' }}>
+                <Link to={full} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 40, marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--color-neutral-200)', fontSize: 13, fontWeight: 700, color: INK, textDecoration: 'none' }}>
                   <span>{e.swimmer_count > e.top.length ? `See all ${e.swimmer_count} swimmers` : 'Open full view'}</span>
                   <span aria-hidden="true">→</span>
                 </Link>
@@ -369,12 +369,12 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
   ].filter(([, rows]) => rows.length)
   // Mental Model: a "national record" belongs to a nation — name it
   const scopeLabel = (r) => (r.record_type === 'NATIONAL' && r.country_name ? r.country_name : (typeLabels[r.record_type] || r.record_type))
-  const pillBase = { padding: '9px 18px', minHeight: 40, borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }
+  const pillBase = { padding: '8px 16px', minHeight: 40, borderRadius: 0, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }
 
   return (
     <div className="m-pad" style={{ padding: '28px 28px 36px', background: 'var(--color-neutral-100)' }}>
       <div style={{ textAlign: 'center', marginBottom: 18 }}>
-        <h2 style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 24, letterSpacing: '0.1em', textTransform: 'uppercase', color: INK, margin: 0 }}>Records</h2>
+        <h2 style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 24, letterSpacing: '0.08em', textTransform: 'uppercase', color: INK, margin: 0 }}>Records</h2>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>Records currently held by swimmers of this {kind}</div>
       </div>
 
@@ -394,7 +394,7 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
             })}
           </div>
         )}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
           <Seg options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={setGender} />
           <Seg options={[{ value: '', label: 'Both pools' }, { value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={setPool} />
           {agesPresent.length > 1 && (
@@ -402,7 +402,7 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
           )}
         </div>
         {/* Working Memory: the count, and one way back to everything */}
-        <div className="asw-num" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 32, fontSize: 12.5, color: MUTED, marginBottom: 18 }}>
+        <div className="asw-num" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 32, fontSize: 13, color: MUTED, marginBottom: 18 }}>
           <span aria-live="polite">{filtered.length} of {ofType.length} {ofType.length === 1 ? 'record' : 'records'}</span>
           {(gender || pool || age) && <button type="button" className="btn btn-ghost" style={{ fontSize: 12, minHeight: 32 }} onClick={() => { setGender(''); setPool(''); setAge('') }}>Clear filters</button>}
         </div>
@@ -412,7 +412,7 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
              under their own heading instead of one mixed run of cards */
           groups.map(([heading, rows]) => (
           <div key={heading || 'all'} style={{ marginBottom: 26 }}>
-          {heading && <div style={{ fontFamily: HEAD, fontWeight: 900, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase', color: INK, borderBottom: `1px solid ${LINE}`, paddingBottom: 8, marginBottom: 14 }}>{heading} <span className="asw-num" style={{ color: MUTED }}>· {rows.length}</span></div>}
+          {heading && <div style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: INK, borderBottom: `1px solid ${LINE}`, paddingBottom: 8, marginBottom: 14 }}>{heading} <span className="asw-num" style={{ color: MUTED }}>· {rows.length}</span></div>}
           {/* The site's standard record card (same markup as New Records) */}
           <div className="record-cards">
             {rows.map((r, i) => {
@@ -425,7 +425,7 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
                     <img src={mediaUrl(photo)} alt={r.swimmer_name} className="grayscale"
                       style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', objectPosition: 'center top', display: 'block', marginBottom: 10 }} />
                   ) : (
-                    <div style={{ width: '100%', aspectRatio: '1 / 1', marginBottom: 10, background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: HEAD, fontWeight: 800, fontSize: 30, color: 'var(--color-accent)' }}>
+                    <div style={{ width: '100%', aspectRatio: '1 / 1', marginBottom: 10, background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: HEAD, fontWeight: 800, fontSize: 32, color: 'var(--color-accent)' }}>
                       {(r.swimmer_name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')}
                     </div>
                   )}
@@ -441,8 +441,8 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
                   </div>
                   {/* 3 — pool badge in front of the time */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
-                    <span className="tag tag-accent-2" title={r.pool === 'SCM' ? 'Short course (25m pool)' : 'Long course (50m pool)'} style={{ fontSize: 10, padding: '2px 8px', fontWeight: 700 }}>{r.pool === 'SCM' ? '25m' : r.pool === 'LCM' ? '50m' : r.pool}</span>
-                    <span className="asw-num rec-time" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 22 }}>{time}</span>
+                    <span className="tag tag-accent-2" title={r.pool === 'SCM' ? 'Short course (25m pool)' : 'Long course (50m pool)'} style={{ fontSize: 11, padding: '2px 8px', fontWeight: 700 }}>{r.pool === 'SCM' ? '25m' : r.pool === 'LCM' ? '50m' : r.pool}</span>
+                    <span className="asw-num rec-time" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 24 }}>{time}</span>
                   </div>
                   {/* 4 — swimmer name + flag */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>

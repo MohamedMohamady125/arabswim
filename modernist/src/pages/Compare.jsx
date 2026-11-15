@@ -187,7 +187,7 @@ export default function Compare() {
 
   return (
     <div>
-      <PageHead kicker="People" title="Compare Swimmers" sub={`Pick 2 to ${MAX} swimmers to compare personal bests side by side.`} />
+      <PageHead title="Compare Swimmers" sub={`Pick 2 to ${MAX} swimmers to compare personal bests side by side.`} />
 
       {/* picker */}
       {/* phone: match the 16px page gutter so the picker aligns with the face-off card below */}
@@ -196,8 +196,8 @@ export default function Compare() {
           .cmp-picker { padding: 14px 16px !important; }
         }
       `}</style>
-      <div className="rule-b cmp-picker" style={{ padding: '18px 32px' }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <div className="rule-b cmp-picker" style={{ padding: '16px 32px' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div ref={boxRef} style={{ position: 'relative', flex: '1 1 260px', maxWidth: 380 }}>
           <input
             className="input"
@@ -216,7 +216,7 @@ export default function Compare() {
                   key={s.id}
                   type="button"
                   onClick={() => add(s)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-neutral-200)', cursor: 'pointer', font: 'inherit', fontSize: 13, textAlign: 'left' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '8px 12px', background: 'none', border: 0, borderBottom: '1px solid var(--color-neutral-200)', cursor: 'pointer', font: 'inherit', fontSize: 13, textAlign: 'left' }}
                 >
                   <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
                   <span style={{ flex: 1 }}>{s.name}</span>
@@ -291,12 +291,12 @@ export default function Compare() {
                       {photo ? (
                         <img src={mediaUrl(photo)} alt={sw.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <span style={{ color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30 }}>
+                        <span style={{ color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32 }}>
                           {String(sw.name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
                         </span>
                       )}
                     </div>
-                    <div style={{ padding: '16px 18px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', textAlign: 'left' }}>
+                    <div style={{ padding: '16px 16px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', textAlign: 'left' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Flag code={sw.nationality_code} name={sw.nationality} />
                         <Link to={`/swimmers/${sw.id}`} style={{ color: 'inherit', textDecoration: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1.2, display: 'inline-block', padding: '6px 0', margin: '-6px 0' /* Fitts's Law: taller hit area, same layout */ }}>{sw.name}</Link>
@@ -309,7 +309,7 @@ export default function Compare() {
                   </div>
                 )
               })}
-              <div style={{ order: 1, display: 'flex', alignItems: 'center', padding: '0 14px', background: 'var(--color-accent-800)' }}>
+              <div style={{ order: 1, display: 'flex', alignItems: 'center', padding: '0 16px', background: 'var(--color-accent-800)' }}>
                 <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--asw-gold)', letterSpacing: '0.02em' }}>VS</span>
               </div>
             </div>
@@ -317,7 +317,7 @@ export default function Compare() {
           {data.swimmers.length === 2 ? (() => {
             const [a, b] = data.swimmers
             const timeCell = (pb, won, side) => (
-              <div className={`vs-${side} asw-time ${won ? 'vs-win' : ''}`} style={{ fontSize: 15, fontWeight: won ? 800 : 500 }}>
+              <div className={`vs-${side} asw-time ${won ? 'vs-win' : ''}`} style={{ fontSize: 16, fontWeight: won ? 800 : 500 }}>
                 {pb?.best_time || <span className="text-muted">—</span>}
               </div>
             )
@@ -331,24 +331,24 @@ export default function Compare() {
               <div className="vs-board">
                 {/* header: names anchored to their side, matching the face-off above */}
                 <div className="vs-row vs-head">
-                  <div className="vs-left" style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                  <div className="vs-left" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     <Flag code={a.nationality_code} name={a.nationality} />
                     <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, lineHeight: 1.2 }}>{a.name}</span>
                   </div>
                   <div className="vs-mid" style={{ color: 'var(--asw-gold)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 11 }}>Head to head</div>
-                  <div className="vs-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 7, minWidth: 0 }}>
+                  <div className="vs-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
                     <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, lineHeight: 1.2, textAlign: 'right' }}>{b.name}</span>
                     <Flag code={b.nationality_code} name={b.nationality} />
                   </div>
                 </div>
                 {sharedRows.length > 0 && (
                   <div className="vs-row">
-                    <div className={`vs-left asw-num ${wins[0] > wins[1] ? 'vs-win' : ''}`} style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{wins[0]}</div>
+                    <div className={`vs-left asw-num ${wins[0] > wins[1] ? 'vs-win' : ''}`} style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{wins[0]}</div>
                     <div className="vs-mid">
                       <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 12 }}>Events won</div>
                       <div className="micro">of {sharedRows.length} in common</div>
                     </div>
-                    <div className={`vs-right asw-num ${wins[1] > wins[0] ? 'vs-win' : ''}`} style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{wins[1]}</div>
+                    <div className={`vs-right asw-num ${wins[1] > wins[0] ? 'vs-win' : ''}`} style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{wins[1]}</div>
                   </div>
                 )}
                 {(a.best_fina != null || b.best_fina != null) && (

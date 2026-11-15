@@ -124,7 +124,7 @@ export default function Market() {
   return (
     <div>
       {/* Mental Model: the page carries the same name and group as the menu link */}
-      <PageHead kicker="Content" title="Marketplace" sub="Swim gear bought and sold across the region" />
+      <PageHead title="Marketplace" sub="Swim gear bought and sold across the region" />
 
       <FilterBar count={loading || failed ? null : shown.length} noun={shown.length === 1 ? 'listing' : 'listings'} active={filtered} onClear={clearFilters}>
         <input
@@ -192,7 +192,7 @@ export default function Market() {
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2, marginBottom: 4 }}>
                     {l.title}
                   </div>
-                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, margin: '2px 0 8px' }} className="asw-num">
+                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, margin: '2px 0 8px' }} className="asw-num">
                     {l.price != null ? (
                       <>
                         {Number(l.price).toLocaleString('en-US')}
@@ -228,10 +228,10 @@ export default function Market() {
                       {l.status === 'PENDING' && (
                         <>
                           {/* Von Restorff: many cards on screen, so Approve is not a solid primary on each one */}
-                          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} disabled={busyId === l.id} onClick={() => setStatus(l, 'APPROVED')}>
+                          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} disabled={busyId === l.id} onClick={() => setStatus(l, 'APPROVED')}>
                             <Check size={13} /> Approve
                           </button>
-                          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} disabled={busyId === l.id} onClick={() => setStatus(l, 'REJECTED')}>
+                          <button type="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} disabled={busyId === l.id} onClick={() => setStatus(l, 'REJECTED')}>
                             <X size={13} /> Reject
                           </button>
                         </>
@@ -242,7 +242,7 @@ export default function Market() {
                         </button>
                       )}
                       <span style={{ flex: 1 }} />
-                      <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} aria-label={`Delete listing ${l.title}`} onClick={() => handleDelete(l)}>
+                      <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} aria-label={`Delete listing ${l.title}`} onClick={() => handleDelete(l)}>
                         <Trash2 size={13} /> Delete
                       </button>
                     </div>

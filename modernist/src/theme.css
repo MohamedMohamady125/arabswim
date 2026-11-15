@@ -90,15 +90,15 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: #e6ebf1; color: var(--color-text);
-  font-family: var(--font-body); font-size: 15px; line-height: 1.55; font-weight: 400;
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55; font-weight: 400;
 }
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
   line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 var(--space-2);
 }
-h1 { font-size: 42px; }
+h1 { font-size: 40px; }
 h2 { font-size: 32px; }
-h3 { font-size: 25px; }
+h3 { font-size: 24px; }
 h4 { font-size: 20px; }
 h5 { font-size: 16px; }
 h6 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -195,10 +195,10 @@ figure { margin: 0; }
 }
 /* utility for inline-styled white cards */
 .navy-top { border-top: 3px solid var(--color-box-top) !important; }
-.card-kicker { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent); }
+.card-kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); }
 .card-title {
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
-  font-size: 17px; line-height: 1.2;
+  font-size: 16px; line-height: 1.2;
 }
 .card-body { margin: 0; font-size: 13px; opacity: 0.8; flex: 1; }
 .card-meta {
@@ -241,14 +241,13 @@ figure { margin: 0; }
 @media (prefers-reduced-motion: reduce) { .asw-draw, .asw-chart-dots { animation: none; } }
 /* Records page: roomier type so record times read at a glance */
 .records-page .table { font-size: 16px; }
-.records-page .table th { font-size: 12px; }
 .records-page .table td { padding: 12px var(--space-2); }
 /* reports: NO lines under athlete names anywhere — row borders, hairlines,
    link underlines (user request 2026-10-29/30) */
 .reports-page .table td { border-bottom: 0 !important; }
 .reports-page .hair-b { border-bottom: 0 !important; }
 .reports-page a { text-decoration: none !important; }
-.records-page .asw-time { font-size: 17px; }
+.records-page .asw-time { font-size: 16px; }
 .records-page .kicker { font-size: 14px; }
 /* meet results: the swimmer column absorbs all leftover width and long
    names ellipsize instead of squeezing the time/points columns */
@@ -271,7 +270,7 @@ figure { margin: 0; }
   width: 38px; height: 38px; border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.35); color: #ffffff;
   text-decoration: none; background: transparent;
-  transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 .asw-social:hover, .asw-social:focus-visible {
   background: #ffffff; color: var(--color-accent-800);
@@ -290,7 +289,7 @@ figure { margin: 0; }
 /* medal standings (shared frame): phone fits the whole table on screen —
    tight cell gutters, narrow rank + medal columns, names ellipsize */
 @media (max-width: 900px) {
-  .medals-table th, .medals-table td { padding-left: 7px !important; padding-right: 7px !important; font-size: 12.5px !important; }
+  .medals-table th, .medals-table td { padding-left: 7px !important; padding-right: 7px !important; font-size: 13px !important; }
   .medals-table th:first-child, .medals-table td:first-child { width: 24px !important; padding-right: 2px !important; }
   .medals-table .medal-col { width: 34px !important; }
 }
@@ -331,10 +330,10 @@ figure { margin: 0; }
 /* — kickers / section labels — */
 .kicker {
   font-family: var(--font-heading); font-weight: 800; font-size: 11px;
-  letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent);
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent);
 }
 .micro {
-  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--color-neutral-700);
 }
 
@@ -358,8 +357,8 @@ figure { margin: 0; }
 .counts { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 2px solid var(--color-divider); }
 .counts > div { padding: 18px 32px; border-right: 1px solid var(--color-divider); }
 .counts > div:last-child { border-right: 0; }
-.counts .n { font-family: var(--font-heading); font-weight: 800; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
-.counts .l { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-700); margin-top: 6px; }
+.counts .n { font-family: var(--font-heading); font-weight: 800; font-size: 32px; line-height: 1; font-variant-numeric: tabular-nums; }
+.counts .l { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); margin-top: 6px; }
 .counts-4 { grid-template-columns: repeat(4, 1fr); }
 
 /* — stat bar (progress) — */
@@ -380,7 +379,7 @@ figure { margin: 0; }
 }
 .club-card:hover { border-color: var(--color-accent); transform: translateY(-2px); }
 .club-card-name {
-  font-family: var(--font-heading); font-weight: 800; font-size: 14.5px;
+  font-family: var(--font-heading); font-weight: 800; font-size: 14px;
   line-height: 1.25; overflow-wrap: anywhere;
 }
 
@@ -404,12 +403,12 @@ figure { margin: 0; }
 }
 .swimmer-card-photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 .swimmer-card-initials {
-  font-family: var(--font-heading); font-weight: 800; font-size: 36px;
-  color: var(--color-neutral-800); letter-spacing: 0.05em;
+  font-family: var(--font-heading); font-weight: 800; font-size: 40px;
+  color: var(--color-neutral-800); letter-spacing: 0.08em;
 }
 .swimmer-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
 .swimmer-card-name {
-  font-family: var(--font-heading); font-weight: 800; font-size: 14.5px;
+  font-family: var(--font-heading); font-weight: 800; font-size: 14px;
   line-height: 1.25;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; min-height: 2.5em;
@@ -449,7 +448,7 @@ figure { margin: 0; }
 /* photo stretches to the full header height (top down to the Born/Age
    chips) instead of a fixed square; capped so long wrapped names don't
    balloon it into a tall sliver */
-.swimmer-photo { width: 148px; align-self: stretch; min-height: 148px; max-height: 210px; font-size: 42px; }
+.swimmer-photo { width: 148px; align-self: stretch; min-height: 148px; max-height: 210px; font-size: 40px; }
 .swimmer-head-info { min-width: 260px; }
 
 .show-mobile-inline { display: none; }
@@ -481,24 +480,24 @@ figure { margin: 0; }
   .m-donut { gap: 22px !important; padding: 6px 0; }
   .m-donut .m-donut-pie { width: 185px !important; height: 185px !important; }
   .m-donut-legend { min-width: 185px !important; gap: 8px !important; }
-  .m-donut-legend > span { font-size: 15px !important; }
+  .m-donut-legend > span { font-size: 16px !important; }
   .m-donut-legend .m-donut-dot { width: 14px !important; height: 14px !important; }
   .m-donut-legend .m-donut-pct { width: 46px !important; }
   /* shuffled highlight boxes: full-width stacked cards on phone — aligned,
      big photo panel, big numbers */
   .m-hl4 { grid-template-columns: 1fr !important; gap: 14px !important; }
-  .m-hl4 .m-hl4-label { font-size: 15px !important; letter-spacing: 0.05em !important; white-space: nowrap; }
+  .m-hl4 .m-hl4-label { font-size: 16px !important; letter-spacing: 0.08em !important; white-space: nowrap; }
   .m-hl4 .m-hl4-va { display: none !important; }
   /* headers wrap to different line counts — pin their height so every card's
      body starts at the same offset */
   .m-hl4 .m-hl4-head { min-height: 66px; box-sizing: border-box; }
-  .m-hl4 .m-hl4-sub { font-size: 12.5px !important; }
-  .m-hl4 .m-hl4-photo { width: 128px !important; font-size: 44px !important; min-height: 150px; }
+  .m-hl4 .m-hl4-sub { font-size: 13px !important; }
+  .m-hl4 .m-hl4-photo { width: 128px !important; font-size: 40px !important; min-height: 150px; }
   .m-hl4 .m-hl4-info { padding: 14px 16px !important; }
-  .m-hl4 .m-hl4-name { font-size: 17px !important; }
+  .m-hl4 .m-hl4-name { font-size: 16px !important; }
   .m-hl4 .m-hl4-line { font-size: 13px !important; }
-  .m-hl4 .m-hl4-big { font-size: 44px !important; }
-  .m-hl4 .m-hl4-date { font-size: 12.5px !important; }
+  .m-hl4 .m-hl4-big { font-size: 40px !important; }
+  .m-hl4 .m-hl4-date { font-size: 13px !important; }
   /* federation news cards: keep the cropped 16:9 frame on phone too — a fixed
      height would re-crop the cover the admin already framed */
   .fed-news-card .fed-news-img { aspect-ratio: 16 / 9; height: auto !important; }
@@ -510,7 +509,7 @@ figure { margin: 0; }
   .faceoff > div:last-child { justify-content: center; padding: 6px 0 !important; }
   /* compare page: tighter head-to-head rows on phone */
   .vs-row { padding: 8px 10px; gap: 6px; grid-template-columns: 1fr minmax(84px, auto) 1fr; }
-  .vs-mid { font-size: 10px; max-width: 110px; }
+  .vs-mid { font-size: 11px; max-width: 110px; }
   /* header row: give the swimmer names room beside their flags */
   .vs-head .vs-mid { max-width: 90px; }
   .vs-left.asw-time, .vs-right.asw-time { font-size: 13px !important; }
@@ -526,7 +525,7 @@ figure { margin: 0; }
   .meets-filters .select { width: auto !important; flex: 1; min-width: 0; height: 32px; min-height: 32px; font-size: 12px; padding: 0 24px 0 6px; }
   .meets-filters .seg { height: auto; align-items: stretch; }
   .meets-filters .seg .seg-opt {
-    padding: 0 9px; font-size: 10px;
+    padding: 0 9px; font-size: 11px;
     min-height: 30px; height: 30px;
     display: inline-flex; align-items: center; justify-content: center;
   }
@@ -539,7 +538,7 @@ figure { margin: 0; }
   .records-filters .input { width: auto !important; flex: 1 1 auto; min-width: 140px; max-width: none !important; height: 32px; min-height: 32px; font-size: 13px; padding: 0 8px; }
   .records-filters .seg { flex: none; height: auto; align-items: stretch; }
   .records-filters .seg .seg-opt {
-    padding: 0 8px; font-size: 10px;
+    padding: 0 8px; font-size: 11px;
     min-height: 30px; height: 30px;
     display: inline-flex; align-items: center; justify-content: center;
   }
@@ -550,11 +549,11 @@ figure { margin: 0; }
      card width ~170px keeps photos small while text stays legible */
   .record-cards { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
   .record-cards > * { padding: 10px !important; }
-  .record-cards .card-kicker { font-size: 10px; letter-spacing: 0.04em; }
+  .record-cards .card-kicker { font-size: 11px; letter-spacing: 0.08em; }
   .record-cards .rec-time { font-size: 18px !important; }
   .record-cards .rec-event { font-size: 11px !important; }
-  .record-cards .rec-name { font-size: 11.5px !important; }
-  .record-cards .rec-meta { font-size: 10px !important; margin-top: 4px !important; }
+  .record-cards .rec-name { font-size: 12px !important; }
+  .record-cards .rec-meta { font-size: 11px !important; margin-top: 4px !important; }
   /* splits/team chip: keep the label but as small as legible so athlete
      names get the width */
   .splits-chip { font-size: 7px !important; padding: 1px 3px !important; letter-spacing: 0.02em !important; gap: 1px !important; }
@@ -564,17 +563,17 @@ figure { margin: 0; }
      page titles get a short gold underline, kickers a gold dash and
      section heads a navy bar, so every heading is instantly locatable */
   /* meet header: title sits beside the logo — smaller, max 2 lines, no underline */
-  h1.meet-title { font-size: 25px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  h1.meet-title { font-size: 24px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   h1.meet-title-long { font-size: 20px; }
   h1.meet-title::after { display: none; }
-  h1 { font-size: 26px; }
+  h1 { font-size: 24px; }
   h1::after {
     content: ''; display: block; width: 64px; height: 3px;
     background: var(--asw-gold); margin-top: 10px;
     border-radius: 2px;
   }
   h2 { font-size: 24px; }
-  h3 { font-size: 19px; }
+  h3 { font-size: 20px; }
   .kicker::before {
     content: ''; display: inline-block; width: 20px; height: 3px;
     background: var(--asw-gold); margin-right: 7px;
@@ -601,13 +600,13 @@ figure { margin: 0; }
 
   /* denser tables */
   .table { font-size: 13px; }
-  .table th { padding: 8px 6px; letter-spacing: 0.05em; }
+  .table th { padding: 8px 6px; letter-spacing: 0.08em; }
   .table td { padding: 8px 6px; }
   .table th:first-child, .table td:first-child { padding-left: 0; }
   .table th:last-child, .table td:last-child { padding-right: 0; }
 
   /* records stay a step larger than other tables on phones too */
-  .records-page .table { font-size: 15px; }
+  .records-page .table { font-size: 16px; }
   .records-page .table td { padding: 10px 6px; }
   .records-page .asw-time { font-size: 16px; }
 
@@ -626,11 +625,11 @@ figure { margin: 0; }
   .rankings-table .num, .rankings-table .time { font-size: 12px; }
 
   /* keep swimmer details beside the photo on phones */
-  .swimmer-photo { width: 104px; align-self: stretch; min-height: 104px; max-height: 176px; font-size: 30px; }
+  .swimmer-photo { width: 104px; align-self: stretch; min-height: 104px; max-height: 176px; font-size: 32px; }
   .swimmer-head-info { min-width: 0; }
   /* long names (3+ words) wrap into a tower on phones — tighter type keeps
      the header, and therefore the stretched photo, compact */
-  .swimmer-head-info h1 { font-size: 23px; line-height: 1.15; }
+  .swimmer-head-info h1 { font-size: 24px; line-height: 1.15; }
 
   .cellgrid > * { padding: 12px; }
   .club-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -638,9 +637,9 @@ figure { margin: 0; }
   .club-card-name { font-size: 13px; }
   .swimmer-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .swimmer-card-body { padding: 8px 10px 10px; gap: 4px; }
-  .swimmer-card-name { font-size: 12.5px; }
+  .swimmer-card-name { font-size: 13px; }
   .swimmer-card-meta { font-size: 11px; }
-  .swimmer-card-sub { font-size: 10px; }
+  .swimmer-card-sub { font-size: 11px; }
   .loading, .empty { padding: 32px 16px; }
   .pager { flex-wrap: wrap; }
   .sect-head { flex-wrap: wrap; }
@@ -675,7 +674,7 @@ figure { margin: 0; }
 .qs-rec-counters { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .qs-rec-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .qs-panel { background: var(--color-bg); border: 1px solid var(--color-divider); padding: 16px; }
-.qs-panel-title { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-accent-800); margin-bottom: 12px; }
+.qs-panel-title { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-800); margin-bottom: 12px; }
 @media (max-width: 900px) {
   .qs-cards-8 { grid-template-columns: repeat(2, 1fr); }
   .qs-cols-3, .qs-main-2, .qs-perf-2, .qs-rec-charts { grid-template-columns: 1fr; }
@@ -687,7 +686,7 @@ figure { margin: 0; }
 @font-face { font-family: 'Al-Jazeera'; font-display: swap; src: url('/fonts/Al-Jazeera-Light.woff2') format('woff2'); font-weight: 200; font-style: normal; }
 @font-face { font-family: 'Al-Jazeera'; font-display: swap; src: url('/fonts/Al-Jazeera-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; }
 @font-face { font-family: 'Al-Jazeera'; font-display: swap; src: url('/fonts/Al-Jazeera-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; }
-@font-face { font-family: 'Al-Jazeera'; font-display: swap; src: url('/fonts/Al-Jazeera-Heavy.woff2') format('woff2'); font-weight: 900; font-style: normal; }
+@font-face { font-family: 'Al-Jazeera'; font-display: swap; src: url('/fonts/Al-Jazeera-Heavy.woff2') format('woff2'); font-weight: 800; font-style: normal; }
 
 /* ── Micro animations ─────────────────────────────────────────────────── */
 @keyframes asw-fade-up {
@@ -764,11 +763,10 @@ figure { margin: 0; }
   width: 108px; height: 108px; padding: 0; flex: none;
   background: #ffffff; border: 1px solid var(--color-divider);
   border-radius: 50%; text-decoration: none; overflow: hidden;
-  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 a.asw-partner-pill:hover {
   border-color: var(--color-accent);
-  box-shadow: 0 6px 18px rgba(20,24,31,0.10);
   transform: translateY(-2px);
 }
 .asw-partner-logo {
@@ -779,8 +777,8 @@ a.asw-partner-pill:hover {
    accent icon stacked over a two-weight wordmark inside the circle */
 .asw-partner-mark {
   display: inline-flex; flex-direction: column; align-items: center; gap: 7px;
-  font-family: var(--font-heading); font-weight: 800; font-size: 10.5px;
-  letter-spacing: 0.06em; color: var(--color-box-top); white-space: nowrap;
+  font-family: var(--font-heading); font-weight: 800; font-size: 11px;
+  letter-spacing: 0.08em; color: var(--color-box-top); white-space: nowrap;
   text-align: center;
 }
 .asw-partner-mark svg { flex: none; width: 28px; height: 28px; color: var(--color-accent); }
@@ -821,18 +819,18 @@ a.asw-partner-pill:hover {
 
 /* ── Live results hub ─────────────────────────────────────────────── */
 .live-row {
-  transition: background .12s ease;
+  transition: background 0.15s ease;
 }
 .live-row-link { text-decoration: none; color: inherit; display: block; }
 .live-row-link .live-row:hover { background: var(--color-accent-100); }
-.live-chevron { transition: transform .12s ease; }
-.live-result-row { transition: background .12s ease; }
+.live-chevron { transition: transform 0.15s ease; }
+.live-result-row { transition: background 0.15s ease; }
 .live-result-row:hover { background: var(--color-accent-100) !important; }
 .live-daychip {
-  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.live-daychip:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(12,35,64,.12); }
-.live-tabpill { transition: background .12s ease, color .12s ease, border-color .12s ease; }
+.live-daychip:hover { border-color: var(--color-accent); }
+.live-tabpill { transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
 .live-tabpill:hover:not(.active) { border-color: var(--color-accent-500); color: var(--color-accent); }
 .live-fade-in { animation: liveFade .25s ease; }
 @keyframes liveFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
@@ -840,7 +838,7 @@ a.asw-partner-pill:hover {
 @keyframes athletePop { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
 @media (max-width: 640px) {
   .athlete-card-overlay { padding: 0 !important; align-items: flex-end !important; }
-  .athlete-card-pop { align-self: flex-end; max-height: 88vh !important; border-radius: 18px 18px 0 0 !important; }
+  .athlete-card-pop { align-self: flex-end; max-height: 88vh !important; border-radius: 0 !important; }
   /* hub tab bar: pills fill the row, meta drops to its own line */
   .live-tabrow { flex-wrap: wrap; }
   .live-tabrow .live-tabpill { flex: 1 1 0; padding: 9px 0 !important; text-align: center; }
@@ -963,7 +961,7 @@ label.btn:focus-within { outline: 2px solid var(--color-accent-2); outline-offse
 @media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } }
 .done-state { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border: 2px solid var(--asw-fast); background: var(--color-bg); }
 .done-mark { width: 32px; height: 32px; flex: none; display: grid; place-items: center; background: var(--asw-fast); color: var(--color-bg); font-weight: 700; }
-.done-title { font-weight: 700; font-size: 15px; }
+.done-title { font-weight: 700; font-size: 16px; }
 .done-body { font-size: 13px; color: var(--color-neutral-700); margin-top: 4px; }
 .backlink { display: inline-flex; align-items: center; min-height: 40px; font-size: 13px; font-weight: 600; }
 @media (max-width: 900px) {
@@ -985,7 +983,7 @@ label.btn:focus-within { outline: 2px solid var(--color-accent-2); outline-offse
 .swimmers-item:hover, .swimmers-item:focus-within { border-color: var(--color-accent); }
 .swimmers-item-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 8px; color: inherit; text-decoration: none; }
 .swimmers-item-link:focus-visible { outline: 2px solid var(--color-accent-2); outline-offset: -2px; }
-.swimmers-item-photo { flex: none; width: 44px; height: 55px; display: grid; place-items: center; overflow: hidden; background: var(--color-neutral-200); color: var(--color-neutral-800); font-family: var(--font-heading); font-weight: 800; font-size: 14px; letter-spacing: 0.04em; }
+.swimmers-item-photo { flex: none; width: 44px; height: 55px; display: grid; place-items: center; overflow: hidden; background: var(--color-neutral-200); color: var(--color-neutral-800); font-family: var(--font-heading); font-weight: 800; font-size: 14px; letter-spacing: 0.08em; }
 .swimmers-item-photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 .swimmers-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .swimmers-item-name { font-family: var(--font-heading); font-size: 14px; line-height: 1.25; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1049,7 +1047,7 @@ label.btn:focus-within { outline: 2px solid var(--color-accent-2); outline-offse
 .content-search-hit { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 4px 0; background: none; border: none; font: inherit; font-size: 13px; font-weight: 600; color: inherit; text-align: left; cursor: pointer; }
 .content-search-hit span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .content-search-hit:hover span, .content-search-hit:focus-visible span { text-decoration: underline; }
-.content-search-all { display: block; width: 100%; min-height: 40px; padding: 0 12px; background: var(--color-neutral-100); border: none; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--color-accent); text-align: left; cursor: pointer; }
+.content-search-all { display: block; width: 100%; min-height: 40px; padding: 0 12px; background: var(--color-neutral-100); border: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--color-accent); text-align: left; cursor: pointer; }
 .content-search-all:hover { text-decoration: underline; }
 .content-search-note { padding: 14px 12px; font-size: 13px; color: var(--color-neutral-700); }
 @media (max-width: 900px) {
@@ -1059,7 +1057,7 @@ label.btn:focus-within { outline: 2px solid var(--color-accent-2); outline-offse
 .content-notfound-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; margin-top: 28px; border-top: 1px solid var(--color-divider); border-left: 1px solid var(--color-divider); max-width: 980px; }
 .content-notfound-links a { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; min-height: 64px; text-decoration: none; color: inherit; border-right: 1px solid var(--color-divider); border-bottom: 1px solid var(--color-divider); }
 .content-notfound-links a:hover { background: var(--color-neutral-100); }
-.content-notfound-links a span { font-size: 12.5px; color: var(--color-neutral-700); }
+.content-notfound-links a span { font-size: 13px; color: var(--color-neutral-700); }
 
 /* ---------- RESULTS group: /records, /rankings, /new-records, /qualifying-times, home ---------- */
 /* the owner-tuned compact filter rows (.records-filters) sit inside the shared FilterBar:
@@ -1067,7 +1065,7 @@ label.btn:focus-within { outline: 2px solid var(--color-accent-2); outline-offse
 .filterbar .results-filters { padding: 0 !important; flex: 1 1 320px; min-width: 0; }
 .filterbar .results-filters .select { background-color: var(--color-bg); }
 /* Chunking: stroke sub-heading rows inside a record table */
-.results-group-row td, .results-group-row { font-size: 11px !important; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-700); background: var(--color-neutral-100); padding-top: 6px !important; padding-bottom: 6px !important; }
+.results-group-row td, .results-group-row { font-size: 11px !important; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); background: var(--color-neutral-100); padding-top: 6px !important; padding-bottom: 6px !important; }
 div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 /* Working Memory: when/where a record was set, under the meet name */
 .results-sub { display: block; font-size: 12px; color: var(--color-neutral-700); font-weight: 500; }
@@ -1084,7 +1082,7 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .content-pw { position: relative; }
 .content-pw .input { padding-right: 64px; }
 .content-pw .btn { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); min-height: 32px; padding: 0 10px; font-size: 12px; }
-.content-fielderr { margin-top: 5px; font-size: 12.5px; color: var(--asw-slow); }
+.content-fielderr { margin-top: 5px; font-size: 13px; color: var(--asw-slow); }
 .content-fieldhint { margin-top: 5px; font-size: 12px; color: var(--color-neutral-700); }
 .content-authnote { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--color-divider); font-size: 13px; line-height: 1.6; color: var(--color-neutral-700); }
 /* admin dashboard tool tiles */
@@ -1092,7 +1090,7 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .content-tools a { display: flex; flex-direction: column; gap: 4px; padding: 14px 32px; min-height: 64px; color: inherit; text-decoration: none; border-right: 1px solid var(--color-divider); }
 .content-tools a:last-child { border-right: none; }
 .content-tools a:hover { background: var(--color-neutral-100); }
-.content-tools a span { font-size: 12.5px; color: var(--color-neutral-700); }
+.content-tools a span { font-size: 13px; color: var(--color-neutral-700); }
 @media (max-width: 900px) { .content-tools a { padding: 12px 16px; border-right: none; border-bottom: 1px solid var(--color-divider); } .content-tools a:last-child { border-bottom: none; } }
 
 /* ---------- FEDERATIONS group (Countries list, federation profile, medal tables) ---------- */
@@ -1162,7 +1160,7 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .content-article-admin { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; margin-bottom: 16px; background: var(--color-neutral-100); border: 1px solid var(--color-divider); }
 .content-article-more { display: flex; align-items: center; gap: 14px; padding: 12px 0; min-height: 64px; border-bottom: 1px solid var(--color-divider); color: inherit; text-decoration: none; }
 .content-article-more img, .content-article-more-ph { width: 112px; aspect-ratio: 16 / 9; object-fit: cover; flex: none; background: var(--color-neutral-200); }
-.content-article-more strong { display: block; font-size: 15px; line-height: 1.3; color: var(--color-accent-800); }
+.content-article-more strong { display: block; font-size: 16px; line-height: 1.3; color: var(--color-accent-800); }
 .content-article-more:hover strong { text-decoration: underline; text-underline-offset: 3px; }
 .content-article-more-date { display: block; margin-top: 4px; font-size: 12px; color: var(--color-neutral-700); }
 @media (max-width: 640px) { .content-article-more img, .content-article-more-ph { width: 88px; } }
@@ -1173,7 +1171,7 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .content-album-cover { aspect-ratio: 1 / 1; overflow: hidden; background: var(--color-neutral-200); display: flex; align-items: center; justify-content: center; }
 .content-album-cover img { width: 100%; height: 100%; object-fit: cover; }
 .content-album-ph { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--color-neutral-700); }
-.content-album-title { font-family: var(--font-heading); font-weight: 800; font-size: 15px; line-height: 1.2; margin: 10px 0 4px; }
+.content-album-title { font-family: var(--font-heading); font-weight: 800; font-size: 16px; line-height: 1.2; margin: 10px 0 4px; }
 .content-album > a:hover .content-album-title { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 640px) { .content-albums { grid-template-columns: 1fr 1fr; gap: 20px 12px; } }
 /* Zeigarnik Effect: unfinished admin work is stated, with a gold edge (Media, Marketplace, Dashboard) */
@@ -1186,3 +1184,10 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .content-lightbox-next { right: 8px; top: 50%; transform: translateY(-50%); }
 .content-lightbox-caption { position: absolute; bottom: 16px; left: 0; right: 0; display: flex; justify-content: center; gap: 14px; padding: 0 16px; font-size: 14px; color: var(--color-bg); text-align: center; }
 @media (max-width: 640px) { .content-lightbox { padding: 56px 8px; } }
+
+/* ---------- Profile pages (club, academy, federation): same flat look as the rest ---------- */
+/* Jakob's Law + Similarity: one section heading and one tab bar across every profile */
+.prof-h { font-family: var(--font-heading); font-weight: 800; font-size: 20px; letter-spacing: -0.01em; line-height: 1.2; color: var(--color-accent-800); margin: 24px 0 16px; text-transform: none; }
+.prof-tabs { display: flex; align-items: center; gap: 12px; padding: 12px 32px; }
+.prof-tabs .seg { flex-wrap: wrap; }
+@media (max-width: 760px) { .prof-tabs { padding: 0 16px; } .prof-tabs .seg { flex-wrap: nowrap; } }

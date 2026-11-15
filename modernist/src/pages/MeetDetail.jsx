@@ -20,7 +20,7 @@ import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 import { Loading, notify, Empty, Seg, MedalIcon, BackLink, ShowMore } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { useAuth } from '../context/AuthContext'
-import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES } from '../utils'
+import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials } from '../utils'
 import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakdown'
 
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
@@ -161,8 +161,7 @@ function MeetLogo({ photo, name }) {
 // row in the club tally stays perfectly aligned.
 function ClubLogo({ logo, name, size = 26 }) {
   const [failed, setFailed] = useState(false)
-  const initials = (name || '')
-    .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?'
+  const initials = nameInitials(name)
   const base = {
     width: size, height: size, flex: 'none', borderRadius: '50%',
     border: '1px solid var(--color-neutral-300)',
@@ -300,7 +299,7 @@ function AddResultModal({ meetId, defaultEventId, openWaterMode = false, onClose
                   <div style={{ position: 'absolute', zIndex: 10, width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-divider)', marginTop: 2, boxShadow: 'var(--shadow-md)', maxHeight: 200, overflowY: 'auto' }}>
                     {options.map((s) => (
                       <button key={s.id} type="button"
-                        style={{ width: '100%', textAlign: 'left', padding: '8px 12px', border: 0, cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 10 }}
+                        style={{ width: '100%', textAlign: 'left', padding: '8px 12px', border: 0, cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 12 }}
                         onClick={() => { setSwimmer(s); setOptions([]); setQuery('') }}>
                         <span style={{ fontWeight: 600 }}>{s.name}</span>
                         <span className="text-muted" style={{ fontSize: 12 }}>{s.nationality_detail?.name || ''} · {s.sex}</span>
@@ -496,7 +495,7 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
                   <div style={{ position: 'absolute', zIndex: 10, width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-divider)', marginTop: 2, boxShadow: 'var(--shadow-md)', maxHeight: 200, overflowY: 'auto' }}>
                     {options.map((s) => (
                       <button key={s.id} type="button"
-                        style={{ width: '100%', textAlign: 'left', padding: '8px 12px', border: 0, cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 10 }}
+                        style={{ width: '100%', textAlign: 'left', padding: '8px 12px', border: 0, cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 12 }}
                         onClick={() => { setSwimmer(s); setOptions([]); setQuery('') }}>
                         <span style={{ fontWeight: 600 }}>{s.name}</span>
                         <span className="text-muted" style={{ fontSize: 12 }}>{s.nationality_detail?.name || ''} · {s.sex}</span>
@@ -1003,9 +1002,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                   className="splits-chip"
                   style={{
                     flex: 'none', marginLeft: 'auto',
-                    display: 'inline-flex', alignItems: 'center', gap: 3,
-                    padding: '2px 5px', cursor: 'pointer',
-                    fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '2px 4px', cursor: 'pointer',
+                    fontSize: 11, fontWeight: 800, letterSpacing: '0.08em',
                     fontFamily: 'var(--font-heading)',
                     border: `1px solid ${isExpanded ? 'var(--color-accent-800)' : 'var(--asw-gold)'}`,
                     background: isExpanded ? 'var(--color-accent-800)' : 'color-mix(in srgb, var(--asw-gold) 14%, transparent)',
@@ -1031,16 +1030,16 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             {!r.time_centiseconds
               ? <span className="text-muted">{r.hc_type || '—'}</span>
               : isRelay && swimmers.length === 1 && swimmers[0]?.split_time && swimmers[0]?.first_leg !== false
-              ? <span title={`Relay time: ${r.formatted_time}`}>{swimmers[0].split_time} <span className="micro" style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 10.5 }}>SPLIT</span></span>
+              ? <span title={`Relay time: ${r.formatted_time}`}>{swimmers[0].split_time} <span className="micro" style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 11 }}>SPLIT</span></span>
               : r.formatted_time}
           </td>
           <td className="num asw-num">{r.fina_points ?? '—'}</td>
           {editMode && (
             <td className="num" style={{ whiteSpace: 'nowrap' }}>
               <span style={{ display: 'inline-flex', gap: 6 }}>
-                <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12 }} title="Give same rank as swimmer above (shift below)" onClick={(e) => { e.stopPropagation(); duplicateRank(r, arr) }}>Dup ↑</button>
-                <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12 }} onClick={(e) => { e.stopPropagation(); startEditRow(r) }}>Edit</button>
-                <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 12, color: 'var(--asw-slow)' }} onClick={(e) => { e.stopPropagation(); removeRow(r) }}>Delete</button>
+                <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }} title="Give same rank as swimmer above (shift below)" onClick={(e) => { e.stopPropagation(); duplicateRank(r, arr) }}>Dup ↑</button>
+                <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }} onClick={(e) => { e.stopPropagation(); startEditRow(r) }}>Edit</button>
+                <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12, color: 'var(--asw-slow)' }} onClick={(e) => { e.stopPropagation(); removeRow(r) }}>Delete</button>
               </span>
             </td>
           )}
@@ -1053,14 +1052,14 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
               <div style={{ overflowX: 'auto' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--color-divider)', background: 'var(--color-bg)' }}>
                   {r.reaction_time && (
-                    <div style={{ padding: '5px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: splits.length > 0 ? '1px solid var(--color-divider)' : 'none', background: 'var(--color-accent-100)' }}>
-                      <div className="micro" style={{ fontSize: 10.5, marginBottom: 2, color: 'var(--color-accent-800)' }}>RT</div>
+                    <div style={{ padding: '4px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: splits.length > 0 ? '1px solid var(--color-divider)' : 'none', background: 'var(--color-accent-100)' }}>
+                      <div className="micro" style={{ fontSize: 11, marginBottom: 2, color: 'var(--color-accent-800)' }}>RT</div>
                       <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)' }}>{Number(r.reaction_time).toFixed(2)}</div>
                     </div>
                   )}
                   {splits.map((s, j) => (
-                    <div key={j} style={{ padding: '5px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: j < splits.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
-                      <div className="micro" style={{ fontSize: 10.5, marginBottom: 2 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</div>
+                    <div key={j} style={{ padding: '4px 12px', textAlign: 'center', whiteSpace: 'nowrap', borderRight: j < splits.length - 1 ? '1px solid var(--color-divider)' : 'none' }}>
+                      <div className="micro" style={{ fontSize: 11, marginBottom: 2 }}>{s.distance ? `${s.distance}m` : `#${j + 1}`}</div>
                       <div className="asw-num" style={{ fontSize: 13, fontWeight: 700 }}>{s.time}</div>
                     </div>
                   ))}
@@ -1275,12 +1274,12 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                 <React.Fragment key={`${cat || '_general'}-${gi}`}>
                   {isOpenView && gi === 0 && (
                     <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '14px 8px' }}>TC — all categories, ranked by time</td>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '16px 8px' }}>TC — all categories, ranked by time</td>
                     </tr>
                   )}
                   {selectedCategory === 'ALL' && hasCategories && (
                     <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '14px 8px' }}>{cat || 'Open'}</td>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '16px 8px' }}>{cat || 'Open'}</td>
                     </tr>
                   )}
                   {catRows.map((r) => renderRow(r, fullByCat.get(cat) || catRows))}
@@ -1344,7 +1343,7 @@ function FeaturedCards({ picks, sideBySide = false, stackOnPhone = false, hideRa
               ? <img src={mediaUrl(p.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : (p.name || '?').charAt(0)}
           </div>
-          <div style={{ flex: 1, minWidth: 0, padding: '10px 12px 10px 0', display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
+          <div style={{ flex: 1, minWidth: 0, padding: '10px 12px 10px 0', display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}>
             <div className="micro" style={{ color: 'var(--color-accent-800)', fontWeight: 700 }}>{hideRank ? p.tag : `#1 · ${p.tag}`}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
               <Flag code={p.nationality_code} name={p.name} />
@@ -1354,16 +1353,16 @@ function FeaturedCards({ picks, sideBySide = false, stackOnPhone = false, hideRa
             {p.value && (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{p.value}</span>
-                {p.valueLabel && <span className="micro" style={{ fontSize: 10.5 }}>{p.valueLabel}</span>}
+                {p.valueLabel && <span className="micro" style={{ fontSize: 11 }}>{p.valueLabel}</span>}
               </div>
             )}
             {/* medal tally as icons (not G/S/B letters) */}
             {p.medals && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {[['GOLD', p.medals.gold], ['SILVER', p.medals.silver], ['BRONZE', p.medals.bronze]].map(([t, n]) => (
-                  <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     <MedalIcon type={t} size={15} />
-                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, lineHeight: 1 }}>{n}</span>
+                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1 }}>{n}</span>
                   </span>
                 ))}
               </div>
@@ -1398,7 +1397,7 @@ function EntityAthleteMedals({ medals, isNational }) {
   })
   groups.sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze)
   if (groups.length === 0) {
-    return <div className="micro" style={{ padding: '14px 18px' }}>No athlete medals recorded</div>
+    return <div className="micro" style={{ padding: '16px 16px' }}>No athlete medals recorded</div>
   }
   return (
     <div className="medal-drop">
@@ -1423,7 +1422,7 @@ function EntityAthleteMedals({ medals, isNational }) {
             </span>
             <span className="medal-drop-chips">
               {g.medals.map((m, mi) => (
-                <span key={m.id || mi} className="tag tag-neutral" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span key={m.id || mi} className="tag tag-neutral" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   <MedalIcon type={m.medal_type} size={12} />
                   {m.event_detail?.name}{m.scope === 'OPEN' ? ' · Open' : ''}
                 </span>
@@ -1443,7 +1442,7 @@ function SwimmerMedalDetails({ medals, swimmerId }) {
   const order = { GOLD: 0, SILVER: 1, BRONZE: 2 }
   const sorted = [...medals].sort((a, b) => (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3))
   if (sorted.length === 0) {
-    return <div className="micro" style={{ padding: '14px 18px' }}>No medals recorded</div>
+    return <div className="micro" style={{ padding: '16px 16px' }}>No medals recorded</div>
   }
   return (
     <div className="medal-drop">
@@ -1552,7 +1551,7 @@ function MedalsTab({ meetId, isNational }) {
             ['BRONZE', bronzeCount, 'Bronze', 'var(--asw-bronze)'],
           ].map(([type, n, label, color]) => (
             <div key={type}>
-              <div className="n" style={{ color, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="n" style={{ color, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <MedalIcon type={type} size={24} />{n}
               </div>
               <div className="l">{label}</div>
@@ -1619,7 +1618,7 @@ function MedalsTab({ meetId, isNational }) {
                     )
                   )}
                   renderEntity={(row) => (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                       {activeScope === 'country' && (
                         <>
                           <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
@@ -1698,7 +1697,7 @@ function PersonalBestsTab({ stats, onRetry }) {
                 {...rowLink(() => navigate(`/swimmers/${s.swimmer_id}`))}
               >
                 {/* Line 1 — rank + swimmer + new time */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span className="asw-num" style={{ width: 26, height: 26, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12 }}>
                     {i + 1}
                   </span>
@@ -1720,7 +1719,7 @@ function PersonalBestsTab({ stats, onRetry }) {
                   <span className="micro" style={{ flex: 'none' }}>Previous</span>
                   <span className="asw-time" style={{ fontWeight: 700 }}>{s.previous_best}</span>
                   {s.improvement_cs > 0 && (
-                    <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontWeight: 700 }}>
+                    <span className="asw-num" style={{ color: 'var(--asw-fast, var(--asw-fast))', fontWeight: 700 }}>
                       −{(s.improvement_cs / 100).toFixed(2)}s
                     </span>
                   )}
@@ -1777,7 +1776,7 @@ function TopPerformancesTab({ stats, onRetry }) {
         <div style={{ marginBottom: 28, maxWidth: 760 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
             <div className="kicker">Top performances — highest FINA points</div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               {mixedRegions && (
                 <Seg
                   options={[{ value: 'all', label: 'All' }, { value: 'arab', label: 'Arab' }]}
@@ -1800,7 +1799,7 @@ function TopPerformancesTab({ stats, onRetry }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
               {performers.map((t, i) => (
                 <div key={i} className="row-link" style={{ cursor: 'pointer' }} {...rowLink(() => navigate(`/swimmers/${t.swimmer_id}`))}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 15, marginBottom: 4 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 16, marginBottom: 4 }}>
                     <span className="asw-num text-muted">{i + 1}</span>
                     <Flag code={t.nationality_code} name={t.swimmer_name} />
                     <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.swimmer_name}</span>
@@ -1868,14 +1867,14 @@ function OverviewTab({ meetId, stats }) {
             <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>{stats.countries.length} countries · ranked by swimmers entered</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 880 }}>
               {rows.map((c, i) => (
-                <div key={c.nationality__code || i} className={c.nationality__id ? 'row-link' : undefined} {...rowLink(c.nationality__id ? () => navigate(`/countries/${c.nationality__id}`) : null)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', minHeight: 32, cursor: c.nationality__id ? 'pointer' : 'default' }}>
+                <div key={c.nationality__code || i} className={c.nationality__id ? 'row-link' : undefined} {...rowLink(c.nationality__id ? () => navigate(`/countries/${c.nationality__id}`) : null)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0', minHeight: 32, cursor: c.nationality__id ? 'pointer' : 'default' }}>
                   <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
                   <Flag code={c.nationality__code} name={c.nationality__name} />
-                  <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nationality__name}</span>
-                  <div style={{ flex: 1, height: 16, background: 'var(--color-neutral-200)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-2)', borderRadius: 3, minWidth: 6 }} />
+                  <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nationality__name}</span>
+                  <div style={{ flex: 1, height: 16, background: 'var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden' }}>
+                    <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-2)', borderRadius: 0, minWidth: 6 }} />
                   </div>
-                  <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 12.5 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 500 }}> sw</span></span>
+                  <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 13 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 600 }}> sw</span></span>
                   <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-700)' }}>{c.results_count} res</span>
                 </div>
               ))}
@@ -1894,14 +1893,14 @@ function OverviewTab({ meetId, stats }) {
             <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Clubs ranked by swimmers entered</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 880 }}>
               {rows.map((c, i) => (
-                <div key={c.team} className={c.team_id ? 'row-link' : undefined} {...rowLink(c.team_id ? () => navigate(`/teams/${c.team_id}`) : null)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', minHeight: 32, cursor: c.team_id ? 'pointer' : 'default' }}>
+                <div key={c.team} className={c.team_id ? 'row-link' : undefined} {...rowLink(c.team_id ? () => navigate(`/teams/${c.team_id}`) : null)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0', minHeight: 32, cursor: c.team_id ? 'pointer' : 'default' }}>
                   <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
                   <ClubLogo logo={c.team_logo} name={c.team} size={24} />
-                  <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.team}</span>
-                  <div style={{ flex: 1, height: 16, background: 'var(--color-neutral-200)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-500)', borderRadius: 3, minWidth: 6 }} />
+                  <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.team}</span>
+                  <div style={{ flex: 1, height: 16, background: 'var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden' }}>
+                    <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-500)', borderRadius: 0, minWidth: 6 }} />
                   </div>
-                  <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 12.5 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 500 }}> sw</span></span>
+                  <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 13 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 600 }}> sw</span></span>
                   <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-700)' }}>{c.results_count} res</span>
                 </div>
               ))}
@@ -1922,7 +1921,7 @@ function OverviewTab({ meetId, stats }) {
               {ap.distribution.map((d) => (
                 <div key={d.age} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
                   <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 3 }}>{d.count}</span>
-                  <div style={{ width: '72%', maxWidth: 30, height: `${Math.max(3, (d.count / maxC) * 110)}px`, background: 'var(--color-accent-800)', borderRadius: '2px 2px 0 0' }} />
+                  <div style={{ width: '72%', maxWidth: 30, height: `${Math.max(3, (d.count / maxC) * 110)}px`, background: 'var(--color-accent-800)', borderRadius: 0 }} />
                   <span className="asw-num" style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 5 }}>{d.age}</span>
                 </div>
               ))}
@@ -2058,7 +2057,7 @@ function MostImprovedTab({ meetId }) {
           <div className="kicker">Most improved swimmers</div>
           <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, fontSize: 12, marginTop: 4 }}>Biggest time drops vs previous personal best</div>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {mixedRegions && (
             <Seg
               options={[{ value: 'all', label: 'All' }, { value: 'arab', label: 'Arab' }]}
@@ -2080,7 +2079,7 @@ function MostImprovedTab({ meetId }) {
       ) : (() => {
         const maxDrop = Math.max(0.01, ...filtered.map((s) => parseFloat(s.improvement) || 0))
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
             {filtered.map((s, i) => {
               const drop = parseFloat(s.improvement) || 0
               // podium colours per rank: gold, silver, bronze — navy after
@@ -2093,7 +2092,7 @@ function MostImprovedTab({ meetId }) {
                   style={{
                     border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
                     borderTop: `3px solid ${rankColor}`,
-                    padding: '10px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 7,
+                    padding: '10px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8,
                   }}
                 >
                   {/* rank + swimmer + headline drop */}
@@ -2108,7 +2107,7 @@ function MostImprovedTab({ meetId }) {
                         <Flag code={s.nationality_code} name={s.swimmer_name} />
                         <span style={{ fontWeight: 700, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.swimmer_name}</span>
                       </div>
-                      <div className="micro" style={{ marginTop: 1, fontSize: 10.5 }}>{s.event_name}</div>
+                      <div className="micro" style={{ marginTop: 1, fontSize: 11 }}>{s.event_name}</div>
                     </div>
                     <span className="asw-num" style={{ flex: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1, color: 'var(--asw-fast)' }}>
                       −{s.improvement}{String(s.improvement).includes(':') ? '' : 's'}
@@ -2137,7 +2136,7 @@ function MostImprovedTab({ meetId }) {
 /* ───────────────────────── Broken records tab ───────────────────────── */
 
 const BROKEN_SCOPE_LABEL = { arab: 'Arab records', gcc: 'GCC records', national: 'National records' }
-const BROKEN_SCOPE_COLOR = { arab: 'var(--color-accent-800)', gcc: '#7d8a99', national: 'var(--color-accent-800)' }
+const BROKEN_SCOPE_COLOR = { arab: 'var(--color-accent-800)', gcc: 'var(--asw-silver)', national: 'var(--color-accent-800)' }
 
 function RecordsBrokenTab({ meetId }) {
   const navigate = useNavigate()
@@ -2214,9 +2213,9 @@ function RecordsBrokenTab({ meetId }) {
                 {...rowLink(r.is_relay_team ? null : () => navigate(`/swimmers/${r.swimmer_id}`))}
               >
                 {/* Line 1 — event + gender + new time */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
                       {r.event_name}
                     </span>
                     <span className={`tag ${r.gender === 'F' ? 'tag-accent-2' : r.gender === 'X' ? 'tag-neutral' : 'tag-accent'}`} style={{ flex: 'none' }}>
@@ -2235,7 +2234,7 @@ function RecordsBrokenTab({ meetId }) {
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 6, fontSize: 12, color: 'var(--color-neutral-700)' }}>
                   <span className="micro" style={{ flex: 'none' }}>Previous</span>
                   <span className="asw-time" style={{ fontWeight: 700 }}>{r.previous_time}</span>
-                  <span className="asw-num" style={{ color: 'var(--asw-fast, #1a7f37)', fontWeight: 700 }}>
+                  <span className="asw-num" style={{ color: 'var(--asw-fast, var(--asw-fast))', fontWeight: 700 }}>
                     −{(r.improvement_centiseconds / 100).toFixed(2)}s
                   </span>
                   {r.previous_holder && (
@@ -2301,8 +2300,8 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
         <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', maxWidth: days.length === 1 ? 680 : undefined, marginBottom: isAdmin ? 26 : 0 }}>
           {days.map((d) => (
             <div key={d.day} style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)' }}>
-              <div style={{ padding: '10px 14px', borderBottom: '2px solid var(--asw-gold)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15 }}>Day {d.day}</span>
+              <div style={{ padding: '10px 16px', borderBottom: '2px solid var(--asw-gold)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16 }}>Day {d.day}</span>
                 <span className="micro">{formatDate(d.date)}</span>
               </div>
               {d.items.length > 0 ? (
@@ -2310,7 +2309,7 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
                   {sessionsOf(d).map(([session, items]) => (
                     <div key={session || 'none'}>
                       {session && (
-                        <div className="micro" style={{ padding: '7px 14px 3px', color: 'var(--color-accent-800)', fontWeight: 700 }}>
+                        <div className="micro" style={{ padding: '8px 16px 4px', color: 'var(--color-accent-800)', fontWeight: 700 }}>
                           {PROGRAM_SESSION[session]}
                         </div>
                       )}
@@ -2322,7 +2321,7 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
                             className={linked ? 'row-link' : undefined}
                             {...rowLink(linked ? () => openResults(it) : null)}
                             title={linked ? 'View results' : undefined}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', minHeight: 32, fontSize: 13, cursor: linked ? 'pointer' : 'default' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 16px', minHeight: 32, fontSize: 13, cursor: linked ? 'pointer' : 'default' }}
                           >
                             <span className="asw-num" style={{ width: 20, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
                             <span style={{ fontWeight: 600, textDecoration: linked ? 'underline' : 'none', textDecorationColor: 'var(--color-neutral-300)', textUnderlineOffset: 3 }}>
@@ -2338,7 +2337,7 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
                   ))}
                 </div>
               ) : (
-                <div className="micro" style={{ padding: '10px 14px', textTransform: 'none', letterSpacing: 0 }}>Rest day / no events</div>
+                <div className="micro" style={{ padding: '10px 16px', textTransform: 'none', letterSpacing: 0 }}>Rest day / no events</div>
               )}
             </div>
           ))}
@@ -2477,7 +2476,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
   }
 
   return (
-    <div className="rule-b" style={{ padding: '18px 32px', background: 'var(--color-surface)' }}>
+    <div className="rule-b" style={{ padding: '16px 32px', background: 'var(--color-surface)' }}>
       <div className="kicker" style={{ marginBottom: 14 }}>Edit meet</div>
       {error && (
         <div role="alert" style={{ border: '1px solid var(--asw-slow)', color: 'var(--asw-slow)', padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>
@@ -2614,7 +2613,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
             <div className="field" style={{ gridColumn: '1 / -1' }}>
               <label>Assign categories</label>
               {allCats.map((cat) => (
-                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                   <span style={{ fontWeight: 600, fontSize: 13, width: 140 }}>{cat}</span>
                   <select className="select" aria-label={`Gender display for ${cat}`} style={{ fontSize: 13, padding: '4px 8px' }}
                     value={map[cat] || 'men'}
@@ -2703,12 +2702,12 @@ function CompareMeetsModal({ meet, onClose }) {
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div role="dialog" aria-modal="true" aria-label="Compare meets" style={{ width: 860, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
-        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px' }}>
-          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Compare meets</strong>
+        <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
+          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 16 }}>Compare meets</strong>
           <button type="button" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 36, minHeight: 36, marginRight: -8 }}>×</button>
         </div>
 
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <div className="micro" style={{ marginBottom: 6 }}>
               Comparing <strong>{meet.name}</strong> with · same pool only ({meet.pool})
@@ -2805,7 +2804,7 @@ function CompareMeetsModal({ meet, onClose }) {
                                       ? <Link to={`/swimmers/${e.b_swimmer_id}`} style={{ color: 'inherit' }}>{e.b_swimmer}</Link>
                                       : e.b_swimmer}
                                   </td>
-                                  <td className="num asw-num" style={{ fontWeight: 700, color: e.diff_seconds === 0 ? 'inherit' : (e.diff_seconds < 0 ? 'var(--asw-fast, #1e7d3c)' : 'var(--asw-slow, #b3261e)') }}>
+                                  <td className="num asw-num" style={{ fontWeight: 700, color: e.diff_seconds === 0 ? 'inherit' : (e.diff_seconds < 0 ? 'var(--asw-fast, var(--asw-fast))' : 'var(--asw-slow, var(--asw-slow))') }}>
                                     {e.diff_seconds > 0 ? '+' : ''}{e.diff_seconds.toFixed(2)}
                                   </td>
                                 </tr>
@@ -2919,7 +2918,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
     <div>
       {/* Admin tools */}
       {isAdmin && (
-        <div className="rule-b" style={{ padding: '12px 32px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: 'var(--color-surface)' }}>
+        <div className="rule-b" style={{ padding: '12px 32px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', background: 'var(--color-surface)' }}>
           <Link className="btn btn-primary" to={`/import?championship=${meetId}`}>Import results</Link>
           <button className="btn btn-secondary" onClick={() => setShowProgram((v) => !v)}>
             {showProgram ? 'Hide program' : 'Edit program'}
@@ -2964,7 +2963,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
       )}
 
       {/* Day selector — app-style chips (matches the Live hub) */}
-      <div className="rule-b" ref={dayChipsRef} style={{ padding: '14px 16px 14px', overflowX: 'auto', display: 'flex', gap: 10 }}>
+      <div className="rule-b" ref={dayChipsRef} style={{ padding: '16px 16px 16px', overflowX: 'auto', display: 'flex', gap: 12 }}>
         {days.map((d) => {
           const active = selectedDay === d.num
           return (
@@ -2972,7 +2971,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
               onClick={() => setSelectedDay(d.num)}
               className={`live-daychip${active ? ' active' : ''}`}
               style={{
-                flex: 'none', minWidth: 84, padding: '10px 12px 9px', borderRadius: 12, cursor: 'pointer',
+                flex: 'none', minWidth: 84, padding: '10px 12px 8px', borderRadius: 0, cursor: 'pointer',
                 textAlign: 'center', position: 'relative', marginTop: 8,
                 background: active ? 'var(--color-accent-800)' : '#fff',
                 color: active ? '#fff' : 'inherit',
@@ -2982,8 +2981,8 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
               {d.isToday && (
                 <span style={{
                   position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
-                  fontSize: 10.5, lineHeight: 1.2, fontWeight: 800, letterSpacing: '0.1em', padding: '2px 8px',
-                  borderRadius: 999, background: 'var(--asw-slow)', color: '#fff',
+                  fontSize: 11, lineHeight: 1.2, fontWeight: 800, letterSpacing: '0.08em', padding: '2px 8px',
+                  borderRadius: 0, background: 'var(--asw-slow)', color: '#fff',
                 }}>
                   TODAY
                 </span>
@@ -2991,10 +2990,10 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
                 {d.date.toLocaleDateString('en-GB', { weekday: 'short' })}
               </div>
-              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 800, marginTop: 2, lineHeight: 1 }}>
+              <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, marginTop: 2, lineHeight: 1 }}>
                 {d.date.getDate()}
               </div>
-              <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.06em' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.08em' }}>
                 DAY {d.num}
               </div>
             </button>
@@ -3015,7 +3014,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
             return (
               <div key={s} style={{ marginBottom: 32 }}>
                 <div style={{
-                  fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15,
+                  fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16,
                   color: s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-neutral-600)',
                   textTransform: 'uppercase', letterSpacing: '0.08em',
                   borderBottom: `2px solid ${s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-divider)'}`,
@@ -3252,14 +3251,14 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: compact ? 13 : 14, flex: 1, minWidth: 0 }}>{p.event_name}</span>
         {roundBadge && (
           <span style={{
-            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0,
             background: 'var(--color-accent-100)', color: 'var(--color-accent)',
             whiteSpace: 'nowrap', flex: 'none',
           }}>{roundBadge}</span>
         )}
         {(p.age_category || openCat) && (
           <span style={{
-            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0,
             background: 'var(--color-accent-100)', color: 'var(--color-accent)',
             whiteSpace: 'nowrap', flex: 'none',
           }}>{p.age_category || 'Open'}</span>
@@ -3274,8 +3273,8 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
               {['results', 'heats'].map((t) => (
                 <button key={t} type="button" aria-pressed={tab === t} onClick={(e) => { e.stopPropagation(); switchTab(t) }}
                   style={{
-                    padding: '5px 16px', minHeight: 32, fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-heading)',
-                    textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer',
+                    padding: '4px 16px', minHeight: 32, fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-heading)',
+                    textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer',
                     border: '1px solid var(--color-accent)',
                     background: tab === t ? 'var(--color-accent)' : 'transparent',
                     color: tab === t ? '#fff' : 'var(--color-accent)',
@@ -3290,7 +3289,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
           {activeData === null ? (
             <Loading label="Loading results" />
           ) : loadFailed && tab !== 'heats' ? (
-            <div role="alert" style={{ padding: '8px 0', fontSize: 13, color: 'var(--color-neutral-700)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div role="alert" style={{ padding: '8px 0', fontSize: 13, color: 'var(--color-neutral-700)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               These results could not be loaded.
               <button type="button" className="btn btn-secondary" onClick={(e) => { e.stopPropagation(); loadResults() }}>Try again</button>
             </div>
@@ -3307,7 +3306,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
                   <a key={hi} href={`#heat-${p.event}-${p.gender}-${hi}`} aria-label={`Jump to heat ${hi + 1}`}
                     style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 32, minWidth: 32,
-                      fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 3,
+                      fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 0,
                       background: 'var(--color-accent-100)', color: 'var(--color-accent)',
                       textDecoration: 'none', textAlign: 'center', whiteSpace: 'nowrap',
                     }}>
@@ -3321,7 +3320,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
                   <div key={hi} id={`heat-${p.event}-${p.gender}-${hi}`} style={{ marginBottom: 16 }}>
                     <div style={{
                       fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11,
-                      color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.06em',
+                      color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.08em',
                       paddingBottom: 4, marginBottom: 4,
                       borderBottom: '1px solid var(--color-divider)',
                     }}>
@@ -3375,7 +3374,7 @@ function LivePanel({ meet, onFinished }) {
 
   if (!data) return null
   return (
-    <div className="rule-b" style={{ padding: '16px 32px', background: 'var(--color-neutral-50, #fafafa)' }}>
+    <div className="rule-b" style={{ padding: '16px 32px', background: 'var(--color-neutral-50, var(--color-neutral-100))' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <span className="kicker">Live results</span>
         <span className="micro">
@@ -3392,7 +3391,7 @@ function LivePanel({ meet, onFinished }) {
         {data.days.map((d) => (
           <div key={d.day} style={{
             border: d.is_today ? '2px solid var(--color-accent-800)' : '1px solid var(--color-neutral-200)',
-            borderRadius: 8, padding: '12px 14px',
+            borderRadius: 0, padding: '12px 16px',
           }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
               <span style={{ fontWeight: 800, fontFamily: 'var(--font-heading)' }}>Day {d.day}</span>
@@ -3430,7 +3429,7 @@ function LivePanel({ meet, onFinished }) {
 const LIVE_BADGE = (
   <span className="tag" style={{
     verticalAlign: 'middle', background: 'var(--asw-slow)', color: '#fff',
-    display: 'inline-flex', alignItems: 'center', gap: 5,
+    display: 'inline-flex', alignItems: 'center', gap: 4,
   }}>
     <span style={{
       width: 7, height: 7, borderRadius: '50%', background: '#fff',
@@ -3632,7 +3631,7 @@ export default function MeetDetail() {
       ) : (
         <>
           {/* Normal mode: full tabs */}
-          <div className="rule-b tabbar tabbar-sticky" style={{ padding: '14px 32px', overflowX: 'auto' }}>
+          <div className="rule-b tabbar tabbar-sticky" style={{ padding: '16px 32px', overflowX: 'auto' }}>
             <Seg
               tabs
               options={[

@@ -4,9 +4,9 @@ import { CLASSIFICATIONS } from './MeetsTab'
 const GOLD = 'var(--asw-gold)'
 const SILVER = 'var(--asw-silver)'
 const BRONZE = 'var(--asw-bronze)'
-const GOLD_HEX = '#b98a1e'
-const SILVER_HEX = '#7d8a99'
-const BRONZE_HEX = '#a05f2c'
+const GOLD_HEX = 'var(--asw-gold)'
+const SILVER_HEX = 'var(--asw-silver)'
+const BRONZE_HEX = 'var(--asw-bronze)'
 const NAVY = 'var(--color-accent-800)'
 
 function PercentRing({ pct, color, title, desc }) {
@@ -77,15 +77,15 @@ function DistCard({ title, counts, shareOfCareer }) {
   return (
     <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
-        <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: '0.05em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+        <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
         {shareOfCareer != null && (
           <span className="asw-num" title={`${shareOfCareer}% of all career medals`}
-            style={{ marginLeft: 'auto', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, flex: 'none' }}>
+            style={{ marginLeft: 'auto', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, flex: 'none' }}>
             {shareOfCareer}%
           </span>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <MedalDonut counts={counts} size={120} />
         <div style={{ flex: 1, minWidth: 0 }}>
           {[
@@ -150,7 +150,7 @@ export default function MedalsTab({ stats }) {
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {/* Medal count cards */}
       <div className="cellgrid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {statCards.map((c) => (
@@ -175,7 +175,7 @@ export default function MedalsTab({ stats }) {
           <span className="micro">by classification · {medals.total} career medal{medals.total !== 1 ? 's' : ''}</span>
         </div>
         <div style={{
-          display: 'grid', gap: 14,
+          display: 'grid', gap: 16,
           // a lone classification card keeps a sensible width instead of a third of the row
           gridTemplateColumns: (chartComps.length + (intlDonut ? 1 : 0)) === 1
             ? 'minmax(300px, 460px)' : 'repeat(auto-fill, minmax(300px, 1fr))',

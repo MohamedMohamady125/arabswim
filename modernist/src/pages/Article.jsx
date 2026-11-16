@@ -141,13 +141,12 @@ export default function Article() {
 
         {/* ── Cover image ── */}
         {article.cover_image && (
-          <div style={{
-            position: 'relative', margin: '0 0 28px', aspectRatio: '16 / 9',
-            overflow: 'hidden', borderRadius: 0, background: 'var(--color-accent-800)',
-          }}>
-            <Pic kind="cover" w={960} eager
+          // The article's own page shows the whole picture in its own shape —
+          // nothing cropped. Only a very tall image is scaled down to fit the screen.
+          <div style={{ margin: '0 0 28px', background: 'var(--color-accent-800)', display: 'flex', justifyContent: 'center' }}>
+            <Pic kind="cover" w={960} eager fill={false}
               src={article.cover_image}
-              style={{ position: 'relative' }}
+              style={{ width: 'auto', maxWidth: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain' }}
             />
           </div>
         )}

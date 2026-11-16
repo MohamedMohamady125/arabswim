@@ -15,7 +15,7 @@ export const IMAGE_KINDS = {
   logo: { aspect: 'original', lock: false, fit: 'contain', position: '50% 50%', maxSide: 1000, minSide: 160, trim: true },
   sponsor: { aspect: 'original', lock: false, fit: 'contain', position: '50% 50%', maxSide: 1000, minSide: 160, trim: true },
   // Article covers and meet photos: landscape
-  cover: { aspect: 16 / 9, lock: true, fit: 'cover', position: '50% 40%', maxSide: 2000, minSide: 720, smart: true },
+  cover: { aspect: 16 / 9, lock: true, fit: 'cover', position: '50% 22%', maxSide: 2000, minSide: 720, smart: true },
   // meet photo / poster / logo: opens on landscape, any frame allowed; it is
   // often a logo, so every slot shows it whole instead of cropping it
   meet: { aspect: 16 / 9, lock: false, fit: 'contain', position: '50% 50%', maxSide: 2000, minSide: 400 },

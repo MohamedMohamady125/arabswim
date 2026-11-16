@@ -12,10 +12,13 @@ export const IMAGE_KINDS = {
   // People: portrait, face in the upper third; square and round slots keep the head
   person: { aspect: 4 / 5, lock: true, fit: 'cover', position: '50% 22%', maxSide: 1400, minSide: 320 },
   // Crests and logos: never cropped by a slot, always shown whole
-  logo: { aspect: 'original', lock: false, fit: 'contain', position: '50% 50%', maxSide: 1000, minSide: 160, trim: true },
+  // `pad` insets the artwork so a square or wide logo is not clipped by a round badge.
+  // It is a percentage of the PARENT's width, so Pic applies it only when the image
+  // fills its parent (a logo given its own width keeps none).
+  logo: { aspect: 'original', lock: false, fit: 'contain', position: '50% 50%', maxSide: 1000, minSide: 160, trim: true, pad: '10%' },
   sponsor: { aspect: 'original', lock: false, fit: 'contain', position: '50% 50%', maxSide: 1000, minSide: 160, trim: true },
   // Article covers and meet photos: landscape
-  cover: { aspect: 16 / 9, lock: true, fit: 'cover', position: '50% 22%', maxSide: 2000, minSide: 720, smart: true },
+  cover: { aspect: 16 / 9, lock: false, fit: 'cover', position: '50% 22%', maxSide: 2000, minSide: 720, smart: true },
   // meet photo / poster / logo: opens on landscape, any frame allowed; it is
   // often a logo, so every slot shows it whole instead of cropping it
   meet: { aspect: 16 / 9, lock: false, fit: 'contain', position: '50% 50%', maxSide: 2000, minSide: 400 },
@@ -65,7 +68,7 @@ export default function Pic({ kind = 'person', src, w = 160, alt = '', fallback 
         if (onError) onError(e)
       }}
       // a slot that sets its own aspect-ratio gets its height from that, not from the parent
-      style={{ display: 'block', ...(fill ? { width: '100%', ...(style?.aspectRatio ? null : { height: '100%' }) } : null), objectFit: k.fit, objectPosition: k.position, ...style }}
+      style={{ display: 'block', ...(fill ? { width: '100%', ...(style?.aspectRatio ? null : { height: '100%' }) } : null), ...(k.pad && fill && style?.width == null ? { padding: k.pad, boxSizing: 'border-box' } : null), objectFit: k.fit, objectPosition: k.position, ...style }}
       {...rest}
     />
   )

@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from .models import Referee
-from core.serializers import CountrySerializer
+from core.serializers import CountrySerializer, KeepDefaultFlagsMixin
 
 
-class RefereeSerializer(serializers.ModelSerializer):
+class RefereeSerializer(KeepDefaultFlagsMixin, serializers.ModelSerializer):
     nationality_detail = CountrySerializer(source='nationality', read_only=True)
 
     class Meta:

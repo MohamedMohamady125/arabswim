@@ -749,11 +749,11 @@ export default function Calendar() {
       {/* featured next meet + countdown */}
       {featured && (
         <div className="rule-b" style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {featured.kind === 'meet' && featured.item.meet_photo && (
+          {featured.item.meet_photo && (
             <div className="hide-mobile" style={{ width: 300, flex: 'none', borderRight: '2px solid var(--color-divider)', background: 'var(--color-accent-800)' }}>
               <Pic kind="meet" w={320}
                 src={featured.item.meet_photo}
-                alt={featured.item.name}
+                alt={featured.item.name || featured.item.title}
                 className="grayscale"
                 style={{ width: '100%', height: '100%', minHeight: 160 }}
               />

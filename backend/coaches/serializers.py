@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from .models import Coach
-from core.serializers import CountrySerializer
+from core.serializers import CountrySerializer, KeepDefaultFlagsMixin
 
 
-class CoachSerializer(serializers.ModelSerializer):
+class CoachSerializer(KeepDefaultFlagsMixin, serializers.ModelSerializer):
     nationality_detail = CountrySerializer(source='nationality', read_only=True)
 
     class Meta:
@@ -11,7 +11,7 @@ class CoachSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'photo', 'nationality', 'nationality_detail',
             'date_of_birth', 'city', 'level', 'years_experience',
-            'current_club', 'specializations', 'certifications', 'bio',
+            'current_club', 'team', 'specializations', 'certifications', 'bio',
             'achievements', 'cv_file', 'email', 'phone', 'instagram',
             'linkedin', 'is_available', 'is_active', 'created_at', 'updated_at',
         ]

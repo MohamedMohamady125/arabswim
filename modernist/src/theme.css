@@ -757,6 +757,7 @@ figure { margin: 0; }
   display: flex; align-items: center; flex-wrap: wrap;
   justify-content: space-between; gap: 18px 16px; flex: 1;
 }
+.asw-partners-row.few { justify-content: flex-start; gap: 18px 28px; }
 /* big circular partner chips — logo-first, like a federation sponsor wall */
 .asw-partner-pill {
   display: inline-flex; align-items: center; justify-content: center;

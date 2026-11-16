@@ -96,7 +96,7 @@ export default function AcademyProfile() {
             border: '1px solid var(--color-divider)',
           }}>
             {a.logo ? (
-              <Pic kind="logo" w={160} eager src={a.logo} style={{ width: '84%', height: '84%' }} />
+              <Pic kind="logo" w={160} eager src={a.logo} />
             ) : (
               <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40, color: 'var(--color-accent-800)' }}>
                 {acronym(a.name)}

@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from .models import Academy
-from core.serializers import CountrySerializer
+from core.serializers import CountrySerializer, KeepDefaultFlagsMixin
 
 
-class AcademySerializer(serializers.ModelSerializer):
+class AcademySerializer(KeepDefaultFlagsMixin, serializers.ModelSerializer):
     country_detail = CountrySerializer(source='country', read_only=True)
 
     class Meta:

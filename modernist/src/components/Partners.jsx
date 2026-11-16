@@ -65,7 +65,8 @@ export default function Partners() {
   return (
     <section className="rule-t asw-partners" aria-label="Partners">
       <span className="asw-partners-label">Our Partners</span>
-      <div className="asw-partners-row">
+      {/* Proximity: a handful of partners sit together beside the label; only a full wall spreads across */}
+      <div className={`asw-partners-row${shown.length < 5 ? ' few' : ''}`}>
         {/* On phone the track auto-scrolls as an endless marquee (second copy
             makes the loop seamless); on desktop both wrappers flatten away
             (display:contents) and the duplicate set is hidden. */}

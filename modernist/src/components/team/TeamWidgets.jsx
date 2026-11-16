@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import api from '../../api/client'
 import Flag from '../Flag'
 import { Loading, Empty, Seg, MedalIcon } from '../ui'
-import { formatDate, formatTime, mediaUrl } from '../../utils'
+import { formatDate, formatTime, mediaUrl, imgUrl } from '../../utils'
 import Pic from '../Pic'
 
 const INK = 'var(--color-accent-800)'
@@ -59,7 +59,10 @@ export function ClubLogo({ src, name, size = 148, ring = 'var(--color-accent-900
           const [r, g, b] = pts[0]
           // solid backdrop → flood the circle with it; a square canvas is
           // inscribed so its corners (same colour) are the only thing clipped
-          setFit({ bg: `rgb(${r}, ${g}, ${b})`, scale: w / h > 1.25 || h / w > 1.25 ? 0.86 : 1 })
+          // a white backdrop is trimmed away by the server, so the mark itself
+          // needs room inside the circle; a coloured backdrop floods the circle
+          const white = r > 235 && g > 235 && b > 235
+          setFit({ bg: `rgb(${r}, ${g}, ${b})`, scale: white ? 0.8 : w / h > 1.25 || h / w > 1.25 ? 0.86 : 1 })
         } else {
           setFit({ bg: '#fff', scale: 0.78 })
         }
@@ -78,7 +81,11 @@ export function ClubLogo({ src, name, size = 148, ring = 'var(--color-accent-900
       display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
     }}>
       {url ? (
-        <img src={url} alt={name} style={{ width: `${fit.scale * 100}%`, height: `${fit.scale * 100}%`, objectFit: 'contain', display: 'block' }} />
+        // shown through the image service with empty margins trimmed, so a logo
+        // saved with a wide blank border is not a speck in the middle of the badge
+        <img src={imgUrl(src, 512, { trim: true })} alt={name}
+          onError={(e) => { if (e.currentTarget.src !== url) e.currentTarget.src = url }}
+          style={{ width: `${fit.scale * 100}%`, height: `${fit.scale * 100}%`, objectFit: 'contain', display: 'block' }} />
       ) : (
         <span style={{ fontFamily: HEAD, fontWeight: 800, fontSize: size * 0.23, color: INK }}>{acronym(name)}</span>
       )}

@@ -49,10 +49,11 @@ class AlbumViewSet(viewsets.ModelViewSet):
             champ = Championship.objects.get(pk=champ_id)
         except Championship.DoesNotExist:
             return Response({'error': 'Championship not found'}, status=404)
-        album, _ = Album.objects.get_or_create(
-            championship=champ,
-            defaults={'title': champ.name},
-        )
+        # A meet can end up with more than one album (one made on the Media
+        # page, or two requests racing); the gallery always uses the oldest.
+        album = Album.objects.filter(championship=champ).order_by('id').first()
+        if album is None:
+            album = Album.objects.create(championship=champ, title=champ.name)
         return Response(AlbumDetailSerializer(album).data)
 
 

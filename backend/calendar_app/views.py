@@ -7,7 +7,7 @@ from swimmers.models import Swimmer
 
 
 class CalendarEventViewSet(viewsets.ModelViewSet):
-    queryset = CalendarEvent.objects.all()
+    queryset = CalendarEvent.objects.select_related("championship")
     serializer_class = CalendarEventSerializer
     pagination_class = None
 

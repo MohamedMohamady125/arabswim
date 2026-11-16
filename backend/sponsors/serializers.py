@@ -1,8 +1,9 @@
 from rest_framework import serializers
+from core.serializers import KeepDefaultFlagsMixin
 from .models import Sponsor
 
 
-class SponsorSerializer(serializers.ModelSerializer):
+class SponsorSerializer(KeepDefaultFlagsMixin, serializers.ModelSerializer):
     class Meta:
         model = Sponsor
         fields = ['id', 'name', 'logo', 'description',

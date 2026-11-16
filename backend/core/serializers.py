@@ -125,3 +125,20 @@ class ChangeLogSerializer(serializers.ModelSerializer):
                 'old': ov_disp, 'new': nv_disp,
             })
         return out
+
+
+class KeepDefaultFlagsMixin:
+    """For serializers fed by multipart forms (anything with an image upload).
+
+    A form that leaves a checkbox out is read by DRF as False, so a record
+    created without sending its on/off flags was silently saved hidden or
+    inactive. On create, any model BooleanField the request did not mention
+    keeps the model's own default instead."""
+
+    def create(self, validated_data):
+        from django.db import models
+        sent = getattr(self, 'initial_data', {}) or {}
+        for f in self.Meta.model._meta.concrete_fields:
+            if isinstance(f, models.BooleanField) and f.name not in sent:
+                validated_data.pop(f.name, None)
+        return super().create(validated_data)

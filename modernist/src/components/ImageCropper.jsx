@@ -75,7 +75,7 @@ async function getCroppedBlob(imageSrc, crop, rotation = 0, mime = 'image/jpeg',
 
 // Zooming out below 1 lets a whole image sit inside a frame of another shape
 // (a wide logo in a square, a tall poster in a landscape cover) with padding.
-const MIN_ZOOM = 0.4
+const MIN_ZOOM = 0.2
 // react-easy-crop sizes the picture to contain the frame's box at zoom 1, so
 // the zoom that shows all of it is the ratio of the two shapes.
 const fitZoom = (imgAspect, frameAspect) => (imgAspect > frameAspect ? frameAspect / imgAspect : imgAspect / frameAspect)

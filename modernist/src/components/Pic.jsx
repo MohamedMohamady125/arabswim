@@ -62,7 +62,8 @@ export default function Pic({ kind = 'person', src, w = 160, alt = '', fallback 
         setStage(2)
         if (onError) onError(e)
       }}
-      style={{ display: 'block', ...(fill ? { width: '100%', height: '100%' } : null), objectFit: k.fit, objectPosition: k.position, ...style }}
+      // a slot that sets its own aspect-ratio gets its height from that, not from the parent
+      style={{ display: 'block', ...(fill ? { width: '100%', ...(style?.aspectRatio ? null : { height: '100%' }) } : null), objectFit: k.fit, objectPosition: k.position, ...style }}
       {...rest}
     />
   )

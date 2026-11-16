@@ -222,3 +222,21 @@ class HandEnteredRecordTests(_Fixture):
         self._post(country=self.tun.id, time_centiseconds=2400, result_date='2026-06-01')
         check_and_update_records(self.res)   # faster swim, earlier date
         self.assertTrue(Record.objects.filter(source='MANUAL', time_centiseconds=2400).exists())
+
+    def test_excel_import_with_scope_and_country_chosen_in_the_dialog(self):
+        import io
+        from openpyxl import Workbook
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        wb = Workbook(); ws = wb.active
+        ws.append(['Swimmer', 'Event', 'Time', 'Date'])          # no Scope, no Country column
+        ws.append(['Test SWIMMER', '50 M Freestyle', '22.10', '2026-04-02'])
+        buf = io.BytesIO(); wb.save(buf)
+        up = lambda: SimpleUploadedFile('r.xlsx', buf.getvalue())
+        r = self.api.post('/api/v1/records/import-excel/', {'file': up(), 'record_type': 'NATIONAL'}, format='multipart')
+        self.assertEqual(r.status_code, 400)                      # national needs a country
+        r = self.api.post('/api/v1/records/import-excel/',
+                          {'file': up(), 'record_type': 'NATIONAL', 'country': self.mar.id}, format='multipart')
+        self.assertEqual(r.json()['created'], 1, r.content)
+        rec = Record.objects.get(time_centiseconds=2210)
+        self.assertEqual((rec.record_type, rec.country_id, rec.source, rec.result_id),
+                         ('NATIONAL', self.mar.id, 'IMPORT', None))

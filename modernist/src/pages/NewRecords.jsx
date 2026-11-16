@@ -238,6 +238,13 @@ function AddRecordModal({ onClose, onCreated }) {
    number and reason. */
 function ImportRecordsModal({ onClose, onImported }) {
   const [file, setFile] = useState(null)
+  const [scope, setScope] = useState('')
+  const [country, setCountry] = useState('')
+  const [countries, setCountries] = useState([])
+  useEffect(() => {
+    getCountries().then((res) => setCountries(Array.isArray(res.data) ? res.data : res.data?.results || [])).catch(() => {})
+  }, [])
+  const needCountry = scope === 'NATIONAL' && !country
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
@@ -263,11 +270,11 @@ function ImportRecordsModal({ onClose, onImported }) {
   }
 
   const upload = async () => {
-    if (!file || busy) return
+    if (!file || busy || needCountry) return
     setBusy(true)
     setError('')
     try {
-      const r = await importRecordsExcel(file)
+      const r = await importRecordsExcel(file, { scope, country })
       setResult(r.data)
       if (r.data.created > 0) onImported()
     } catch (err) {
@@ -302,6 +309,33 @@ function ImportRecordsModal({ onClose, onImported }) {
           <button type="button" className="btn btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 12 }} onClick={downloadTemplate}>
             ⬇ Download Excel template
           </button>
+
+          {/* Tesler's Law: pick the scope once here instead of typing it on every row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            <div>
+              <label style={label}>Record scope</label>
+              <select className="select" aria-label="Record scope for this file" style={{ width: '100%' }} value={scope} onChange={(e) => { setScope(e.target.value); setResult(null) }}>
+                <option value="">As written in the sheet</option>
+                {RECORD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            {scope === 'NATIONAL' && (
+              <div>
+                <label style={label}>Country</label>
+                <select className="select" aria-label="Country these national records belong to" style={{ width: '100%' }} value={country} onChange={(e) => { setCountry(e.target.value); setResult(null) }}>
+                  <option value="">Select country…</option>
+                  {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          {scope && (
+            <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: -8 }}>
+              {scope === 'NATIONAL'
+                ? 'Every row in the file is saved as a national record of the country you choose.'
+                : 'Every row in the file is saved with this scope; the Scope column is not needed.'}
+            </div>
+          )}
 
           <div>
             <label style={label}>Excel file (.xlsx)</label>
@@ -338,7 +372,8 @@ function ImportRecordsModal({ onClose, onImported }) {
 
         <div className="rule-t" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>{result ? 'Done' : 'Cancel'}</button>
-          <button type="button" className="btn btn-primary" disabled={!file || busy} onClick={upload}>
+          {needCountry && <span className="micro" style={{ marginRight: 'auto', alignSelf: 'center' }}>Still needed: country</span>}
+          <button type="button" className="btn btn-primary" disabled={!file || busy || needCountry} onClick={upload}>
             {busy ? 'Importing…' : 'Import records'}
           </button>
         </div>

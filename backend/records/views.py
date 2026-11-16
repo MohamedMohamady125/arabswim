@@ -153,8 +153,25 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
             for field, aliases in COL_ALIASES.items():
                 if h in aliases and field not in colmap:
                     colmap[field] = idx
-        missing = [f for f in ('swimmer', 'event', 'time', 'record_type', 'date')
-                   if f not in colmap]
+        # Chosen in the import dialog: one scope for the whole file, and for
+        # National the country whose book every row goes into. Both win over
+        # what the sheet says.
+        forced_type = (request.data.get('record_type') or '').strip().upper()
+        if forced_type and forced_type not in dict(Record.RECORD_TYPE_CHOICES):
+            return Response({'error': f'Unknown scope "{forced_type}"'}, status=400)
+        forced_country = None
+        fc = str(request.data.get('country') or '').strip()
+        if fc:
+            forced_country = Country.objects.filter(pk=fc).first() if fc.isdigit() else None
+            if not forced_country:
+                return Response({'error': 'Unknown country'}, status=400)
+        if forced_type == 'NATIONAL' and not forced_country:
+            return Response({'error': 'Choose the country these national records belong to.'},
+                            status=400)
+
+        required = ('swimmer', 'event', 'time', 'date') if forced_type \
+            else ('swimmer', 'event', 'time', 'record_type', 'date')
+        missing = [f for f in required if f not in colmap]
         if missing:
             return Response({'error': f'Missing required column(s): {", ".join(missing)}. '
                                       'Download the template to see the expected headers.'},
@@ -268,8 +285,8 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
                                'error': f'Could not read time "{cell("time")}" (use 27.45 or 1:56.30)'})
                 continue
 
-            rtype = TYPES.get(str(cell('record_type') or '').strip().lower()
-                              .removesuffix(' records').removesuffix(' record'))
+            rtype = forced_type or TYPES.get(str(cell('record_type') or '').strip().lower()
+                                             .removesuffix(' records').removesuffix(' record'))
             if not rtype:
                 errors.append({'row': rownum,
                                'error': f'Unknown scope "{cell("record_type")}" '
@@ -305,6 +322,8 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
                 if not country:
                     errors.append({'row': rownum, 'error': f'Unknown country "{c_raw}"'})
                     continue
+            if forced_country and rtype == 'NATIONAL':
+                country = forced_country
             if country is None:
                 country = swimmer.nationality
 

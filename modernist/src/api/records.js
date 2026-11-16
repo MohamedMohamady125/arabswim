@@ -5,9 +5,13 @@ export const getNewRecords = () => api.get('/records/new/')
 export const createRecord = (data) => api.post('/records/', data)
 export const updateRecord = (id, data) => api.patch(`/records/${id}/`, data)
 export const deleteRecord = (id) => api.delete(`/records/${id}/`)
-export const importRecordsExcel = (file) => {
+// scope / country (both optional): one record scope for the whole file and,
+// for National, the country whose book the rows are saved to
+export const importRecordsExcel = (file, { scope, country } = {}) => {
   const fd = new FormData()
   fd.append('file', file)
+  if (scope) fd.append('record_type', scope)
+  if (scope === 'NATIONAL' && country) fd.append('country', country)
   return api.post('/records/import-excel/', fd)
 }
 export const getRecordsImportTemplate = () =>

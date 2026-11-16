@@ -142,6 +142,23 @@ export function mediaUrl(path) {
   return `${API_ORIGIN}${path}`
 }
 
+// A copy of an upload sized for the slot that shows it. The backend serves
+// /img/<width>/<path> (core/images.py): resized, rotated upright, WebP when
+// supported, cached. Anything that is not one of our own uploads is returned
+// unchanged. `width` is the slot's CSS width; the server rounds it up.
+export function imgUrl(path, width, { trim = false } = {}) {
+  const url = mediaUrl(path)
+  if (!url || !width) return url
+  const i = url.indexOf('/media/')
+  if (i === -1 || /\.(gif|svg)(\?|#|$)/i.test(url)) return url
+  try {
+    if (new URL(url).host !== new URL(API_ORIGIN).host) return url
+  } catch {
+    return url
+  }
+  return `${url.slice(0, i)}/img/${Math.max(1, Math.round(width))}/${url.slice(i + 7)}${trim ? '?trim=1' : ''}`
+}
+
 export function flagAlpha2(code) {
   return CODE_TO_ALPHA2[code?.toUpperCase()] || ''
 }

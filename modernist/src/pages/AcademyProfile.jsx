@@ -6,6 +6,7 @@ import TrainingCalendar from '../components/TrainingCalendar'
 import { Loading, Empty } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { mediaUrl } from '../utils'
+import Pic from '../components/Pic'
 
 function acronym(name) {
   const words = String(name || '').split(/\s+/).filter(Boolean)
@@ -95,7 +96,7 @@ export default function AcademyProfile() {
             border: '1px solid var(--color-divider)',
           }}>
             {a.logo ? (
-              <img src={mediaUrl(a.logo)} alt="" style={{ width: '84%', height: '84%', objectFit: 'contain' }} />
+              <Pic kind="logo" w={160} eager src={a.logo} style={{ width: '84%', height: '84%' }} />
             ) : (
               <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40, color: 'var(--color-accent-800)' }}>
                 {acronym(a.name)}

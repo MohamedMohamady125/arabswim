@@ -21,6 +21,7 @@ import TrainingCalendar from '../components/TrainingCalendar'
 import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
 import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
 import { ClubLogo, SwimmerMedalsByMeet, DepthTab, RecordsTab } from '../components/team/TeamWidgets'
+import Pic from '../components/Pic'
 
 // Not yet in src/api/teams.js — defined locally
 const getTeamRecords = (id) => api.get(`/teams/${id}/records/`)
@@ -126,7 +127,7 @@ function RosterGrid({ roster, isAdmin }) {
           {shown.map((s) => (
             <div key={s.id} style={{ borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', padding: '16px 10px 12px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'var(--color-accent-100)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', overflow: 'hidden' }}>
-                {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
+                {s.photo ? <Pic kind="person" w={160} src={s.photo} /> : <Waves size={22} aria-hidden="true" />}
               </div>
               <div style={{ padding: '10px 2px 0' }}>
                 <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
@@ -229,7 +230,7 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
             {(countries || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </Field>
-        <Field label="Logo"><CropUpload aspect={1} accept="image/jpeg,image/png,image/webp" style={{ width: '100%' }} onChange={setLogo} /></Field>
+        <Field label="Logo"><CropUpload kind="logo" style={{ width: '100%' }} onChange={setLogo} /></Field>
       </div>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0 10px' }}>
         <input type="checkbox" checked={form.is_national_team}
@@ -320,7 +321,7 @@ function CoachModal({ coach, team, countries, onClose, onSaved }) {
         </Field>
         <Field label="Country"><CountrySelect value={form.nationality} onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} countries={countries} /></Field>
         <Field label="Years experience"><input className="input" style={{ width: '100%' }} type="number" inputMode="numeric" min="0" value={form.years_experience} onChange={set('years_experience')} /></Field>
-        <Field label="Photo"><CropUpload aspect={4 / 5} onChange={setPhoto} className="" /></Field>
+        <Field label="Photo"><CropUpload kind="person" onChange={setPhoto} className="" /></Field>
         <Field label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Field>
         <Field label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Field>
       </div>
@@ -373,7 +374,7 @@ function BoardModal({ member, team, onClose, onSaved }) {
       <Field label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Role"><input className="input" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Field>
-        <Field label="Photo"><CropUpload aspect={4 / 5} onChange={setPhoto} className="" /></Field>
+        <Field label="Photo"><CropUpload kind="person" onChange={setPhoto} className="" /></Field>
         <Field label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Field>
         <Field label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Field>
       </div>
@@ -470,7 +471,7 @@ function ArticleModal({ team, onClose, onSaved }) {
     <Modal title="Add Club News" onClose={onClose}>
       <Field label="Title"><input className="input" style={{ width: '100%' }} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
       <Field label="Body"><textarea className="input" rows={7} style={{ width: '100%', resize: 'vertical' }} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
-      <Field label="Cover image"><CropUpload aspect={16 / 9} smart onChange={setCover} className="" /></Field>
+      <Field label="Cover image"><CropUpload kind="cover" onChange={setCover} className="" /></Field>
       {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
@@ -819,7 +820,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
   const recBody = (photo, name, id, subLabel, bigValue, dateStr) => (
     <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 130 }}>
       <div style={{ width: 100, background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
-        {photo ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
+        {photo ? <Pic kind="person" w={160} src={photo} /> : <Waves size={22} aria-hidden="true" />}
       </div>
       <div style={{ padding: '12px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--color-accent-800)', lineHeight: 1.2, marginBottom: 4 }}>
@@ -1067,7 +1068,7 @@ function CompareTab({ team, profile, stats, records, ranking = [] }) {
     <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ width: 26, height: 26, borderRadius: '50%', background: '#fff', overflow: 'hidden', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         {t?.logo
-          ? <img src={mediaUrl(t.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ? <Pic kind="logo" w={96} src={t.logo} />
           : <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--color-accent-800)' }}>{acronym(t?.name)}</span>}
       </span>
       {t?.name}
@@ -1285,7 +1286,7 @@ export default function TeamDetail() {
         <div style={{ position: 'relative', margin: 10, aspectRatio: '16 / 9', borderRadius: 0, overflow: 'hidden', background: a?.cover_image ? 'var(--color-accent-800)' : 'var(--color-accent-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'var(--color-neutral-700)', flex: 'none' }}>
           {a?.cover_image ? (
             <>
-              <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
+              <Pic kind="cover" w={640} className="news-cover-img" src={a.cover_image} style={{ position: 'relative' }} />
             </>
           ) : <Camera size={22} aria-hidden="true" />}
         </div>
@@ -1597,7 +1598,7 @@ export default function TeamDetail() {
                 const hl = ({ photo, emoji = <Waves size={22} aria-hidden="true" />, title, big, sub, name, extra, icon, badgeEl }) => (
                   <div style={{ ...hCard, alignItems: photo ? 'stretch' : 'flex-start' }}>
                     {photo
-                      ? <div style={hPhoto}><img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /></div>
+                      ? <div style={hPhoto}><Pic kind="person" w={160} src={photo} /></div>
                       : <div style={hIcon} aria-hidden="true">{emoji}</div>}
                     <div style={hBody}>
                       <div style={hTitle}>{title}</div>
@@ -1665,7 +1666,7 @@ export default function TeamDetail() {
                   <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-divider)', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '24px 0 8px' }}>
                       <div style={{ width: photoById[r.swimmer_id] ? 165 : 96, height: photoById[r.swimmer_id] ? 165 : 96, borderRadius: '50%', background: 'var(--color-accent-100)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '4px solid var(--color-accent-800)', overflow: 'hidden' }}>
-                        {photoById[r.swimmer_id] ? <img src={mediaUrl(photoById[r.swimmer_id])} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, color: 'var(--color-accent-800)' }}>{acronym(r.swimmer_name).slice(0, 2)}</span>}
+                        {photoById[r.swimmer_id] ? <Pic kind="person" w={160} src={photoById[r.swimmer_id]} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, color: 'var(--color-accent-800)' }}>{acronym(r.swimmer_name).slice(0, 2)}</span>}
                       </div>
                     </div>
                     <div style={{ padding: '12px 12px 0' }}>
@@ -1705,7 +1706,7 @@ export default function TeamDetail() {
                   <div style={{ position: 'relative', height: 175, overflow: 'hidden', background: 'var(--color-accent-800)', flex: 'none' }}>
                     {a.cover_image && (
                       <>
-                        <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <Pic kind="cover" w={640} className="news-cover-img" src={a.cover_image} style={{ position: 'relative' }} />
                       </>
                     )}
                   </div>
@@ -1888,7 +1889,7 @@ export default function TeamDetail() {
           {rankingRows.length === 0 ? <Empty label="No ranking yet" hint="Teams appear here once they have won medals." /> : (() => {
             const badge = (r, size) => (
               <span style={{ width: size, height: size, borderRadius: '50%', flex: 'none', overflow: 'hidden', background: 'var(--color-accent-100)', border: '1px solid var(--color-neutral-300)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size * 0.34, color: 'var(--color-accent-800)' }}>
-                {r.logo ? <img src={mediaUrl(r.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : acronym(r.team_name).slice(0, 2)}
+                {r.logo ? <Pic kind="logo" w={96} src={r.logo} /> : acronym(r.team_name).slice(0, 2)}
               </span>
             )
             return (

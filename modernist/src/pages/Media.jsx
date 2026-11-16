@@ -6,6 +6,7 @@ import { getChampionships, getChampionship } from '../api/championships'
 import { PageHead, Loading, notify, Empty, Modal, FilterBar } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import Pic from '../components/Pic'
 
 export default function Media() {
   const navigate = useNavigate()
@@ -197,7 +198,7 @@ export default function Media() {
                       <Link to={`/media/albums/${al.id}`}>
                         <div className="content-album-cover">
                           {al.cover ? (
-                            <img src={mediaUrl(al.cover)} alt="" loading="lazy" />
+                            <Pic kind="gallery" w={384} src={al.cover} />
                           ) : (
                             <span className="content-album-ph"><Images size={28} aria-hidden="true" />{n === 0 ? 'Empty — add photos' : 'No preview'}</span>
                           )}

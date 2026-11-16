@@ -9,6 +9,7 @@ import { PageHead, Loading, notify, Empty, Pager, Seg, Modal, FilterBar } from '
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import { CropUpload } from '../components/ImageCropper'
+import Pic from '../components/Pic'
 
 const PAGE_SIZE = 13
 
@@ -177,7 +178,7 @@ export function ArticleModal({ article, onClose, onSaved }) {
         </div>
         <div className="field">
           <label>Cover image</label>
-          <CropUpload aspect={16 / 9} smart onChange={setCover} />
+          <CropUpload kind="cover" onChange={setCover} />
           {cover && <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>Adjusted cover ready</div>}
         </div>
         <div className="field">
@@ -308,7 +309,7 @@ export default function News() {
         <Link to={`/news/${a.id}`}>
           {a.cover_image ? (
             <div className="news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
-              <img className="news-cover-img" src={mediaUrl(a.cover_image)} alt="" loading="lazy" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
+              <Pic kind="cover" w={640} className="news-cover-img" src={a.cover_image} style={{ position: 'relative' }} />
             </div>
           ) : (
             <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -389,7 +390,7 @@ export default function News() {
               <Link to={`/news/${lead.id}`} className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 32, alignItems: 'start' }}>
                 {lead.cover_image && (
                   <div className="news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
-                    <img className="news-cover-img" src={mediaUrl(lead.cover_image)} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <Pic kind="cover" w={640} className="news-cover-img" src={lead.cover_image} style={{ position: 'relative' }} />
                   </div>
                 )}
                 <div>

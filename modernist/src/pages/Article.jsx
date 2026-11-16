@@ -7,6 +7,7 @@ import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import { Edit3, Trash2 } from 'lucide-react'
 import { ArticleModal } from './News'
+import Pic from '../components/Pic'
 
 /* ── Al Jazeera typography — the real aljazeera.net stack ─────────── */
 const AJ_FONTS = "'Al-Jazeera', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
@@ -144,9 +145,9 @@ export default function Article() {
             position: 'relative', margin: '0 0 28px', aspectRatio: '16 / 9',
             overflow: 'hidden', borderRadius: 0, background: 'var(--color-accent-800)',
           }}>
-            <img
-              src={mediaUrl(article.cover_image)} alt=""
-              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            <Pic kind="cover" w={960} eager
+              src={article.cover_image}
+              style={{ position: 'relative' }}
             />
           </div>
         )}
@@ -203,7 +204,7 @@ export default function Article() {
                 return (
                   <Link key={a.id} to={`/news/${a.id}`} className="content-article-more">
                     {a.cover_image
-                      ? <img src={mediaUrl(a.cover_image)} alt="" loading="lazy" />
+                      ? <Pic kind="cover" w={128} fill={false} src={a.cover_image} />
                       : <span className="content-article-more-ph" aria-hidden="true" />}
                     <span style={{ minWidth: 0, flex: 1 }}>
                       <strong dir={rtl ? 'rtl' : 'ltr'} style={rtl ? { fontFamily: AJ_FONTS, lineHeight: 1.6 } : undefined}>{a.title}</strong>

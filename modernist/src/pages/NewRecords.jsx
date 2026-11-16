@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getRecords, createRecord, importRecordsExcel, getRecordsImportTemplate } from '../api/records'
+import { getRecords, createRecord, deleteRecord, importRecordsExcel, getRecordsImportTemplate } from '../api/records'
 import { searchSwimmers } from '../api/swimmers'
 import { getEvents, getCountries } from '../api/core'
 import Flag from '../components/Flag'
-import { PageHead, Loading, Empty, Seg, FilterBar } from '../components/ui'
+import { PageHead, Loading, Empty, Seg, FilterBar, notify } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, RECORD_TYPES, mediaUrl, parseTime } from '../utils'
+import Pic from '../components/Pic'
 
 const TYPE_LABEL = Object.fromEntries(RECORD_TYPES.map((t) => [t.value, t.label]))
 const SCOPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
@@ -30,8 +31,9 @@ function AddRecordModal({ onClose, onCreated }) {
   const [sel, setSel] = useState(null)
   const [form, setForm] = useState({
     event: '', record_type: 'NATIONAL', age_category: 'OPEN', pool: 'LCM', time: '',
-    result_date: '', meet_name: '', location: '', is_new: true,
+    result_date: '', meet_name: '', location: '', is_new: true, country: '',
   })
+  const [countries, setCountries] = useState([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -44,7 +46,17 @@ function AddRecordModal({ onClose, onCreated }) {
 
   useEffect(() => {
     getEvents().then((res) => setEvents(Array.isArray(res.data) ? res.data : res.data?.results || [])).catch(() => {})
+    getCountries().then((res) => setCountries(Array.isArray(res.data) ? res.data : res.data?.results || [])).catch(() => {})
   }, [])
+
+  // A national record belongs to one federation's book. Tesler's Law: the
+  // swimmer's own country is filled in, and can be changed.
+  const isNational = form.record_type === 'NATIONAL'
+  const pickSwimmer = (s) => {
+    setSel(s)
+    setResults([])
+    setForm((f) => (f.country || !s.nationality ? f : { ...f, country: String(s.nationality) }))
+  }
 
   useEffect(() => {
     if (sel || q.trim().length < 2) { setResults([]); return }
@@ -59,7 +71,7 @@ function AddRecordModal({ onClose, onCreated }) {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
   const cs = parseTime(form.time.trim())
-  const canSave = sel && form.event && form.record_type && cs != null && cs > 0 && form.result_date && !saving
+  const canSave = sel && form.event && form.record_type && cs != null && cs > 0 && form.result_date && (!isNational || form.country) && !saving
 
   const submit = async (e) => {
     e.preventDefault()
@@ -78,7 +90,8 @@ function AddRecordModal({ onClose, onCreated }) {
         meet_name: form.meet_name.trim(),
         location: form.location.trim(),
         is_new: form.is_new,
-        ...(sel.nationality ? { country: sel.nationality } : {}),
+        // national: the country chosen in the form; other scopes: the swimmer's own
+        ...(isNational ? { country: Number(form.country) } : sel.nationality ? { country: sel.nationality } : {}),
       })
       onCreated()
     } catch (err) {
@@ -110,7 +123,7 @@ function AddRecordModal({ onClose, onCreated }) {
               <div style={{ ...input, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Flag code={sel.nationality_detail?.code} name={sel.nationality_detail?.name} />
                 <span style={{ fontWeight: 600, flex: 1 }}>{sel.name}</span>
-                <button type="button" onClick={() => { setSel(null); setQ('') }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32, margin: '-6px -6px -6px 0' }} aria-label="Clear swimmer" title="Clear swimmer">×</button>
+                <button type="button" onClick={() => { setSel(null); setQ(''); setForm((f) => ({ ...f, country: '' })) }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32, margin: '-6px -6px -6px 0' }} aria-label="Clear swimmer" title="Clear swimmer">×</button>
               </div>
             ) : (
               <>
@@ -120,7 +133,7 @@ function AddRecordModal({ onClose, onCreated }) {
                     {results.map((s) => (
                       <button
                         key={s.id} type="button"
-                        onClick={() => { setSel(s); setResults([]) }}
+                        onClick={() => pickSwimmer(s)}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 14 }}
                       >
                         <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} />
@@ -148,6 +161,15 @@ function AddRecordModal({ onClose, onCreated }) {
                 {RECORD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
+            {isNational && (
+              <div>
+                <label style={label}>Country</label>
+                <select aria-label="Country of the national record" style={input} value={form.country} onChange={set('country')}>
+                  <option value="">Select country…</option>
+                  {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
             <div>
               <label style={label}>Pool</label>
               <select aria-label="Pool" style={input} value={form.pool} onChange={set('pool')}>
@@ -201,7 +223,7 @@ function AddRecordModal({ onClose, onCreated }) {
           {/* Paradox of the Active User: a greyed-out Save says what is still missing */}
           {!canSave && !saving && (
             <span className="micro" style={{ marginRight: 'auto', alignSelf: 'center' }}>
-              Still needed: {[!sel && 'swimmer', !form.event && 'event', !(cs > 0) && 'time', !form.result_date && 'date'].filter(Boolean).join(', ')}
+              Still needed: {[!sel && 'swimmer', !form.event && 'event', isNational && !form.country && 'country', !(cs > 0) && 'time', !form.result_date && 'date'].filter(Boolean).join(', ')}
             </span>
           )}
           <button type="submit" className="btn btn-primary" disabled={!canSave}>{saving ? 'Saving…' : 'Save record'}</button>
@@ -274,7 +296,7 @@ function ImportRecordsModal({ onClose, onImported }) {
             One row per record. Required columns: <strong>Swimmer</strong> (exact name as on the site),{' '}
             <strong>Event</strong> (e.g. 50 M Freestyle or 50 Free), <strong>Time</strong> (27.45 or 1:56.30),{' '}
             <strong>Scope</strong> (National / Arab / GCC…), <strong>Date</strong>.
-            Optional: Pool (LCM/SCM), Age Category (Open/U17…), Meet, Location, Country.
+            Optional: Pool (LCM/SCM), Age Category (Open/U17…), Meet, Location, Country (for a national record, the country whose book it goes in; left empty, the swimmer's own country is used).
             Imported records are marked new, so they show on this page right away.
           </div>
           <button type="button" className="btn btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 12 }} onClick={downloadTemplate}>
@@ -385,6 +407,13 @@ export default function NewRecords() {
     return () => { alive = false }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, country, refresh])
+
+  const removeRecord = (r) => {
+    if (!window.confirm(`Remove this record?\n\n${r.swimmer_detail?.name || ''} · ${r.event_detail?.name || ''} · ${r.formatted_time}\n\nIt will disappear from New Records and from the record books.`)) return
+    deleteRecord(r.id)
+      .then(() => { notify('Record removed'); setRefresh((n) => n + 1) })
+      .catch(() => notify('Could not remove the record', 'error'))
+  }
 
   const loadMore = () => {
     if (loadingMore) return
@@ -510,11 +539,11 @@ export default function NewRecords() {
                     {/* the last federation may still be loading — no count until it is whole */}
                     {(allLoaded || gi < arr.length - 1) && <span className="micro asw-num">{sub.length}</span>}
                   </div>
-                  <RecordCards rows={sub} />
+                  <RecordCards rows={sub} onRemove={isAdmin ? removeRecord : null} />
                 </div>
               ))
             ) : (
-              <RecordCards rows={rows} />
+              <RecordCards rows={rows} onRemove={isAdmin ? removeRecord : null} />
             )}
           </div>
         ))}
@@ -546,17 +575,17 @@ function subGroupByCountry(rows) {
   return [...map.entries()].sort(([a], [b]) => (a === 'Other') - (b === 'Other') || a.localeCompare(b))
 }
 
-function RecordCards({ rows }) {
+function RecordCards({ rows, onRemove }) {
   return (
     <div className="record-cards">
       {rows.map((r) => (
                 <div key={r.id}>
                   {r.swimmer_detail?.photo ? (
-                    <img
-                      src={mediaUrl(r.swimmer_detail.photo)}
+                    <Pic kind="person" w={256}
+                      src={r.swimmer_detail.photo}
                       alt={r.swimmer_detail?.name}
                       className="grayscale"
-                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', objectPosition: 'center top', display: 'block', marginBottom: 10 }}
+                      style={{ width: '100%', aspectRatio: '1 / 1', marginBottom: 10 }}
                     />
                   ) : (
                     <div
@@ -608,6 +637,12 @@ function RecordCards({ rows }) {
                     <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>
                       {formatDate(r.result_date)}
                     </div>
+                  )}
+                  {/* hand-entered records have no meet behind them, so this is the only place to take one back */}
+                  {onRemove && r.source && r.source !== 'AUTO' && (
+                    <button type="button" className="btn btn-ghost" style={{ marginTop: 8, fontSize: 12, color: 'var(--asw-slow)' }} onClick={() => onRemove(r)}>
+                      Remove record
+                    </button>
                   )}
         </div>
       ))}

@@ -7,6 +7,7 @@ import { getMedals } from '../../api/medals'
 import Flag from '../Flag'
 import { Loading, MedalIcon } from '../ui'
 import { mediaUrl, nameInitials } from '../../utils'
+import Pic from '../Pic'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
@@ -122,10 +123,9 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {swimmer.photo ? (
-              <img
-                src={mediaUrl(swimmer.photo)}
-                alt=""
-                style={{ width: 62, height: 62, borderRadius: '50%', objectFit: 'cover', objectPosition: '50% 25%', border: '2.5px solid rgba(255,255,255,.35)', flex: 'none' }}
+              <Pic kind="person" w={160}
+                src={swimmer.photo}
+                style={{ width: 62, height: 62, borderRadius: '50%', border: '2.5px solid rgba(255,255,255,.35)', flex: 'none' }}
               />
             ) : (
               <span style={{

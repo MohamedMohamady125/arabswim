@@ -38,6 +38,7 @@ import QualifyingTab from '../components/swimmer/QualifyingTab'
 import TransfersTab from '../components/swimmer/TransfersTab'
 import GalleryTab from '../components/swimmer/GalleryTab'
 import { MiniHBars, CHART_COLORS } from '../components/MiniCharts'
+import Pic from '../components/Pic'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
@@ -165,7 +166,7 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
           {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready — will be sent for review</div>}
         </label>
         {cropFile && (
-          <ImageCropper file={cropFile} aspect={4 / 5}
+          <ImageCropper file={cropFile} kind="person"
             onDone={(f) => { setPhoto(f); setCropFile(null) }}
             onCancel={() => setCropFile(null)} />
         )}
@@ -329,7 +330,7 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
           {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready</div>}
         </label>
         {cropFile && (
-          <ImageCropper file={cropFile} aspect={4 / 5}
+          <ImageCropper file={cropFile} kind="person"
             onDone={(f) => { setPhoto(f); setCropFile(null) }}
             onCancel={() => setCropFile(null)} />
         )}
@@ -356,11 +357,10 @@ function HeaderPhoto({ swimmer }) {
   if (swimmer.photo && !failed) {
     return (
       <div className="grayscale swimmer-photo" style={{ ...frame, overflow: 'hidden' }}>
-        <img
-          src={mediaUrl(swimmer.photo)}
+        <Pic kind="person" w={160} eager
+          src={swimmer.photo}
           alt={swimmer.name}
           onError={() => setFailed(true)}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       </div>
     )

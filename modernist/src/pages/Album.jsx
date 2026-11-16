@@ -7,6 +7,7 @@ import {
 } from '../api/media'
 import { Loading, notify, Empty, BackLink } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
+import Pic from '../components/Pic'
 import { useAuth } from '../context/AuthContext'
 import { CropQueue } from '../components/ImageCropper'
 
@@ -153,7 +154,6 @@ export default function Album() {
   )
 
   const isVideo = (it) => it.media_type === 'VIDEO' || (!!it.video_url && !it.image)
-  const photoSrc = (it) => mediaUrl(it.image || it.url || it.file)
 
   return (
     <div>
@@ -221,10 +221,8 @@ export default function Album() {
                   }
                 >
                   {!isVideo(it) && it.image ? (
-                    <img src={photoSrc(it)} alt={it.caption || ''} loading="lazy"
-                      style={it.display_size === 'ORIGINAL'
-                        ? { width: '100%', height: 'auto', display: 'block' }
-                        : { width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <Pic kind="gallery" w={480} src={it.image || it.url || it.file} alt={it.caption || ''}
+                      style={it.display_size === 'ORIGINAL' ? { height: 'auto' } : undefined} />
                   ) : it.embed_thumbnail ? (
                     <>
                       <img src={mediaUrl(it.embed_thumbnail)} alt={it.caption || ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
@@ -316,8 +314,8 @@ export default function Album() {
               </button>
             </>
           )}
-          <img
-            src={photoSrc(lightbox)}
+          <Pic kind="gallery" w={1280} fill={false} eager
+            src={lightbox.image || lightbox.url || lightbox.file}
             alt={lightbox.caption || ''}
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
@@ -331,7 +329,7 @@ export default function Album() {
       )}
 
       {cropQueue && (
-        <CropQueue files={cropQueue} onDone={uploadCropped} onCancel={() => setCropQueue(null)} />
+        <CropQueue kind="gallery" files={cropQueue} onDone={uploadCropped} onCancel={() => setCropQueue(null)} />
       )}
     </div>
   )

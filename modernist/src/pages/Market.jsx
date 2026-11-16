@@ -5,6 +5,7 @@ import Flag from '../components/Flag'
 import { PageHead, Loading, notify, Empty, Seg, FilterBar } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import Pic from '../components/Pic'
 
 const STATUS_TABS = [
   { value: '', label: 'All' },
@@ -173,7 +174,7 @@ export default function Market() {
                 <div key={l.id} style={{ display: 'flex', flexDirection: 'column' }}>
                   {img ? (
                     <div className="grayscale" style={{ height: 190, overflow: 'hidden', margin: '-14px -16px 12px' }}>
-                      <img src={mediaUrl(img)} alt={l.title || ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <Pic kind="gallery" w={480} src={img} alt={l.title || ''} />
                     </div>
                   ) : (
                     <div style={{ height: 190, background: 'var(--color-neutral-200)', margin: '-14px -16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

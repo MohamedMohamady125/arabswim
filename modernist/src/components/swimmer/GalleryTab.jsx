@@ -4,6 +4,7 @@ import { getMediaItems } from '../../api/media'
 import { Loading, Empty } from '../ui'
 import { mediaUrl } from '../../utils'
 import LoadFailed from './LoadFailed'
+import Pic from '../Pic'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
@@ -51,8 +52,7 @@ export default function GalleryTab({ swimmerId }) {
               <button key={p.id} type="button" onClick={() => setLightbox(p)}
                 aria-label={p.caption ? `Open photo: ${p.caption}` : 'Open photo'}
                 style={{ border: 0, padding: 0, cursor: 'pointer', background: 'var(--color-neutral-200)', aspectRatio: '1', overflow: 'hidden', position: 'relative' }}>
-                <img src={mediaUrl(p.image)} alt={p.caption || ''} loading="lazy" className="grayscale"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <Pic kind="gallery" w={480} src={p.image} alt={p.caption || ''} className="grayscale" />
                 {p.caption && (
                   <span className="micro" style={{ position: 'absolute', insetInline: 0, bottom: 0, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 8px', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                     {p.caption}
@@ -100,8 +100,8 @@ export default function GalleryTab({ swimmerId }) {
             <X size={28} />
           </button>
           <figure style={{ margin: 0, maxWidth: '100%', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
-            <img src={mediaUrl(lightbox.image)} alt={lightbox.caption || ''}
-              style={{ maxWidth: '100%', maxHeight: '84vh', display: 'block' }} />
+            <Pic kind="gallery" w={1280} fill={false} eager src={lightbox.image} alt={lightbox.caption || ''}
+              style={{ maxWidth: '100%', maxHeight: '84vh', objectFit: 'contain' }} />
             {lightbox.caption && (
               <figcaption className="micro" style={{ color: '#fff', textAlign: 'center', marginTop: 10 }}>{lightbox.caption}</figcaption>
             )}

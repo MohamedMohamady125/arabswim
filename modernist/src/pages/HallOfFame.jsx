@@ -7,6 +7,7 @@ import Flag from '../components/Flag'
 import { PageHead, notify, Empty, Seg, FilterBar, Skeleton } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import Pic from '../components/Pic'
 
 const GOLD = 'var(--asw-gold)'
 // Postel's Law: search ignores case, accents and punctuation
@@ -117,7 +118,7 @@ export default function HallOfFame() {
               <article key={p.id} className="hair-b" style={{ paddingBottom: 28, borderLeft: `2px solid ${GOLD}`, paddingLeft: 18 }}>
                 {photo && (
                   <div className="grayscale" style={{ width: '100%', height: 320, overflow: 'hidden', marginBottom: 16 }}>
-                    <img src={mediaUrl(photo)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+                    <Pic kind="person" w={640} src={photo} alt={p.name} />
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>

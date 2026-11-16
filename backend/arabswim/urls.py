@@ -34,6 +34,10 @@ urlpatterns = [
 
 # Serve uploaded media in all environments (Railway stores it on local disk;
 # whitenoise only handles static files, not user uploads).
+from core.images import serve_image  # noqa: E402
+
 urlpatterns += [
+    # Right-sized copy of an upload for the slot that shows it
+    re_path(r'^img/(?P<width>\d{1,4})/(?P<path>.*)$', serve_image),
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
 ]

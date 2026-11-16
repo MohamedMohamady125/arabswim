@@ -15,6 +15,7 @@ import { PageHead, Loading, Empty, Seg, SectHead, FilterBar, ShowMore } from '..
 import { useAuth } from '../context/AuthContext'
 import { CropUpload } from '../components/ImageCropper'
 import { formatDate, formatDateRange, mediaUrl, MONTHS_FULL } from '../utils'
+import Pic from '../components/Pic'
 
 const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
@@ -258,7 +259,7 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
         </div>
         <div className="field">
           <label>Meet photo{meet.meet_photo ? ' (uploaded, choose a file to replace)' : ''}</label>
-          <CropUpload aspect={16 / 9} accept="image/jpeg,image/png,image/webp" onChange={setPhotoFile} />
+          <CropUpload kind="meet" onChange={setPhotoFile} />
         </div>
         {error && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -750,11 +751,11 @@ export default function Calendar() {
         <div className="rule-b" style={{ display: 'flex', flexWrap: 'wrap' }}>
           {featured.kind === 'meet' && featured.item.meet_photo && (
             <div className="hide-mobile" style={{ width: 300, flex: 'none', borderRight: '2px solid var(--color-divider)' }}>
-              <img
-                src={mediaUrl(featured.item.meet_photo)}
+              <Pic kind="meet" w={320}
+                src={featured.item.meet_photo}
                 alt={featured.item.name}
                 className="grayscale"
-                style={{ width: '100%', height: '100%', minHeight: 160, objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', minHeight: 160 }}
               />
             </div>
           )}

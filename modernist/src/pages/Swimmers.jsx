@@ -8,6 +8,7 @@ import Flag from '../components/Flag'
 import { PageHead, notify, Empty, Pager, Seg, Modal, FilterBar, Skeleton, Stepper } from '../components/ui'
 import { mediaUrl, nameInitials } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import Pic from '../components/Pic'
 
 const PAGE_SIZE = 50
 
@@ -20,7 +21,7 @@ function Avatar({ photo, name, size = 34 }) {
   if (photo) {
     return (
       <div className="grayscale" style={{ width: size, height: h, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)' }}>
-        <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+        <Pic kind="person" w={160} src={photo} />
       </div>
     )
   }
@@ -434,7 +435,7 @@ export default function Swimmers() {
                   <Link to={`/swimmers/${s.id}`} state={{ list: searchParams.toString() }} className="swimmers-item-link">
                     <span className="swimmers-item-photo">
                       {s.photo ? (
-                        <img className="grayscale" src={mediaUrl(s.photo)} alt="" loading="lazy" />
+                        <Pic kind="person" w={64} className="grayscale" src={s.photo} />
                       ) : (
                         <span aria-hidden="true">{initials(s.name)}</span>
                       )}

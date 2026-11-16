@@ -6,6 +6,7 @@ import {
 import { Loading, Empty } from '../ui'
 import { CropQueue } from '../ImageCropper'
 import { SIZE_OPTIONS, SIZE_RATIOS } from '../../pages/Album'
+import Pic from '../Pic'
 
 // Gallery tab for a meet: public display always; admin can upload photos,
 // add video links, edit captions and delete items.
@@ -152,10 +153,8 @@ export default function MeetGallery({ meetId, isAdmin }) {
                   : setLightbox(item))}
               >
                 {item.media_type === 'PHOTO' && item.image ? (
-                  <img src={item.image} alt={item.caption || ''}
-                    style={item.display_size === 'ORIGINAL'
-                      ? { width: '100%', height: 'auto', display: 'block' }
-                      : { width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <Pic kind="gallery" w={480} src={item.image} alt={item.caption || ''}
+                    style={item.display_size === 'ORIGINAL' ? { height: 'auto' } : undefined} />
                 ) : item.embed_thumbnail ? (
                   <img src={item.embed_thumbnail} alt={item.caption || ''} className="grayscale" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
                 ) : (
@@ -233,7 +232,7 @@ export default function MeetGallery({ meetId, isAdmin }) {
           onClick={() => setLightbox(null)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(8, 24, 44, 0.92)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, cursor: 'zoom-out' }}
         >
-          <img src={lightbox.image} alt={lightbox.caption || ''} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          <Pic kind="gallery" w={1280} fill={false} eager src={lightbox.image} alt={lightbox.caption || ''} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
           {lightbox.caption && (
             <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>
               {lightbox.caption}
@@ -243,7 +242,7 @@ export default function MeetGallery({ meetId, isAdmin }) {
       )}
 
       {cropQueue && (
-        <CropQueue files={cropQueue} onDone={uploadCropped} onCancel={() => setCropQueue(null)} />
+        <CropQueue kind="gallery" files={cropQueue} onDone={uploadCropped} onCancel={() => setCropQueue(null)} />
       )}
     </div>
   )

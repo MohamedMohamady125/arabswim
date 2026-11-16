@@ -320,7 +320,7 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
                 result_date=rdate, country=country,
                 meet_name=str(cell('meet_name') or '').strip(),
                 location=str(cell('location') or '').strip(),
-                is_new=True,
+                is_new=True, source='IMPORT',
             )
             created += 1
 
@@ -784,6 +784,59 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
                 records.remove(cur)
             records.append(row)
             by_key[key] = row
+
+        # Records typed in or uploaded as Excel on the New Records page. They
+        # stand in the book whenever they beat everything in the imported
+        # results (a swim at a meet the site does not hold). They carry no
+        # result or championship id, so nothing links them into a meet — and
+        # a book narrowed to one meet / year / classification skips them.
+        if not (classification or sub_classification or year or championship):
+            rtype = {'national': 'NATIONAL', 'gcc': 'GCC'}.get(scope, 'ARAB')
+            mqs = Record.objects.filter(
+                source__in=Record.HAND_ENTERED, record_type=rtype, pool=pool,
+                age_category=age_group if age_group and age_group != 'OPEN' else 'OPEN',
+            ).select_related('swimmer', 'swimmer__nationality', 'event', 'country')
+            if country:
+                mqs = mqs.filter(country_id=country)
+            if gender:
+                mqs = mqs.filter(swimmer__sex=gender)
+            by_key = {(r['event_id'], r['gender']): r for r in records}
+            for rec in mqs.order_by('time_centiseconds', 'result_date'):
+                key = (rec.event_id, rec.swimmer.sex)
+                cur = by_key.get(key)
+                if cur and cur['time_centiseconds'] <= rec.time_centiseconds:
+                    continue
+                nat3 = rec.country or rec.swimmer.nationality
+                row = {
+                    'result_id': None,
+                    'championship_id': None,
+                    'record_id': rec.id,
+                    'manual': True,
+                    'event_id': rec.event_id,
+                    'event_name': rec.event.name,
+                    'event_distance': rec.event.distance,
+                    'event_sort_order': rec.event.sort_order,
+                    'is_relay': rec.event.is_relay,
+                    'gender': rec.swimmer.sex,
+                    'swimmer_name': rec.swimmer.name,
+                    'swimmer_id': rec.swimmer_id,
+                    'is_relay_team': rec.swimmer.is_relay_team,
+                    'nationality': nat3.name if nat3 else '',
+                    'nationality_code': nat3.code if nat3 else '',
+                    'nationality_flag': nat3.flag_url if nat3 else '',
+                    'time': _fmt_cs(rec.time_centiseconds),
+                    'time_centiseconds': rec.time_centiseconds,
+                    'fina_points': None,
+                    'championship_name': rec.meet_name,
+                    'championship_country': rec.location,
+                    'championship_country_code': '',
+                    'championship_country_flag': '',
+                    'date': rec.result_date.isoformat() if rec.result_date else '',
+                }
+                if cur:
+                    records.remove(cur)
+                records.append(row)
+                by_key[key] = row
 
         # Sort by event sort_order then distance
         records.sort(key=lambda r: (r['gender'], r['event_sort_order'], r['event_distance']))

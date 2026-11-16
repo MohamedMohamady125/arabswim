@@ -7,6 +7,7 @@ import Flag from '../components/Flag'
 import { PageHead, Empty, Seg, FilterBar, Skeleton } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { mediaUrl, nameInitials } from '../utils'
+import Pic from '../components/Pic'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 // Postel's Law: name search ignores case, accents and extra spaces
@@ -22,9 +23,9 @@ function ClubLogo({ logo, name, size = 24 }) {
   }
   if (logo && !failed) {
     return (
-      <img src={mediaUrl(logo)} alt="" width={size} height={size}
+      <Pic kind="logo" w={96} src={logo} width={size} height={size}
         onError={() => setFailed(true)}
-        style={{ ...base, objectFit: 'contain', background: '#fff' }} />
+        style={{ ...base, background: '#fff' }} />
     )
   }
   return (

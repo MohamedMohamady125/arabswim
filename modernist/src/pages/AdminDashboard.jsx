@@ -10,6 +10,7 @@ import { getAcademies } from '../api/academies'
 import { PageHead, SectHead, Loading, notify, Empty, Seg, Done } from '../components/ui'
 import { mediaUrl } from '../utils'
 import { CropUpload } from '../components/ImageCropper'
+import Pic from '../components/Pic'
 
 function ClaimsQueue({ onCount }) {
   const [claims, setClaims] = useState(null)
@@ -370,7 +371,7 @@ function PhotoQueue({ onCount }) {
             <div onClick={() => toggle(r.id)} style={{ position: 'relative' }} role="button" tabIndex={0} className="row-link"
               aria-pressed={selected.has(r.id)} aria-label={`Select the photo for ${r.swimmer_name}`}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click() } }}>
-              <img src={mediaUrl(r.photo)} alt={`New photo for ${r.swimmer_name}`} style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover', display: 'block' }} />
+              <Pic kind="person" w={160} src={r.photo} alt={`New photo for ${r.swimmer_name}`} style={{ width: '100%', aspectRatio: '4/5' }} />
               {selected.has(r.id) && (
                 <div style={{ position: 'absolute', top: 6, left: 6, width: 20, height: 20, background: 'var(--color-accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>✓</div>
               )}
@@ -492,7 +493,7 @@ function PartnersManager() {
         </div>
         <div className="field" style={{ flex: '1 1 200px' }}>
           <label>Logo image</label>
-          <CropUpload aspect="original" onChange={setFile} />
+          <CropUpload kind="sponsor" onChange={setFile} />
         </div>
         <button type="submit" className="btn btn-primary" disabled={saving} style={{ height: 40 }}>
           {saving ? 'Adding…' : 'Add partner'}
@@ -509,7 +510,7 @@ function PartnersManager() {
           {partners.map((p, i) => (
             <div key={p.id} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', flexWrap: 'wrap' }}>
               <div style={{ width: 120, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-divider)', background: '#fff', flex: 'none' }}>
-                {p.logo ? <img src={mediaUrl(p.logo)} alt={p.name} style={{ maxHeight: 34, maxWidth: 104, objectFit: 'contain' }} /> : <span className="micro">no logo</span>}
+                {p.logo ? <Pic kind="sponsor" w={128} fill={false} src={p.logo} alt={p.name} style={{ maxHeight: 34, maxWidth: 104 }} /> : <span className="micro">no logo</span>}
               </div>
               <div style={{ flex: 1, minWidth: 160 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>

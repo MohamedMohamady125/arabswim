@@ -138,7 +138,8 @@ def check_and_update_records(result):
             # Meets are not always imported in chronological order. If this
             # record predates existing rows that are SLOWER, those rows were
             # never actually records — prune them so history stays clean.
-            existing.filter(result_date__gte=rec_date,
-                            time_centiseconds__gt=cand_cs).delete()
+            # Hand-entered records are the admin's word and are never pruned.
+            existing.filter(result_date__gte=rec_date, time_centiseconds__gt=cand_cs,
+                            source='AUTO').delete()
 
     return broken

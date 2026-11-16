@@ -151,3 +151,74 @@ class RecordListPagingTests(_Fixture):
         d = self.get(ordering='country__name,-result_date', page_size=500)
         names = [r['country_detail']['name'] for r in d['results']]
         self.assertEqual(names, sorted(names))
+
+
+class HandEnteredRecordTests(_Fixture):
+    """Records added on the New Records page (by hand or Excel) show on New
+    Records and in the record books, and never inside a meet."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        self.admin = get_user_model().objects.create_superuser('boss', 'b@example.com', 'pw')
+        self.client.force_login(self.admin)
+        from rest_framework.test import APIClient
+        self.api = APIClient()
+        self.api.force_authenticate(self.admin)
+        self.mar = Country.objects.create(name='Morocco', code='MAR', region='ARAB')
+        # a meet swim on file: 50 free in 23.00
+        self.res = self._result(self.e50, 2300, [])
+
+    def _post(self, **over):
+        body = {'swimmer': self.swimmer.id, 'event': self.e50.id, 'record_type': 'NATIONAL',
+                'pool': 'LCM', 'time_centiseconds': 2250, 'result_date': '2026-03-01',
+                'meet_name': 'Away meet', 'country': self.mar.id, 'result': self.res.id}
+        body.update(over)
+        return self.api.post('/api/v1/records/', body, format='json')
+
+    def test_manual_record_takes_the_chosen_country_and_never_a_result(self):
+        r = self._post()
+        self.assertEqual(r.status_code, 201, r.content)
+        rec = Record.objects.get(pk=r.json()['id'])
+        self.assertEqual(rec.country_id, self.mar.id)   # the country picked, not the swimmer's
+        self.assertEqual(rec.source, 'MANUAL')
+        self.assertIsNone(rec.result_id)                # a posted result id is ignored
+        self.assertFalse(Record.objects.filter(result__championship=self.champ).exists())
+
+    def test_national_record_without_country_falls_back_to_swimmer_nationality(self):
+        r = self._post(country=None)
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Record.objects.get(pk=r.json()['id']).country_id, self.tun.id)
+
+    def test_shows_in_new_records_and_the_record_book_not_in_the_meet(self):
+        self._post(country=self.tun.id)
+        new = self.api.get('/api/v1/records/', {'is_new': 'true'}).json()
+        self.assertEqual([x['source'] for x in new['results']], ['MANUAL'])
+        book = self.api.get('/api/v1/records/computed/',
+                            {'scope': 'national', 'country': self.tun.id, 'pool': 'LCM'}).json()
+        row = next(x for x in book if x['event_id'] == self.e50.id)
+        self.assertEqual(row['time_centiseconds'], 2250)
+        self.assertTrue(row['manual'])
+        self.assertIsNone(row['championship_id'])
+        self.assertIsNone(row['result_id'])
+        # the book narrowed to that one meet still shows the meet's own swim
+        meet_book = self.api.get('/api/v1/records/computed/',
+                                 {'scope': 'national', 'country': self.tun.id, 'pool': 'LCM',
+                                  'championship': self.champ.id}).json()
+        self.assertEqual(next(x for x in meet_book if x['event_id'] == self.e50.id)['time_centiseconds'], 2300)
+        # and the meet's own records list has nothing from the manual entry
+        meet = self.api.get(f'/api/v1/championships/{self.champ.id}/records-broken/')
+        self.assertEqual(meet.status_code, 200)
+        self.assertNotIn('Away meet', meet.content.decode())
+
+    def test_slower_manual_record_does_not_replace_a_faster_meet_swim(self):
+        self._post(country=self.tun.id, time_centiseconds=2400)
+        book = self.api.get('/api/v1/records/computed/',
+                            {'scope': 'national', 'country': self.tun.id, 'pool': 'LCM'}).json()
+        row = next(x for x in book if x['event_id'] == self.e50.id)
+        self.assertEqual(row['time_centiseconds'], 2300)
+        self.assertEqual(row['result_id'], self.res.id)
+
+    def test_meet_import_never_prunes_a_hand_entered_record(self):
+        self._post(country=self.tun.id, time_centiseconds=2400, result_date='2026-06-01')
+        check_and_update_records(self.res)   # faster swim, earlier date
+        self.assertTrue(Record.objects.filter(source='MANUAL', time_centiseconds=2400).exists())

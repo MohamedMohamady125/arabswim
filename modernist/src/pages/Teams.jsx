@@ -5,6 +5,7 @@ import { getTeams, deleteTeam, bulkDeleteTeams, mergeTeams, findDuplicateTeams, 
 import { PageHead, Loading, notify, Empty, Pager, Modal, FilterBar, Seg } from '../components/ui'
 import { mediaUrl, nameInitials } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import Pic from '../components/Pic'
 
 const PAGE_SIZE = 24 // fills whole rows at 2, 3 and 4 columns
 
@@ -32,7 +33,7 @@ function TeamLogo({ logo, name, size = 42 }) {
   if (logo) {
     return (
       <div style={{ width: size, height: size, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)', background: '#fff', padding: 4 }}>
-        <img src={mediaUrl(logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        <Pic kind="logo" w={96} src={logo} />
       </div>
     )
   }
@@ -574,7 +575,7 @@ export default function Teams() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {t.logo ? (
-                    <img src={mediaUrl(t.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <Pic kind="logo" w={96} src={t.logo} />
                   ) : (
                     <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>{acronym(t.name)}</span>
                   )}

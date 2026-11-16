@@ -13,6 +13,7 @@ import Flag from '../components/Flag'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
 import { formatDate, formatDateRange, formatTime, parseTime, mediaUrl } from '../utils'
+import Pic from '../components/Pic'
 
 // Mental Model: pools in swimmers' words
 const POOL_WORDS = { LCM: '50m pool', SCM: '25m pool', OW: 'Open water' }
@@ -613,9 +614,9 @@ function Avatar({ photo, name, size = 72 }) {
   const initial = (name || '?').trim()[0]?.toUpperCase() || '?'
   if (photo) {
     return (
-      <img
-        src={mediaUrl(photo)} alt={name}
-        style={{ width: size, height: size, objectFit: 'cover', objectPosition: 'top', display: 'block', border: '1px solid var(--color-divider)' }}
+      <Pic kind="person" w={160}
+        src={photo} alt={name}
+        style={{ width: size, height: size, border: '1px solid var(--color-divider)' }}
       />
     )
   }
@@ -740,7 +741,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
         }}>
           {champ.meet_photo && (
             <>
-              <img src={mediaUrl(champ.meet_photo)} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+              <Pic kind="meet" w={320} src={champ.meet_photo} style={{ position: 'absolute', inset: 0 }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(12,36,64,0.92) 0%, rgba(12,36,64,0.55) 60%, rgba(12,36,64,0.25) 100%)' }} />
             </>
           )}

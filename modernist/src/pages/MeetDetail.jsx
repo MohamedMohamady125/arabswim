@@ -22,6 +22,7 @@ import MedalStandings from '../components/MedalStandings'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials } from '../utils'
 import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakdown'
+import Pic from '../components/Pic'
 
 const val = (r) => (r.status === 'fulfilled' ? r.value.data : null)
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -143,8 +144,8 @@ function MeetLogo({ photo, name }) {
   const base = { width: 72, alignSelf: 'stretch', minHeight: 72, flex: 'none', border: '1px solid var(--color-divider)' }
   if (photo && !failed) {
     return (
-      <img src={mediaUrl(photo)} alt={name || ''} onError={() => setFailed(true)}
-        style={{ ...base, objectFit: 'cover', background: '#fff' }} />
+      <Pic kind="meet" w={96} src={photo} alt={name || ''} onError={() => setFailed(true)}
+        style={{ ...base, background: '#fff' }} />
     )
   }
   return (
@@ -168,9 +169,9 @@ function ClubLogo({ logo, name, size = 26 }) {
   }
   if (logo && !failed) {
     return (
-      <img src={mediaUrl(logo)} alt="" width={size} height={size}
+      <Pic kind="logo" w={96} src={logo} width={size} height={size}
         onError={() => setFailed(true)}
-        style={{ ...base, objectFit: 'contain', background: '#fff' }} />
+        style={{ ...base, background: '#fff' }} />
     )
   }
   return (
@@ -1340,7 +1341,7 @@ function FeaturedCards({ picks, sideBySide = false, stackOnPhone = false, hideRa
         >
           <div className="grayscale" style={{ width: sideBySide ? 'clamp(52px, 18vw, 84px)' : 84, alignSelf: 'stretch', minHeight: 96, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, overflow: 'hidden' }}>
             {p.photo
-              ? <img src={mediaUrl(p.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <Pic kind="person" w={160} src={p.photo} />
               : (p.name || '?').charAt(0)}
           </div>
           <div style={{ flex: 1, minWidth: 0, padding: '10px 12px 10px 0', display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}>
@@ -2542,11 +2543,11 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
         </div>
         <div className="field">
           <label htmlFor="meet-f32">Meet photo {meet.meet_photo ? '(replace)' : ''}</label>
-          <input id="meet-f32" className="input" type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
+          <input id="meet-f32" className="input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
           {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready</div>}
         </div>
         {cropFile && (
-          <ImageCropper file={cropFile} aspect={1}
+          <ImageCropper file={cropFile} kind="meet"
             onDone={(f) => { setPhoto(f); setCropFile(null) }}
             onCancel={() => setCropFile(null)} />
         )}

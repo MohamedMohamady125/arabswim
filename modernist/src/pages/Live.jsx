@@ -9,6 +9,7 @@ import { PageHead, Loading, Empty, MedalIcon, Seg } from '../components/ui'
 import MeetProgramEditor from '../components/MeetProgramEditor'
 import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 import MedalStandings from '../components/MedalStandings'
+import Pic from '../components/Pic'
 
 const LIVE_RED = 'var(--asw-slow)'
 const POLL_MS = 60000
@@ -312,7 +313,7 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
 /* Small club logo / initials badge for club medal rows */
 function ClubBadge({ logo, name, size = 22 }) {
   if (logo) {
-    return <img src={mediaUrl(logo)} alt="" style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', background: '#fff', border: '1px solid var(--color-neutral-200)' }} />
+    return <Pic kind="logo" w={96} src={logo} style={{ width: size, height: size, minWidth: size, borderRadius: '50%', background: '#fff', border: '1px solid var(--color-neutral-200)' }} />
   }
   const initials = nameInitials(name)
   return (

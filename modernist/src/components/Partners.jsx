@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getSponsors } from '../api/sponsors'
-import { mediaUrl } from '../utils'
+import Pic from './Pic'
 
 // Shown until a real sponsor with a logo is configured in the admin. Only real
 // partners belong here: the strip must never show a brand that does not exist.
@@ -33,13 +33,12 @@ export default function Partners() {
 
   const pillFor = (p, dupe) => {
     const img = p.logo ? (
-      <img
-        src={p.local ? p.logo : mediaUrl(p.logo)}
-        alt={dupe ? '' : p.name}
-        title={p.name}
-        loading="lazy"
-        className="asw-partner-logo"
-      />
+      p.local ? (
+        // bundled with the site, not an upload
+        <img src={p.logo} alt={dupe ? '' : p.name} title={p.name} loading="lazy" className="asw-partner-logo" />
+      ) : (
+        <Pic kind="sponsor" w={128} fill={false} src={p.logo} alt={dupe ? '' : p.name} title={p.name} className="asw-partner-logo" />
+      )
     ) : (
       <span className="asw-partner-mark" title={p.name}>
         {p.icon}

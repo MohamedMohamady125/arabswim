@@ -53,6 +53,14 @@ class Record(models.Model):
     result_date = models.DateField()
     result = models.ForeignKey(Result, on_delete=models.SET_NULL, blank=True, null=True, related_name='records')
     is_new = models.BooleanField(default=True)
+    # Where the row came from. AUTO = created from a meet result when it was
+    # imported. MANUAL / IMPORT = typed in or uploaded as Excel on the New
+    # Records page: these show on New Records and in the record books only,
+    # never carry a `result`, so they can never appear inside a meet.
+    SOURCE_CHOICES = [('AUTO', 'From meet results'), ('MANUAL', 'Added by hand'),
+                      ('IMPORT', 'Excel import')]
+    HAND_ENTERED = ('MANUAL', 'IMPORT')
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default='AUTO')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

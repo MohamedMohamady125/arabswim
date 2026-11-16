@@ -23,6 +23,7 @@ import { Loading, notify, Empty, SectHead, Seg, Pager, Modal, FilterBar } from '
 import { MiniBars, MiniHBars, CHART_COLORS } from '../components/MiniCharts'
 import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2 } from '../utils'
 import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
+import Pic from '../components/Pic'
 
 const CLASS_ORDER = ['Arab', 'GCC', 'African', 'Asian', 'Mediterranean', 'Islamic', 'World', 'Olympic']
 const COACH_LEVELS = {
@@ -214,7 +215,7 @@ function NewsTab({ countryId, countryName }) {
               <div className="fed-news-img" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)', flex: 'none' }}>
                 {a.cover_image && (
                   <>
-                    <img className="news-cover-img" src={a.cover_image} alt="" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <Pic kind="cover" w={640} className="news-cover-img" src={a.cover_image} style={{ position: 'relative' }} />
                   </>
                 )}
               </div>
@@ -387,7 +388,7 @@ function AcademiesTab({ countryId }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {a.logo ? (
-                  <img src={mediaUrl(a.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <Pic kind="logo" w={96} src={a.logo} />
                 ) : (
                   <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>
                     {a.name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
@@ -469,7 +470,7 @@ function ClubsTab({ countryId }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {t.logo ? (
-                  <img src={mediaUrl(t.logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <Pic kind="logo" w={96} src={t.logo} />
                 ) : (
                   <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>
                     {t.name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
@@ -1033,7 +1034,7 @@ function RecordsTab({ records, country }) {
             <div key={i} style={{ borderRadius: 0, textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', padding: '16px 16px 20px', display: 'flex', flexDirection: 'column' }}>
               {/* Large rounded photo */}
               <div style={{ width: '100%', aspectRatio: '1 / 1.05', borderRadius: 0, overflow: 'hidden', background: 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: 'var(--color-neutral-700)' }}>
-                {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
+                {r.swimmer_photo ? <Pic kind="person" w={160} src={r.swimmer_photo} /> : <Waves size={22} aria-hidden="true" />}
               </div>
               <div style={{ paddingTop: 16 }}>
                 <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>
@@ -1601,7 +1602,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         {/* Photo panel */}
         <div className="m-hl4-photo" style={{ width: 100, background: 'var(--color-accent-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: 'rgba(255,255,255,0.35)', flexShrink: 0, overflow: 'hidden' }}>
           {photo
-            ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+            ? <Pic kind="person" w={160} src={photo} />
             : <Waves size={22} aria-hidden="true" />}
         </div>
         {/* Info */}
@@ -1949,7 +1950,7 @@ function FedBoardModal({ member, teamId, onClose, onSaved }) {
     <Modal title={member ? 'Edit board member' : 'Add board member'} onClose={onClose} width={440}>
       <Fld label="Name"><input className="input" autoComplete="off" required style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Fld>
       <Fld label="Role"><input className="input" autoComplete="off" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Fld>
-      <Fld label="Photo"><CropUpload aspect={4 / 5} onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
+      <Fld label="Photo"><CropUpload kind="person" onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
       {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
@@ -2298,7 +2299,7 @@ export default function CountryProfile({ arabFed = false }) {
                       <>
                         <div style={{ width: 128, aspectRatio: '16 / 9', borderRadius: 0, overflow: 'hidden', flex: 'none', background: a?.cover_image ? 'var(--color-accent-800)' : 'var(--color-neutral-400)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'var(--color-neutral-700)' }}>
                           {a?.cover_image
-                            ? <img className="news-cover-img" src={a.cover_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ? <Pic kind="cover" w={128} className="news-cover-img" src={a.cover_image} />
                             : <Camera size={22} aria-hidden="true" />}
                         </div>
                         <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, textAlign: 'left' }}>
@@ -2427,7 +2428,7 @@ export default function CountryProfile({ arabFed = false }) {
                 const hl = ({ photo, emoji = <Waves size={22} aria-hidden="true" />, title, big, sub, name, extra, icon, badgeEl }) => (
                   <div style={hCard}>
                     <div style={{ ...hPhoto, overflow: 'hidden' }}>
-                      {photo ? <img src={mediaUrl(photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : emoji}
+                      {photo ? <Pic kind="person" w={160} src={photo} /> : emoji}
                     </div>
                     <div style={hBody}>
                       <div style={hTitle}>{title}</div>
@@ -2490,7 +2491,7 @@ export default function CountryProfile({ arabFed = false }) {
                   {/* Circular photo with navy ring */}
                   <div style={{ padding: '24px 0 8px' }}>
                     <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'var(--color-neutral-300)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '4px solid var(--color-accent-800)', overflow: 'hidden' }}>
-                      {r.swimmer_photo ? <img src={mediaUrl(r.swimmer_photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
+                      {r.swimmer_photo ? <Pic kind="person" w={160} src={r.swimmer_photo} /> : <Waves size={22} aria-hidden="true" />}
                     </div>
                   </div>
                   <div style={{ padding: '12px 12px 0' }}>
@@ -2598,7 +2599,7 @@ export default function CountryProfile({ arabFed = false }) {
           <div key={s.id} style={{ borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', padding: '16px 10px 12px', display: 'flex', flexDirection: 'column' }}>
             {/* Circular photo with navy ring */}
             <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'var(--color-neutral-300)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', overflow: 'hidden' }}>
-              {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <Waves size={22} aria-hidden="true" />}
+              {s.photo ? <Pic kind="person" w={160} src={s.photo} /> : <Waves size={22} aria-hidden="true" />}
             </div>
             {/* Info */}
             <div style={{ padding: '10px 2px 0' }}>

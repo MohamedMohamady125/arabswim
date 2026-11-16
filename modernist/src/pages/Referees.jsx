@@ -11,6 +11,7 @@ import { PageHead, Empty, Modal, FilterBar, Skeleton } from '../components/ui'
 import { CropUpload } from '../components/ImageCropper'
 import { useAuth } from '../context/AuthContext'
 import { mediaUrl, nameInitials } from '../utils'
+import Pic from '../components/Pic'
 
 const ROLE_LABELS = {
   REFEREE: 'Referee',
@@ -106,7 +107,7 @@ function RefereeModal({ referee, countries, onClose, onSaved }) {
         <Fld label="City"><input className="input" style={{ width: '100%' }} value={form.city} onChange={set('city')} /></Fld>
         <Fld label="Organization / federation"><input className="input" style={{ width: '100%' }} value={form.organization} onChange={set('organization')} /></Fld>
         <Fld label="Years of experience"><input className="input" style={{ width: '100%' }} type="number" inputMode="numeric" min="0" value={form.years_experience} onChange={set('years_experience')} /></Fld>
-        <Fld label="Photo (cropped square)"><CropUpload aspect={1} lockAspect onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
+        <Fld label="Photo"><CropUpload kind="person" onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
       </div>
       <Fld label="Specializations (comma-separated)"><input className="input" style={{ width: '100%' }} placeholder="Pool, Open Water, Para Swimming" value={form.specializations} onChange={set('specializations')} /></Fld>
       <Fld label="Certifications (one per line)"><textarea className="input" rows={2} style={{ width: '100%', resize: 'vertical' }} value={form.certifications} onChange={set('certifications')} /></Fld>
@@ -314,7 +315,7 @@ export default function Referees() {
                 >
                   {c.photo ? (
                     <div className="grayscale" style={{ width: 64, height: 64, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)' }}>
-                      <img src={mediaUrl(c.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <Pic kind="person" w={160} src={c.photo} />
                     </div>
                   ) : (
                     <div style={{ width: 64, height: 64, flex: 'none', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>

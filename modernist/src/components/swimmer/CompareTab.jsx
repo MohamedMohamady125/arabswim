@@ -5,6 +5,7 @@ import Flag from '../Flag'
 import { Loading, Empty, Seg } from '../ui'
 import { formatTime, mediaUrl, nameInitials } from '../../utils'
 import LoadFailed from './LoadFailed'
+import Pic from '../Pic'
 
 const FAST = 'var(--asw-fast)'
 const MAX_TOTAL = 5 // this swimmer + up to 4 opponents
@@ -13,8 +14,8 @@ const initials = (name) => nameInitials(name)
 
 function Portrait({ s, size = 56 }) {
   return s?.photo ? (
-    <img src={mediaUrl(s.photo)} alt={s.name} className="grayscale"
-      style={{ width: size, height: size, objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
+    <Pic kind="person" w={160} src={s.photo} alt={s.name} className="grayscale"
+      style={{ width: size, height: size }} />
   ) : (
     <div style={{
       width: size, height: size, background: 'var(--color-accent-800)', color: '#fff',

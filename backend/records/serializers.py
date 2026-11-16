@@ -15,12 +15,36 @@ class RecordSerializer(serializers.ModelSerializer):
         fields = ['id', 'swimmer', 'swimmer_detail', 'event', 'event_detail',
                   'record_type', 'age_category', 'pool', 'time_centiseconds',
                   'formatted_time', 'location', 'meet_name', 'country',
-                  'country_detail', 'result_date', 'result', 'is_new', 'created_at']
+                  'country_detail', 'result_date', 'result', 'is_new', 'source',
+                  'created_at']
 
 
 class RecordCreateSerializer(serializers.ModelSerializer):
+    """Records typed in on the New Records page. `result` and `source` are
+    read-only on purpose: a hand-entered record is never tied to a meet
+    result, so it shows on New Records and in the record books but can never
+    appear inside a meet."""
+
     class Meta:
         model = Record
         fields = ['id', 'swimmer', 'event', 'record_type', 'age_category', 'pool',
                   'time_centiseconds', 'location', 'meet_name', 'country',
-                  'result_date', 'result', 'is_new']
+                  'result_date', 'result', 'is_new', 'source']
+        read_only_fields = ['result', 'source']
+
+    def validate(self, attrs):
+        rtype = attrs.get('record_type', getattr(self.instance, 'record_type', None))
+        country = attrs.get('country', getattr(self.instance, 'country', None))
+        if rtype == 'NATIONAL' and not country:
+            # a national record belongs to one federation's book
+            swimmer = attrs.get('swimmer', getattr(self.instance, 'swimmer', None))
+            if swimmer is not None and swimmer.nationality_id:
+                attrs['country'] = swimmer.nationality
+            else:
+                raise serializers.ValidationError(
+                    {'country': 'Choose the country this national record belongs to.'})
+        return attrs
+
+    def create(self, validated_data):
+        validated_data['source'] = 'MANUAL'
+        return super().create(validated_data)

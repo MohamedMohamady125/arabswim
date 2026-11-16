@@ -6,6 +6,7 @@ import { getEvents } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty } from '../components/ui'
 import { mediaUrl } from '../utils'
+import Pic from '../components/Pic'
 
 const MAX = 5
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -289,7 +290,7 @@ export default function Compare() {
                   <div key={sw.id} style={{ order: i === 0 ? 0 : 2, display: 'flex', flexDirection: 'row', alignItems: 'stretch', minWidth: 0 }}>
                     <div className="grayscale" style={{ width: 120, minHeight: 130, flex: 'none', background: 'var(--color-accent-800)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {photo ? (
-                        <img src={mediaUrl(photo)} alt={sw.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <Pic kind="person" w={160} src={photo} alt={sw.name} />
                       ) : (
                         <span style={{ color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32 }}>
                           {String(sw.name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}

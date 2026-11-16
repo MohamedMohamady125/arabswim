@@ -9,6 +9,7 @@ import { PageHead, Loading, Empty, Modal, FilterBar } from '../components/ui'
 import { CropUpload } from '../components/ImageCropper'
 import { useAuth } from '../context/AuthContext'
 import { mediaUrl, nameInitials } from '../utils'
+import Pic from '../components/Pic'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 // Postel's Law: search ignores case, accents and punctuation
@@ -29,7 +30,7 @@ function AcademyLogo({ logo, name, size = 52 }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       {logo ? (
-        <img src={mediaUrl(logo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <Pic kind="logo" w={96} src={logo} />
       ) : (
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-box-top)' }}>{acronym(name)}</span>
       )}
@@ -114,7 +115,7 @@ function AcademyModal({ academy, countries, onClose, onSaved }) {
       </div>
       <Fld label="Address"><input className="input" style={{ width: '100%' }} value={form.address} onChange={set('address')} /></Fld>
       <Fld label="Description"><textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }} value={form.description} onChange={set('description')} /></Fld>
-      <Fld label="Logo (cropped square)"><CropUpload aspect={1} lockAspect onChange={setLogo} />{logo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Logo ready ✓</div>}</Fld>
+      <Fld label="Logo"><CropUpload kind="logo" onChange={setLogo} />{logo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Logo ready ✓</div>}</Fld>
       {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
         {academy ? (

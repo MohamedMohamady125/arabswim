@@ -158,3 +158,92 @@ class CountryListOrderingTests(TestCase):
         ours = [c['name'] for c in resp.data
                 if c['name'] in ('Egypt', 'Qatar', 'Albania', 'France')]
         self.assertEqual(ours, ['Egypt', 'Qatar', 'Albania', 'France'])
+
+
+class ImagePipelineTests(TestCase):
+    """core.images: every upload is cleaned on save and served resized."""
+
+    def _jpeg(self, size=(4000, 3000), exif_orientation=None):
+        import io
+        from PIL import Image
+        img = Image.new('RGB', size, (10, 120, 200))
+        buf = io.BytesIO()
+        kw = {}
+        if exif_orientation:
+            exif = Image.Exif()
+            exif[0x0112] = exif_orientation
+            exif[0x010F] = 'CameraMaker'
+            kw['exif'] = exif
+        img.save(buf, format='JPEG', **kw)
+        return buf.getvalue()
+
+    def test_normalize_caps_size_rotates_and_strips_metadata(self):
+        import io
+        from PIL import Image
+        from core.images import normalize_image_bytes, MASTER_MAX_SIDE
+        out, name = normalize_image_bytes(self._jpeg(exif_orientation=6), 'IMG 0012 (1).JPG')
+        img = Image.open(io.BytesIO(out))
+        # orientation 6 = rotate 90°, so the landscape source comes out portrait
+        self.assertEqual(max(img.size), MASTER_MAX_SIDE)
+        self.assertGreater(img.height, img.width)
+        self.assertEqual(len(img.getexif()), 0)
+        self.assertRegex(name, r'^img-0012-1-[0-9a-f]{10}\.jpg$')
+
+    def test_transparent_png_stays_png_and_opaque_webp_becomes_jpeg(self):
+        import io
+        from PIL import Image
+        from core.images import normalize_image_bytes
+        buf = io.BytesIO()
+        Image.new('RGBA', (300, 300), (0, 0, 0, 0)).save(buf, format='PNG')
+        _, name = normalize_image_bytes(buf.getvalue(), 'crest.png')
+        self.assertTrue(name.endswith('.png'))
+        buf = io.BytesIO()
+        Image.new('RGB', (300, 300), (5, 5, 5)).save(buf, format='WEBP')
+        _, name = normalize_image_bytes(buf.getvalue(), 'photo.webp')
+        self.assertTrue(name.endswith('.jpg'))
+
+    def test_garbage_is_left_alone(self):
+        from core.images import normalize_image_bytes
+        self.assertIsNone(normalize_image_bytes(b'not an image', 'x.jpg'))
+
+    def test_model_save_normalizes_any_image_field(self):
+        import tempfile
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from PIL import Image
+        from sponsors.models import Sponsor
+        with tempfile.TemporaryDirectory() as tmp, override_settings(MEDIA_ROOT=tmp):
+            s = Sponsor(name='Test partner')
+            s.logo = SimpleUploadedFile('Big Photo.jpeg', self._jpeg(), content_type='image/jpeg')
+            s.save()
+            self.assertRegex(s.logo.name, r'^sponsors/logos/big-photo-[0-9a-f]{10}\.jpg$')
+            with Image.open(s.logo.path) as img:
+                self.assertEqual(max(img.size), 2560)
+
+    def test_resize_endpoint_serves_bucketed_cached_copy(self):
+        import io
+        import os
+        import tempfile
+        from django.test import override_settings
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as tmp, override_settings(MEDIA_ROOT=tmp):
+            os.makedirs(os.path.join(tmp, 'swimmers/photos'))
+            with open(os.path.join(tmp, 'swimmers/photos/a.jpg'), 'wb') as fh:
+                fh.write(self._jpeg(size=(2000, 2500)))
+            r = self.client.get('/img/200/swimmers/photos/a.jpg', HTTP_ACCEPT='image/webp,*/*')
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r['Content-Type'], 'image/webp')
+            img = Image.open(io.BytesIO(b''.join(r.streaming_content)))
+            self.assertEqual(img.size, (256, 320))  # 200 rounds up to the 256 bucket
+            r = self.client.get('/img/200/swimmers/photos/a.jpg')
+            self.assertEqual(r['Content-Type'], 'image/jpeg')
+            from core.images import derived_image
+            self.assertIsNone(derived_image(tmp, 'nope.jpg', 200))
+            self.assertIsNone(derived_image(tmp, '../../etc/passwd', 200))
+
+    def test_trim_cuts_flat_margins_off_a_logo(self):
+        from PIL import Image
+        from core.images import trim_borders
+        img = Image.new('RGB', (400, 400), (255, 255, 255))
+        img.paste((200, 0, 0), (150, 100, 250, 300))
+        self.assertEqual(trim_borders(img).size, (100, 200))

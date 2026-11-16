@@ -6,6 +6,7 @@ import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg, FilterBar, ShowMore } from '../components/ui'
 import { formatDateRange, formatNumber, mediaUrl, MONTHS_FULL } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import Pic from '../components/Pic'
 
 function parseMeetDate(d) {
   if (!d) return null
@@ -161,11 +162,11 @@ export default function Championships() {
         <div className="rule-b hide-mobile" style={{ display: 'flex', flexWrap: 'wrap' }}>
           {featured.m.meet_photo && (
             <div className="hide-mobile" style={{ width: 220, alignSelf: 'stretch', flex: 'none', borderRight: '2px solid var(--color-divider)', overflow: 'hidden' }}>
-              <img
-                src={mediaUrl(featured.m.meet_photo)}
+              <Pic kind="meet" w={320}
+                src={featured.m.meet_photo}
                 alt={featured.m.name}
                 className="grayscale"
-                style={{ width: '100%', height: '100%', maxHeight: 150, objectFit: 'cover', display: 'block' }}
+                style={{ width: '100%', height: '100%', maxHeight: 150 }}
               />
             </div>
           )}

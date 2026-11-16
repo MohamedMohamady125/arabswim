@@ -8,6 +8,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import api from '../api/client'
 import { Empty, Seg, Skeleton, BackLink } from '../components/ui'
 import { formatDate, formatTime, mediaUrl, nameInitials } from '../utils'
+import Pic from '../components/Pic'
 
 const INK = 'var(--color-accent-800)'
 const MUTED = 'var(--color-neutral-700)'
@@ -25,7 +26,7 @@ const gap = (cs) => (cs <= 0 ? '—' : `+${fmt(cs)}`)
 function Avatar({ s, size = 40 }) {
   return (
     <span style={{ width: size, height: size, borderRadius: '50%', flex: 'none', overflow: 'hidden', background: 'var(--color-accent-100)', border: `1px solid ${LINE}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: HEAD, fontWeight: 800, fontSize: size * 0.34, color: INK }}>
-      {s.photo ? <img src={mediaUrl(s.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : initials(s.name)}
+      {s.photo ? <Pic kind="person" w={160} src={s.photo} /> : initials(s.name)}
     </span>
   )
 }

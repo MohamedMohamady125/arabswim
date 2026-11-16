@@ -68,7 +68,7 @@ function NewProfileForm({ sw, countryId, allCountries, onSubmit, busy }) {
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <span style={label}>Photo (drag to position / zoom to resize)</span>
-          <CropUpload aspect={1} onChange={(f) => setPhoto(f)} />
+          <CropUpload kind="person" onChange={(f) => setPhoto(f)} />
           {photo && <span className="micro" style={{ color: 'var(--asw-fast)' }}>✓ photo ready</span>}
         </div>
       </div>

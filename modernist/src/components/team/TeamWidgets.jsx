@@ -8,6 +8,7 @@ import api from '../../api/client'
 import Flag from '../Flag'
 import { Loading, Empty, Seg, MedalIcon } from '../ui'
 import { formatDate, formatTime, mediaUrl } from '../../utils'
+import Pic from '../Pic'
 
 const INK = 'var(--color-accent-800)'
 const MUTED = 'var(--color-neutral-700)'
@@ -422,8 +423,8 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
               return (
                 <div key={r.id ?? i}>
                   {photo ? (
-                    <img src={mediaUrl(photo)} alt={r.swimmer_name} className="grayscale"
-                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', objectPosition: 'center top', display: 'block', marginBottom: 10 }} />
+                    <Pic kind="person" w={256} src={photo} alt={r.swimmer_name} className="grayscale"
+                      style={{ width: '100%', aspectRatio: '1 / 1', marginBottom: 10 }} />
                   ) : (
                     <div style={{ width: '100%', aspectRatio: '1 / 1', marginBottom: 10, background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: HEAD, fontWeight: 800, fontSize: 32, color: 'var(--color-accent)' }}>
                       {(r.swimmer_name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')}

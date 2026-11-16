@@ -4,7 +4,8 @@ Every upload endpoint must call one of these before saving the file.
 Returns an error string (for a 400 response) or None when the file is OK.
 """
 
-MAX_IMAGE_SIZE = 5 * 1024 * 1024    # 5 MB
+MAX_IMAGE_SIZE = 15 * 1024 * 1024   # 15 MB raw; core.images shrinks it on save
+MAX_IMAGE_PIXELS = 60_000_000       # ~60 megapixels (decompression-bomb guard)
 MAX_PDF_SIZE = 40 * 1024 * 1024     # 40 MB (full meet result books)
 MAX_IMPORT_SIZE = 250 * 1024 * 1024  # 250 MB (multi-meet raw CSV dumps run ~190 MB; Omega books ~90 MB)
 
@@ -26,13 +27,16 @@ def validate_image(uploaded_file):
     if _extension(uploaded_file.name) not in IMAGE_EXTENSIONS:
         return 'Only JPG, PNG, GIF or WEBP images are allowed'
     if uploaded_file.size > MAX_IMAGE_SIZE:
-        return 'Image is too large (max 5 MB)'
+        return 'Image is too large (max 15 MB)'
     try:
         from PIL import Image
         pos = uploaded_file.tell()
         img = Image.open(uploaded_file)
+        too_big = img.width * img.height > MAX_IMAGE_PIXELS
         img.verify()
         uploaded_file.seek(pos)
+        if too_big:
+            return 'Image dimensions are too large'
     except Exception:
         return 'File is not a valid image'
     return None

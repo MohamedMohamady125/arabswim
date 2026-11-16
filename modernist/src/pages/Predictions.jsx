@@ -741,7 +741,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
         }}>
           {champ.meet_photo && (
             <>
-              <Pic kind="meet" w={320} src={champ.meet_photo} style={{ position: 'absolute', inset: 0 }} />
+              <Pic kind="meet" w={960} src={champ.meet_photo} style={{ position: 'absolute', inset: 0, objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(12,36,64,0.92) 0%, rgba(12,36,64,0.55) 60%, rgba(12,36,64,0.25) 100%)' }} />
             </>
           )}

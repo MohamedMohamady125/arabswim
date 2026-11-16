@@ -161,7 +161,7 @@ export default function Championships() {
       {featured && (
         <div className="rule-b hide-mobile" style={{ display: 'flex', flexWrap: 'wrap' }}>
           {featured.m.meet_photo && (
-            <div className="hide-mobile" style={{ width: 220, alignSelf: 'stretch', flex: 'none', borderRight: '2px solid var(--color-divider)', overflow: 'hidden' }}>
+            <div className="hide-mobile" style={{ width: 220, alignSelf: 'stretch', flex: 'none', borderRight: '2px solid var(--color-divider)', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
               <Pic kind="meet" w={320}
                 src={featured.m.meet_photo}
                 alt={featured.m.name}

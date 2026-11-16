@@ -144,8 +144,9 @@ function MeetLogo({ photo, name }) {
   const base = { width: 72, alignSelf: 'stretch', minHeight: 72, flex: 'none', border: '1px solid var(--color-divider)' }
   if (photo && !failed) {
     return (
-      <Pic kind="meet" w={96} src={photo} alt={name || ''} onError={() => setFailed(true)}
-        style={{ ...base, background: '#fff' }} />
+      // the tile takes the picture's own shape (fixed height, width follows), so nothing is cut
+      <Pic kind="meet" w={192} eager fill={false} src={photo} alt={name || ''} onError={() => setFailed(true)}
+        style={{ height: 96, width: 'auto', maxWidth: 'min(200px, 40vw)', flex: 'none', border: '1px solid var(--color-divider)', background: '#fff' }} />
     )
   }
   return (

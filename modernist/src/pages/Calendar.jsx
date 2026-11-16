@@ -750,7 +750,7 @@ export default function Calendar() {
       {featured && (
         <div className="rule-b" style={{ display: 'flex', flexWrap: 'wrap' }}>
           {featured.kind === 'meet' && featured.item.meet_photo && (
-            <div className="hide-mobile" style={{ width: 300, flex: 'none', borderRight: '2px solid var(--color-divider)' }}>
+            <div className="hide-mobile" style={{ width: 300, flex: 'none', borderRight: '2px solid var(--color-divider)', background: 'var(--color-accent-800)' }}>
               <Pic kind="meet" w={320}
                 src={featured.item.meet_photo}
                 alt={featured.item.name}

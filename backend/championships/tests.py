@@ -431,3 +431,38 @@ class CalendarLinkedFilterTests(TestCase):
         res = self.client.get('/api/v1/championships/', {'page_size': 100})
         names = [c['name'] for c in res.data['results']]
         self.assertIn('Imported Nationals', names)
+
+
+class MeetPhotoEditTests(TestCase):
+    """Replacing a meet photo through the edit form must save (the change
+    log used to crash on image fields)."""
+
+    def test_patch_with_photo_saves_and_is_logged(self):
+        import io
+        import tempfile
+        from django.contrib.auth import get_user_model
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from PIL import Image
+        from rest_framework.test import APIClient
+        from championships.models import Championship
+        from core.models import ChangeLog
+        user = get_user_model().objects.create_superuser('boss', 'b@example.com', 'pw')
+        if hasattr(user, 'role'):
+            user.role = 'ADMIN'
+            user.save()
+        meet = Championship.objects.create(name='Meet', date='2026-01-01', pool='LCM')
+        api = APIClient()
+        api.force_authenticate(user)
+        buf = io.BytesIO()
+        Image.new('RGB', (1600, 900), (10, 20, 30)).save(buf, format='JPEG')
+        with tempfile.TemporaryDirectory() as tmp, override_settings(MEDIA_ROOT=tmp):
+            for _ in range(2):   # first upload, then a replacement
+                r = api.patch(f'/api/v1/championships/{meet.id}/',
+                              {'name': 'Meet', 'meet_photo': SimpleUploadedFile('p.jpg', buf.getvalue(), content_type='image/jpeg')},
+                              format='multipart')
+                self.assertEqual(r.status_code, 200, r.content[:300])
+            meet.refresh_from_db()
+            self.assertRegex(meet.meet_photo.name, r'^championships/photos/p-[0-9a-f]{10}\w*\.jpg$')
+            log = ChangeLog.objects.filter(model_label='championships.championship', object_id=meet.id).first()
+            self.assertIn('meet_photo', log.changes)

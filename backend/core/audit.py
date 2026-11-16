@@ -19,6 +19,11 @@ def _json_safe(value):
         return value.isoformat()
     if isinstance(value, Decimal):
         return float(value)
+    # Image / file fields: store the stored path (what the column holds), so
+    # a photo change can be logged and reverted like any other field.
+    from django.db.models.fields.files import FieldFile
+    if isinstance(value, FieldFile):
+        return value.name or ''
     return value
 
 

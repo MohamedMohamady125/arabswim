@@ -2543,8 +2543,9 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
         </div>
         <div className="field">
           <label htmlFor="meet-f32">Meet photo {meet.meet_photo ? '(replace)' : ''}</label>
-          <input id="meet-f32" className="input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
-          {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready</div>}
+          {/* value reset so picking the same file again reopens the crop tool */}
+          <input id="meet-f32" className="input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f); e.target.value = '' }} />
+          {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Photo ready — press Save changes to upload it</div>}
         </div>
         {cropFile && (
           <ImageCropper file={cropFile} kind="meet"

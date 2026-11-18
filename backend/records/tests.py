@@ -240,3 +240,58 @@ class HandEnteredRecordTests(_Fixture):
         rec = Record.objects.get(time_centiseconds=2210)
         self.assertEqual((rec.record_type, rec.country_id, rec.source, rec.result_id),
                          ('NATIONAL', self.mar.id, 'IMPORT', None))
+
+
+class RecordCountryFollowsResultTests(_Fixture):
+    """A record made before a nationality change was recorded must not stay
+    in the book of a country the swim was not swum for."""
+
+    def setUp(self):
+        import datetime
+        from swimmers.models import NationalityChange
+        self.ksa = Country.objects.create(name='Saudi Arabia', code='KSA', region='GCC')
+        # an older Tunisian record by someone else: 50 free in 23.50
+        self.other = Swimmer.objects.create(name='Other TUNISIAN', sex='M', nationality=self.tun, birth_year=1998)
+        old = Result.objects.create(swimmer=self.other, championship=self.champ, event=self.e50,
+                                    nationality=self.tun, time_centiseconds=2350)
+        check_and_update_records(old)
+        # the swim: imported while the profile still said Tunisia
+        self.res = self._result(self.e50, 2300, [])
+        check_and_update_records(self.res)
+        self.assertEqual(
+            set(Record.objects.filter(swimmer=self.swimmer).values_list('record_type', 'country__code')),
+            {('NATIONAL', 'TUN'), ('ARAB', 'TUN')})
+        # admin records that he already swam for Saudi Arabia at that meet
+        NationalityChange.objects.create(swimmer=self.swimmer, from_country=self.tun, to_country=self.ksa,
+                                         effective_date=datetime.date(2026, 1, 9))
+        self.swimmer.nationality = self.ksa
+        self.swimmer.save(update_fields=['nationality'])
+
+    def test_records_move_to_the_country_the_swim_was_swum_for(self):
+        from swimmers.models import restamp_result_nationalities
+        restamp_result_nationalities(self.swimmer)
+        self.res.refresh_from_db()
+        self.assertEqual(self.res.nationality_id, self.ksa.id)
+        mine = set(Record.objects.filter(swimmer=self.swimmer).values_list('record_type', 'country__code'))
+        self.assertEqual(mine, {('NATIONAL', 'KSA'), ('ARAB', 'KSA'), ('GCC', 'KSA')})
+        # Tunisia's book goes back to its own fastest swimmer
+        tun = Record.objects.filter(record_type='NATIONAL', country=self.tun, event=self.e50).order_by('time_centiseconds').first()
+        self.assertEqual(tun.swimmer_id, self.other.id)
+        self.assertFalse(Record.objects.filter(country=self.tun, swimmer=self.swimmer).exists())
+
+    def test_running_it_again_changes_nothing(self):
+        from records.sync import resync_swimmer_records
+        from swimmers.models import restamp_result_nationalities
+        restamp_result_nationalities(self.swimmer)
+        before = sorted(Record.objects.values_list('id', 'country_id', 'record_type'))
+        self.assertEqual(resync_swimmer_records(self.swimmer), {'relabelled': 0, 'removed': 0, 'created': 0})
+        self.assertEqual(sorted(Record.objects.values_list('id', 'country_id', 'record_type')), before)
+
+    def test_hand_entered_records_keep_their_country(self):
+        from swimmers.models import restamp_result_nationalities
+        manual = Record.objects.create(swimmer=self.swimmer, event=self.e100, record_type='NATIONAL', pool='LCM',
+                                       time_centiseconds=5000, country=self.tun, result_date='2020-01-01',
+                                       source='MANUAL')
+        restamp_result_nationalities(self.swimmer)
+        manual.refresh_from_db()
+        self.assertEqual(manual.country_id, self.tun.id)

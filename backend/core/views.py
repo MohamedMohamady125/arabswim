@@ -1363,10 +1363,14 @@ class ChangeLogViewSet(viewsets.ReadOnlyModelViewSet):
         nid = swimmer.nationality_id
         Result.objects.filter(swimmer=swimmer).exclude(nationality_id=nid).update(nationality_id=nid)
         Medal.objects.filter(swimmer=swimmer).exclude(nationality_id=nid).update(nationality_id=nid)
-        Record.objects.filter(swimmer=swimmer).exclude(country_id=nid).update(country_id=nid)
         if swimmer.nationality_changes.exists():
             from swimmers.models import restamp_result_nationalities
             restamp_result_nationalities(swimmer)
+        # Records follow the results' country: a national record moves to the
+        # right country's book instead of being relabelled in place, and
+        # hand-entered records keep the country the admin gave them.
+        from records.sync import resync_swimmer_records
+        resync_swimmer_records(swimmer)
         champ_ids = set(Result.objects.filter(swimmer=swimmer).values_list('championship_id', flat=True))
         for cid in champ_ids:
             recompute_medals(Championship.objects.get(id=cid))

@@ -136,3 +136,8 @@ def restamp_result_nationalities(swimmer):
         if m.nationality_id != country_id:
             m.nationality_id = country_id
             m.save(update_fields=['nationality'])
+
+    # Records follow the swims: a record made before this change was recorded
+    # must not stay in the book of a country the swim was not swum for.
+    from records.sync import resync_swimmer_records
+    resync_swimmer_records(swimmer)

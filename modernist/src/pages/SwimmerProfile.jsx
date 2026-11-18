@@ -395,6 +395,18 @@ function EventList({ events, selected, onSelect, detail }) {
   })
   const relays = [...relayMap.values()]
 
+  // Hick's Law: one course at a time instead of one long mixed list. The
+  // three courses are always offered; open water appears only for swimmers
+  // who have open-water swims. Opens on the first course that has times.
+  const groups = [
+    ['LCM', 'LCM', 'Long course · 50m pool', lcm],
+    ['SCM', 'SCM', 'Short course · 25m pool', scm],
+    ['SPLIT', 'Split time', 'Relay Splits', relays],
+    ...(ow.length ? [['OW', 'Open water', 'Open water', ow]] : []),
+  ]
+  const [course, setCourse] = useState(null)
+  const active = groups.find((g) => g[0] === course) || groups.find((g) => g[3].length) || groups[0]
+
   const section = (label, rows) => {
     if (!rows.length) return null
     return (
@@ -430,13 +442,25 @@ function EventList({ events, selected, onSelect, detail }) {
     )
   }
 
+  if (events.length === 0) {
+    return <Empty label="No competition results yet" hint="Times appear here once this swimmer has results from an imported meet." />
+  }
   return (
     <div>
-      {section('Long course · 50m pool', lcm)}
-      {section('Short course · 25m pool', scm)}
-      {section('Open water', ow)}
-      {section('Relay Splits', relays)}
-      {events.length === 0 && <Empty label="No competition results yet" hint="Times appear here once this swimmer has results from an imported meet." />}
+      <div className="seg" role="group" aria-label="Course" style={{ display: 'flex', marginBottom: 12 }}>
+        {groups.map(([key, label, , rows]) => (
+          <button key={key} type="button" className={`seg-opt${active[0] === key ? ' on' : ''}`}
+            aria-pressed={active[0] === key} onClick={() => setCourse(key)}
+            style={{ flex: 1, justifyContent: 'center', whiteSpace: 'nowrap' }}>
+            {label}
+            <span className="asw-num" style={{ opacity: 0.7, fontSize: 11 }}>{rows.length}</span>
+          </button>
+        ))}
+      </div>
+      {section(active[2], active[3])}
+      {active[3].length === 0 && (
+        <Empty label={`No ${active[1]} times yet`} hint="Pick another course above to see this swimmer's other times." />
+      )}
     </div>
   )
 }

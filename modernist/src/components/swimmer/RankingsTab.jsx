@@ -61,18 +61,19 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
           <div className="text-muted" style={{ fontSize: 13 }}>No season history for this event yet. Pick another event above.</div>
         ) : (
           <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            {/* rank-per-season columns: rank 1 = full height */}
-            <div style={{ flex: '1 1 300px', display: 'flex', alignItems: 'flex-end', gap: 16, height: 150, borderBottom: '2px solid var(--color-divider)' }}>
+            {/* rank-per-season bars: rank 1 = full height. Similarity: the same
+                bar as Career Activity on the Overall tab (blue, dark to light) */}
+            <div style={{ flex: '1 1 300px', display: 'flex', alignItems: 'flex-end', gap: 6, height: 160 }}>
               {scoped.map((s) => {
                 const rk = s[scope]
-                const h = Math.max(22, 140 * (bestRank / Math.max(1, rk.rank)))
+                const h = Math.max(8, 110 * (bestRank / Math.max(1, rk.rank)))
                 return (
-                  <div key={s.year} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                    <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14 }}>
-                      {rk.rank}<span style={{ fontSize: 11 }}>{ordSuffix(rk.rank)}</span>
+                  <div key={s.year} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
+                    <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 4 }}>
+                      {rk.rank}{ordSuffix(rk.rank)}
                     </span>
-                    <div style={{ width: '100%', maxWidth: 46, height: h, background: rk.rank === 1 ? 'var(--asw-gold)' : 'var(--color-accent)' }} />
-                    <span className="micro asw-num">{s.year}</span>
+                    <div style={{ width: '70%', maxWidth: 36, height: h, background: 'linear-gradient(180deg, var(--color-accent-500), var(--color-accent-800))', borderRadius: 0 }} />
+                    <span className="asw-num" style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 6 }}>{s.year}</span>
                   </div>
                 )
               })}
@@ -87,7 +88,7 @@ function RankingHistory({ swimmerId, rankings, eventName, scope, scopeLabel }) {
                   <tr key={s.year}>
                     <td className="asw-num" style={{ fontWeight: 700 }}>{s.year}</td>
                     <td className="asw-time">{s.time}</td>
-                    <td className="num asw-num" style={{ fontWeight: 800, color: s[scope].rank === 1 ? 'var(--asw-gold)' : 'inherit' }}>
+                    <td className="num asw-num" style={{ fontWeight: 800, color: s[scope].rank === 1 ? 'var(--color-accent)' : 'inherit' }}>
                       {s[scope].rank}{ordSuffix(s[scope].rank)}
                     </td>
                     <td className="num asw-num text-muted">{s[scope].total}</td>

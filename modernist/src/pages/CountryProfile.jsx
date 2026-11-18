@@ -2071,7 +2071,11 @@ export default function CountryProfile({ arabFed = false }) {
   const { country, medals } = profile
   const topSwimmers = profile.top_swimmers || []
   const topMedalists = profile.top_medalists || []
-  const records = profile.records || []
+  // The Arab Aquatics Federation page is the Arab record book: no GCC or other
+  // scopes, so there is no record-type filter to choose from (Hick's Law).
+  const records = arabFed
+    ? (profile.records || []).filter((r) => r.record_type === 'ARAB')
+    : (profile.records || [])
   const hosted = profile.championships_hosted || []
   const participated = profile.championships_participated || []
   const teams = profile.teams || []

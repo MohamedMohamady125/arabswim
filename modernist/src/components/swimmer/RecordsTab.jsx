@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getHeldRecords, getRecordGaps } from '../../api/records'
 import { Loading, Empty, Seg } from '../ui'
 import LoadFailed from './LoadFailed'
+import { recordEventLabel } from '../../utils'
 
 // Compress age categories: ['U14','U15','U16','OPEN'] -> ['U14–U16', 'OPEN']
 export function compressCategories(cats) {
@@ -298,12 +299,11 @@ export default function RecordsTab({ swimmerId }) {
                 <span key={cat} className="tag" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.85)' }}>{cat}</span>
               ))}
             </div>
-            {/* event name with the pool badge right beside it */}
+            {/* the swim, always "100 M Freestyle | LCM" */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span className="card-title" style={{ textTransform: 'uppercase', fontSize: 16, color: '#fff' }}>
-                {r.event_detail?.name || r.event_name}
+              <span className="card-title" style={{ fontSize: 16, color: '#fff' }}>
+                {recordEventLabel(r.event_detail?.name || r.event_name, r.pool)}
               </span>
-              <span className="tag" style={{ background: 'rgba(255,255,255,0.14)', color: r.pool === 'SCM' ? 'var(--asw-gold)' : '#fff', flex: 'none' }}>{r.pool}</span>
             </div>
             <div className="asw-time" style={{ fontSize: 24, fontWeight: 800, color: '#fff', lineHeight: 1 }}>
               {r.formatted_time}

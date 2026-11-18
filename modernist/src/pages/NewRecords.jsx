@@ -6,7 +6,7 @@ import { getEvents, getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg, FilterBar, notify } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
-import { formatDate, RECORD_TYPES, mediaUrl, parseTime } from '../utils'
+import { formatDate, RECORD_TYPES, mediaUrl, parseTime, recordEventLabel } from '../utils'
 import Pic from '../components/Pic'
 
 const TYPE_LABEL = Object.fromEntries(RECORD_TYPES.map((t) => [t.value, t.label]))
@@ -635,17 +635,17 @@ function RecordCards({ rows, onRemove }) {
                   )}
                   {/* 1 — scope + age category (Open / under-age) */}
                   <div className="card-kicker" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span>{TYPE_LABEL[r.record_type] || r.record_type} record</span>
-                    <span style={{ opacity: 0.5 }}>·</span>
-                    <span>{ageCategoryLabel(r.age_category)}</span>
+                    {/* each separator travels with the item after it, so a wrapped line never ends on a dot */}
+                    <span style={{ whiteSpace: 'nowrap' }}>{TYPE_LABEL[r.record_type] || r.record_type} record</span>
+                    <span style={{ whiteSpace: 'nowrap' }}><span style={{ opacity: 0.5 }}>· </span>{ageCategoryLabel(r.age_category)}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}><span style={{ opacity: 0.5 }}>· </span>{r.swimmer_detail?.sex === 'F' ? 'Women' : 'Men'}</span>
                   </div>
-                  {/* 2 — event with gender */}
+                  {/* 2 — the swim, always "100 M Freestyle | LCM" */}
                   <div className="rec-event" style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>
-                    {r.swimmer_detail?.sex === 'F' ? "Women's" : "Men's"} {r.event_detail?.name}
+                    {recordEventLabel(r.event_detail?.name, r.pool)}
                   </div>
-                  {/* 3 — pool badge in front of the time */}
+                  {/* 3 — the time */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
-                    <span className="tag tag-accent-2" style={{ fontSize: 11, padding: '2px 8px', fontWeight: 700 }}>{r.pool}</span>
                     <span className="asw-num rec-time" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>
                       {r.formatted_time}
                     </span>

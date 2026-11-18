@@ -21,7 +21,7 @@ import FederationProgressionTab from '../components/FederationProgression'
 import MedalStandings from '../components/MedalStandings'
 import { Loading, notify, Empty, SectHead, Seg, Pager, Modal, FilterBar } from '../components/ui'
 import { MiniBars, MiniHBars, CHART_COLORS } from '../components/MiniCharts'
-import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2 } from '../utils'
+import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2, recordEventLabel } from '../utils'
 import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
 import Pic from '../components/Pic'
 
@@ -1040,7 +1040,7 @@ function RecordsTab({ records, country }) {
                 <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>
                   <SwimmerLink id={r.swimmer_id} name={r.swimmer} />
                 </div>
-                <div style={{ fontSize: 14, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{r.event} | {poolLabel(r.pool)}</div>
+                <div style={{ fontSize: 14, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 6 }}>{recordEventLabel(r.event, r.pool)}</div>
                 <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, color: 'var(--color-accent-800)', letterSpacing: '-0.02em', marginTop: 6 }}>{r.time}</div>
               </div>
               <div style={{ paddingTop: 8 }}>
@@ -2101,14 +2101,8 @@ export default function CountryProfile({ arabFed = false }) {
 
   return (
     <div className="m-zoom">
-      {/* ===== ISF-style federation header: circular flag logo + info left,
-             swimmer action photo blended into the right half ===== */}
+      {/* ===== ISF-style federation header: circular flag logo + info ===== */}
       {(() => {
-        const photoCandidates = [
-          ...topSwimmers.map((s) => s.photo),
-          ...topMedalists.map((s) => s.photo),
-          ...records.map((r) => r.swimmer_photo),
-        ]
         const navy = 'var(--color-accent-800)'
         const customFlag = flagImage(country.code)
         const alpha2 = flagAlpha2(country.code)
@@ -2126,13 +2120,10 @@ export default function CountryProfile({ arabFed = false }) {
           <div className="rule-b" style={{ position: 'relative', overflow: 'hidden', background: 'var(--color-bg)' }}>
             <style>{`
               @media (max-width: 760px) {
-                .fed-hero-photo { display: none; }
                 .fed-hero-flag { width: 108px !important; height: 108px !important; }
               }
             `}</style>
-            {/* swimmer photo blended on the right — auto-picked by resolution/aspect;
-                falls back to high-res news action shots when swimmer photos are tiny */}
-            <FedHeroPhoto candidates={photoCandidates} extras={ovNews.map((a) => a?.cover_image)} />
+            {/* no swimmer photo in the federation header: the flag alone identifies it */}
             <div className="m-pad" style={{ position: 'relative', padding: '20px 32px 30px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 {/* Fitts's Law: back link is a 40px target (30px after the phone zoom) */}
@@ -2494,12 +2485,10 @@ export default function CountryProfile({ arabFed = false }) {
                       {r.swimmer_photo ? <Pic kind="person" w={160} src={r.swimmer_photo} /> : <Waves size={22} aria-hidden="true" />}
                     </div>
                   </div>
-                  <div style={{ padding: '12px 12px 0' }}>
+                  <div style={{ padding: '12px 12px 14px' }}>
                     <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
-                    <div style={{ fontSize: 14, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <span>{String(r.event || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
-                      <span style={{ color: 'var(--color-neutral-400)' }}>|</span>
-                      <span>{poolLabel(r.pool)}</span>
+                    <div style={{ fontSize: 14, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55 }}>
+                      {recordEventLabel(r.event, r.pool)}
                     </div>
                   </div>
                   {/* Navy footer with time */}

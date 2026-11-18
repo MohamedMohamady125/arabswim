@@ -18,7 +18,7 @@ import { MiniHBars, MiniDonut, AgePyramid, MiniPanel, CHART_COLORS } from '../co
 import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
 import { CropUpload } from '../components/ImageCropper'
 import TrainingCalendar from '../components/TrainingCalendar'
-import { formatDate, formatNumber, formatTime, mediaUrl } from '../utils'
+import { formatDate, formatNumber, formatTime, mediaUrl, recordEventLabel } from '../utils'
 import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
 import { ClubLogo, SwimmerMedalsByMeet, DepthTab, RecordsTab } from '../components/team/TeamWidgets'
 import Pic from '../components/Pic'
@@ -1669,12 +1669,10 @@ export default function TeamDetail() {
                         {photoById[r.swimmer_id] ? <Pic kind="person" w={160} src={photoById[r.swimmer_id]} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, color: 'var(--color-accent-800)' }}>{acronym(r.swimmer_name).slice(0, 2)}</span>}
                       </div>
                     </div>
-                    <div style={{ padding: '12px 12px 0' }}>
+                    <div style={{ padding: '12px 12px 14px' }}>
                       <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} pad={false} /></div>
-                      <div style={{ fontSize: 14, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                        <span>{String(r.event_name || '').replace(/^(\d+)\s*M\b/i, '$1m')}</span>
-                        <span style={{ color: 'var(--color-neutral-400)' }}>|</span>
-                        <span>{r.pool === 'SCM' ? '25m pool' : '50m pool'}</span>
+                      <div style={{ fontSize: 14, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55 }}>
+                        {recordEventLabel(r.event_name, r.pool)}
                       </div>
                     </div>
                     <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '13px 10px 15px', margin: '18px 10px 10px', marginTop: 'auto', borderRadius: 0 }}>

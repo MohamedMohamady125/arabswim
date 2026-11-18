@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import api from '../../api/client'
 import Flag from '../Flag'
 import { Loading, Empty, Seg, MedalIcon } from '../ui'
-import { formatDate, formatTime, mediaUrl, imgUrl } from '../../utils'
+import { formatDate, formatTime, mediaUrl, imgUrl, recordEventLabel } from '../../utils'
 import Pic from '../Pic'
 
 const INK = 'var(--color-accent-800)'
@@ -439,17 +439,17 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
                   )}
                   {/* 1 — scope + age category */}
                   <div className="card-kicker" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span>{scopeLabel(r)} record</span>
-                    <span style={{ opacity: 0.5 }}>·</span>
-                    <span>{ageLabel(r.age_category)}</span>
+                    {/* each separator travels with the item after it, so a wrapped line never ends on a dot */}
+                    <span style={{ whiteSpace: 'nowrap' }}>{scopeLabel(r)} record</span>
+                    <span style={{ whiteSpace: 'nowrap' }}><span style={{ opacity: 0.5 }}>· </span>{ageLabel(r.age_category)}</span>
+                    {sex && <span style={{ whiteSpace: 'nowrap' }}><span style={{ opacity: 0.5 }}>· </span>{sex === 'F' ? 'Women' : 'Men'}</span>}
                   </div>
-                  {/* 2 — event with gender */}
+                  {/* 2 — the swim, always "100 M Freestyle | LCM" */}
                   <div className="rec-event" style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>
-                    {sex ? (sex === 'F' ? "Women's " : "Men's ") : ''}{r.event_name}
+                    {recordEventLabel(r.event_name, r.pool)}
                   </div>
-                  {/* 3 — pool badge in front of the time */}
+                  {/* 3 — the time */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
-                    <span className="tag tag-accent-2" title={r.pool === 'SCM' ? 'Short course (25m pool)' : 'Long course (50m pool)'} style={{ fontSize: 11, padding: '2px 8px', fontWeight: 700 }}>{r.pool === 'SCM' ? '25m' : r.pool === 'LCM' ? '50m' : r.pool}</span>
                     <span className="asw-num rec-time" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 24 }}>{time}</span>
                   </div>
                   {/* 4 — swimmer name + flag */}

@@ -182,3 +182,8 @@ export function nameInitials(name, max = 2) {
   if (words.length === 1 && max > 2) return words[0].slice(0, max).toUpperCase()
   return words.slice(0, max).map((w) => w[0]).join('').toUpperCase()
 }
+
+// Rule (2026-11-19): every record widget names its swim as "100 M Freestyle | LCM"
+// — the event exactly as stored, a bar, the pool code. Open water has no pool code.
+export const recordEventLabel = (eventName, pool) =>
+  `${eventName || ''}${pool && pool !== 'OW' ? ` | ${pool}` : ''}`

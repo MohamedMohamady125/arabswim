@@ -329,7 +329,7 @@ function RankingTab({ countryId }) {
             there (the essentials stay) instead of wrapping every cell to 3 lines */}
         <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 40 }}>#</th><th>Swimmer</th><th className="num">Age</th><th className="time">Time</th><th className="num hide-mobile">FINA</th><th className="hide-mobile">Championship</th><th className="hide-mobile">Location</th><th>Date</th></tr></thead><tbody>
           {rows.map((r) => (
-            <tr key={r.result_id}>
+            <tr key={r.result_id ?? `rec-${r.record_id}`}>
               <td><span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', fontWeight: 800, fontSize: 12 }}>{r.rank}</span></td>
               <td><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} /></td>
               <td className="num asw-num">{r.age_at_competition || '—'}</td>

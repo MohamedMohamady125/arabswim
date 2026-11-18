@@ -683,6 +683,14 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
                 dedup[key] = (row, cut, cut_qt)
         hits = list(dedup.values())
 
+        # Rule (2026-11-18): a swimmer who has made an A cut is qualified —
+        # their B cuts are not listed. A swimmer with B cuts only keeps them.
+        # Same person key as above, so a duplicated profile counts as one swimmer.
+        made_a = {(name_key(row['swimmer__name']), row['swimmer__sex'])
+                  for row, cut, _ in hits if cut == 'A'}
+        hits = [h for h in hits if h[1] == 'A'
+                or (name_key(h[0]['swimmer__name']), h[0]['swimmer__sex']) not in made_a]
+
         for row, cut, cut_qt in hits:
             swim_filter |= DQ(swimmer_id=row['swimmer_id'], event_id=row['event_id'],
                               championship__pool=row['championship__pool'],

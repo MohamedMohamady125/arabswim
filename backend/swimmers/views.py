@@ -1555,6 +1555,21 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         gender = swimmer.sex  # rank within same gender
         swimmer_bests = list(swimmer_bests)
 
+        # Records typed in or imported on the New Records page are swims too
+        # (same rule as the rankings page: records.handswims).
+        from records.handswims import hand_entered_swims
+        own_idx = {(r['event_id'], r['championship__pool'] or ''): r for r in swimmer_bests}
+        for h in hand_entered_swims(swimmer_id=swimmer.id):
+            if h.record.event.is_relay:
+                continue
+            row = own_idx.get((h.event_id, h.pool))
+            if row is None:
+                row = {'event_id': h.event_id, 'championship__pool': h.pool, 'best': h.time_cs}
+                swimmer_bests.append(row)
+                own_idx[(h.event_id, h.pool)] = row
+            elif h.time_cs < row['best']:
+                row['best'] = h.time_cs
+
         # One query for the whole field instead of four per event per scope
         # (a 13-event swimmer used to cost ~150 queries / 2s): every rival's
         # best per event+pool in the widest scope, ranked in memory.
@@ -1579,6 +1594,25 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         by_event = {}
         for f in field:
             by_event.setdefault((f['event_id'], f['championship__pool'] or ''), []).append(f)
+        # rivals' hand-entered records: each swimmer keeps one entry, their fastest
+        for h in hand_entered_swims(event_ids={r['event_id'] for r in swimmer_bests}, gender=gender):
+            rs = h.swimmer
+            rn = rs.nationality
+            if rs.is_relay_team or rn is None:
+                continue
+            if ('arab' in scopes and rn.region not in ('ARAB', 'GCC')) or \
+                    ('arab' not in scopes and rn.id != nat.id):
+                continue
+            rows = by_event.setdefault((h.event_id, h.pool), [])
+            cur = next((f for f in rows if f['swimmer_id'] == rs.id), None)
+            if cur is None:
+                rows.append({'event_id': h.event_id, 'championship__pool': h.pool,
+                             'swimmer_id': rs.id, 'swimmer__nationality_id': rn.id,
+                             'swimmer__nationality__region': rn.region,
+                             'swimmer__date_of_birth': rs.date_of_birth,
+                             'swimmer__birth_year': rs.birth_year, 'pb': h.time_cs})
+            elif h.time_cs < cur['pb']:
+                cur['pb'] = h.time_cs
 
         def _in_scope(f, scope_name):
             if scope_name == 'national':
@@ -1656,27 +1690,45 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         if nat.region in ('GCC', 'ARAB'):
             scopes['arab'] = {'swimmer__nationality__region__in': ['ARAB', 'GCC']}
 
-        own_seasons = (own.filter(event_id=event_id, championship__pool=pool)
-                       .values('championship__date__year')
-                       .annotate(best=Min('time_centiseconds'))
-                       .order_by('championship__date__year'))
+        own_by_year = {row['championship__date__year']: row['best'] for row in
+                       (own.filter(event_id=event_id, championship__pool=pool)
+                        .values('championship__date__year')
+                        .annotate(best=Min('time_centiseconds')))}
+        # Records typed in or imported on the New Records page are swims too
+        # (same rule as the rankings page: records.handswims).
+        from records.handswims import hand_entered_swims
+        hand = [h for h in hand_entered_swims(event_ids=[int(event_id)], pool=pool, gender=swimmer.sex)
+                if not h.swimmer.is_relay_team and h.swimmer.nationality is not None]
+        for h in hand:
+            if h.swimmer_id == swimmer.id:
+                y = h.date.year
+                if y not in own_by_year or h.time_cs < own_by_year[y]:
+                    own_by_year[y] = h.time_cs
+
+        def _hand_in_scope(h, scope_name):
+            n = h.swimmer.nationality
+            return n.id == nat.id if scope_name == 'national' else n.region in ('ARAB', 'GCC')
+
         seasons = []
-        for row in own_seasons:
-            year = row['championship__date__year']
-            if not year:
-                continue
-            entry = {'year': year, 'time': format_centiseconds(row['best']),
-                     'time_centiseconds': row['best']}
+        for year in sorted(y for y in own_by_year if y):
+            best = own_by_year[year]
+            entry = {'year': year, 'time': format_centiseconds(best),
+                     'time_centiseconds': best}
             for scope_name, scope_filter in scopes.items():
-                field = (Result.objects.filter(
+                field = dict(Result.objects.filter(
                     event_id=event_id, championship__pool=pool,
                     championship__date__year=year,
                     is_hc=False, time_centiseconds__gt=0,
                     swimmer__is_relay_team=False, swimmer__sex=swimmer.sex,
                     **scope_filter)
-                    .values('swimmer_id').annotate(sb=Min('time_centiseconds')))
-                better = field.filter(sb__lt=row['best']).count()
-                entry[scope_name] = {'rank': better + 1, 'total': field.count()}
+                    .values('swimmer_id').annotate(sb=Min('time_centiseconds'))
+                    .values_list('swimmer_id', 'sb'))
+                for h in hand:
+                    if h.date.year == year and _hand_in_scope(h, scope_name):
+                        if h.swimmer_id not in field or h.time_cs < field[h.swimmer_id]:
+                            field[h.swimmer_id] = h.time_cs
+                better = sum(1 for sb in field.values() if sb < best)
+                entry[scope_name] = {'rank': better + 1, 'total': len(field)}
             seasons.append(entry)
 
         return Response({'event_id': int(event_id), 'pool': pool,

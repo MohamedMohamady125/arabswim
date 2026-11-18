@@ -141,16 +141,33 @@ class RankingView(APIView):
         it_best = dict(it_qs.values('result__swimmer_id')
                        .annotate(best=Min('time_centiseconds'))
                        .values_list('result__swimmer_id', 'best'))
-        merged = []
-        for sid, t in res_best.items():
-            st = it_best.get(sid)
-            if st is not None and st < t:
-                merged.append({'swimmer_id': sid, 'best_time': st, 'from_split': True})
-            else:
-                merged.append({'swimmer_id': sid, 'best_time': t, 'from_split': False})
+        # Records typed in or imported on the New Records page are swims too.
+        # They have no meet behind them, so a meet filter leaves them out.
+        rec_best = {}
+        if not (championship or classification or sub_classification):
+            from records.handswims import hand_entered_swims, in_scope, fits_age, fastest_per_swimmer
+            max_age = None
+            if age_group and age_group != 'OPEN':
+                try:
+                    max_age = int(age_group.replace('U', ''))
+                except (ValueError, AttributeError):
+                    max_age = None
+            rec_best = fastest_per_swimmer(
+                r for r in hand_entered_swims(event_ids=[event], pool=pool, gender=gender, year=year)
+                if in_scope(r.nat, scope, country) and (max_age is None or fits_age(r, max_age)))
+
+        # One entry per swimmer: the fastest of the three sources. A meet swim
+        # wins a tie (it links to the race), then a split, then a record entry
+        # — so the same swim is never listed twice.
+        best = {sid: (t, 'result') for sid, t in res_best.items()}
         for sid, st in it_best.items():
-            if sid not in res_best:
-                merged.append({'swimmer_id': sid, 'best_time': st, 'from_split': True})
+            if sid not in best or st < best[sid][0]:
+                best[sid] = (st, 'split')
+        for sid, r in rec_best.items():
+            if sid not in best or r.time_cs < best[sid][0]:
+                best[sid] = (r.time_cs, 'record')
+        merged = [{'swimmer_id': sid, 'best_time': t, 'from_split': kind == 'split',
+                   'from_record': kind == 'record'} for sid, (t, kind) in best.items()]
         merged.sort(key=lambda r: (r['best_time'], r['swimmer_id']))
 
         paginator = RankingPagination()
@@ -158,7 +175,7 @@ class RankingView(APIView):
         page_rows = page if page is not None else merged
 
         # Fetch only this page's backing rows
-        res_rows = [r for r in page_rows if not r['from_split']]
+        res_rows = [r for r in page_rows if not r['from_split'] and not r['from_record']]
         split_rows = [r for r in page_rows if r['from_split']]
         row_filter = Q(pk__in=[])
         for row in res_rows:
@@ -188,6 +205,38 @@ class RankingView(APIView):
         # not the class default — otherwise page 2 of a 25-row page starts at 51
         start_rank = paginator.page.start_index() if page is not None else 1
         for row in page_rows:
+            if row['from_record']:
+                hs = rec_best[row['swimmer_id']]
+                rec = hs.record
+                try:
+                    from importer.points import calculate_points
+                    fina = calculate_points(hs.time_cs, rec.event.name, hs.swimmer.sex, hs.pool) or None
+                except Exception:
+                    fina = None
+                data.append({
+                    'rank': start_rank + len(data),
+                    # no meet behind a hand-entered record: nothing to deep-link to
+                    'result_id': None,
+                    'championship_id': None,
+                    'record_id': rec.id,
+                    'from_record': True,
+                    'swimmer_id': hs.swimmer_id,
+                    'swimmer_name': hs.swimmer.name,
+                    'nationality': hs.nat.name,
+                    'nationality_code': hs.nat.code,
+                    'nationality_flag': hs.nat.flag_url,
+                    'age_at_competition': hs.age,
+                    'time': _fmt_cs(hs.time_cs),
+                    'time_centiseconds': hs.time_cs,
+                    'championship_name': rec.meet_name or 'Record entry',
+                    'championship_location': rec.location,
+                    'championship_country': '',
+                    'championship_country_code': '',
+                    'championship_country_flag': '',
+                    'fina_points': fina,
+                    'date': str(hs.date),
+                })
+                continue
             if row['from_split']:
                 it = split_by_swimmer.get(row['swimmer_id'])
                 if it is None:

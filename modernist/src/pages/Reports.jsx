@@ -580,7 +580,7 @@ function RankingReport({ countries, eventGroups, championships }) {
                   <thead><tr><th style={{ width: 34 }}>#</th><th>Swimmer</th><th className="time">Time</th><th className="num">FINA</th><th className="num hide-mobile">Age</th><th className="hide-mobile">Meet</th><th className="hide-mobile">Date</th></tr></thead>
                   <tbody>
                     {rows.map((r) => (
-                      <tr key={r.result_id}>
+                      <tr key={r.result_id ?? `rec-${r.record_id}`}>
                         <td className="asw-num" style={{ fontWeight: 800 }}>{r.rank}</td>
                         <td className="swimmer-cell">
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>

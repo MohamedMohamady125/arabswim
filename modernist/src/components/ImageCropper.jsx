@@ -99,7 +99,7 @@ const ASPECTS = [
  *   onDone      — (croppedFile: File) => void
  *   onCancel    — () => void
  */
-export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockAspect: lockProp = false, smart: smartProp = false, onDone, onCancel, title = 'Adjust photo', extraAction = null, applyLabel = 'Apply' }) {
+export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockAspect: lockProp = false, smart: smartProp = false, onDone, onCancel, title = 'Adjust photo', note = null, extraAction = null, applyLabel = 'Apply' }) {
   const spec = (kind && IMAGE_KINDS[kind]) || null
   const aspect = spec ? spec.aspect : aspectProp
   const lockAspect = spec ? spec.lock : lockProp
@@ -215,6 +215,8 @@ export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockA
         </div>
       )}
 
+      {/* Mental Model: say now what the site will do to the photo after upload */}
+      {note && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-neutral-600)' }}>{note}</div>}
       {tooSmall && (
         <div role="status" style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: 'var(--asw-slow)' }}>
           This image is small ({natural.w} × {natural.h} px) and may look soft. Use one at least {minSide} px on its shorter side if you can.
@@ -279,7 +281,7 @@ export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockA
  * uploads a photo.
  * Props: onChange(file), kind (preferred) or aspect + lockAspect, accept, className, style
  */
-export function CropUpload({ onChange, kind, aspect = 1, lockAspect = false, smart = false, accept = 'image/jpeg,image/png,image/webp', className = 'input', style, ariaLabel = 'Choose an image' }) {
+export function CropUpload({ onChange, kind, note, aspect = 1, lockAspect = false, smart = false, accept = 'image/jpeg,image/png,image/webp', className = 'input', style, ariaLabel = 'Choose an image' }) {
   const [cropFile, setCropFile] = useState(null)
   return (
     <>
@@ -289,7 +291,7 @@ export function CropUpload({ onChange, kind, aspect = 1, lockAspect = false, sma
       />
       {cropFile && (
         <ImageCropper
-          file={cropFile} kind={kind} aspect={aspect} lockAspect={lockAspect} smart={smart}
+          file={cropFile} kind={kind} note={note} aspect={aspect} lockAspect={lockAspect} smart={smart}
           onDone={(f) => { onChange(f); setCropFile(null) }}
           onCancel={() => setCropFile(null)}
         />

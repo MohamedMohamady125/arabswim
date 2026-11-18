@@ -43,3 +43,5 @@ arab swim logo*
 .vercel
 backend/.venv/
 !modernist/index.html
+.planning/
+backend/models/

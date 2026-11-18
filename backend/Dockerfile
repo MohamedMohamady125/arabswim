@@ -17,6 +17,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Model for the swimmer-portrait cut-out, baked into the image (own layer, so
+# it is only fetched again when core/cutout.py changes)
+ENV CUTOUT_MODEL=/opt/models/isnet-general-use.onnx
+COPY core/cutout.py /tmp/cutout.py
+RUN python /tmp/cutout.py fetch
+
 COPY . .
 
 CMD ["bash", "start.sh"]

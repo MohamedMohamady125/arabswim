@@ -135,6 +135,10 @@ MEDIA_URL = '/media/'
 # On Railway the container disk is wiped on every deploy — point MEDIA_ROOT at
 # a mounted persistent volume (e.g. MEDIA_ROOT=/data/media) to keep uploads.
 MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
+# Swimmer portraits are cut out onto white and centred on upload (core/cutout.py).
+# Off while running tests (needs the model file); PORTRAIT_CUTOUT=0 turns it off.
+import sys as _sys  # noqa: E402
+PORTRAIT_CUTOUT = os.environ.get('PORTRAIT_CUTOUT', '1') != '0' and 'test' not in _sys.argv
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

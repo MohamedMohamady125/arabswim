@@ -13,6 +13,8 @@ python manage.py fix_events --apply
 python manage.py backfill_original_ranks
 python manage.py recalculate_medals
 python manage.py build_program_from_results
+# existing swimmer photos get the white-background cut-out once (skips ones already done)
+python manage.py isolate_swimmer_photos || true
 python manage.py createcachetable --database default 2>/dev/null || true
 
 # Create admin user if not exists (password comes from the ADMIN_PASSWORD

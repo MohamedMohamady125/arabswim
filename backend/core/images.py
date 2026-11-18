@@ -26,6 +26,8 @@ MAX_PIXELS = 60_000_000
 # of cached variants per image is bounded no matter what a client asks for.
 WIDTHS = (64, 128, 256, 384, 512, 768, 1024, 1600)
 DERIVED_DIR = '_derived'
+# Portraits that are cut out onto white and centred on upload (core/cutout.py)
+PORTRAIT_FIELDS = {('swimmers', 'swimmer', 'photo'), ('core', 'photorequest', 'photo')}
 JPEG_QUALITY = 88
 WEBP_QUALITY = 82
 
@@ -130,7 +132,16 @@ def normalize_fieldfile(instance, field):
         f.seek(0)
     except Exception:
         return
-    res = normalize_image_bytes(data, ff.name)
+    name = ff.name
+    meta = instance._meta
+    if (meta.app_label, meta.model_name, field.name) in PORTRAIT_FIELDS:
+        from django.conf import settings
+        if getattr(settings, 'PORTRAIT_CUTOUT', True):
+            from core.cutout import isolate_upload
+            cut = isolate_upload(data, name)
+            if cut:
+                data, name = cut
+    res = normalize_image_bytes(data, name)
     if not res:
         return
     new_bytes, new_name = res

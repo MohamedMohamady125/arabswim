@@ -26,6 +26,10 @@ export const IMAGE_KINDS = {
   gallery: { aspect: 'original', lock: false, fit: 'cover', position: '50% 35%', maxSide: 2000, minSide: 480 },
 }
 
+// Swimmer portraits only: the server cuts the swimmer out onto white and
+// centres them after upload (backend/core/cutout.py). Shown in the crop tool.
+export const SWIMMER_PHOTO_NOTE = 'After upload the background is removed and the swimmer is centred automatically.'
+
 /**
  * Drop-in <img> for anything uploaded to the site.
  *   kind      — key of IMAGE_KINDS (decides object-fit and focal position)

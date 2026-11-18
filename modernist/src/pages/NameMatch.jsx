@@ -3,6 +3,7 @@ import { getNameMatchCountries, getNameMatchList, applyNameMatch, createNameMatc
 import { getCountries } from '../api/core'
 import { PageHead, SectHead, Loading, Empty, Pager, Done, BackLink } from '../components/ui'
 import { CropUpload } from '../components/ImageCropper'
+import { SWIMMER_PHOTO_NOTE } from '../components/Pic'
 
 function NewProfileForm({ sw, countryId, allCountries, onSubmit, busy }) {
   const [name, setName] = useState('')
@@ -68,7 +69,7 @@ function NewProfileForm({ sw, countryId, allCountries, onSubmit, busy }) {
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <span style={label}>Photo (drag to position / zoom to resize)</span>
-          <CropUpload kind="person" onChange={(f) => setPhoto(f)} />
+          <CropUpload kind="person" note={SWIMMER_PHOTO_NOTE} onChange={(f) => setPhoto(f)} />
           {photo && <span className="micro" style={{ color: 'var(--asw-fast)' }}>✓ photo ready</span>}
         </div>
       </div>

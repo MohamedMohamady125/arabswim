@@ -247,3 +247,70 @@ class ImagePipelineTests(TestCase):
         img = Image.new('RGB', (400, 400), (255, 255, 255))
         img.paste((200, 0, 0), (150, 100, 250, 300))
         self.assertEqual(trim_borders(img).size, (100, 200))
+
+
+class PortraitCutoutTests(TestCase):
+    """Framing maths of the swimmer-portrait cut-out (no model needed)."""
+
+    def _mask(self, w, h, box):
+        import numpy as np
+        m = np.zeros((h, w), dtype='uint8')
+        x0, y0, x1, y1 = box
+        m[y0:y1, x0:x1] = 255
+        return m
+
+    def test_off_centre_subject_is_centred_in_a_4_5_frame(self):
+        from core.cutout import subject_frame
+        # subject sits in the left third of a wide photo, not touching any edge
+        left, top, fw, fh = subject_frame(self._mask(1000, 800, (100, 200, 300, 600)))
+        self.assertAlmostEqual(fw / fh, 0.8, places=3)
+        self.assertAlmostEqual(left + fw / 2, 200, delta=2)      # centred on the subject
+        self.assertGreaterEqual(200 - top, 0.06 * fh)             # white above the head
+        self.assertLessEqual(top + fh, 800 + fh)                  # frame is finite
+
+    def test_body_cut_by_the_bottom_edge_sits_on_the_frame_bottom(self):
+        from core.cutout import subject_frame
+        left, top, fw, fh = subject_frame(self._mask(800, 1000, (250, 150, 650, 1000)))
+        self.assertAlmostEqual(top + fh, 1000, delta=1)
+        self.assertAlmostEqual(left + fw / 2, 450, delta=2)
+
+    def test_no_clear_subject_leaves_the_photo_alone(self):
+        from core.cutout import subject_frame
+        self.assertIsNone(subject_frame(self._mask(400, 500, (0, 0, 400, 500))))
+        self.assertIsNone(subject_frame(self._mask(400, 500, (10, 10, 20, 20))))
+
+    def test_only_swimmer_portraits_go_through_the_cutout(self):
+        from unittest import mock
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from PIL import Image
+        import io
+        from core import images
+        from swimmers.models import Swimmer
+        from coaches.models import Coach
+        buf = io.BytesIO(); Image.new('RGB', (40, 50), (10, 90, 200)).save(buf, 'JPEG')
+        white = io.BytesIO(); Image.new('RGB', (40, 50), (255, 255, 255)).save(white, 'JPEG')
+        with override_settings(PORTRAIT_CUTOUT=True), \
+                mock.patch('core.cutout.isolate_upload', return_value=(white.getvalue(), 'a-wb.jpg')) as cut:
+            s = Swimmer(name='A B', photo=SimpleUploadedFile('a.jpg', buf.getvalue(), 'image/jpeg'))
+            images.normalize_on_save(Swimmer, s)
+            self.assertEqual(cut.call_count, 1)
+            self.assertIn('a-wb-', s.photo.name)
+            c = Coach(name='C D', photo=SimpleUploadedFile('c.jpg', buf.getvalue(), 'image/jpeg'))
+            images.normalize_on_save(Coach, c)
+            self.assertEqual(cut.call_count, 1)
+
+    def test_failed_cutout_keeps_the_upload(self):
+        from unittest import mock
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from PIL import Image
+        import io
+        from core import images
+        from swimmers.models import Swimmer
+        buf = io.BytesIO(); Image.new('RGB', (40, 50), (10, 90, 200)).save(buf, 'JPEG')
+        with override_settings(PORTRAIT_CUTOUT=True), mock.patch('core.cutout.isolate_upload', return_value=None):
+            s = Swimmer(name='A B', photo=SimpleUploadedFile('a.jpg', buf.getvalue(), 'image/jpeg'))
+            images.normalize_on_save(Swimmer, s)
+            self.assertTrue(s.photo.name.startswith('a-'))
+            self.assertNotIn('-wb', s.photo.name)

@@ -4,7 +4,7 @@ from core.models import Country
 
 class Team(models.Model):
     name = models.CharField(max_length=200, unique=True)
-    # Nullable for exactly one virtual row: the "Arab Swimming Federation"
+    # Nullable for exactly one virtual row: the "Arab Aquatics Federation"
     # national team that backs the pan-Arab federation page's Board tab.
     country = models.ForeignKey(Country, on_delete=models.PROTECT,
                                 related_name='teams', null=True, blank=True)

@@ -93,7 +93,7 @@ const NAV = [
     label: 'Data',
     links: [
       ['Federations', '/countries'],
-      ['Arab Swimming Federation', '/arab-federation'],
+      ['Arab Aquatics Federation', '/arab-federation'],
       ['ArabSwim Lab', '/lab'],
       ['Reports', '/reports'],
     ],

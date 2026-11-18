@@ -986,7 +986,7 @@ class CountryViewSet(viewsets.ModelViewSet):
 
         return Response({
             'country': ({
-                'id': 'arab', 'name': 'Arab Swimming Federation',
+                'id': 'arab', 'name': 'Arab Aquatics Federation',
                 'code': 'ARAB', 'region': 'ARAB', 'flag_url': None,
             } if is_arab_fed else CountrySerializer(country).data),
             'stats': stats,

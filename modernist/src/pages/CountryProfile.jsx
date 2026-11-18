@@ -2167,7 +2167,7 @@ export default function CountryProfile({ arabFed = false }) {
                     fontSize: 'clamp(28px, 4vw, 40px)', lineHeight: 1.04, letterSpacing: '-0.02em',
                     color: navy,
                   }}>
-                    {arabFed ? <>Arab Swimming<br />Federation</> : <>{country.name}<br />Swimming Federation</>}
+                    {arabFed ? <>Arab Aquatics<br />Federation</> : <>{country.name}<br />Swimming Federation</>}
                   </h1>
                   <div style={{ marginTop: 6, fontSize: 16, fontWeight: 700, color: 'var(--color-accent-800)' }}>
                     {country.federation_tagline}
@@ -2516,7 +2516,7 @@ export default function CountryProfile({ arabFed = false }) {
             <h2 className="prof-h" style={{ margin: 0 }}>Board of Directors</h2>
           </div>
           <p style={{ fontSize: 13, color: 'var(--color-neutral-700)', maxWidth: 500, margin: '0 0 28px', lineHeight: 1.5 }}>
-            The Board of Directors is responsible for the strategic direction, governance, and overall leadership of the {arabFed ? 'Arab Swimming Federation' : `${country.name} Swimming Federation`}.
+            The Board of Directors is responsible for the strategic direction, governance, and overall leadership of the {arabFed ? 'Arab Aquatics Federation' : `${country.name} Swimming Federation`}.
           </p>
 
           {isAdmin && (() => {

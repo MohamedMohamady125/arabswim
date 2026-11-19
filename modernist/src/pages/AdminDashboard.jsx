@@ -11,6 +11,7 @@ import { PageHead, SectHead, Loading, notify, Empty, Seg, Done } from '../compon
 import { mediaUrl } from '../utils'
 import { CropUpload } from '../components/ImageCropper'
 import Pic from '../components/Pic'
+import InviteLinks from '../components/admin/InviteLinks'
 
 function ClaimsQueue({ onCount }) {
   const [claims, setClaims] = useState(null)
@@ -725,10 +726,20 @@ export default function AdminDashboard() {
       )}
 
       {tab === 'accounts' && (
-        <div className="pad">
-          <SectHead title="Create Club / Academy / Federation Account" />
-          <OrgAccountForm />
-        </div>
+        <>
+          <div className="pad rule-b">
+            <SectHead title="Invite links" />
+            <p className="text-muted" style={{ fontSize: 13, margin: '-4px 0 16px', maxWidth: 640 }}>
+              Make a sign-up link for one academy, club, federation or swimmer. They open it,
+              create their own account, and fill in their own page.
+            </p>
+            <InviteLinks />
+          </div>
+          <div className="pad">
+            <SectHead title="Or create the account yourself (password you send them)" />
+            <OrgAccountForm />
+          </div>
+        </>
       )}
 
       {tab === 'history' && (

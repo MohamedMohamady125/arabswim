@@ -57,10 +57,26 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                         'youtube_url', 'tiktok_url', 'x_url'}
 
     def get_permissions(self):
-        if self.action in ('partial_update', 'update', 'upload_photo'):
+        # upload_photo / delete_photo fall through to the admin-only default:
+        # a swimmer's own photo goes through the photo request queue instead.
+        if self.action in ('partial_update', 'update'):
             from core.permissions import CanEditOwnSwimmer
             return [CanEditOwnSwimmer()]
         return super().get_permissions()
+
+    def update(self, request, *args, **kwargs):
+        # A full PUT used to skip the field whitelist below: a swimmer account
+        # could rewrite its name, birth date or nationality. Same rule for both.
+        from core.permissions import is_admin
+        if not is_admin(request.user) and not kwargs.get('partial'):
+            bad = set(request.data.keys()) - self.ATHLETE_EDITABLE
+            if bad:
+                return Response(
+                    {'error': f'You may only edit: {", ".join(sorted(self.ATHLETE_EDITABLE))}'},
+                    status=400,
+                )
+            kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
         from core.permissions import is_admin

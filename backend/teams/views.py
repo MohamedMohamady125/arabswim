@@ -78,6 +78,13 @@ class TeamViewSet(viewsets.ModelViewSet):
         # Renaming a club must carry its roster along: swimmers/results are
         # linked to clubs by name string, not FK.
         old_name = serializer.instance.name
+        # The owner account fills in its page; what the page IS (its name,
+        # country and kind) stays with Arab Swim. Renaming also rewrites every
+        # result and roster line, so it is never an owner's call.
+        from core.permissions import is_admin
+        if not is_admin(self.request.user):
+            for locked in ('name', 'country', 'is_national_team', 'is_academy'):
+                serializer.validated_data.pop(locked, None)
         # A country picked by hand locks it against import re-stamping —
         # manual edits always win.
         if 'country' in serializer.validated_data:

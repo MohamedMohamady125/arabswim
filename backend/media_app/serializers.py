@@ -31,10 +31,21 @@ class MediaItemSerializer(serializers.ModelSerializer):
 class AlbumListSerializer(serializers.ModelSerializer):
     items_count = serializers.IntegerField(source='items.count', read_only=True)
     cover = serializers.SerializerMethodField()
+    # true for admins and for the account that owns the album's team
+    can_edit = serializers.SerializerMethodField()
 
     class Meta:
         model = Album
-        fields = ['id', 'title', 'description', 'championship', 'items_count', 'cover', 'created_at']
+        fields = ['id', 'title', 'description', 'championship', 'items_count', 'cover', 'created_at', 'can_edit']
+
+    def get_can_edit(self, obj):
+        from core.permissions import is_admin, user_manages_team
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if is_admin(user):
+            return True
+        team = getattr(obj, 'team', None)
+        return bool(team is not None and user_manages_team(user, team))
 
     def get_cover(self, obj):
         first = obj.items.first()

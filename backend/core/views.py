@@ -402,6 +402,42 @@ class CountryViewSet(viewsets.ModelViewSet):
     serializer_class = CountrySerializer
     pagination_class = None
 
+    def get_permissions(self):
+        if self.action == 'partial_update':
+            from .permissions import CanManageOwnFederation
+            return [CanManageOwnFederation()]
+        if self.action == 'ensure_national_team':
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
+
+    def partial_update(self, request, *args, **kwargs):
+        # a federation account edits its contact card and social links only
+        if not is_admin(request.user):
+            bad = [k for k in request.data.keys() if not k.startswith('federation_')]
+            if bad:
+                return Response({'error': 'You can edit your federation contact details and social links only.'},
+                                status=400)
+        return super().partial_update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'], url_path='ensure-national-team')
+    def ensure_national_team(self, request, pk=None):
+        """The federation's board, coaches and news hang off its national
+        team row. Return it, creating it when the country has none yet."""
+        from teams.models import Team
+        country = self.get_object()
+        if not (is_admin(request.user)
+                or (request.user.role == 'FEDERATION' and request.user.country_id == country.id)):
+            return Response({'error': 'Not allowed'}, status=403)
+        team = Team.objects.filter(country=country, is_national_team=True).order_by('id').first()
+        if team is None:
+            name = f'{country.name} National Team'
+            n = 1
+            while Team.objects.filter(name__iexact=name).exists():
+                n += 1
+                name = f'{country.name} National Team {n}'
+            team = Team.objects.create(name=name, country=country, is_national_team=True)
+        return Response({'id': team.id, 'name': team.name})
+
     def get_queryset(self):
         qs = super().get_queryset()
         # ?has_swimmers=true → only countries with at least one real swimmer,

@@ -29,12 +29,14 @@ export default function Login() {
       const user = (await getMe()).data
       if (user.role === 'ADMIN') navigate('/import')
       else if (user.role === 'CLUB' && user.team) navigate(`/teams/${user.team}`)
+      else if (user.role === 'ACADEMY' && user.academy) navigate(`/academies/${user.academy}`)
+      else if (user.role === 'FEDERATION' && user.country) navigate(`/countries/${user.country}`)
       else if (user.role === 'ATHLETE' && user.swimmer) navigate(`/swimmers/${user.swimmer}`)
       else navigate('/')
     } catch (err) {
       // plain words, and a different message when the server (not the password) is the problem
       setError(err?.response && err.response.status < 500
-        ? 'That username and password do not match. Check for capital letters, then try again.'
+        ? 'That email (or username) and password do not match. Check for capital letters, then try again.'
         : 'We could not reach the server. Check your connection and try again.')
     } finally {
       setLoading(false)
@@ -57,7 +59,7 @@ export default function Login() {
           </div>
         )}
         <div className="field">
-          <label htmlFor="login-username">Username</label>
+          <label htmlFor="login-username">Email or username</label>
           <input id="login-username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} className="input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
         </div>
         <div className="field">
@@ -74,7 +76,7 @@ export default function Login() {
       </form>
       <div className="content-authnote">
         <strong>Are you a swimmer?</strong> <Link to="/register">Create an account</Link> to claim your profile — it takes about a minute.
-        <br />Clubs and federations: your username and password are sent to you by Arab Swim.
+        <br />Clubs, academies and federations: open the sign-up link Arab Swim sent you to create your account, then sign in here with your email.
       </div>
     </div>
   )

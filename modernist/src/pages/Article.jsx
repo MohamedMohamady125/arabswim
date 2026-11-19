@@ -16,8 +16,10 @@ const AJ_HEADING_FONTS = AJ_FONTS
 export default function Article() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin: siteAdmin } = useAuth()
   const [article, setArticle] = useState(null)
+  // the club / academy / federation that wrote the article edits it like an admin
+  const isAdmin = siteAdmin || !!article?.can_edit
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)

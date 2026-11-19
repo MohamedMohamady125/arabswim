@@ -61,7 +61,9 @@ function Fld({ label, children }) {
   )
 }
 
-function AcademyModal({ academy, countries, onClose, onSaved }) {
+// `ownerMode`: the academy's own account — its name, country and listing stay
+// with Arab Swim, so those fields and Delete are not offered.
+export function AcademyModal({ academy, countries = [], onClose, onSaved, ownerMode = false }) {
   const [form, setForm] = useState({
     name: academy?.name || '',
     country: academy?.country || academy?.country_detail?.id || '',
@@ -99,14 +101,22 @@ function AcademyModal({ academy, countries, onClose, onSaved }) {
 
   return (
     <Modal title={academy ? 'Edit academy' : 'Add academy'} onClose={onClose} width={520}>
-      <Fld label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Fld>
+      {ownerMode ? (
+        <div className="text-muted" style={{ fontSize: 13, marginBottom: 12 }}>
+          <strong style={{ color: 'var(--color-accent-800)' }}>{academy?.name}</strong> — to change the name or country, contact Arab Swim.
+        </div>
+      ) : (
+        <Fld label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Fld>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Fld label="Country">
-          <select className="select" style={{ width: '100%' }} value={form.country} onChange={set('country')}>
-            <option value="">Select country</option>
-            {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </Fld>
+        {!ownerMode && (
+          <Fld label="Country">
+            <select className="select" style={{ width: '100%' }} value={form.country} onChange={set('country')}>
+              <option value="">Select country</option>
+              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </Fld>
+        )}
         <Fld label="City"><input className="input" style={{ width: '100%' }} value={form.city} onChange={set('city')} /></Fld>
         <Fld label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Fld>
         <Fld label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Fld>
@@ -118,7 +128,7 @@ function AcademyModal({ academy, countries, onClose, onSaved }) {
       <Fld label="Logo"><CropUpload kind="logo" onChange={setLogo} />{logo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Logo ready ✓</div>}</Fld>
       {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
-        {academy ? (
+        {academy && !ownerMode ? (
           <button className="btn btn-secondary" disabled={busy} style={{ color: 'var(--asw-slow)' }}
             onClick={async () => {
               if (!window.confirm(`Delete ${academy.name}?`)) return

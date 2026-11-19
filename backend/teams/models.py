@@ -16,6 +16,12 @@ class Team(models.Model):
     address = models.TextField(blank=True, default='')
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=30, blank=True, default='')
+    # Social media links (stored as full https links; see core/social.py)
+    instagram_url = models.CharField(max_length=200, blank=True, default='')
+    facebook_url = models.CharField(max_length=200, blank=True, default='')
+    youtube_url = models.CharField(max_length=200, blank=True, default='')
+    tiktok_url = models.CharField(max_length=200, blank=True, default='')
+    x_url = models.CharField(max_length=200, blank=True, default='')
     is_national_team = models.BooleanField(default=False)
     # Swimming academy (private swim school with squads) rather than a
     # traditional club — listed on the Academies page, labelled "Academy"

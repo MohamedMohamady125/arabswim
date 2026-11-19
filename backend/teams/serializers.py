@@ -58,7 +58,12 @@ class TeamCreateUpdateSerializer(serializers.ModelSerializer):
         model = Team
         fields = ['id', 'name', 'country', 'logo', 'banner', 'founded_year', 'description',
                   'website', 'address', 'email', 'phone', 'is_national_team', 'is_academy',
+                  'instagram_url', 'facebook_url', 'youtube_url', 'tiktok_url', 'x_url',
                   'trophies_data']
+
+    def validate(self, attrs):
+        from core.social import clean_social_fields
+        return clean_social_fields(attrs)
 
     def _parse_trophies(self, value):
         if not value:

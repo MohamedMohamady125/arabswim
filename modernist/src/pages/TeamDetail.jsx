@@ -16,6 +16,8 @@ import { Loading, notify, Empty, Seg, Modal, MedalIcon } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { MiniHBars, MiniDonut, AgePyramid, MiniPanel, CHART_COLORS } from '../components/MiniCharts'
 import { FedHeroPhoto, SubTabs, TabHeading } from './CountryProfile'
+import SocialLinks, { SocialFields } from '../components/SocialLinks'
+import OwnerWelcome from '../components/OwnerWelcome'
 import { CropUpload } from '../components/ImageCropper'
 import TrainingCalendar from '../components/TrainingCalendar'
 import { formatDate, formatNumber, formatTime, mediaUrl, recordEventLabel } from '../utils'
@@ -197,8 +199,15 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
     address: team.address || '',
     is_national_team: !!team.is_national_team,
     is_academy: !!team.is_academy,
+    instagram_url: team.instagram_url || '',
+    facebook_url: team.facebook_url || '',
+    youtube_url: team.youtube_url || '',
+    tiktok_url: team.tiktok_url || '',
+    x_url: team.x_url || '',
   })
+  const { isAdmin } = useAuth()
   const [logo, setLogo] = useState(null)
+  const [banner, setBanner] = useState(null)
   const [trophies, setTrophies] = useState((team.trophies || []).map((t) => ({ name: t.name, year: t.year })))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -211,6 +220,7 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
       const fd = new FormData()
       Object.entries(form).forEach(([k, v]) => fd.append(k, typeof v === 'string' ? v.trim() : v))
       if (logo) fd.append('logo', logo)
+      if (banner) fd.append('banner', banner)
       fd.append('trophies_data', JSON.stringify(trophies.filter((t) => t.name && t.year)))
       await updateTeam(team.id, fd)
       onSaved()
@@ -221,27 +231,48 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
   }
 
   return (
-    <Modal title="Edit Club" onClose={onClose}>
+    <Modal title={team.is_academy ? 'Edit academy' : 'Edit club'} onClose={onClose}>
+      {/* The name, country and kind of a page are set by Arab Swim (renaming
+          rewrites every result), so an owner account sees them but cannot change them. */}
+      {isAdmin ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Club name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Field>
+          <Field label="Country">
+            <select className="select" style={{ width: '100%' }} value={form.country} onChange={set('country')}>
+              <option value="">Select country…</option>
+              {(countries || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </Field>
+        </div>
+      ) : (
+        <div className="text-muted" style={{ fontSize: 13, marginBottom: 12 }}>
+          <strong style={{ color: 'var(--color-accent-800)' }}>{team.name}</strong> — to change the name or country, contact Arab Swim.
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Club name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Field>
-        <Field label="Country">
-          <select className="select" style={{ width: '100%' }} value={form.country} onChange={set('country')}>
-            <option value="">Select country…</option>
-            {(countries || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+        <Field label="Logo">
+          <CropUpload kind="logo" style={{ width: '100%' }} onChange={setLogo} />
+          {logo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Logo ready ✓</div>}
         </Field>
-        <Field label="Logo"><CropUpload kind="logo" style={{ width: '100%' }} onChange={setLogo} /></Field>
+        <Field label="Cover photo (top of your page)">
+          <CropUpload kind="cover" style={{ width: '100%' }} onChange={setBanner} />
+          {banner && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}
+        </Field>
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0 10px' }}>
-        <input type="checkbox" checked={form.is_national_team}
-          onChange={(e) => setForm((f) => ({ ...f, is_national_team: e.target.checked }))} />
-        National team
-      </label>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0 10px' }}>
-        <input type="checkbox" checked={form.is_academy} disabled={form.is_national_team}
-          onChange={(e) => setForm((f) => ({ ...f, is_academy: e.target.checked }))} />
-        Swimming academy — also listed on the Academies page
-      </label>
+      {isAdmin && (
+        <>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0 10px' }}>
+            <input type="checkbox" checked={form.is_national_team}
+              onChange={(e) => setForm((f) => ({ ...f, is_national_team: e.target.checked }))} />
+            National team
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0 10px' }}>
+            <input type="checkbox" checked={form.is_academy} disabled={form.is_national_team}
+              onChange={(e) => setForm((f) => ({ ...f, is_academy: e.target.checked }))} />
+            Swimming academy — also listed on the Academies page
+          </label>
+        </>
+      )}
       <Field label="Founded year"><input className="input" style={{ width: '100%' }} type="number" inputMode="numeric" value={form.founded_year} onChange={set('founded_year')} /></Field>
       <Field label="Description"><textarea className="input" rows={5} style={{ width: '100%', resize: 'vertical' }} value={form.description} onChange={set('description')} /></Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -250,6 +281,8 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
         <Field label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Field>
         <Field label="Address"><input className="input" style={{ width: '100%' }} value={form.address} onChange={set('address')} /></Field>
       </div>
+      <div className="card-kicker" style={{ margin: '10px 0 6px' }}>Social media</div>
+      <SocialFields form={form} setForm={setForm} idBase="club-soc" />
       <div className="card-kicker" style={{ margin: '10px 0 6px' }}>Trophies</div>
       {trophies.map((t, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
@@ -1346,8 +1379,9 @@ export default function TeamDetail() {
           }
         `}</style>
         <FedHeroPhoto
-          candidates={roster.map((s) => s.photo)}
-          extras={(() => {
+          // the page's own cover photo wins; otherwise a photo is picked from its swimmers and news
+          candidates={team.banner ? [team.banner] : roster.map((s) => s.photo)}
+          extras={team.banner ? [] : (() => {
             const own = [...articles.map((a) => a?.cover_image), ...albums.map((a) => a?.cover)].filter(Boolean)
             // no club imagery at all → borrow the federation's news covers so
             // the photo half never sits empty
@@ -1389,6 +1423,7 @@ export default function TeamDetail() {
                   heroIcon(<><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></>),
                   <span>{team.address}</span>)}
               </div>
+              <SocialLinks source={team} name={team.name} style={{ marginTop: 14 }} />
               {canManage && (
                 <button className="btn btn-secondary" style={{ fontSize: 12, marginTop: 14 }} onClick={() => setModal({ type: 'club' })}>Edit {kind}</button>
               )}
@@ -1396,6 +1431,22 @@ export default function TeamDetail() {
           </div>
         </div>
       </div>
+
+      <OwnerWelcome
+        show={canManage && !isAdmin}
+        name={team.name}
+        items={[
+          { label: 'Logo', done: !!team.logo },
+          { label: 'Cover photo', done: !!team.banner },
+          { label: 'Description', done: !!team.description },
+          { label: 'Contact details', done: !!(team.phone || team.email || team.website || team.address) },
+          { label: 'Social media', done: !!(team.instagram_url || team.facebook_url || team.youtube_url || team.tiktok_url || team.x_url) },
+          { label: 'Board members (Board tab)', done: board.length > 0 },
+          { label: 'Coaches (Coaches tab)', done: coaches.length > 0 },
+        ]}
+        actionLabel={`Fill in your ${kind} page`}
+        onAction={() => setModal({ type: 'club' })}
+      />
 
       {/* Tab bar. Cognitive Load: News, Board and Multimedia stay out of a
           visitor's way until they hold something (managers always see them,

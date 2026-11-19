@@ -124,6 +124,12 @@ class Country(models.Model):
     federation_email = models.CharField(max_length=120, blank=True, default='')
     federation_website = models.CharField(max_length=200, blank=True, default='')
     federation_address = models.CharField(max_length=200, blank=True, default='')
+    # Federation social media links (full https links; see core/social.py)
+    federation_instagram = models.CharField(max_length=200, blank=True, default='')
+    federation_facebook = models.CharField(max_length=200, blank=True, default='')
+    federation_youtube = models.CharField(max_length=200, blank=True, default='')
+    federation_tiktok = models.CharField(max_length=200, blank=True, default='')
+    federation_x = models.CharField(max_length=200, blank=True, default='')
 
     class Meta:
         verbose_name_plural = 'countries'
@@ -151,3 +157,62 @@ class Event(models.Model):
 
     def __str__(self):
         return self.name
+
+
+def _invite_token():
+    import secrets
+    return secrets.token_urlsafe(24)
+
+
+def _invite_expiry():
+    import datetime
+    from django.utils import timezone
+    return timezone.now() + datetime.timedelta(days=Invite.VALID_DAYS)
+
+
+class Invite(models.Model):
+    """A single-use sign-up link the admin hands to ONE academy, club,
+    federation or swimmer. Whoever opens it creates the account that owns
+    that entity's page — the admin vouches for them by sending the link, so
+    there is no password to pass around and no ID check."""
+    KIND_CHOICES = [('ACADEMY', 'Academy'), ('CLUB', 'Club'),
+                    ('FEDERATION', 'Federation'), ('ATHLETE', 'Swimmer')]
+    VALID_DAYS = 30
+
+    token = models.CharField(max_length=64, unique=True, default=_invite_token, editable=False)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    academy = models.ForeignKey('academies.Academy', null=True, blank=True, on_delete=models.CASCADE, related_name='invites')
+    team = models.ForeignKey('teams.Team', null=True, blank=True, on_delete=models.CASCADE, related_name='invites')
+    country = models.ForeignKey('core.Country', null=True, blank=True, on_delete=models.CASCADE, related_name='invites')
+    swimmer = models.ForeignKey('swimmers.Swimmer', null=True, blank=True, on_delete=models.CASCADE, related_name='invites')
+    created_by = models.ForeignKey('core.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='invites_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=_invite_expiry)
+    revoked = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
+    used_by = models.ForeignKey('core.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='invite_used')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    # which field holds the entity for each kind
+    TARGET_FIELD = {'ACADEMY': 'academy', 'CLUB': 'team', 'FEDERATION': 'country', 'ATHLETE': 'swimmer'}
+
+    @property
+    def target(self):
+        return getattr(self, self.TARGET_FIELD[self.kind])
+
+    @property
+    def status(self):
+        from django.utils import timezone
+        if self.used_at:
+            return 'USED'
+        if self.revoked:
+            return 'REVOKED'
+        if self.expires_at <= timezone.now():
+            return 'EXPIRED'
+        return 'PENDING'
+
+    def __str__(self):
+        return f'{self.get_kind_display()} invite for {self.target} ({self.status})'
+

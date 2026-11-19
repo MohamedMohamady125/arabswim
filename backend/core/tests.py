@@ -354,3 +354,171 @@ class PortraitNavyBackgroundTests(TestCase):
         self.assertFalse(is_marked('swimmers/photos/ali-wb-0a1b2c3d4e.jpg'))  # white version: done again
         self.assertFalse(is_marked('swimmers/photos/ali.jpg'))
         self.assertEqual(source_stem('ali-cut-0a1b2c3d4e.png'), 'ali')
+
+
+class InviteLinkTests(TestCase):
+    """Admin makes a link for one entity; whoever opens it gets the account
+    that owns that entity, once."""
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+        from core.models import Country
+        from academies.models import Academy
+        from teams.models import Team
+        from swimmers.models import Swimmer
+        self.User = get_user_model()
+        self.admin = self.User.objects.create_superuser('boss', 'boss@example.com', 'pw', role='ADMIN')
+        self.api = APIClient(); self.api.force_authenticate(self.admin)
+        self.pub = APIClient()
+        self.egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        self.academy = Academy.objects.create(name='Blue Fins', country=self.egy)
+        self.team = Team.objects.create(name='Nile Club', country=self.egy)
+        self.swimmer = Swimmer.objects.create(name='Ali HASSAN', sex='M', nationality=self.egy, birth_year=2005)
+
+    def _make(self, kind, target):
+        r = self.api.post('/api/v1/auth/invites/', {'kind': kind, 'target': target.pk}, format='json')
+        self.assertEqual(r.status_code, 201, r.content)
+        return r.json()
+
+    def _accept(self, token, email='owner@example.com', password='Swim-strong-2026'):
+        return self.pub.post(f'/api/v1/auth/invites/open/{token}/', {'email': email, 'password': password}, format='json')
+
+    def test_only_admin_can_make_or_list_links(self):
+        self.assertEqual(self.pub.post('/api/v1/auth/invites/', {'kind': 'ACADEMY', 'target': self.academy.pk}, format='json').status_code, 401)
+        self.assertEqual(self.pub.get('/api/v1/auth/invites/').status_code, 401)
+
+    def test_each_kind_creates_the_account_that_owns_that_entity(self):
+        cases = [('ACADEMY', self.academy, 'academy'), ('CLUB', self.team, 'team'),
+                 ('FEDERATION', self.egy, 'country'), ('ATHLETE', self.swimmer, 'swimmer')]
+        for i, (kind, target, field) in enumerate(cases):
+            inv = self._make(kind, target)
+            look = self.pub.get(f'/api/v1/auth/invites/open/{inv["token"]}/').json()
+            self.assertTrue(look['usable'])
+            self.assertEqual(look['kind'], kind)
+            self.assertNotIn('token', look)
+            r = self._accept(inv['token'], email=f'owner{i}@example.com')
+            self.assertEqual(r.status_code, 201, r.content)
+            body = r.json()
+            self.assertEqual(body['user']['role'], kind)
+            self.assertEqual(body['user'][field], target.pk)
+            self.assertTrue(body['access'])
+            u = self.User.objects.get(email=f'owner{i}@example.com')
+            self.assertEqual(getattr(u, field + '_id'), target.pk)
+            self.assertTrue(u.check_password('Swim-strong-2026'))
+
+    def test_link_works_once(self):
+        inv = self._make('ACADEMY', self.academy)
+        self.assertEqual(self._accept(inv['token']).status_code, 201)
+        again = self._accept(inv['token'], email='second@example.com')
+        self.assertEqual(again.status_code, 400)
+        self.assertFalse(self.User.objects.filter(email='second@example.com').exists())
+        self.assertFalse(self.pub.get(f'/api/v1/auth/invites/open/{inv["token"]}/').json()['usable'])
+        # and no second link for an entity that now has its account
+        r = self.api.post('/api/v1/auth/invites/', {'kind': 'ACADEMY', 'target': self.academy.pk}, format='json')
+        self.assertEqual(r.status_code, 400)
+
+    def test_new_link_cancels_the_old_one_and_revoke_and_expiry_block(self):
+        import datetime
+        from django.utils import timezone
+        from core.models import Invite
+        first = self._make('CLUB', self.team)
+        second = self._make('CLUB', self.team)
+        self.assertEqual(self._accept(first['token']).status_code, 400)        # cancelled by the newer link
+        self.assertEqual(self.api.post(f'/api/v1/auth/invites/{second["id"]}/revoke/').status_code, 200)
+        self.assertEqual(self._accept(second['token']).status_code, 400)
+        third = self._make('CLUB', self.team)
+        Invite.objects.filter(pk=third['id']).update(expires_at=timezone.now() - datetime.timedelta(days=1))
+        self.assertEqual(self._accept(third['token']).status_code, 400)
+        self.assertFalse(self.User.objects.filter(role='CLUB').exists())
+
+    def test_owner_signs_in_with_the_email_they_chose(self):
+        inv = self._make('ACADEMY', self.academy)
+        self._accept(inv['token'], email='Owner@Example.com')
+        ok = self.pub.post('/api/v1/auth/login/', {'username': 'OWNER@example.com', 'password': 'Swim-strong-2026'}, format='json')
+        self.assertEqual(ok.status_code, 200, ok.content)
+        self.assertTrue(ok.json()['access'])
+        bad = self.pub.post('/api/v1/auth/login/', {'username': 'owner@example.com', 'password': 'wrong'}, format='json')
+        self.assertEqual(bad.status_code, 401)
+        old = self.pub.post('/api/v1/auth/login/', {'username': 'boss', 'password': 'pw'}, format='json')
+        self.assertEqual(old.status_code, 200)                                  # usernames still work
+
+    def test_bad_input_is_explained_and_creates_nothing(self):
+        inv = self._make('ACADEMY', self.academy)
+        r = self._accept(inv['token'], email='not-an-email', password='123')
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('email', r.json()['errors'])
+        self.assertIn('password', r.json()['errors'])
+        r = self._accept(inv['token'], email='boss@example.com')                # email already has an account
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(self.pub.get('/api/v1/auth/invites/open/nope/').status_code, 404)
+        self.assertEqual(self._accept(inv['token']).status_code, 201)            # the link is still good afterwards
+
+
+class OwnerAccountRulesTests(TestCase):
+    """What an invited owner account may and may not change."""
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+        from core.models import Country
+        from teams.models import Team
+        from swimmers.models import Swimmer
+        U = get_user_model()
+        self.egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        self.tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        self.team = Team.objects.create(name='Nile Club', country=self.egy)
+        self.other = Team.objects.create(name='Other Club', country=self.egy)
+        self.swimmer = Swimmer.objects.create(name='Ali HASSAN', sex='M', nationality=self.egy, birth_year=2005)
+        self.club = APIClient(); self.club.force_authenticate(U.objects.create_user('club@x.com', 'club@x.com', 'pw', role='CLUB', team=self.team))
+        self.fed = APIClient(); self.fed.force_authenticate(U.objects.create_user('fed@x.com', 'fed@x.com', 'pw', role='FEDERATION', country=self.egy))
+        self.ath = APIClient(); self.ath.force_authenticate(U.objects.create_user('ath@x.com', 'ath@x.com', 'pw', role='ATHLETE', swimmer=self.swimmer))
+
+    def test_club_fills_its_page_but_cannot_rename_or_reflag_it(self):
+        r = self.club.patch(f'/api/v1/teams/{self.team.id}/', {
+            'description': 'Founded on the Nile', 'instagram_url': '@nile.club', 'x_url': 'https://x.com/nile',
+            'name': 'Hacked Name', 'is_national_team': True, 'is_academy': True, 'country': self.tun.id}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.description, 'Founded on the Nile')
+        self.assertEqual(self.team.instagram_url, 'https://instagram.com/nile.club')   # a bare handle becomes a link
+        self.assertEqual(self.team.x_url, 'https://x.com/nile')
+        self.assertEqual(self.team.name, 'Nile Club')
+        self.assertFalse(self.team.is_national_team)
+        self.assertFalse(self.team.is_academy)
+        self.assertEqual(self.team.country_id, self.egy.id)
+        self.assertEqual(self.club.patch(f'/api/v1/teams/{self.other.id}/', {'description': 'x'}, format='json').status_code, 403)
+
+    def test_federation_edits_its_contact_card_only(self):
+        r = self.fed.patch(f'/api/v1/countries/{self.egy.id}/', {
+            'federation_phone': '+20 100', 'federation_instagram': 'egyswim'}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.egy.refresh_from_db()
+        self.assertEqual(self.egy.federation_phone, '+20 100')
+        self.assertEqual(self.egy.federation_instagram, 'https://instagram.com/egyswim')
+        self.assertEqual(self.fed.patch(f'/api/v1/countries/{self.egy.id}/', {'name': 'X'}, format='json').status_code, 400)
+        self.assertEqual(self.fed.patch(f'/api/v1/countries/{self.tun.id}/', {'federation_phone': '1'}, format='json').status_code, 403)
+        self.assertEqual(self.fed.delete(f'/api/v1/countries/{self.egy.id}/').status_code, 403)
+        self.assertEqual(self.club.patch(f'/api/v1/countries/{self.egy.id}/', {'federation_phone': '1'}, format='json').status_code, 403)
+
+    def test_federation_gets_a_national_team_for_its_board(self):
+        from teams.models import Team
+        r = self.fed.post(f'/api/v1/countries/{self.egy.id}/ensure-national-team/')
+        self.assertEqual(r.status_code, 200, r.content)
+        team = Team.objects.get(pk=r.json()['id'])
+        self.assertTrue(team.is_national_team)
+        self.assertEqual(team.country_id, self.egy.id)
+        again = self.fed.post(f'/api/v1/countries/{self.egy.id}/ensure-national-team/').json()
+        self.assertEqual(again['id'], team.id)                                          # reused, not duplicated
+        self.assertEqual(self.fed.post(f'/api/v1/countries/{self.tun.id}/ensure-national-team/').status_code, 403)
+        # and it can now add a board member to it
+        b = self.fed.post('/api/v1/board-members/', {'team': team.id, 'name': 'Pres IDENT', 'role': 'President'}, format='json')
+        self.assertEqual(b.status_code, 201, b.content)
+
+    def test_swimmer_account_cannot_rewrite_identity_or_skip_photo_review(self):
+        r = self.ath.put(f'/api/v1/swimmers/{self.swimmer.id}/', {'name': 'Someone ELSE', 'sex': 'M', 'nationality': self.tun.id}, format='json')
+        self.assertEqual(r.status_code, 400)
+        self.swimmer.refresh_from_db()
+        self.assertEqual(self.swimmer.name, 'Ali HASSAN')
+        self.assertEqual(self.ath.patch(f'/api/v1/swimmers/{self.swimmer.id}/', {'instagram_url': 'https://instagram.com/ali'}, format='json').status_code, 200)
+        self.assertEqual(self.ath.post(f'/api/v1/swimmers/{self.swimmer.id}/upload_photo/').status_code, 403)

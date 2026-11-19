@@ -74,6 +74,23 @@ class CanManageOwnAcademy(BasePermission):
                 and request.user.academy_id == obj.id)
 
 
+class CanManageOwnFederation(BasePermission):
+    """Countries: reads for everyone, everything for admins. A FEDERATION
+    account may PATCH its own country, and only the federation_* contact and
+    social fields (the view enforces the field list)."""
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS or is_admin(request.user):
+            return True
+        return bool(request.user and request.user.is_authenticated
+                    and request.user.role == 'FEDERATION' and request.method == 'PATCH')
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS or is_admin(request.user):
+            return True
+        return request.user.role == 'FEDERATION' and request.user.country_id == obj.id
+
+
 class CanManageTrainingSession(BasePermission):
     """Reads for everyone. Writes for admins, CLUB/FEDERATION accounts on
     their own team's sessions, and ACADEMY accounts on their academy's."""
@@ -143,4 +160,13 @@ class CanManageTeamPortal(BasePermission):
             team = getattr(obj.album, 'team', None)
         else:
             team = None
-        return user_manages_team(request.user, team)
+        if not user_manages_team(request.user, team):
+            return False
+        # an owner may not hand their coach / article / board member to
+        # another team by changing its `team`
+        new_team = request.data.get('team') if hasattr(request, 'data') else None
+        if (new_team not in (None, '') and obj.__class__.__name__ != 'Team'
+                and str(new_team) != str(getattr(team, 'pk', '')) and not is_admin(request.user)):
+            from teams.models import Team
+            return user_manages_team(request.user, Team.objects.filter(pk=new_team).first())
+        return True

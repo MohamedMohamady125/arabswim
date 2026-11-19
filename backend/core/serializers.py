@@ -12,11 +12,14 @@ class UserSerializer(serializers.ModelSerializer):
     team_name = serializers.CharField(source='team.name', read_only=True, default=None)
     country_name = serializers.CharField(source='country.name', read_only=True, default=None)
     academy_name = serializers.CharField(source='academy.name', read_only=True, default=None)
+    # a club account whose team is flagged as an academy is "an academy" to its owner
+    team_is_academy = serializers.BooleanField(source='team.is_academy', read_only=True, default=False)
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'role', 'swimmer', 'swimmer_name',
-                  'team', 'team_name', 'country', 'country_name', 'academy', 'academy_name']
+                  'team', 'team_name', 'team_is_academy', 'country', 'country_name',
+                  'academy', 'academy_name']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -63,6 +66,10 @@ class CountrySerializer(serializers.ModelSerializer):
     class Meta:
         model = Country
         fields = '__all__'
+
+    def validate(self, attrs):
+        from .social import clean_social_fields
+        return clean_social_fields(attrs, prefix='federation_', suffix='')
 
 
 class EventSerializer(serializers.ModelSerializer):

@@ -5,6 +5,7 @@ import { useAuth } from './context/AuthContext'
 import { useFeatures } from './context/FeaturesContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import Join from './pages/Join'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminAnalytics from './pages/AdminAnalytics'
 import NameMatch from './pages/NameMatch'
@@ -97,6 +98,7 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/join/:token" element={<Join />} />
         <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
         <Route path="/admin/name-match" element={<RequireAdmin><NameMatch /></RequireAdmin>} />

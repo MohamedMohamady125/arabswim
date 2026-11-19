@@ -25,6 +25,15 @@ class AcademyViewSet(viewsets.ModelViewSet):
             qs = qs.filter(country_id=country) if country.isdigit() else qs.none()
         return qs
 
+    def perform_update(self, serializer):
+        # the academy account fills in its page; name, country and whether it
+        # is listed stay with Arab Swim
+        from core.permissions import is_admin
+        if not is_admin(self.request.user):
+            for locked in ('name', 'country', 'is_active'):
+                serializer.validated_data.pop(locked, None)
+        serializer.save()
+
     @action(detail=True, methods=['post'], url_path='upload-logo')
     def upload_logo(self, request, pk=None):
         academy = self.get_object()

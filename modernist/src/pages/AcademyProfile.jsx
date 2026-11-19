@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getAcademy } from '../api/academies'
+import { AcademyModal } from './Academies'
+import OwnerWelcome from '../components/OwnerWelcome'
 import Flag from '../components/Flag'
 import TrainingCalendar from '../components/TrainingCalendar'
 import { Loading, Empty } from '../components/ui'
@@ -57,6 +59,8 @@ export default function AcademyProfile() {
   const { isAdmin, user } = useAuth()
   const [academy, setAcademy] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -66,7 +70,7 @@ export default function AcademyProfile() {
       .catch(() => {})
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [id])
+  }, [id, reloadKey])
 
   if (loading) return <Loading label="Loading academy" />
   if (!academy) return (
@@ -77,6 +81,8 @@ export default function AcademyProfile() {
 
   const a = academy
   const country = a.country_detail
+  // the academy's own account fills in its page
+  const ownsAcademy = user?.role === 'ACADEMY' && user?.academy === a.id
 
   return (
     <div className="m-zoom">
@@ -85,9 +91,31 @@ export default function AcademyProfile() {
         background: 'var(--color-bg)',
         padding: '30px 32px 28px',
       }}>
-        <Link to="/academies" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
-          ← All academies
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <Link to="/academies" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
+            ← All academies
+          </Link>
+          {(isAdmin || ownsAcademy) && (
+            <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setEditing(true)}>Edit academy</button>
+          )}
+        </div>
+        <OwnerWelcome
+          show={ownsAcademy}
+          name={a.name}
+          items={[
+            { label: 'Logo', done: !!a.logo },
+            { label: 'Description', done: !!a.description },
+            { label: 'Contact details', done: !!(a.phone || a.email || a.website || a.address) },
+            { label: 'Instagram', done: !!a.instagram },
+          ]}
+          actionLabel="Fill in your academy page"
+          onAction={() => setEditing(true)}
+        />
+        {editing && (
+          <AcademyModal academy={a} ownerMode={!isAdmin} countries={country ? [country] : []}
+            onClose={() => setEditing(false)}
+            onSaved={() => { setEditing(false); setReloadKey((k) => k + 1) }} />
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 16, flexWrap: 'wrap' }}>
           <span style={{
             width: 148, height: 148, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',

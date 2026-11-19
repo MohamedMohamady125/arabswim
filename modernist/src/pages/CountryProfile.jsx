@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Camera, Landmark, Medal, TrendingDown, TrendingUp, Trophy, User, Users, Waves } from 'lucide-react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { getCountryProfile, getEvents, getCountries, updateCountry } from '../api/core'
+import { getCountryProfile, getEvents, getCountries, updateCountry, ensureNationalTeam } from '../api/core'
+import SocialLinks, { SocialFields } from '../components/SocialLinks'
+import OwnerWelcome from '../components/OwnerWelcome'
 import { getArticles } from '../api/news'
 import { getRankings } from '../api/rankings'
 import { getQualifyingStandards, getQualifyingStandard, getQualifiedSwimmers } from '../api/qualifyingTimes'
@@ -1886,6 +1888,11 @@ function FedInfoModal({ country, onClose, onSaved }) {
     federation_email: country.federation_email || '',
     federation_website: country.federation_website || '',
     federation_address: country.federation_address || '',
+    federation_instagram: country.federation_instagram || '',
+    federation_facebook: country.federation_facebook || '',
+    federation_youtube: country.federation_youtube || '',
+    federation_tiktok: country.federation_tiktok || '',
+    federation_x: country.federation_x || '',
   })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -1912,6 +1919,8 @@ function FedInfoModal({ country, onClose, onSaved }) {
       </div>
       <Fld label="Website"><input className="input" inputMode="url" autoComplete="url" autoCapitalize="none" style={{ width: '100%' }} value={form.federation_website} onChange={set('federation_website')} placeholder="federation.example.com" /></Fld>
       <Fld label="Address"><input className="input" autoComplete="street-address" style={{ width: '100%' }} value={form.federation_address} onChange={set('federation_address')} /></Fld>
+      <div className="card-kicker" style={{ margin: '10px 0 6px' }}>Social media</div>
+      <SocialFields form={form} setForm={setForm} prefix="federation_" suffix="" idBase="fed-soc" />
       {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
@@ -1968,7 +1977,9 @@ export default function CountryProfile({ arabFed = false }) {
   // arabFed → the virtual pan-Arab federation (backend pk 'arab')
   const id = arabFed ? 'arab' : paramId
   const [searchParams, setSearchParams] = useSearchParams()
-  const { isAdmin } = useAuth()
+  const { isAdmin, user } = useAuth()
+  // the federation's own account manages its contact card and board, like an admin
+  const canManageFed = isAdmin || (!arabFed && user?.role === 'FEDERATION' && String(user?.country) === String(paramId))
   const { flag } = useFeatures()
   // Admin visibility toggles: hidden tabs vanish for visitors, stay (dimmed)
   // for admins. Overview is always available and is the fallback.
@@ -2132,7 +2143,7 @@ export default function CountryProfile({ arabFed = false }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 {/* Fitts's Law: back link is a 40px target (30px after the phone zoom) */}
                 <Link to="/countries" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, paddingRight: 12, fontSize: 12, textDecoration: 'none', fontWeight: 700, color: 'var(--color-accent-800)' }}>← All federations</Link>
-                {isAdmin && !arabFed && (
+                {canManageFed && !arabFed && (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
                     {fedNotice?.where === 'info' && <span role="status" style={{ fontSize: 12, fontWeight: 700, color: 'var(--asw-fast)' }}>{fedNotice.text}</span>}
                     {/* Zeigarnik Effect: an unfinished contact card says what is still missing (admins only) */}
@@ -2194,12 +2205,26 @@ export default function CountryProfile({ arabFed = false }) {
                       icon(<><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></>),
                       <span>{country.federation_address}</span>)}
                   </div>
+                  <SocialLinks source={country} prefix="federation_" suffix="" name={`${country.name} Swimming Federation`} style={{ marginTop: 14 }} />
                 </div>
               </div>
             </div>
           </div>
         )
       })()}
+
+      <OwnerWelcome
+        show={canManageFed && !isAdmin}
+        name={`${country.name} Swimming Federation`}
+        items={[
+          { label: 'Contact details', done: !!(country.federation_phone || country.federation_email || country.federation_website || country.federation_address) },
+          { label: 'Tagline', done: !!country.federation_tagline },
+          { label: 'Social media', done: !!(country.federation_instagram || country.federation_facebook || country.federation_youtube || country.federation_tiktok || country.federation_x) },
+          { label: 'Board members (Board tab)', done: boardMembers.length > 0 },
+        ]}
+        actionLabel="Fill in your federation details"
+        onAction={() => setFedModal('info')}
+      />
 
       {/* Tab bar. Hick's Law: the most-used tabs first, the rest behind "More".
           The open tab is always in the bar, so deep links keep working. */}
@@ -2523,11 +2548,21 @@ export default function CountryProfile({ arabFed = false }) {
             The Board of Directors is responsible for the strategic direction, governance, and overall leadership of the {arabFed ? 'Arab Aquatics Federation' : `${country.name} Swimming Federation`}.
           </p>
 
-          {isAdmin && (() => {
+          {canManageFed && (() => {
             const nat = teams.find((t) => t.is_national_team)
-            return nat ? (
+            // the board is stored on the national team row; a country that has
+            // none yet gets one made on the first add (not for the pan-Arab page)
+            const open = async () => {
+              try {
+                const teamId = nat ? nat.id : (await ensureNationalTeam(country.id)).data.id
+                setFedModal({ type: 'board', member: null, teamId })
+              } catch {
+                setFedNotice({ where: 'board', text: 'Could not open the form. Try again.' })
+              }
+            }
+            return nat || !arabFed ? (
               <div style={{ textAlign: 'center', marginBottom: 18 }}>
-                <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setFedModal({ type: 'board', member: null, teamId: nat.id })}>+ Add board member</button>
+                <button type="button" className="btn btn-primary" style={{ fontSize: 12 }} onClick={open}>+ Add board member</button>
                 {fedNotice?.where === 'board' && <div role="status" style={{ fontSize: 12, fontWeight: 700, color: 'var(--asw-fast)', marginTop: 8 }}>{fedNotice.text}</div>}
               </div>
             ) : null
@@ -2559,7 +2594,7 @@ export default function CountryProfile({ arabFed = false }) {
                     </div>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 600, marginTop: 8 }}>Listen to message</div>
-                  {isAdmin && member && (
+                  {canManageFed && member && (
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 }}>
                       <button type="button" className="btn btn-secondary" style={{ fontSize: 11 }} aria-label={`Edit ${member.name}`}
                         onClick={() => setFedModal({ type: 'board', member, teamId: member.team })}>Edit</button>

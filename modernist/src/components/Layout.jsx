@@ -224,8 +224,15 @@ function Header() {
           {user?.role === 'ATHLETE' && user?.swimmer && (
             <NavLink to={`/swimmers/${user.swimmer}`}>My profile</NavLink>
           )}
-          {(user?.role === 'CLUB' || user?.role === 'FEDERATION') && user?.team && (
-            <NavLink to={`/teams/${user.team}`}>My club</NavLink>
+          {/* Jakob's Law: every owner account has one link to its own page */}
+          {user?.role === 'CLUB' && user?.team && (
+            <NavLink to={`/teams/${user.team}`}>{user.team_is_academy ? 'My academy' : 'My club'}</NavLink>
+          )}
+          {user?.role === 'ACADEMY' && user?.academy && (
+            <NavLink to={`/academies/${user.academy}`}>My academy</NavLink>
+          )}
+          {user?.role === 'FEDERATION' && user?.country && (
+            <NavLink to={`/countries/${user.country}`}>My federation</NavLink>
           )}
           <button
             className="btn btn-secondary"

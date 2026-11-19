@@ -22,8 +22,10 @@ export const SIZE_RATIOS = { SQUARE: '1 / 1', PORTRAIT: '4 / 5', LANDSCAPE: '16 
 
 export default function Album() {
   const { id } = useParams()
-  const { isAdmin } = useAuth()
+  const { isAdmin: siteAdmin } = useAuth()
   const [album, setAlbum] = useState(null)
+  // the club / academy / federation that owns the album manages it like an admin
+  const isAdmin = siteAdmin || !!album?.can_edit
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)

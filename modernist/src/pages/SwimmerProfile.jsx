@@ -39,6 +39,7 @@ import TransfersTab from '../components/swimmer/TransfersTab'
 import GalleryTab from '../components/swimmer/GalleryTab'
 import { MiniHBars, CHART_COLORS } from '../components/MiniCharts'
 import Pic, { SWIMMER_PHOTO_NOTE } from '../components/Pic'
+import OwnerWelcome from '../components/OwnerWelcome'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
@@ -1755,6 +1756,18 @@ export default function SwimmerProfile() {
           }}
         />
       )}
+
+      <OwnerWelcome
+        show={mySwimmerId != null && Number(id) === mySwimmerId}
+        name={swimmer.name}
+        items={[
+          { label: 'Photo', done: !!swimmer.photo },
+          { label: 'Social media', done: !!(swimmer.instagram_url || swimmer.facebook_url || swimmer.youtube_url || swimmer.tiktok_url || swimmer.x_url) },
+          { label: 'Contact details', done: !!(swimmer.email || swimmer.phone) },
+        ]}
+        actionLabel="Edit my profile"
+        onAction={() => setEditOpen(true)}
+      />
 
       {/* ── Tabs ── */}
       <div className="rule-b tabbar tabbar-sticky" style={{ padding: '16px 32px', overflowX: 'auto' }}>

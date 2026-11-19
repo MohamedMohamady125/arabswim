@@ -4,6 +4,7 @@ and gets a link; whoever opens it creates the account that owns that page.
     POST   /auth/invites/                 admin: create a link for one entity
     GET    /auth/invites/                 admin: every link and its state
     POST   /auth/invites/<id>/revoke/     admin: kill a link that was not used
+    DELETE /auth/invites/<id>/            admin: delete a link and the account made from it
     GET    /auth/invites/open/<token>/    public: who the link is for, is it usable
     POST   /auth/invites/open/<token>/    public: create the account and sign in
 """
@@ -132,6 +133,30 @@ def revoke_invite(request, pk):
     inv.revoked = True
     inv.save(update_fields=['revoked'])
     return Response(invite_payload(request, inv, admin=True))
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAdmin])
+def delete_invite(request, pk):
+    """Delete a link for good. The sign-up page behind it stops existing, and
+    if an account was created from it that account is deleted too (they can
+    no longer sign in). Nothing they filled in is touched: the page's logo,
+    text, social links, board, coaches, news and photos all stay."""
+    inv = Invite.objects.select_related('used_by').filter(pk=pk).first()
+    if inv is None:
+        return Response({'error': 'No such link'}, status=404)
+    account = inv.used_by
+    removed = None
+    with transaction.atomic():
+        if account is not None:
+            # never an admin, whatever happened to that account since
+            if account.is_superuser or account.is_staff or account.role == 'ADMIN':
+                return Response({'error': 'This link belongs to an admin account, which cannot be deleted here.'},
+                                status=400)
+            removed = account.email or account.username
+            account.delete()
+        inv.delete()
+    return Response({'deleted': True, 'account_deleted': removed})
 
 
 @api_view(['GET', 'POST'])

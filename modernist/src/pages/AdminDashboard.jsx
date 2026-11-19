@@ -12,6 +12,7 @@ import { mediaUrl } from '../utils'
 import { CropUpload } from '../components/ImageCropper'
 import Pic from '../components/Pic'
 import InviteLinks from '../components/admin/InviteLinks'
+import ClubKind from '../components/admin/ClubKind'
 
 function ClaimsQueue({ onCount }) {
   const [claims, setClaims] = useState(null)
@@ -653,6 +654,7 @@ export default function AdminDashboard() {
   // Hick's Law: the page used to be eight stacked sections with the two work
   // queues at the very bottom. It is now four tabs, opening on what is waiting.
   const [tab, setTab] = useState('inbox')
+  const [kindVersion, setKindVersion] = useState(0)
   const [claimCount, setClaimCount] = useState(null)
   const [photoCount, setPhotoCount] = useState(null)
   const waiting = (claimCount || 0) + (photoCount || 0)
@@ -733,7 +735,15 @@ export default function AdminDashboard() {
               Make a sign-up link for one academy, club, federation or swimmer. They open it,
               create their own account, and fill in their own page.
             </p>
-            <InviteLinks />
+            {/* remounts after a club/academy change so its picker shows the new kind */}
+            <InviteLinks key={kindVersion} />
+          </div>
+          <div className="pad rule-b">
+            <SectHead title="Club or academy" />
+            <p className="text-muted" style={{ fontSize: 13, margin: '-4px 0 16px', maxWidth: 640 }}>
+              Turn a club into an academy, or back. Do this before making its invite link so the link says "Academy".
+            </p>
+            <ClubKind onChanged={() => setKindVersion((v) => v + 1)} />
           </div>
           <div className="pad">
             <SectHead title="Or create the account yourself (password you send them)" />

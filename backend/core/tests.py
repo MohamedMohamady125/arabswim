@@ -443,6 +443,38 @@ class InviteLinkTests(TestCase):
         old = self.pub.post('/api/v1/auth/login/', {'username': 'boss', 'password': 'pw'}, format='json')
         self.assertEqual(old.status_code, 200)                                  # usernames still work
 
+    def test_deleting_a_link_removes_its_page_and_account_but_keeps_their_work(self):
+        inv = self._make('CLUB', self.team)
+        self._accept(inv['token'], email='club.owner@example.com')
+        owner = self.User.objects.get(email='club.owner@example.com')
+        from rest_framework.test import APIClient
+        as_owner = APIClient(); as_owner.force_authenticate(owner)
+        self.assertEqual(as_owner.patch(f'/api/v1/teams/{self.team.id}/', {'description': 'Our story'}, format='json').status_code, 200)
+        board = as_owner.post('/api/v1/board-members/', {'team': self.team.id, 'name': 'Pres IDENT', 'role': 'President'}, format='json')
+        self.assertEqual(board.status_code, 201, board.content)
+
+        self.assertEqual(self.pub.delete(f'/api/v1/auth/invites/{inv["id"]}/').status_code, 401)   # admin only
+        r = self.api.delete(f'/api/v1/auth/invites/{inv["id"]}/')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()['account_deleted'], 'club.owner@example.com')
+        self.assertFalse(self.User.objects.filter(email='club.owner@example.com').exists())      # cannot sign in any more
+        self.assertEqual(self.pub.get(f'/api/v1/auth/invites/open/{inv["token"]}/').status_code, 404)  # the page is gone
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.description, 'Our story')                                      # their work stays
+        self.assertEqual(self.team.board_members.count(), 1)
+        self.assertEqual(self.api.get('/api/v1/auth/invites/').json(), [])
+        again = self._make('CLUB', self.team)                                                     # and it can be invited again
+        self.assertEqual(again['status'], 'PENDING')
+
+    def test_deleting_an_unused_link_only_removes_the_link(self):
+        inv = self._make('ACADEMY', self.academy)
+        before = self.User.objects.count()
+        r = self.api.delete(f'/api/v1/auth/invites/{inv["id"]}/')
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(r.json()['account_deleted'])
+        self.assertEqual(self.User.objects.count(), before)
+        self.assertEqual(self.pub.get(f'/api/v1/auth/invites/open/{inv["token"]}/').status_code, 404)
+
     def test_bad_input_is_explained_and_creates_nothing(self):
         inv = self._make('ACADEMY', self.academy)
         r = self._accept(inv['token'], email='not-an-email', password='123')

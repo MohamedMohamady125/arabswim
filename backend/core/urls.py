@@ -15,6 +15,7 @@ urlpatterns = [
     path('auth/org-accounts/', views.create_org_account, name='auth-org-accounts'),
     path('auth/invites/', invites.invites, name='auth-invites'),
     path('auth/invites/<int:pk>/revoke/', invites.revoke_invite, name='auth-invite-revoke'),
+    path('auth/invites/<int:pk>/', invites.delete_invite, name='auth-invite-delete'),
     path('auth/invites/open/<str:token>/', invites.open_invite, name='auth-invite-open'),
     path('fina-points/', views.fina_points_preview, name='fina-points-preview'),
     path('features/', views.site_features, name='site-features'),

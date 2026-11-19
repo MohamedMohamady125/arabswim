@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { createInvite, getCountries, getInvites, revokeInvite } from '../../api/core'
+import { createInvite, deleteInvite, getCountries, getInvites, revokeInvite } from '../../api/core'
 import { getAcademies } from '../../api/academies'
 import { getTeams } from '../../api/teams'
 import { getSwimmers } from '../../api/swimmers'
@@ -116,6 +116,25 @@ export default function InviteLinks() {
       notify('Link cancelled', 'success')
     } catch (err) {
       notify(err?.response?.data?.error || 'Could not cancel the link', 'error')
+    }
+  }
+
+  // Deleting is final, so it is confirmed in plain words first — and it says
+  // exactly what goes (the link, the account) and what stays (their work).
+  const remove = async (row) => {
+    const who = row.target.name
+    const text = row.status === 'USED'
+      ? `Delete this link and the account ${row.used_by || ''} made from it?\n\n`
+        + `${who} will no longer be able to sign in. Everything they added to their page stays as they saved it.`
+      : `Delete this link for ${who}?\n\nThe sign-up page behind it will stop working.`
+    if (!window.confirm(text)) return
+    try {
+      const res = await deleteInvite(row.id)
+      if (made?.id === row.id) setMade(null)
+      reload()
+      notify(res.data?.account_deleted ? `Link and account ${res.data.account_deleted} deleted` : 'Link deleted', 'success')
+    } catch (err) {
+      notify(err?.response?.data?.error || 'Could not delete the link', 'error')
     }
   }
 
@@ -236,6 +255,10 @@ export default function InviteLinks() {
                             <button type="button" className="btn btn-ghost" onClick={() => cancel(r)}>Cancel</button>
                           </>
                         )}
+                        <button type="button" className="btn btn-ghost" style={{ color: 'var(--asw-slow)' }} onClick={() => remove(r)}
+                          aria-label={`Delete the link for ${r.target.name}`}>
+                          {r.status === 'USED' ? 'Delete link and account' : 'Delete'}
+                        </button>
                       </td>
                     </tr>
                   )

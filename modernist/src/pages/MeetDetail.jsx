@@ -2898,20 +2898,49 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
     return (program.days.find((d) => d.day === selectedDay) || {}).items || []
   }, [program, selectedDay])
 
-  // Group program by session, then split by gender within each session
+  // Sections of the day. When the program says morning / evening, that is the
+  // section (a timed final swum at 9 AM belongs to the morning, not under
+  // "Evening" because it is a final). Programs without it fall back to rounds.
+  const byTimeOfDay = dayProgram.some((p) => p.time_of_day)
   const sessionGroups = useMemo(() => {
     const groups = {}
     dayProgram.forEach((p) => {
-      const s = p.session || 'OTHER'
+      const s = byTimeOfDay ? (p.time_of_day || 'OTHER') : (p.session || 'OTHER')
       if (!groups[s]) groups[s] = { M: [], F: [], X: [] }
       const g = p.gender || 'X'
       groups[s][g].push(p)
     })
     return groups
-  }, [dayProgram])
+  }, [dayProgram, byTimeOfDay])
 
-  const sessionLabel = { HEATS: 'Morning', SEMIS: 'Semi-Finals', FINALS: 'Evening', OTHER: 'Events' }
-  const sessionOrder = ['HEATS', 'SEMIS', 'FINALS', 'OTHER']
+  const sessionLabel = byTimeOfDay
+    ? { MORNING: 'Morning session', EVENING: 'Evening session', OTHER: 'Other events' }
+    : { HEATS: 'Morning', SEMIS: 'Semi-Finals', FINALS: 'Evening', OTHER: 'Events' }
+  const sessionOrder = byTimeOfDay ? ['MORNING', 'EVENING', 'OTHER'] : ['HEATS', 'SEMIS', 'FINALS', 'OTHER']
+  const isLateSection = (s) => s === 'FINALS' || s === 'EVENING'
+
+  // Similarity + Proximity: an event swum by several age categories is named
+  // once, with one row per category under it — instead of the same event name
+  // repeated four times down the column.
+  const programRows = (list, compact) => {
+    const groups = []
+    list.forEach((p) => {
+      const key = `${p.event}-${p.gender}`
+      const g = groups.find((x) => x.key === key)
+      if (g) g.items.push(p); else groups.push({ key, name: p.event_name, items: [p] })
+    })
+    const row = (p, i, grouped) => (
+      <EventRow key={`${p.event}-${p.gender}-${p.session || ''}-${p.age_category || ''}-${i}`} meetId={meetId} programItem={p}
+        isNational={isNational} isAdmin={isAdmin} meet={meet} compact={compact} autoOpen={isDeepTarget(p)}
+        openCat={programHasCategories} grouped={grouped} />
+    )
+    return groups.map((g) => (g.items.length === 1 ? row(g.items[0], 0, false) : (
+      <div key={g.key} className="prog-event">
+        <div className="prog-event-name">{g.name}</div>
+        {g.items.map((p, i) => row(p, i, true))}
+      </div>
+    )))
+  }
 
   // When a meet has real age groups, the uncategorized (blank) program lines
   // are the open/senior (18+) group — label them "Open" instead of leaving
@@ -3022,9 +3051,9 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
               <div key={s} style={{ marginBottom: 32 }}>
                 <div style={{
                   fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16,
-                  color: s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-neutral-600)',
+                  color: isLateSection(s) ? 'var(--color-accent)' : 'var(--color-neutral-700)',
                   textTransform: 'uppercase', letterSpacing: '0.08em',
-                  borderBottom: `2px solid ${s === 'FINALS' ? 'var(--color-accent)' : 'var(--color-divider)'}`,
+                  borderBottom: `2px solid ${isLateSection(s) ? 'var(--color-accent)' : 'var(--color-divider)'}`,
                   paddingBottom: 8, marginBottom: 12,
                 }}>
                   {sessionLabel[s]}
@@ -3039,9 +3068,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                         textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-accent)',
                         marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
                       }}>Men</div>
-                      {g.M.map((p, i) => (
-                        <EventRow key={`${p.event}-M-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact autoOpen={isDeepTarget(p)} openCat={programHasCategories} />
-                      ))}
+                      {programRows(g.M, true)}
                     </div>
                     {/* Women column */}
                     <div>
@@ -3050,16 +3077,12 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                         textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-accent)',
                         marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
                       }}>Women</div>
-                      {g.F.map((p, i) => (
-                        <EventRow key={`${p.event}-F-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} compact autoOpen={isDeepTarget(p)} openCat={programHasCategories} />
-                      ))}
+                      {programRows(g.F, true)}
                     </div>
                   </div>
                 ) : (
                   /* Single gender or mixed — full width */
-                  [...g.M, ...g.F, ...g.X].map((p, i) => (
-                    <EventRow key={`${p.event}-${p.gender}-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} autoOpen={isDeepTarget(p)} openCat={programHasCategories} />
-                  ))
+                  programRows([...g.M, ...g.F, ...g.X], false)
                 )}
 
                 {/* Mixed events below the columns */}
@@ -3070,9 +3093,7 @@ function LiveDayView({ meetId, meet, events, isNational, isAdmin }) {
                       textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-accent)',
                       marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-divider)',
                     }}>Mixed</div>
-                    {g.X.map((p, i) => (
-                      <EventRow key={`${p.event}-X-${i}`} meetId={meetId} programItem={p} isNational={isNational} isAdmin={isAdmin} meet={meet} autoOpen={isDeepTarget(p)} openCat={programHasCategories} />
-                    ))}
+                    {programRows(g.X, false)}
                   </div>
                 )}
               </div>
@@ -3121,7 +3142,8 @@ const filterByCategory = (arr, ageCategory) => {
   return arr.some((r) => normCat(r.category)) ? [] : arr
 }
 
-function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, autoOpen, openCat }) {
+// `grouped`: the row sits under its event's heading, so it is named by its age category
+function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, autoOpen, openCat, grouped = false }) {
   const [open, setOpen] = useState(false)
   const [athlete, setAthlete] = useState(null) // swimmer_detail → pop-over card
   const rowRef = React.useRef(null)
@@ -3255,7 +3277,9 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
           borderLeft: open ? '3px solid var(--color-accent)' : '3px solid transparent',
           transition: 'background 0.1s', flexWrap: 'wrap',
         }}>
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: compact ? 13 : 14, flex: 1, minWidth: 0 }}>{p.event_name}</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: grouped ? 700 : 800, fontSize: compact ? 13 : 14, flex: 1, minWidth: 0 }}>
+          {grouped ? (p.age_category || 'Open') : p.event_name}
+        </span>
         {roundBadge && (
           <span style={{
             fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0,
@@ -3263,7 +3287,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
             whiteSpace: 'nowrap', flex: 'none',
           }}>{roundBadge}</span>
         )}
-        {(p.age_category || openCat) && (
+        {!grouped && (p.age_category || openCat) && (
           <span style={{
             fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0,
             background: 'var(--color-accent-100)', color: 'var(--color-accent)',

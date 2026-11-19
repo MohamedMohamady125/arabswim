@@ -130,6 +130,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             os.unlink(tmp_path)
 
         created = 0
+        matched = 0
         for item in items:
             dist_text = item['distance'].replace(' ', '')
             is_relay = 'x' in dist_text.lower()
@@ -158,16 +159,21 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             _, was_created = ProgramItem.objects.get_or_create(
                 championship=champ, day=day, event=event,
                 gender=gender, session=session, time_of_day=time_of_day,
-                age_category='',
+                # HY-TEK programs state the age category of every event
+                age_category=(item.get('age_category') or '')[:40],
                 defaults={'order': item.get('order') or 0},
             )
             if was_created:
                 created += 1
+            matched += 1
 
         return Response({
             'status': 'ok',
             'items_detected': len(items),
+            # lines whose event is one the site knows (the rest are skipped)
+            'items_matched': matched,
             'program_items_created': created,
+            'days': sorted({i['day'] for i in items if 1 <= i['day'] <= 30}),
         })
 
     @action(detail=True, methods=['get'], url_path='live')

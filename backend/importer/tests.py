@@ -4749,3 +4749,38 @@ class SaudiNameFormatTests(SimpleTestCase):
     def test_single_token_untouched(self):
         from importer.saudi_scraper import format_latin_name
         self.assertEqual(format_latin_name('ZIED'), 'ZIED')
+
+
+class HytekProgramTests(TestCase):
+    """HY-TEK Meet Manager meet programs: every event states its gender, age
+    category, round and start time."""
+
+    TEXT = """UAE Aquatics HY-TEK's MEET MANAGER 8.0 - 10:30 PM 18/11/2026 Page 1
+5th Arab Aquatics Championships AgeGroup 2026 - 19/11/2026 to 23/11/2026
+Meet Program
+Event 101 Girls 13-14 50 LC Meter Butterfly
+Lane Name Age Team Seed Time Prelim Time Place
+Heat 1 of 2 Prelims Starts at 09:00 AM
+2 Obead, Lamis R 14 Palestine-AR NT _________________ _______
+Heat 2 of 2 Prelims Starts at 09:03 AM
+Event 102 Girls 15-16 50 LC Meter Butterfly
+Heat 1 of 1 Timed Finals Starts at 05:00 PM
+Event 108 Boys 19 & Over 50 LC Meter Butterfly
+Heat 1 of 2 Prelims Starts at 09:14 AM
+Event 124 Boys 19 & Over 400 LC Meter IM
+Heat 1 of 1 Timed Finals Starts at 09:21 AM
+Event 201 Mixed 15-16 400 LC Meter Medley Relay
+Heat 1 of 1 Timed Finals Starts at 05:00 PM
+"""
+
+    def test_each_event_becomes_one_line_with_category_round_and_time(self):
+        from importer.bulletin import parse_hytek_program
+        got = [(i['day'], i['gender'], i['age_category'], i['distance'], i['stroke'], i['session'], i['time_of_day'])
+               for i in parse_hytek_program(self.TEXT)]
+        self.assertEqual(got, [
+            (1, 'F', '13-14', '50', 'Butterfly', 'HEATS', 'MORNING'),
+            (1, 'F', '15-16', '50', 'Butterfly', 'FINALS', 'EVENING'),
+            (1, 'M', '19 & Over', '50', 'Butterfly', 'HEATS', 'MORNING'),
+            (1, 'M', '19 & Over', '400', 'IM', 'FINALS', 'MORNING'),
+            (2, 'X', '15-16', '4x100', 'medley', 'FINALS', 'EVENING'),
+        ])

@@ -117,6 +117,73 @@ def _parse_date_to_iso(match, meet_start=None):
     return None
 
 
+# ---- HY-TEK Meet Manager "Meet Program" / start list -----------------------
+# Event 101 Girls 13-14 50 LC Meter Butterfly
+# Heat 1 of 2 Prelims Starts at 09:00 AM
+HYTEK_EVENT = re.compile(
+    r'^Event\s+(?P<no>\d+)\s+(?P<gender>Girls|Boys|Women|Men|Mixed)\s+(?P<age>.*?)\s*'
+    r'(?P<dist>\d{2,4})\s+(?:LC|SC|L|S)?\s*(?:Meter|Metre|M)\b\s+(?P<stroke>.+?)\s*$',
+    re.IGNORECASE)
+HYTEK_HEAT = re.compile(
+    r'^(?:Heat|Final|Finals|Semi)\b.*?\b(?P<round>Prelims?|Timed\s+Finals?|Semi-?\s?Finals?|Finals?|Swim-?off)\b'
+    r'.*?Starts\s+at\s+(?P<h>\d{1,2}):(?P<m>\d{2})\s*(?P<ap>AM|PM)?', re.IGNORECASE)
+
+
+def parse_hytek_program(text):
+    """Program lines from a HY-TEK Meet Manager meet program or start list.
+
+    Each event carries its own gender, age category, round and start time, so
+    one line of the program is produced per event:
+      round       Prelims -> HEATS, Semi-Finals -> SEMIS, (Timed) Finals -> FINALS
+      time of day start before 14:00 -> MORNING, otherwise EVENING
+      day         HY-TEK numbers events by day (101.. = day 1, 201.. = day 2)
+                  when the meet uses three-digit numbers; otherwise day 1.
+    The admin reviews the result in the program editor before relying on it.
+    """
+    events = []
+    current = None
+    for raw in text.split('\n'):
+        line = raw.strip()
+        m = HYTEK_EVENT.match(line)
+        if m:
+            stroke = m.group('stroke').strip()
+            is_relay = bool(re.search(r'relay', stroke, re.IGNORECASE))
+            stroke = re.sub(r'\s*relay\s*', '', stroke, flags=re.IGNORECASE).strip()
+            dist = int(m.group('dist'))
+            g = m.group('gender').lower()
+            current = {
+                'no': int(m.group('no')),
+                'event_text': line,
+                'distance': f'4x{dist // 4}' if is_relay else str(dist),
+                'stroke': 'medley' if is_relay and stroke.lower() in ('medley', 'im') else stroke,
+                'gender': 'F' if g in ('girls', 'women') else 'X' if g == 'mixed' else 'M',
+                'age_category': re.sub(r'\s+', ' ', m.group('age')).strip()[:40],
+                'session': '', 'time_of_day': '',
+            }
+            events.append(current)
+            continue
+        h = HYTEK_HEAT.match(line)
+        if h and current is not None and not current['session']:
+            r = h.group('round').lower()
+            current['session'] = ('HEATS' if r.startswith('prelim')
+                                  else 'SEMIS' if r.startswith('semi') else 'FINALS')
+            hour = int(h.group('h')) % 12 + (12 if (h.group('ap') or '').upper() == 'PM' else 0)
+            if not h.group('ap'):
+                hour = int(h.group('h'))
+            current['time_of_day'] = 'MORNING' if hour < 14 else 'EVENING'
+    by_day = all(e['no'] >= 100 for e in events) and len({e['no'] // 100 for e in events}) <= 30
+    first = min((e['no'] // 100 for e in events), default=1)
+    items = []
+    for order, e in enumerate(events):
+        items.append({
+            'day': (e['no'] // 100 - first + 1) if by_day else 1,
+            'event_text': e['event_text'], 'distance': e['distance'], 'stroke': e['stroke'],
+            'gender': e['gender'], 'session': e['session'], 'time_of_day': e['time_of_day'],
+            'age_category': e['age_category'], 'order': order,
+        })
+    return items
+
+
 def parse_bulletin(file_path, meet_start_date=None):
     """Parse a bulletin PDF and return program items.
     
@@ -124,6 +191,13 @@ def parse_bulletin(file_path, meet_start_date=None):
     """
     with pdfplumber.open(file_path) as pdf:
         text = '\n'.join(p.extract_text() or '' for p in pdf.pages)
+
+    # HY-TEK meet program / start list: every event states its own category,
+    # round and start time, which the free-text reader below cannot see
+    if sum(1 for l in text.split('\n') if HYTEK_EVENT.match(l.strip())) >= 3:
+        hy = parse_hytek_program(text)
+        if hy:
+            return hy
 
     lines = text.split('\n')
     items = []

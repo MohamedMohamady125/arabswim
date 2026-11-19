@@ -1286,3 +1286,33 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .owner-welcome-list li.done > span:first-child { color: var(--asw-fast); font-weight: 800; }
 @media (max-width: 760px) { .owner-welcome { margin: 12px 16px; padding: 14px; } }
 
+/* — meet program editor: add form and the day's lines — */
+.progadd { display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid var(--color-divider); background: var(--color-bg); margin-bottom: 12px; }
+.progadd-row { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+.progadd-group { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.progadd-event { flex: 1 1 240px; }
+.progadd-event select { width: 100%; }
+.progadd-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-700); }
+.progadd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.progadd-chip { min-height: 36px; padding: 6px 14px; border: 1px solid var(--color-neutral-300); background: var(--color-bg); color: var(--color-accent-800); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.progadd-chip.on { background: var(--color-accent-800); border-color: var(--color-accent-800); color: #fff; }
+.progadd-cats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 6px; border: 1px solid var(--color-neutral-300); background: #fff; min-height: 40px; }
+.progadd-cats input { flex: 1 1 160px; min-width: 120px; border: 0; outline: 0; font: inherit; font-size: 13px; padding: 4px; background: transparent; }
+.progadd-cats:focus-within { outline: 2px solid var(--color-accent-2); outline-offset: 1px; }
+.progadd-cat { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; background: var(--color-accent-100); color: var(--color-accent-800); font-size: 13px; font-weight: 600; }
+.progadd-cat button { border: 0; background: none; cursor: pointer; font-size: 16px; line-height: 1; min-width: 28px; min-height: 28px; color: var(--color-accent-800); }
+.progadd-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--color-neutral-700); }
+.progadd-suggest .progadd-chip { min-height: 30px; padding: 2px 10px; font-size: 12px; }
+.progadd-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.progadd-preview { font-size: 12px; color: var(--color-neutral-700); flex: 1 1 220px; min-width: 0; }
+.progtable { font-size: 13px; background: #fff; }
+.progtable td, .progtable th { padding: 4px 8px; }
+.progtable-head td { background: var(--color-accent-800); color: #fff; font-family: var(--font-heading); font-weight: 800; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 8px; }
+.progupload { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; padding: 12px; margin-bottom: 12px; border: 1px solid var(--color-divider); border-left: 3px solid var(--color-accent-2); background: var(--color-bg); font-size: 13px; line-height: 1.5; }
+.progupload > div { flex: 1 1 260px; min-width: 0; }
+
+/* — public meet program: an event swum by several age categories — */
+.prog-event { margin-bottom: 10px; border: 1px solid var(--color-divider); }
+.prog-event-name { font-family: var(--font-heading); font-weight: 800; font-size: 13px; padding: 8px 10px; background: var(--color-accent-800); color: #fff; }
+.prog-event > div:not(.prog-event-name) { margin-bottom: 0 !important; border-top: 1px solid var(--color-divider); }
+

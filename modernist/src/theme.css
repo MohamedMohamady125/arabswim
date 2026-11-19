@@ -53,6 +53,10 @@
   --asw-fast: #0d7a52;
   --asw-slow: #a8402f;
   --asw-gold: #b98a1e;
+  /* behind every swimmer portrait (transparent cut-outs): Arab Swim navy,
+     the same value as --color-accent-800; its own token so a dark section
+     that re-maps the accent never turns portraits white */
+  --asw-portrait-bg: #102e56;
   --asw-silver: #7d8a99;
   --asw-bronze: #a05f2c;
   /* World Aquatics medal-table palette (sampled from worldaquatics.com

@@ -1,4 +1,11 @@
-"""Swimmer portraits: cut the person out, put them on white, centre them.
+"""Swimmer portraits: cut the person out, centre them, give them the brand
+background.
+
+The stored file is the cut-out itself with a TRANSPARENT background (PNG);
+the site paints Arab Swim navy behind it (Pic.jsx, token --asw-portrait-bg),
+so the colour lives in one place. The hidden colour under the transparent
+pixels is that same navy, so anything that ignores transparency still shows
+navy, never white or black.
 
 Runs on the server for every swimmer photo, whoever uploads it. Uses a local
 segmentation model (IS-Net general use, Apache-2.0) through onnxruntime, so
@@ -32,8 +39,12 @@ MAX_HEADROOM = 0.16  # broad shoulders are trimmed by the frame rather than shri
 EDGE = 0.015         # subject within this share of an edge counts as cut by it
 WORK_SIDE = 2000     # the photo is worked on at this size at most
 OUT_SIDE = 1600      # longest side of the result
-# Marks a file that has been through here (the backfill command skips these)
-MARK = '-wb'
+# Marks a file that has been through here (the backfill command skips these).
+# '-wb' was the earlier white-background version: those are done again.
+MARK = '-cut'
+OLD_MARKS = ('-wb',)
+# Arab Swim navy (#102e56 = --color-accent-800 in theme.css)
+BRAND_NAVY = (16, 46, 86)
 
 _lock = threading.Lock()
 
@@ -154,8 +165,43 @@ def subject_frame(mask, ratio=RATIO):
     return left, top, fw, fh
 
 
+def clean_edges(img, mask):
+    """Edge pixels are a mix of the swimmer and the OLD background (a white
+    wall leaves a pale halo once the photo sits on navy). Replace their colour
+    with the nearest solid swimmer colour, bled outwards."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+    m = np.asarray(mask)
+    solid = m >= 250
+    edge = (m > 0) & ~solid
+    if not edge.any() or not solid.any():
+        return img
+    rgb = np.asarray(img, dtype=np.float32)
+    w = solid.astype(np.float32)
+    radius = max(2, round(max(img.size) / 400))
+    num = np.asarray(Image.fromarray((rgb * w[..., None]).astype('uint8'), 'RGB')
+                     .filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32)
+    den = np.asarray(Image.fromarray((w * 255).astype('uint8'), 'L')
+                     .filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32) / 255.0
+    ok = edge & (den > 0.04)
+    out = rgb.copy()
+    out[ok] = np.clip(num[ok] / den[ok][:, None], 0, 255)
+    return Image.fromarray(out.astype('uint8'), 'RGB')
+
+
+def compose(img, mask, frame):
+    """RGB photo + mask + frame -> RGBA portrait: transparent outside the
+    swimmer, brand navy hidden under the transparent pixels."""
+    from PIL import Image
+    left, top, fw, fh = frame
+    out = Image.new('RGBA', (max(1, round(fw)), max(1, round(fh))), BRAND_NAVY + (0,))
+    out.paste(img, (-round(left), -round(top)), mask)
+    return out
+
+
 def isolate(img):
-    """PIL image -> RGB portrait on white, 4:5, subject centred. None = leave it."""
+    """PIL image -> RGBA portrait, 4:5, swimmer centred, background transparent.
+    None = leave the upload as it is."""
     import numpy as np
     from PIL import Image
 
@@ -168,18 +214,16 @@ def isolate(img):
     frame = subject_frame(np.asarray(mask))
     if frame is None:
         return None
-    # firm up the soft edge so the old background does not leave a halo on white
+    # firm up the soft edge, then take the old background out of what is left of it
     mask = mask.point(lambda a: 0 if a < 40 else 255 if a > 215 else int((a - 40) * 255 / 175))
-    left, top, fw, fh = frame
-    out = Image.new('RGB', (max(1, round(fw)), max(1, round(fh))), (255, 255, 255))
-    out.paste(img, (-round(left), -round(top)), mask)
+    out = compose(clean_edges(img, mask), mask, frame)
     if max(out.size) > OUT_SIDE:
         out.thumbnail((OUT_SIDE, OUT_SIDE), Image.LANCZOS)
     return out
 
 
 def isolate_bytes(data, filename=''):
-    """Raw upload bytes -> (jpeg_bytes, filename) or None to keep the upload."""
+    """Raw upload bytes -> (png_bytes, filename) or None to keep the upload."""
     try:
         from PIL import Image, ImageOps
         img = Image.open(io.BytesIO(data))
@@ -197,20 +241,29 @@ def isolate_bytes(data, filename=''):
         if out is None:
             return None
         buf = io.BytesIO()
-        out.save(buf, format='JPEG', quality=92, optimize=True, progressive=True)
+        out.save(buf, format='PNG')
         return buf.getvalue(), marked_name(filename)
     except Exception:
         log.exception('portrait cut-out failed; keeping the upload as it is')
         return None
 
 
+def source_stem(filename):
+    """File stem with any cut-out mark (and the content hash after it) removed:
+    'ali-wb-0a1b2c3d4e' -> 'ali'. The name the upload had before it was cut out."""
+    import re
+    stem = os.path.splitext(os.path.basename(filename or ''))[0]
+    for mark in (MARK,) + OLD_MARKS:
+        stem = re.sub(rf'{re.escape(mark)}(-[0-9a-f]{{10}})?$', '', stem)
+    return stem
+
+
 def marked_name(filename):
-    stem = os.path.splitext(os.path.basename(filename or 'photo'))[0] or 'photo'
-    return f'{stem if stem.endswith(MARK) else stem + MARK}.jpg'
+    return f'{source_stem(filename) or "photo"}{MARK}.png'
 
 
 def is_marked(filename):
-    """True for a stored file that has already been cut out (name carries the mark)."""
+    """True for a stored file that already is a current cut-out (name carries the mark)."""
     stem = os.path.splitext(os.path.basename(filename or ''))[0]
     return stem.endswith(MARK) or f'{MARK}-' in stem
 
@@ -221,7 +274,7 @@ def isolate_upload(data, filename=''):
     the upload is kept as it is, instead of the web worker going down."""
     try:
         with tempfile.TemporaryDirectory() as d:
-            src, dst = os.path.join(d, 'in'), os.path.join(d, 'out.jpg')
+            src, dst = os.path.join(d, 'in'), os.path.join(d, 'out.png')
             with open(src, 'wb') as fh:
                 fh.write(data)
             subprocess.run([sys.executable, os.path.abspath(__file__), src, dst],

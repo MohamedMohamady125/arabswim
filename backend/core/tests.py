@@ -314,3 +314,43 @@ class PortraitCutoutTests(TestCase):
             images.normalize_on_save(Swimmer, s)
             self.assertTrue(s.photo.name.startswith('a-'))
             self.assertNotIn('-wb', s.photo.name)
+
+
+class PortraitNavyBackgroundTests(TestCase):
+    """The stored portrait is transparent outside the swimmer, with brand navy
+    hidden underneath, and its name tells the backfill it is done."""
+
+    def test_compose_is_transparent_outside_the_swimmer_with_navy_underneath(self):
+        from PIL import Image
+        from core.cutout import BRAND_NAVY, compose
+        img = Image.new('RGB', (100, 100), (200, 30, 30))
+        mask = Image.new('L', (100, 100), 0)
+        mask.paste(255, (30, 30, 70, 100))
+        out = compose(img, mask, (10, 10, 80, 100))
+        self.assertEqual(out.mode, 'RGBA')
+        self.assertEqual(out.size, (80, 100))
+        self.assertEqual(out.getpixel((2, 2)), BRAND_NAVY + (0,))          # background: clear, navy under it
+        self.assertEqual(out.getpixel((40, 60)), (200, 30, 30, 255))        # the swimmer: untouched
+        self.assertEqual(out.getpixel((79, 99)), BRAND_NAVY + (0,))         # outside the source photo too
+
+    def test_edge_pixels_lose_the_old_background_colour(self):
+        from PIL import Image
+        from core.cutout import clean_edges
+        img = Image.new('RGB', (60, 60), (255, 255, 255))                    # white wall
+        img.paste((20, 20, 20), (0, 0, 30, 60))                              # dark swimmer on the left
+        img.putpixel((30, 30), (140, 140, 140))                              # a blended edge pixel
+        mask = Image.new('L', (60, 60), 0)
+        mask.paste(255, (0, 0, 30, 60))
+        mask.putpixel((30, 30), 120)
+        out = clean_edges(img, mask)
+        self.assertLess(max(out.getpixel((30, 30))), 60)                     # pulled back to the swimmer's colour
+        self.assertEqual(out.getpixel((10, 30)), (20, 20, 20))
+
+    def test_names_mark_current_cutouts_and_redo_the_white_ones(self):
+        from core.cutout import is_marked, marked_name, source_stem
+        self.assertEqual(marked_name('swimmers/photos/ali.jpg'), 'ali-cut.png')
+        self.assertEqual(marked_name('swimmers/photos/ali-wb-0a1b2c3d4e.jpg'), 'ali-cut.png')
+        self.assertTrue(is_marked('swimmers/photos/ali-cut-0a1b2c3d4e.png'))
+        self.assertFalse(is_marked('swimmers/photos/ali-wb-0a1b2c3d4e.jpg'))  # white version: done again
+        self.assertFalse(is_marked('swimmers/photos/ali.jpg'))
+        self.assertEqual(source_stem('ali-cut-0a1b2c3d4e.png'), 'ali')

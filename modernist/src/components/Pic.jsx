@@ -10,7 +10,9 @@ import { imgUrl, mediaUrl } from '../utils'
 //   trim           — server cuts empty margins off (logos)
 export const IMAGE_KINDS = {
   // People: portrait, face in the upper third; square and round slots keep the head
-  person: { aspect: 4 / 5, lock: true, fit: 'cover', position: '50% 22%', maxSide: 1400, minSide: 320 },
+  // `bg`: swimmer portraits are stored as transparent cut-outs; the brand navy
+  // behind them is painted here, once, for every slot on the site
+  person: { aspect: 4 / 5, lock: true, fit: 'cover', position: '50% 22%', maxSide: 1400, minSide: 320, bg: 'var(--asw-portrait-bg)' },
   // Crests and logos: never cropped by a slot, always shown whole
   // `pad` insets the artwork so a square or wide logo is not clipped by a round badge.
   // It is a percentage of the PARENT's width, so Pic applies it only when the image
@@ -26,9 +28,9 @@ export const IMAGE_KINDS = {
   gallery: { aspect: 'original', lock: false, fit: 'cover', position: '50% 35%', maxSide: 2000, minSide: 480 },
 }
 
-// Swimmer portraits only: the server cuts the swimmer out onto white and
+// Swimmer portraits only: the server cuts the swimmer out (transparent) and
 // centres them after upload (backend/core/cutout.py). Shown in the crop tool.
-export const SWIMMER_PHOTO_NOTE = 'After upload the background is removed and the swimmer is centred automatically.'
+export const SWIMMER_PHOTO_NOTE = 'After upload the background is replaced with Arab Swim blue and the swimmer is centred automatically.'
 
 /**
  * Drop-in <img> for anything uploaded to the site.
@@ -75,7 +77,7 @@ export default function Pic({ kind = 'person', src, w = 160, alt = '', fallback 
         if (onError) onError(e)
       }}
       // a slot that sets its own aspect-ratio gets its height from that, not from the parent
-      style={{ display: 'block', ...(fill ? { width: '100%', ...(style?.aspectRatio ? null : { height: '100%' }) } : null), ...(k.pad && fill && style?.width == null ? { padding: k.pad, boxSizing: 'border-box' } : null), objectFit: k.fit, objectPosition: k.position, ...style }}
+      style={{ display: 'block', ...(fill ? { width: '100%', ...(style?.aspectRatio ? null : { height: '100%' }) } : null), ...(k.pad && fill && style?.width == null ? { padding: k.pad, boxSizing: 'border-box' } : null), objectFit: k.fit, objectPosition: k.position, ...(k.bg ? { backgroundColor: k.bg } : null), ...style }}
       {...rest}
     />
   )

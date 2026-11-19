@@ -4782,5 +4782,5 @@ Heat 1 of 1 Timed Finals Starts at 05:00 PM
             (1, 'F', '15-16', '50', 'Butterfly', 'FINALS', 'EVENING'),
             (1, 'M', '19 & Over', '50', 'Butterfly', 'HEATS', 'MORNING'),
             (1, 'M', '19 & Over', '400', 'IM', 'FINALS', 'MORNING'),
-            (2, 'X', '15-16', '4x100', 'medley', 'FINALS', 'EVENING'),
+            (1, 'X', '15-16', '4x100', 'medley', 'FINALS', 'EVENING'),   # 201 is a session number, not day 2
         ])

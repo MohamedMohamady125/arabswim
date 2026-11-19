@@ -165,9 +165,7 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint, top }) {
         {hint || 'Days follow the meet dates — pick which events were swum on each day.'}
       </div>
 
-      {top}
-
-      {/* day tabs */}
+      {/* day tabs come first: an uploaded file goes onto the day that is open */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
         {days.map((d) => {
           const active = day && d.day === day.day
@@ -196,6 +194,8 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint, top }) {
           )
         })}
       </div>
+
+      {typeof top === 'function' ? top(day?.day || 1) : top}
 
       {/* add form — Chunking: what (event, gender), when (rounds, time of day), who (categories) */}
       <div className="progadd">
@@ -368,6 +368,7 @@ export default function MeetProgramEditor({ champId, onSaved }) {
   // category, round and time — read it instead of making the admin retype it.
   const fileRef = useRef(null)
   const [reading, setReading] = useState(false)
+  const uploadDay = useRef(1)
   const readFile = async (file) => {
     if (!file) return
     setReading(true)
@@ -377,6 +378,7 @@ export default function MeetProgramEditor({ champId, onSaved }) {
       if (dirty) await setMeetProgram(champId, flattenProgramDays(days))
       const fd = new FormData()
       fd.append('file', file)
+      fd.append('day', uploadDay.current)
       const up = (await uploadBulletin(champId, fd)).data
       const res = await getMeetProgram(champId)
       setDays(res.data?.days || [])
@@ -388,7 +390,7 @@ export default function MeetProgramEditor({ champId, onSaved }) {
         const skipped = up.items_detected - (up.items_matched ?? up.items_detected)
         setMsg(`Read ${up.items_detected} events from the file: ${up.program_items_created} added`
           + `${skipped > 0 ? `, ${skipped} skipped (event not known to the site)` : ''}. `
-          + 'Days come from the event numbers (101… is day 1, 201… is day 2) — check each day tab.')
+          + `They are on day ${(up.days || []).join(', ') || uploadDay.current}. Upload each day's file with that day open.`)
       }
     } catch (err) {
       setMsg(err?.response?.data?.error || 'The file could not be read. Check it is the program PDF and try again.')
@@ -410,15 +412,16 @@ export default function MeetProgramEditor({ champId, onSaved }) {
       patchDay={patchDay}
       msg={msg}
       setMsg={setMsg}
-      top={(
+      top={(activeDay) => (
         <div className="progupload">
           <div>
-            <strong>Have the program as a PDF?</strong>
-            <span> Upload the HY-TEK meet program or start list and every event is filled in with its category, round and session.</span>
+            <strong>Have day {activeDay}'s program as a PDF?</strong>
+            <span> Upload the HY-TEK meet program or start list and every event in it is added to day {activeDay} with its category, round and session.</span>
           </div>
           <input ref={fileRef} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => readFile(e.target.files?.[0])} />
-          <button type="button" className="btn btn-primary" disabled={reading} onClick={() => fileRef.current?.click()} style={{ minHeight: 40, flex: 'none' }}>
-            {reading ? 'Reading the file…' : 'Upload program PDF'}
+          <button type="button" className="btn btn-primary" disabled={reading}
+            onClick={() => { uploadDay.current = activeDay; fileRef.current?.click() }} style={{ minHeight: 40, flex: 'none' }}>
+            {reading ? 'Reading the file…' : `Upload PDF for day ${activeDay}`}
           </button>
         </div>
       )}

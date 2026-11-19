@@ -136,8 +136,9 @@ def parse_hytek_program(text):
     one line of the program is produced per event:
       round       Prelims -> HEATS, Semi-Finals -> SEMIS, (Timed) Finals -> FINALS
       time of day start before 14:00 -> MORNING, otherwise EVENING
-      day         HY-TEK numbers events by day (101.. = day 1, 201.. = day 2)
-                  when the meet uses three-digit numbers; otherwise day 1.
+      day         always 1: the file does not say which day an event is on
+                  (event numbers like 101 / 201 are sessions, not days), so
+                  the caller puts the lines on the day the admin chose.
     The admin reviews the result in the program editor before relying on it.
     """
     events = []
@@ -171,12 +172,10 @@ def parse_hytek_program(text):
             if not h.group('ap'):
                 hour = int(h.group('h'))
             current['time_of_day'] = 'MORNING' if hour < 14 else 'EVENING'
-    by_day = all(e['no'] >= 100 for e in events) and len({e['no'] // 100 for e in events}) <= 30
-    first = min((e['no'] // 100 for e in events), default=1)
     items = []
     for order, e in enumerate(events):
         items.append({
-            'day': (e['no'] // 100 - first + 1) if by_day else 1,
+            'day': 1, 'day_unknown': True,
             'event_text': e['event_text'], 'distance': e['distance'], 'stroke': e['stroke'],
             'gender': e['gender'], 'session': e['session'], 'time_of_day': e['time_of_day'],
             'age_category': e['age_category'], 'order': order,

@@ -131,6 +131,11 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
         created = 0
         matched = 0
+        days_used = set()
+        try:
+            target_day = int(request.data.get('day') or 0)
+        except (TypeError, ValueError):
+            target_day = 0
         for item in items:
             dist_text = item['distance'].replace(' ', '')
             is_relay = 'x' in dist_text.lower()
@@ -153,8 +158,13 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             session = item['session'] or ''
             time_of_day = item.get('time_of_day') or ''
             day = item['day']
+            # a file that does not say which day its events are on goes onto
+            # the day the admin had open in the editor
+            if item.get('day_unknown') and target_day:
+                day = target_day
             if day < 1 or day > 30:
                 continue
+            days_used.add(day)
 
             _, was_created = ProgramItem.objects.get_or_create(
                 championship=champ, day=day, event=event,
@@ -173,7 +183,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             # lines whose event is one the site knows (the rest are skipped)
             'items_matched': matched,
             'program_items_created': created,
-            'days': sorted({i['day'] for i in items if 1 <= i['day'] <= 30}),
+            'days': sorted(days_used),
         })
 
     @action(detail=True, methods=['get'], url_path='live')

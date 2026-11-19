@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { Menu, Search, X } from 'lucide-react'
 
 import { IconInstagram, IconFacebook, IconYoutube, IconTiktok, IconX } from './SocialIcons'
@@ -8,6 +8,8 @@ import { useFeatures } from '../context/FeaturesContext'
 import Partners from './Partners'
 import api from '../api/client'
 import Flag from './Flag'
+import { Loading } from './ui'
+import { usePrelaunch, pathAllowed } from '../prelaunch'
 
 // nav path → launch-toggle key (sections the admin can hide)
 const FEATURE_PATHS = {
@@ -371,6 +373,23 @@ export default function Layout() {
   useEffect(() => {
     if (navigationType !== 'POP') window.scrollTo(0, 0)
   }, [location.pathname, navigationType])
+  // Pre-launch lock: a non-admin gets no menu, no search, no footer links —
+  // only their own page (or the "launching soon" page when not signed in).
+  const { locked, ownPath, isAuthed, ready } = usePrelaunch()
+  if (locked) {
+    let body
+    if (!ready) body = <Loading />
+    else if (pathAllowed(location.pathname, ownPath, isAuthed)) body = <Outlet />
+    else if (isAuthed && ownPath) body = <Navigate to={ownPath} replace />
+    else body = <ComingSoon signedIn={isAuthed} />
+    return (
+      <div className="shell">
+        <LockedHeader ownPath={ownPath} />
+        <main id="main" className="shell-main">{body}</main>
+        <footer className="prelaunch-foot">© {new Date().getFullYear()} Arab Swim</footer>
+      </div>
+    )
+  }
   return (
     <div className="shell">
       <Header />
@@ -379,6 +398,44 @@ export default function Layout() {
       </main>
       <Partners />
       <Footer />
+    </div>
+  )
+}
+
+// The whole header a locked viewer gets: the brand, their one link, sign out.
+function LockedHeader({ ownPath }) {
+  const { isAuthed, user, logout } = useAuth()
+  const navigate = useNavigate()
+  return (
+    <header className="prelaunch-head">
+      <span className="prelaunch-brand">
+        <img src="/logo.png" alt="" width="34" height="34" />
+        <span>ARABSWIM</span>
+      </span>
+      {isAuthed ? (
+        <span className="prelaunch-actions">
+          {ownPath && <Link to={ownPath}>My page</Link>}
+          <span className="prelaunch-who">{user?.email || user?.username}</span>
+          <button type="button" className="btn btn-secondary" onClick={() => { logout(); navigate('/login') }}>Sign out</button>
+        </span>
+      ) : (
+        <Link to="/login" className="prelaunch-signin">Sign in</Link>
+      )}
+    </header>
+  )
+}
+
+function ComingSoon({ signedIn }) {
+  return (
+    <div className="prelaunch-soon">
+      <img src="/logo.png" alt="" width="72" height="72" />
+      <h1>Arab Swim is launching soon</h1>
+      <p>
+        {signedIn
+          ? 'Your account is not linked to a page yet. Contact Arab Swim to get your invitation link.'
+          : 'The site is being prepared. If Arab Swim sent you an invitation link, open it to create your account.'}
+      </p>
+      {!signedIn && <Link to="/login" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', height: 44 }}>Sign in</Link>}
     </div>
   )
 }

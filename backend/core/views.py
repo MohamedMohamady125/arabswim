@@ -121,7 +121,11 @@ def site_features(request):
                 SiteFeature.objects.update_or_create(
                     key=key, defaults={'enabled': bool(val)}
                 )
+        from .prelaunch import forget_cached_state
+        forget_cached_state()
     out = {key: True for key in FEATURE_KEYS}
+    # the pre-launch lock is on until an admin turns it off (core/prelaunch.py)
+    out['prelaunch'] = True
     out.update(dict(SiteFeature.objects.values_list('key', 'enabled')))
     return Response(out)
 

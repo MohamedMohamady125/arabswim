@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { getArticle, getArticles, deleteArticle } from '../api/news'
 import Flag from '../components/Flag'
 import { Loading, notify, Empty, BackLink } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
+import { usePrelaunch } from '../prelaunch'
 import { Edit3, Trash2 } from 'lucide-react'
 import { ArticleModal } from './News'
 import Pic from '../components/Pic'
@@ -20,6 +21,8 @@ export default function Article() {
   const [article, setArticle] = useState(null)
   // the club / academy / federation that wrote the article edits it like an admin
   const isAdmin = siteAdmin || !!article?.can_edit
+  // pre-launch: an owner may open their own articles only
+  const { locked, ownPath } = usePrelaunch()
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
@@ -49,6 +52,7 @@ export default function Article() {
   }, [id, reloadKey])
 
   if (loading) return <Loading label="Loading article" />
+  if (locked && !article?.can_edit) return <Navigate to={ownPath || '/'} replace />
   if (!article || (article.status !== 'PUBLISHED' && !isAdmin)) return (
     <Empty label="Article not found" hint="It may have been removed, or the link is wrong.">
       <Link to="/news" className="btn btn-secondary">All news</Link>

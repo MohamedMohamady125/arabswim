@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMe, login as loginApi } from '../api/core'
+import { usePrelaunch } from '../prelaunch'
 
 export default function Login() {
   const [username, setUsername] = useState('')
@@ -11,6 +12,7 @@ export default function Login() {
   const [show, setShow] = useState(false)
   const { login, isAuthed, user: me } = useAuth()
   const navigate = useNavigate()
+  const { locked } = usePrelaunch()
 
   // Flow: someone already signed in is not shown the form again
   useEffect(() => {
@@ -75,8 +77,11 @@ export default function Login() {
         </button>
       </form>
       <div className="content-authnote">
-        <strong>Are you a swimmer?</strong> <Link to="/register">Create an account</Link> to claim your profile — it takes about a minute.
-        <br />Clubs, academies and federations: open the sign-up link Arab Swim sent you to create your account, then sign in here with your email.
+        {/* before launch there is no open sign-up: accounts come from invite links only */}
+        {!locked && (
+          <><strong>Are you a swimmer?</strong> <Link to="/register">Create an account</Link> to claim your profile — it takes about a minute.<br /></>
+        )}
+        {locked ? 'New here? Open the sign-up link Arab Swim sent you to create your account, then sign in with your email.' : 'Clubs, academies and federations: open the sign-up link Arab Swim sent you to create your account, then sign in here with your email.'}
       </div>
     </div>
   )

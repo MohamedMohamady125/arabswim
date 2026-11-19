@@ -554,3 +554,47 @@ class OwnerAccountRulesTests(TestCase):
         self.assertEqual(self.swimmer.name, 'Ali HASSAN')
         self.assertEqual(self.ath.patch(f'/api/v1/swimmers/{self.swimmer.id}/', {'instagram_url': 'https://instagram.com/ali'}, format='json').status_code, 200)
         self.assertEqual(self.ath.post(f'/api/v1/swimmers/{self.swimmer.id}/upload_photo/').status_code, 403)
+
+
+class PrelaunchLockTests(TestCase):
+    """Before launch the API gives nothing to a visitor who is not signed in."""
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+        from core.models import Country
+        from core.prelaunch import forget_cached_state
+        forget_cached_state()
+        self.U = get_user_model()
+        self.admin = self.U.objects.create_superuser('boss', 'boss@example.com', 'pw', role='ADMIN')
+        self.owner = self.U.objects.create_user('o@x.com', 'o@x.com', 'pw', role='CLUB')
+        Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        self.anon = APIClient()
+        self.as_admin = APIClient(); self.as_admin.force_authenticate(self.admin)
+
+    def _token_client(self, username):
+        from rest_framework.test import APIClient
+        c = APIClient()
+        tok = self.anon.post('/api/v1/auth/login/', {'username': username, 'password': 'pw'}, format='json').json()['access']
+        c.credentials(HTTP_AUTHORIZATION=f'Bearer {tok}')
+        return c
+
+    def test_locked_by_default_for_visitors_but_not_for_accounts(self):
+        from django.test import override_settings
+        with override_settings(PRELAUNCH_ENFORCED=True):
+            self.assertEqual(self.anon.get('/api/v1/countries/').status_code, 401)
+            self.assertEqual(self.anon.get('/api/v1/swimmers/').status_code, 401)
+            self.assertEqual(self.anon.post('/api/v1/auth/register/', {'username': 'x', 'email': 'x@x.com', 'password': 'Swim-strong-2026'}, format='json').status_code, 401)
+            # the doors that stay open: flags, sign-in, invite links
+            self.assertTrue(self.anon.get('/api/v1/features/').json()['prelaunch'])
+            self.assertEqual(self.anon.get('/api/v1/auth/invites/open/nope/').status_code, 404)
+            self.assertEqual(self._token_client('o@x.com').get('/api/v1/countries/').status_code, 200)
+            self.assertEqual(self._token_client('boss').get('/api/v1/countries/').status_code, 200)
+
+    def test_admin_opens_the_site(self):
+        from django.test import override_settings
+        with override_settings(PRELAUNCH_ENFORCED=True):
+            self.assertEqual(self._token_client('o@x.com').patch('/api/v1/features/', {'prelaunch': False}, format='json').status_code, 403)
+            self.assertEqual(self._token_client('boss').patch('/api/v1/features/', {'prelaunch': False}, format='json').status_code, 200)
+            self.assertFalse(self.anon.get('/api/v1/features/').json()['prelaunch'])
+            self.assertEqual(self.anon.get('/api/v1/countries/').status_code, 200)

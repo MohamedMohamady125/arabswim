@@ -228,6 +228,41 @@ function OrgAccountForm() {
   )
 }
 
+// Von Restorff: the one switch that opens or closes the whole site stands
+// apart from the section toggles, and says in words what each state means.
+function PrelaunchSwitch() {
+  const { features, refreshFeatures } = useFeatures()
+  const [busy, setBusy] = useState(false)
+  const on = features.prelaunch !== false
+  const flip = async () => {
+    const opening = on
+    if (opening && !window.confirm('Open the site to everyone?\n\nAnyone will be able to browse every page without signing in.')) return
+    setBusy(true)
+    try {
+      await updateFeatures({ prelaunch: !on })
+      refreshFeatures()
+      notify(opening ? 'The site is now open to everyone' : 'The site is locked again', 'success')
+    } catch {
+      notify('Could not change the lock. Try again.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className={`prelaunch-switch${on ? '' : ' off'}`} role="status">
+      <div>
+        <strong>{on ? 'Locked — the site is not public' : 'Open — the site is public'}</strong>
+        {on
+          ? 'Only admins can browse the site. An invited academy, club, federation or swimmer sees their own page and nothing else. Anyone not signed in sees a "launching soon" page.'
+          : 'Everyone can browse every page without signing in.'}
+      </div>
+      <button type="button" className={on ? 'btn btn-secondary' : 'btn btn-primary'} style={{ minHeight: 44 }} disabled={busy} onClick={flip}>
+        {busy ? 'Saving…' : on ? 'Open the site to everyone' : 'Lock the site again'}
+      </button>
+    </div>
+  )
+}
+
 function SiteFeatures() {
   const { features, refreshFeatures } = useFeatures()
   const [busy, setBusy] = useState(null) // key or group id being saved
@@ -716,6 +751,10 @@ export default function AdminDashboard() {
 
       {tab === 'site' && (
         <>
+          <div className="pad rule-b">
+            <SectHead title="Pre-launch lock" />
+            <PrelaunchSwitch />
+          </div>
           <div className="pad rule-b">
             <SectHead title="Site Sections" />
             <SiteFeatures />

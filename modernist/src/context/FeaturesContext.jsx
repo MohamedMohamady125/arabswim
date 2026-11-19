@@ -5,19 +5,22 @@ import { getFeatures } from '../api/core'
 // Default everything ON so the site behaves normally if the fetch fails.
 const DEFAULTS = { hall_of_fame: true, coaches: true, news: true, marketplace: true, media: true }
 
-const FeaturesContext = createContext({ features: DEFAULTS, flag: () => true, refreshFeatures: () => {} })
+const FeaturesContext = createContext({ features: DEFAULTS, loaded: false, flag: () => true, refreshFeatures: () => {} })
 
 export function FeaturesProvider({ children }) {
   const [features, setFeatures] = useState(DEFAULTS)
+  // `loaded`: the flags have been read (or the read failed) — the pre-launch
+  // lock waits for this before deciding what a visitor may see
+  const [loaded, setLoaded] = useState(false)
   const refreshFeatures = () => {
-    getFeatures().then((res) => setFeatures({ ...DEFAULTS, ...res.data })).catch(() => {})
+    getFeatures().then((res) => setFeatures({ ...DEFAULTS, ...res.data })).catch(() => {}).finally(() => setLoaded(true))
   }
   useEffect(refreshFeatures, [])
   // Missing key = visible; only a stored `false` hides (works for any
   // subfeature key like 'fed.tab.board' without pre-registering defaults)
   const flag = (key) => features[key] !== false
   return (
-    <FeaturesContext.Provider value={{ features, flag, refreshFeatures }}>
+    <FeaturesContext.Provider value={{ features, loaded, flag, refreshFeatures }}>
       {children}
     </FeaturesContext.Provider>
   )

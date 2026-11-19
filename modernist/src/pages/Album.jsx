@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { ImagePlus, Video, Play, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   getAlbum, getMediaItems, uploadPhotos, createMediaItem,
@@ -9,6 +9,7 @@ import { Loading, notify, Empty, BackLink } from '../components/ui'
 import { formatDate, mediaUrl } from '../utils'
 import Pic from '../components/Pic'
 import { useAuth } from '../context/AuthContext'
+import { usePrelaunch } from '../prelaunch'
 import { CropQueue } from '../components/ImageCropper'
 
 // Instagram-style display crops, stored per item on the backend
@@ -26,6 +27,8 @@ export default function Album() {
   const [album, setAlbum] = useState(null)
   // the club / academy / federation that owns the album manages it like an admin
   const isAdmin = siteAdmin || !!album?.can_edit
+  // pre-launch: an owner may open their own albums only
+  const { locked, ownPath } = usePrelaunch()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -149,6 +152,7 @@ export default function Album() {
   }
 
   if (loading) return <Loading label="Loading album" />
+  if (locked && !album?.can_edit) return <Navigate to={ownPath || '/'} replace />
   if (!album) return (
     <Empty label="Album not found" hint="It may have been deleted, or the link is wrong.">
       <Link to="/media" className="btn btn-secondary">All albums</Link>

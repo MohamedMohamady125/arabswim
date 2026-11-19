@@ -847,6 +847,8 @@ a.asw-partner-pill:hover {
   /* medal podium cards: compact so all three fit on 390px */
   .live-podium { gap: 6px !important; }
   .live-podium > div { padding: 9px 9px !important; }
+  /* swimmer tally: names are long, so the three cards sit under each other */
+  .live-podium.live-podium-stack { grid-template-columns: 1fr !important; }
   /* live meet view: stack Men/Women columns, tighter gutters */
   .live-gender-cols { grid-template-columns: 1fr !important; }
   .live-day-body { padding: 16px !important; }
@@ -1195,3 +1197,40 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .prof-tabs { display: flex; align-items: center; gap: 12px; padding: 12px 32px; }
 .prof-tabs .seg { flex-wrap: wrap; }
 @media (max-width: 760px) { .prof-tabs { padding: 0 16px; } .prof-tabs .seg { flex-wrap: nowrap; } }
+
+/* — Records page filters — every filter is a labelled group in a fixed place:
+   the record book on its own row, gender / pool / age / country under it */
+.recfilters { flex: 1 1 100%; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.recfilters-group { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.recfilters-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+.recfilters-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; }
+.recfilters .seg { display: flex; }
+.recfilters .seg-opt { justify-content: center; white-space: nowrap; min-height: 38px; }
+.recfilters .select { height: 38px; min-height: 38px; width: 100%; min-width: 150px; background-color: var(--color-bg); }
+.recfilters-country .select { min-width: 200px; }
+/* the seven books share one row equally on a laptop */
+.recfilters-book .seg { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); max-width: 860px; }
+@media (max-width: 760px) {
+  .recfilters { gap: 12px; }
+  /* phone: 4 books on the first line, 3 on the second, each line full width */
+  .recfilters-book .seg { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .recfilters-book .seg-opt { grid-column: span 3; padding: 6px 2px; font-size: 13px; }
+  .recfilters-book .seg-opt:nth-child(n+5) { grid-column: span 4; border-top: 1px solid var(--color-divider); }
+  .recfilters-book .seg-opt:nth-child(5) { border-left: 0; }
+  /* gender and pool side by side, age and country under them — all full width */
+  .recfilters-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .recfilters-row .seg-opt { flex: 1; padding: 6px 4px; }
+  .recfilters .select { min-width: 0; }
+  .recfilters-group:only-child, .recfilters-row > .recfilters-group:nth-child(3):last-child { grid-column: 1 / -1; }
+}
+
+/* — Rankings reads like the Records page: same type size and row height — */
+.rankings-table { font-size: 16px; }
+.rankings-table td { padding: 12px var(--space-2); }
+.rankings-table .asw-time { font-size: 16px; }
+@media (max-width: 760px) {
+  .rankings-table td { padding: 10px 6px; }
+  .rankings-table td.swimmer-cell { font-family: var(--font-heading); font-weight: 800; font-size: 14px; }
+  .rankings-table .asw-time { font-size: 14px; }
+}
+

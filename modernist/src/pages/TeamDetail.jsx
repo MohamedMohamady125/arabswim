@@ -63,12 +63,12 @@ const CLASS_COLORS = {
 
 const REC_TYPE_LABELS = {
   NATIONAL: 'National', ARAB: 'Arab', GCC: 'GCC', AFRICAN: 'African',
-  ASIAN: 'Asian', MEDITERRANEAN: 'Mediterranean', ISLAMIC: 'Islamic', WORLD: 'World',
+  ASIAN: 'Asian', MEDITERRANEAN: 'Mediterranean', ISLAMIC: 'Islamic', WORLD: 'World', OLYMPIC: 'Olympic',
 }
-const REC_TYPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
+const REC_TYPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD', 'OLYMPIC']
 const REC_TYPE_COLORS = {
   NATIONAL: 'var(--color-accent-800)', ARAB: 'var(--asw-gold)', GCC: 'var(--asw-fast)', AFRICAN: 'var(--asw-slow)',
-  ASIAN: 'var(--asw-bronze)', MEDITERRANEAN: 'var(--color-accent-2)', ISLAMIC: 'var(--asw-fast)', WORLD: 'var(--color-accent-800)',
+  ASIAN: 'var(--asw-bronze)', MEDITERRANEAN: 'var(--color-accent-2)', ISLAMIC: 'var(--asw-fast)', WORLD: 'var(--color-accent-800)', OLYMPIC: 'var(--asw-gold)',
 }
 
 // Chunking + Serial Position: 14 tabs read as three groups — the squad and

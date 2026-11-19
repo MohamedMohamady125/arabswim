@@ -466,3 +466,31 @@ class MeetPhotoEditTests(TestCase):
             self.assertRegex(meet.meet_photo.name, r'^championships/photos/p-[0-9a-f]{10}\w*\.jpg$')
             log = ChangeLog.objects.filter(model_label='championships.championship', object_id=meet.id).first()
             self.assertIn('meet_photo', log.changes)
+
+
+class TopPerformersArabWomenTests(TestCase):
+    """Top performances: the Arab + Women's filter must have swims to show even
+    when 30+ non-Arab women out-point every Arab woman."""
+
+    def test_arab_women_are_in_the_list_at_an_international_meet(self):
+        from rest_framework.test import APIClient
+        from core.models import Country, Event
+        from swimmers.models import Swimmer
+        from championships.models import Championship, Result
+        jpn = Country.objects.create(name='Japan', code='JPN', region='OTHER')
+        egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        ev = Event.objects.create(name='50 M Freestyle', distance=50, stroke='Freestyle', sort_order=1)
+        meet = Championship.objects.create(name='World Meet', date='2026-11-01', pool='LCM', country=jpn)
+        for i in range(35):
+            s = Swimmer.objects.create(name=f'Fast WOMAN{i}', sex='F', nationality=jpn, birth_year=2005)
+            Result.objects.create(championship=meet, event=ev, swimmer=s, nationality=jpn,
+                                  time_centiseconds=2500 + i, fina_points=900 - i, round_type='Finals')
+        arab = Swimmer.objects.create(name='Arab WOMAN', sex='F', nationality=egy, birth_year=2005)
+        Result.objects.create(championship=meet, event=ev, swimmer=arab, nationality=egy,
+                              time_centiseconds=2900, fina_points=600, round_type='Finals')
+        r = APIClient().get(f'/api/v1/championships/{meet.id}/stats/')
+        self.assertEqual(r.status_code, 200)
+        top = r.json()['top_performers']
+        self.assertIn('Arab WOMAN', [t['swimmer_name'] for t in top if t['is_arab'] and t['gender'] == 'F'])
+        self.assertEqual(sum(1 for t in top if not t['is_arab']), 30)
+        self.assertEqual([t['fina_points'] for t in top], sorted((t['fina_points'] for t in top), reverse=True))

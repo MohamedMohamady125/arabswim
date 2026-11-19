@@ -653,7 +653,7 @@ VALID_GROUPS = {
     'records': {'country', 'swimmer', 'event', 'type'},
 }
 RECORD_TYPES = {'ARAB', 'NATIONAL', 'GCC', 'AFRICAN', 'ASIAN',
-                'MEDITERRANEAN', 'ISLAMIC', 'WORLD'}
+                'MEDITERRANEAN', 'ISLAMIC', 'WORLD', 'OLYMPIC'}
 FILTER_KEYS = {'date_from', 'date_to', 'country', 'host_country', 'team',
                'event', 'pool', 'gender', 'age_min', 'age_max', 'record_type',
                'championship', 'round', 'classification', 'meet_category',

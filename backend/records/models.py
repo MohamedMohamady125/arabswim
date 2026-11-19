@@ -30,7 +30,7 @@ class Record(models.Model):
         ('ARAB', 'Arab'), ('NATIONAL', 'National'), ('GCC', 'GCC'),
         ('AFRICAN', 'African'), ('ASIAN', 'Asian'),
         ('MEDITERRANEAN', 'Mediterranean'), ('ISLAMIC', 'Islamic'),
-        ('WORLD', 'World'),
+        ('WORLD', 'World'), ('OLYMPIC', 'Olympic'),
     ]
     POOL_CHOICES = [('LCM', 'LCM'), ('SCM', 'SCM'), ('OW', 'Open Water')]
     AGE_CATEGORY_CHOICES = [

@@ -61,7 +61,10 @@ export default function Pic({ kind = 'person', src, w = 160, alt = '', fallback 
     <img
       src={useSized ? sized : original}
       srcSet={useSized ? SIZES.map((n) => `${imgUrl(src, n, opts)} ${n}w`).join(', ') : undefined}
-      sizes={useSized ? (eager ? `${w}px` : `auto, ${w}px`) : undefined}
+      // never `sizes="auto"`: browsers give such an image a fixed 300x150
+      // placeholder box instead of its own shape, so a slot that leans on the
+      // photo's proportions grew to 150px tall and cropped the swimmer
+      sizes={useSized ? `${w}px` : undefined}
       alt={alt}
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"

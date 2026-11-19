@@ -1340,7 +1340,7 @@ function FeaturedCards({ picks, sideBySide = false, stackOnPhone = false, hideRa
             cursor: p.swimmer_id ? 'pointer' : 'default', overflow: 'hidden',
           }}
         >
-          <div className="grayscale" style={{ width: sideBySide ? 'clamp(52px, 18vw, 84px)' : 84, alignSelf: 'stretch', minHeight: 96, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, overflow: 'hidden' }}>
+          <div className="grayscale" style={{ width: sideBySide ? 'clamp(64px, 20vw, 84px)' : 84, aspectRatio: '4 / 5' /* the portrait's own shape: shown whole, never cropped sideways */, alignSelf: 'center', flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, overflow: 'hidden' }}>
             {p.photo
               ? <Pic kind="person" w={160} src={p.photo} />
               : (p.name || '?').charAt(0)}
@@ -1585,6 +1585,10 @@ function MedalsTab({ meetId, isNational }) {
                 <MedalStandings
                   rows={tallyRows}
                   entityHeader={activeScope === 'country' ? 'Country' : activeScope === 'club' ? 'Club' : 'Swimmer'}
+                  // country / club cards: no 1st-2nd-3rd label (the order says it);
+                  // swimmer cards: long names need the full width, so they stack on phone
+                  podiumLabels={activeScope === 'swimmer'}
+                  stackPodiumOnPhone={activeScope === 'swimmer'}
                   rowKey={(row, i) => row.swimmer__id || row.team_key || row.swimmer__nationality__code || i}
                   // Every tally row drops down the medal detail: club/nation
                   // rows list each athlete's medals, swimmer rows list that

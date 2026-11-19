@@ -9,20 +9,16 @@ import { AGE_GROUPS, formatDate } from '../utils'
 // Computed scopes are calculated live from the results database;
 // the rest are curated manual record books.
 const COMPUTED_SCOPES = ['arab', 'gcc', 'national']
-// Hick's Law + Pareto: the three books this site computes itself are one tap
-// away; the continental and world books sit behind "More record books".
-const MAIN_SCOPES = [
+// Every record book is on screen, in this order (asked 2026-11-19) — seven
+// options, inside Miller's Law, so none hides behind a dropdown.
+const SCOPE_OPTIONS = [
   { value: 'arab', label: 'Arab' },
   { value: 'gcc', label: 'GCC' },
   { value: 'national', label: 'National' },
-]
-const SCOPE_OPTIONS = [
-  ...MAIN_SCOPES,
   { value: 'AFRICAN', label: 'African' },
   { value: 'ASIAN', label: 'Asian' },
-  { value: 'MEDITERRANEAN', label: 'Mediterranean' },
-  { value: 'ISLAMIC', label: 'Islamic' },
   { value: 'WORLD', label: 'World' },
+  { value: 'OLYMPIC', label: 'Olympic' },
 ]
 
 export const sortByEvent = (a, b) =>
@@ -315,36 +311,48 @@ export default function Records() {
           else), whose, which pool; then the narrowing dropdowns. Same order
           as Rankings so the two pages are learned once. */}
       <FilterBar count={showRows ? rows.length : null} noun={rows.length === 1 ? 'record' : 'records'} active={filtersChanged} onClear={() => setSp({}, { replace: true })}>
-        <div className="records-filters results-filters" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Seg options={MAIN_SCOPES} value={scope} onChange={setScope} />
-            <Seg
-              options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
-              value={gender}
-              onChange={setGender}
-            />
-            <Seg
-              options={[{ value: 'LCM', label: 'LCM 50m' }, { value: 'SCM', label: 'SCM 25m' }]}
-              value={pool}
-              onChange={setPool}
-            />
+        {/* Proximity + Common Region: each filter is a labelled group; the record
+            book (it decides everything else) has its own full row, the narrowing
+            filters share the row under it. Same places on phone and laptop. */}
+        <div className="recfilters">
+          <div className="recfilters-group recfilters-book">
+            <span className="recfilters-label">Record book</span>
+            <Seg options={SCOPE_OPTIONS} value={scope} onChange={setScope} />
           </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            {needsCountry && (
-              <select className="select" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
-                <option value="">Select country…</option>
-                {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            )}
+          <div className="recfilters-row">
+            <div className="recfilters-group">
+              <span className="recfilters-label">Gender</span>
+              <Seg
+                options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+                value={gender}
+                onChange={setGender}
+              />
+            </div>
+            <div className="recfilters-group">
+              <span className="recfilters-label">Pool</span>
+              <Seg
+                options={[{ value: 'LCM', label: 'LCM 50m' }, { value: 'SCM', label: 'SCM 25m' }]}
+                value={pool}
+                onChange={setPool}
+              />
+            </div>
             {isComputed && (
-              <select className="select" aria-label="Age category" style={{ flex: '0 1 120px', width: 'auto', minWidth: 0 }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-                {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'All ages' : g}</option>)}
-              </select>
+              <label className="recfilters-group">
+                <span className="recfilters-label">Age</span>
+                <select className="select" value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
+                  {AGE_GROUPS.map((g) => <option key={g} value={g}>{g === 'OPEN' ? 'All ages' : g}</option>)}
+                </select>
+              </label>
             )}
-            <select className="select" aria-label="More record books" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 210 }} value={isComputed ? '' : scope} onChange={(e) => setScope(e.target.value || DEFAULTS.scope)}>
-              <option value="">More record books…</option>
-              {SCOPE_OPTIONS.filter((o) => !COMPUTED_SCOPES.includes(o.value)).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            {needsCountry && (
+              <label className="recfilters-group recfilters-country">
+                <span className="recfilters-label">Country</span>
+                <select className="select" value={country} onChange={(e) => setCountry(e.target.value)}>
+                  <option value="">Select country…</option>
+                  {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
+            )}
           </div>
         </div>
       </FilterBar>

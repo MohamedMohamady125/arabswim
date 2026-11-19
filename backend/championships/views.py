@@ -887,18 +887,22 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         ).order_by('-fina_points').select_related('swimmer', 'swimmer__nationality', 'nationality', 'event')
         top_list = []
         seen = set()
-        # Cap per gender, not overall — otherwise a men-dominant meet fills
-        # the whole list and the Women filter shows almost nothing.
-        gender_counts = {}
+        # Cap per gender AND per region (Arab / other), not overall. The page
+        # filters this one list by gender and by "Arab": at an international
+        # meet the 30 best women were all non-Arab, so Arab + Women's showed
+        # nobody. Every combination of the two filters now has its own 30.
+        bucket_counts = {}
         for r in top_candidates:
             key = (r.swimmer_id, r.event_id)
             if key in seen:
                 continue
-            if gender_counts.get(r.swimmer.sex, 0) >= 30:
+            _nat = r.nationality or r.swimmer.nationality
+            bucket = (r.swimmer.sex, bool(_nat and _nat.region in ('ARAB', 'GCC')))
+            if bucket_counts.get(bucket, 0) >= 30:
                 continue
             if r.fina_points == best_lookup.get(key):
                 seen.add(key)
-                gender_counts[r.swimmer.sex] = gender_counts.get(r.swimmer.sex, 0) + 1
+                bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
                 top_list.append({
                     'swimmer_id': r.swimmer.id,
                     'swimmer_name': r.swimmer.name,
@@ -912,8 +916,6 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     'time': r.formatted_time,
                     'fina_points': r.fina_points,
                 })
-                if all(c >= 30 for c in gender_counts.values()) and len(gender_counts) >= 2:
-                    break
 
         # Personal bests achieved at this meet
         # Use a subquery approach: get each swimmer+event best at this meet,

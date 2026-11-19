@@ -41,6 +41,8 @@ export default function MedalStandings({
   renderEntity,           // (row, i) => node for the entity cell
   renderPodiumChip,       // (row) => compact node (flag + code / logo + name)
   showPodium = true,
+  podiumLabels = true,    // false hides the 1st / 2nd / 3rd label in the podium cards
+  stackPodiumOnPhone = false, // true: the three cards sit under each other on phone
   maxRows,                // optionally cap the table (e.g. compact embeds)
   rowKey,                 // (row, i) => key
   onRowClick,             // optional (row) => void — row becomes clickable
@@ -58,7 +60,7 @@ export default function MedalStandings({
   return (
     <div>
       {showPodium && top3.length === 3 && (
-        <div className="live-podium" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+        <div className={`live-podium${stackPodiumOnPhone ? ' live-podium-stack' : ''}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
           {top3.map((r, i) => (
             <div key={key(r, i)} style={{
               /* white card with the standard navy top frame */
@@ -67,9 +69,11 @@ export default function MedalStandings({
               border: '1px solid var(--color-divider)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, minWidth: 0, overflow: 'hidden' }}>
-                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-neutral-700)' }}>
-                  {PODIUM_META[i].label}
-                </span>
+                {podiumLabels && (
+                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-neutral-700)' }}>
+                    {PODIUM_META[i].label}
+                  </span>
+                )}
                 {chip(r, i)}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

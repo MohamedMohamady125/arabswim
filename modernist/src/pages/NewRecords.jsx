@@ -10,7 +10,7 @@ import { formatDate, RECORD_TYPES, mediaUrl, parseTime, recordEventLabel } from 
 import Pic from '../components/Pic'
 
 const TYPE_LABEL = Object.fromEntries(RECORD_TYPES.map((t) => [t.value, t.label]))
-const SCOPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD']
+const SCOPE_ORDER = ['NATIONAL', 'ARAB', 'GCC', 'AFRICAN', 'ASIAN', 'MEDITERRANEAN', 'ISLAMIC', 'WORLD', 'OLYMPIC']
 
 const AGE_CATEGORIES = ['OPEN', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18']
 const ageCategoryLabel = (v) => (!v || v === 'OPEN' ? 'Open' : v)

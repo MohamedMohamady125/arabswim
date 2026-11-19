@@ -1315,8 +1315,6 @@ const TABS = [
   { value: 'transfers', label: 'Representations' },
   { value: 'gallery', label: 'Gallery' },
 ]
-// Hick's Law: the tabs most visitors open stay in the bar; the rest sit behind More
-const MORE_TABS = ['qualifying', 'compare', 'transfers', 'gallery']
 
 /* ── Main page ─────────────────────────────────────────────────────────── */
 
@@ -1448,7 +1446,6 @@ export default function SwimmerProfile() {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [historyFailed, setHistoryFailed] = useState(false)
   const [eventsFailed, setEventsFailed] = useState(false)
-  const [moreOpen, setMoreOpen] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   // Peak-End Rule: confirm a finished save in plain words
   const [notice, setNotice] = useState('')
@@ -1555,19 +1552,11 @@ export default function SwimmerProfile() {
     return visibleTabs.some((t) => t.value === activeTab) ? activeTab : 'overall'
   })()
 
-  // tab labels carry their count where one is known (Working Memory)
-  const tabCount = { meets: stats?.total_championships, medals: stats?.medals?.total, times: events.length }
-  const tabOption = (t) => {
-    const n = tabCount[t.value]
-    const label = <>{t.label}{n > 0 && <span className="swimmer-tab-count asw-num">{Number(n).toLocaleString('en-US')}</span>}</>
-    return tabHidden(t.value)
-      ? { ...t, label: <span style={{ opacity: 0.4 }} title="Hidden from visitors (admin visibility settings)">{label}</span> }
-      : { ...t, label }
-  }
-  const mainTabs = visibleTabs.filter((t) => !MORE_TABS.includes(t.value))
-  const moreTabs = visibleTabs.filter((t) => MORE_TABS.includes(t.value))
-  const inMore = moreTabs.some((t) => t.value === effectiveTab)
-  const showMore = moreOpen || inMore
+  // plain names only: no counts in the tabs and no More menu — every tab
+  // sits in the one bar, which scrolls sideways on a narrow screen
+  const tabOption = (t) => (tabHidden(t.value)
+    ? { ...t, label: <span style={{ opacity: 0.4 }} title="Hidden from visitors (admin visibility settings)">{t.label}</span> }
+    : t)
 
   const chip = (label, value) => (
     <span className="tag tag-neutral" style={{ gap: 6 }}>
@@ -1765,25 +1754,7 @@ export default function SwimmerProfile() {
 
       {/* ── Tabs ── */}
       <div className="rule-b tabbar tabbar-sticky" style={{ padding: '16px 32px', overflowX: 'auto' }}>
-        <Seg
-          tabs
-          options={[
-            ...mainTabs.map(tabOption),
-            ...(moreTabs.length > 0 ? [{ value: '__more', label: <span aria-expanded={showMore}>More {showMore ? '↑' : '↓'}</span> }] : []),
-          ]}
-          value={inMore ? '__more' : effectiveTab}
-          onChange={(v) => {
-            if (v === '__more') {
-              // closing More while one of its tabs is open goes back to Overall
-              if (inMore) { setMoreOpen(false); setActiveTab('overall') } else setMoreOpen((o) => !o)
-            } else { setMoreOpen(false); setActiveTab(v) }
-          }}
-        />
-        {showMore && moreTabs.length > 0 && (
-          <div className="swimmer-more-tabs">
-            <Seg options={moreTabs.map(tabOption)} value={effectiveTab} onChange={setActiveTab} />
-          </div>
-        )}
+        <Seg tabs options={visibleTabs.map(tabOption)} value={effectiveTab} onChange={setActiveTab} />
       </div>
 
       {/* ── Tab content ── */}

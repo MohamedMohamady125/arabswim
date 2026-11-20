@@ -188,3 +188,27 @@ export function nameInitials(name, max = 2) {
 // — the event exactly as stored, a bar, the pool code. Open water has no pool code.
 export const recordEventLabel = (eventName, pool) =>
   `${eventName || ''}${pool && pool !== 'OW' ? ` | ${pool}` : ''}`
+
+// ---- age categories in a meet's results -----------------------------------
+// Labels differ in case and spacing between the program and the results file
+export const normCategory = (s) => (s || '').toString().toLowerCase().replace(/[\s_-]+/g, '')
+
+// Split an event's results into one group per age category, in the order the
+// categories first appear (the order of the results file). `only` keeps a
+// single category (a program line that names one). Each category is its own
+// race with its own podium, so they must never be listed as one ranking.
+export function resultsByCategory(rows, only = '') {
+  const want = normCategory(only)
+  const hasCats = rows.some((r) => normCategory(r.category))
+  if (!hasCats) return [{ category: '', rows }]
+  const groups = []
+  rows.forEach((r) => {
+    const key = normCategory(r.category)
+    if (want && key !== want) return
+    let g = groups.find((x) => x.key === key)
+    if (!g) { g = { key, category: r.category || '', rows: [] }; groups.push(g) }
+    g.rows.push(r)
+  })
+  return groups
+}
+

@@ -295,3 +295,47 @@ class RecordCountryFollowsResultTests(_Fixture):
         restamp_result_nationalities(self.swimmer)
         manual.refresh_from_db()
         self.assertEqual(manual.country_id, self.tun.id)
+
+
+class RecordGoesWithItsResultTests(_Fixture):
+    """Deleting a swim removes the record made from it and hands the record
+    book back to the fastest swim still on file."""
+
+    def setUp(self):
+        self.other = Swimmer.objects.create(name='Other TUNISIAN', sex='M', nationality=self.tun, birth_year=1998)
+        self.old = Result.objects.create(swimmer=self.other, championship=self.champ, event=self.e50,
+                                         nationality=self.tun, time_centiseconds=2350)
+        check_and_update_records(self.old)
+        self.wrong = self._result(self.e50, 216, [])          # a typing slip that became the record
+        check_and_update_records(self.wrong)
+        self.assertEqual(Record.objects.filter(record_type='ARAB', event=self.e50).order_by('time_centiseconds').first().time_centiseconds, 216)
+
+    def test_deleting_the_result_removes_its_records_and_restores_the_book(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            self.wrong.delete()
+        self.assertFalse(Record.objects.filter(time_centiseconds=216).exists())
+        self.assertFalse(Record.objects.filter(result__isnull=True, source='AUTO').exists())
+        for scope in ('ARAB', 'NATIONAL'):
+            best = Record.objects.filter(record_type=scope, event=self.e50).order_by('time_centiseconds').first()
+            self.assertEqual((best.swimmer_id, best.time_centiseconds), (self.other.id, 2350))
+
+    def test_hand_entered_records_survive(self):
+        manual = Record.objects.create(swimmer=self.swimmer, event=self.e100, record_type='NATIONAL', pool='LCM',
+                                       time_centiseconds=5000, country=self.tun, result_date='2020-01-01', source='MANUAL')
+        with self.captureOnCommitCallbacks(execute=True):
+            self.wrong.delete()
+        self.assertTrue(Record.objects.filter(pk=manual.pk).exists())
+
+    def test_command_cleans_records_left_behind_earlier(self):
+        from io import StringIO
+        from django.core.management import call_command
+        # the old behaviour: the result vanished, the record stayed
+        Record.objects.filter(result=self.wrong).update(result=None)
+        Result.objects.filter(pk=self.wrong.pk)._raw_delete(Result.objects.db)
+        out = StringIO()
+        call_command('clean_orphan_records', stdout=out)                    # report only
+        self.assertTrue(Record.objects.filter(time_centiseconds=216).exists())
+        call_command('clean_orphan_records', '--apply', stdout=out)
+        self.assertFalse(Record.objects.filter(time_centiseconds=216).exists())
+        best = Record.objects.filter(record_type='ARAB', event=self.e50).order_by('time_centiseconds').first()
+        self.assertEqual(best.time_centiseconds, 2350)

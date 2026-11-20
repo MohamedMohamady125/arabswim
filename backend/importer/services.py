@@ -923,6 +923,19 @@ def match_swimmers_preview(preview_data, include_all=False):
 
 
 @transaction.atomic
+def impossible_time(time_cs, distance_m):
+    """True when a time is faster than any swimmer has ever moved: more
+    than 2.6 m/s averaged over the race (the 50 m freestyle world record is
+    about 2.4 m/s). `distance_m` is the whole race, relays included."""
+    try:
+        distance_m = int(distance_m or 0)
+    except (TypeError, ValueError):
+        return False
+    if distance_m <= 0 or time_cs <= 0:
+        return False
+    return time_cs < distance_m * 100 / 2.6
+
+
 def _find_same_meet(meet_name, champ_date, pool, country):
     """Find an existing championship that is the same physical meet.
 
@@ -943,6 +956,37 @@ def _find_same_meet(meet_name, champ_date, pool, country):
         if fuzz.token_sort_ratio(meet_name.upper(), champ.name.upper()) >= 90:
             return champ
     return None
+
+
+def _find_calendar_placeholder(meet_name, champ_date):
+    """A meet added from the Calendar before it started is an empty
+    placeholder waiting for its results. When a file for the same meet is
+    imported, the results belong on that placeholder — not on a second meet
+    with a slightly different name ("5th Arab Aquatics Championships" on the
+    calendar, "... 2026" in the file), which is how one championship ended up
+    listed twice.
+
+    Only an EMPTY calendar-only meet whose dates cover the file's date and
+    whose name is the same once years are ignored qualifies; exactly one such
+    meet must exist."""
+    import re as _re
+    from thefuzz import fuzz
+    from django.db.models import Q
+
+    def key(text):
+        text = _re.sub(r'\b(19|20)\d{2}\b', ' ', normalize_name(text or ''))
+        return _re.sub(r'\s+', ' ', text).strip().upper()
+
+    wanted = key(meet_name)
+    if not wanted or not champ_date:
+        return None
+    pad = timedelta(days=1)
+    qs = (Championship.objects.filter(is_calendar_only=True, results__isnull=True)
+          .filter(Q(date__lte=champ_date + pad),
+                  Q(end_date__gte=champ_date - pad) | Q(end_date__isnull=True, date__gte=champ_date - pad))
+          .distinct())
+    hits = [c for c in qs if fuzz.token_sort_ratio(wanted, key(c.name)) >= 92]
+    return hits[0] if len(hits) == 1 else None
 
 
 def _extend_meet_dates(championship, new_date, new_end_date=None):
@@ -1072,6 +1116,17 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             championship.is_calendar_only = False
             championship.is_published = True
             championship.save(update_fields=['is_calendar_only', 'is_published'])
+    elif (existing := _find_calendar_placeholder(
+            (championship_details or {}).get('name') or meet_info.get('name', ''),
+            _parse_date((championship_details or {}).get('date') or meet_info.get('date', '')))):
+        # The meet is already on the calendar, empty, waiting for results:
+        # fill it instead of creating a second copy. (Excel imports never
+        # fuzzy-merge into meets that HAVE results — see above — but an empty
+        # calendar placeholder with the same name and dates is the same meet.)
+        championship = existing
+        championship.is_calendar_only = False
+        championship.is_published = True
+        championship.save(update_fields=['is_calendar_only', 'is_published'])
     elif championship_details:
         # Use user-provided details from the form
         champ_date = _parse_date(championship_details.get('date', ''))
@@ -1496,6 +1551,23 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
             time_cs = result_data['time_centiseconds']
             status = result_data.get('status', 'OK') or 'OK'
             is_status_row = status not in ('OK', 'HC', 'TLD')
+            # A time no human can swim is a typing slip in the file ("2.16"
+            # for a 200 m, meant 2:16.xx). Storing it would crown it as an Arab
+            # record and rank it first everywhere — it is refused and listed
+            # for the admin to correct instead.
+            # the site's own event knows the whole race distance (relays included)
+            ev_dist = getattr(db_event, 'distance', 0) or event_data.get('event_distance') or 0
+            if time_cs > 0 and impossible_time(time_cs, ev_dist):
+                from .parsers.base import format_centiseconds
+                skipped_results += 1
+                skipped_details.append({
+                    'swimmer': parsed_name,
+                    'event': event_data.get('event_name', ''),
+                    'round': result_data.get('round_type', ''),
+                    'reason': f'Impossible time {format_centiseconds(time_cs)} for {ev_dist} m — '
+                              f'check the cell in the file (minutes typed as "2.16"?) and import it again',
+                })
+                continue
             if time_cs <= 0 and not is_status_row:
                 skipped_results += 1
                 skipped_details.append({
@@ -1810,6 +1882,13 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                     gender_code,
                     championship.pool,
                 ) if time_cs > 0 else 0
+                if time_cs > 0 and not fina_pts:
+                    # the file's wording for the event ("50 Fly") is not in the
+                    # points table: use the site's own name for the same event
+                    fina_pts = calculate_points(
+                        time_cs, db_event.name,
+                        gender_code if gender_code in ('M', 'F', 'X') else (swimmer.sex or 'M'),
+                        championship.pool)
 
                 new_result = Result.objects.create(
                     swimmer=swimmer,

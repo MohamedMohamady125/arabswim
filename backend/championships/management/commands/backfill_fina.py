@@ -22,7 +22,12 @@ class Command(BaseCommand):
         total = qs.count()
         self.stdout.write(f'{total} timed results without FINA points')
         filled = 0
+        from importer.services import impossible_time
         for r in qs.iterator():
+            # a typing slip in the source (2.16 s for a 200 m) must not be
+            # rewarded with points — it is waiting to be corrected
+            if impossible_time(r.time_centiseconds, r.event.distance):
+                continue
             gender = r.swimmer.sex if r.swimmer else 'M'
             pool = r.championship.pool if r.championship else 'LCM'
             pts = calculate_points(r.time_centiseconds, r.event.name, gender, pool)

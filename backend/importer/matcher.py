@@ -696,6 +696,44 @@ def _arab_variant_match(parsed_result, category='', meet_date=None):
     return _corroborate_variant_hits(hits, parsed_result, category, meet_date)
 
 
+def _initial_variant_match(parsed_result, file_country):
+    """HY-TEK and many start lists print middle names as initials:
+    "Mohammed M ALOTAIBI" is the profile "Mohammed MANSOUR ALOTAIBI".
+    Importing such a file used to create a second profile for every swimmer
+    who already had one.
+
+    Deliberately narrow, so two different people are never merged:
+      - the file states the nationality and a birth year (or an age);
+      - same nationality, birth year within one year;
+      - same number of name parts, each part equal — except that a single
+        letter in the file may stand for a part that starts with that letter;
+      - at least one such initial, and the first and last parts are full names;
+      - exactly one profile fits.
+    """
+    birth_year = getattr(parsed_result, 'birth_year', None)
+    if not file_country or not birth_year:
+        return None
+    parts = normalize_for_matching(parsed_result.swimmer_name or '').split()
+    if len(parts) < 3 or len(parts[0]) < 2 or len(parts[-1]) < 2:
+        return None
+    if not any(len(p) == 1 for p in parts[1:-1]):
+        return None
+    hits = []
+    qs = Swimmer.objects.filter(nationality=file_country, is_relay_team=False,
+                                name__istartswith=parts[0] + ' ', name__iendswith=' ' + parts[-1])
+    for s in qs[:50]:
+        other = normalize_for_matching(s.name).split()
+        if len(other) != len(parts):
+            continue
+        if not all(a == b or (len(a) == 1 and b.startswith(a) and len(b) > 1) for a, b in zip(parts, other)):
+            continue
+        year = _get_swimmer_birth_year(s)
+        if not year or abs(year - birth_year) > 1:
+            continue
+        hits.append(s)
+    return hits[0] if len(hits) == 1 else None
+
+
 def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=None):
     """
     Find the best matching swimmer in the database.
@@ -753,9 +791,11 @@ def find_matching_swimmer(parsed_result, threshold=92, category='', meet_date=No
                       if c.nationality_id in (None, file_country.id)]
 
     if not candidates:
-        # Variant spelling of an existing swimmer? (EGY truncation/subset
-        # rules, or the general Arab dropped-middle-name rule)
-        swimmer = (_egy_variant_match(parsed_result, category, meet_date)
+        # Variant spelling of an existing swimmer? (a middle name printed as
+        # an initial, EGY truncation/subset rules, or the general Arab
+        # dropped-middle-name rule)
+        swimmer = (_initial_variant_match(parsed_result, file_country)
+                   or _egy_variant_match(parsed_result, category, meet_date)
                    or _arab_variant_match(parsed_result, category, meet_date))
         if swimmer:
             return swimmer, 93, 'variant'

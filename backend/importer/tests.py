@@ -4784,3 +4784,62 @@ Heat 1 of 1 Timed Finals Starts at 05:00 PM
             (1, 'M', '19 & Over', '400', 'IM', 'FINALS', 'MORNING'),
             (1, 'X', '15-16', '4x100', 'medley', 'FINALS', 'EVENING'),   # 201 is a session number, not day 2
         ])
+
+
+class ArabChampionshipImportLessonsTests(TestCase):
+    """What went wrong importing the 5th Arab Aquatics Championships (Nov 2026):
+    a second copy of the meet, four impossible times that became records, and
+    a duplicate profile for every swimmer printed with a middle initial."""
+
+    def test_impossible_times_are_recognised(self):
+        from importer.services import impossible_time
+        self.assertTrue(impossible_time(216, 200))      # "2.16" typed for 2:16.xx
+        self.assertTrue(impossible_time(109, 100))
+        self.assertTrue(impossible_time(28, 50))
+        self.assertFalse(impossible_time(2091, 50))     # 20.91, the men's 50 free world record
+        self.assertFalse(impossible_time(4686, 100))
+        self.assertFalse(impossible_time(8077, 200))    # a 4x50 relay in 1:20.77
+        self.assertFalse(impossible_time(0, 100))       # DNS / DQ rows carry no time
+        self.assertFalse(impossible_time(5000, 0))      # unknown distance: never refused
+
+    def test_results_fill_the_empty_calendar_meet_instead_of_a_second_one(self):
+        import datetime
+        from core.models import Country
+        from championships.models import Championship
+        from importer.services import _find_calendar_placeholder
+        bhr = Country.objects.create(name='Bahrain', code='BHR', region='GCC')
+        cal = Championship.objects.create(name='5th Arab Aquatics Championships', date='2026-11-19',
+                                          end_date='2026-11-23', pool='LCM', country=bhr, is_calendar_only=True)
+        find = _find_calendar_placeholder
+        self.assertEqual(find('5th Arab Aquatics Championships 2026', datetime.date(2026, 11, 19)), cal)
+        self.assertEqual(find('5th Arab Aquatics Championships 2026', datetime.date(2026, 11, 21)), cal)   # a later day's file
+        self.assertIsNone(find('5th Arab Aquatics Championships 2026', datetime.date(2027, 11, 19)))        # next year's edition
+        self.assertIsNone(find('GCC Championships 2026', datetime.date(2026, 11, 19)))                      # another meet, same dates
+        cal.is_calendar_only = False
+        cal.save()
+        self.assertIsNone(find('5th Arab Aquatics Championships 2026', datetime.date(2026, 11, 19)))        # only empty placeholders
+
+    def test_middle_initial_matches_the_existing_profile_and_nothing_else(self):
+        from types import SimpleNamespace
+        from core.models import Country
+        from swimmers.models import Swimmer
+        from importer.matcher import find_matching_swimmer, invalidate_norm_cache, get_country_map
+        ksa = Country.objects.create(name='Saudi Arabia', code='KSA', region='GCC')
+        kwt = Country.objects.create(name='Kuwait', code='KWT', region='GCC')
+        full = Swimmer.objects.create(name='Mohammed MANSOUR ALOTAIBI', sex='M', nationality=ksa, birth_year=1999)
+        Swimmer.objects.create(name='Hussain ALI ALBUSAEED', sex='M', nationality=ksa, birth_year=2015)
+        invalidate_norm_cache()
+        try:
+            get_country_map.cache_clear()
+        except AttributeError:
+            pass
+
+        def row(name, year, code='KSA'):
+            return SimpleNamespace(swimmer_name=name, birth_year=year, nationality_code=code, club='')
+        got, _score, kind = find_matching_swimmer(row('Mohammed M ALOTAIBI', 1999))
+        self.assertEqual((got, kind), (full, 'variant'))
+        self.assertEqual(find_matching_swimmer(row('Mohammed M ALOTAIBI', 2000))[0], full)          # age-derived year, one off
+        self.assertIsNone(find_matching_swimmer(row('Mohammed M ALOTAIBI', 2008))[0])               # another generation
+        self.assertIsNone(find_matching_swimmer(row('Mohammed S ALOTAIBI', 1999))[0])               # different middle name
+        self.assertIsNone(find_matching_swimmer(row('Mohammed M ALOTAIBI', 1999, 'KWT'))[0])        # another country
+        self.assertIsNone(find_matching_swimmer(row('Ali H ALBUSAEED', 2015))[0])                   # first name differs

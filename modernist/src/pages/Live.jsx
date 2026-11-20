@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getLiveMeets, getChampionships, getMeetProgram, getMeetLive, getChampionshipStats, getChampionshipResults, getMeetDocuments, uploadMeetDocument, deleteMeetDocument } from '../api/championships'
 import { useAuth } from '../context/AuthContext'
 import { getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
-import { resultsByCategory } from '../utils'
+import { resultsByCategory, normCategory } from '../utils'
 import { formatDateRange, formatNumber, formatDate, mediaUrl, nameInitials } from '../utils'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, MedalIcon, Seg } from '../components/ui'
@@ -176,72 +176,34 @@ function InlineResults({ meetId, meet, item }) {
 }
 
 /* One program entry — order no, event name, gender, chips. Official rows expand in place. */
-// `grouped`: the row sits under its event's heading and is named by its age category
-function ProgramRow({ item, seq, meetId, meet, hasResults, last, grouped = false }) {
+// `grouped`: the row sits under its event's heading and is named by its age category.
+// Von Restorff: a row is quiet by default — the round is a small label, only a
+// final carries the medal mark, and "Results" is a text cue, not a solid button.
+// Fitts's Law: the whole 48px row is the tap target.
+function ProgramRow({ item, meetId, meet, hasResults, last, grouped = false }) {
   const [open, setOpen] = useState(false)
   const isFinal = item.session === 'FINALS'
   const g = GENDER_STYLE[item.gender] || GENDER_STYLE.X
+  const round = SESSION_LABEL[item.session] || ''
   const inner = (
-    <div className="live-row" style={{
-      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-      borderBottom: last ? 'none' : '1px solid var(--color-neutral-200)',
-      background: '#fff',
-    }}>
-      <span className="asw-num" style={{
-        width: 30, height: 30, borderRadius: '50%', flex: 'none', display: 'inline-flex', alignItems: 'center',
-        justifyContent: 'center', fontSize: 13, fontWeight: 800,
-        background: isFinal ? 'var(--color-accent-800)' : '#fff',
-        color: isFinal ? '#fff' : 'var(--color-neutral-700)',
-        border: isFinal ? 'none' : '1.5px solid var(--color-neutral-300)',
-      }}>
-        {/* under an event heading the rows are numbered 1..n in their own order */}
-        {grouped ? seq : (item.order || seq)}
-      </span>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, lineHeight: 1.3 }}>
-            {grouped ? (item.age_category || 'Open') : item.event_name}
-          </span>
-          {!grouped && (
-            <span style={{
-              fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
-              padding: '2px 8px', borderRadius: 0, background: g.bg, color: g.color, flex: 'none',
-            }}>
-              {g.label}
-            </span>
-          )}
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 3, fontWeight: 600 }}>
-          {SESSION_LABEL[item.session] || item.session}
-          {!grouped && item.age_category ? ` · ${item.age_category}` : ''}
-        </div>
+    <div className={`live-row${last ? ' last' : ''}`}>
+      <div className="live-row-main">
+        <span className="live-row-title">{grouped ? (item.age_category || 'Open') : item.event_name}</span>
+        {!grouped && <span className="live-row-gender" style={{ background: g.bg, color: g.color }}>{g.label}</span>}
+        {!grouped && item.age_category && <span className="live-row-cat">{item.age_category}</span>}
       </div>
-      {isFinal && (
-        <span className="hide-mobile" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800,
-          letterSpacing: '0.08em', padding: '4px 12px', borderRadius: 0,
-          border: '1px solid color-mix(in srgb, var(--asw-gold) 55%, #fff)', color: 'var(--color-accent-900)',
-          background: 'color-mix(in srgb, var(--asw-gold) 18%, #fff)', flex: 'none',
-        }}>
-          <MedalDots size={13} /> MEDAL
+      {round && (
+        <span className={`live-round${isFinal ? ' final' : ''}`}>
+          {isFinal && <MedalDots size={12} gap={0} />}
+          {round}
         </span>
       )}
       {hasResults ? (
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4, flex: 'none',
-          fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', padding: '4px 12px', borderRadius: 0,
-          background: 'var(--color-accent-800)', color: '#fff',
-        }}>
-          OFFICIAL
-          <span className="live-chevron" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease' }}>›</span>
+        <span className="live-status on">
+          Results <span className="live-chevron" aria-hidden="true" style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none' }}>›</span>
         </span>
       ) : (
-        <span style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', padding: '4px 12px', borderRadius: 0, flex: 'none',
-          border: '1px solid var(--color-neutral-300)', color: 'var(--color-neutral-500)', background: '#fff',
-        }}>
-          SCHEDULED
-        </span>
+        <span className="live-status">Scheduled</span>
       )}
     </div>
   )
@@ -288,7 +250,7 @@ function clusterByEvent(items) {
 }
 
 /* Program for one day, grouped Morning / Evening as session cards */
-function DayProgram({ day, meetId, meet, resultKeys }) {
+function DayProgram({ day, meetId, meet, resultKeys, gender = '', category = '' }) {
   if (!day || (day.items || []).length === 0) {
     return <Empty label="No program published for this day yet." hint="Pick another day in the Schedule tab, or check back later." />
   }
@@ -296,6 +258,11 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
   // leading "–" row before event 1.
   const bySchedule = (a, b) => (a.order || 9999) - (b.order || 9999) || (a.id || 0) - (b.id || 0)
   const items = [...day.items].sort(bySchedule)
+    .filter((i) => !gender || i.gender === gender)
+    .filter((i) => !category || normCategory(i.age_category) === normCategory(category))
+  if (items.length === 0) {
+    return <Empty label="No races match these filters" hint="Choose another gender or age category above." />
+  }
   const groups = []
   const morning = items.filter((i) => i.time_of_day === 'MORNING')
   const evening = items.filter((i) => i.time_of_day === 'EVENING')
@@ -338,33 +305,35 @@ function DayProgram({ day, meetId, meet, resultKeys }) {
           </div>
           {/* Proximity: an event swum by several age categories is named once,
               with its categories under it in a fixed order (heats before
-              finals inside each category) — not scattered down the list. */}
-          {clusterByEvent(items).map((c, ci, all) => {
-            const row = (item, i, grouped, last) => (
-              <ProgramRow
-                key={item.id}
-                item={item}
-                seq={i + 1}
-                meetId={meetId}
-                meet={meet}
-                hasResults={resultKeys.has(`${item.event}|${item.gender}`)}
-                last={last}
-                grouped={grouped}
-              />
-            )
-            if (c.items.length === 1) return row(c.items[0], ci, false, ci === all.length - 1)
-            const g = GENDER_STYLE[c.gender] || GENDER_STYLE.X
-            return (
-              <div key={c.key}>
-                <div className="live-event-head">
-                  <span>{c.name}</span>
-                  <span style={{ background: g.bg, color: g.color }}>{g.label}</span>
-                  <span className="live-event-count">{c.items.length} races</span>
+              finals inside each category). On a laptop the blocks sit two
+              across, so an event's women and men are side by side. */}
+          <div className={`live-clusters${items.some((i) => i.gender === 'F') && items.some((i) => i.gender === 'M') ? ' by-gender' : ''}`}>
+            {clusterByEvent(items).map((c) => {
+              const row = (item, grouped, last) => (
+                <ProgramRow
+                  key={item.id}
+                  item={item}
+                  meetId={meetId}
+                  meet={meet}
+                  hasResults={resultKeys.has(`${item.event}|${item.gender}`)}
+                  last={last}
+                  grouped={grouped}
+                />
+              )
+              if (c.items.length === 1) return <div key={c.key} className={`live-cluster g-${c.gender}`}>{row(c.items[0], false, true)}</div>
+              const g = GENDER_STYLE[c.gender] || GENDER_STYLE.X
+              return (
+                <div key={c.key} className={`live-cluster g-${c.gender}`}>
+                  <div className="live-event-head">
+                    <span>{c.name}</span>
+                    <span style={{ background: g.bg, color: g.color }}>{g.label}</span>
+                    <span className="live-event-count">{c.items.length} races</span>
+                  </div>
+                  {c.items.map((item, i) => row(item, true, i === c.items.length - 1))}
                 </div>
-                {c.items.map((item, i) => row(item, i, true, ci === all.length - 1 && i === c.items.length - 1))}
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       ))}
     </div>
@@ -591,7 +560,10 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
 /* Live hub for one selected meet: TODAY / SCHEDULE / MEDALS */
 function LiveHub({ meet }) {
   const { isAdmin } = useAuth()
-  const [tab, setTab] = useState('today') // 'today' | 'schedule' | 'medals'
+  const [tab, setTab] = useState('program') // 'program' | 'medals' | 'startlist' | 'reports'
+  // Selective Attention: a parent follows one gender and one age category
+  const [fGender, setFGender] = useState('')
+  const [fCat, setFCat] = useState('')
   const [program, setProgram] = useState(null)
   const [live, setLive] = useState(null)
   const [stats, setStats] = useState(null)
@@ -607,7 +579,7 @@ function LiveHub({ meet }) {
 
   // keep the selected day chip in view (phones: today can be off-screen)
   useEffect(() => {
-    if (tab !== 'schedule') return
+    if (tab !== 'program') return
     const t = setTimeout(() => {
       chipsRef.current?.querySelector('.active')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
     }, 60)
@@ -624,7 +596,7 @@ function LiveHub({ meet }) {
   }
 
   useEffect(() => {
-    setProgram(null); setLive(null); setStats(null); setMedals(null); setClubMedals(null); setSwimmerMedals(null); setSelectedDay(null); setTab('today'); setEditProgram(false)
+    setProgram(null); setLive(null); setStats(null); setMedals(null); setClubMedals(null); setSwimmerMedals(null); setSelectedDay(null); setTab('program'); setFGender(''); setFCat(''); setEditProgram(false)
     getMeetProgram(meet.id).then((r) => setProgram(r.data)).catch(() => setProgram({ days: [] }))
     refresh()
     pollRef.current = setInterval(refresh, POLL_MS)
@@ -646,7 +618,6 @@ function LiveHub({ meet }) {
     if (t) return t.day
     return prog ? prog.current : 1
   }, [live, prog])
-  const todayDay = days.find((d) => d.day === todayNum) || days[0]
   const scheduleDay = days.find((d) => d.day === (selectedDay ?? todayNum)) || days[0]
 
   const finalsDays = useMemo(
@@ -656,13 +627,27 @@ function LiveHub({ meet }) {
 
   const loading = !program || !live
 
+  // Hick's Law: "Today" and "Schedule" were the same list on two tabs — one
+  // Program tab now opens on today and offers the other days as chips.
   const TABS = [
-    ['today', 'Today'],
-    ['schedule', 'Schedule'],
-    ['medals', 'Medals'],
-    ['startlist', 'Startlist'],
-    ['reports', 'Reports'],
+    { value: 'program', label: 'Program' },
+    { value: 'medals', label: 'Medals' },
+    { value: 'startlist', label: 'Start lists' },
+    { value: 'reports', label: 'Reports' },
   ]
+  // filter choices come from the day being shown (genders) and the whole meet (categories)
+  const dayItems = scheduleDay?.items || []
+  const genderOptions = ['M', 'F', 'X'].filter((g) => dayItems.some((i) => i.gender === g))
+  const categoryOptions = useMemo(() => {
+    const seen = []
+    days.forEach((d) => (d.items || []).forEach((i) => {
+      if (i.age_category && !seen.some((c) => normCategory(c) === normCategory(i.age_category))) seen.push(i.age_category)
+    }))
+    return seen
+  }, [days])
+  const shownRaces = dayItems
+    .filter((i) => !fGender || i.gender === fGender)
+    .filter((i) => !fCat || normCategory(i.age_category) === normCategory(fCat)).length
 
   const refreshDocs = () => getMeetDocuments(meet.id).then((r) => setDocs(Array.isArray(r.data) ? r.data : [])).catch(() => {})
 
@@ -672,7 +657,7 @@ function LiveHub({ meet }) {
   }
 
   return (
-    <div style={{ marginTop: 20 }}>
+    <div style={{ marginTop: 14 }}>
       {/* ── hero card ── */}
       <div style={{
         borderRadius: 0, overflow: 'hidden', marginBottom: 18,
@@ -689,9 +674,15 @@ function LiveHub({ meet }) {
                 Day {prog.current} of {prog.total}
               </span>
             )}
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>
+            {/* Doherty Threshold: say how fresh the page is, on phone too */}
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'rgba(255,255,255,.7)', fontWeight: 600, textAlign: 'right', lineHeight: 1.5 }}>
               <span className="asw-num" style={{ fontWeight: 800, color: '#fff', fontSize: 14 }}>{formatNumber(live?.total_results ?? meet.results_count ?? 0)}</span>
               {' '}results in
+              {updatedAt && (
+                <span style={{ display: 'block', fontSize: 11 }} aria-live="polite">
+                  Updated {updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · refreshes by itself
+                </span>
+              )}
             </span>
           </div>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(19px, 3.4vw, 26px)', marginTop: 10, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
@@ -717,46 +708,15 @@ function LiveHub({ meet }) {
             </div>
           )}
         </div>
-        {/* pill tabs */}
-        <div className="live-tabrow" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#fff', borderTop: '1px solid rgba(255,255,255,.1)' }}>
-          {TABS.map(([key, label]) => {
-            const active = tab === key
-            return (
-              <button
-                key={key}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setTab(key)}
-                className={`live-tabpill${active ? ' active' : ''}`}
-                style={{
-                  padding: '8px 22px', borderRadius: 0, fontSize: 12, fontWeight: 800, cursor: 'pointer',
-                  letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-                  background: active ? 'var(--color-accent-800)' : '#fff',
-                  color: active ? '#fff' : 'var(--color-neutral-600)',
-                  border: `1.5px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
-                }}
-              >
-                {label}
-              </button>
-            )
-          })}
-          <div className="live-tabmeta" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16, flex: 'none' }}>
-            {updatedAt && (
-              <span className="hide-mobile" style={{ fontSize: 11, color: 'var(--color-neutral-500)', fontWeight: 600 }}>
-                Updated {updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · auto-refreshes
-              </span>
-            )}
-          </div>
+        {/* Jakob's Law: the same tab strip as every other page, on one line */}
+        <div className="live-tabrow">
+          <Seg tabs options={TABS} value={tab} onChange={setTab} />
         </div>
       </div>
 
       {loading ? <Loading label="Loading live data" /> : (
         <>
-          {tab === 'today' && (
-            <DayProgram day={todayDay} meetId={meet.id} meet={meet} resultKeys={resultKeys} />
-          )}
-
-          {tab === 'schedule' && (
+          {tab === 'program' && (
             <div className="live-fade-in">
               {/* admin: edit the program in place — add events to days, reorder, sessions */}
               {isAdmin && (
@@ -779,8 +739,9 @@ function LiveHub({ meet }) {
                   )}
                 </div>
               )}
-              {/* day chips */}
-              <div ref={chipsRef} style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '10px 2px 12px', marginBottom: 14 }}>
+              {/* day chips — only when the meet has more than one day */}
+              {days.length > 1 && (
+              <div ref={chipsRef} style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '10px 2px 12px', marginBottom: 6 }}>
                 {days.map((d) => {
                   const active = d.day === (selectedDay ?? todayNum)
                   const isToday = d.day === todayNum
@@ -826,7 +787,33 @@ function LiveHub({ meet }) {
                   )
                 })}
               </div>
-              <DayProgram day={scheduleDay} meetId={meet.id} meet={meet} resultKeys={resultKeys} />
+              )}
+              {/* Common Region: the filters sit in one bar right above what they filter */}
+              {(genderOptions.length > 1 || categoryOptions.length > 1) && (
+                <div className="live-filters" role="group" aria-label="Filter the program">
+                  {genderOptions.length > 1 && (
+                    <Seg
+                      options={[{ value: '', label: 'All' }, ...genderOptions.map((g) => ({ value: g, label: GENDER_STYLE[g].label }))]}
+                      value={genderOptions.includes(fGender) ? fGender : ''}
+                      onChange={setFGender}
+                    />
+                  )}
+                  {categoryOptions.length > 1 && (
+                    <select className="select" aria-label="Age category" value={fCat} onChange={(e) => setFCat(e.target.value)}>
+                      <option value="">All age categories</option>
+                      {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  )}
+                  <span className="live-filters-count asw-num" aria-live="polite">
+                    {shownRaces} {shownRaces === 1 ? 'race' : 'races'}
+                    {(fGender || fCat) && (
+                      <button type="button" className="btn btn-ghost" onClick={() => { setFGender(''); setFCat('') }}>Clear</button>
+                    )}
+                  </span>
+                </div>
+              )}
+              <DayProgram day={scheduleDay} meetId={meet.id} meet={meet} resultKeys={resultKeys}
+                gender={genderOptions.includes(fGender) ? fGender : ''} category={fCat} />
             </div>
           )}
 
@@ -841,34 +828,28 @@ function LiveHub({ meet }) {
   )
 }
 
-/* Selectable meet card (when several meets are live at once) */
-function MeetCard({ meet, active, onSelect }) {
-  const prog = dayProgress(meet)
+/* Occam's Razor: with several meets live, one slim switch — the header below
+   already says which meet is open, so full cards repeating its name are noise. */
+function MeetSwitch({ meets, selectedId, onSelect }) {
+  const rowRef = useRef(null)
+  // the open meet is always in view, even when it is the last chip on a phone
+  useEffect(() => {
+    rowRef.current?.querySelector('.on')?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [selectedId, meets.length])
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onSelect}
-      className="live-daychip"
-      style={{
-        textAlign: 'left', cursor: 'pointer', display: 'block', width: '100%',
-        border: `2px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-200)'}`,
-        borderRadius: 0, padding: '16px 16px', background: '#fff',
-        boxShadow: active ? '0 4px 14px rgba(12,35,64,.16)' : '0 1px 4px rgba(12,35,64,.05)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <LivePill small />
-        {prog && <span className="micro">Day {prog.current} of {prog.total}</span>}
-      </div>
-      <div style={{ fontWeight: 800, fontFamily: 'var(--font-heading)', fontSize: 16, lineHeight: 1.25, marginBottom: 6 }}>
-        {meet.name}
-      </div>
-      <div className="micro" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        {meet.country_detail && <Flag code={meet.country_detail.code} />}
-        {meet.location || meet.country_detail?.name}
-      </div>
-    </button>
+    <div ref={rowRef} className="live-meets" role="group" aria-label="Live meets">
+      {meets.map((m) => {
+        const prog = dayProgress(m)
+        const active = m.id === selectedId
+        return (
+          <button key={m.id} type="button" aria-pressed={active} className={`live-meet${active ? ' on' : ''}`} onClick={() => onSelect(m.id)}>
+            <span className="live-meet-dot" aria-hidden="true" />
+            <span className="live-meet-name">{m.name}</span>
+            {prog && <span className="live-meet-day">Day {prog.current}/{prog.total}</span>}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -906,7 +887,7 @@ export default function Live() {
     <div>
       <PageHead
         title="Live results"
-        sub="Meets happening right now — program, results and medal standings, session by session."
+        sub="Program, results and medals for the meets happening now."
       />
       {meets.length === 0 ? (
         <div className="pad-lg">
@@ -947,13 +928,7 @@ export default function Live() {
         </div>
       ) : (
         <div className="pad-lg">
-          {meets.length > 1 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-              {meets.map((m) => (
-                <MeetCard key={m.id} meet={m} active={m.id === selected?.id} onSelect={() => setSelectedId(m.id)} />
-              ))}
-            </div>
-          )}
+          {meets.length > 1 && <MeetSwitch meets={meets} selectedId={selected?.id} onSelect={setSelectedId} />}
           {selected && <LiveHub meet={selected} />}
         </div>
       )}

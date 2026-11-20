@@ -1342,3 +1342,56 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .live-event-head > span:nth-child(2) { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; }
 .live-event-count { margin-left: auto; font-family: inherit; font-size: 11px; font-weight: 700; color: var(--color-neutral-700); }
 
+/* ===== Live results — layout pass (Laws of UX) ===== */
+/* meet switch: one slim row, scrolls sideways on a phone */
+.live-meets { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.live-meets::-webkit-scrollbar { display: none; }
+.live-meet { flex: none; display: inline-flex; align-items: center; gap: 8px; max-width: 320px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--color-neutral-300); background: var(--color-bg); color: var(--color-accent-800); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-align: left; }
+.live-meet.on { background: var(--color-accent-800); border-color: var(--color-accent-800); color: #fff; }
+.live-meet-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--asw-slow); }
+.live-meet-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-meet-day { flex: none; font-size: 11px; font-weight: 700; opacity: 0.7; letter-spacing: 0.04em; }
+/* tab strip inside the meet card */
+.live-tabrow { padding: 12px 16px; background: var(--color-bg); }
+/* filters bar */
+.live-filters { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 14px; background: var(--color-neutral-100); border: 1px solid var(--color-divider); }
+.live-filters .select { width: auto; min-width: 180px; height: 38px; min-height: 38px; background-color: var(--color-bg); }
+.live-filters-count { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--color-neutral-700); }
+.live-filters-count .btn { min-height: 32px; font-size: 12px; padding: 0 8px; }
+/* event blocks: two across on a laptop */
+.live-clusters { display: grid; grid-template-columns: 1fr; }
+.live-cluster { min-width: 0; border-bottom: 1px solid var(--color-neutral-200); }
+.live-cluster:last-child { border-bottom: 0; }
+@media (min-width: 1000px) {
+  .live-clusters { grid-template-columns: 1fr 1fr; gap: 0; align-items: start; }
+  .live-cluster { border-right: 1px solid var(--color-neutral-200); }
+  .live-cluster:nth-child(2n) { border-right: 0; }
+  /* Similarity: when a day has both, women are always the left column and men
+     the right, so an event with one gender does not shift the rest */
+  .live-clusters.by-gender .live-cluster.g-F { grid-column: 1; border-right: 1px solid var(--color-neutral-200); }
+  .live-clusters.by-gender .live-cluster.g-M { grid-column: 2; border-right: 0; }
+  .live-clusters.by-gender .live-cluster.g-X { grid-column: 1 / -1; border-right: 0; }
+}
+/* one race */
+.live-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 16px; background: var(--color-bg); border-bottom: 1px solid var(--color-neutral-200); }
+.live-row.last { border-bottom: 0; }
+.live-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.live-row-title { font-family: var(--font-heading); font-weight: 800; font-size: 14px; line-height: 1.3; }
+.live-row-gender { flex: none; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; }
+.live-row-cat { font-size: 12px; font-weight: 600; color: var(--color-neutral-700); }
+.live-round { flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--color-neutral-700); }
+.live-round.final { color: var(--color-accent-800); }
+.live-status { flex: none; min-width: 78px; text-align: right; font-size: 12px; font-weight: 600; color: var(--color-neutral-700); }
+.live-status.on { font-weight: 800; color: var(--color-accent-800); }
+.live-status.on .live-chevron { font-size: 15px; margin-left: 2px; }
+@media (max-width: 760px) {
+  .live-tabrow { padding: 0 8px; }
+  .live-filters { padding: 8px; }
+  .live-filters .seg { display: flex; flex: 1 1 100%; }
+  .live-filters .seg-opt { flex: 1; justify-content: center; }
+  .live-filters .select { flex: 1 1 160px; min-width: 0; }
+  .live-row { padding: 8px 12px; gap: 8px; }
+  .live-status { min-width: 0; }
+  .live-event-head { padding: 8px 12px; }
+}
+
